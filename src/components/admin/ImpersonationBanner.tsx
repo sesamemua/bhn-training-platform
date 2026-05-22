@@ -49,7 +49,7 @@ export function ImpersonationBanner({ actingAs }: Props) {
       aria-live="polite"
       aria-label={`Viewing as ${actingAs}. Admin permissions are paused while in this mode.`}
     >
-      <div className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-800/60 shadow-amber-pill pl-1 pr-0.5 py-0.5">
+      <div className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-900 border border-amber-800/60 shadow-banner-amber pl-1 pr-0.5 py-0.5">
         {/* Pulsing eye disc, compact. */}
         <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-200 text-amber-900 shrink-0">
           <Eye size={11} />

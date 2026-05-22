@@ -125,7 +125,7 @@ export function GreetingTagline({ tone = "dark", className }: Props) {
   // Tone-aware classes.
   const taglineCls =
     tone === "dark"
-      ? "text-white drop-shadow-text-soft"
+      ? "text-white drop-shadow-on-dark-sm"
       : "text-fg";
   const subtleCls =
     tone === "dark" ? "text-white/85" : "text-muted";

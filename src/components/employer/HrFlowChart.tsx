@@ -553,7 +553,7 @@ function DetailPanel({ node, onClose }: { node: FlowNode; onClose: () => void })
   const meta = CAT_META[node.cat];
   const Icon = node.icon ?? CircleDot;
   return (
-    <div className="rounded-2xl border-2 bg-card shadow-elevated overflow-hidden" style={{ borderColor: "var(--line)" }}>
+    <div className="rounded-2xl border-2 bg-card shadow-elevated-panel overflow-hidden" style={{ borderColor: "var(--line)" }}>
       {/* Header */}
       <div className={cn("px-5 py-4 border-b flex items-start justify-between gap-3", meta.border, "bg-elevated/50")}>
         <div className="flex items-center gap-3 min-w-0">

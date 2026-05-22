@@ -242,8 +242,9 @@ export function CourseCard({ course }: CourseCardProps) {
             band actually crispens the chip silhouettes. */}
         <aside
           className={cn(
-            "p-2.5 sm:p-3 flex flex-col gap-1",
-            "bg-slate-800 text-white",
+            "p-2.5 sm:p-3 flex flex-col gap-1 border-l border-line",
+            // eslint-disable-next-line no-restricted-syntax -- color-mix deepens the theme's --raised token by 12% black; the #000 is the mixing operand, not a replacement colour, so the column tracks the active theme.
+            "bg-[color-mix(in_srgb,var(--raised)_88%,#000)]",
           )}
         >
           <Chip

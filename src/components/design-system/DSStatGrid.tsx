@@ -148,8 +148,7 @@ export function DSStat({
     // ones use bright gradients + `text-white/85` labels.
     const labelCls = onDark ? "text-white/85" : "text-subtle";
     const helpCls  = onDark ? "text-white/70" : "text-subtle";
-    // eslint-disable-next-line no-restricted-syntax -- intentionally softer than drop-shadow-text-dim; specific to dark-on-gradient stat values.
-    const valueShadow = onDark ? "drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]" : "";
+    const valueShadow = onDark ? "drop-shadow-on-dark-sm" : "";
     return (
       <div className="px-4 sm:px-6 py-3 first:pl-0 last:pr-0">
         <div className={`text-[10px] uppercase tracking-[0.22em] font-bold ${labelCls} inline-flex items-center gap-1.5`}>

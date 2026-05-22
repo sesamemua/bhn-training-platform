@@ -42,13 +42,13 @@ const eslintConfig = defineConfig([
   // theming, and have no token equivalent.
   //
   // Current severity: ERROR.
-  //   Started life at "warn" with ~40 pre-existing leaks. After the
-  //   named shadow-token sweep (May 2026 — `shadow-card-rest`,
-  //   `shadow-modal`, `shadow-amber-pulse`, `drop-shadow-text-dim`,
-  //   etc. — see the @theme inline block in globals.css), every leak
-  //   was either migrated to a token OR explicitly suppressed with
-  //   a one-line `eslint-disable-next-line no-restricted-syntax`
-  //   reason. The rule now blocks any new leak from landing.
+  //   Promoted from "warn" on 2026-05-21 after the named-shadow
+  //   token sweep landed (see docs/design-system.md → Named shadows).
+  //   The remaining inline `shadow-[…]` colour-bearing values are
+  //   line-level `eslint-disable-next-line no-restricted-syntax`
+  //   suppressions inside the LaunchSwitch family — those drive the
+  //   cover-flip + countdown timeline and tokenising them would
+  //   break the animation rhythm. Every other surface uses a token.
   //
   // If you genuinely need to hard-code a colour (transactional email
   // HTML where CSS variables don't render, a fixed export-to-PDF

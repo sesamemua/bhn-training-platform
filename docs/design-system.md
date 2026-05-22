@@ -111,6 +111,54 @@ The `retro8bit` theme overrides every radius to `0px`. The `icecream` theme bump
 
 Never combine `shadow-` and a `ring-` — pick one. Rings own focus + selection states; shadows own elevation.
 
+### Named shadows
+
+The platform also ships a set of **semantic** shadow utilities. Each one
+is a single CSS variable composed in `@theme inline` (geometry) plus
+per-theme `*-tint` / `*-near` / `*-far` variables (hue + alpha) so the
+same utility breathes correctly across all 13 themes. Reach for these
+before adding an arbitrary `shadow-[…]` — the ESLint rule
+[`no-restricted-syntax` in `eslint.config.mjs`](../eslint.config.mjs)
+blocks hard-coded colour shadows at the error level.
+
+| Token | Visual purpose |
+|---|---|
+| `shadow-card-rest` | Resting state of any `<Card>` — aliases the theme's `--surface-shadow` so existing per-theme calibration (mist inset highlight, hitech cyan ring, coldbrew ceramic specular, …) carries over verbatim. |
+| `shadow-card-hover` | Lifted state of a `<Card hover>`. Heavier than the rest shadow; per-theme `--shadow-card-hover-near` / `-far` decide the hue. |
+| `shadow-elevated-panel` | Heavy drop for a panel that wants to read as floating above the page — employer cover banner, committee badge strip, small simulator modal, rewards distance card. |
+| `shadow-elevated-modal` | The big modal shadow — used by the job-dynamics briefing dialog. Heavier than `shadow-elevated-panel` and more saturated on dark themes. |
+| `shadow-lifted` | Control-panel chip floating above content — Course Filters dark strip. |
+| `shadow-lifted-strong` | Dramatic hover-lift for tools that scale on hover (LoginFloaters editor zoom). |
+| `shadow-pedestal` | White circular / square logo holder. Composite of a heavy drop + an inset `1px` top highlight that makes the holder feel embossed — used in the employer cover and `DSPageHeader` brand-mark slot. |
+| `shadow-medal` | Committee badge medal — drop + inset shine that simulates a brushed-gold disc. |
+| `shadow-banner-amber` | The `ImpersonationBanner` pill — small amber-rim glow that signals "viewing-as" without competing with the page CTA. |
+| `shadow-spotlight` | Onboarding spotlight scrim. Renders a 9999 px outer shadow that darkens the entire viewport except the ring around the highlighted element. |
+| `shadow-glow-preview-violet` | Sidebar preview-mode container — superadmin "peek as HR" affordance. Soft violet halo, brighter than surrounding sections so it's instantly spottable. |
+| `shadow-glow-amber` | Subtle amber halo for an idle filter chip. |
+| `shadow-glow-amber-strong` | Loud amber halo for the **active** state — featured-courses toggle, sidebar external-highlight pulse. |
+| `shadow-glow-amber-bar` | Inner glow on the rewards progress bar fill (no negative spread — falloff carries further than the chip variants). |
+| `shadow-glow-white-marker` | "You-are-here" marker on the rewards progress bar — bright, narrow white halo. |
+| `drop-shadow-glow-brand` | Logo-mark glow. Brand-tinted by default, retuned per theme (dryice gets cyan, hitech gets electric cyan, …). |
+| `drop-shadow-glow-brand-strong` | The bigger / louder variant used on the login hero mark. |
+| `drop-shadow-on-dark-sm` | Light cushion for small text sitting on a dark hero or banner (`DSStatGrid` stat values when `onDark`, `GreetingTagline` dark tone). |
+| `drop-shadow-on-dark` | Standard text cushion for medium-size numerics on dark surfaces (dashboard hero stat numbers, `RewardsDistanceCard`). |
+| `drop-shadow-on-dark-lg` | Big-headline / big-numeric cushion (rewards page hero stat, login hero headline). |
+
+> **Per-theme tuning.** Tints for dark themes (hitech, dryice, chilli,
+> coldbrew, aurora) live alongside their existing `--surface-shadow`
+> blocks at the bottom of `globals.css`. If a shadow looks identical
+> in Daylight and Voltage / Dry Ice, re-tune the per-theme tint
+> variables until the dark theme's shadow actually breathes against
+> its canvas. Light / pastel themes (rosalind, mist, sakura, salty,
+> greenwood, atompunk, icecream) inherit the Daylight defaults from
+> `:root`.
+
+> **Genuine exceptions.** If a shadow's geometry is genuinely
+> animation-locked (the LaunchSwitch cover-flip + countdown timeline
+> is the only current example), suppress with a **line-level**
+> `// eslint-disable-next-line no-restricted-syntax` plus a one-line
+> comment explaining WHY a token wouldn't work.
+
 ---
 
 ## Motion primitives
