@@ -52,7 +52,7 @@ jobs:
           # commit pushed in this PR, not just the tip.
           fetch-depth: 0
       - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@v3.83.7
+        uses: trufflesecurity/trufflehog@v3.95.6
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
