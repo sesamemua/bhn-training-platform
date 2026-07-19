@@ -1327,7 +1327,7 @@ function PersonPopup({
       style={{ animation: "fade-in 180ms ease-out" }}
     >
       <div
-        className="absolute flex flex-col overflow-hidden rounded-lg border border-line-strong bg-card-solid shadow-modal"
+        className="absolute flex flex-col overflow-hidden rounded-lg border border-line-strong bg-card-solid shadow-elevated-panel"
         onClick={(e) => e.stopPropagation()}
         style={
           pos.centered
@@ -1959,7 +1959,7 @@ function BriefingModal({
       style={{ animation: "fade-in 180ms ease-out" }}
     >
       <div
-        className="relative w-full max-w-2xl rounded-lg border border-line-strong bg-card-solid shadow-modal-deep"
+        className="relative w-full max-w-2xl rounded-lg border border-line-strong bg-card-solid shadow-elevated-modal"
         onClick={(e) => e.stopPropagation()}
         style={{ animation: "slide-up-in 240ms ease-out" }}
       >

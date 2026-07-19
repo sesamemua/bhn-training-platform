@@ -134,7 +134,7 @@ export default async function RewardsPage() {
               <Zap size={12} className="loot-glow text-amber-200" />
               Credits trained
             </p>
-            <p className="text-6xl sm:text-7xl lg:text-8xl font-black leading-[0.95] font-mono tabular-nums mt-2 drop-shadow-text-deep">
+            <p className="text-6xl sm:text-7xl lg:text-8xl font-black leading-[0.95] font-mono tabular-nums mt-2 drop-shadow-on-dark-lg">
               {spent.toLocaleString()}
               <span className="ml-3 text-2xl sm:text-3xl align-top text-amber-200">★</span>
             </p>
@@ -155,7 +155,7 @@ export default async function RewardsPage() {
             <div className="mt-9">
               <div className="relative h-4 rounded-full bg-white/15 overflow-visible">
                 <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-200 via-amber-300 to-amber-400 shadow-amber-bar transition-all"
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-200 via-amber-300 to-amber-400 shadow-glow-amber-bar transition-all"
                   style={{ width: `${journeyPct}%` }}
                 />
                 {journeyTiers.map((t) => {
@@ -187,7 +187,7 @@ export default async function RewardsPage() {
                   className="absolute -top-3 -translate-x-1/2 pointer-events-none"
                   style={{ left: `${journeyPct}%` }}
                 >
-                  <div className="w-2.5 h-10 rounded-full bg-white shadow-white-pulse-strong" />
+                  <div className="w-2.5 h-10 rounded-full bg-white shadow-glow-white-marker" />
                 </div>
               </div>
 

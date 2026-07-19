@@ -62,68 +62,64 @@
   --hero-mesh-3: #0369a1;
   --hero-mesh-4: #0e7490;
 
-  /* ── Shadow tokens ───────────────────────────────────────────
-   * Define every reusable shadow as a CSS custom property here so
-   * each theme can re-tune intensity. The bindings in @theme inline
-   * (below) expose them to Tailwind as utility classes — `shadow-card-rest`,
-   * `drop-shadow-text-dim`, etc.
+  /* ────────────────────────────────────────────────────────────────
+   *  Named shadow tints — Daylight defaults.
+   *  ──────────────────────────────────────────────────────────────
+   *  The geometry of each shadow lives in `@theme inline` further
+   *  down (so Tailwind exposes `shadow-card-rest`, `shadow-glow-amber`,
+   *  etc. as real utilities). The TINTS — the rgba values that decide
+   *  hue + opacity — live here, on each theme. Per-theme blocks below
+   *  override these to suit dark / saturated / pastel surfaces.
    *
-   * If a shadow is genuinely one-of-a-kind (the purple rewards card
-   * panel, the violet ENGAGE sidebar group), leave it inline with a
-   * one-line `// eslint-disable-next-line no-restricted-syntax` reason
-   * comment in the JSX. Don't manufacture a token for every visual.
-   *
-   * Categories:
-   *  • Card / panel shadows — surfaces sitting on the page bg
-   *  • Modal / drawer shadows — heavier, used on overlays
-   *  • Disc shadows — circular logos / avatars sitting on hero
-   *  • Text shadows — readable text on dark image / gradient bgs
-   *  • Brand glow — the Logo's tinted halo
-   *  • Amber attention — active-state glows used across CourseFilters,
-   *    Sidebar highlights, ImpersonationBanner, Rewards meter
-   */
-  /* Card surfaces */
-  --shadow-card-rest:   0 1px 2px rgba(15,23,42,0.04), 0 8px 30px rgba(15,23,42,0.06);
-  --shadow-card-hover:  0 2px 4px rgba(15,23,42,0.06), 0 16px 40px rgba(15,23,42,0.10);
+   *  Card surface tints (`--shadow-card-rest` aliases `--surface-shadow`
+   *  so existing per-theme calibration carries over; only the hover
+   *  variant needs its own near/far tints).
+   * ──────────────────────────────────────────────────────────────── */
+  --shadow-card-hover-near: rgba(15, 23, 42, 0.06);
+  --shadow-card-hover-far:  rgba(15, 23, 42, 0.10);
 
-  /* Heavy elevated panels — employer cover, committee badge, login floater hover */
-  --shadow-elevated:        0 24px 60px -20px rgba(0,0,0,0.45);
-  --shadow-elevated-heavy:  0 22px 50px rgba(0,0,0,0.65);
-  --shadow-committee:       0 18px 48px -18px rgba(0,0,0,0.45);
+  /* Heavy panel drops (employer banner, committee strip, simulator
+   * modal). All neutral black tints — light bg can absorb them. */
+  --shadow-elevated-panel-tint: rgba(0, 0, 0, 0.45);
+  --shadow-elevated-modal-tint: rgba(15, 23, 42, 0.70);
 
-  /* Modal / drawer */
-  --shadow-modal:       0 24px 60px -12px rgba(15,23,42,0.55);
-  --shadow-modal-deep:  0 30px 80px -20px rgba(15,23,42,0.7);
+  /* Lifted chips (CourseFilters dark chip, LoginFloatersEditor hover) */
+  --shadow-lifted-tint:        rgba(0, 0, 0, 0.35);
+  --shadow-lifted-strong-tint: rgba(0, 0, 0, 0.65);
 
-  /* Disc shadows — circular icons sitting on heroes / cover banners */
-  --shadow-cover-disc:      0 18px 40px -10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6);
-  --shadow-committee-disc:  0 10px 30px -6px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.4);
+  /* White-pedestal logo holder — drop + inset highlight stroke. */
+  --shadow-pedestal-drop:      rgba(0, 0, 0, 0.40);
+  --shadow-pedestal-highlight: rgba(255, 255, 255, 0.60);
 
-  /* Text-shadows for legibility on dark / gradient backgrounds */
-  --shadow-text-soft:   0 1px 8px rgba(0,0,0,0.45);
-  --shadow-text-dim:    0 2px 12px rgba(0,0,0,0.35);
-  --shadow-text-glow:   0 2px 18px rgba(0,0,0,0.45);
-  --shadow-text-deep:   0 4px 24px rgba(0,0,0,0.35);
+  /* Committee medal — drop + inset shine. */
+  --shadow-medal-drop:  rgba(0, 0, 0, 0.40);
+  --shadow-medal-shine: rgba(255, 255, 255, 0.40);
 
-  /* Brand-tinted Logo glow. Two flavours — Logo.tsx uses the
-   * deep blue, the login page uses a sky variant. */
-  --shadow-brand-glow:        0 3px 10px rgba(42,79,219,0.25);
-  --shadow-brand-glow-sky:    0 3px 12px rgba(56,189,248,0.45);
+  /* ImpersonationBanner amber pill — warm amber-rim glow. */
+  --shadow-banner-amber-tint: rgba(120, 53, 15, 0.35);
 
-  /* Amber attention glows — active state, externally-flagged nav,
-   * audit banner, reward meter. Stay amber across all themes
-   * intentionally (amber = "look here"), so these don't re-tune
-   * per-theme even on dark themes. */
-  --shadow-amber-glow:        0 0 14px -4px rgba(251,191,36,0.4);
-  --shadow-amber-glow-strong: 0 0 24px -4px rgba(251,191,36,0.7);
-  --shadow-amber-pulse:       0 0 18px rgba(251,191,36,0.5);
-  --shadow-amber-pill:        0 4px 12px -3px rgba(120,53,15,0.35);
-  --shadow-amber-bar:         0 0 22px rgba(251,191,36,0.85);
-  --shadow-amber-bar-soft:    0 0 12px rgba(251,191,36,0.7);
+  /* Onboarding spotlight — full-viewport darkening scrim. */
+  --shadow-spotlight-tint: rgba(15, 23, 42, 0.50);
 
-  /* White / indicator glows — meter caret, pulse dots */
-  --shadow-white-pulse:        0 0 10px rgba(255,255,255,0.95);
-  --shadow-white-pulse-strong: 0 0 16px rgba(255,255,255,0.95);
+  /* Sidebar preview-mode chip — violet halo. */
+  --shadow-glow-preview-violet-tint: rgba(124, 58, 237, 0.35);
+
+  /* Brand-glow drop-shadows (Logo + login hero mark). */
+  --drop-shadow-glow-brand-tint:        rgba(42, 79, 219, 0.25);
+  --drop-shadow-glow-brand-strong-tint: rgba(56, 189, 248, 0.45);
+
+  /* Amber glow family — small chip glow, strong active glow, bar fill. */
+  --shadow-glow-amber-tint:        rgba(251, 191, 36, 0.40);
+  --shadow-glow-amber-strong-tint: rgba(251, 191, 36, 0.70);
+  --shadow-glow-amber-bar-tint:    rgba(251, 191, 36, 0.85);
+
+  /* Rewards progress-marker white glow. */
+  --shadow-glow-white-marker-tint: rgba(255, 255, 255, 0.95);
+
+  /* Text drop-shadows on dark surfaces (hero, banner, loot card). */
+  --drop-shadow-on-dark-sm-tint: rgba(0, 0, 0, 0.45);
+  --drop-shadow-on-dark-tint:    rgba(0, 0, 0, 0.35);
+  --drop-shadow-on-dark-lg-tint: rgba(0, 0, 0, 0.45);
 }
 
 /* Nightfall (id "dark") was retired 2026-05-17. Voltage (id
@@ -942,37 +938,61 @@ button[data-section-tone="hr-preview"] {
   --color-surface-1: var(--bg);
   --color-surface-2: var(--elevated);
 
-  /* Shadow tokens — bound from CSS custom properties above so
-   * themes can override per-theme intensity. Tailwind v4 picks up
-   * `--shadow-*` and `--drop-shadow-*` keys and generates the
-   * matching `shadow-<name>` + `drop-shadow-<name>` utilities. */
-  --shadow-card-rest:        var(--shadow-card-rest);
-  --shadow-card-hover:       var(--shadow-card-hover);
-  --shadow-elevated:         var(--shadow-elevated);
-  --shadow-elevated-heavy:   var(--shadow-elevated-heavy);
-  --shadow-committee:        var(--shadow-committee);
-  --shadow-modal:            var(--shadow-modal);
-  --shadow-modal-deep:       var(--shadow-modal-deep);
-  --shadow-cover-disc:       var(--shadow-cover-disc);
-  --shadow-committee-disc:   var(--shadow-committee-disc);
-  --shadow-amber-glow:       var(--shadow-amber-glow);
-  --shadow-amber-glow-strong: var(--shadow-amber-glow-strong);
-  --shadow-amber-pulse:      var(--shadow-amber-pulse);
-  --shadow-amber-pill:       var(--shadow-amber-pill);
-  --shadow-amber-bar:        var(--shadow-amber-bar);
-  --shadow-amber-bar-soft:   var(--shadow-amber-bar-soft);
-  --shadow-white-pulse:      var(--shadow-white-pulse);
-  --shadow-white-pulse-strong: var(--shadow-white-pulse-strong);
+  /* ────────────────────────────────────────────────────────────
+   *  Named shadow utilities — geometry lives here, per-theme
+   *  tints live on each [data-theme] block. Tailwind v4 exposes
+   *  every key below as a utility (`shadow-card-rest`,
+   *  `shadow-glow-amber-strong`, `drop-shadow-on-dark`, …).
+   *  See docs/design-system.md → Named shadows.
+   * ──────────────────────────────────────────────────────────── */
+  /* Card / panel — `--shadow-card-rest` aliases the per-theme
+   * `--surface-shadow` so Card.tsx inherits the existing theme
+   * calibration (mist inset highlight, hitech cyan ring, coldbrew
+   * ceramic specular, …). */
+  --shadow-card-rest: var(--surface-shadow);
+  --shadow-card-hover:
+    0 2px 4px var(--shadow-card-hover-near),
+    0 16px 40px var(--shadow-card-hover-far);
 
-  /* Drop-shadow flavour — same values bound under the
-   * --drop-shadow-* namespace so Tailwind generates the
-   * `drop-shadow-text-soft` etc. utilities used on text. */
-  --drop-shadow-text-soft:   var(--shadow-text-soft);
-  --drop-shadow-text-dim:    var(--shadow-text-dim);
-  --drop-shadow-text-glow:   var(--shadow-text-glow);
-  --drop-shadow-text-deep:   var(--shadow-text-deep);
-  --drop-shadow-brand-glow:  var(--shadow-brand-glow);
-  --drop-shadow-brand-glow-sky: var(--shadow-brand-glow-sky);
+  /* Elevated panels + modals. */
+  --shadow-elevated-panel: 0 24px 60px -20px var(--shadow-elevated-panel-tint);
+  --shadow-elevated-modal: 0 30px 80px -20px var(--shadow-elevated-modal-tint);
+
+  /* Lifted chips. */
+  --shadow-lifted:        0 8px 28px -12px var(--shadow-lifted-tint);
+  --shadow-lifted-strong: 0 22px 50px var(--shadow-lifted-strong-tint);
+
+  /* White-pedestal logo holder + medal — drop + inset highlight. */
+  --shadow-pedestal:
+    0 18px 40px -10px var(--shadow-pedestal-drop),
+    inset 0 1px 0 var(--shadow-pedestal-highlight);
+  --shadow-medal:
+    0 10px 30px -6px var(--shadow-medal-drop),
+    inset 0 2px 4px var(--shadow-medal-shine);
+
+  /* ImpersonationBanner pill. */
+  --shadow-banner-amber: 0 4px 12px -3px var(--shadow-banner-amber-tint);
+
+  /* Onboarding spotlight (full-viewport scrim outside the ring). */
+  --shadow-spotlight: 0 0 0 9999px var(--shadow-spotlight-tint);
+
+  /* Sidebar preview-mode container. */
+  --shadow-glow-preview-violet: 0 2px 12px -6px var(--shadow-glow-preview-violet-tint);
+
+  /* Amber glow family. */
+  --shadow-glow-amber:        0 0 14px -4px var(--shadow-glow-amber-tint);
+  --shadow-glow-amber-strong: 0 0 24px -4px var(--shadow-glow-amber-strong-tint);
+  --shadow-glow-amber-bar:    0 0 22px var(--shadow-glow-amber-bar-tint);
+
+  /* Rewards white marker. */
+  --shadow-glow-white-marker: 0 0 16px var(--shadow-glow-white-marker-tint);
+
+  /* Filter drop-shadows (`drop-shadow-*` utilities). */
+  --drop-shadow-glow-brand:        0 3px 10px var(--drop-shadow-glow-brand-tint);
+  --drop-shadow-glow-brand-strong: 0 3px 12px var(--drop-shadow-glow-brand-strong-tint);
+  --drop-shadow-on-dark-sm:        0 1px 8px var(--drop-shadow-on-dark-sm-tint);
+  --drop-shadow-on-dark:           0 2px 12px var(--drop-shadow-on-dark-tint);
+  --drop-shadow-on-dark-lg:        0 4px 24px var(--drop-shadow-on-dark-lg-tint);
 }
 
 html, body { background: var(--bg); }
@@ -3585,6 +3605,25 @@ body {
   --heading-weight: 500;
   --heading-transform: uppercase;
   --popover-shadow: 0 0 0 1px rgba(0,212,255,0.50), 0 0 44px rgba(0,212,255,0.30);
+  /* Named-shadow tints — dark canvas needs cyan-tinted highlights and
+   * heavier black drops so cards / modals don't disappear. */
+  --shadow-card-hover-near: rgba(0, 212, 255, 0.20);
+  --shadow-card-hover-far:  rgba(0, 212, 255, 0.30);
+  --shadow-elevated-panel-tint: rgba(0, 0, 0, 0.70);
+  --shadow-elevated-modal-tint: rgba(0, 0, 0, 0.85);
+  --shadow-lifted-tint:         rgba(0, 0, 0, 0.55);
+  --shadow-lifted-strong-tint:  rgba(0, 0, 0, 0.80);
+  --shadow-pedestal-drop:       rgba(0, 0, 0, 0.65);
+  --shadow-pedestal-highlight:  rgba(0, 212, 255, 0.40);
+  --shadow-medal-drop:          rgba(0, 0, 0, 0.65);
+  --shadow-medal-shine:         rgba(0, 212, 255, 0.30);
+  --shadow-banner-amber-tint:   rgba(251, 191, 36, 0.40);
+  --shadow-spotlight-tint:      rgba(0, 0, 0, 0.70);
+  --drop-shadow-glow-brand-tint:        rgba(0, 212, 255, 0.55);
+  --drop-shadow-glow-brand-strong-tint: rgba(0, 212, 255, 0.70);
+  --drop-shadow-on-dark-sm-tint: rgba(0, 0, 0, 0.65);
+  --drop-shadow-on-dark-tint:    rgba(0, 0, 0, 0.60);
+  --drop-shadow-on-dark-lg-tint: rgba(0, 0, 0, 0.65);
 }
 
 /* Cold Brew — restrained, dramatic. Tracking-tight so the type holds
@@ -3613,6 +3652,21 @@ body {
     inset 0 1px 0 rgba(255, 232, 200, 0.12),
     0 24px 60px rgba(0, 0, 0, 0.65),
     0 4px 12px rgba(0, 0, 0, 0.40);
+  /* Named-shadow tints — warm dark mug-and-ceramic palette. */
+  --shadow-card-hover-near: rgba(0, 0, 0, 0.40);
+  --shadow-card-hover-far:  rgba(0, 0, 0, 0.60);
+  --shadow-elevated-panel-tint: rgba(0, 0, 0, 0.65);
+  --shadow-elevated-modal-tint: rgba(0, 0, 0, 0.80);
+  --shadow-lifted-tint:         rgba(0, 0, 0, 0.55);
+  --shadow-lifted-strong-tint:  rgba(0, 0, 0, 0.80);
+  --shadow-pedestal-drop:       rgba(0, 0, 0, 0.60);
+  --shadow-pedestal-highlight:  rgba(255, 232, 200, 0.25);
+  --shadow-medal-drop:          rgba(0, 0, 0, 0.55);
+  --shadow-medal-shine:         rgba(255, 232, 200, 0.30);
+  --shadow-spotlight-tint:      rgba(0, 0, 0, 0.70);
+  --drop-shadow-on-dark-sm-tint: rgba(0, 0, 0, 0.60);
+  --drop-shadow-on-dark-tint:    rgba(0, 0, 0, 0.55);
+  --drop-shadow-on-dark-lg-tint: rgba(0, 0, 0, 0.60);
 }
 
 /* Summer Ice Cream — playful display heading, generous tracking,
@@ -3656,6 +3710,21 @@ body {
   --heading-weight: 600;
   --heading-transform: none;
   --popover-shadow: 0 0 0 1px rgba(255, 91, 60, 0.25), 0 24px 56px rgba(20, 5, 0, 0.65);
+  /* Named-shadow tints — flame-red on near-black canvas. */
+  --shadow-card-hover-near: rgba(255, 91, 60, 0.20);
+  --shadow-card-hover-far:  rgba(20, 5, 0, 0.65);
+  --shadow-elevated-panel-tint: rgba(20, 5, 0, 0.70);
+  --shadow-elevated-modal-tint: rgba(20, 5, 0, 0.85);
+  --shadow-lifted-tint:         rgba(20, 5, 0, 0.55);
+  --shadow-lifted-strong-tint:  rgba(20, 5, 0, 0.80);
+  --shadow-pedestal-drop:       rgba(20, 5, 0, 0.65);
+  --shadow-pedestal-highlight:  rgba(255, 91, 60, 0.35);
+  --shadow-medal-drop:          rgba(20, 5, 0, 0.60);
+  --shadow-medal-shine:         rgba(255, 91, 60, 0.30);
+  --shadow-spotlight-tint:      rgba(20, 5, 0, 0.75);
+  --drop-shadow-on-dark-sm-tint: rgba(20, 5, 0, 0.65);
+  --drop-shadow-on-dark-tint:    rgba(20, 5, 0, 0.60);
+  --drop-shadow-on-dark-lg-tint: rgba(20, 5, 0, 0.65);
 }
 
 /* Dry Ice — tight, modern sans with cold cyan-glow shadows that
@@ -3671,6 +3740,23 @@ body {
   --heading-weight: 500;
   --heading-transform: none;
   --popover-shadow: 0 0 0 1px rgba(143, 200, 220, 0.24), 0 24px 60px rgba(0, 8, 14, 0.70);
+  /* Named-shadow tints — cold fog-cyan halo, near-black canvas. */
+  --shadow-card-hover-near: rgba(143, 200, 220, 0.18);
+  --shadow-card-hover-far:  rgba(0, 8, 14, 0.65);
+  --shadow-elevated-panel-tint: rgba(0, 8, 14, 0.75);
+  --shadow-elevated-modal-tint: rgba(0, 8, 14, 0.85);
+  --shadow-lifted-tint:         rgba(0, 8, 14, 0.55);
+  --shadow-lifted-strong-tint:  rgba(0, 8, 14, 0.80);
+  --shadow-pedestal-drop:       rgba(0, 8, 14, 0.65);
+  --shadow-pedestal-highlight:  rgba(143, 200, 220, 0.40);
+  --shadow-medal-drop:          rgba(0, 8, 14, 0.60);
+  --shadow-medal-shine:         rgba(143, 200, 220, 0.30);
+  --shadow-spotlight-tint:      rgba(0, 8, 14, 0.75);
+  --drop-shadow-glow-brand-tint:        rgba(143, 200, 220, 0.50);
+  --drop-shadow-glow-brand-strong-tint: rgba(143, 200, 220, 0.65);
+  --drop-shadow-on-dark-sm-tint: rgba(0, 8, 14, 0.65);
+  --drop-shadow-on-dark-tint:    rgba(0, 8, 14, 0.60);
+  --drop-shadow-on-dark-lg-tint: rgba(0, 8, 14, 0.65);
 }
 
 /* Greenwood — calm humanist sans with dappled-leaf shadows (gently
@@ -3705,6 +3791,29 @@ body {
   --heading-weight: 700;
   --heading-transform: none;
   --popover-shadow: 0 1px 0 rgba(14, 26, 58, 0.08), 0 16px 40px rgba(14, 26, 58, 0.18);
+}
+
+/* Aurora — deep near-black-navy canvas, vivid emerald + rose accents.
+ * The surface/popover shadows were never tuned for the dark base; the
+ * named-shadow tints below give cards + modals enough contrast against
+ * #0d1126 without leaking colour into the rest of the UI. */
+[data-theme="aurora"] {
+  --surface-shadow: 0 0 0 1px rgba(244, 63, 94, 0.18), 0 14px 36px rgba(0, 0, 0, 0.60);
+  --popover-shadow: 0 0 0 1px rgba(244, 63, 94, 0.28), 0 24px 60px rgba(0, 0, 0, 0.75);
+  --shadow-card-hover-near: rgba(244, 63, 94, 0.22);
+  --shadow-card-hover-far:  rgba(0, 0, 0, 0.65);
+  --shadow-elevated-panel-tint: rgba(0, 0, 0, 0.70);
+  --shadow-elevated-modal-tint: rgba(0, 0, 0, 0.85);
+  --shadow-lifted-tint:         rgba(0, 0, 0, 0.55);
+  --shadow-lifted-strong-tint:  rgba(0, 0, 0, 0.80);
+  --shadow-pedestal-drop:       rgba(0, 0, 0, 0.65);
+  --shadow-pedestal-highlight:  rgba(244, 63, 94, 0.35);
+  --shadow-medal-drop:          rgba(0, 0, 0, 0.60);
+  --shadow-medal-shine:         rgba(255, 255, 255, 0.25);
+  --shadow-spotlight-tint:      rgba(0, 0, 0, 0.75);
+  --drop-shadow-on-dark-sm-tint: rgba(0, 0, 0, 0.65);
+  --drop-shadow-on-dark-tint:    rgba(0, 0, 0, 0.60);
+  --drop-shadow-on-dark-lg-tint: rgba(0, 0, 0, 0.65);
 }
 
 /* Wire the body + headings to the active theme's tokens. */

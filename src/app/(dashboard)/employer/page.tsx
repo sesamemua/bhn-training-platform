@@ -300,7 +300,7 @@ export default async function EmployerHomePage() {
           edge" rule. It now sits INSIDE the panel, just below
           CoverBanner (the hero), so the cover always sits at the
           very top of the page. */}
-      <div className="rounded-3xl overflow-hidden shadow-elevated">
+      <div className="rounded-3xl overflow-hidden shadow-elevated-panel">
         <CoverBanner />
 
         {noPassword && (
@@ -958,7 +958,7 @@ function LogoDisc({
       />
       <div
         className={
-          "relative w-32 h-32 sm:w-40 sm:h-40 bg-white ring-4 ring-white shadow-cover-disc flex items-center justify-center overflow-hidden " +
+          "relative w-32 h-32 sm:w-40 sm:h-40 bg-white ring-4 ring-white shadow-pedestal flex items-center justify-center overflow-hidden " +
           containerMask
         }
       >

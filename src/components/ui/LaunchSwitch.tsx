@@ -262,7 +262,7 @@ export function LaunchSwitch({
           <div className="absolute inset-0 flex items-center justify-between pl-2 pr-1">
             <span
               aria-hidden
-              // eslint-disable-next-line no-restricted-syntax -- tuned LED-pulse glow, part of the LaunchSwitch animation pipeline; stays yellow across themes by design.
+              // eslint-disable-next-line no-restricted-syntax -- the launch-cover countdown pulse needs an exact 4px/2px/0.75-alpha yellow halo tuned to the `ls_pulse` keyframe; a generic shadow-glow-amber* breaks the animation rhythm.
               className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_4px_2px_rgba(253,224,71,0.75)] animate-[ls_pulse_0.5s_ease-in-out_infinite] shrink-0"
             />
             <span
@@ -282,7 +282,7 @@ export function LaunchSwitch({
               onClick={closeCover}
               aria-label="Abort countdown"
               title="Abort — close the cover to cancel"
-              // eslint-disable-next-line no-restricted-syntax -- abort-button glow matches the LED pulse colour; part of the LaunchSwitch animation pipeline.
+              // eslint-disable-next-line no-restricted-syntax -- abort chip needs the same yellow halo as the pulsing countdown dot above so the two visually belong to the same "armed" state machine.
               className="inline-flex items-center justify-center rounded-md bg-yellow-300 text-rose-900 ring-1 ring-yellow-500 shadow-[0_0_8px_rgba(253,224,71,0.55)] hover:bg-yellow-200 hover:text-rose-950 active:translate-y-[1px] shrink-0"
               style={{
                 width:  size === "md" ? 26 : 20,

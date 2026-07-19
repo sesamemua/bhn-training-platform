@@ -226,8 +226,7 @@ export function Onboarding() {
       {/* Spotlight ring around anchor */}
       {onCorrectPath && step.selector && anchorRect && (
         <div
-          // eslint-disable-next-line no-restricted-syntax -- the 9999px shadow is a viewport-darkening mask trick, not a real shadow — backdrop must be a fixed slate at the same opacity across themes.
-          className="fixed z-40 pointer-events-none rounded-xl ring-4 ring-brand-400/70 shadow-[0_0_0_9999px_rgba(15,23,42,0.5)] animate-fade-in"
+          className="fixed z-40 pointer-events-none rounded-xl ring-4 ring-brand-400/70 shadow-spotlight animate-fade-in"
           style={{
             top: anchorRect.top - 6,
             left: anchorRect.left - 6,

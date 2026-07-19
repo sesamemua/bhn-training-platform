@@ -120,7 +120,7 @@ export function LaunchSwitchFacet({
           <div className="absolute inset-0 flex items-center justify-between pl-2 pr-1">
             <span
               aria-hidden
-              // eslint-disable-next-line no-restricted-syntax -- tuned LED-pulse glow, part of the LaunchSwitch animation pipeline.
+              // eslint-disable-next-line no-restricted-syntax -- countdown pulse halo locked to the `ls_pulse` keyframe; generic shadow-glow-amber* breaks the animation cadence.
               className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_4px_2px_rgba(253,224,71,0.75)] animate-[ls_pulse_0.5s_ease-in-out_infinite] shrink-0"
             />
             <span
@@ -134,7 +134,7 @@ export function LaunchSwitchFacet({
               onClick={closeCover}
               aria-label="Abort countdown"
               title="Abort — close the cover to cancel"
-              // eslint-disable-next-line no-restricted-syntax -- abort-button glow matches the LED pulse colour; part of the LaunchSwitch animation pipeline.
+              // eslint-disable-next-line no-restricted-syntax -- abort chip mirrors the countdown halo above; same `ls_pulse` armed-state geometry.
               className="inline-flex items-center justify-center rounded-md bg-yellow-300 text-rose-900 ring-1 ring-yellow-500 shadow-[0_0_8px_rgba(253,224,71,0.55)] hover:bg-yellow-200 hover:text-rose-950 active:translate-y-[1px] shrink-0"
               style={{
                 width:  size === "md" ? 26 : 20,

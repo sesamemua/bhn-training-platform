@@ -130,9 +130,7 @@ export function LaunchSwitchClassic({
         className={
           "absolute inset-0 rounded-[3px] overflow-hidden " +
           (launching
-            // eslint-disable-next-line no-restricted-syntax -- black inset depth on the industrial rail; must stay neutral black across all themes
             ? "bg-rose-700 ring-1 ring-rose-900 shadow-[inset_0_0_8px_rgba(0,0,0,0.4)]"
-            // eslint-disable-next-line no-restricted-syntax -- same rationale as above; neutral tactile recess
             : "bg-zinc-900 ring-1 ring-zinc-700 shadow-[inset_0_0_4px_rgba(0,0,0,0.5)]")
         }
       >
@@ -159,7 +157,6 @@ export function LaunchSwitchClassic({
           <div className="absolute inset-[2px] flex items-center justify-between pl-1.5 pr-0.5 rounded-[2px] bg-gradient-to-b from-rose-600 to-rose-800 ring-1 ring-rose-900">
             <span
               aria-hidden
-              // eslint-disable-next-line no-restricted-syntax -- yellow LED pulse; same glow as LaunchSwitch.tsx; stays amber across themes (amber = "active countdown")
               className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-300 shadow-[0_0_4px_2px_rgba(253,224,71,0.7)] animate-[ls_pulse_0.5s_ease-in-out_infinite] shrink-0"
             />
             <span
@@ -177,7 +174,6 @@ export function LaunchSwitchClassic({
               onClick={closeCover}
               aria-label="Abort countdown"
               title="Abort — close the cover to cancel"
-              // eslint-disable-next-line no-restricted-syntax -- amber abort-button halo; paired with yellow-300 bg; stays amber across themes (amber = safe-path abort action)
               className="inline-flex items-center justify-center rounded-sm bg-yellow-300 text-rose-900 ring-1 ring-yellow-500 shadow-[0_0_6px_rgba(253,224,71,0.55)] hover:bg-yellow-200 hover:text-rose-950 active:translate-y-[1px] shrink-0"
               style={{
                 width:  size === "md" ? 22 : 18,
@@ -208,7 +204,6 @@ export function LaunchSwitchClassic({
           "[transform-origin:top_center] " +
           (state === "closed"
             ? "[transform:rotateX(0deg)]"
-            // eslint-disable-next-line no-restricted-syntax -- neutral black cast-shadow when the cover flips open; physical depth cue, stays dark across themes
             : "[transform:rotateX(-82deg)] shadow-[0_10px_14px_-8px_rgba(0,0,0,0.5)]")
         }
         style={{
@@ -249,7 +244,6 @@ function Rivet({ style }: { style: React.CSSProperties }) {
   return (
     <span
       aria-hidden
-      // eslint-disable-next-line no-restricted-syntax -- micro rivet inset; purely black neutral depth, not a semantic color
       className="absolute w-[3px] h-[3px] rounded-full bg-zinc-600 shadow-[inset_0_0_1px_rgba(0,0,0,0.5)]"
       style={style}
     />

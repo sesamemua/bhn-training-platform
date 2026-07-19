@@ -222,7 +222,7 @@ function LoginPageInner() {
       {/* Top bar — small mark + theme cycler */}
       <header className="relative max-w-6xl mx-auto flex items-center justify-between mb-10 sm:mb-14">
         <Link href="/" className="inline-flex items-center gap-2.5 group">
-          <LogoMark size={32} className="drop-shadow-brand-glow-sky" />
+          <LogoMark size={32} className="drop-shadow-glow-brand-strong" />
           <span className="text-sm font-bold tracking-tight text-white">
             Bio<span className="text-sky-300">Hub</span><span className="text-emerald-300">Net</span>
           </span>
@@ -253,7 +253,7 @@ function LoginPageInner() {
           <FlaskConical size={11} aria-hidden className="motion-safe:animate-pulse" />
           Phase II · Incubating
         </span>
-        <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.05] max-w-3xl mx-auto drop-shadow-text-glow">
+        <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.05] max-w-3xl mx-auto drop-shadow-on-dark-lg">
           Something big is{" "}
           <span
             className="inline-block text-emerald-200"

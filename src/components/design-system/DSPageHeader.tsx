@@ -278,7 +278,7 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
                       "conic-gradient(from 0deg, rgba(56,189,248,0.5), rgba(244,114,182,0.5), rgba(250,204,21,0.4), rgba(74,222,128,0.4), rgba(56,189,248,0.5))",
                   }}
                 />
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white ring-4 ring-white shadow-cover-disc flex items-center justify-center text-brand-700">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white ring-4 ring-white shadow-pedestal flex items-center justify-center text-brand-700">
                   {icon}
                 </div>
               </div>
