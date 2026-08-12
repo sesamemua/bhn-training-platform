@@ -153,6 +153,7 @@ export default async function WebsiteReviewPage({
                 body: c.body, status: c.status,
                 editCount: c.editCount,
                 editedAt: c.editedAt ? c.editedAt.toISOString() : null,
+                editedByName: c.editedByName,
                 createdAt: c.createdAt.toISOString(),
               })),
             }}

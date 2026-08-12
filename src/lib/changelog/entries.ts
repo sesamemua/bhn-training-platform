@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Website Review — shared editing, resize, accordion
+  {
+    title: "Website Review — edit anyone's comment, resize the panel, one thread at a time",
+    body: "**Edit any comment, not just your own.** A correction now lands in the text itself rather than as a reply nobody reads.\n\nBecause that means the author's name no longer accounts for the wording, **the editor is recorded and shown**. A comment reworded by someone else reads *edited by Ruilin* in the thread and on the page, and the exported brief says **Reviewer: Priya, edited by Ruilin** — so an agent acting on the words never mistakes whose they are. Comments edited before this shipped just say *edited*, as before.\n\n**Drag the review panel wider.** Grab its left edge and pull; the right edge stays put, and the width you pick is remembered on that browser. It stops at 240px so the header stays readable and at 720px so the panel can't swallow the page you're reviewing.\n\n**Show me now opens one thread at a time.** Jumping to an element expands that thread and closes the others, so the panel shows what you just looked at instead of a growing stack of everything you've visited.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — a real home page
   {
     title: "Website Review — see every page at a glance",

@@ -68,12 +68,22 @@ const COMMENT_SELECT = {
   body: true,
   status: true,
   editedAt: true,
+  editedByName: true,
   createdAt: true,
 } as const;
 
+/**
+ * Strips the author's user id and replaces it with a plain "is this mine"
+ * flag — the overlay never needs to know who anyone is, only whether a
+ * comment is the viewer's own.
+ *
+ * Named isMine rather than canEdit because it no longer gates editing:
+ * every reviewer can edit every comment. It now only decides wording, e.g.
+ * whether a confirmation says "your comment" or names the author.
+ */
 function commentForViewer<T extends { authorUserId: string | null }>(comment: T, viewerUserId: string) {
   const { authorUserId, ...publicComment } = comment;
-  return { ...publicComment, canEdit: authorUserId === viewerUserId };
+  return { ...publicComment, isMine: authorUserId === viewerUserId };
 }
 
 function json(data: unknown, status = 200) {
@@ -230,16 +240,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
     select: { id: true, authorUserId: true },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
-  if (existing.authorUserId !== viewer.userId) {
-    return json({ error: "You can only edit your own comments." }, 403);
-  }
-
+  // No ownership check — any reviewer can edit any comment, matching the
+  // workspace page. The signed viewer credential is still required, so a
+  // bare share token cannot reach this. The editor is recorded because the
+  // author's name no longer accounts for the wording.
   const comment = await prisma.pageComment.update({
     where: { id: existing.id },
     data: {
       body: parsed.data.body,
       editCount: { increment: 1 },
       editedAt: new Date(),
+      editedById: viewer.userId,
+      editedByName: viewer.name,
     },
     select: COMMENT_SELECT,
   });

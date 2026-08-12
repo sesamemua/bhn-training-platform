@@ -5,7 +5,7 @@
  *   DELETE /api/workspace/page-review/[id]  (admin only)
  *
  *     addComment    (instructor+) — new thread, or a reply via parentId
- *     editComment   (author, or admin)
+ *     editComment   (any instructor+) — records who edited
  *     deleteComment (any instructor+) — cascades to its replies
  *     setStatus     (instructor+) — open | resolved | wontfix
  *     export        (admin)       — build the current round's brief
@@ -117,12 +117,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       select: { id: true, authorUserId: true },
     });
     if (!c) return NextResponse.json({ error: "No such comment." }, { status: 404 });
-    if (!isAdmin && c.authorUserId !== meId) {
-      return NextResponse.json({ error: "You can only edit your own comments." }, { status: 403 });
-    }
+    // Any reviewer can edit any comment — corrections land in place instead
+    // of as a reply nobody reads. Because that means the author's name no
+    // longer accounts for the wording, the editor is recorded and shown
+    // wherever the comment is: the thread, the overlay, and the brief.
     await prisma.pageComment.update({
       where: { id: c.id },
-      data: { body: p.data.body, editCount: { increment: 1 }, editedAt: new Date() },
+      data: {
+        body: p.data.body,
+        editCount: { increment: 1 },
+        editedAt: new Date(),
+        editedById: meId,
+        editedByName: meName,
+      },
     });
     await touch(id);
     return NextResponse.json({ ok: true, ...(await load(id)) });

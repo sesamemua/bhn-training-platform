@@ -27,6 +27,7 @@ const baseComment: BriefComment = {
   body: "Tighten the introduction.",
   authorName: "Reviewer",
   authorKind: "user",
+  editedByName: null,
   status: "open",
   anchorQuote: "Current introduction",
   anchorKey: "h2.introduction",
@@ -126,23 +127,46 @@ test("page comment preflight allows owner edit and delete mutations", async () =
   assert.match(methods, /DELETE/);
 });
 
-test("any reviewer can delete a comment, but only its author can edit it", () => {
+test("any reviewer can edit or delete any comment, and the editor is named", () => {
   const source = overlaySource(
     "https://app.biohubnet.ca/api/public/page-review/token",
     "Review",
   );
 
-  // Delete is no longer hidden behind ownership — a review is shared, so
-  // the tools render for every comment and every reply.
+  // Neither tool is hidden behind ownership any more — a review is a shared
+  // workspace, so both render for every comment and every reply.
   assert.doesNotMatch(source, /if \(!comment\.canEdit\) return;/);
+  assert.doesNotMatch(source, /if \(comment\.canEdit\) \{/);
   assert.doesNotMatch(source, /if \(reply\.canEdit\) \{/);
 
-  // Edit stays author-only: removing a comment is tidying up, rewording
-  // someone else's puts words in their mouth.
-  assert.match(source, /if \(comment\.canEdit\) \{/);
+  // canEdit no longer gates anything, so the flag is gone from the wire.
+  assert.doesNotMatch(source, /canEdit/);
 
-  // Removing someone else's says whose it is before it goes.
+  // Because anyone can reword anyone, "edited" alone would leave the author
+  // standing over someone else's words — the editor is named instead.
+  assert.match(source, /edited by " \+ comment\.editedByName/);
+
+  // Removing someone else's still says whose it is before it goes.
   assert.match(source, /comment\.authorName \+ "'s"/);
+});
+
+test("brief names the editor when someone else reworded a comment", () => {
+  const brief = buildBrief({
+    url: "https://biohubnet.ca/example",
+    title: "Example",
+    round: 1,
+    comments: [{ ...baseComment, authorName: "Priya", editedByName: "Ruilin" }],
+  });
+  // The agent acts on these words, so it must not read them as Priya's.
+  assert.match(brief, /\*\*Reviewer:\*\* Priya, edited by Ruilin/);
+
+  const untouched = buildBrief({
+    url: "https://biohubnet.ca/example",
+    title: "Example",
+    round: 1,
+    comments: [{ ...baseComment, authorName: "Priya", editedByName: "Priya" }],
+  });
+  assert.match(untouched, /\*\*Reviewer:\*\* Priya\n/);
 });
 
 test("bookmarklet code follows the current review token", () => {

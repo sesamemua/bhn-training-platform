@@ -62,6 +62,7 @@ export function overlaySource(endpoint: string, title: string): string {
     editingId: null,
     editDraft: "",
     deletingId: null,
+    locateFailedId: null,
     error: "",
     loading: true,
     saving: false,
@@ -76,6 +77,14 @@ export function overlaySource(endpoint: string, title: string): string {
   var highlightedNode = null;
   var panelPosition = null;
   var panelDrag = null;
+  var panelResize = null;
+  // Width is the reviewer's choice and sticks per browser. The default
+  // matches the CSS; MIN keeps the two-line meta readable, MAX stops the
+  // panel swallowing the page it is meant to be reviewing.
+  var PANEL_WIDTH_KEY = "bhn-review-panel-width";
+  var PANEL_WIDTH_DEFAULT = 304;
+  var PANEL_WIDTH_MIN = 240;
+  var panelWidth = readStoredWidth();
 
   var style = document.createElement("style");
   style.id = ID + "-styles";
@@ -85,7 +94,8 @@ export function overlaySource(endpoint: string, title: string): string {
     "#" + ID + " *{box-sizing:border-box;letter-spacing:0;}",
     "#" + ID + " button,#" + ID + " textarea{font:inherit;}",
     "#" + ID + " button{cursor:pointer;}",
-    ".bhn-shell{display:flex;max-height:calc(100vh - 20px);flex-direction:column;overflow:hidden;border:1px solid rgba(151,166,176,.72);border-radius:7px;background:rgba(247,249,250,.8);box-shadow:0 12px 34px rgba(7,27,39,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}",
+    ".bhn-resize{position:absolute;top:0;left:-4px;width:10px;height:100%;z-index:3;cursor:ew-resize;touch-action:none;background:transparent;border:0;padding:0;}.bhn-resize:hover::after,.bhn-root-resizing .bhn-resize::after{content:'';position:absolute;top:10px;bottom:10px;left:4px;width:3px;border-radius:3px;background:rgba(23,104,121,.55);}.bhn-root-resizing{user-select:none;-webkit-user-select:none;}#" + ID + ".bhn-root-resizing{transition:none;}",
+    ".bhn-shell{position:relative;display:flex;max-height:calc(100vh - 20px);flex-direction:column;overflow:hidden;border:1px solid rgba(151,166,176,.72);border-radius:7px;background:rgba(247,249,250,.8);box-shadow:0 12px 34px rgba(7,27,39,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}",
     ".bhn-head{display:flex;align-items:center;gap:5px;padding:7px;background:rgba(11,53,88,.88);color:#fff;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;}.bhn-root-dragging .bhn-head{cursor:grabbing;}.bhn-drag-handle{width:10px;height:14px;flex:0 0 auto;background:radial-gradient(circle,rgba(255,255,255,.72) 1px,transparent 1.5px) 0 0/4px 4px;opacity:.8;}.bhn-head-copy{min-width:0;flex:1;}.bhn-kicker{font-size:8px;font-weight:800;text-transform:uppercase;opacity:.68;}.bhn-title{overflow:hidden;font-size:12px;font-weight:780;text-overflow:ellipsis;white-space:nowrap;}.bhn-meta{overflow:hidden;margin-top:1px;font-size:9px;opacity:.76;text-overflow:ellipsis;white-space:nowrap;}",
     ".bhn-icon-btn{display:grid;height:26px;min-width:26px;flex:0 0 auto;place-items:center;border:0;border-radius:5px;background:rgba(255,255,255,.11);padding:0 6px;color:#fff;font-weight:800;line-height:1;}.bhn-icon-btn:hover{background:rgba(255,255,255,.2);}.bhn-collapse{font-size:11px;}.bhn-shell-collapsed .bhn-head{padding:5px;}.bhn-shell-collapsed .bhn-head-copy,.bhn-shell-collapsed .bhn-body{display:none;}",
     ".bhn-body{overflow:auto;padding:6px;overscroll-behavior:contain;}.bhn-notice{padding:7px;border:1px solid #d8e0e5;border-radius:5px;background:rgba(255,255,255,.84);color:#4a5864;font-size:11px;}.bhn-error{border-color:#f0b7b7;background:rgba(255,243,243,.9);color:#8c2020;}",
@@ -116,10 +126,80 @@ export function overlaySource(endpoint: string, title: string): string {
     return node;
   }
 
+  function readStoredWidth() {
+    try {
+      var raw = parseInt(window.localStorage.getItem(PANEL_WIDTH_KEY), 10);
+      return isNaN(raw) ? null : raw;
+    } catch (_) { return null; }
+  }
+
+  function maxPanelWidth() {
+    var margin = window.innerWidth <= 540 ? 8 : 10;
+    return Math.max(PANEL_WIDTH_MIN, Math.min(720, window.innerWidth - (margin * 2)));
+  }
+
+  /** Width the panel should occupy right now, collapsed state included. */
+  function effectivePanelWidth() {
+    if (state.panelCollapsed) return Math.min(76, window.innerWidth - 20);
+    var w = panelWidth === null ? PANEL_WIDTH_DEFAULT : panelWidth;
+    return Math.min(Math.max(PANEL_WIDTH_MIN, w), maxPanelWidth());
+  }
+
+  function applyPanelWidth() {
+    if (state.panelCollapsed || panelWidth === null) {
+      root.style.width = "";   // fall back to the stylesheet
+      return;
+    }
+    root.style.width = effectivePanelWidth() + "px";
+  }
+
+  function movePanelResize(event) {
+    if (!panelResize || event.pointerId !== panelResize.pointerId) return;
+    // The left edge is the grab point, so the right edge must stay put:
+    // dragging left widens by exactly the distance travelled.
+    var next = Math.min(Math.max(PANEL_WIDTH_MIN, panelResize.startWidth + (panelResize.startX - event.clientX)), maxPanelWidth());
+    panelWidth = next;
+    applyPanelWidth();
+    // When the panel has been dragged it is anchored by left, so left has
+    // to follow the width to keep the right edge still.
+    if (panelPosition) {
+      panelPosition.left = panelResize.startRight - next;
+      constrainPanel();
+    }
+    event.preventDefault();
+  }
+
+  function stopPanelResize(event) {
+    if (!panelResize || (event && event.pointerId !== panelResize.pointerId)) return;
+    window.removeEventListener("pointermove", movePanelResize);
+    window.removeEventListener("pointerup", stopPanelResize);
+    window.removeEventListener("pointercancel", stopPanelResize);
+    panelResize = null;
+    root.classList.remove("bhn-root-resizing");
+    try { window.localStorage.setItem(PANEL_WIDTH_KEY, String(panelWidth)); } catch (_) {}
+  }
+
+  function startPanelResize(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+    var rect = root.getBoundingClientRect();
+    panelResize = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: rect.width,
+      startRight: rect.right
+    };
+    root.classList.add("bhn-root-resizing");
+    window.addEventListener("pointermove", movePanelResize, { passive: false });
+    window.addEventListener("pointerup", stopPanelResize);
+    window.addEventListener("pointercancel", stopPanelResize);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   function constrainPanel() {
     if (!panelPosition) return;
     var margin = window.innerWidth <= 540 ? 8 : 10;
-    var targetWidth = state.panelCollapsed ? Math.min(76, window.innerWidth - (margin * 2)) : Math.min(304, window.innerWidth - (margin * 2));
+    var targetWidth = Math.min(effectivePanelWidth(), window.innerWidth - (margin * 2));
     var rect = root.getBoundingClientRect();
     var maxLeft = Math.max(margin, window.innerWidth - targetWidth - margin);
     var maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
@@ -342,6 +422,16 @@ export function overlaySource(endpoint: string, title: string): string {
     catch (_) { return ""; }
   }
 
+  // Anyone can edit anyone's comment, so "edited" alone would leave the
+  // author's name standing over someone else's wording. Name the editor
+  // whenever it wasn't the author. Older comments have no editor recorded
+  // and fall back to a bare "edited".
+  function editedSuffix(comment) {
+    if (!comment.editedAt) return "";
+    if (!comment.editedByName || comment.editedByName === comment.authorName) return " · edited";
+    return " · edited by " + comment.editedByName;
+  }
+
   function addButton(label, classValue, handler) {
     var button = make("button", classValue, label);
     button.setAttribute("type", "button");
@@ -411,15 +501,13 @@ export function overlaySource(endpoint: string, title: string): string {
     render();
   }
 
-  // Edit is the author's alone; Delete is open to every reviewer, because a
-  // review is a shared workspace. Removing a comment is tidying up, whereas
-  // rewording someone else's puts words in their mouth.
+  // A review is a shared workspace: every reviewer can edit and delete every
+  // comment, so a correction lands in the text itself rather than as a reply
+  // nobody reads. Whoever edits is recorded and shown next to the comment.
   function appendCommentTools(container, comment) {
-    if (comment.canEdit) {
-      var edit = addButton("Edit", "bhn-link-btn", function(){ beginEdit(comment); });
-      edit.setAttribute("aria-label", "Edit " + (comment.parentId ? "reply" : "comment") + " by " + comment.authorName);
-      container.appendChild(edit);
-    }
+    var edit = addButton("Edit", "bhn-link-btn", function(){ beginEdit(comment); });
+    edit.setAttribute("aria-label", "Edit " + (comment.parentId ? "reply" : "comment") + " by " + comment.authorName);
+    container.appendChild(edit);
     var remove = addButton("Delete", "bhn-link-btn bhn-link-btn-danger", function(){ beginDelete(comment); });
     remove.setAttribute("aria-label", "Delete " + (comment.parentId ? "reply" : "comment") + " by " + comment.authorName);
     container.appendChild(remove);
@@ -446,9 +534,8 @@ export function overlaySource(endpoint: string, title: string): string {
   function renderDeleteConfirmation(container, comment) {
     if (state.deletingId !== comment.id) return;
     var wrap = make("div", "bhn-delete-confirm");
-    // canEdit is true only on your own comments, so it doubles as "is mine"
-    // — name the author when you're about to remove someone else's.
-    var whose = comment.canEdit ? "this" : comment.authorName + "'s";
+    // Name the author when you're about to remove someone else's.
+    var whose = comment.isMine ? "this" : comment.authorName + "'s";
     wrap.appendChild(make("div", "bhn-delete-copy",
       comment.parentId
         ? "Delete " + whose + " reply?"
@@ -476,7 +563,7 @@ export function overlaySource(endpoint: string, title: string): string {
     var main = make("span", "bhn-thread-main");
     var line = make("span", "bhn-thread-line");
     line.appendChild(make("span", "bhn-author", comment.authorName));
-    line.appendChild(make("span", "bhn-time", formatTime(comment.createdAt) + (comment.editedAt ? " · edited" : "")));
+    line.appendChild(make("span", "bhn-time", formatTime(comment.createdAt) + editedSuffix(comment)));
     line.appendChild(make("span", "bhn-status" + (comment.status === "open" ? "" : " bhn-status-resolved"), comment.status));
     main.appendChild(line);
     if (!expanded) main.appendChild(make("span", "bhn-thread-preview", cleanText(comment.body).slice(0, 100)));
@@ -491,20 +578,37 @@ export function overlaySource(endpoint: string, title: string): string {
       render();
     });
     summary.appendChild(toggle);
-    var locate = addButton("Show me", "bhn-thread-locate", function(){
-      if (bringCommentIntoView(comment)) return;
-      locate.textContent = "Not found";
-      locate.disabled = true;
-      locate.setAttribute("title", "The commented element is no longer on this page");
+    var missing = state.locateFailedId === comment.id;
+    var locate = addButton(missing ? "Not found" : "Show me", "bhn-thread-locate", function(){
+      // Accordion: jumping to an element opens that thread and closes the
+      // others, so the panel shows the one thing you just looked at rather
+      // than a growing stack of everything visited. A half-typed reply on
+      // another thread goes with it.
+      var wasExpanded = state.expandedThreads[comment.id];
+      state.expandedThreads = {};
+      state.expandedThreads[comment.id] = true;
+      if (!wasExpanded && state.replyTo && state.replyTo !== comment.id) {
+        state.replyTo = null;
+        state.replyDraft = "";
+      }
+      // The "not found" flag lives in state, not on this node: render()
+      // rebuilds the panel, so anything written onto the button directly
+      // would be thrown away with the old DOM.
+      var found = bringCommentIntoView(comment);
+      state.locateFailedId = found ? null : comment.id;
+      render();
+      if (found) return;
       window.setTimeout(function(){
-        if (!locate.isConnected) return;
-        locate.textContent = "Show me";
-        locate.disabled = false;
-        locate.setAttribute("title", "Bring the commented element into view");
+        if (state.locateFailedId !== comment.id) return;
+        state.locateFailedId = null;
+        render();
       }, 1800);
     });
+    locate.disabled = missing;
     locate.setAttribute("aria-label", "Show comment " + (index + 1) + " on page");
-    locate.setAttribute("title", "Bring the commented element into view");
+    locate.setAttribute("title", missing
+      ? "The commented element is no longer on this page"
+      : "Bring the commented element into view");
     summary.appendChild(locate);
     card.appendChild(summary);
 
@@ -520,7 +624,7 @@ export function overlaySource(endpoint: string, title: string): string {
         replies.forEach(function(reply){
           var row = make("div", "bhn-reply");
           var replyHead = make("div", "bhn-reply-head");
-          replyHead.appendChild(make("div", "bhn-reply-meta", reply.authorName + " · " + formatTime(reply.createdAt) + (reply.editedAt ? " · edited" : "")));
+          replyHead.appendChild(make("div", "bhn-reply-meta", reply.authorName + " · " + formatTime(reply.createdAt) + editedSuffix(reply)));
           var replyTools = make("div", "bhn-reply-tools");
           appendCommentTools(replyTools, reply);
           replyHead.appendChild(replyTools);
@@ -616,12 +720,23 @@ export function overlaySource(endpoint: string, title: string): string {
     }
     shell.appendChild(body);
     root.appendChild(shell);
+    // On root, not in the shell: .bhn-shell is overflow:hidden and would
+    // clip both the grip and its hit area. Nothing to widen when collapsed.
+    if (!state.panelCollapsed) {
+      var grip = make("button", "bhn-resize");
+      grip.setAttribute("type", "button");
+      grip.setAttribute("aria-label", "Drag to resize the review panel");
+      grip.setAttribute("title", "Drag to resize");
+      grip.addEventListener("pointerdown", startPanelResize);
+      root.appendChild(grip);
+    }
+    applyPanelWidth();
     constrainPanel();
     syncMarkers();
   }
 
   function commentsSignature(comments) {
-    return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt].join(":"); }).join("|");
+    return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt, comment.editedByName].join(":"); }).join("|");
   }
 
   async function loadComments(silent) {

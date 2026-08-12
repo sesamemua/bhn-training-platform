@@ -5734,6 +5734,15 @@ model PageComment {
   status       String    @default("open")
   editCount    Int       @default(0)
   editedAt     DateTime?
+  /// Who last edited the body. Any reviewer may edit any comment, so the
+  /// author alone no longer accounts for the words — without this, the
+  /// export brief would attribute someone else's wording to the original
+  /// author. NULL means never edited, or edited before this was recorded.
+  /// Deliberately denormalised (no FK): the brief and the on-page overlay
+  /// need a name without joining User, and the label should survive the
+  /// editor's account being removed.
+  editedById   String?
+  editedByName String?
   createdAt    DateTime  @default(now())
 
   review PageReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)

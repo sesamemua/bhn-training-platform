@@ -17,6 +17,8 @@ export interface BriefComment {
   body: string;
   authorName: string;
   authorKind: string;
+  /** Who last reworded the body, when that wasn't the author. */
+  editedByName: string | null;
   status: string;
   anchorQuote: string | null;
   anchorKey: string | null;
@@ -58,7 +60,14 @@ function quotedLines(value: string): string[] {
 
 function authorLabel(c: BriefComment): string {
   const name = markdownText(c.authorName) || "Someone";
-  return c.authorKind === "anon" ? `${name} (unverified guest)` : name;
+  const base = c.authorKind === "anon" ? `${name} (unverified guest)` : name;
+  // Any reviewer can edit any comment, so the author's name alone no longer
+  // accounts for the wording the agent is about to act on. Say who last
+  // touched it when that wasn't the author.
+  if (c.editedByName && c.editedByName !== c.authorName) {
+    return `${base}, edited by ${markdownText(c.editedByName)}`;
+  }
+  return base;
 }
 
 function anchorLines(c: BriefComment): string[] {

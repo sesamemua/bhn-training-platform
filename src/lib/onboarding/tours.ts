@@ -30,9 +30,20 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.10a";
+export const TOUR_VERSION = "2026.09.11a";
 
 export const TOUR_STEPS: TourStep[] = [
+  // ─── Workspace · Website Review → shared editing + panel controls — Sep 2026
+  {
+    id: "workspace.website-review.shared-editing",
+    title: "Fix the wording, not just the thread",
+    body: "You can now edit anyone's comment, not only your own — corrections land in the text instead of as a reply underneath. Whoever edits is recorded, so a comment someone else reworded shows \"edited by\" their name, and the exported brief says so too. You can also drag the review panel's left edge to make it wider, and \"Show me\" now opens one thread at a time.",
+    path: "/admin/workspace/website-review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Website Review", href: "/admin/workspace/website-review" },
+    since: "2026.09.11a",
+  },
   // ─── Workspace · Website Review → overview home — Sep 2026
   {
     id: "workspace.website-review.index",

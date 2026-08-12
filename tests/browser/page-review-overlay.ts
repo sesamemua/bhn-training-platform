@@ -52,9 +52,12 @@ function viewerName(route: Route) {
     : "Alex Reviewer";
 }
 
+/** Mirrors commentForViewer on the real endpoint. */
 function publicComment(comment: Comment, viewer: string) {
   const { authorUserId, ...data } = comment;
-  return { ...data, canEdit: authorUserId === viewer };
+  // isMine, not canEdit — every reviewer can edit every comment now, so the
+  // flag only decides wording ("this comment" vs naming the author).
+  return { ...data, isMine: authorUserId === viewer };
 }
 
 async function mockPage(page: Page, credential: string) {
@@ -145,6 +148,9 @@ async function mockPage(page: Page, credential: string) {
   await page.getByText("Round 1", { exact: false }).waitFor();
 }
 
+let resizeWidened = 0;
+let accordionChecked = false;
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -207,17 +213,69 @@ async function main() {
     assert.equal(await alex.evaluate(() => document.activeElement?.id), "review-heading");
     assert.equal(await alex.locator(".bhn-review-highlight").evaluate((node) => getComputedStyle(node).display), "block");
 
-    await priyaThread.getByRole("button", { name: "Expand comment 1" }).click();
-    // Alex is not the author: no Edit — rewording someone else's comment
-    // would put words in their mouth — but Delete is available to every
-    // reviewer, because a review is a shared workspace.
-    assert.equal(await priyaThread.getByRole("button", { name: "Edit comment by Priya Shah" }).count(), 0);
+    // "Show me" above already expanded this thread — it acts as an accordion
+    // now, so there is no Expand button left to click.
+    assert.equal(await priyaThread.locator(".bhn-thread-details").count(), 1);
+    // A review is a shared workspace: Alex gets both tools on Priya's
+    // comment even though he didn't write it. Whoever edits is recorded and
+    // shown, so the author's name never stands over someone else's wording.
+    assert.equal(await priyaThread.getByRole("button", { name: "Edit comment by Priya Shah" }).count(), 1);
     assert.equal(await priyaThread.getByRole("button", { name: "Delete comment by Priya Shah" }).count(), 1);
+
+    // ── resize: drag the left grip and the panel widens, right edge fixed
+    const gripBox = await alex.locator(".bhn-resize").boundingBox();
+    assert.ok(gripBox);
+    const beforeBox = await alex.locator("#bhn-review-overlay").boundingBox();
+    assert.ok(beforeBox);
+    await alex.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + 120);
+    await alex.mouse.down();
+    await alex.mouse.move(gripBox.x - 150, gripBox.y + 120, { steps: 8 });
+    await alex.mouse.up();
+    const afterBox = await alex.locator("#bhn-review-overlay").boundingBox();
+    assert.ok(afterBox);
+    assert.ok(afterBox.width > beforeBox.width + 100, `expected wider, got ${afterBox.width} from ${beforeBox.width}`);
+    assert.ok(Math.abs((afterBox.x + afterBox.width) - (beforeBox.x + beforeBox.width)) < 3, "right edge should stay put");
+    // clamped, and remembered for next time
+    assert.ok(afterBox.width <= 720);
+    assert.equal(
+      await alex.evaluate(() => window.localStorage.getItem("bhn-review-panel-width")),
+      String(Math.round(afterBox.width)),
+    );
+    resizeWidened = afterBox.width;
 
     await alex.locator("#review-heading").click();
     await alex.getByLabel("New review comment").fill("Add the national scope to this headline.");
     await alex.getByRole("button", { name: "Add comment" }).click();
     await alex.getByText("Add the national scope to this headline.").waitFor();
+
+    // ── "Show me" acts as an accordion: opens its own thread, closes others
+    {
+      const threads = alex.locator("article");
+      const count = await threads.count();
+      assert.ok(count >= 2, `need 2+ threads for the accordion check, saw ${count}`);
+      // Open every thread first, so collapsing others is observable.
+      for (let i = 0; i < count; i += 1) {
+        const t = threads.nth(i);
+        if (await t.getByRole("button", { name: /^Expand comment/ }).count()) {
+          await t.getByRole("button", { name: /^Expand comment/ }).click();
+        }
+      }
+      const openedAll = await alex.locator(".bhn-thread-details").count();
+      assert.equal(openedAll, count, "expected every thread open before the accordion click");
+
+      await threads.first().getByRole("button", { name: /^Show comment 1 on page/ }).click();
+      await alex.waitForTimeout(150);
+      assert.equal(await alex.locator(".bhn-thread-details").count(), 1, "only the located thread stays open");
+      assert.equal(await threads.first().locator(".bhn-thread-details").count(), 1, "and it is the one clicked");
+      accordionChecked = true;
+
+      // Leave the panel as the rest of the run expects: the accordion just
+      // closed Alex's own thread, and the assertions below act on it.
+      const alexThread = alex.locator("article", { hasText: "Add the national scope to this headline." });
+      const reopen = alexThread.getByRole("button", { name: /^Expand comment/ });
+      if (await reopen.count()) await reopen.click();
+    }
+
 
     let alexThread = alex.locator("article", { hasText: "Add the national scope to this headline." });
     await alexThread.getByRole("button", { name: "Edit comment by Alex Reviewer" }).click();
@@ -327,6 +385,8 @@ async function main() {
       compactTranslucentPanel: true,
       closeDisabled: true,
       draggablePanel: true,
+      accordionChecked,
+      resizeWidened: Math.round(resizeWidened),
       collapsedRailWidth: collapsedPanel.width,
       mobilePanelWithinViewport: true,
     }));

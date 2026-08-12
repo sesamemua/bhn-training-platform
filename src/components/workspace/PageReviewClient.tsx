@@ -19,11 +19,23 @@ interface Comment {
   anchorQuote: string | null; anchorKey: string | null;
   anchorPath: string | null; anchorBlock: string | null; anchorState: string;
   authorUserId: string | null; authorName: string; authorKind: string; body: string;
-  status: string; editCount: number; editedAt: string | null; createdAt: string;
+  status: string; editCount: number; editedAt: string | null;
+  editedByName: string | null; createdAt: string;
 }
 interface Review {
   id: string; url: string; title: string; status: string; round: number;
   comments: Comment[];
+}
+
+/**
+ * Any reviewer can edit any comment, so a bare "edited" would leave the
+ * author's name standing over someone else's wording. Name the editor when
+ * it wasn't the author. Comments edited before this was recorded have no
+ * editor and fall back to "· edited".
+ */
+function editedLabel(c: Comment): string {
+  if (!c.editedByName || c.editedByName === c.authorName) return "· edited";
+  return `· edited by ${c.editedByName}`;
 }
 
 export function PageReviewClient({
@@ -86,9 +98,16 @@ export function PageReviewClient({
     if (!mine) {
       const thread =
         replyCount > 0
-          ? ` and ${replyCount} ${replyCount === 1 ? "reply" : "replies"} under it`
+          ? ` Its ${replyCount} ${replyCount === 1 ? "reply goes" : "replies go"} with it.`
           : "";
-      if (!confirm(`Delete ${authorName}'s comment${thread}? This can't be undone.`)) return;
+      const ok = await confirmDialog({
+        title: `Delete ${authorName}'s comment?`,
+        description: `${thread} This can't be undone.`.trim(),
+        confirmLabel: "Delete comment",
+        cancelLabel: "Keep it",
+        tone: "destructive",
+      });
+      if (!ok) return;
     }
     await post({ action: "deleteComment", commentId }, commentId);
   }
@@ -219,7 +238,7 @@ export function PageReviewClient({
                       </span>
                     )}
                     <span className="text-[10px] text-subtle">{new Date(c.createdAt).toLocaleDateString()}</span>
-                    {c.editCount > 0 && <span className="text-[10px] text-subtle">· edited</span>}
+                    {c.editCount > 0 && <span className="text-[10px] text-subtle">{editedLabel(c)}</span>}
                     {resolved && (
                       <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 px-1.5 py-0.5 rounded-full">
                         {c.status}
@@ -258,12 +277,10 @@ export function PageReviewClient({
                             guest
                           </span>
                         )}
-                        {r.editCount > 0 && <span className="text-[10px] text-subtle">· edited</span>}
+                        {r.editCount > 0 && <span className="text-[10px] text-subtle">{editedLabel(r)}</span>}
                         <span className="ml-auto inline-flex gap-1">
-                          {(isAdmin || r.authorUserId === meId) && (
-                            <button aria-label="Edit reply" onClick={() => { setEditing(r.id); setEditBody(r.body); }}
-                              className="p-1 rounded hover:bg-raised"><Pencil size={10} /></button>
-                          )}
+                          <button aria-label="Edit reply" onClick={() => { setEditing(r.id); setEditBody(r.body); }}
+                            className="p-1 rounded hover:bg-raised"><Pencil size={10} /></button>
                           <button aria-label="Delete reply"
                             onClick={() => removeComment(r.id, r.authorName, r.authorUserId === meId, 0)}
                             className="p-1 rounded hover:bg-rose-50 text-rose-600"><Trash2 size={10} /></button>
@@ -312,10 +329,8 @@ export function PageReviewClient({
                       <button onClick={() => post({ action: "setStatus", commentId: c.id, status: "open" }, c.id)}
                         className="text-xs text-subtle hover:text-fg">Reopen</button>
                     )}
-                    {(isAdmin || mine) && (
-                      <button onClick={() => { setEditing(c.id); setEditBody(c.body); }}
-                        className="text-xs text-subtle hover:text-fg inline-flex items-center gap-1"><Pencil size={11} /> Edit</button>
-                    )}
+                    <button onClick={() => { setEditing(c.id); setEditBody(c.body); }}
+                      className="text-xs text-subtle hover:text-fg inline-flex items-center gap-1"><Pencil size={11} /> Edit</button>
                     {/* Delete is open to every reviewer, not just the author —
                         a review is a shared workspace. Edit stays author-only:
                         removing a comment is tidying, rewording someone else's
