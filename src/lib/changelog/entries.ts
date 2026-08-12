@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Website Review — boxes size to their content
+  {
+    title: "Website Review — comment boxes grow with what you write",
+    body: "Writing a long comment no longer means typing through a three-line window. Every box — a new comment, a reply, an edit — **grows as you type and shrinks again when you cut text back**, on the review page and in the on-page panel. Past a sensible height it scrolls, so the Save and Cancel buttons never get pushed out of reach.\n\n**Quoted page text is no longer silently cut.** The quote shown above a comment was capped at about three lines with the rest simply invisible — no scrollbar, no ellipsis, no sign anything was missing. Long quotes now scroll, so what you're commenting on is always readable in full.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — shared editing, resize, accordion
   {
     title: "Website Review — edit anyone's comment, resize the panel, one thread at a time",

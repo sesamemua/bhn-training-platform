@@ -6,7 +6,7 @@
  * to. Anyone instructor+ can add a thread, reply, edit their own, resolve.
  * Right: the export brief — Markdown for Claude Code / Codex.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader2, Plus, MessageSquarePlus, Check, Trash2, Pencil, Copy,
@@ -25,6 +25,24 @@ interface Comment {
 interface Review {
   id: string; url: string; title: string; status: string; round: number;
   comments: Comment[];
+}
+
+/**
+ * A textarea that matches the amount of text in it, so a long comment isn't
+ * typed through a three-line window. Height is cleared before measuring
+ * because scrollHeight only ever grows while an explicit height is set —
+ * without the reset, deleting text would leave the box tall. Past max-h-64
+ * it scrolls rather than pushing the buttons off screen.
+ */
+function AutoTextarea({ value, className, ...rest }: ComponentPropsWithoutRef<"textarea"> & { value: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return <textarea ref={ref} value={value} className={`${className ?? ""} max-h-64 overflow-y-auto`} {...rest} />;
 }
 
 /**
@@ -185,7 +203,7 @@ export function PageReviewClient({
               placeholder="Paste the text on the page you're commenting on (optional but recommended)"
               className="mt-3 w-full text-sm bg-card border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
             />
-            <textarea
+            <AutoTextarea
               value={newC.body}
               onChange={(e) => setNewC((c) => ({ ...c, body: e.target.value }))}
               rows={3}
@@ -248,7 +266,7 @@ export function PageReviewClient({
 
                   {editing === c.id ? (
                     <div className="mt-2">
-                      <textarea
+                      <AutoTextarea
                         value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={3}
                         className="w-full text-sm bg-card border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 resize-y"
                       />
@@ -288,7 +306,7 @@ export function PageReviewClient({
                       </div>
                       {editing === r.id ? (
                         <div className="mt-1">
-                          <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={2}
+                          <AutoTextarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={2}
                             className="w-full text-[13px] bg-card border border-line rounded-lg px-2 py-1.5 resize-y" />
                           <div className="flex gap-2 mt-1">
                             <button onClick={async () => { await post({ action: "editComment", commentId: r.id, body: editBody }, r.id); setEditing(null); }}
@@ -306,7 +324,7 @@ export function PageReviewClient({
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     {replyTo === c.id ? (
                       <div className="w-full">
-                        <textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={2}
+                        <AutoTextarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={2}
                           placeholder="Reply…" className="w-full text-[13px] bg-card border border-line rounded-lg px-2 py-1.5 resize-y" />
                         <div className="flex gap-2 mt-1">
                           <button

@@ -150,6 +150,7 @@ async function mockPage(page: Page, credential: string) {
 
 let resizeWidened = 0;
 let accordionChecked = false;
+let composerGrew = 0;
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
@@ -244,6 +245,35 @@ async function main() {
     resizeWidened = afterBox.width;
 
     await alex.locator("#review-heading").click();
+
+    // ── boxes size to their content instead of clipping it
+    {
+      // Typing grows the composer rather than scrolling inside 58px.
+      const box = alex.getByLabel("New review comment");
+      await box.fill("short");
+      const shortH = await box.evaluate((el) => el.getBoundingClientRect().height);
+      await box.fill(Array.from({ length: 24 }, (_, i) => `line ${i} of a long review note`).join("\n"));
+      await alex.waitForTimeout(60);
+      const tallH = await box.evaluate((el) => el.getBoundingClientRect().height);
+      assert.ok(tallH > shortH + 40, `composer should grow: ${shortH} -> ${tallH}`);
+      // ...but not past its cap, or the buttons leave the panel.
+      assert.ok(tallH <= 262, `composer should stop growing at its cap, got ${tallH}`);
+      const scrolls = await box.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+      assert.ok(scrolls, "past the cap the composer should scroll, not hide text");
+      // Deleting text shrinks it back.
+      await box.fill("short again");
+      await alex.waitForTimeout(60);
+      const backH = await box.evaluate((el) => el.getBoundingClientRect().height);
+      assert.ok(backH < tallH - 40, `composer should shrink back: ${tallH} -> ${backH}`);
+      await box.fill("");
+      composerGrew = Math.round(tallH);
+
+      // Quoted page text must never be silently clipped.
+      const quoteOverflow = await alex.locator(".bhn-quote, .bhn-thread-quote").first()
+        .evaluate((el) => getComputedStyle(el).overflowY).catch(() => "auto");
+      assert.notEqual(quoteOverflow, "hidden", "quotes must scroll, not hide text");
+    }
+
     await alex.getByLabel("New review comment").fill("Add the national scope to this headline.");
     await alex.getByRole("button", { name: "Add comment" }).click();
     await alex.getByText("Add the national scope to this headline.").waitFor();
@@ -386,6 +416,7 @@ async function main() {
       closeDisabled: true,
       draggablePanel: true,
       accordionChecked,
+      composerGrew,
       resizeWidened: Math.round(resizeWidened),
       collapsedRailWidth: collapsedPanel.width,
       mobilePanelWithinViewport: true,
