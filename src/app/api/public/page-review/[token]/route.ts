@@ -86,6 +86,20 @@ function commentForViewer<T extends { authorUserId: string | null }>(comment: T,
   return { ...publicComment, isMine: authorUserId === viewerUserId };
 }
 
+/**
+ * Writes stop the moment a round is exported: someone is working from that
+ * brief, and the round they were handed should not move under them. Reading
+ * stays open so the panel can still show what was filed. Starting the next
+ * round reopens it.
+ */
+function writeBlock(review: { status: string; round: number }) {
+  if (review.status === "closed") return { error: "This review is closed." };
+  if (review.status !== "open") {
+    return { error: `Round ${review.round} was exported and is locked. It reopens when the next round starts.` };
+  }
+  return null;
+}
+
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, { status, headers: CORS });
 }
@@ -137,7 +151,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     select: { id: true, round: true, status: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
-  if (review.status === "closed") return json({ error: "This review is closed." }, 409);
+  const blocked = writeBlock(review);
+  if (blocked) return json(blocked, 409);
 
   const viewer = await viewerFor(req, review.id);
   if (!viewer) {
@@ -223,7 +238,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
     select: { id: true, round: true, status: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
-  if (review.status === "closed") return json({ error: "This review is closed." }, 409);
+  const blocked = writeBlock(review);
+  if (blocked) return json(blocked, 409);
 
   const viewer = await viewerFor(req, review.id);
   if (!viewer) {
@@ -267,7 +283,8 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ token: s
     select: { id: true, round: true, status: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
-  if (review.status === "closed") return json({ error: "This review is closed." }, 409);
+  const blocked = writeBlock(review);
+  if (blocked) return json(blocked, 409);
 
   const viewer = await viewerFor(req, review.id);
   if (!viewer) {

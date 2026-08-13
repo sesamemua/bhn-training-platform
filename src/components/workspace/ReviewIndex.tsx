@@ -13,7 +13,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Search, ExternalLink, MessageSquareText, CheckCircle2, ArrowRight, Archive,
+  Search, ExternalLink, MessageSquareText, CheckCircle2, ArrowRight, Archive, Lock,
 } from "lucide-react";
 
 export interface ReviewSummary {
@@ -140,6 +140,13 @@ export function ReviewIndex({
                     {closed ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-raised px-2 py-0.5 text-[10px] font-semibold text-muted shrink-0">
                         <Archive size={9} /> Closed
+                      </span>
+                    ) : r.status !== "open" ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 shrink-0"
+                        title="Exported — comments reopen when the next round starts"
+                      >
+                        <Lock size={9} /> R{r.round} locked
                       </span>
                     ) : (
                       <span className="rounded-full bg-elevated px-2 py-0.5 font-mono text-[10px] font-semibold text-muted shrink-0">

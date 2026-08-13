@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Website Review — exporting locks the round
+  {
+    title: "Website Review — exporting a round locks it until the next one opens",
+    body: "Once you export a brief, that round **freezes**. No new comments, replies, edits, deletions or resolutions — on the review page or the live-page panel — until an admin starts the next round.\n\nThe reason is the handoff: the moment you paste a brief into Claude Code or Codex, someone is working from that exact list. If comments kept arriving against the same round, the brief they're building from would quietly stop matching what the reviewers actually agreed.\n\nA locked round is still fully readable, and **you can re-export it as often as you like** — copying the same brief again changes nothing. The review page shows a banner explaining the state, the panel on the page says the same, and the index marks the card **R2 locked**. Pressing **Start Round 3** reopens everything.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — boxes size to their content
   {
     title: "Website Review — comment boxes grow with what you write",

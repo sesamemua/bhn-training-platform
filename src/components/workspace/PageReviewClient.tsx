@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Loader2, Plus, MessageSquarePlus, Check, Trash2, Pencil, Copy,
+  Loader2, Plus, MessageSquarePlus, Check, Trash2, Pencil, Copy, Lock,
   FileDown, ExternalLink, AlertTriangle, ArrowRight, CornerDownRight, X,
 } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -91,6 +91,9 @@ export function PageReviewClient({
   const currentTops = tops.filter((c) => c.round === review.round);
   const currentOpenCount = currentTops.filter((c) => c.status === "open").length;
   const currentRoundCommentCount = review.comments.filter((c) => c.round === review.round).length;
+  // Exporting hands the round to whoever is making the changes; it stays
+  // frozen so the brief they are working from can't move under them.
+  const locked = review.status !== "open";
 
   async function addThread() {
     if (newC.body.trim().length < 2) { setError("Say a little more."); return; }
@@ -190,9 +193,23 @@ export function PageReviewClient({
     <div className="space-y-5">
       {error && <div className="rounded-lg bg-rose-50 ring-1 ring-rose-200 px-3 py-2 text-sm text-rose-900">{error}</div>}
 
+      {locked && (
+        <div className="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3">
+          <p className="text-sm font-bold text-amber-900 inline-flex items-center gap-1.5">
+            <Lock size={13} /> Round {review.round} is locked
+          </p>
+          <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+            {review.status === "closed"
+              ? "This review is closed. Its comments are kept for reference."
+              : `It was exported, so the brief someone is working from stays exactly what you signed off. Comments reopen when you start Round ${review.round + 1}.`}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* ── Threads ─────────────────────────────── */}
         <div className="lg:col-span-3 space-y-4">
+          {!locked && (
           <section className="rounded-2xl border border-line bg-card p-4">
             <h3 className="text-sm font-bold text-fg inline-flex items-center gap-2">
               <MessageSquarePlus size={14} className="text-brand-600" /> New comment
@@ -217,6 +234,7 @@ export function PageReviewClient({
               {busy === "new" ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Add comment
             </button>
           </section>
+          )}
 
           {tops.length === 0 && (
             <p className="text-sm text-muted px-1">No comments yet. Add the first one above.</p>
@@ -296,6 +314,7 @@ export function PageReviewClient({
                           </span>
                         )}
                         {r.editCount > 0 && <span className="text-[10px] text-subtle">{editedLabel(r)}</span>}
+                        {!locked && (
                         <span className="ml-auto inline-flex gap-1">
                           <button aria-label="Edit reply" onClick={() => { setEditing(r.id); setEditBody(r.body); }}
                             className="p-1 rounded hover:bg-raised"><Pencil size={10} /></button>
@@ -303,6 +322,7 @@ export function PageReviewClient({
                             onClick={() => removeComment(r.id, r.authorName, r.authorUserId === meId, 0)}
                             className="p-1 rounded hover:bg-rose-50 text-rose-600"><Trash2 size={10} /></button>
                         </span>
+                        )}
                       </div>
                       {editing === r.id ? (
                         <div className="mt-1">
@@ -320,7 +340,8 @@ export function PageReviewClient({
                     </div>
                   ))}
 
-                  {/* actions */}
+                  {/* actions — a locked round is read-only */}
+                  {!locked && (
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
                     {replyTo === c.id ? (
                       <div className="w-full">
@@ -360,6 +381,7 @@ export function PageReviewClient({
                       <Trash2 size={11} /> Delete
                     </button>
                   </div>
+                  )}
                 </div>
               </article>
             );

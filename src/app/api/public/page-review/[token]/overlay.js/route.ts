@@ -98,7 +98,7 @@ export function overlaySource(endpoint: string, title: string): string {
     ".bhn-shell{position:relative;display:flex;max-height:calc(100vh - 20px);flex-direction:column;overflow:hidden;border:1px solid rgba(151,166,176,.72);border-radius:7px;background:rgba(247,249,250,.8);box-shadow:0 12px 34px rgba(7,27,39,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}",
     ".bhn-head{display:flex;align-items:center;gap:5px;padding:7px;background:rgba(11,53,88,.88);color:#fff;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;}.bhn-root-dragging .bhn-head{cursor:grabbing;}.bhn-drag-handle{width:10px;height:14px;flex:0 0 auto;background:radial-gradient(circle,rgba(255,255,255,.72) 1px,transparent 1.5px) 0 0/4px 4px;opacity:.8;}.bhn-head-copy{min-width:0;flex:1;}.bhn-kicker{font-size:8px;font-weight:800;text-transform:uppercase;opacity:.68;}.bhn-title{overflow:hidden;font-size:12px;font-weight:780;text-overflow:ellipsis;white-space:nowrap;}.bhn-meta{overflow:hidden;margin-top:1px;font-size:9px;opacity:.76;text-overflow:ellipsis;white-space:nowrap;}",
     ".bhn-icon-btn{display:grid;height:26px;min-width:26px;flex:0 0 auto;place-items:center;border:0;border-radius:5px;background:rgba(255,255,255,.11);padding:0 6px;color:#fff;font-weight:800;line-height:1;}.bhn-icon-btn:hover{background:rgba(255,255,255,.2);}.bhn-collapse{font-size:11px;}.bhn-shell-collapsed .bhn-head{padding:5px;}.bhn-shell-collapsed .bhn-head-copy,.bhn-shell-collapsed .bhn-body{display:none;}",
-    ".bhn-body{overflow:auto;padding:6px;overscroll-behavior:contain;}.bhn-notice{padding:7px;border:1px solid #d8e0e5;border-radius:5px;background:rgba(255,255,255,.84);color:#4a5864;font-size:11px;}.bhn-error{border-color:#f0b7b7;background:rgba(255,243,243,.9);color:#8c2020;}",
+    ".bhn-locked{border-color:#e2cf9a;background:rgba(255,250,235,.92);color:#6b551f;}.bhn-body{overflow:auto;padding:6px;overscroll-behavior:contain;}.bhn-notice{padding:7px;border:1px solid #d8e0e5;border-radius:5px;background:rgba(255,255,255,.84);color:#4a5864;font-size:11px;}.bhn-error{border-color:#f0b7b7;background:rgba(255,243,243,.9);color:#8c2020;}",
     ".bhn-compose{margin-bottom:6px;padding:7px;border:1px solid #9bc6d2;border-radius:6px;background:rgba(237,248,250,.88);}.bhn-compose-label{font-size:10px;font-weight:800;color:#245866;}.bhn-quote{max-height:132px;overflow:auto;overscroll-behavior:contain;margin:4px 0 6px;padding-left:6px;border-left:2px solid #2c7587;color:#41515c;font-size:10px;line-height:1.3;}.bhn-textarea{display:block;width:100%;min-height:58px;max-height:260px;overflow-y:auto;resize:vertical;border:1px solid #b9c5cc;border-radius:5px;background:rgba(255,255,255,.92);padding:6px;color:#17212b;outline:none;}.bhn-textarea:focus{border-color:#2c7587;box-shadow:0 0 0 2px rgba(44,117,135,.14);}",
     ".bhn-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:5px;}.bhn-btn{min-height:27px;border:1px solid #c6d0d6;border-radius:5px;background:rgba(255,255,255,.88);padding:4px 8px;color:#34434e;font-size:10px;font-weight:750;}.bhn-btn:hover{background:#f0f4f6;}.bhn-btn-primary{border-color:#176879;background:#176879;color:#fff;}.bhn-btn-primary:hover{background:#105565;}.bhn-btn-danger{border-color:#b64a4a;background:#a53b3b;color:#fff;}.bhn-btn-danger:hover{background:#8d2f2f;}.bhn-btn:disabled{cursor:not-allowed;opacity:.55;}",
     ".bhn-list{display:grid;gap:5px;}.bhn-empty{padding:11px 7px;text-align:center;color:#667580;font-size:10px;}.bhn-thread{border:1px solid rgba(189,201,209,.85);border-radius:6px;background:rgba(255,255,255,.84);overflow:hidden;}.bhn-thread-active{border-color:#2c7587;box-shadow:0 0 0 2px rgba(44,117,135,.12);}.bhn-thread-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;}.bhn-thread-toggle{display:grid;width:100%;min-width:0;grid-template-columns:20px minmax(0,1fr) auto;align-items:start;gap:6px;border:0;background:transparent;padding:6px;text-align:left;color:#17212b;}.bhn-thread-toggle:hover{background:rgba(227,239,243,.72);}.bhn-thread-locate{min-width:50px;border:0;border-left:1px solid rgba(205,216,222,.82);background:rgba(244,248,249,.74);padding:4px 6px;color:#176879;font-size:9px;font-weight:800;white-space:nowrap;}.bhn-thread-locate:hover,.bhn-thread-locate:focus-visible{background:rgba(218,235,239,.88);outline:0;}.bhn-thread-locate:disabled{color:#8a5e23;cursor:default;}.bhn-number{display:grid;width:20px;height:20px;place-items:center;border-radius:50%;background:#176879;color:#fff;font-size:9px;font-weight:800;}.bhn-thread-main{min-width:0;}.bhn-thread-line{display:flex;min-width:0;align-items:center;gap:5px;}.bhn-author{min-width:0;overflow:hidden;flex:1;color:#1c2b35;font-size:10px;font-weight:800;text-overflow:ellipsis;white-space:nowrap;}.bhn-time{color:#84919a;font-size:8px;font-weight:550;white-space:nowrap;}.bhn-status{border-radius:999px;background:#e9f6ed;padding:1px 4px;color:#2e6f42;font-size:8px;font-weight:800;text-transform:uppercase;}.bhn-status-resolved{background:#eef1f3;color:#64717a;}.bhn-thread-preview{overflow:hidden;margin-top:2px;color:#3b4b55;font-size:10px;text-overflow:ellipsis;white-space:nowrap;}.bhn-disclosure{padding-top:2px;color:#71808a;font-size:12px;}",
@@ -455,7 +455,17 @@ export function overlaySource(endpoint: string, title: string): string {
     return button;
   }
 
+  /** A round stops accepting writes the moment it is exported. */
+  function isLocked() {
+    return state.review.status && state.review.status !== "open";
+  }
+
   function renderComposer(container) {
+    if (isLocked()) {
+      container.appendChild(make("div", "bhn-notice bhn-locked",
+        "Round " + state.review.round + " was exported and is locked. It reopens when the next round starts."));
+      return;
+    }
     if (!state.selected) return;
     var box = make("section", "bhn-compose");
     box.appendChild(make("div", "bhn-compose-label", "Comment on selected element"));
@@ -480,6 +490,7 @@ export function overlaySource(endpoint: string, title: string): string {
   }
 
   function renderReplyComposer(card, thread) {
+    if (isLocked()) return;
     if (state.replyTo !== thread.id) return;
     var wrap = make("div", "bhn-reply-compose");
     var textarea = make("textarea", "bhn-textarea");
@@ -523,6 +534,7 @@ export function overlaySource(endpoint: string, title: string): string {
   // comment, so a correction lands in the text itself rather than as a reply
   // nobody reads. Whoever edits is recorded and shown next to the comment.
   function appendCommentTools(container, comment) {
+    if (isLocked()) return;
     var edit = addButton("Edit", "bhn-link-btn", function(){ beginEdit(comment); });
     edit.setAttribute("aria-label", "Edit " + (comment.parentId ? "reply" : "comment") + " by " + comment.authorName);
     container.appendChild(edit);
@@ -656,15 +668,19 @@ export function overlaySource(endpoint: string, title: string): string {
         details.appendChild(replyList);
       }
 
-      var tools = make("div", "bhn-thread-tools");
-      tools.appendChild(addButton("Reply", "bhn-link-btn", function(){
-        state.replyTo = comment.id;
-        state.replyDraft = "";
-        state.expandedThreads[comment.id] = true;
-        render();
-      }));
-      appendCommentTools(tools, comment);
-      details.appendChild(tools);
+      // Reply is appended here rather than inside appendCommentTools, so it
+      // needs the lock check of its own.
+      if (!isLocked()) {
+        var tools = make("div", "bhn-thread-tools");
+        tools.appendChild(addButton("Reply", "bhn-link-btn", function(){
+          state.replyTo = comment.id;
+          state.replyDraft = "";
+          state.expandedThreads[comment.id] = true;
+          render();
+        }));
+        appendCommentTools(tools, comment);
+        details.appendChild(tools);
+      }
       renderDeleteConfirmation(details, comment);
       renderReplyComposer(details, comment);
       card.appendChild(details);

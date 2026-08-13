@@ -60,9 +60,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const review = await prisma.pageReview.findUnique({
     where: { id },
-    select: { id: true, url: true, title: true, round: true },
+    select: { id: true, url: true, title: true, round: true, status: true },
   });
   if (!review) return NextResponse.json({ error: "No such review." }, { status: 404 });
+
+  // Exporting hands the round to whoever is making the changes, so the round
+  // freezes there: the brief someone is working from stays exactly what the
+  // reviewers signed off. Starting the next round reopens it. Closed reviews
+  // never accept writes again.
+  //
+  // Export itself stays available while locked — re-copying the same brief
+  // changes nothing — and startNextRound is the way out.
+  const WRITE_ACTIONS = ["addComment", "editComment", "deleteComment", "setStatus"];
+  if (review.status !== "open" && WRITE_ACTIONS.includes(action)) {
+    return NextResponse.json(
+      {
+        error: review.status === "closed"
+          ? "This review is closed."
+          : `Round ${review.round} was exported and is locked. Start Round ${review.round + 1} to comment again.`,
+        locked: true,
+      },
+      { status: 409 },
+    );
+  }
 
   // ── add ──────────────────────────────────────────────────────
   if (action === "addComment") {

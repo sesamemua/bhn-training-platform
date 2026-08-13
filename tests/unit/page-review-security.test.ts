@@ -169,6 +169,21 @@ test("brief names the editor when someone else reworded a comment", () => {
   assert.match(untouched, /\*\*Reviewer:\*\* Priya\n/);
 });
 
+test("an exported round locks writes but stays readable and re-exportable", () => {
+  const source = overlaySource(
+    "https://app.biohubnet.ca/api/public/page-review/token",
+    "Review",
+  );
+  // The overlay refuses to offer any write affordance on a locked round.
+  assert.match(source, /function isLocked\(\)/);
+  assert.match(source, /was exported and is locked/);
+  // Every write path checks it: composer, per-comment tools, reply.
+  assert.ok(
+    (source.match(/isLocked\(\)/g) ?? []).length >= 4,
+    "composer, tools and reply should all consult isLocked()",
+  );
+});
+
 test("bookmarklet code follows the current review token", () => {
   const first = snippetFor("first-token", "https://app.biohubnet.ca/", "first-viewer");
   const second = snippetFor("second-token", "https://app.biohubnet.ca/", "second-viewer");

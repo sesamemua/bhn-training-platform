@@ -30,9 +30,20 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.11a";
+export const TOUR_VERSION = "2026.09.12a";
 
 export const TOUR_STEPS: TourStep[] = [
+  // ─── Workspace · Website Review → export locks the round — Sep 2026
+  {
+    id: "workspace.website-review.locked-round",
+    title: "Exporting freezes the round",
+    body: "When you export a brief, that round locks — no new comments or edits until you start the next one. It keeps the list someone is working from identical to what you signed off. You can still read everything and re-export as often as you like; Start Round N+1 reopens it.",
+    path: "/admin/workspace/website-review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Website Review", href: "/admin/workspace/website-review" },
+    since: "2026.09.12a",
+  },
   // ─── Workspace · Website Review → shared editing + panel controls — Sep 2026
   {
     id: "workspace.website-review.shared-editing",
