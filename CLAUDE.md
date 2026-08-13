@@ -134,6 +134,21 @@ Before considering a task complete:
 - ❌ **No `npm run build` locally.** It triggers `prisma migrate deploy` against the prod DB.
 - ❌ **No calling external APIs from client components.** Route through a server action or API route so secrets stay server-side and the request is auditable.
 - ❌ **No `git push --force` to `main`.** Never amend a pushed commit.
+- ❌ **Never run bare `vercel` in this repo — use `npm run vercel -- <args>`.**
+  This project belongs to the Vercel team `sonicot-7530s-projects`
+  (`team_FfT9KsknY7Ciko3wi1xgxPhB`). A second Vercel account (`biohubnet`) is
+  signed in on the same machine, and the CLI stores its selected team
+  **globally**, not per-repo — so a bare `vercel` follows whichever team was
+  last used anywhere. The danger is not a confusing error: `vercel deploy`
+  with the wrong team selected offers to create a **new project on that
+  account** rather than refusing, which puts a stray copy of the platform
+  somewhere it shouldn't be. `scripts/vercel.sh` forces `--scope` and refuses
+  if `.vercel/project.json` has drifted.
+- ❌ **Never run `vercel link` or delete `.vercel/`** to "fix" a Vercel error.
+  The link file is correct; the errors seen in practice ("Not authorized",
+  "Could not retrieve Project Settings") are an expired token or the wrong
+  selected team. Re-linking with the wrong account selected is exactly how the
+  project ends up duplicated. Fix auth instead: `vercel login sonicot@hotmail.com`.
 
 ---
 
