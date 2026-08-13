@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Website Review — counts and export follow the work
+  {
+    title: "Website Review — counts and Export brief follow outstanding work",
+    body: "A review with reopened comments read **0 open · 0 total** and had **Export brief** greyed out, even with the comments plainly listed underneath. The counts were still measuring the current round rather than what is actually outstanding, and the export button keyed off them.\n\nThe header now counts every outstanding item and every thread on the review, and Export is available whenever there is something to export. Starting the next round no longer says \"from Round N\" either, since outstanding items can have been carried over from an earlier one — it settles all of them.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — reopened comments show on the page too
   {
     title: "Website Review — reopened comments now show on the live page",

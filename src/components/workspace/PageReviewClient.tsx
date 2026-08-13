@@ -96,14 +96,18 @@ export function PageReviewClient({
 
   const tops = review.comments.filter((c) => !c.parentId);
   const repliesOf = (id: string) => review.comments.filter((c) => c.parentId === id);
-  const currentTops = tops.filter((c) => c.round === review.round);
+
+  /**
+   * The one definition of "still needs doing", and it deliberately says
+   * nothing about rounds. A comment reopened after a page revision is rolled
+   * back keeps the round it was raised in, so anything that equates
+   * outstanding with the current round under-reports the work — that mistake
+   * has now been made on five separate surfaces, each time presenting as
+   * someone's feedback silently disappearing. buildBrief filters on exactly
+   * this, so these counts and the export always agree.
+   */
   const openTops = tops.filter((c) => c.status === "open");
-  // "Outstanding" rather than "this round": once a rolled-back revision
-  // reopens earlier comments, what matters is whether an item is still open,
-  // not which round first raised it. This is also exactly what exports.
   const shownTops = roundView === "all" ? tops : openTops;
-  const earlierCount = tops.length - currentTops.length;
-  const currentOpenCount = currentTops.filter((c) => c.status === "open").length;
   // Mirrors the server's guard: this round's comments plus anything still
   // outstanding from an earlier one, so a round of carried-over work doesn't
   // leave "Start Round N+1" greyed out.
@@ -211,8 +215,10 @@ export function PageReviewClient({
   }
 
   async function startNextRound() {
-    const openLine = currentOpenCount > 0
-      ? `${currentOpenCount} open item${currentOpenCount === 1 ? "" : "s"} from Round ${review.round} will be marked resolved. `
+    // No "from Round N": outstanding items can have been carried over from
+    // an earlier one, and advancing settles all of them.
+    const openLine = openTops.length > 0
+      ? `${openTops.length} outstanding item${openTops.length === 1 ? "" : "s"} will be marked resolved. `
       : "";
     const ok = await confirmDialog({
       title: `Start Round ${review.round + 1}?`,
@@ -280,7 +286,7 @@ export function PageReviewClient({
           </section>
           )}
 
-          {earlierCount > 0 && (
+          {tops.length > openTops.length && (
             <div className="flex items-center gap-2 px-1">
               <span className="text-[11px] font-semibold text-subtle">Showing</span>
               <div className="inline-flex rounded-lg bg-elevated p-0.5 ring-1 ring-inset ring-line">
@@ -510,13 +516,13 @@ export function PageReviewClient({
               {review.url} <ExternalLink size={10} className="shrink-0" />
             </a>
             <p className="text-sm text-muted mt-2">
-              Round {review.round} · {currentOpenCount} open · {currentTops.length} total
+              Round {review.round} · {openTops.length} open · {tops.length} total
             </p>
             {isAdmin && (
               <div className="flex gap-2 mt-4 flex-wrap">
                 <button
                   onClick={async () => { const j = await post({ action: "export" }, "exp"); if (j?.brief) setBrief(j.brief as string); }}
-                  disabled={busy !== null || currentOpenCount === 0}
+                  disabled={busy !== null || openTops.length === 0}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 disabled:opacity-60"
                 >
                   {busy === "exp" ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />} Export brief
