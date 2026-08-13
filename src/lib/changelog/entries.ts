@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Website Review — reopen after a rollback
+  {
+    title: "Website Review — bring comments back when a revision is reverted",
+    body: "If you roll a page revision back, the feedback it addressed applies again — but those comments had already been marked settled, so they vanished from the brief.\n\nEvery settled comment now has a **Reopen** button, and admins get **Reopen Round N** under *All rounds* to bring back everything one round settled in a single step. Reopened items keep the round they were raised in — that's their history — and the brief flags them as **Carried over from Round N** so whoever picks up the work knows they're returning items, not new ones.\n\nThe thread list's first tab is now **Outstanding** rather than the round number, because once a rollback reopens older comments, what matters is whether an item is still open — which is also exactly what exports. Starting a new round settles everything outstanding, not just items raised in that round, so nothing lingers indefinitely.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — show the current round, not every round
   {
     title: "Website Review — a review now opens on its current round",

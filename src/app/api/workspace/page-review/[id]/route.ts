@@ -8,7 +8,9 @@
  *     editComment   (any instructor+) — records who edited
  *     deleteComment (any instructor+) — cascades to its replies
  *     setStatus     (instructor+) — open | resolved | wontfix
- *     export        (admin)       — build the current round's brief
+ *     reopenComment (instructor+) — a settled item is outstanding again
+ *     reopenRound   (admin)       — reopen everything a round settled
+ *     export        (admin)       — build the brief of everything open
  *     startNextRound (admin)      — resolve current items and advance
  *
  * Editing preserves an audit trail via editCount/editedAt rather than a
@@ -45,6 +47,8 @@ const StatusSchema = z.object({
   status: z.union([z.literal("open"), z.literal("resolved"), z.literal("wontfix")]),
 });
 const NextRoundSchema = z.object({ action: z.literal("startNextRound") });
+const ReopenSchema = z.object({ action: z.literal("reopenComment"), commentId: z.string().min(1) });
+const ReopenRoundSchema = z.object({ action: z.literal("reopenRound"), round: z.number().int().min(1) });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -71,7 +75,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   //
   // Export itself stays available while locked — re-copying the same brief
   // changes nothing — and startNextRound is the way out.
-  const WRITE_ACTIONS = ["addComment", "editComment", "deleteComment", "setStatus"];
+  const WRITE_ACTIONS = ["addComment", "editComment", "deleteComment", "setStatus", "reopenComment", "reopenRound"];
   if (review.status !== "open" && WRITE_ACTIONS.includes(action)) {
     return NextResponse.json(
       {
@@ -194,6 +198,45 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: true, ...(await load(id)) });
   }
 
+  // ── reopen a single settled comment ──────────────────────────
+  // When a page revision is rolled back, the feedback it addressed applies
+  // again. Reopening leaves the comment in the round it was raised in — that
+  // is a fact about its history, not its state — and "open" is what marks it
+  // outstanding. The brief exports every open item regardless of round.
+  if (action === "reopenComment") {
+    const p = ReopenSchema.safeParse(body);
+    if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+    const c = await prisma.pageComment.findFirst({
+      where: { id: p.data.commentId, reviewId: id },
+      select: { id: true, status: true },
+    });
+    if (!c) return NextResponse.json({ error: "No such comment." }, { status: 404 });
+    if (c.status === "open") {
+      return NextResponse.json({ error: "That comment is already open." }, { status: 409 });
+    }
+    await prisma.pageComment.update({ where: { id: c.id }, data: { status: "open" } });
+    await touch(id);
+    return NextResponse.json({ ok: true, ...(await load(id)) });
+  }
+
+  // ── reopen a whole round ─────────────────────────────────────
+  // The bulk case: a revision round was reverted on the live page, so every
+  // item it settled is outstanding again.
+  if (action === "reopenRound") {
+    if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const p = ReopenRoundSchema.safeParse(body);
+    if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+    const r = await prisma.pageComment.updateMany({
+      where: { reviewId: id, round: p.data.round, status: { not: "open" } },
+      data: { status: "open" },
+    });
+    if (r.count === 0) {
+      return NextResponse.json({ error: `Round ${p.data.round} has nothing settled to reopen.` }, { status: 409 });
+    }
+    await touch(id);
+    return NextResponse.json({ ok: true, reopened: r.count, ...(await load(id)) });
+  }
+
   // ── start the next revision round ────────────────────────────
   if (action === "startNextRound") {
     if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -211,8 +254,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     await prisma.$transaction([
+      // Every open item, not just ones raised in this round: a comment
+      // carried back from an earlier round is outstanding work too, and
+      // leaving it open would carry it forward for ever.
       prisma.pageComment.updateMany({
-        where: { reviewId: id, round: review.round, status: "open" },
+        where: { reviewId: id, status: "open" },
         data: { status: "resolved" },
       }),
       prisma.pageReview.update({

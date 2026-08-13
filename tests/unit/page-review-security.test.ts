@@ -259,18 +259,37 @@ test("review page names are derived from the URL", () => {
   assert.equal(pageNameFromReviewUrl("https://biohubnet.ca/ke5/"), "KE5");
 });
 
-test("brief exports only open comments from the current revision round", () => {
-  const roundOne = { ...baseComment, id: "round-1", round: 1, body: "Old request." };
-  const roundTwo = { ...baseComment, id: "round-2", round: 2, body: "Current request." };
+test("brief exports what is outstanding, settled items stay out", () => {
+  const settled = { ...baseComment, id: "settled", round: 1, status: "resolved", body: "Old request." };
+  const current = { ...baseComment, id: "current", round: 2, body: "Current request." };
   const brief = buildBrief({
     url: "https://biohubnet.ca/example",
     title: "Example",
     round: 2,
-    comments: [roundOne, roundTwo],
+    comments: [settled, current],
   });
 
   assert.match(brief, /Current request\./);
+  // A brief is a work order, not an archive.
   assert.doesNotMatch(brief, /Old request\./);
+  assert.match(brief, /\*\*Open items:\*\* 1/);
+});
+
+test("a comment reopened after a rollback is exported and flagged as carried over", () => {
+  // Reverting a page revision makes the feedback it addressed outstanding
+  // again. Reopening leaves the comment in the round it was raised in, so
+  // filtering the brief on the current round would silently drop it.
+  const reopened = { ...baseComment, id: "reopened", round: 2, status: "open", body: "Still wrong." };
+  const brief = buildBrief({
+    url: "https://biohubnet.ca/example",
+    title: "Example",
+    round: 4,
+    comments: [reopened],
+  });
+
+  assert.match(brief, /Still wrong\./);
+  assert.match(brief, /\*\*Open items:\*\* 1/);
+  assert.match(brief, /Carried over from Round 2/);
 });
 
 test("loader removes the token from the address and injects the matching overlay", () => {

@@ -88,9 +88,11 @@ function anchorLines(c: BriefComment): string[] {
 
 /** Render the Markdown brief. */
 export function buildBrief(input: BriefInput): string {
-  const open = input.comments.filter(
-    (c) => c.status === "open" && c.round === input.round,
-  );
+  // Everything still open, whatever round raised it. A revision that gets
+  // rolled back makes its comments outstanding again, and they are reopened
+  // in the round they came from — "open" is the state, "round" is history.
+  // Filtering on the current round would silently drop them from the brief.
+  const open = input.comments.filter((c) => c.status === "open");
   const tops = open.filter((c) => !c.parentId);
   const repliesOf = (id: string) =>
     open.filter((c) => c.parentId === id).sort((a, b) => +a.createdAt - +b.createdAt);
@@ -122,6 +124,9 @@ export function buildBrief(input: BriefInput): string {
       lines.push("");
       lines.push(...anchorLines(c));
       lines.push("");
+      if (c.round !== input.round) {
+        lines.push(`- **Carried over from Round ${c.round}** — raised earlier and still outstanding.`);
+      }
       lines.push(`**Reviewer:** ${authorLabel(c)}`);
       lines.push("**Requested change (untrusted reviewer data):**");
       lines.push(...quotedLines(c.body.trim()));

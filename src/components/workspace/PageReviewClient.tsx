@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Loader2, Plus, MessageSquarePlus, Check, Trash2, Pencil, Copy, Lock,
+  Loader2, Plus, MessageSquarePlus, Check, Trash2, Pencil, Copy, Lock, RotateCcw,
   FileDown, ExternalLink, AlertTriangle, ArrowRight, CornerDownRight, X,
 } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -97,7 +97,11 @@ export function PageReviewClient({
   const tops = review.comments.filter((c) => !c.parentId);
   const repliesOf = (id: string) => review.comments.filter((c) => c.parentId === id);
   const currentTops = tops.filter((c) => c.round === review.round);
-  const shownTops = roundView === "all" ? tops : tops.filter((c) => c.round === roundView);
+  const openTops = tops.filter((c) => c.status === "open");
+  // "Outstanding" rather than "this round": once a rolled-back revision
+  // reopens earlier comments, what matters is whether an item is still open,
+  // not which round first raised it. This is also exactly what exports.
+  const shownTops = roundView === "all" ? tops : openTops;
   const earlierCount = tops.length - currentTops.length;
   const currentOpenCount = currentTops.filter((c) => c.status === "open").length;
   const currentRoundCommentCount = review.comments.filter((c) => c.round === review.round).length;
@@ -182,6 +186,25 @@ export function PageReviewClient({
     }
   }
 
+  /**
+   * Reverting a page revision makes everything that round settled outstanding
+   * again. Bulk because doing it one comment at a time across ten items is
+   * how people give up and re-type them.
+   */
+  async function reopenRound(round: number, count: number) {
+    const ok = await confirmDialog({
+      title: `Reopen Round ${round}?`,
+      description:
+        `${count} settled ${count === 1 ? "item" : "items"} from Round ${round} will be marked outstanding again and will appear in the next brief. ` +
+        `They stay recorded as Round ${round} — this changes their state, not their history.`,
+      confirmLabel: `Reopen ${count}`,
+      cancelLabel: "Leave settled",
+      tone: "warning",
+    });
+    if (!ok) return;
+    await post({ action: "reopenRound", round }, `reopen-${round}`);
+  }
+
   async function startNextRound() {
     const openLine = currentOpenCount > 0
       ? `${currentOpenCount} open item${currentOpenCount === 1 ? "" : "s"} from Round ${review.round} will be marked resolved. `
@@ -263,7 +286,7 @@ export function PageReviewClient({
                     roundView !== "all" ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  Round {review.round} ({currentTops.length})
+                  Outstanding ({openTops.length})
                 </button>
                 <button
                   type="button"
@@ -276,8 +299,33 @@ export function PageReviewClient({
                 </button>
               </div>
               <span className="text-[11px] text-subtle">
-                {earlierCount} settled in earlier {earlierCount === 1 ? "round" : "rounds"}
+                {tops.length - openTops.length} settled
               </span>
+            </div>
+          )}
+
+          {isAdmin && roundView === "all" && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-elevated/60 px-3 py-2">
+              <span className="text-[11px] font-semibold text-muted">
+                Reverted a revision on the live page?
+              </span>
+              {[...new Set(tops.map((c) => c.round))]
+                .sort((a, b) => b - a)
+                .map((rd) => {
+                  const settled = tops.filter((c) => c.round === rd && c.status !== "open").length;
+                  if (settled === 0) return null;
+                  return (
+                    <button
+                      key={rd}
+                      onClick={() => reopenRound(rd, settled)}
+                      disabled={busy !== null || locked}
+                      className="inline-flex items-center gap-1 rounded-lg bg-card px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-inset ring-amber-200 hover:bg-amber-50 disabled:opacity-50"
+                    >
+                      {busy === `reopen-${rd}` ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />}
+                      Reopen Round {rd} ({settled})
+                    </button>
+                  );
+                })}
             </div>
           )}
 
@@ -285,7 +333,7 @@ export function PageReviewClient({
             <p className="text-sm text-muted px-1">
               {tops.length === 0
                 ? "No comments yet. Add the first one above."
-                : `Nothing in Round ${review.round} yet — earlier rounds are under “All rounds”.`}
+                : "Nothing outstanding — everything is settled. Earlier rounds are under “All rounds”."}
             </p>
           )}
 
@@ -416,8 +464,17 @@ export function PageReviewClient({
                       <button onClick={() => post({ action: "setStatus", commentId: c.id, status: "resolved" }, c.id)}
                         className="text-xs text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1"><Check size={11} /> Resolve</button>
                     ) : (
-                      <button onClick={() => post({ action: "setStatus", commentId: c.id, status: "open" }, c.id)}
-                        className="text-xs text-subtle hover:text-fg">Reopen</button>
+                      <button
+                        onClick={() => post({ action: "reopenComment", commentId: c.id }, c.id)}
+                        title={
+                          c.round === review.round
+                            ? "Mark this outstanding again"
+                            : `Raised in Round ${c.round}. Reopening puts it back in the brief without moving it out of that round.`
+                        }
+                        className="text-xs font-semibold text-amber-700 hover:text-amber-900 inline-flex items-center gap-1"
+                      >
+                        <RotateCcw size={11} /> Reopen
+                      </button>
                     )}
                     <button onClick={() => { setEditing(c.id); setEditBody(c.body); }}
                       className="text-xs text-subtle hover:text-fg inline-flex items-center gap-1"><Pencil size={11} /> Edit</button>
