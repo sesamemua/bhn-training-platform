@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { NextRequest } from "next/server";
 import { loaderSource } from "../../src/app/api/public/page-review/loader.js/route";
@@ -182,6 +183,31 @@ test("an exported round locks writes but stays readable and re-exportable", () =
     (source.match(/isLocked\(\)/g) ?? []).length >= 4,
     "composer, tools and reply should all consult isLocked()",
   );
+});
+
+test("the live-page endpoint shows carried-over comments and can still act on them", () => {
+  // Same bug three times over: the brief, the workspace list and this
+  // endpoint all filtered comments by the current round, so an item reopened
+  // after a rollback vanished from whichever surface still did it. The
+  // endpoint must show anything open regardless of round, and must not
+  // round-scope lookups of comments that already exist — otherwise a
+  // carried-over comment is visible but cannot be replied to, edited or
+  // deleted from the page it is about.
+  const src = readFileSync(
+    new URL("../../src/app/api/public/page-review/[token]/route.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(src, /OR: \[\{ round: review\.round \}, \{ status: "open" \}\]/);
+
+  // round may only be STAMPED on new rows, never used to look one up.
+  const roundUses = [...src.matchAll(/round: review\.round/g)].length;
+  assert.equal(
+    roundUses,
+    3,
+    "expected exactly 3 uses of round: review.round — the OR filter, the review payload, and the round stamped on a new comment",
+  );
+  assert.doesNotMatch(src, /where: \{ id: [^}]*reviewId: review\.id, round: review\.round \}/);
 });
 
 test("bookmarklet code follows the current review token", () => {

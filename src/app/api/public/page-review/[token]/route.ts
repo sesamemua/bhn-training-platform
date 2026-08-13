@@ -129,8 +129,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     return json({ error: "Open this review from the training platform to join as yourself." }, 401);
   }
 
+  // Everything filed this round, plus anything still open from an earlier
+  // one. Reopening a comment after a page revision is rolled back leaves it
+  // in the round it was raised in, so a plain round filter made carried-over
+  // items invisible on the very page they are about — the workspace list and
+  // the brief already work this way.
   const comments = await prisma.pageComment.findMany({
-    where: { reviewId: review.id, round: review.round },
+    where: {
+      reviewId: review.id,
+      OR: [{ round: review.round }, { status: "open" }],
+    },
     orderBy: { createdAt: "asc" },
     take: PAGE_REVIEW_COMMENT_LIMIT,
     select: COMMENT_SELECT,
@@ -193,7 +201,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   };
   if (data.parentId) {
     const parent = await prisma.pageComment.findFirst({
-      where: { id: data.parentId, reviewId: review.id, round: review.round },
+      where: { id: data.parentId, reviewId: review.id },
       select: {
         id: true,
         parentId: true,
@@ -252,7 +260,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
   }
 
   const existing = await prisma.pageComment.findFirst({
-    where: { id: parsed.data.id, reviewId: review.id, round: review.round },
+    where: { id: parsed.data.id, reviewId: review.id },
     select: { id: true, authorUserId: true },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
@@ -295,7 +303,7 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ token: s
   if (!parsed.success) return json({ error: "Choose a comment to delete." }, 400);
 
   const existing = await prisma.pageComment.findFirst({
-    where: { id: parsed.data.id, reviewId: review.id, round: review.round },
+    where: { id: parsed.data.id, reviewId: review.id },
     select: { id: true, parentId: true, authorUserId: true },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
@@ -308,7 +316,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ token: s
   const deleted = await prisma.pageComment.deleteMany({
     where: {
       reviewId: review.id,
-      round: review.round,
       OR: [{ id: existing.id }, { parentId: existing.id }],
     },
   });

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Website Review — reopened comments show on the page too
+  {
+    title: "Website Review — reopened comments now show on the live page",
+    body: "Reopening a comment after rolling back a page revision brought it back on the review page and into the brief, but **not onto the page itself** — the on-page panel was still listing only comments filed in the current round, so carried-over items were invisible exactly where you needed them.\n\nThe panel now shows everything filed this round plus anything still outstanding from an earlier one. Carried-over comments can also be replied to, edited and resolved from the page again — three lookups were scoped to the current round, so those items had been visible-but-untouchable.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — reopen after a rollback
   {
     title: "Website Review — bring comments back when a revision is reverted",
