@@ -30,9 +30,20 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.12a";
+export const TOUR_VERSION = "2026.09.13a";
 
 export const TOUR_STEPS: TourStep[] = [
+  // ─── Workspace · Outreach → platform sending — Sep 2026
+  {
+    id: "workspace.outreach.send",
+    title: "Send outreach without leaving the platform",
+    body: "Select contacts in a campaign and send from info@biohubnet.ca directly. You get a dry run and a confirmation first — how many will go, how many are skipped and why — and nobody can be emailed twice by the same campaign. Every message carries an unsubscribe link, and opt-outs are honoured everywhere. Check docs/outreach-sending.md before your first real campaign: the domain still needs SPF and DKIM.",
+    path: "/admin/workspace/outreach/campaigns",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Outreach", href: "/admin/workspace/outreach/campaigns" },
+    since: "2026.09.13a",
+  },
   // ─── Workspace · Website Review → export locks the round — Sep 2026
   {
     id: "workspace.website-review.locked-round",

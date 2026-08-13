@@ -15,6 +15,7 @@ import {
   ArrowLeft, Megaphone, Users, BookUser, Pencil, Check, X, Copy, Mail,
   Loader2, ChevronDown, Save, Trash2, MailCheck, AlertTriangle,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
@@ -95,6 +96,12 @@ export function CampaignDetailClient({
   const [varsDirty, setVarsDirty] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
+  // Platform sending. `picked` is what a batch would go to; nothing is
+  // selected by default, so the destructive path always starts from zero.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const reached = useMemo(() => roster.filter((r) => sent.has(r.personId)).length, [roster, sent]);
   const pct = roster.length > 0 ? Math.round((reached / roster.length) * 100) : 0;
@@ -205,6 +212,75 @@ export function CampaignDetailClient({
     const { subject, body } = fillsFor(r);
     return `mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
+  function togglePicked(personId: string) {
+    setPicked((cur) => {
+      const next = new Set(cur);
+      if (next.has(personId)) next.delete(personId); else next.add(personId);
+      return next;
+    });
+  }
+
+  /**
+   * Sends in chunks of SEND_BATCH, waiting for each to return before starting
+   * the next. The server caps a request at the same number so a batch can't
+   * outrun the function timeout and strand itself half-sent; doing the
+   * chunking here means a long list resumes correctly instead of dying.
+   */
+  const SEND_BATCH = 40;
+
+  async function sendSelected() {
+    const ids = [...picked].filter((id) => !sent.has(id));
+    if (ids.length === 0) return;
+
+    // Dry run first: every check runs and every message renders, but nothing
+    // leaves. This is what the confirmation is based on, so what you approve
+    // is what actually goes.
+    setSending(true); setError(null);
+    try {
+      const preview = await fetch(`/api/workspace/outreach/campaigns/${campaign.id}/send`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personIds: ids.slice(0, SEND_BATCH), dryRun: true }),
+      }).then((r) => r.json()).catch(() => null);
+      if (!preview?.ok) { setError(preview?.error ?? "Couldn't prepare the send."); return; }
+
+      const willSend = ids.length - (preview.skipped ?? 0);
+      const sample = (preview.outcomes ?? []).find((o: { status: string }) => o.status === "sent");
+      const ok = await confirmDialog({
+        title: `Send to ${willSend} ${willSend === 1 ? "contact" : "contacts"}?`,
+        description:
+          `This sends real email from info@biohubnet.ca and cannot be undone.` +
+          (preview.skipped ? ` ${preview.skipped} will be skipped (no address, invalid, unsubscribed, or already sent).` : "") +
+          (sample?.subject ? `\n\nFirst message — subject: “${sample.subject}”` : ""),
+        confirmLabel: `Send ${willSend}`,
+        cancelLabel: "Don't send",
+        tone: "destructive",
+      });
+      if (!ok) return;
+
+      setProgress({ done: 0, total: ids.length });
+      let done = 0;
+      for (let i = 0; i < ids.length; i += SEND_BATCH) {
+        const chunk = ids.slice(i, i + SEND_BATCH);
+        const res = await fetch(`/api/workspace/outreach/campaigns/${campaign.id}/send`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ personIds: chunk }),
+        }).then((r) => r.json()).catch(() => null);
+        if (!res?.ok) { setError(res?.error ?? "The send stopped part-way. Nothing after this point was sent."); break; }
+        setSent((cur) => {
+          const next = new Set(cur);
+          for (const o of res.outcomes ?? []) if (o.status === "sent") next.add(o.personId);
+          return next;
+        });
+        done += chunk.length;
+        setProgress({ done, total: ids.length });
+      }
+      setPicked(new Set());
+    } finally {
+      setSending(false);
+      setTimeout(() => setProgress(null), 4000);
+    }
+  }
+
   function toggleExpand(id: string) {
     setExpanded((cur) => {
       const next = new Set(cur);
@@ -224,6 +300,31 @@ export function CampaignDetailClient({
       <Link href="/admin/workspace/outreach/campaigns" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-fg">
         <ArrowLeft size={14} /> All campaigns
       </Link>
+
+      {confirmNode}
+
+      {picked.size > 0 && (
+        <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-brand-300 bg-brand-50 px-4 py-2.5">
+          <span className="text-sm font-bold text-brand-900">{picked.size} selected</span>
+          <button
+            type="button"
+            onClick={sendSelected}
+            disabled={sending}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-60"
+          >
+            {sending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+            {sending ? "Sending…" : "Send from info@biohubnet.ca"}
+          </button>
+          <button type="button" onClick={() => setPicked(new Set())} className="text-xs font-semibold text-brand-800 hover:underline">
+            Clear
+          </button>
+          {progress && (
+            <span className="ml-auto text-xs font-medium tabular-nums text-brand-900">
+              {progress.done} / {progress.total}
+            </span>
+          )}
+        </div>
+      )}
 
       {error && (
         <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12.5px] text-rose-800">
@@ -387,6 +488,19 @@ export function CampaignDetailClient({
                       <button type="button" onClick={() => toggleExpand(r.personId)} className={miniBtn}>
                         <ChevronDown size={12} className={cn("transition-transform", isOpen && "rotate-180")} /> Preview
                       </button>
+                      <label
+                        className={cn("inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold", (!r.email || isSent) ? "opacity-40" : "cursor-pointer hover:bg-elevated")}
+                        title={!r.email ? "No email on file" : isSent ? "Already sent" : "Select for sending"}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 accent-brand-600"
+                          checked={picked.has(r.personId)}
+                          disabled={!r.email || isSent}
+                          onChange={() => togglePicked(r.personId)}
+                        />
+                        Select
+                      </label>
                       <button type="button" onClick={() => copyEmail(r)} className={miniBtn}>
                         {copiedId === r.personId ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />} Copy
                       </button>

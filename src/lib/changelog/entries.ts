@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Outreach — the platform sends the email
+  {
+    title: "Outreach can send the email itself, from info@biohubnet.ca",
+    body: "Outreach used to only *draft*: it filled the template and handed you a mailto: link, and you sent from your own client. Now the platform can send it — select contacts, confirm, and it goes out from **info@biohubnet.ca** with replies routed back to whoever pressed send.\n\n**Nothing sends without confirming.** Selecting runs a dry run first: every check runs and every message renders, but nothing leaves. The confirmation tells you how many will be sent, how many are being skipped and why, and the subject of the first one — and what you approve is exactly what goes, because the preview and the send use the same renderer.\n\n**Nobody gets emailed twice.** Each attempt is recorded against the campaign before the message leaves, so a double-click, a retry or a refresh can't send again. Failures are recorded as failures, with the address and the error — previously a bounce had nowhere to live and would have marked the contact as reached.\n\n**Every email carries an unsubscribe**, as Canadian anti-spam law requires, along with BioHubNet's name and mailing address. Unsubscribing is remembered against the person, so it applies to every list and every future campaign.\n\nSending is admin-only. One important caveat: **biohubnet.ca has no SPF or DKIM records yet** — those need publishing before the first real campaign, or the mail will land in spam. See `docs/outreach-sending.md`.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — exporting locks the round
   {
     title: "Website Review — exporting a round locks it until the next one opens",

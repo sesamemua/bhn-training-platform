@@ -5404,20 +5404,59 @@ model OutreachContact {
 // rows are migrated into people+memberships at runtime, then removed.
 
 model OutreachPerson {
-  id          String    @id @default(cuid())
+  id              String    @id @default(cuid())
   /// Shared field values keyed by the global person-column keys.
-  values      Json
-  addedById   String?
-  addedByName String    @default("BHN team")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  values          Json
+  addedById       String?
+  addedByName     String    @default("BHN team")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   /// When the introduction email was sent. null = net-new contact that still
   /// needs an intro; set = they already know us (gets the returning/thank-you
   /// campaign copy). Backfilled to createdAt for everyone predating this field.
-  introSentAt DateTime?
+  introSentAt     DateTime?
+  /// Set when this contact opts out. CASL requires an unsubscribe that keeps
+  /// working for 60 days after the message, and that we honour it within 10
+  /// business days — so this is checked on every send, permanently.
+  unsubscribedAt  DateTime?
+  /// Why, when they told us — free text from the unsubscribe page.
+  unsubscribeNote String?
 
   memberships OutreachMembership[]
   touches     OutreachTouch[]
+  sends       OutreachSend[]
+}
+
+/// One row per (campaign, person) the platform has tried to email.
+///
+/// The server's record of what was actually sent, as opposed to
+/// OutreachCampaign.sentPersonIds, which is the human ticking off mail they
+/// sent from their own client. The unique pair is the idempotency key: a
+/// double-click, a retry or a refresh cannot mail the same partner twice.
+model OutreachSend {
+  id         String           @id @default(cuid())
+  campaignId String
+  campaign   OutreachCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  personId   String
+  person     OutreachPerson   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// Address used, captured at send time — the directory value can change later.
+  email      String
+  /// queued | sent | failed | skipped
+  /// skipped covers no address, malformed address, and unsubscribed.
+  status     String           @default("queued")
+  /// Why it was skipped or how it failed. Shown to staff, never to the contact.
+  detail     String?
+  subject    String           @default("")
+  /// Rendered body kept verbatim: the template and its variables both change,
+  /// so without this there is no way to know what a partner was actually sent.
+  body       String           @default("")
+  sentAt     DateTime?
+  byId       String?
+  byName     String           @default("BHN team")
+  createdAt  DateTime         @default(now())
+
+  @@unique([campaignId, personId])
+  @@index([campaignId, status])
 }
 
 model OutreachMembership {
@@ -5496,11 +5535,11 @@ model OutreachTouch {
 /// campaign-level template fields (program / event / deadline / link) that fill
 /// the {{placeholders}}; per-contact name/org/email come from the person.
 model OutreachCampaign {
-  id                  String        @id @default(cuid())
+  id                  String         @id @default(cuid())
   name                String
   /// Target list; null = everyone in the directory.
   listId              String?
-  list                OutreachList? @relation(fields: [listId], references: [id], onDelete: SetNull)
+  list                OutreachList?  @relation(fields: [listId], references: [id], onDelete: SetNull)
   /// Email template id from the outreach templates library — the INTRO version,
   /// used for contacts who haven't been introduced yet (introSentAt null).
   templateId          String
@@ -5513,12 +5552,13 @@ model OutreachCampaign {
   /// personIds already reached in this campaign (drives progress).
   sentPersonIds       Json
   /// draft | active | done
-  status              String        @default("draft")
-  notes               String        @default("")
+  status              String         @default("draft")
+  notes               String         @default("")
   createdById         String?
-  createdByName       String        @default("BHN team")
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  createdByName       String         @default("BHN team")
+  sends               OutreachSend[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   @@index([createdAt])
 }

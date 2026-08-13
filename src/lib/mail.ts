@@ -47,11 +47,17 @@ export async function sendMail(opts: {
    *  by the registration-confirmation flow to ship a .ics calendar
    *  invite alongside the HTML body. */
   attachments?: MailAttachment[];
+  /** Where replies should land. From stays fixed to SMTP_FROM — Gmail
+   *  rewrites an unverified From, so overriding it would silently send as
+   *  the mailbox anyway. Reply-To is the supported way to route an answer
+   *  back to the person who actually wrote the message. */
+  replyTo?: string;
 }) {
   const t = transporter();
   await t.sendMail({
     from: FROM,
     to: opts.to,
+    replyTo: opts.replyTo,
     subject: opts.subject,
     text: opts.text,
     html: opts.html,
