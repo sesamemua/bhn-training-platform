@@ -71,6 +71,14 @@ export function PageReviewClient({
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const [newC, setNewC] = useState({ quote: "", body: "" });
+  /**
+   * Which round's threads to show. Defaults to the current one — the list
+   * used to render every comment ever filed, so a page on Round 3 opened
+   * showing 41 resolved items from Rounds 1 and 2 and nothing current. The
+   * live-page overlay has always shown just the current round; this is what
+   * brings the two surfaces into line. Earlier rounds stay reachable.
+   */
+  const [roundView, setRoundView] = useState<number | "all">(initialReview.round);
 
   async function post(payload: Record<string, unknown>, key: string) {
     setBusy(key); setError(null);
@@ -89,6 +97,8 @@ export function PageReviewClient({
   const tops = review.comments.filter((c) => !c.parentId);
   const repliesOf = (id: string) => review.comments.filter((c) => c.parentId === id);
   const currentTops = tops.filter((c) => c.round === review.round);
+  const shownTops = roundView === "all" ? tops : tops.filter((c) => c.round === roundView);
+  const earlierCount = tops.length - currentTops.length;
   const currentOpenCount = currentTops.filter((c) => c.status === "open").length;
   const currentRoundCommentCount = review.comments.filter((c) => c.round === review.round).length;
   // Exporting hands the round to whoever is making the changes; it stays
@@ -186,7 +196,13 @@ export function PageReviewClient({
     if (!ok) return;
 
     const result = await post({ action: "startNextRound" }, "next-round");
-    if (result) setBrief(null);
+    if (result) {
+      setBrief(null);
+      // Follow the review forward, or the list would keep showing the round
+      // that was just closed — the exact confusion this filter fixes.
+      const next = (result.review as { round?: number } | undefined)?.round;
+      setRoundView(typeof next === "number" ? next : review.round + 1);
+    }
   }
 
   return (
@@ -236,11 +252,44 @@ export function PageReviewClient({
           </section>
           )}
 
-          {tops.length === 0 && (
-            <p className="text-sm text-muted px-1">No comments yet. Add the first one above.</p>
+          {earlierCount > 0 && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-[11px] font-semibold text-subtle">Showing</span>
+              <div className="inline-flex rounded-lg bg-elevated p-0.5 ring-1 ring-inset ring-line">
+                <button
+                  type="button"
+                  onClick={() => setRoundView(review.round)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                    roundView !== "all" ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  Round {review.round} ({currentTops.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoundView("all")}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                    roundView === "all" ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  All rounds ({tops.length})
+                </button>
+              </div>
+              <span className="text-[11px] text-subtle">
+                {earlierCount} settled in earlier {earlierCount === 1 ? "round" : "rounds"}
+              </span>
+            </div>
           )}
 
-          {tops.map((c) => {
+          {shownTops.length === 0 && (
+            <p className="text-sm text-muted px-1">
+              {tops.length === 0
+                ? "No comments yet. Add the first one above."
+                : `Nothing in Round ${review.round} yet — earlier rounds are under “All rounds”.`}
+            </p>
+          )}
+
+          {shownTops.map((c) => {
             const mine = c.authorUserId && c.authorUserId === meId;
             const resolved = c.status !== "open";
             return (
@@ -260,7 +309,9 @@ export function PageReviewClient({
                           <AlertTriangle size={9} /> anchor not found
                         </span>
                       )}
-                      <span className="ml-auto text-[10px] text-subtle font-mono">round {c.round}</span>
+                      <span className={`ml-auto text-[10px] font-mono ${c.round === review.round ? "text-subtle" : "text-amber-700"}`}>
+                        round {c.round}
+                      </span>
                     </div>
                   </div>
                 )}

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Website Review — show the current round, not every round
+  {
+    title: "Website Review — a review now opens on its current round",
+    body: "Opening a review showed every comment ever filed on that page. The Sponsorship review sat on Round 3 and greeted you with **41 resolved items from Rounds 1 and 2 and nothing current** — which read as though the old feedback had never been dealt with.\n\nThe thread list now shows the round you're in. Earlier rounds are one click away under **All rounds**, where each card is stamped with the round it came from, and a line tells you how many were settled previously. Nothing was deleted or hidden permanently.\n\nThis also brings the two surfaces into line: the on-page panel has always shown only the current round, so the workspace page and the live page were disagreeing about what was outstanding.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace · Outreach — the platform sends the email
   {
     title: "Outreach can send the email itself, from info@biohubnet.ca",
