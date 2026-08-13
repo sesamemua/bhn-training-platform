@@ -243,8 +243,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const p = NextRoundSchema.safeParse(body);
     if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
 
+    // Anything filed this round, plus anything outstanding from an earlier
+    // one: a round holding only carried-over items still has work to settle.
     const currentCount = await prisma.pageComment.count({
-      where: { reviewId: id, round: review.round },
+      where: { reviewId: id, OR: [{ round: review.round }, { status: "open" }] },
     });
     if (currentCount === 0) {
       return NextResponse.json(

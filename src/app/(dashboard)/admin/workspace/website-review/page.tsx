@@ -75,9 +75,14 @@ export default async function WebsiteReviewPage({
     let openCount = 0;
     let settledCount = 0;
     for (const g of threadCounts) {
-      if (g.reviewId !== rv.id || g.round !== rv.round) continue;
+      if (g.reviewId !== rv.id) continue;
+      // Open counts whatever round raised it: a comment reopened after a
+      // rollback stays in its original round, so scoping this to the current
+      // round reported "0 open" while ten items were outstanding. Settled is
+      // still current-round only — otherwise every past round's archive
+      // would pile into the number.
       if (g.status === "open") openCount += g._count._all;
-      else settledCount += g._count._all;
+      else if (g.round === rv.round) settledCount += g._count._all;
     }
     return {
       id: rv.id, url: rv.url, title: rv.title, status: rv.status, round: rv.round,

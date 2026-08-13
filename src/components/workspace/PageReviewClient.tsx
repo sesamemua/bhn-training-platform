@@ -104,7 +104,12 @@ export function PageReviewClient({
   const shownTops = roundView === "all" ? tops : openTops;
   const earlierCount = tops.length - currentTops.length;
   const currentOpenCount = currentTops.filter((c) => c.status === "open").length;
-  const currentRoundCommentCount = review.comments.filter((c) => c.round === review.round).length;
+  // Mirrors the server's guard: this round's comments plus anything still
+  // outstanding from an earlier one, so a round of carried-over work doesn't
+  // leave "Start Round N+1" greyed out.
+  const currentRoundCommentCount = review.comments.filter(
+    (c) => c.round === review.round || c.status === "open",
+  ).length;
   // Exporting hands the round to whoever is making the changes; it stays
   // frozen so the brief they are working from can't move under them.
   const locked = review.status !== "open";

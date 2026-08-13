@@ -208,6 +208,19 @@ test("the live-page endpoint shows carried-over comments and can still act on th
     "expected exactly 3 uses of round: review.round — the OR filter, the review payload, and the round stamped on a new comment",
   );
   assert.doesNotMatch(src, /where: \{ id: [^}]*reviewId: review\.id, round: review\.round \}/);
+
+  // Same rule on the index: "open" must not be scoped to the current round,
+  // or a review whose outstanding work was carried over reports 0 open.
+  const page = readFileSync(
+    new URL("../../src/app/(dashboard)/admin/workspace/website-review/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    page,
+    /g\.round !== rv\.round\) continue/,
+    "the index must not skip groups from earlier rounds before counting open items",
+  );
+  assert.match(page, /if \(g\.status === "open"\) openCount \+= g\._count\._all;/);
 });
 
 test("bookmarklet code follows the current review token", () => {
