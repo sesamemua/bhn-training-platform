@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace · Marketing → Merch
+  {
+    title: "Workspace · Marketing → Merch — the trade-show giveaway shortlist",
+    body: "**Workspace → Marketing → Merch** holds the booth giveaway shortlist: 25 items, each already matched to a real product in Business Edge's catalogue, with their photo, product name and item code.\n\nItems are grouped by **tier** — walk-up, real conversation, qualified lead — because the same booth needs three levels of generosity. Each card carries why the item works, how it should be decorated, and a **watch out** note where the supplier's closest match differs from what you'd actually specify.\n\n**Filter** by tier, by type, by pocket-flat only (if it doesn't fit a laptop bag flat, it gets left in the hotel room), and by text across the names *and* the notes — they combine. **Select** a set and the summary shows the estimated spend at a quantity you choose, then **Copy quote request** puts a supplier-ready email on your clipboard with the product names, item codes and listing links.\n\nUnit costs are **planning estimates, not supplier quotes** — that's stated on the tab itself, not hidden in a tooltip.\n\nNote this is distinct from **Operations → Merch fulfilment**, which is the rewards vault trainees redeem credits against.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── End of Summer — limited theme, August 2026
   {
     title: "End of Summer — limited-time theme (until 31 August 2026)",

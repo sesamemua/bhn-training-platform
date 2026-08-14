@@ -325,6 +325,19 @@ const workspaceSponsorshipItem: NavItem = {
     "The sponsorship offer for the Annual Symposium — why sponsor, event details, tier grid, and how to confirm. Editable in place, with shareable links for prospective sponsors.",
 };
 
+// WORKSPACE → Marketing → Merch. The trade-show giveaway shortlist —
+// sits beside Sponsorship because both are things we hand a visitor at a
+// booth. Distinct from Operations → Merch fulfilment, which is the
+// rewards vault trainees redeem credits against.
+const workspaceMerchItem: NavItem = {
+  label: "Merch",
+  href: "/admin/workspace/merch",
+  icon: Gift,
+  minRole: "admin",
+  description:
+    "Trade-show giveaway shortlist — 25 items matched to real supplier products, grouped by tier, with cost estimates and a copy-ready quote request.",
+};
+
 // WORKSPACE → Marketing → Newsletter. Colleagues drop their section's
 // update into ENGAGE / EXPERIENCE / EQUIP / EVENTS; the AI lays the issue
 // out into the Mailchimp template and the editor copies the HTML across.
@@ -1720,6 +1733,7 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSponsorshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceNewsletterItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Website">
               <NavLink item={workspaceWebsiteReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

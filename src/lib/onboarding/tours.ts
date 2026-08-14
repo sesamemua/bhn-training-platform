@@ -30,9 +30,20 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.14a";
+export const TOUR_VERSION = "2026.09.15a";
 
 export const TOUR_STEPS: TourStep[] = [
+  // ─── Workspace · Marketing → Merch
+  {
+    id: "workspace.merch",
+    title: "Booth giveaways, costed",
+    body: "Workspace → Marketing → Merch is the trade-show shortlist: 25 items matched to real supplier products, grouped by whether the visitor walked up, had a conversation, or is a qualified lead. Filter, pick a set, see the estimated spend, and copy a quote request straight to the supplier. Prices are estimates, not quotes.",
+    path: "/admin/workspace/merch",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Merch", href: "/admin/workspace/merch" },
+    since: "2026.09.15a",
+  },
   // ─── August's limited theme — End of Summer
   {
     id: "theme.endofsummer",
