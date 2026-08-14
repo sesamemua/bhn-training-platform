@@ -39,6 +39,7 @@ const SWATCH: Record<ThemeId, [string, string, string]> = {
   greenwood:  ["#f7faf2", "#456224", "#c6a449"],
   artdeco:    ["#ece0cd", "#4a7b83", "#c98a5f"],
   canada:     ["#ffffff", "#dc1f2d", "#23161a"],
+  endofsummer: ["#faf4ea", "#c87f22", "#2a2016"],
 };
 
 function Swatch({ id, size = 36 }: { id: ThemeId; size?: number }) {

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── End of Summer — limited theme, August 2026
+  {
+    title: "End of Summer — limited-time theme (until 31 August 2026)",
+    body: "A new seasonal theme for the rest of August: **End of Summer** — sun-bleached linen, low amber light, and a dry-grass sage note. Warm rather than bright: the palette of six o'clock in late August rather than noon in July.\n\nSwitch to it and **seed fluff drifts across the page** — dandelion down caught in low sun, hanging and wandering sideways more than falling, over a warm haze along the bottom of the viewport that reads as heat still coming off the ground. A caption in the corner cycles through late-August observations. Like every atmosphere layer it respects *prefers-reduced-motion*: the palette stays, nothing moves.\n\nPick it from the **theme switcher** (the linen-and-amber swatch under *Limited time*), or from the theme-of-the-day card. Like all limited drops it retires after **31 August**, and anyone still on it falls back to their usual theme.\n\nAlso fixed while here: the theme-of-the-day preempt named the July theme by id, so it had quietly stopped promoting anything the day that theme expired. It now finds whichever seasonal drop is in its window.",
+    kind: "feature",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── Workspace · Website Review — counts and export follow the work
   {
     title: "Website Review — counts and Export brief follow outstanding work",

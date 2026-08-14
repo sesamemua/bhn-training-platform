@@ -81,6 +81,14 @@ export const THEMES = [
     endsOn: "2026-07-31",
     limited: true,
   },
+  {
+    id: "endofsummer",
+    name: "End of Summer",
+    description: "Sun-bleached linen and low amber light, with seed fluff on the breeze — the last warm weeks, held. A limited August engagement.",
+    category: "limited",
+    endsOn: "2026-08-31",
+    limited: true,
+  },
 ] as const;
 
 /** Display labels for each category — surfaced as section headers
@@ -221,9 +229,12 @@ export function ThemeScript() {
  */
 export function suggestTodaysTheme(currentlySaved: ThemeId | null, now: Date = new Date()): ThemeId | null {
   const active = activeThemes(now);
-  // Limited-time preempt — promotes the seasonal theme (O Canada · July 2026).
-  const featured = active.find((t) => t.id === "canada");
-  if (featured && currentlySaved !== "canada") return "canada";
+  // Limited-time preempt — promote whichever seasonal drop is currently in
+  // its window. Found by category rather than by id: this used to name
+  // "canada" directly, so the preempt quietly stopped working the day that
+  // theme expired and nobody noticed until the next drop was built.
+  const featured = active.find((t) => t.category === "limited");
+  if (featured && currentlySaved !== featured.id) return featured.id;
 
   const pool = active.map((t) => t.id).filter((id) => id !== currentlySaved);
   if (pool.length === 0) return null;

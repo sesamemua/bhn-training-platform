@@ -30,9 +30,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.13a";
+export const TOUR_VERSION = "2026.09.14a";
 
 export const TOUR_STEPS: TourStep[] = [
+  // ─── August's limited theme — End of Summer
+  {
+    id: "theme.endofsummer",
+    title: "August's limited theme: End of Summer",
+    body: "Sun-bleached linen and low amber light, with seed fluff drifting across the page and a warm haze along the bottom — the last warm weeks, held. Open the palette at the bottom-left of the sidebar and pick it under Limited time. It retires after 31 August.",
+    path: "/dashboard",
+    placement: "center",
+    since: "2026.09.14a",
+  },
   // ─── Workspace · Outreach → platform sending — Sep 2026
   {
     id: "workspace.outreach.send",

@@ -352,6 +352,100 @@
  *   warm-charcoal text, and a bold red dashboard hero. The companion
  *   <CanadaAtmosphere> layer drifts red maple leaves down the page.
  *   Expires 2026-07-31 (endsOn). ───── */
+/* ───── End of Summer (limited, August 2026) ─────────────────────────
+ *  The last warm weeks: sun-bleached linen, low golden light, dusty
+ *  sage, and the first hint of cooling. Warm rather than bright — the
+ *  palette of six-o'clock in late August rather than noon in July.
+ *
+ *  Companion <EndOfSummerAtmosphere> drifts seed-fluff across the page
+ *  and lays a warm haze along the bottom of the viewport.
+ *
+ *  Contrast (computed, not eyeballed):
+ *    fg on bg 14.6:1 · muted on bg 6.1:1 · subtle on raised 4.58:1 (AA)
+ *    white on brand-600 4.71:1 (AA) · white on hero 7.5:1
+ *  brand-500 is decorative only — 3.2:1 on white, so never a button base.
+ */
+[data-theme="endofsummer"] {
+  --popover-bg: #f2e7d3;
+  --bg:        #faf4ea;        /* sun-bleached linen */
+  /* Amber sun top-left, a dry-grass sage note mid-right to keep the page
+   * from reading as flat brown, and warm ground-light along the bottom. */
+  --bg-mesh:
+    radial-gradient(at 12% 8%,  rgba(224, 152, 54, 0.11) 0px, transparent 52%),
+    radial-gradient(at 86% 34%, rgba(141, 148, 106, 0.09) 0px, transparent 44%),
+    radial-gradient(at 88% 12%, rgba(200, 127, 34, 0.06) 0px, transparent 42%),
+    radial-gradient(at 50% 100%, rgba(122, 74, 18, 0.09) 0px, transparent 58%);
+  --card:      rgba(255, 253, 248, 0.92);
+  --card-solid: #fffdf8;
+  --elevated:  #f3ead9;
+  --raised:    #ebdfc8;
+  --fg:        #2a2016;        /* deep warm umber, not black */
+  --fg-muted:  #6b5942;
+  --fg-subtle: #726046;        /* AA: 4.58:1 on raised ✅ */
+  --line:      rgba(42, 32, 22, 0.11);
+  --line-strong: rgba(42, 32, 22, 0.21);
+  --backdrop:  rgba(42, 32, 22, 0.42);
+
+  /* Late-sun amber ramp. 600 (#a6641a) + white = 4.71:1 (AA), so that is
+   * the button base; 500 is a decorative accent only. */
+  --brand-50:  #fdf3e2;
+  --brand-100: #fae3bd;
+  --brand-200: #f4cd8c;
+  --brand-300: #ecb15a;
+  --brand-400: #e09836;
+  --brand-500: #c87f22;
+  --brand-600: #a6641a;
+  --brand-700: #854e15;
+  --brand-800: #653a10;
+  --brand-900: #47280b;
+
+  --radius-sm: 10px;
+  --radius:    14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Dashboard hero — the sun already behind the trees. */
+  --hero-bg:     #7a4a12;
+  --hero-mesh-1: #c87f22;
+  --hero-mesh-2: #e6a94a;
+  --hero-mesh-3: #6b4a2a;
+  --hero-mesh-4: #47280b;
+}
+
+/* ───── End of Summer atmosphere ─────────────────────────────────────
+ *  Companion CSS to <EndOfSummerAtmosphere> in
+ *  src/components/themes/EndOfSummerAtmosphere.tsx. The component owns
+ *  the per-seed randomisation (position, delay, duration, sway, scale);
+ *  these keyframes own the motion.
+ *
+ *  Seed fluff falls far more slowly than Sakura's petals or Canada's
+ *  maple leaves — it is buoyant, so it hangs and wanders sideways more
+ *  than it drops. Guarded by prefers-reduced-motion below.
+ */
+@keyframes eos-seed-fall {
+  0%   { transform: translate3d(0, -8vh, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { transform: translate3d(0, 108vh, 0) rotate(220deg); opacity: 0; }
+}
+@keyframes eos-seed-sway {
+  0%, 100% { transform: translateX(calc(var(--eos-sway) * -1)); }
+  50%      { transform: translateX(var(--eos-sway)); }
+}
+/* The low sun sitting on the horizon line. */
+@keyframes eos-haze-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.78; }
+}
+
+.eos-seed-wrap { animation: eos-seed-fall linear infinite; will-change: transform, opacity; }
+.eos-seed      { animation: eos-seed-sway ease-in-out infinite alternate; will-change: transform; }
+.eos-haze      { animation: eos-haze-breathe 11s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .eos-seed-wrap, .eos-seed, .eos-haze { animation: none !important; }
+}
+
 [data-theme="canada"] {
   --popover-bg: #f7e7e8;
   --bg:        #fbf5f5;        /* fresh warm white */
