@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { demoMode } from "@/lib/demo/mode";
 import { ensureDemoAdmin, ensurePersona } from "@/lib/demo/personas";
+import { clearEmployerWorld, seedEmployerWorld } from "@/lib/employer/demo-seed";
 import { spawnShowcase } from "@/lib/showcase/seed";
 import { applyCatalogue, type SheetRow } from "../../../../../scripts/import-engage-catalogue";
 import fixture from "../../../../../prisma/fixtures/engage-catalogue.json";
@@ -50,13 +51,20 @@ async function reset(req: NextRequest) {
 
   const admin = await ensureDemoAdmin();
   const maya = await spawnShowcase(admin.id, { reset: true });
-  await ensurePersona("employer");
+
+  // Employer world: sweep yesterday's isDemoSeed postings (visitors can
+  // mutate or clear them) and rebuild the full funnel so the analytics
+  // and pipeline surfaces are always populated.
+  const employer = await ensurePersona("employer");
+  await clearEmployerWorld(employer.id, "employer");
+  const employerWorld = await seedEmployerWorld(employer.id, "employer");
 
   return NextResponse.json({
     ok: true,
     catalogue,
     priced: priced.count,
     maya: maya.counts,
+    employer: employerWorld,
   });
 }
 

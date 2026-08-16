@@ -58,6 +58,25 @@ const ADMIN_EMAIL = "demo.admin@biohubnet.test";
 const EMPLOYER_EMAIL = "demo.employer@biohubnet.test";
 const DEMO_COMPANY = "Northway Biologics (Demo)";
 
+/**
+ * The employer brand stage and profile card read the USER row's mirrored
+ * company fields (employerCompany, companyDescription, …), not
+ * Company.name — an empty set renders the "COMPANY NAME" placeholder and
+ * a setup wizard, which is the wrong first impression for a demo. Keep
+ * this in sync with the Company row below.
+ */
+const EMPLOYER_PROFILE = {
+  employerCompany: DEMO_COMPANY,
+  companyWebsite: "https://northwaybio.example",
+  companyIndustry: "Biomanufacturing",
+  companySize: "51-200",
+  companyLocation: "Toronto, ON",
+  companyDescription:
+    "Contract biologics manufacturer specialising in mammalian cell-culture programs from tech transfer through GMP fill-finish. Everything on this company is synthetic demo data.",
+  companyFounded: "2014",
+  companyMainBusiness: "CDMO — mammalian biologics",
+} as const;
+
 function newToken(): string {
   return randomBytes(24).toString("hex");
 }
@@ -87,7 +106,9 @@ export async function ensureDemoAdmin(): Promise<{ id: string; magicToken: strin
   return { id: user.id, magicToken: token };
 }
 
-export async function ensurePersona(key: PersonaKey): Promise<{ magicToken: string }> {
+export async function ensurePersona(
+  key: PersonaKey,
+): Promise<{ magicToken: string; id: string }> {
   if (key === "admin") {
     return ensureDemoAdmin();
   }
@@ -97,7 +118,7 @@ export async function ensurePersona(key: PersonaKey): Promise<{ magicToken: stri
     // token — but records who spawned it, so the demo admin comes first.
     const admin = await ensureDemoAdmin();
     const result = await spawnShowcase(admin.id, { reset: false });
-    return { magicToken: result.user.magicToken };
+    return { magicToken: result.user.magicToken, id: result.user.id };
   }
 
   const token = newToken();
@@ -114,8 +135,9 @@ export async function ensurePersona(key: PersonaKey): Promise<{ magicToken: stri
       accountKind: "demo",
       emailVerified: new Date(),
       magicToken: token,
+      ...EMPLOYER_PROFILE,
     },
-    update: { magicToken: token, isActive: true },
+    update: { magicToken: token, isActive: true, ...EMPLOYER_PROFILE },
   });
 
   let company = await prisma.company.findFirst({ where: { name: DEMO_COMPANY } });
@@ -140,5 +162,5 @@ export async function ensurePersona(key: PersonaKey): Promise<{ magicToken: stri
       data: { companyId: company.id, userId: user.id, role: "owner", title: "Talent Lead" },
     });
   }
-  return { magicToken: token };
+  return { magicToken: token, id: user.id };
 }
