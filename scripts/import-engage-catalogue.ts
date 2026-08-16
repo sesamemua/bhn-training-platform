@@ -22,11 +22,9 @@
  * Favorites. Retiring one is a human decision, not an import's.
  */
 import { readFileSync } from "node:fs";
-import { PrismaClient, type Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
-
-interface SheetRow {
+export interface SheetRow {
   Course?: string | null;
   "Short Course Description"?: string | null;
   "Learning Objectives"?: string | null;
@@ -186,7 +184,57 @@ export function mapRow(row: SheetRow): Mapped | null {
   };
 }
 
+/**
+ * The write path, callable from outside the CLI (the demo reset route runs
+ * it nightly with the app's shared client). Upserts every sheet row and,
+ * with draftUnlisted, hides published courses the sheet doesn't know about.
+ */
+export async function applyCatalogue(
+  db: PrismaClient,
+  rows: SheetRow[],
+  opts: { draftUnlisted?: boolean } = {},
+): Promise<{ created: number; updated: number; drafted: number }> {
+  const mapped = rows.map(mapRow).filter((m): m is Mapped => m !== null);
+  const existing = await db.course.findMany({
+    select: { id: true, title: true, status: true },
+  });
+  const byKey = new Map(existing.map((c) => [titleKey(c.title), c]));
+
+  let created = 0;
+  let updated = 0;
+  for (const m of mapped) {
+    const hit = byKey.get(titleKey(m.title));
+    const fields = {
+      title: m.title, description: m.description, provider: m.provider,
+      topic: m.topic, delivery: m.delivery, duration: m.duration,
+      status: m.status, tags: m.tags, isSpecial: m.isSpecial,
+    };
+    if (hit) {
+      await db.course.update({ where: { id: hit.id }, data: fields });
+      updated++;
+    } else {
+      await db.course.create({ data: { ...fields, courseType: "external" } });
+      created++;
+    }
+  }
+
+  let drafted = 0;
+  if (opts.draftUnlisted) {
+    const sheetKeys = new Set(mapped.map((m) => titleKey(m.title)));
+    const strays = existing
+      .filter((c) => !sheetKeys.has(titleKey(c.title)) && c.status === "published")
+      .map((c) => c.id);
+    const r = await db.course.updateMany({
+      where: { id: { in: strays } },
+      data: { status: "draft" },
+    });
+    drafted = r.count;
+  }
+  return { created, updated, drafted };
+}
+
 async function main() {
+  const prisma = new PrismaClient();
   const args = process.argv.slice(2);
   const write = args.includes("--write");
   // Courses already in the catalog but absent from the sheet are seed/demo
@@ -241,38 +289,7 @@ async function main() {
     return;
   }
 
-  let created = 0;
-  let updated = 0;
-  for (const m of creates) {
-    const data: Prisma.CourseCreateInput = {
-      title: m.title, description: m.description, provider: m.provider,
-      topic: m.topic, delivery: m.delivery, duration: m.duration,
-      status: m.status, tags: m.tags, isSpecial: m.isSpecial,
-      courseType: "external",
-    };
-    await prisma.course.create({ data });
-    created++;
-  }
-  for (const u of updates) {
-    await prisma.course.update({
-      where: { id: u.id },
-      data: {
-        title: u.to.title, description: u.to.description, provider: u.to.provider,
-        topic: u.to.topic, delivery: u.to.delivery, duration: u.to.duration,
-        status: u.to.status, tags: u.to.tags, isSpecial: u.to.isSpecial,
-      },
-    });
-    updated++;
-  }
-  let drafted = 0;
-  if (draftUnlisted) {
-    const ids = untouched.filter((c) => c.status === "published").map((c) => c.id);
-    const r = await prisma.course.updateMany({
-      where: { id: { in: ids } },
-      data: { status: "draft" },
-    });
-    drafted = r.count;
-  }
+  const { created, updated, drafted } = await applyCatalogue(prisma, rows, { draftUnlisted });
 
   console.log(
     `\nwrote: ${created} created, ${updated} updated, ${drafted} unlisted set to draft, 0 deleted.`,
@@ -280,8 +297,11 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch(async (e) => {
-  console.error(e);
-  await prisma.$disconnect();
-  process.exit(1);
-});
+// Run only as a CLI entrypoint — the demo reset route imports this module
+// for applyCatalogue() and must not trigger an argv-driven import.
+if (process.argv[1] && /import-engage-catalogue/.test(process.argv[1])) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
