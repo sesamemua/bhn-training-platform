@@ -81,8 +81,15 @@ export function Onboarding() {
     return eligibleSteps.findIndex((s) => !seen.has(s.id));
   }, [eligibleSteps, state]);
 
-  // Auto-start if eligible and not dismissed
+  // Auto-start if eligible and not dismissed.
+  //
+  // Never on the demo deployment: persona accounts reset nightly, so the
+  // walkthrough would ambush every visitor on every entry ("Step 1 of
+  // 100" over the first screen they came to see). The sidebar's "Take
+  // the tour" entry still works there — it fires bhn:start-tour, which
+  // bypasses this effect entirely.
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") return;
     if (!state) return;
     if (state.dismissed || state.completedAt) return;
     if (state.minimized) return;
