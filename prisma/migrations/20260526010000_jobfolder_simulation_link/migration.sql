@@ -1,3 +1,17 @@
+-- ── Fresh-database guard (added Aug 2026) ────────────────────────
+-- Backdated migration: it alters/references "JobFolder", which is only
+-- CREATED by a later-named migration — on production the table already
+-- existed (created during development, formalised later), so this
+-- applied fine; on a brand-new database the name-order replay dies here.
+-- On a fresh database we skip the whole file and the tail migration
+-- 20260916000000_fresh_replay_repairs recreates every skipped object
+-- once its dependencies exist. Idempotent both ways.
+DO $fresh_db_guard$
+BEGIN
+  IF to_regclass('"JobFolder"') IS NULL THEN
+    RETURN;
+  END IF;
+
 -- ─────────────────────────────────────────────────────────────────
 -- Job folder ↔ Simulation request link
 --
@@ -18,3 +32,5 @@ ALTER TABLE "JobFolder"
 
 CREATE INDEX "JobFolder_simulationRequestId_idx"
     ON "JobFolder" ("simulationRequestId");
+END
+$fresh_db_guard$;

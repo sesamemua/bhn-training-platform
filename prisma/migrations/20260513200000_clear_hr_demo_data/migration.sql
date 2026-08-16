@@ -1,3 +1,24 @@
+-- ── Fresh-database guard (added Aug 2026) ────────────────────────
+-- This migration is a one-time cleanup of demo/sandbox data. Its
+-- timestamp (May 13) predates 20260516000000_sandbox_and_demo_accounts,
+-- which CREATES the "accountKind" column it filters on — the file was
+-- written later and backdated, so on a brand-new database the name-order
+-- replay hits a column that doesn't exist yet and the whole chain dies.
+-- (Found while standing up the portfolio-demo deployment; production
+-- never noticed because the column already existed when this applied.)
+--
+-- On a fresh database there is nothing to clean, so the correct
+-- behaviour is to no-op. On any database where the column exists the
+-- original statements run unchanged — they are idempotent by design.
+DO $fresh_db_guard$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'User' AND column_name = 'accountKind'
+  ) THEN
+    RETURN;
+  END IF;
+
 -- One-time cleanup: wipe every demo-account-attributable row that
 -- shows on an HR / employer surface, so the deployed instance starts
 -- with a fresh slate.
@@ -65,3 +86,5 @@ WHERE "eventId" IN (
   SELECT "id" FROM "BhnEvent" WHERE "slug" LIKE 'demo-%'
 );
 DELETE FROM "BhnEvent" WHERE "slug" LIKE 'demo-%';
+END
+$fresh_db_guard$;

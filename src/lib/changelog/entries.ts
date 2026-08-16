@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Demo mode + migration-chain repairs
+  {
+    title: "Demo mode — a no-login portfolio deployment, and the migration chain now replays",
+    body: "Two things landed together.\n\n**Demo mode.** With NEXT_PUBLIC_DEMO_MODE set (a separate deployment — never production), the platform becomes a self-guided demo: `/` lands on a persona chooser (Maya the showcase trainee, a demo admin, a demo employer), one click signs the visitor in through the existing magic-token route — which structurally refuses real accounts — and `/demo/about` documents the stack with a feature index that deep-links into each surface. A strip in the sidebar footer marks the environment; robots are told to stay out. On production none of these routes exist.\n\n**The migration chain now replays on a fresh database.** Standing up the demo surfaced that seven 2026-05 migrations were written after the tables they touch and backdated, so `prisma migrate deploy` on an empty database died four separate ways. Those migrations now carry fresh-database guards, and a tail migration recreates what the guards skip — idempotent, so on production (where everything already exists) it's a no-op. Verified by replaying all migrations into a clean pgvector container, seeding the full demo world into it, and proving deploy tolerates the edited files and production's rolled-back May migration.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Workspace · Marketing → Merch
   {
     title: "Workspace · Marketing → Merch — the trade-show giveaway shortlist",

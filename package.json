@@ -19,7 +19,9 @@
     "test:e2e:report": "playwright show-report",
     "test:outreach": "tsx --test tests/unit/outreach-send.test.ts",
     "vercel": "bash scripts/vercel.sh",
-    "test:merch": "tsx --test tests/unit/merch.test.ts"
+    "test:merch": "tsx --test tests/unit/merch.test.ts",
+    "test:demo": "tsx --test tests/unit/demo-mode.test.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

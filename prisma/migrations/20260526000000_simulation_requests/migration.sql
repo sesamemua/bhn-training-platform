@@ -36,10 +36,18 @@ ALTER TABLE "SimulationRequest"
     FOREIGN KEY ("userId") REFERENCES "User"("id")
     ON DELETE CASCADE ON UPDATE CASCADE;
 
-ALTER TABLE "SimulationRequest"
-    ADD CONSTRAINT "SimulationRequest_simulationId_fkey"
-    FOREIGN KEY ("simulationId") REFERENCES "Simulation"("id")
-    ON DELETE SET NULL ON UPDATE CASCADE;
+-- Guarded (Aug 2026): "Simulation" is created by a later-named migration;
+-- on a fresh database this FK is added by 20260916000000_fresh_replay_repairs.
+DO $fk_guard$
+BEGIN
+  IF to_regclass('"Simulation"') IS NOT NULL THEN
+    ALTER TABLE "SimulationRequest"
+        ADD CONSTRAINT "SimulationRequest_simulationId_fkey"
+        FOREIGN KEY ("simulationId") REFERENCES "Simulation"("id")
+        ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END
+$fk_guard$;
 
 ALTER TABLE "SimulationRequest"
     ADD CONSTRAINT "SimulationRequest_processedById_fkey"

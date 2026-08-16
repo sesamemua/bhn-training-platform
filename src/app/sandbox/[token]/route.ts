@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { safeLocalPath } from "@/lib/demo/mode";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const isProd = process.env.NODE_ENV === "production";
   const cookieName = isProd ? "__Secure-next-auth.session-token" : "next-auth.session-token";
 
-  const dest = user.role === "employer" ? "/employer" : "/dashboard";
+  // Optional ?next= deep link (used by the demo persona chooser's feature
+  // index). Strictly a local absolute path — a full URL or protocol-relative
+  // value is ignored, so this can never become an open redirect.
+  const safeNext = safeLocalPath(req.nextUrl.searchParams.get("next"));
+  const dest = safeNext ?? (user.role === "employer" ? "/employer" : "/dashboard");
   const res = NextResponse.redirect(`${origin}${dest}`);
   res.cookies.set({
     name: cookieName,

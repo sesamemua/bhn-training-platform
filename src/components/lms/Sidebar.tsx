@@ -1873,6 +1873,28 @@ export function Sidebar({
         </div>
       )}
 
+      {/* Portfolio-demo strip — only ever renders on the demo deployment
+          (NEXT_PUBLIC_DEMO_MODE), same pattern as the build-SHA chip below.
+          Lives in the sidebar footer, not above the page hero, per the
+          hero-owns-the-top rule. */}
+      {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+        <div className="px-3 py-2 border-t border-line">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700">
+            Demo environment
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-subtle">
+            Synthetic data · resets nightly ·{" "}
+            <a href="/demo" className="font-semibold text-brand-700 hover:text-brand-900">
+              switch persona
+            </a>{" "}
+            ·{" "}
+            <a href="/demo/about" className="font-semibold text-brand-700 hover:text-brand-900">
+              about this build
+            </a>
+          </p>
+        </div>
+      )}
+
       {/* Take-the-tour + Theme picker + Build SHA share one compact row.
           Tour icon is Compass (orientation / guided exploration) rather
           than the generic ?-help glyph it used to be. Build SHA folds
