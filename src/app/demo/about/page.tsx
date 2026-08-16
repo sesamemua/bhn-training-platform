@@ -32,6 +32,7 @@ const FEATURES: { title: string; note: string; persona: string; next: string }[]
   { title: "Course catalogue", note: "The real 70-course ENGAGE catalogue with filters and semantic search.", persona: "trainee", next: "/courses" },
   { title: "Certificates", note: "Earned credentials with public verify links.", persona: "trainee", next: "/certificates" },
   { title: "Mock interview", note: "Voice-answered practice with AI scoring on content, confidence and delivery.", persona: "trainee", next: "/mock-interview" },
+  { title: "First-login ritual", note: "The gamified cell-passaging walkthrough every new trainee plays once — replayable here.", persona: "admin", next: "/welcome/split-a-cell?replay=1" },
   { title: "Admin overview", note: "Queues, live stats, and every operational surface.", persona: "admin", next: "/admin" },
   { title: "Website review", note: "Threaded comments anchored to live pages; exports a revision brief for an AI coding agent.", persona: "admin", next: "/admin/workspace/website-review" },
   { title: "Newsletter workshop", note: "Colleagues drop raw updates; AI lays out the Mailchimp issue.", persona: "admin", next: "/admin/workspace/marketing/newsletter" },

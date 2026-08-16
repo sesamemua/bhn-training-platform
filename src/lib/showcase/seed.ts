@@ -114,6 +114,10 @@ export async function spawnShowcase(
       magicToken: token,
       createdByAdminId: adminId,
       credits: 1000, // 200 starter + 6000 granted - 5200 spent
+      // Two cohorts in, the first-login cell-split ritual is long behind
+      // her — and a demo visitor must land on the lived-in dashboard, not
+      // a mandatory mini-game (it stays reachable via ?replay=1).
+      hasSplitCell: true,
       bio: SHOWCASE_PROFILE.bio,
       jobTitle: SHOWCASE_PROFILE.jobTitle,
       organization: SHOWCASE_PROFILE.organization,
@@ -130,6 +134,7 @@ export async function spawnShowcase(
       role: "trainee",
       accountKind: "showcase",
       isActive: true,
+      hasSplitCell: true,
       // Re-apply the canonical profile every spawn so admins can use
       // spawn() to "fix" any local drift.
       bio: SHOWCASE_PROFILE.bio,
