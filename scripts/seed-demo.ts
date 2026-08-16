@@ -50,6 +50,19 @@ async function main() {
     );
   });
 
+  // 1b. The catalogue import deliberately writes no credit cost, but the
+  //     showcase trainee's enrollment layer only engages when >=3 published
+  //     courses cost credits — and the Spring 2026 catalogue PDF prices
+  //     every on-demand course at 100 Training Credits. Set that here so
+  //     Maya's completed-course history has something real to hang off.
+  await step("Course credit costs (100 each, per the catalogue)", async () => {
+    const r = await prisma.course.updateMany({
+      where: { status: "published", creditCost: 0 },
+      data: { creditCost: 100 },
+    });
+    console.log(`   priced ${r.count} courses`);
+  });
+
   // 2. Events + workshops (symposium world), if the seeder is present.
   await step("Events & workshops", () => {
     execFileSync("npx", ["tsx", join("prisma", "seed-events.ts")], { stdio: "inherit" });
