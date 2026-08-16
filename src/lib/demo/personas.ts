@@ -42,13 +42,13 @@ export const PERSONA_CARDS: Record<PersonaKey, { name: string; title: string; bl
   },
   admin: {
     name: "Alex Demo",
-    title: "Administrator",
+    title: "Admin",
     blurb:
       "The operations view — course and event management, the workspace suite (website review, newsletter, outreach, merch), analytics, and the design system itself.",
   },
   employer: {
     name: "Jordan Demo",
-    title: "Employer",
+    title: "Hiring partner",
     blurb:
       "The hiring side — a company profile, internship postings, the talent pool, and applicant pipelines.",
   },

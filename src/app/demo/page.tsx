@@ -190,15 +190,26 @@ export default function DemoEntryPage() {
                     </span>
                   </span>
 
-                  {/* Specimen label */}
+                  {/* Specimen label — the ROLE is the headline: a visitor is
+                      choosing which view of the platform to enter, so "Trainee
+                      view / Admin view / Hiring partner view" leads and the
+                      persona's name supports. */}
                   <span className="flex flex-col items-center gap-2">
                     <span className="font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-brand-400">
-                      Seat {num} — {c.title}
+                      Seat {num}
                     </span>
-                    <span className="text-[clamp(1.55rem,1.15rem+1.4vw,2.1rem)] font-bold leading-[1.1] tracking-tight text-fg">
-                      {c.name}
+                    {/* min-h reserves two lines so the "as …" row sits at the
+                        same height on every seat whether the role wraps or not */}
+                    <span
+                      className="flex items-center text-[clamp(1.55rem,1.15rem+1.4vw,2.1rem)] font-bold leading-[1.08] tracking-tight text-fg md:min-h-[2.2em]"
+                      style={{ textWrap: "balance" }}
+                    >
+                      {c.title} view
                     </span>
-                    <span className="max-w-[36ch] text-[13.5px] leading-relaxed text-muted">
+                    <span className="text-[14.5px] font-semibold text-muted">
+                      as {c.name}
+                    </span>
+                    <span className="mt-1 max-w-[36ch] text-[13.5px] leading-relaxed text-muted">
                       {c.blurb}
                     </span>
                   </span>
