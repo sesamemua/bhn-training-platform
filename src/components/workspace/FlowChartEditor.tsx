@@ -13,7 +13,7 @@
  * SVG would mean hand-laying every line of text.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
+import { ArrowRight, Check, Loader2, Plus, RotateCcw, Trash2, Undo2 } from "lucide-react";
 import {
   FIELD_TYPES,
   FIELD_TYPE_LABEL,

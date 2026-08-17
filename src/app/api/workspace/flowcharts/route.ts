@@ -58,6 +58,11 @@ const SaveSchema = z.object({
   data: ChartSchema,
 });
 
+const ResetSchema = z.object({
+  action: z.literal("resetToTemplate"),
+  id: z.string().min(1),
+});
+
 const DeleteSchema = z.object({
   action: z.literal("delete"),
   id: z.string().min(1),
@@ -93,6 +98,19 @@ export async function POST(req: NextRequest) {
         data: parseChart(p.data.data) as unknown as object,
         updatedById: userId,
       },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "resetToTemplate") {
+    // The seed only fires on an empty table, so a chart created before the
+    // template gained new question types stays stale forever with no way
+    // back short of deleting the row. This is that way back.
+    const p = ResetSchema.safeParse(body);
+    if (!p.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    await prisma.flowChart.update({
+      where: { id: p.data.id },
+      data: { data: TRAINING_WEEK_FLOW as unknown as object, updatedById: userId },
     });
     return NextResponse.json({ ok: true });
   }
