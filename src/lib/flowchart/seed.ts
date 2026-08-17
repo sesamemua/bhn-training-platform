@@ -15,15 +15,20 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
   nodes: [
     { id: "n1",  kind: "start",    x: COL.a, y: row(0), w: 190, h: 52, text: "Registration opens", actor: "Coordinator" },
     { id: "n2",  kind: "step",     x: COL.a, y: row(1), w: 190, h: 66, text: "Picks up to 3 sessions", actor: "Registrant" },
-    { id: "n3",  kind: "question", x: COL.a, y: row(2), w: 190, h: 66, text: "Your email",
-      field: { key: "email", type: "email", required: true } },
+    { id: "n3",  kind: "question", x: COL.a, y: row(2), w: 190, h: 66, text: "Your details",
+      field: { key: "contact", type: "contact", required: true, help: "Name, email and a phone number we can reach you on." } },
     { id: "n3b", kind: "question", x: COL.b, y: row(2), w: 190, h: 66, text: "Are you a BioHubNet trainee?",
       field: { key: "trainee", type: "yesno", required: true } },
     // Affiliations are repeatable on purpose: someone can be a PhD student,
     // a clinician and a founder at once, and a single box loses two of them.
-    { id: "n3c", kind: "question", x: COL.c, y: row(2), w: 190, h: 78, text: "Where are you affiliated?",
-      field: { key: "affiliations", type: "affiliation", required: true,
-        help: "Add every organisation you belong to — university, hospital, company." } },
+    // Three separate questions, because one person can answer all three:
+    // a PhD student who is also a clinician and runs a spin-out.
+    { id: "n3c", kind: "question", x: COL.c, y: row(2), w: 190, h: 78, text: "Academic institution",
+      field: { key: "academic", type: "academic", help: "Leave blank if none." } },
+    { id: "n3d", kind: "question", x: COL.d, y: row(2), w: 190, h: 78, text: "Hospital or health network",
+      field: { key: "health", type: "health", help: "Leave blank if none." } },
+    { id: "n3e", kind: "question", x: COL.d, y: row(3), w: 190, h: 78, text: "Company",
+      field: { key: "company", type: "company", help: "Leave blank if none." } },
     { id: "n4",  kind: "decision", x: COL.a, y: row(3), w: 190, h: 78, text: "Session full?" },
     { id: "n5",  kind: "step",     x: COL.b, y: row(3), w: 190, h: 66, text: "Added to waitlist", actor: "System" },
 
@@ -60,8 +65,10 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
     // The rule that makes the form branch: the institution question only
     // appears for someone who is not already a BHN trainee.
     { id: "e2c", from: "n3b", to: "n3c", when: { field: "trainee", op: "is", value: "No" }, label: "not a trainee" },
+    { id: "e2d", from: "n3c", to: "n3d" },
+    { id: "e2e", from: "n3d", to: "n3e" },
     { id: "e3",  from: "n3b", to: "n4", when: { field: "trainee", op: "is", value: "Yes" }, label: "trainee" },
-    { id: "e3b", from: "n3c", to: "n4" },
+    { id: "e3b", from: "n3e", to: "n4" },
     { id: "e4",  from: "n4",  to: "n5",  label: "yes" },
     { id: "e5",  from: "n4",  to: "n6",  label: "no" },
     { id: "e6",  from: "n6",  to: "n11", label: "yes" },

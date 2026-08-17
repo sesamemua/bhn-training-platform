@@ -12,7 +12,18 @@ import { useMemo } from "react";
 import { CircleAlert } from "lucide-react";
 import { missingRequired, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import {
+  ACADEMIC_INSTITUTIONS,
+  COMPANY_TYPES,
+  HEALTH_ORGANISATIONS,
+  isPlaceholder,
+  withOther,
+} from "@/lib/flowchart/institutions";
+import {
   EMPTY_AFFILIATION,
+  EMPTY_CONTACT,
+  EMPTY_ORG,
+  type Contact,
+  type OrgEntry,
   ORG_TYPES,
   OTHER,
   ROLES,
@@ -120,6 +131,18 @@ function Field({
   const s = typeof value === "string" ? value : "";
   const arr = Array.isArray(value) ? (value as string[]).filter((x) => typeof x === "string") : [];
 
+  if (type === "contact") {
+    const c = (value && typeof value === "object" && !Array.isArray(value)
+      ? (value as unknown as Contact)
+      : EMPTY_CONTACT) as Contact;
+    return <ContactBlock value={c} onChange={(v) => onChange(v as unknown as AnswerValue)} />;
+  }
+  if (type === "academic" || type === "health" || type === "company") {
+    const o = (value && typeof value === "object" && !Array.isArray(value)
+      ? (value as unknown as OrgEntry)
+      : EMPTY_ORG) as OrgEntry;
+    return <OrgBlock scope={type} value={o} onChange={(v) => onChange(v as unknown as AnswerValue)} />;
+  }
   if (type === "affiliation") {
     const list = (Array.isArray(value) && typeof value[0] === "object"
       ? (value as Affiliation[])
@@ -299,6 +322,112 @@ function AffiliationList({
           {rows.filter(isComplete).length} affiliations recorded.
         </p>
       )}
+    </div>
+  );
+}
+
+const SUB =
+  "mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[12.5px] text-fg outline-none focus-visible:border-brand-500";
+
+/** Name, phone and email in one node — the details every registration needs. */
+function ContactBlock({
+  value,
+  onChange,
+}: {
+  value: Contact;
+  onChange: (v: Contact) => void;
+}) {
+  const set = (p: Partial<Contact>) => onChange({ ...value, ...p });
+  return (
+    <div className="mt-1.5 grid grid-cols-2 gap-2">
+      <input value={value.firstName} placeholder="First name" onChange={(e) => set({ firstName: e.target.value })} className={SUB} />
+      <input value={value.lastName} placeholder="Last name" onChange={(e) => set({ lastName: e.target.value })} className={SUB} />
+      <input type="email" value={value.email} placeholder="Email" onChange={(e) => set({ email: e.target.value })} className={`${SUB} col-span-2`} />
+      <input type="tel" value={value.phone ?? ""} placeholder="Phone (optional)" onChange={(e) => set({ phone: e.target.value })} className={`${SUB} col-span-2`} />
+    </div>
+  );
+}
+
+/**
+ * One organisation, picked from the standardised list for its kind.
+ *
+ * Academic, health and company are separate questions rather than one
+ * dropdown because a person can answer all three, and because the useful
+ * follow-up differs: a company needs its TYPE, a university does not.
+ */
+function OrgBlock({
+  scope,
+  value,
+  onChange,
+}: {
+  scope: "academic" | "health" | "company";
+  value: OrgEntry;
+  onChange: (v: OrgEntry) => void;
+}) {
+  const set = (p: Partial<OrgEntry>) => onChange({ ...value, ...p });
+  const list =
+    scope === "academic" ? ACADEMIC_INSTITUTIONS : scope === "health" ? HEALTH_ORGANISATIONS : [];
+  const needsList = scope !== "company";
+  const thin = needsList && isPlaceholder(list);
+
+  return (
+    <div className="mt-1.5 space-y-2">
+      {needsList ? (
+        <>
+          <select value={value.name} onChange={(e) => set({ name: e.target.value })} className={SUB}>
+            <option value="">
+              {scope === "academic" ? "Choose your institution…" : "Choose your hospital or network…"}
+            </option>
+            {withOther(list).map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {(value.name === OTHER || thin) && (
+            <input
+              value={value.nameOther ?? ""}
+              placeholder={scope === "academic" ? "Name your institution" : "Name your hospital or network"}
+              onChange={(e) => set({ name: OTHER, nameOther: e.target.value })}
+              className={SUB}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <input
+            value={value.nameOther ?? ""}
+            placeholder="Company name"
+            onChange={(e) => set({ name: OTHER, nameOther: e.target.value })}
+            className={SUB}
+          />
+          <select
+            value={value.companyType ?? ""}
+            onChange={(e) => set({ companyType: e.target.value })}
+            className={SUB}
+          >
+            <option value="">What kind of company?</option>
+            {COMPANY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          {value.companyType === OTHER && (
+            <input
+              value={value.companyTypeOther ?? ""}
+              placeholder="Describe the company"
+              onChange={(e) => set({ companyTypeOther: e.target.value })}
+              className={SUB}
+            />
+          )}
+        </>
+      )}
+
+      <input
+        value={value.department ?? ""}
+        placeholder={scope === "company" ? "Team (optional)" : "Department or lab (optional)"}
+        onChange={(e) => set({ department: e.target.value })}
+        className={SUB}
+      />
+      <input
+        value={value.role ?? ""}
+        placeholder="Your role there (optional)"
+        onChange={(e) => set({ role: e.target.value })}
+        className={SUB}
+      />
     </div>
   );
 }

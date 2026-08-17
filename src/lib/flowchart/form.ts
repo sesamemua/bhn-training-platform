@@ -11,14 +11,17 @@
  * can be tested directly rather than through a rendered form.
  */
 import type { ChartDoc, Condition, FlowNode } from "./types";
-import { codedOrgType, codedRole, isComplete, type Affiliation } from "./vocab";
+import { codedCompanyType, codedOrgName, codedOrgType, codedRole, isComplete, type Affiliation, type Contact, type OrgEntry } from "./vocab";
 
 /** An answer is text, a set of choices, or a list of affiliations. */
-export type AnswerValue = string | string[] | Affiliation[];
+export type AnswerValue = string | string[] | Affiliation[] | Contact | OrgEntry;
 export type Answers = Record<string, AnswerValue>;
 
 const isAffiliationList = (v: AnswerValue): v is Affiliation[] =>
   Array.isArray(v) && v.length > 0 && typeof v[0] === "object";
+
+const isRecord = (v: AnswerValue): v is Contact | OrgEntry =>
+  !!v && typeof v === "object" && !Array.isArray(v);
 
 /**
  * Flatten any answer to the strings a condition can match against.
@@ -34,6 +37,17 @@ const asArray = (v: AnswerValue | undefined): string[] => {
       .filter(isComplete)
       .flatMap((a) => [codedOrgType(a), codedRole(a), a.organisation.trim()])
       .filter(Boolean);
+  }
+  if (isRecord(v)) {
+    // A contact or a single organisation flattens to the values a rule
+    // could sensibly test: the org name, its company type, the role.
+    const o = v as Partial<OrgEntry> & Partial<Contact>;
+    return [
+      o.name ? codedOrgName(o as OrgEntry) : "",
+      o.companyType ? codedCompanyType(o as OrgEntry) : "",
+      o.role ?? "",
+      o.email ?? "",
+    ].filter(Boolean) as string[];
   }
   if (Array.isArray(v)) return v as string[];
   return v === "" ? [] : [v];
