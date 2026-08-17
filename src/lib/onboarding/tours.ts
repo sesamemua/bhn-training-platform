@@ -33,6 +33,17 @@ export interface TourStep {
 export const TOUR_VERSION = "2026.09.15a";
 
 export const TOUR_STEPS: TourStep[] = [
+  // ─── Newsletter production workflow
+  {
+    id: "workspace.newsletter.calendar",
+    title: "The newsletter plans itself",
+    body: "Workspace → Marketing → Newsletter now has three tabs. **Calendar** plans an issue a month — third week, never a Monday or Friday — and works every deadline backwards from the send day: two days for program leads to write, two to build and review. It schedules four reminders per issue, each set to either send itself or email you a ready-to-send copy. **Review** lets you click any headline or paragraph in the rendered issue to pin a note to it; the notes survive a re-layout. The final approval is recorded on the calendar, and only the approver sees the button.",
+    path: "/admin/workspace/marketing/newsletter/calendar",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open the calendar", href: "/admin/workspace/marketing/newsletter/calendar" },
+    since: "2026.09.17a",
+  },
   // ─── Workspace · Marketing → Merch
   {
     id: "workspace.merch",

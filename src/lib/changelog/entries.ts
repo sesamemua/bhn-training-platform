@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Newsletter production workflow
+  {
+    title: "Newsletter — a content calendar, chased deadlines, pinned review notes, and one sign-off",
+    body: "The newsletter workshop now has a production process around it, not just a place to paste text.\n\n**Calendar.** Plan any number of months ahead. Each issue lands in the third week on a Tuesday, Wednesday or Thursday — never a Monday or Friday — and every other date is worked backwards from the send day in business days: two days for the program leads to write, two to build and review. Statutory holidays are skipped automatically; if one lands on the send day the issue slips within the same week rather than onto a Friday. Re-planning never touches an issue that has already been approved or sent.\n\n**Reminders.** Four per cycle — drafts open, drafts due, approval needed, send day. Each is independently set to send itself or to email the coordinator a ready-to-send copy with the real recipients printed at the top, which is the default for the lead-facing chases: a nudge reads better from a person. Program leads are cc'd to the marketing lead on every one. Sending is claim-before-send, so a cron that runs twice cannot chase anyone twice.\n\n**Review.** Open the Review tab and click any headline, subhead or paragraph to pin a note to it. Notes anchor to the contribution and its wording rather than to a position in the markup, so they survive the AI layout being regenerated underneath them. Anyone on staff can resolve or reopen anyone's note; edits are attributed.\n\n**Approval.** One person has the final say. Their Approve control appears only for them, and the record keeps who approved, when, and any note they left.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Demo mode + migration-chain repairs
   {
     title: "Demo mode — a no-login portfolio deployment, and the migration chain now replays",

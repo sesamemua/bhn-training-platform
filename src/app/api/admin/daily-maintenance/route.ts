@@ -8,6 +8,10 @@
  *   GET  /api/admin/daily-maintenance   (Vercel cron sends GET)
  *
  * Composes
+ *   • newsletter reminders    — advances cycle statuses and sends any
+ *                                nudge whose day has arrived (folded in
+ *                                here rather than taking a third cron
+ *                                slot, which the plan does not allow)
  *   • sweepExpiredPhantoms()  — deletes any phantom user past TTL
  *   • runDailyMaintenance()   — expires credit grants past their
  *                                365-day TTL + sends 90/30/7-day
@@ -30,6 +34,9 @@
  * Auth: Vercel cron bearer secret OR admin session.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { advanceCycleStatuses } from "@/lib/newsletter/calendar";
+import { getNewsletterConfig } from "@/lib/newsletter/config";
+import { sweepDueReminders } from "@/lib/newsletter/reminders";
 import { requireRole } from "@/lib/auth";
 import { sweepExpiredPhantoms } from "@/lib/phantom";
 import { runDailyMaintenance } from "@/lib/credits/expiry";
@@ -57,7 +64,16 @@ async function handle(req: NextRequest) {
       notifications?: { notificationsSent: number; notificationsSkipped: number };
       error?: string;
     };
-  } = { phantoms: {}, credits: {} };
+    newsletter: {
+      activated?: number;
+      cycleSent?: number;
+      due?: number;
+      sent?: number;
+      skipped?: number;
+      failed?: number;
+      error?: string;
+    };
+  } = { phantoms: {}, credits: {}, newsletter: {} };
 
   try {
     const r = await sweepExpiredPhantoms();
@@ -71,6 +87,31 @@ async function handle(req: NextRequest) {
     results.credits = { sweep: r.sweep, notifications: r.notifications };
   } catch (err) {
     results.credits = { error: (err as Error).message };
+  }
+
+  try {
+    // Today in Toronto, not UTC: the cron fires at 06:00 UTC, which is
+    // still the previous evening locally, and a reminder scheduled for
+    // "the 14th" must not go out on the evening of the 13th.
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+    const config = await getNewsletterConfig();
+    const base = process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "";
+    const advanced = await advanceCycleStatuses(today);
+    const swept = await sweepDueReminders({
+      today,
+      config,
+      workshopUrl: `${base}/admin/workspace/marketing/newsletter`,
+    });
+    results.newsletter = {
+      activated: advanced.activated,
+      cycleSent: advanced.sent,
+      due: swept.due,
+      sent: swept.results.filter((r) => r.status === "sent").length,
+      skipped: swept.results.filter((r) => r.status === "skipped").length,
+      failed: swept.results.filter((r) => r.status === "failed").length,
+    };
+  } catch (err) {
+    results.newsletter = { error: (err as Error).message };
   }
 
   return NextResponse.json({

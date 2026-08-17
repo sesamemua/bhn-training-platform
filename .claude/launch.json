@@ -4,7 +4,19 @@
     {
       "name": "bhn-training-platform",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "bhn-demo-mode",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-lc",
+        "set -a; . /tmp/.demo-dev-env; set +a; exec npm run dev"
+      ],
       "port": 3001
     }
   ]

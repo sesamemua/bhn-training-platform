@@ -5669,7 +5669,8 @@ model NewsletterIssue {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  pieces NewsletterPiece[]
+  pieces   NewsletterPiece[]
+  comments NewsletterComment[]
 
   @@index([status, createdAt])
 }
@@ -5704,6 +5705,142 @@ model NewsletterPiece {
   issue NewsletterIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
 
   @@index([issueId, section, position])
+}
+
+/// One month of newsletter production. Created by the content calendar,
+/// which derives every date by walking backwards from the send date in
+/// business days (src/lib/newsletter/schedule.ts). Dates are plain
+/// calendar days, not timestamps: a production schedule is a human
+/// agreement about days, and storing instants invites an off-by-one
+/// every time the server and Toronto disagree about the date.
+model NewsletterCycle {
+  id               String  @id @default(cuid())
+  /// First day of the month this issue belongs to, "YYYY-MM-01".
+  /// Unique: one issue per month is the whole point of the calendar.
+  month            String  @unique
+  /// "YYYY-MM-DD" milestones, in the order they happen.
+  draftOpen        String
+  draftDue         String
+  buildStart       String
+  approvalDue      String
+  sendDate         String
+  /// True when a holiday pushed the send date off its configured weekday.
+  sendDateAdjusted Boolean @default(false)
+
+  /// planned | active | approved | sent | skipped
+  /// A cycle stays `planned` until its draft window opens, so a calendar
+  /// generated a year out is visibly provisional.
+  status String @default("planned")
+
+  /// The workshop issue this cycle produces, once one exists. Plain
+  /// column with no FK, matching NewsletterIssue.createdById — a cycle
+  /// is a calendar fact that outlives any issue row it points at.
+  issueId String?
+
+  /// Sign-off. The approver has the final say; we record that it
+  /// happened and nothing else. Name is snapshotted so the record still
+  /// reads correctly if the account is later renamed or removed.
+  approvedAt     DateTime?
+  approvedById   String?
+  approvedByName String?
+  approvalNote   String?
+
+  /// The schedule config used to plan this cycle, so a later config
+  /// change never silently rewrites history.
+  configSnapshot Json?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reminders NewsletterReminder[]
+
+  @@index([sendDate])
+  @@index([status, sendDate])
+}
+
+/// One scheduled nudge inside a cycle. The unique (cycleId, kind) pair is
+/// the idempotency key: the daily sweep claims a row by flipping status
+/// before it mails, so a cron that runs twice cannot send twice — the
+/// same claim-before-send discipline as OutreachSend.
+model NewsletterReminder {
+  id           String    @id @default(cuid())
+  cycleId      String
+  /// draft_request | draft_due | approval | send_day
+  kind         String
+  /// "YYYY-MM-DD" — the day this fires.
+  scheduledFor String
+  /// auto   — the platform emails the recipients itself.
+  /// manual — the platform emails only the coordinator a ready-to-send
+  ///          copy and they send it by hand.
+  mode         String    @default("manual")
+  /// pending | sent | skipped | failed
+  status       String    @default("pending")
+  /// Who it went to, snapshotted at send time so the record survives a
+  /// later change to the configured recipient list.
+  sentTo       String[]  @default([])
+  sentCc       String[]  @default([])
+  sentAt       DateTime?
+  /// Transport error from the last failed attempt, for the admin UI.
+  error        String?
+  /// Set when a human sent this reminder themselves rather than the cron.
+  sentById     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cycle NewsletterCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, kind])
+  @@index([status, scheduledFor])
+}
+
+/// A review note pinned to one element of the rendered newsletter.
+///
+/// Anchoring deliberately mirrors ScriptComment rather than the external
+/// page-review overlay's CSS path: the newsletter HTML is REGENERATED
+/// every time the AI layout re-runs, so a structural selector goes stale
+/// on every regenerate. A piece id plus the quoted text survives that,
+/// because the piece keeps its id and the wording usually keeps its text.
+/// cssPath is stored only as a last-resort fallback for locating a
+/// comment whose quote no longer appears.
+model NewsletterComment {
+  id          String  @id @default(cuid())
+  issueId     String
+  /// The NewsletterPiece the note is pinned to. Null for a note about
+  /// the issue as a whole (masthead, ordering, "this section is thin").
+  pieceId     String?
+  /// Verbatim text of the element that was clicked — the primary way a
+  /// comment finds its home again after a regenerate.
+  anchorQuote String?
+  /// Human label for the anchor ("Headline", "Paragraph 2", "CTA").
+  anchorLabel String?
+  /// Structural fallback, relative to the piece wrapper.
+  cssPath     String?
+
+  body   String
+  /// open | resolved
+  status String @default("open")
+
+  /// Author snapshot — a comment outlives the account that wrote it.
+  authorId     String?
+  authorName   String?
+  /// Who last edited, if anyone. The workspace is shared: anyone may
+  /// edit or delete anyone's note, and the record says who did.
+  editedById   String?
+  editedByName String?
+  editedAt     DateTime?
+
+  resolvedAt   DateTime?
+  resolvedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  issue NewsletterIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([issueId, status, createdAt])
+  @@index([issueId, pieceId])
 }
 
 // ── Website review ──────────────────────────────────────────────

@@ -40,6 +40,12 @@ export interface MailAttachment {
 
 export async function sendMail(opts: {
   to: string;
+  /** Visible copy recipients. A real cc, not a second send: the people
+   *  on it must SEE who else got the message — a program lead should be
+   *  able to tell their coordinator was copied. Accepts one address or a
+   *  list; empty entries are dropped so callers can pass an optional
+   *  address without branching. */
+  cc?: string | string[];
   subject: string;
   text: string;
   html?: string;
@@ -54,9 +60,13 @@ export async function sendMail(opts: {
   replyTo?: string;
 }) {
   const t = transporter();
+  const cc = (Array.isArray(opts.cc) ? opts.cc : opts.cc ? [opts.cc] : [])
+    .map((a) => a.trim())
+    .filter(Boolean);
   await t.sendMail({
     from: FROM,
     to: opts.to,
+    cc: cc.length ? cc : undefined,
     replyTo: opts.replyTo,
     subject: opts.subject,
     text: opts.text,

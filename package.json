@@ -22,7 +22,8 @@
     "test:merch": "tsx --test tests/unit/merch.test.ts",
     "test:demo": "tsx --test tests/unit/demo-mode.test.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
-    "deploy:demo": "bash scripts/deploy-demo.sh"
+    "deploy:demo": "bash scripts/deploy-demo.sh",
+    "test:newsletter": "tsx --test tests/unit/newsletter-schedule.test.ts tests/unit/newsletter-config.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

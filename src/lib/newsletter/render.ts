@@ -33,8 +33,8 @@ function safeUrl(u: string | undefined): string | null {
 
 const FONT = "Arial, Helvetica, sans-serif";
 
-function paragraph(text: string, last = false): string {
-  return `<p style="margin:0 0 ${last ? 0 : 16}px 0; font-family:${FONT}; font-size:15px; line-height:24px; color:#3a4a5c;">${esc(text)}</p>`;
+function paragraph(text: string, last = false, attrs = ""): string {
+  return `<p${attrs} style="margin:0 0 ${last ? 0 : 16}px 0; font-family:${FONT}; font-size:15px; line-height:24px; color:#3a4a5c;">${esc(text)}</p>`;
 }
 
 function divider(rule: string): string {
@@ -84,18 +84,27 @@ function button(label: string, url: string, solid: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td align="center" style="background-color:${solid}; background-image:linear-gradient(135deg, ${solid} 0%, ${solid} 100%); border-radius:30px;"><a href="${url}" target="_blank" style="display:inline-block; padding:14px 32px; font-family:${FONT}; font-size:15px; line-height:20px; color:#ffffff; text-decoration:none; font-weight:600; letter-spacing:0.3px;">${esc(label)} &rarr;</a></td></tr></tbody></table></td></tr></tbody></table>`;
 }
 
-function renderPiece(l: PieceLayout, s: Section, isLast: boolean): string {
+function renderPiece(l: PieceLayout, s: Section, isLast: boolean, pieceId?: string): string {
   const t = SECTION_THEME[s];
   const out: string[] = [];
+  // Review anchors. `data-nl-*` attributes are inert in every email
+  // client (unknown attributes are ignored) but give the in-app review
+  // layer a stable handle on each element. They are emitted only when a
+  // piece id is supplied, so the Mailchimp copy stays clean unless the
+  // caller asks for anchors.
+  const a = (label: string) =>
+    pieceId ? ` data-nl-piece="${esc(pieceId)}" data-nl-part="${esc(label)}"` : "";
   out.push(
-    `<h2 style="margin:0 0 ${l.subhead ? 4 : 14}px 0; font-family:${FONT}; font-size:24px; line-height:30px; color:#0b3558; font-weight:600; letter-spacing:-0.3px;">${esc(l.headline)}</h2>`,
+    `<h2${a("Headline")} style="margin:0 0 ${l.subhead ? 4 : 14}px 0; font-family:${FONT}; font-size:24px; line-height:30px; color:#0b3558; font-weight:600; letter-spacing:-0.3px;">${esc(l.headline)}</h2>`,
   );
   if (l.subhead) {
     out.push(
-      `<h3 style="margin:0 0 14px 0; font-family:${FONT}; font-size:16px; line-height:23px; color:#3a4a5c; font-weight:500; letter-spacing:-0.1px;">${esc(l.subhead)}</h3>`,
+      `<h3${a("Subhead")} style="margin:0 0 14px 0; font-family:${FONT}; font-size:16px; line-height:23px; color:#3a4a5c; font-weight:500; letter-spacing:-0.1px;">${esc(l.subhead)}</h3>`,
     );
   }
-  l.body.forEach((p, i) => out.push(paragraph(p, i === l.body.length - 1 && !l.glance && !l.people)));
+  l.body.forEach((p, i) =>
+    out.push(paragraph(p, i === l.body.length - 1 && !l.glance && !l.people, a(`Paragraph ${i + 1}`))),
+  );
   if (l.people?.length) out.push(peopleList(l.people, l.peopleLabel, t.accent));
   if (l.glance?.length) out.push(glanceCard(l.glance, t.accent));
   if (l.note) out.push(noteCard(l.note, l.noteBadge, t.accent));
@@ -110,10 +119,18 @@ export interface RenderIssueInput {
   preheader?: string | null;
   /** Pieces already grouped + ordered by the caller. */
   bySection: Record<Section, PieceLayout[]>;
+  /**
+   * NewsletterPiece ids, parallel to `bySection`, enabling review
+   * anchors. Omit for the Mailchimp export — the anchors are harmless in
+   * email but there is no reason to ship them — and supply for the
+   * in-app review preview, where they are what a comment pins to.
+   */
+  idsBySection?: Partial<Record<Section, string[]>>;
 }
 
 /** Build the Mailchimp code-block fragment for a whole issue. */
 export function renderIssue(input: RenderIssueInput): string {
+  const ids = input.idsBySection ?? {};
   const STRIP =
     "background-color:#011d57; background-image:linear-gradient(90deg, #0d6054 0%, #016e8f 50%, #011d57 100%);";
   const parts: string[] = [];
@@ -141,7 +158,9 @@ export function renderIssue(input: RenderIssueInput): string {
 
     parts.push(`<tr><td style="background-color:${t.solid}; background-image:${t.ribbon}; padding:22px 36px;" align="left"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td valign="middle"><p style="margin:0; font-family:${FONT}; font-size:26px; line-height:32px; color:#ffffff; font-weight:700; letter-spacing:1px;">${t.label} <span style="font-weight:400; font-size:14px; letter-spacing:1px; padding-left:6px; color:#ffffff;"> ${esc(t.tagline)}</span></p></td></tr></tbody></table></td></tr>`);
 
-    const inner = pieces.map((p, i) => renderPiece(p, s, i === pieces.length - 1)).join("\n");
+    const inner = pieces
+      .map((p, i) => renderPiece(p, s, i === pieces.length - 1, ids[s]?.[i]))
+      .join("\n");
     parts.push(`<tr><td style="padding:44px 44px 32px 44px;" align="left">${inner}</td></tr>`);
     parts.push(`<tr><td style="height:8px; line-height:8px; font-size:1px;">&nbsp;</td></tr>`);
   }

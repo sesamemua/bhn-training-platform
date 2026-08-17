@@ -12,6 +12,7 @@ import { requireRole, isStaff } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterClient } from "@/components/workspace/NewsletterClient";
+import { NewsletterNav } from "@/components/workspace/NewsletterNav";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,7 @@ export default async function NewsletterWorkshopPage() {
             : "Contribute an update for the next newsletter."
         }
       />
+      <NewsletterNav />
       <NewsletterClient initialIssue={initialIssue} canEdit={canEdit} />
     </div>
   );
