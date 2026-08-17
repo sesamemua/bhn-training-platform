@@ -31,6 +31,7 @@ import {
 } from "@/lib/newsletter/schedule";
 import type { NewsletterConfig } from "@/lib/newsletter/config";
 import { NewsletterMonthGrid, type LaneCycle } from "./NewsletterMonthGrid";
+import { ReminderSendDialog, type ReminderOverrides } from "./ReminderSendDialog";
 
 interface Reminder {
   id: string;
@@ -54,6 +55,15 @@ interface Cycle extends LaneCycle {
 const API = "/api/workspace/newsletter/calendar";
 
 const todayIso = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+
+const monthLabel = (iso: string) => {
+  const [y, m] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-CA", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+};
 
 const dayLabel = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -267,7 +277,9 @@ function CycleFooter({
   onAction: (payload: Record<string, unknown>, key: string) => Promise<unknown>;
 }) {
   const [open, setOpen] = useState(false);
-  const [confirming, setConfirming] = useState<string | null>(null);
+  /** Reminder whose send dialog is open. The dialog is the confirm step —
+   *  it shows the composed mail and its real recipients before sending. */
+  const [sendFor, setSendFor] = useState<string | null>(null);
 
   const sent = cycle.reminders.filter((r) => r.status === "sent").length;
   const failed = cycle.reminders.filter((r) => r.status === "failed").length;
@@ -308,7 +320,6 @@ function CycleFooter({
           {cycle.reminders.map((r) => {
             const label = REMINDER_LABEL[r.kind as ReminderKind] ?? r.kind;
             const working = busy === r.id;
-            const isConfirming = confirming === r.id;
             return (
               <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 text-[12.5px]">
                 <div className="min-w-0">
@@ -333,53 +344,30 @@ function CycleFooter({
 
                 {canEdit && (r.status === "pending" || r.status === "failed") && (
                   <div className="flex shrink-0 items-center gap-3">
-                    {isConfirming ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            setConfirming(null);
-                            onAction({ action: "sendReminder", reminderId: r.id }, r.id);
-                          }}
-                          disabled={working}
-                          className="text-[12px] font-semibold text-brand-300 hover:text-brand-200"
-                        >
-                          {working ? "Sending…" : "Yes, send"}
-                        </button>
-                        <button
-                          onClick={() => setConfirming(null)}
-                          className="text-[12px] text-subtle hover:text-fg"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => setConfirming(r.id)}
-                          disabled={working}
-                          className="text-[12px] font-semibold text-brand-400 hover:text-brand-200 disabled:opacity-50"
-                        >
-                          {r.status === "failed" ? "Try again" : "Send now"}
-                        </button>
-                        {r.status === "pending" && (
-                          <button
-                            onClick={() =>
-                              onAction(
-                                {
-                                  action: "setReminderMode",
-                                  reminderId: r.id,
-                                  mode: r.mode === "auto" ? "manual" : "auto",
-                                },
-                                r.id,
-                              )
-                            }
-                            disabled={working}
-                            className="text-[12px] text-muted hover:text-fg disabled:opacity-50"
-                          >
-                            {r.mode === "auto" ? "Let me send it" : "Send automatically"}
-                          </button>
-                        )}
-                      </>
+                    <button
+                      onClick={() => setSendFor(r.id)}
+                      disabled={working}
+                      className="text-[12px] font-semibold text-brand-400 hover:text-brand-200 disabled:opacity-50"
+                    >
+                      {working ? "Sending…" : r.status === "failed" ? "Try again" : "Review and send…"}
+                    </button>
+                    {r.status === "pending" && (
+                      <button
+                        onClick={() =>
+                          onAction(
+                            {
+                              action: "setReminderMode",
+                              reminderId: r.id,
+                              mode: r.mode === "auto" ? "manual" : "auto",
+                            },
+                            r.id,
+                          )
+                        }
+                        disabled={working}
+                        className="text-[12px] text-muted hover:text-fg disabled:opacity-50"
+                      >
+                        {r.mode === "auto" ? "Let me send it" : "Send automatically"}
+                      </button>
                     )}
                   </div>
                 )}
@@ -414,6 +402,20 @@ function CycleFooter({
           Moved off {WEEKDAY_LABEL[3]} — a holiday fell on the usual day.
         </p>
       )}
+
+      <ReminderSendDialog
+        open={sendFor !== null}
+        reminderId={sendFor}
+        monthLabel={monthLabel(cycle.month)}
+        sending={busy !== null && busy === sendFor}
+        onClose={() => setSendFor(null)}
+        onSend={async (overrides: ReminderOverrides) => {
+          const id = sendFor;
+          if (!id) return;
+          const res = await onAction({ action: "sendReminder", reminderId: id, overrides }, id);
+          if (res) setSendFor(null);
+        }}
+      />
     </div>
   );
 }

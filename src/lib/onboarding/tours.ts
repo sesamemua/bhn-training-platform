@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.15a";
+export const TOUR_VERSION = "2026.09.15b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "newsletter.review-and-send",
+    title: "See the reminder before it sends",
+    body: "On the newsletter calendar, a reminder's Send button now opens the real email first — rendered, with its actual recipients named and a banner telling you whether it goes to the leads or back to you to forward. Subject, To, Cc and the body can all be changed before you send.",
+    path: "/admin/workspace/marketing/newsletter/calendar",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the newsletter calendar", href: "/admin/workspace/marketing/newsletter/calendar" },
+    since: "2026.09.15b",
+  },
   {
     id: "workspace.flowcharts",
     title: "Draw the process",

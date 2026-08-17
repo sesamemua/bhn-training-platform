@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Newsletter reminders: read it before it sends
+  {
+    title: "Newsletter reminders — read and edit before sending",
+    body: "On the newsletter calendar, **Send now** has become **Review and send…**, which opens the actual email first. You see the full rendered message, who it really reaches, and a banner saying whether it goes straight to the program leads or comes back to you to forward. Subject, To, Cc and the body are all editable, and the preview re-renders as you type — so what you read is exactly what sends.\n\nThis also fixes a real trap: the per-reminder **Let me send it** / **Send automatically** toggle was only changing the label. Sending still followed the global default, so a chase you had claimed as your own could still go out to the leads from the platform. That toggle now decides what actually happens.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Flow charts drive a live form
   {
     title: "Flow charts now build the form beside them",
