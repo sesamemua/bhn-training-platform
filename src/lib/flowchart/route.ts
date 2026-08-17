@@ -162,6 +162,34 @@ export function toPath(points: Pt[], radius = 8): string {
   return d.join(" ");
 }
 
+/**
+ * Midpoint of the polyline plus the direction of travel there, so a label
+ * can be pushed perpendicular to the line instead of sitting on top of
+ * it. A plate drawn centred on the path punches a visible gap in the
+ * arrow — which reads as a disconnected line, not as a label.
+ */
+export function midpointWithDir(points: Pt[]): Pt & { dx: number; dy: number } {
+  const total = length(points);
+  let run = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1], b = points[i];
+    const seg = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    if (run + seg >= total / 2) {
+      const t = seg === 0 ? 0 : (total / 2 - run) / seg;
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      return {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        dx: (b.x - a.x) / len,
+        dy: (b.y - a.y) / len,
+      };
+    }
+    run += seg;
+  }
+  const last = points[points.length - 1];
+  return { ...last, dx: 1, dy: 0 };
+}
+
 /** Midpoint of the polyline, for placing a label. */
 export function midpoint(points: Pt[]): Pt {
   const total = length(points);

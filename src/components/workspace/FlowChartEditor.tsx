@@ -28,7 +28,7 @@ import {
   type NodeKind,
 } from "@/lib/flowchart/types";
 import { orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
-import { midpoint, routeEdge, toPath } from "@/lib/flowchart/route";
+import { midpointWithDir, routeEdge, toPath } from "@/lib/flowchart/route";
 import { FlowFormPreview } from "./FlowFormPreview";
 
 const GRID = 10;
@@ -102,7 +102,9 @@ export function FlowChartEditor({
     if (!canEdit) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // Capture is an optimisation, not a requirement: if the pointer id is
+    // not capturable the drag must still work rather than dying here.
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* keep dragging */ }
     dragRef.current = {
       id: n.id,
       dx: e.clientX - rect.left - n.x,
@@ -298,8 +300,20 @@ export function FlowChartEditor({
 
       {msg && <p className="mt-3 text-[12.5px] text-muted">{msg}</p>}
 
+      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-subtle">
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="26" height="6" aria-hidden><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" strokeWidth="1.5" className="text-brand-400" /></svg>
+          always follows
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="26" height="6" aria-hidden><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 4" className="text-brand-400" /></svg>
+          only when its rule matches
+        </span>
+        <span>Click an arrow to set or clear its rule.</span>
+      </p>
+
       {canEdit && (
-        <p className="mt-3 text-[12.5px] text-subtle">
+        <p className="mt-1.5 text-[12.5px] text-subtle">
           Drag a box to move it. {linkFrom
             ? "Now click the box the arrow should point to, or press Escape."
             : "Click Connect on a box, then click its target to draw an arrow."}
@@ -631,9 +645,12 @@ function Arrows({
         if (!a || !b) return null;
         const pts = routeEdge(a, b, doc.nodes);
         const d = toPath(pts);
-        const mid = midpoint(pts);
-        const mx = mid.x;
-        const my = mid.y;
+        const mid = midpointWithDir(pts);
+        // Push the label off the line along its perpendicular, so the
+        // plate behind it never covers the arrow it belongs to.
+        const off = 11;
+        const mx = mid.x + -mid.dy * off;
+        const my = mid.y + mid.dx * off;
         const on = selectedEdge === e.id;
         // A conditional arrow is dashed: the rule is visible on the chart,
         // not only in the inspector.
@@ -651,11 +668,14 @@ function Arrows({
                 <>
                   {/* a plate under the label so it never sits on the line */}
                   <rect
-                    x={mx - t.length * 2.9 - 4} y={my - 13} rx="3"
-                    width={t.length * 5.8 + 8} height="14"
+                    x={mx - t.length * 2.9 - 5} y={my - 7} rx="3"
+                    width={t.length * 5.8 + 10} height="14"
                     className="fill-card"
                   />
-                  <text x={mx} y={my - 3} textAnchor="middle" className="fill-current text-[10px] font-semibold">
+                  <text
+                    x={mx} y={my} dominantBaseline="middle" textAnchor="middle"
+                    className="fill-current text-[10px] font-semibold"
+                  >
                     {t}
                   </text>
                 </>
