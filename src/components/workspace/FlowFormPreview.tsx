@@ -54,9 +54,9 @@ export function FlowFormPreview({
   if (total === 0) {
     return (
       <p className="rounded-lg border border-dashed border-line px-4 py-10 text-center text-[12.5px] leading-relaxed text-muted">
-        Add a <strong className="text-fg">question</strong> box to the chart and it becomes a
-        field here. Put a condition on an arrow and the field below it only
-        appears when the answer matches.
+        This updates as you draw. Add a <strong className="text-fg">question</strong> box to
+        the chart and it appears here immediately; put a rule on an arrow and the
+        field below it only shows when the answer matches.
       </p>
     );
   }
@@ -64,7 +64,8 @@ export function FlowFormPreview({
   return (
     <div>
       <div className="flex items-baseline justify-between pb-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
+        <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand-400 motion-safe:animate-pulse" aria-hidden />
           Live form
         </p>
         <p className="text-[11.5px] text-subtle">

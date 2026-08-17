@@ -8,10 +8,17 @@
  * diagram) chosen from a handful of candidates, scored on how many boxes
  * it crosses first and how long it is second.
  *
+ * Crossing another ARROW is fine and not penalised — in a dense chart
+ * some lines have to cross, and forcing them apart costs more clarity
+ * than it buys. Crossing a BOX is what makes a chart unreadable, so that
+ * is what the scoring hunts down.
+ *
  * Deliberately not a full router: no A*, no channel packing. Candidates
  * are the shapes a person would draw by hand — straight across, an L in
- * either direction, or a Z that detours around the obstacle — which is
- * enough for charts of this size and stays predictable when a box moves.
+ * either direction, or a Z that detours around the obstacle — plus, when
+ * something is genuinely in the way, explicit detours around that box's
+ * four sides. Enough for charts of this size, and predictable when a box
+ * moves.
  */
 import type { FlowNode } from "./types";
 
@@ -125,6 +132,28 @@ export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
     for (const k of [0, -70, 70, -140, 140]) {
       candidates.push([a, a2, { x: a2.x, y: midY + k }, { x: b2.x, y: midY + k }, b2, b]);
       candidates.push([a, a2, { x: midX + k, y: a2.y }, { x: midX + k, y: b2.y }, b2, b]);
+    }
+  }
+
+  // If everything so far still hits something, try going round the
+  // offending box explicitly — over its top, under its bottom, or past
+  // either side — which is what a person does when a line is blocked.
+  const blocked = candidates.every((c) => crossings(simplify(c), obstacles) > 0);
+  if (blocked) {
+    for (const o of obstacles) {
+      const r = rectOf(o);
+      for (const [sa, sb] of sidePairs(from, to)) {
+        const a = anchor(from, sa);
+        const b = anchor(to, sb);
+        const a2 = stubOut(a, sa);
+        const b2 = stubOut(b, sb);
+        for (const lane of [r.y1 - STUB, r.y2 + STUB]) {
+          candidates.push([a, a2, { x: a2.x, y: lane }, { x: b2.x, y: lane }, b2, b]);
+        }
+        for (const lane of [r.x1 - STUB, r.x2 + STUB]) {
+          candidates.push([a, a2, { x: lane, y: a2.y }, { x: lane, y: b2.y }, b2, b]);
+        }
+      }
     }
   }
 

@@ -85,3 +85,32 @@ test("toPath emits a valid path and midpoint lands on the route", () => {
   const m = midpoint(pts);
   assert.ok(Number.isFinite(m.x) && Number.isFinite(m.y));
 });
+
+test("crossing another arrow is allowed — only boxes are avoided", () => {
+  // Two edges that must cross each other: a->d and b->c laid out as an X.
+  const a = node("a", 0, 0);
+  const b = node("b", 400, 0);
+  const c = node("c", 0, 400);
+  const d = node("d", 400, 400);
+  const all = [a, b, c, d];
+  const p1 = routeEdge(a, d, all);
+  const p2 = routeEdge(b, c, all);
+  // Neither route may clip the two boxes it does not connect…
+  assert.equal(crosses(p1, b), false);
+  assert.equal(crosses(p1, c), false);
+  assert.equal(crosses(p2, a), false);
+  assert.equal(crosses(p2, d), false);
+  // …and both still exist, i.e. the router did not refuse to draw them.
+  assert.ok(p1.length >= 2 && p2.length >= 2);
+});
+
+test("a wall of boxes still yields a box-free route", () => {
+  const from = node("from", 0, 0);
+  const to = node("to", 0, 600);
+  const wall = [node("w1", -200, 300), node("w2", 0, 300), node("w3", 200, 300)];
+  const all = [from, ...wall, to];
+  const pts = routeEdge(from, to, all);
+  for (const w of wall) {
+    assert.equal(crosses(pts, w), false, `route went through ${w.id}`);
+  }
+});

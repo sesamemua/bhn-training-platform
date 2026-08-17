@@ -356,7 +356,10 @@ export function FlowChartEditor({
         </div>
       </div>
 
-      <aside className="min-w-0 rounded-lg border border-line bg-card p-4">
+      {/* Sticky: the point of the pane is watching the form change as you
+          edit the chart, which only works if it stays on screen while you
+          scroll a canvas taller than the viewport. */}
+      <aside className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
         <FlowFormPreview
           doc={doc}
           answers={answers}
