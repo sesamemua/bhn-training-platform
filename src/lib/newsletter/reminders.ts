@@ -17,6 +17,7 @@
 import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { REMINDER_LABEL, type ReminderKind, type ReminderMode } from "./schedule";
+import { statHolidaysBetween } from "./calendar";
 import { leadRecipients, type NewsletterConfig } from "./config";
 
 const esc = (s: string) =>
@@ -61,9 +62,10 @@ function shell(
 // and Outlook strip <style> blocks, flexbox and grid, so this is built
 // the way HTML email has always been built.
 
-const CAL_DRAFT = "#fff2dc";
-const CAL_BUILD = "#e8f1f7";
+const CAL_DRAFT = "#fbe3b8";
+const CAL_BUILD = "#cfe3f0";
 const CAL_LINE = "#e5e9ee";
+const CAL_OFF = "#aab3bd";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const isoOf = (y: number, m: number, d: number) => `${y}-${pad2(m)}-${pad2(d)}`;
@@ -79,41 +81,113 @@ interface CycleDates {
   sendDate: string;
 }
 
-/** One month as a 7-column table, with the production window shaded. */
-function monthGrid(monthIso: string, cycle: CycleDates): string {
+type Phase = "draft" | "build" | "send";
+
+/** Bar colours and the wording drawn ON the bar — no legend to decode. */
+const PHASE_STYLE: Record<Phase, { bg: string; fg: string; long: string; short: string }> = {
+  draft: { bg: CAL_DRAFT, fg: INK, long: "Drafts", short: "Draft" },
+  build: { bg: CAL_BUILD, fg: INK, long: "Build + review", short: "Review" },
+  send: { bg: BRAND, fg: "#ffffff", long: "Issue sends", short: "Sends" },
+};
+
+const isWeekend = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return wd === 0 || wd === 6;
+};
+
+/**
+ * Which phase a day belongs to — or none.
+ *
+ * Weekends and holidays are never part of a window. The schedule counts
+ * business days, so a draft window that reads Thu→Mon is two working
+ * days, not five; shading the weekend would tell the leads they were
+ * expected to write through it.
+ */
+function phaseOf(day: string, cycle: CycleDates, holidays: Set<string>): Phase | null {
+  if (day === cycle.sendDate) return "send";
+  if (isWeekend(day) || holidays.has(day)) return null;
+  if (within(day, cycle.buildStart, cycle.approvalDue)) return "build";
+  if (within(day, cycle.draftOpen, cycle.draftDue)) return "draft";
+  return null;
+}
+
+/**
+ * One month: a row of day numbers per week, and under it a row of bars
+ * that span consecutive days of the same phase in one piece. Runs are
+ * merged with colspan so a two-day window reads as one bar rather than
+ * two shaded squares — the calendar convention for a multi-day event.
+ */
+function monthGrid(monthIso: string, cycle: CycleDates, holidays: Set<string>): string {
   const [y, m] = monthIso.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
   const total = new Date(Date.UTC(y, m, 0)).getUTCDate();
 
-  const cell = (inner: string, style: string) =>
-    `<td align="center" style="width:14.28%;padding:0;">` +
-    `<div style="margin:1px;height:30px;line-height:30px;font-size:12px;${style}">${inner}</div></td>`;
-  const blank = () => cell("&nbsp;", `color:${MUTED};`);
-
-  const cells: string[] = [];
-  for (let i = 0; i < firstWeekday; i++) cells.push(blank());
+  // Flat list of 7-day weeks; null = padding outside the month.
+  const days: ({ n: number; iso: string; phase: Phase | null; off: boolean } | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) days.push(null);
   for (let d = 1; d <= total; d++) {
-    const day = isoOf(y, m, d);
-    let style = `color:${INK};border-radius:5px;`;
-    if (day === cycle.sendDate) {
-      style = `color:#ffffff;background:${BRAND};font-weight:700;border-radius:5px;`;
-    } else if (within(day, cycle.buildStart, cycle.approvalDue)) {
-      style = `color:${INK};background:${CAL_BUILD};border-radius:5px;`;
-    } else if (within(day, cycle.draftOpen, cycle.draftDue)) {
-      style = `color:${INK};background:${CAL_DRAFT};border-radius:5px;`;
-    }
-    cells.push(cell(String(d), style));
+    const iso = isoOf(y, m, d);
+    days.push({
+      n: d,
+      iso,
+      phase: phaseOf(iso, cycle, holidays),
+      off: isWeekend(iso) || holidays.has(iso),
+    });
   }
-  while (cells.length % 7 !== 0) cells.push(blank());
+  while (days.length % 7 !== 0) days.push(null);
 
   const rows: string[] = [];
-  for (let i = 0; i < cells.length; i += 7) rows.push(`<tr>${cells.slice(i, i + 7).join("")}</tr>`);
+  for (let w = 0; w < days.length; w += 7) {
+    const week = days.slice(w, w + 7);
+
+    // Day numbers. Non-working days are greyed so "weekends don't count"
+    // is visible even in a week with no bar over it.
+    const numbers = week
+      .map((c) =>
+        `<td align="center" style="width:14.28%;padding:2px 0 0;font-size:12px;` +
+        `color:${!c ? "transparent" : c.off ? CAL_OFF : INK};">${c ? c.n : "&nbsp;"}</td>`,
+      )
+      .join("");
+
+    // Bars, merging consecutive same-phase days into one colspan cell.
+    const bars: string[] = [];
+    let i = 0;
+    while (i < 7) {
+      const p = week[i]?.phase ?? null;
+      if (!p) {
+        bars.push(`<td style="padding:0;">&nbsp;</td>`);
+        i++;
+        continue;
+      }
+      let j = i;
+      while (j < 7 && week[j]?.phase === p) j++;
+      const span = j - i;
+      const s = PHASE_STYLE[p];
+      const label = span >= 3 ? s.long : span === 2 ? s.long : s.short;
+      bars.push(
+        `<td colspan="${span}" style="padding:0;">` +
+          `<div style="margin:1px;height:18px;line-height:18px;border-radius:4px;overflow:hidden;` +
+          `background:${s.bg};color:${s.fg};font-size:9px;font-weight:700;letter-spacing:0.3px;` +
+          `text-align:center;white-space:nowrap;">${esc(label)}</div></td>`,
+      );
+      i = j;
+    }
+
+    const hasBar = week.some((c) => c?.phase);
+    rows.push(`<tr>${numbers}</tr>`);
+    rows.push(
+      hasBar
+        ? `<tr>${bars.join("")}</tr>`
+        : `<tr><td colspan="7" style="padding:0;height:5px;"></td></tr>`,
+    );
+  }
 
   const head = ["S", "M", "T", "W", "T", "F", "S"]
     .map(
-      (d) =>
+      (d, i) =>
         `<th align="center" style="width:14.28%;padding:0 0 4px;font-size:10px;font-weight:700;` +
-        `letter-spacing:0.6px;text-transform:uppercase;color:${MUTED};">${d}</th>`,
+        `letter-spacing:0.6px;color:${i === 0 || i === 6 ? CAL_OFF : MUTED};">${d}</th>`,
     )
     .join("");
 
@@ -125,8 +199,8 @@ function monthGrid(monthIso: string, cycle: CycleDates): string {
   );
 }
 
-/** The grid(s) plus a legend, as one block for the email body. */
-function calendarBlock(cycle: CycleDates): string {
+/** The grid(s) as one block for the email body. */
+function calendarBlock(cycle: CycleDates, holidays: Set<string>): string {
   // Normally every milestone sits inside the issue month; a holiday shift
   // can pull the draft window back into the previous one, so render each
   // month that is actually touched rather than assuming one.
@@ -135,22 +209,11 @@ function calendarBlock(cycle: CycleDates): string {
       .map((d) => `${d.slice(0, 7)}-01`),
   )].sort();
 
-  const swatch = (bg: string, label: string, white = false) =>
-    `<span style="display:inline-block;margin:0 14px 0 0;font-size:11px;color:${MUTED};white-space:nowrap;">` +
-    `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${bg};` +
-    (white ? "" : `border:1px solid ${CAL_LINE};`) +
-    `vertical-align:-1px;margin-right:5px;"></span>${esc(label)}</span>`;
-
   return (
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
     `style="margin:2px 0 16px;border:1px solid ${CAL_LINE};border-radius:10px;background:#fbfcfd;">` +
     `<tbody><tr><td style="padding:14px 16px 12px;">` +
-    months.map((mo) => monthGrid(mo, cycle)).join(`<div style="height:14px;"></div>`) +
-    `<div style="padding:12px 0 0;">` +
-    swatch(CAL_DRAFT, "Drafts open → due") +
-    swatch(CAL_BUILD, "Build + review") +
-    swatch(BRAND, "Issue goes out", true) +
-    `</div>` +
+    months.map((mo) => monthGrid(mo, cycle, holidays)).join(`<div style="height:14px;"></div>`) +
     `</td></tr></tbody></table>`
   );
 }
@@ -163,6 +226,7 @@ function calendarText(cycle: CycleDates): string {
     `  Build starts  ${longDate(cycle.buildStart)}`,
     `  Approval due  ${longDate(cycle.approvalDue)}`,
     `  ISSUE SENDS   ${longDate(cycle.sendDate)}`,
+    `  (working days only — weekends and holidays excluded)`,
   ].join("\n");
 }
 
@@ -217,6 +281,8 @@ export interface ComposedReminder {
   /** The cycle this is about, so the calendar can be re-rendered after
    *  the prose is edited without the edit dropping the grid. */
   cycle: CycleDates;
+  /** Non-working days folded into the grid, as "YYYY-MM-DD". */
+  holidays: string[];
 }
 
 /** What an admin may change in the send dialog before the mail goes out. */
@@ -239,9 +305,15 @@ export function renderReminder(parts: {
   paras: string[];
   cta?: { label: string; url: string };
   cycle: CycleDates;
+  holidays: string[];
 }): { html: string; text: string } {
   return {
-    html: shell(parts.heading, parts.paras.map(inlineHtml), parts.cta, calendarBlock(parts.cycle)),
+    html: shell(
+      parts.heading,
+      parts.paras.map(inlineHtml),
+      parts.cta,
+      calendarBlock(parts.cycle, new Set(parts.holidays)),
+    ),
     text:
       `${parts.heading}\n\n` +
       parts.paras.map(inlineText).join("\n\n") +
@@ -256,6 +328,25 @@ export function composeReminder(ctx: ReminderContext): ComposedReminder {
   const month = monthLabel(cycle.month);
   const leads = leadRecipients(config);
 
+  // Non-working days for every month the cycle touches. Computed rather
+  // than configured, matching how the planner decides the dates in the
+  // first place — the grid and the schedule agree by construction.
+  const first = [cycle.draftOpen, cycle.sendDate].sort()[0];
+  const holidays = [
+    ...new Set([
+      ...config.schedule.holidays,
+      ...(config.useStatHolidays ? statHolidaysBetween(`${first.slice(0, 7)}-01`, 2) : []),
+    ]),
+  ];
+
+  /** The coordinator is copied on anything they are not already on, so
+   *  the person running the cycle always has a record of what went out. */
+  const withCoordinator = (to: string[], cc: string[]) => {
+    const coord = config.coordinator.email;
+    const has = (list: string[]) => list.some((e) => e.toLowerCase() === coord.toLowerCase());
+    return has(to) || has(cc) ? cc : [...cc, coord];
+  };
+
   const build = (p: {
     subject: string;
     heading: string;
@@ -265,8 +356,10 @@ export function composeReminder(ctx: ReminderContext): ComposedReminder {
     cc: string[];
   }): ComposedReminder => ({
     ...p,
+    cc: withCoordinator(p.to, p.cc),
     cycle,
-    ...renderReminder({ heading: p.heading, paras: p.paras, cta: p.cta, cycle }),
+    holidays,
+    ...renderReminder({ heading: p.heading, paras: p.paras, cta: p.cta, cycle, holidays }),
   });
 
   switch (ctx.kind) {
@@ -341,7 +434,13 @@ export function applyOverrides(
     to: o.to?.length ? o.to : base.to,
     cc: o.cc ?? base.cc,
     paras,
-    ...renderReminder({ heading: base.heading, paras, cta: base.cta, cycle: base.cycle }),
+    ...renderReminder({
+      heading: base.heading,
+      paras,
+      cta: base.cta,
+      cycle: base.cycle,
+      holidays: base.holidays,
+    }),
   };
 }
 
