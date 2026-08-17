@@ -26,13 +26,48 @@ dig +short TXT google._domainkey.biohubnet.ca
 dig +short TXT _dmarc.biohubnet.ca
 ```
 
-**Still worth confirming once:** a published DKIM record does not prove
-signing is switched **on** — that is the separate "Start authentication"
-button in the Workspace admin console. The only proof is a real message:
-send one via Admin → System status → test email and check the received
-headers for `dkim=pass header.d=biohubnet.ca` and `spf=pass`. Gmail shows
-this under "Show original"; Outlook under "View message source"
-(`Authentication-Results:`).
+### ⚠️ DKIM is published but NOT switched on — verified 2026-08-17
+
+A test message sent through the platform (Admin → System status) to an
+external Outlook mailbox came back with:
+
+```
+Authentication-Results: spf=pass (sender IP is 209.85.160.173)
+ smtp.mailfrom=biohubnet.ca; dkim=pass (signature was verified)
+ header.d=biohubnet-ca.20251104.gappssmtp.com; dmarc=pass action=none
+ header.from=biohubnet.ca; compauth=pass reason=100
+
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=biohubnet-ca.20251104.gappssmtp.com; s=20251104;
+```
+
+Read that carefully — `dkim=pass` is **not** the win it looks like. The
+signing domain is Google's shared default key
+(`…gappssmtp.com`), not the `google` selector published at
+`google._domainkey.biohubnet.ca`. The record is in DNS but dormant:
+nobody pressed **Start authentication** in the admin console, so the
+domain's own key has never signed a message.
+
+Consequence: DKIM does **not** align with `biohubnet.ca`, so DMARC is
+currently passing on the strength of SPF alone. That works for direct
+delivery, but SPF breaks on any forwarding (mailing lists, `@utoronto.ca`
+auto-forwards to a personal address — common in exactly this audience),
+and with no aligned DKIM to fall back on, those forwarded copies fail
+DMARC.
+
+**The fix is one click**, since the DNS is already correct: Workspace
+Admin → Apps → Google Workspace → Gmail → Authenticate email → select
+`biohubnet.ca` → **Start authentication**. Re-send the test afterwards
+and expect `header.d=biohubnet.ca`.
+
+What already works, same test:
+
+| Check | Result |
+|---|---|
+| Delivery | Inbox, not Junk (`compauth=pass reason=100`) |
+| SPF | `spf=pass`, aligned (`smtp.mailfrom=biohubnet.ca`) |
+| DMARC | `dmarc=pass` — via SPF alignment only |
+| From line | `BHN Training <info@biohubnet.ca>` — Gmail did **not** rewrite it, so `SMTP_FROM`/`SMTP_USER` are set correctly |
 
 DNS is on Cloudflare (`davina`/`jaime.ns.cloudflare.com`), so all of this is
 editable by whoever holds that account.
@@ -53,7 +88,7 @@ v=spf1 include:_spf.google.com ~all
 Two separate SPF records is a permanent fail — if one already exists, merge the
 `include:` into it rather than adding a second.
 
-### 2. Turn on Workspace DKIM — blocking · ✅ RECORD PUBLISHED 2026-08-16 (confirm signing via headers)
+### 2. Turn on Workspace DKIM — ⚠️ RECORD PUBLISHED, SIGNING STILL OFF (see above)
 
 Google Workspace Admin → **Apps → Google Workspace → Gmail → Authenticate
 email**. Generate a 2048-bit key, publish the TXT record it gives you at
