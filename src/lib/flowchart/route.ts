@@ -13,6 +13,11 @@
  * than it buys. Crossing a BOX is what makes a chart unreadable, so that
  * is what the scoring hunts down.
  *
+ * Shape: a clear shot is drawn as a STRAIGHT line, and anything that has
+ * to get out of the way is drawn as one SMOOTH curve through its
+ * waypoints. Right-angled staircases were correct and ugly — a chart
+ * full of them reads as wonky rather than as deliberate.
+ *
  * Deliberately not a full router: no A*, no channel packing. Candidates
  * are the shapes a person would draw by hand — straight across, an L in
  * either direction, or a Z that detours around the obstacle — plus, when
@@ -113,6 +118,13 @@ function sidePairs(from: FlowNode, to: FlowNode): [Side, Side][] {
  */
 export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
   const obstacles = all.filter((n) => n.id !== from.id && n.id !== to.id);
+
+  // A clear shot needs no routing at all. Straight beats a curve, and a
+  // curve beats a staircase — so try them in that order.
+  const ac = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
+  const bc = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
+  const straight = [edgePointOf(ac, bc, from), edgePointOf(bc, ac, to)];
+  if (crossings(straight, obstacles) === 0) return straight;
   const candidates: Pt[][] = [];
 
   for (const [sa, sb] of sidePairs(from, to)) {
@@ -168,26 +180,46 @@ export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
   return simplify(best);
 }
 
-/** The polyline as an SVG path, with softly rounded corners. */
-export function toPath(points: Pt[], radius = 8): string {
+/** Where the straight line between two centres meets a box's edge. */
+function edgePointOf(from: Pt, to: Pt, box: FlowNode): Pt {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (dx === 0 && dy === 0) return from;
+  const hw = box.w / 2 + 4;
+  const hh = box.h / 2 + 4;
+  const scale = Math.min(
+    dx === 0 ? Infinity : hw / Math.abs(dx),
+    dy === 0 ? Infinity : hh / Math.abs(dy),
+  );
+  return { x: from.x + dx * scale, y: from.y + dy * scale };
+}
+
+/**
+ * The route as an SVG path: a straight segment when there are only two
+ * points, otherwise one continuous curve through the waypoints.
+ *
+ * The curve is a Catmull-Rom spline converted to cubic beziers, which
+ * passes exactly through every waypoint — so the line still goes where
+ * the router put it to miss the boxes, it just arrives smoothly instead
+ * of turning square corners.
+ */
+export function toPath(points: Pt[], tension = 0.5): string {
   if (points.length < 2) return "";
-  const d: string[] = [`M ${points[0].x} ${points[0].y}`];
-  for (let i = 1; i < points.length - 1; i++) {
-    const p = points[i], prev = points[i - 1], next = points[i + 1];
-    const r = Math.min(
-      radius,
-      Math.abs(p.x - prev.x) / 2 || radius,
-      Math.abs(p.y - prev.y) / 2 || radius,
-      Math.abs(next.x - p.x) / 2 || radius,
-      Math.abs(next.y - p.y) / 2 || radius,
-    );
-    const inX = Math.sign(p.x - prev.x), inY = Math.sign(p.y - prev.y);
-    const outX = Math.sign(next.x - p.x), outY = Math.sign(next.y - p.y);
-    d.push(`L ${p.x - inX * r} ${p.y - inY * r}`);
-    d.push(`Q ${p.x} ${p.y} ${p.x + outX * r} ${p.y + outY * r}`);
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
   }
-  const last = points[points.length - 1];
-  d.push(`L ${last.x} ${last.y}`);
+
+  const d: string[] = [`M ${points[0].x} ${points[0].y}`];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+    const k = tension / 3;
+    const c1 = { x: p1.x + (p2.x - p0.x) * k, y: p1.y + (p2.y - p0.y) * k };
+    const c2 = { x: p2.x - (p3.x - p1.x) * k, y: p2.y - (p3.y - p1.y) * k };
+    d.push(`C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${p2.x} ${p2.y}`);
+  }
   return d.join(" ");
 }
 

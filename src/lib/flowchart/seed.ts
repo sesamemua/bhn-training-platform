@@ -8,7 +8,7 @@
  */
 import type { ChartDoc } from "./types";
 
-const COL = { a: 40, b: 300, c: 560, d: 820 };
+const COL = { a: 40, b: 300, c: 560, d: 820, e: 1080, f: 1340 };
 const row = (n: number) => 40 + n * 110;
 
 export const TRAINING_WEEK_FLOW: ChartDoc = {
@@ -29,6 +29,36 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
       field: { key: "health", type: "health", help: "Leave blank if none." } },
     { id: "n3e", kind: "question", x: COL.d, y: row(3), w: 190, h: 78, text: "Company",
       field: { key: "company", type: "company", help: "Leave blank if none." } },
+    // ── carried over from the 2025 Symposium Luma form ──────────────
+    { id: "q_cat",  kind: "question", x: COL.e, y: row(0), w: 190, h: 66, text: "Which best describes you?",
+      field: { key: "category", type: "choice", required: true,
+        options: ["Industry", "Academia", "Government", "Other"] } },
+    { id: "q_role", kind: "question", x: COL.f, y: row(0), w: 190, h: 66, text: "Position title",
+      field: { key: "position_title", type: "text", required: true } },
+    { id: "q_li",   kind: "question", x: COL.e, y: row(1), w: 190, h: 66, text: "LinkedIn profile",
+      field: { key: "linkedin", type: "text", help: "Optional." } },
+    { id: "q_exp",  kind: "question", x: COL.f, y: row(1), w: 190, h: 78, text: "Area of expertise or interest",
+      field: { key: "expertise", type: "multi", required: true,
+        options: ["R & D", "QA/QC", "Manufacturing", "Clinical Operations", "Regulatory Affairs",
+                  "Medical Affairs", "Business Development", "Other"] } },
+    { id: "q_stat", kind: "question", x: COL.e, y: row(2), w: 190, h: 78, text: "Current status",
+      field: { key: "trainee_status", type: "choice", help: "Trainees only.",
+        options: ["Master's Student", "PhD Student", "Post-doctoral Fellow",
+                  "Research Associate", "Laboratory Technician", "Other"] } },
+    { id: "q_prog", kind: "question", x: COL.f, y: row(2), w: 190, h: 78, text: "BioHubNet programs you are in",
+      field: { key: "bhn_programs", type: "multi", help: "Trainees only.",
+        options: ["ENGAGE", "EXPERIENCE", "EQUIP"] } },
+    { id: "q_trav", kind: "question", x: COL.e, y: row(3), w: 190, h: 78, text: "Travel origin, if you need support",
+      field: { key: "travel_origin", type: "text",
+        help: "Trainees only, subject to approval — city/town you would travel from." } },
+    { id: "q_diet", kind: "question", x: COL.f, y: row(3), w: 190, h: 66, text: "Dietary requirements or allergies",
+      field: { key: "dietary", type: "text", help: "Leave blank if none." } },
+    { id: "q_news", kind: "question", x: COL.e, y: row(4), w: 190, h: 66, text: "Join the BioHubNet newsletter",
+      field: { key: "newsletter_optin", type: "yesno" } },
+    { id: "q_photo", kind: "question", x: COL.f, y: row(4), w: 190, h: 78, text: "Photo and video consent",
+      field: { key: "media_consent", type: "yesno", required: true,
+        help: "BioHubNet may capture photographs and video and use them for promotional purposes." } },
+
     { id: "n4",  kind: "decision", x: COL.a, y: row(3), w: 190, h: 78, text: "Session full?" },
     { id: "n5",  kind: "step",     x: COL.b, y: row(3), w: 190, h: 66, text: "Added to waitlist", actor: "System" },
 
@@ -68,7 +98,17 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
     { id: "e2c", from: "n3b", to: "n3c" },
     { id: "e2d", from: "n3c", to: "n3d" },
     { id: "e2e", from: "n3d", to: "n3e" },
-    { id: "e3b", from: "n3e", to: "n4" },
+    { id: "e3b", from: "n3e", to: "q_cat" },
+    { id: "eq1", from: "q_cat",  to: "q_role" },
+    { id: "eq2", from: "q_role", to: "q_li" },
+    { id: "eq3", from: "q_li",   to: "q_exp" },
+    { id: "eq4", from: "q_exp",  to: "q_stat" },
+    { id: "eq5", from: "q_stat", to: "q_prog" },
+    { id: "eq6", from: "q_prog", to: "q_trav" },
+    { id: "eq7", from: "q_trav", to: "q_diet" },
+    { id: "eq8", from: "q_diet", to: "q_news" },
+    { id: "eq9", from: "q_news", to: "q_photo" },
+    { id: "eq10", from: "q_photo", to: "n4" },
     { id: "e4",  from: "n4",  to: "n5",  label: "yes" },
     { id: "e5",  from: "n4",  to: "n6",  label: "no" },
     { id: "e6",  from: "n6",  to: "n11", label: "yes" },

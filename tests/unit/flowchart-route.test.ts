@@ -49,30 +49,37 @@ test("every arrow in the seeded Training Week chart clears every other box", () 
   assert.deepEqual(offenders, [], offenders.join("; "));
 });
 
-test("routes are orthogonal — every segment is horizontal or vertical", () => {
-  const { nodes, edges } = TRAINING_WEEK_FLOW;
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  for (const e of edges) {
-    const a = byId.get(e.from), b = byId.get(e.to);
-    if (!a || !b) continue;
-    const pts = routeEdge(a, b, nodes);
-    for (let i = 1; i < pts.length; i++) {
-      const dx = Math.abs(pts[i].x - pts[i - 1].x);
-      const dy = Math.abs(pts[i].y - pts[i - 1].y);
-      assert.ok(dx < 0.5 || dy < 0.5, `${e.id} has a diagonal segment`);
-    }
-  }
-});
-
-test("a route always starts and ends on the box edges it connects", () => {
+test("a clear shot is a straight line, not a staircase", () => {
   const a = node("a", 0, 0);
   const b = node("b", 400, 300);
   const pts = routeEdge(a, b, [a, b]);
-  const onEdge = (p: { x: number; y: number }, n: FlowNode) =>
-    (Math.abs(p.x - n.x) < 1 || Math.abs(p.x - (n.x + n.w)) < 1 ||
-     Math.abs(p.y - n.y) < 1 || Math.abs(p.y - (n.y + n.h)) < 1);
-  assert.ok(onEdge(pts[0], a), "start is not on the source box");
-  assert.ok(onEdge(pts[pts.length - 1], b), "end is not on the target box");
+  assert.equal(pts.length, 2, "nothing was in the way, so it should be one segment");
+  assert.ok(toPath(pts).startsWith("M "));
+  assert.ok(toPath(pts).includes(" L "), "a clear shot should be a plain line");
+  assert.ok(!toPath(pts).includes("C"), "a clear shot should not curve");
+});
+
+test("a blocked route curves rather than turning square corners", () => {
+  const from = node("a", 0, 0);
+  const blocker = node("b", 0, 200);
+  const to = node("c", 0, 400);
+  const pts = routeEdge(from, to, [from, blocker, to]);
+  assert.ok(pts.length > 2, "a detour needs waypoints");
+  assert.ok(toPath(pts).includes("C"), "a detour should render as a curve");
+  assert.equal(crosses(pts, blocker), false);
+});
+
+test("a route starts and ends just outside the boxes it connects", () => {
+  const a = node("a", 0, 0);
+  const b = node("b", 400, 300);
+  const pts = routeEdge(a, b, [a, b]);
+  const gap = (p: { x: number; y: number }, n: typeof a) => {
+    const dx = Math.max(n.x - p.x, 0, p.x - (n.x + n.w));
+    const dy = Math.max(n.y - p.y, 0, p.y - (n.y + n.h));
+    return Math.hypot(dx, dy);
+  };
+  assert.ok(gap(pts[0], a) <= 8, "start drifted away from its box");
+  assert.ok(gap(pts[pts.length - 1], b) <= 8, "end drifted away from its box");
 });
 
 test("toPath emits a valid path and midpoint lands on the route", () => {

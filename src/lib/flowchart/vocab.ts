@@ -131,3 +131,32 @@ export function describe(a: Affiliation): string {
   if (a.department?.trim()) bits.push(a.department.trim());
   return bits.filter(Boolean).join(" · ");
 }
+
+// ── carried over from the 2025 Symposium Luma registration ──────────
+// Verbatim option sets from last year's form, so the data stays
+// comparable year over year. The workshop/tour question is NOT here —
+// that changes every year and lives in the chart itself.
+
+export const CATEGORIES = ["Industry", "Academia", "Government", OTHER] as const;
+
+export const EXPERTISE_AREAS = [
+  "R & D",
+  "QA/QC",
+  "Manufacturing",
+  "Clinical Operations",
+  "Regulatory Affairs",
+  "Medical Affairs",
+  "Business Development",
+  OTHER,
+] as const;
+
+export const TRAINEE_STATUS = [
+  "Master's Student",
+  "PhD Student",
+  "Post-doctoral Fellow",
+  "Research Associate",
+  "Laboratory Technician",
+  OTHER,
+] as const;
+
+export const BHN_PROGRAMS = ["ENGAGE", "EXPERIENCE", "EQUIP"] as const;
