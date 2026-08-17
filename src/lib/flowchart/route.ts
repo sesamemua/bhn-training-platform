@@ -173,8 +173,10 @@ export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
   let bestScore = Infinity;
   for (const c of candidates) {
     const p = simplify(c);
-    // Crossing a box is far worse than being long: 1000 per hit.
-    const score = crossings(p, obstacles) * 1000 + length(p) + p.length * 4;
+    // Crossing a box is far worse than being long: 1000 per hit. Each
+    // extra bend costs 60px of detour, so a slightly longer line with one
+    // turn beats a shorter staircase with three.
+    const score = crossings(p, obstacles) * 1000 + length(p) + p.length * 60;
     if (score < bestScore) { bestScore = score; best = p; }
   }
   return simplify(best);
@@ -195,31 +197,46 @@ function edgePointOf(from: Pt, to: Pt, box: FlowNode): Pt {
 }
 
 /**
- * The route as an SVG path: a straight segment when there are only two
- * points, otherwise one continuous curve through the waypoints.
+ * The route as an SVG path: straight runs joined by small, evenly rounded
+ * corners.
  *
- * The curve is a Catmull-Rom spline converted to cubic beziers, which
- * passes exactly through every waypoint — so the line still goes where
- * the router put it to miss the boxes, it just arrives smoothly instead
- * of turning square corners.
+ * An earlier version drew one Catmull-Rom spline through every waypoint.
+ * It passed through the right places but bulged between them — a long
+ * segment either side of a turn produced a wide, swooping bend that reads
+ * as unnatural, because nothing in the chart is actually curving there.
+ * A fillet of a fixed small radius is what a person draws: the line is
+ * straight where it travels and only softens where it turns.
  */
-export function toPath(points: Pt[], tension = 0.5): string {
+export function toPath(points: Pt[], radius = 22): string {
   if (points.length < 2) return "";
   if (points.length === 2) {
     return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
   }
 
-  const d: string[] = [`M ${points[0].x} ${points[0].y}`];
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] ?? points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2] ?? p2;
-    const k = tension / 3;
-    const c1 = { x: p1.x + (p2.x - p0.x) * k, y: p1.y + (p2.y - p0.y) * k };
-    const c2 = { x: p2.x - (p3.x - p1.x) * k, y: p2.y - (p3.y - p1.y) * k };
-    d.push(`C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${p2.x} ${p2.y}`);
+  /** Step from `a` towards `b` by `d` pixels. */
+  const towards = (a: Pt, b: Pt, d: number): Pt => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const t = Math.min(1, d / len);
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  };
+  const f = (p: Pt) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+
+  const d: string[] = [`M ${f(points[0])}`];
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1], cur = points[i], next = points[i + 1];
+    // Never eat more than half of either neighbouring run, or two corners
+    // on a short segment would overlap and the line would kink.
+    const r = Math.min(
+      radius,
+      Math.hypot(cur.x - prev.x, cur.y - prev.y) / 2,
+      Math.hypot(next.x - cur.x, next.y - cur.y) / 2,
+    );
+    const a = towards(cur, prev, r);
+    const b = towards(cur, next, r);
+    d.push(`L ${f(a)}`);
+    d.push(`C ${f(cur)} ${f(cur)} ${f(b)}`);
   }
+  d.push(`L ${f(points[points.length - 1])}`);
   return d.join(" ");
 }
 

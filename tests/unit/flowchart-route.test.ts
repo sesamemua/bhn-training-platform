@@ -121,3 +121,25 @@ test("a wall of boxes still yields a box-free route", () => {
     assert.equal(crosses(pts, w), false, `route went through ${w.id}`);
   }
 });
+
+/**
+ * The registration flow is linear, so the seeded chart should read as a
+ * column. If it ever spreads out again the canvas grows past the pane and
+ * you have to scroll sideways to follow a process that only goes down.
+ */
+test("the seeded chart stays narrow enough not to scroll sideways", () => {
+  const right = Math.max(...TRAINING_WEEK_FLOW.nodes.map((n) => n.x + n.w));
+  assert.ok(right <= 620, `chart is ${right}px wide; it should stay within one pane`);
+  // At most two columns: the spine, plus the lane branches step out to.
+  const columns = new Set(TRAINING_WEEK_FLOW.nodes.map((n) => n.x));
+  assert.ok(columns.size <= 2, `expected a spine and one branch lane, got ${columns.size} columns`);
+});
+
+test("bends are small fillets, not wide swooping curves", () => {
+  // Two long runs meeting at a right angle: the corner should be softened
+  // by a few tens of pixels, and the rest of the line should stay straight.
+  const d = toPath([{ x: 0, y: 0 }, { x: 0, y: 400 }, { x: 400, y: 400 }]);
+  const first = d.match(/L ([\d.]+) ([\d.]+)/);
+  assert.ok(first, "the path should travel straight before it turns");
+  assert.ok(Number(first![2]) > 340, "the straight run should reach close to the corner");
+});

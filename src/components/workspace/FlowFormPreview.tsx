@@ -10,7 +10,7 @@
  */
 import { useMemo } from "react";
 import { CircleAlert } from "lucide-react";
-import { missingRequired, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
+import { missingRequired, orderedFields, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import {
   COMPANY_TYPES,
   OTHER as INST_OTHER,
@@ -52,7 +52,7 @@ export function FlowFormPreview({
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
   const missing = useMemo(() => missingRequired(doc, answers), [doc, answers]);
-  const total = doc.nodes.filter((n) => n.kind === "question" && n.field?.key).length;
+  const total = orderedFields(doc).length;
   const hidden = total - fields.length;
 
   if (total === 0) {
@@ -79,13 +79,13 @@ export function FlowFormPreview({
 
       <div className="space-y-4">
         {fields.map((f) => {
-          const def = f.node.field!;
+          const def = f.field;
           const val = answers[f.key];
           const isMissing = missing.some((m) => m.key === f.key);
           const lit = hoverNodes.includes(f.nodeId);
           return (
             <div
-              key={f.nodeId}
+              key={f.key}
               onMouseEnter={() => onHoverField?.(f.nodeId)}
               onMouseLeave={() => onHoverField?.(null)}
               // The tint is the same brand wash the box gets on the chart,
@@ -94,6 +94,13 @@ export function FlowFormPreview({
                 lit ? "bg-brand-500/10 ring-1 ring-brand-300/50" : ""
               }`}
             >
+              {/* A box holding several fields prints its own title once,
+                  so the form reads as grouped steps rather than a list. */}
+              {f.groupTitle && (
+                <p className="mb-1.5 mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
+                  {f.groupTitle}
+                </p>
+              )}
               <button
                 onClick={() => onFocusNode?.(f.nodeId)}
                 className="block text-left"

@@ -73,7 +73,9 @@ test("the three program leads are the draft-request audience, Yoo Jin is cc", ()
 test("draft request tells leads the deadline and goes to leads cc the coordinator's lead", () => {
   const m = composeReminder({ ...CTX, kind: "draft_request" });
   assert.deepEqual(m.to, leadRecipients(DEFAULT_CONFIG));
-  assert.deepEqual(m.cc, DEFAULT_CONFIG.cc);
+  // Yoo Jin by configuration, plus the coordinator on everything they are
+  // not already addressed on, so they always hold a record of the cycle.
+  assert.deepEqual(m.cc, [...DEFAULT_CONFIG.cc, DEFAULT_CONFIG.coordinator.email]);
   assert.match(m.subject, /August 2026/);
   assert.match(m.text, /Friday, August 14/); // the draft deadline
   assert.match(m.text, /https:\/\/x\.test\/nl/);
@@ -82,8 +84,9 @@ test("draft request tells leads the deadline and goes to leads cc the coordinato
 test("approval goes only to the approver, send-day only to the coordinator", () => {
   const approval = composeReminder({ ...CTX, kind: "approval" });
   assert.deepEqual(approval.to, [DEFAULT_CONFIG.approver.email]);
-  assert.deepEqual(approval.cc, []);
+  assert.deepEqual(approval.cc, [DEFAULT_CONFIG.coordinator.email]);
 
+  // Send day already goes to the coordinator, so nobody is added.
   const sendDay = composeReminder({ ...CTX, kind: "send_day" });
   assert.deepEqual(sendDay.to, [DEFAULT_CONFIG.coordinator.email]);
   assert.deepEqual(sendDay.cc, []);
@@ -103,7 +106,7 @@ test("manual mode redirects the whole message to the coordinator and nobody else
     assert.ok(wrapped.text.includes(lead), `${lead} must be listed in the body`);
   }
   assert.match(wrapped.subject, /^\[Send this\]/);
-  assert.match(wrapped.text, /ACTION NEEDED/);
+  assert.match(wrapped.text, /WAITING ON YOU/);
 });
 
 test("every reminder kind composes without throwing and names the month", () => {

@@ -75,6 +75,13 @@ export const NodeSchema = z.object({
   actor: z.string().max(60).optional(),
   /** Present on question nodes: what this asks in the linked form. */
   field: FieldSchema.optional(),
+  /**
+   * Several fields in one box. A registration form is a sequence of
+   * small groups — "your details", "your affiliations" — not thirty
+   * separate steps, so one box can carry the whole group and the chart
+   * stays a readable column instead of a wall.
+   */
+  fields: z.array(FieldSchema).max(12).optional(),
 });
 
 export const EdgeSchema = z.object({

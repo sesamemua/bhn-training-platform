@@ -105,7 +105,17 @@ export interface DerivedField {
   nodeId: string;
   key: string;
   label: string;
+  /** The specific field, since a node may carry several. */
+  field: import("./types").FieldDef;
+  /** Set on the first field of a multi-field box — the box's own title. */
+  groupTitle?: string;
   node: FlowNode;
+}
+
+/** "position_title" → "Position title", for fields inside a group. */
+function labelFor(key: string): string {
+  const t = key.replace(/_/g, " ").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 /**
@@ -115,8 +125,14 @@ export interface DerivedField {
  * appended in visual order (top to bottom, then left to right), so a
  * half-drawn chart still produces a sensible form.
  */
+/** Every field a question node carries — `fields[]` first, else `field`. */
+export function fieldsOf(n: FlowNode) {
+  if (n.fields?.length) return n.fields;
+  return n.field ? [n.field] : [];
+}
+
 export function orderedFields(doc: ChartDoc): DerivedField[] {
-  const questions = doc.nodes.filter((n) => n.kind === "question" && n.field?.key);
+  const questions = doc.nodes.filter((n) => n.kind === "question" && fieldsOf(n).length > 0);
   const byId = new Map(questions.map((n) => [n.id, n]));
 
   const order: string[] = [];
@@ -144,7 +160,18 @@ export function orderedFields(doc: ChartDoc): DerivedField[] {
   return [...order, ...missed]
     .map((id) => byId.get(id))
     .filter((n): n is FlowNode => !!n)
-    .map((n) => ({ nodeId: n.id, key: n.field!.key, label: n.text || n.field!.key, node: n }));
+    .flatMap((n) =>
+      fieldsOf(n).map((fd, i) => ({
+        nodeId: n.id,
+        key: fd.key,
+        // A single-field box is titled by the box; a group titles each
+        // field by its own key so the form does not repeat one heading.
+        label: fieldsOf(n).length === 1 ? n.text || fd.key : labelFor(fd.key),
+        field: fd,
+        groupTitle: fieldsOf(n).length > 1 && i === 0 ? n.text : undefined,
+        node: n,
+      })),
+    );
 }
 
 /** The fields actually shown right now, given the answers so far. */
@@ -156,7 +183,7 @@ export function visibleFields(doc: ChartDoc, answers: Answers): DerivedField[] {
 /** Required-and-empty fields among those currently shown. */
 export function missingRequired(doc: ChartDoc, answers: Answers): DerivedField[] {
   return visibleFields(doc, answers).filter(
-    (f) => f.node.field?.required && asArray(answers[f.key]).length === 0,
+    (f) => f.field.required && asArray(answers[f.key]).length === 0,
   );
 }
 

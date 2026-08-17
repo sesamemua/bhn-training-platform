@@ -22,12 +22,13 @@ import {
   OPS,
   type ChartDoc,
   type ConditionOp,
+  type FieldDef,
   type FieldType,
   type FlowEdge,
   type FlowNode,
   type NodeKind,
 } from "@/lib/flowchart/types";
-import { orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
+import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import { midpointWithDir, routeEdge, toPath } from "@/lib/flowchart/route";
 import { FlowFormPreview } from "./FlowFormPreview";
 
@@ -142,7 +143,7 @@ export function FlowChartEditor({
   const addNode = (kind: NodeKind) => {
     const id = uid();
     mutate((d) => {
-      const taken = d.nodes.map((n) => n.field?.key).filter(Boolean) as string[];
+      const taken = d.nodes.flatMap((n) => fieldsOf(n).map((f) => f.key));
       const text = kind === "question" ? "New question" : NODE_KIND_LABEL[kind];
       return {
         ...d,
@@ -188,6 +189,33 @@ export function FlowChartEditor({
   const patchNode = (id: string, patch: Partial<FlowNode>) =>
     mutate((d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)) }));
 
+  /**
+   * Edit one of a box's questions.
+   *
+   * A box can carry several, so every edit normalises onto `fields[]` and
+   * clears the single `field`. Keeping both shapes alive is what makes an
+   * editor drift out of sync with the form it is supposed to describe.
+   */
+  const writeFields = (id: string, fn: (fields: FieldDef[]) => FieldDef[]) =>
+    mutate((d) => ({
+      ...d,
+      nodes: d.nodes.map((n) =>
+        n.id === id ? { ...n, fields: fn(fieldsOf(n)), field: undefined } : n,
+      ),
+    }));
+
+  const patchField = (id: string, i: number, patch: Partial<FieldDef>) =>
+    writeFields(id, (fs) => fs.map((f, j) => (j === i ? { ...f, ...patch } : f)));
+
+  const addField = (id: string) =>
+    writeFields(id, (fs) => {
+      const taken = doc.nodes.flatMap((n) => fieldsOf(n).map((f) => f.key));
+      return [...fs, { key: suggestKey("answer", taken), type: "text" as FieldType }];
+    });
+
+  const removeField = (id: string, i: number) =>
+    writeFields(id, (fs) => fs.filter((_, j) => j !== i));
+
   const patchEdge = (id: string, patch: Partial<FlowEdge>) =>
     mutate((d) => ({ ...d, edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
 
@@ -231,8 +259,12 @@ export function FlowChartEditor({
     }
   };
 
+  // The canvas is only as wide as the chart needs. A generous minimum
+  // width guaranteed a horizontal scrollbar on a column layout that never
+  // used the space — scrolling sideways to see nothing is worse than a
+  // narrow canvas.
   const bounds = useMemo(() => {
-    const w = Math.max(1040, ...doc.nodes.map((n) => n.x + n.w + 60));
+    const w = Math.max(620, ...doc.nodes.map((n) => n.x + n.w + 60));
     const h = Math.max(560, ...doc.nodes.map((n) => n.y + n.h + 60));
     return { w, h };
   }, [doc.nodes]);
@@ -386,9 +418,19 @@ export function FlowChartEditor({
       </aside>
       </div>
 
-      {/* ── inspector ────────────────────────────────────────────── */}
+      {/* ── inspector ──────────────────────────────────────────────
+          Sticks to the bottom of the window. The chart is a tall column,
+          so a panel that sits after it is a thousand pixels below the box
+          you just clicked — which reads as "clicking does nothing". */}
+      <div
+        className={
+          canEdit && (sel || selEdge)
+            ? "sticky bottom-0 z-20 -mx-1 mt-4 max-h-[46vh] overflow-auto rounded-t-lg border border-b-0 border-line bg-card/95 px-4 pb-4 backdrop-blur"
+            : ""
+        }
+      >
       {canEdit && sel && (
-        <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 border-t border-line pt-4">
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-t border-line pt-4">
           <label className="min-w-[16rem] flex-1">
             <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Label</span>
             <input
@@ -433,54 +475,77 @@ export function FlowChartEditor({
         </div>
       )}
 
-      {/* what this question asks in the form */}
-      {canEdit && sel?.kind === "question" && sel.field && (
-        <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3">
-          <label className="w-40">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer type</span>
-            <select
-              value={sel.field.type}
-              onChange={(e) => patchNode(sel.id, { field: { ...sel.field!, type: e.target.value as FieldType } })}
-              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
-            >
-              {FIELD_TYPES.map((t) => (
-                <option key={t} value={t}>{FIELD_TYPE_LABEL[t]}</option>
-              ))}
-            </select>
-          </label>
-          <label className="w-36">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer key</span>
-            <input
-              value={sel.field.key}
-              onChange={(e) => patchNode(sel.id, { field: { ...sel.field!, key: e.target.value.slice(0, 40) } })}
-              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 font-mono text-[12.5px] text-fg outline-none focus-visible:border-brand-500"
-            />
-          </label>
-          {(sel.field.type === "choice" || sel.field.type === "multi") && (
-            <label className="min-w-[16rem] flex-1">
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Choices, comma separated</span>
-              <input
-                value={(sel.field.options ?? []).join(", ")}
-                onChange={(e) =>
-                  patchNode(sel.id, {
-                    field: {
-                      ...sel.field!,
-                      options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 20),
-                    },
-                  })
-                }
-                className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
-              />
-            </label>
-          )}
-          <label className="flex items-center gap-2 pb-1.5 text-[12.5px] text-muted">
-            <input
-              type="checkbox"
-              checked={!!sel.field.required}
-              onChange={(e) => patchNode(sel.id, { field: { ...sel.field!, required: e.target.checked } })}
-            />
-            Required
-          </label>
+      {/* what this question asks in the form — one row per question, since
+          a box can group several ("your details", "your affiliations") */}
+      {canEdit && sel?.kind === "question" && (
+        <div className="mt-3 space-y-3">
+          {fieldsOf(sel).map((f, i) => (
+            <div key={i} className="flex flex-wrap items-end gap-x-5 gap-y-2 border-l-2 border-line pl-3">
+              <label className="w-40">
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer type</span>
+                <select
+                  value={f.type}
+                  onChange={(e) => patchField(sel.id, i, { type: e.target.value as FieldType })}
+                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
+                >
+                  {FIELD_TYPES.map((t) => (
+                    <option key={t} value={t}>{FIELD_TYPE_LABEL[t]}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="w-36">
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer key</span>
+                <input
+                  value={f.key}
+                  onChange={(e) => patchField(sel.id, i, { key: e.target.value.slice(0, 40) })}
+                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 font-mono text-[12.5px] text-fg outline-none focus-visible:border-brand-500"
+                />
+              </label>
+              {(f.type === "choice" || f.type === "multi") && (
+                <label className="min-w-[16rem] flex-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Choices, comma separated</span>
+                  <input
+                    value={(f.options ?? []).join(", ")}
+                    onChange={(e) =>
+                      patchField(sel.id, i, {
+                        options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 20),
+                      })
+                    }
+                    className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
+                  />
+                </label>
+              )}
+              <label className="min-w-[12rem] flex-1">
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Hint under the answer</span>
+                <input
+                  value={f.help ?? ""}
+                  onChange={(e) => patchField(sel.id, i, { help: e.target.value.slice(0, 200) || undefined })}
+                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
+                />
+              </label>
+              <label className="flex items-center gap-2 pb-1.5 text-[12.5px] text-muted">
+                <input
+                  type="checkbox"
+                  checked={!!f.required}
+                  onChange={(e) => patchField(sel.id, i, { required: e.target.checked })}
+                />
+                Required
+              </label>
+              <button
+                onClick={() => removeField(sel.id, i)}
+                className="pb-1.5 text-[12.5px] text-muted hover:text-red-500"
+                title="Remove this question from the box"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => addField(sel.id)}
+            className="inline-flex items-center gap-1 text-[12.5px] text-brand-500 hover:text-brand-400"
+          >
+            <Plus size={12} /> Add a question to this box
+          </button>
         </div>
       )}
 
@@ -553,6 +618,7 @@ export function FlowChartEditor({
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -629,6 +695,11 @@ function Box({
         </span>
       )}
       {n.actor && <span className="text-[10.5px] text-subtle">{n.actor}</span>}
+      {/* A grouped box is several form questions in one step; say so, or
+          the chart understates how much the person is being asked. */}
+      {n.kind === "question" && fieldsOf(n).length > 1 && (
+        <span className="text-[10.5px] text-brand-400">{fieldsOf(n).length} questions</span>
+      )}
       {canEdit && selected && !editing && (
         <button
           onClick={(e) => { e.stopPropagation(); onStartLink(); }}
