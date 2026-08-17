@@ -12,11 +12,9 @@ import { useMemo } from "react";
 import { CircleAlert } from "lucide-react";
 import { missingRequired, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import {
-  ACADEMIC_INSTITUTIONS,
   COMPANY_TYPES,
-  HEALTH_ORGANISATIONS,
-  isPlaceholder,
-  withOther,
+  OTHER as INST_OTHER,
+  groupedBySector,
 } from "@/lib/flowchart/institutions";
 import {
   EMPTY_AFFILIATION,
@@ -366,10 +364,8 @@ function OrgBlock({
   onChange: (v: OrgEntry) => void;
 }) {
   const set = (p: Partial<OrgEntry>) => onChange({ ...value, ...p });
-  const list =
-    scope === "academic" ? ACADEMIC_INSTITUTIONS : scope === "health" ? HEALTH_ORGANISATIONS : [];
   const needsList = scope !== "company";
-  const thin = needsList && isPlaceholder(list);
+  const groups = needsList ? groupedBySector(scope) : [];
 
   return (
     <div className="mt-1.5 space-y-2">
@@ -379,9 +375,16 @@ function OrgBlock({
             <option value="">
               {scope === "academic" ? "Choose your institution…" : "Choose your hospital or network…"}
             </option>
-            {withOther(list).map((o) => <option key={o} value={o}>{o}</option>)}
+            {/* Grouped by region, the way the eligibility list is published —
+                nobody scans thirty names alphabetically to find their own. */}
+            {groups.map((g) => (
+              <optgroup key={g.region} label={g.region}>
+                {g.names.map((n) => <option key={n} value={n}>{n}</option>)}
+              </optgroup>
+            ))}
+            <option value={INST_OTHER}>{INST_OTHER}</option>
           </select>
-          {(value.name === OTHER || thin) && (
+          {value.name === OTHER && (
             <input
               value={value.nameOther ?? ""}
               placeholder={scope === "academic" ? "Name your institution" : "Name your hospital or network"}
