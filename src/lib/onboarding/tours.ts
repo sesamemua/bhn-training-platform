@@ -36,7 +36,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "newsletter.review-and-send",
     title: "See the reminder before it sends",
-    body: "On the newsletter calendar, a reminder's Send button now opens the real email first — rendered, with its actual recipients named and a banner telling you whether it goes to the leads or back to you to forward. Subject, To, Cc and the body can all be changed before you send.",
+    body: "On the newsletter calendar, a reminder's Send button now opens the real email first — rendered, with its actual recipients named and a banner telling you whether it goes to the leads or back to you to forward. The email itself shows the month as a calendar, with the draft, build and send days shaded. Edit anything, hit \"Send test to me\" to mail yourself a copy first, then send for real.",
     path: "/admin/workspace/marketing/newsletter/calendar",
     placement: "center",
     roles: ["admin", "superadmin"],

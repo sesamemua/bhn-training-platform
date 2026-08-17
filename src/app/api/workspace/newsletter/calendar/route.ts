@@ -18,7 +18,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { effectiveSchedule, generateCalendar, listCycles, rescheduleCycle } from "@/lib/newsletter/calendar";
 import { isIsoDate, isSendWeekday, snapToSendDay, weekdayOf } from "@/lib/newsletter/schedule";
-import { dispatchReminder, previewReminder } from "@/lib/newsletter/reminders";
+import { dispatchReminder, previewReminder, sendTestReminder } from "@/lib/newsletter/reminders";
 import {
   getNewsletterConfig,
   isApprover,
@@ -86,7 +86,13 @@ const OverridesSchema = z
   .optional();
 
 const ReminderSchema = z.object({
-  action: z.enum(["sendReminder", "skipReminder", "setReminderMode", "previewReminder"]),
+  action: z.enum([
+    "sendReminder",
+    "skipReminder",
+    "setReminderMode",
+    "previewReminder",
+    "testReminder",
+  ]),
   reminderId: z.string().min(1),
   mode: z.enum(["auto", "manual"]).optional(),
   overrides: OverridesSchema,
@@ -223,10 +229,12 @@ export async function POST(req: NextRequest) {
     body.action === "sendReminder" ||
     body.action === "skipReminder" ||
     body.action === "setReminderMode" ||
-    body.action === "previewReminder"
+    body.action === "previewReminder" ||
+    body.action === "testReminder"
   ) {
     const parsed = ReminderSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    const viewerEmail = (session.user as { email?: string }).email ?? null;
 
     // Read-only: compose the mail so the admin can read and edit it
     // before anything is claimed or sent.
@@ -238,8 +246,32 @@ export async function POST(req: NextRequest) {
           config,
           workshopUrl: workshopUrl(req),
           overrides: parsed.data.overrides,
+          viewerEmail,
         });
         return NextResponse.json({ ok: true, preview });
+      } catch (e) {
+        return NextResponse.json({ error: (e as Error).message }, { status: 404 });
+      }
+    }
+
+    // Test: goes only to the signed-in admin. The address is taken from
+    // the session, never from the request, so this can't be turned into a
+    // way to mail an arbitrary recipient.
+    if (parsed.data.action === "testReminder") {
+      if (!viewerEmail) {
+        return NextResponse.json({ error: "Your account has no email address." }, { status: 400 });
+      }
+      const config = await getNewsletterConfig();
+      try {
+        const result = await sendTestReminder({
+          reminderId: parsed.data.reminderId,
+          config,
+          workshopUrl: workshopUrl(req),
+          to: viewerEmail,
+          overrides: parsed.data.overrides,
+        });
+        if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
+        return NextResponse.json({ ok: true, sentTo: result.to });
       } catch (e) {
         return NextResponse.json({ error: (e as Error).message }, { status: 404 });
       }

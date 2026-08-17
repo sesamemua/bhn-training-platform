@@ -26,10 +26,17 @@ const INK = "#1f2428";
 const MUTED = "#6b7280";
 const BRAND = "#016e8f";
 
-function shell(heading: string, paras: string[], cta?: { label: string; url: string }): string {
+function shell(
+  heading: string,
+  paras: string[],
+  cta?: { label: string; url: string },
+  /** Rendered block dropped in below the prose — the month calendar. */
+  extra?: string,
+): string {
   const body = paras
     .map((p) => `<tr><td style="padding:0 0 14px;font-size:15px;line-height:1.65;color:${INK};">${p}</td></tr>`)
     .join("");
+  const extraRow = extra ? `<tr><td>${extra}</td></tr>` : "";
   const button = cta
     ? `<tr><td style="padding:8px 0 4px;"><a href="${esc(cta.url)}" style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:8px;">${esc(cta.label)}</a></td></tr>`
     : "";
@@ -41,9 +48,122 @@ function shell(heading: string, paras: string[], cta?: { label: string; url: str
     `<tr><td style="padding:0 0 6px;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:${BRAND};font-weight:700;">BioHubNet Newsletter</td></tr>` +
     `<tr><td style="padding:0 0 16px;font-size:21px;line-height:1.3;color:${INK};font-weight:700;">${esc(heading)}</td></tr>` +
     body +
+    extraRow +
     button +
     `</tbody></table></td></tr></tbody></table></div>`
   );
+}
+
+// ── the month calendar drawn into the email ──────────────────────────
+//
+// Recipients kept having to hold five prose dates in their head. A month
+// grid says the same thing at a glance. Table + inline styles only: Gmail
+// and Outlook strip <style> blocks, flexbox and grid, so this is built
+// the way HTML email has always been built.
+
+const CAL_DRAFT = "#fff2dc";
+const CAL_BUILD = "#e8f1f7";
+const CAL_LINE = "#e5e9ee";
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const isoOf = (y: number, m: number, d: number) => `${y}-${pad2(m)}-${pad2(d)}`;
+/** ISO date strings sort lexicographically, so plain compares work. */
+const within = (d: string, a: string, b: string) => d >= a && d <= b;
+
+interface CycleDates {
+  month: string;
+  draftOpen: string;
+  draftDue: string;
+  buildStart: string;
+  approvalDue: string;
+  sendDate: string;
+}
+
+/** One month as a 7-column table, with the production window shaded. */
+function monthGrid(monthIso: string, cycle: CycleDates): string {
+  const [y, m] = monthIso.split("-").map(Number);
+  const firstWeekday = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const total = new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+  const cell = (inner: string, style: string) =>
+    `<td align="center" style="width:14.28%;padding:0;">` +
+    `<div style="margin:1px;height:30px;line-height:30px;font-size:12px;${style}">${inner}</div></td>`;
+  const blank = () => cell("&nbsp;", `color:${MUTED};`);
+
+  const cells: string[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(blank());
+  for (let d = 1; d <= total; d++) {
+    const day = isoOf(y, m, d);
+    let style = `color:${INK};border-radius:5px;`;
+    if (day === cycle.sendDate) {
+      style = `color:#ffffff;background:${BRAND};font-weight:700;border-radius:5px;`;
+    } else if (within(day, cycle.buildStart, cycle.approvalDue)) {
+      style = `color:${INK};background:${CAL_BUILD};border-radius:5px;`;
+    } else if (within(day, cycle.draftOpen, cycle.draftDue)) {
+      style = `color:${INK};background:${CAL_DRAFT};border-radius:5px;`;
+    }
+    cells.push(cell(String(d), style));
+  }
+  while (cells.length % 7 !== 0) cells.push(blank());
+
+  const rows: string[] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(`<tr>${cells.slice(i, i + 7).join("")}</tr>`);
+
+  const head = ["S", "M", "T", "W", "T", "F", "S"]
+    .map(
+      (d) =>
+        `<th align="center" style="width:14.28%;padding:0 0 4px;font-size:10px;font-weight:700;` +
+        `letter-spacing:0.6px;text-transform:uppercase;color:${MUTED};">${d}</th>`,
+    )
+    .join("");
+
+  return (
+    `<div style="font-size:12px;font-weight:700;color:${INK};padding:0 0 6px;">${esc(monthLabel(monthIso))}</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
+    `style="border-collapse:collapse;table-layout:fixed;">` +
+    `<thead><tr>${head}</tr></thead><tbody>${rows.join("")}</tbody></table>`
+  );
+}
+
+/** The grid(s) plus a legend, as one block for the email body. */
+function calendarBlock(cycle: CycleDates): string {
+  // Normally every milestone sits inside the issue month; a holiday shift
+  // can pull the draft window back into the previous one, so render each
+  // month that is actually touched rather than assuming one.
+  const months = [...new Set(
+    [cycle.draftOpen, cycle.draftDue, cycle.buildStart, cycle.approvalDue, cycle.sendDate]
+      .map((d) => `${d.slice(0, 7)}-01`),
+  )].sort();
+
+  const swatch = (bg: string, label: string, white = false) =>
+    `<span style="display:inline-block;margin:0 14px 0 0;font-size:11px;color:${MUTED};white-space:nowrap;">` +
+    `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${bg};` +
+    (white ? "" : `border:1px solid ${CAL_LINE};`) +
+    `vertical-align:-1px;margin-right:5px;"></span>${esc(label)}</span>`;
+
+  return (
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
+    `style="margin:2px 0 16px;border:1px solid ${CAL_LINE};border-radius:10px;background:#fbfcfd;">` +
+    `<tbody><tr><td style="padding:14px 16px 12px;">` +
+    months.map((mo) => monthGrid(mo, cycle)).join(`<div style="height:14px;"></div>`) +
+    `<div style="padding:12px 0 0;">` +
+    swatch(CAL_DRAFT, "Drafts open → due") +
+    swatch(CAL_BUILD, "Build + review") +
+    swatch(BRAND, "Issue goes out", true) +
+    `</div>` +
+    `</td></tr></tbody></table>`
+  );
+}
+
+/** Plain-text counterpart of the grid, for the text/plain alternative. */
+function calendarText(cycle: CycleDates): string {
+  return [
+    `  Drafts open   ${longDate(cycle.draftOpen)}`,
+    `  Drafts due    ${longDate(cycle.draftDue)}`,
+    `  Build starts  ${longDate(cycle.buildStart)}`,
+    `  Approval due  ${longDate(cycle.approvalDue)}`,
+    `  ISSUE SENDS   ${longDate(cycle.sendDate)}`,
+  ].join("\n");
 }
 
 export interface ReminderContext {
@@ -94,6 +214,9 @@ export interface ComposedReminder {
   heading: string;
   paras: string[];
   cta?: { label: string; url: string };
+  /** The cycle this is about, so the calendar can be re-rendered after
+   *  the prose is edited without the edit dropping the grid. */
+  cycle: CycleDates;
 }
 
 /** What an admin may change in the send dialog before the mail goes out. */
@@ -115,13 +238,15 @@ export function renderReminder(parts: {
   heading: string;
   paras: string[];
   cta?: { label: string; url: string };
+  cycle: CycleDates;
 }): { html: string; text: string } {
   return {
-    html: shell(parts.heading, parts.paras.map(inlineHtml), parts.cta),
+    html: shell(parts.heading, parts.paras.map(inlineHtml), parts.cta, calendarBlock(parts.cycle)),
     text:
       `${parts.heading}\n\n` +
       parts.paras.map(inlineText).join("\n\n") +
-      (parts.cta ? `\n\n${parts.cta.label}: ${parts.cta.url}\n` : "\n"),
+      `\n\nTHIS ISSUE\n${calendarText(parts.cycle)}\n` +
+      (parts.cta ? `\n${parts.cta.label}: ${parts.cta.url}\n` : ""),
   };
 }
 
@@ -140,7 +265,8 @@ export function composeReminder(ctx: ReminderContext): ComposedReminder {
     cc: string[];
   }): ComposedReminder => ({
     ...p,
-    ...renderReminder({ heading: p.heading, paras: p.paras, cta: p.cta }),
+    cycle,
+    ...renderReminder({ heading: p.heading, paras: p.paras, cta: p.cta, cycle }),
   });
 
   switch (ctx.kind) {
@@ -215,7 +341,7 @@ export function applyOverrides(
     to: o.to?.length ? o.to : base.to,
     cc: o.cc ?? base.cc,
     paras,
-    ...renderReminder({ heading: base.heading, paras, cta: base.cta }),
+    ...renderReminder({ heading: base.heading, paras, cta: base.cta, cycle: base.cycle }),
   };
 }
 
@@ -257,6 +383,68 @@ export function wrapForManualSend(
   };
 }
 
+/**
+ * Send the composed mail to ONE address — the admin looking at it — and
+ * touch nothing else. No claim, no status change, nothing to the real
+ * recipients, so a test can be repeated as often as needed. The subject
+ * and a banner both say TEST, because the one failure mode that matters
+ * here is a test being mistaken for the real chase.
+ */
+export async function sendTestReminder(opts: {
+  reminderId: string;
+  config: NewsletterConfig;
+  workshopUrl: string;
+  to: string;
+  overrides?: ReminderOverrides;
+}): Promise<{ ok: boolean; to: string; error?: string }> {
+  const reminder = await prisma.newsletterReminder.findUnique({
+    where: { id: opts.reminderId },
+    include: { cycle: true },
+  });
+  if (!reminder) throw new Error("Reminder not found");
+  if (!mailConfigured()) {
+    return { ok: false, to: opts.to, error: "Email isn't configured on this platform (no SMTP)." };
+  }
+
+  const kind = reminder.kind as ReminderKind;
+  const msg = applyOverrides(
+    composeReminder({
+      kind,
+      config: opts.config,
+      cycle: reminder.cycle,
+      workshopUrl: opts.workshopUrl,
+    }),
+    opts.overrides,
+  );
+
+  const banner =
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;margin:0 auto 12px;background:#eef6ff;border:1px solid #b9d8f5;border-radius:10px;font-family:system-ui,-apple-system,sans-serif;">` +
+    `<tbody><tr><td style="padding:14px 18px;font-size:14px;line-height:1.6;color:${INK};">` +
+    `<strong>Test copy — nobody else received this.</strong><br>` +
+    `<span style="color:${MUTED};">${esc(REMINDER_LABEL[kind])}. Sent for real, it would go to:</span><br>` +
+    `<strong>To:</strong> ${esc(msg.to.join(", "))}<br>` +
+    (msg.cc.length ? `<strong>Cc:</strong> ${esc(msg.cc.join(", "))}<br>` : "") +
+    `<strong>Subject:</strong> ${esc(msg.subject)}` +
+    `</td></tr></tbody></table>`;
+
+  try {
+    await sendMail({
+      to: opts.to,
+      subject: `[TEST] ${msg.subject}`,
+      html: banner + msg.html,
+      text:
+        `TEST COPY — nobody else received this.\n` +
+        `Sent for real it would go to: ${msg.to.join(", ")}\n` +
+        (msg.cc.length ? `Cc: ${msg.cc.join(", ")}\n` : "") +
+        `Subject: ${msg.subject}\n\n---\n\n${msg.text}`,
+      replyTo: opts.config.coordinator.email,
+    });
+    return { ok: true, to: opts.to };
+  } catch (e) {
+    return { ok: false, to: opts.to, error: (e as Error).message || "Send failed" };
+  }
+}
+
 export interface DispatchResult {
   reminderId: string;
   kind: ReminderKind;
@@ -289,6 +477,8 @@ export interface ReminderPreview {
   /** False when SMTP isn't configured — the send would be recorded as
    *  skipped rather than delivered, so the dialog warns first. */
   mailConfigured: boolean;
+  /** Where "send a test to me" would land — the viewer's own address. */
+  testTo: string | null;
 }
 
 /**
@@ -301,6 +491,8 @@ export async function previewReminder(opts: {
   config: NewsletterConfig;
   workshopUrl: string;
   overrides?: ReminderOverrides;
+  /** The signed-in admin, so the dialog can offer a test to themselves. */
+  viewerEmail?: string | null;
 }): Promise<ReminderPreview> {
   const reminder = await prisma.newsletterReminder.findUnique({
     where: { id: opts.reminderId },
@@ -344,6 +536,7 @@ export async function previewReminder(opts: {
     deliverCc: delivered.cc,
     html: delivered.html,
     mailConfigured: mailConfigured(),
+    testTo: opts.viewerEmail ?? null,
   };
 }
 

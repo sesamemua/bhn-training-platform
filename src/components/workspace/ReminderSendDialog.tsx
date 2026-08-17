@@ -13,7 +13,7 @@
  * at all — the coordinator gets a ready-to-forward copy instead.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Loader2, Mail, Send, UserCheck } from "lucide-react";
+import { AlertTriangle, Check, FlaskConical, Loader2, Mail, Send, UserCheck } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 
 const API = "/api/workspace/newsletter/calendar";
@@ -33,6 +33,7 @@ interface Preview {
   deliverCc: string[];
   html: string;
   mailConfigured: boolean;
+  testTo: string | null;
 }
 
 export interface ReminderOverrides {
@@ -134,6 +135,46 @@ export function ReminderSendDialog({
     return () => clearTimeout(t);
   }, [open, reminderId, subject, to, cc, body, fetchPreview]);
 
+  const [testing, setTesting] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
+
+  const currentOverrides = useCallback(
+    (): ReminderOverrides => ({
+      subject: subject.trim() || undefined,
+      to: splitEmails(to),
+      cc: splitEmails(cc),
+      paras: toParas(body),
+    }),
+    [subject, to, cc, body],
+  );
+
+  async function sendTest() {
+    if (!reminderId || testing) return;
+    setTesting(true);
+    setTestNote(null);
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "testReminder",
+          reminderId,
+          overrides: currentOverrides(),
+        }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; sentTo?: string; error?: string };
+      setTestNote(
+        !res.ok || !j.ok
+          ? (j.error ?? "Test send failed.")
+          : `Test sent to ${j.sentTo}. Nobody else received it.`,
+      );
+    } catch (e) {
+      setTestNote((e as Error).message);
+    } finally {
+      setTesting(false);
+    }
+  }
+
   const manual = preview?.mode === "manual";
   const recipients = splitEmails(to);
   const invalid = recipients.filter((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
@@ -153,6 +194,18 @@ export function ReminderSendDialog({
       }
       footer={
         <>
+          {preview?.testTo && (
+            <button
+              type="button"
+              onClick={sendTest}
+              disabled={testing || sending}
+              title={`Send a copy to ${preview.testTo} only — the real recipients get nothing`}
+              className="mr-auto inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[13px] font-medium text-fg transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-50"
+            >
+              {testing ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+              Send test to me
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -271,15 +324,33 @@ export function ReminderSendDialog({
             />
           </Field>
 
+          {testNote && (
+            <p
+              className={[
+                "flex items-start gap-2 rounded-lg border px-3 py-2 text-[12.5px]",
+                testNote.startsWith("Test sent")
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  : "border-rose-300 bg-rose-50 text-rose-700",
+              ].join(" ")}
+            >
+              {testNote.startsWith("Test sent") ? (
+                <Check size={14} className="mt-0.5 shrink-0" />
+              ) : (
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              )}
+              {testNote}
+            </p>
+          )}
+
           <div>
             <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-subtle">
-              Preview
+              Preview — including the schedule calendar
             </p>
             <iframe
               srcDoc={html}
               title="Email preview"
               sandbox=""
-              className="h-[340px] w-full rounded-lg border border-line bg-white"
+              className="h-[520px] w-full rounded-lg border border-line bg-white"
             />
           </div>
         </div>
