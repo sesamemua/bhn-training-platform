@@ -3,11 +3,10 @@
 /**
  * The newsletter content calendar.
  *
- * Structure comes from hairlines and typography, not containers: one lane
- * per month separated by a rule, all sharing a 31-column axis so the
- * lanes align down the page and "always the third week" is something you
- * see rather than something you're told. The only boxes left are the ones
- * that are genuinely transient — a drag hint, an open disclosure.
+ * Each month is a real month grid — seven columns, week per row — with
+ * the production window drawn over it the way a calendar draws a
+ * multi-day event. Structure between months comes from hairlines and
+ * typography rather than cards.
  *
  * Reminders sit collapsed behind a one-line summary. Twelve months × four
  * reminders × three controls is 144 always-live buttons, which is not a
@@ -31,7 +30,7 @@ import {
   type ReminderMode,
 } from "@/lib/newsletter/schedule";
 import type { NewsletterConfig } from "@/lib/newsletter/config";
-import { NewsletterMonthLane, type LaneCycle } from "./NewsletterMonthLane";
+import { NewsletterMonthGrid, type LaneCycle } from "./NewsletterMonthGrid";
 
 interface Reminder {
   id: string;
@@ -152,7 +151,7 @@ export function NewsletterCalendarClient({
         the send day in working days, skipping weekends and holidays:{" "}
         {config.schedule.draftDays} for the program leads to write,{" "}
         {config.schedule.buildDays} to build and review.
-        {canEdit && " Drag any bar to move an issue; drag its edges to change a window."}
+        {canEdit && " Drag the highlighted days to move an issue; the ± controls lengthen a window."}
       </p>
 
       {canEdit && (
@@ -223,7 +222,7 @@ export function NewsletterCalendarClient({
       ) : (
         <div className="mt-2 divide-y divide-line">
           {cycles.map((c) => (
-            <NewsletterMonthLane
+            <NewsletterMonthGrid
               key={c.id}
               cycle={c}
               today={today}
@@ -240,7 +239,7 @@ export function NewsletterCalendarClient({
                 busy={busy}
                 onAction={post}
               />
-            </NewsletterMonthLane>
+            </NewsletterMonthGrid>
           ))}
         </div>
       )}
