@@ -38,11 +38,17 @@ export function FlowFormPreview({
   answers,
   onChange,
   onFocusNode,
+  hoverNodes = [],
+  onHoverField,
 }: {
   doc: ChartDoc;
   answers: Answers;
   onChange: (key: string, value: AnswerValue) => void;
   onFocusNode?: (nodeId: string) => void;
+  /** Node ids currently hovered on the chart — their fields light up. */
+  hoverNodes?: string[];
+  /** Hovering a field lights its box, and the arrows touching it. */
+  onHoverField?: (nodeId: string | null) => void;
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
   const missing = useMemo(() => missingRequired(doc, answers), [doc, answers]);
@@ -76,8 +82,18 @@ export function FlowFormPreview({
           const def = f.node.field!;
           const val = answers[f.key];
           const isMissing = missing.some((m) => m.key === f.key);
+          const lit = hoverNodes.includes(f.nodeId);
           return (
-            <div key={f.nodeId}>
+            <div
+              key={f.nodeId}
+              onMouseEnter={() => onHoverField?.(f.nodeId)}
+              onMouseLeave={() => onHoverField?.(null)}
+              // The tint is the same brand wash the box gets on the chart,
+              // so the pair reads as one thing lit from two places.
+              className={`-mx-2 rounded-md px-2 py-1.5 transition-colors ${
+                lit ? "bg-brand-500/10 ring-1 ring-brand-300/50" : ""
+              }`}
+            >
               <button
                 onClick={() => onFocusNode?.(f.nodeId)}
                 className="block text-left"

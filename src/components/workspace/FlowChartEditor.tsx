@@ -61,6 +61,13 @@ export function FlowChartEditor({
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
+  /**
+   * The node the pointer is over, on either side of the split. Hovering a
+   * box lights its field; hovering a field lights its box. An arrow has no
+   * field of its own, so it lights the boxes at BOTH its ends — which is
+   * the useful reading of "what does this arrow connect".
+   */
+  const [hoverNodes, setHoverNodes] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -337,13 +344,21 @@ export function FlowChartEditor({
             backgroundSize: `${GRID * 2}px ${GRID * 2}px`,
           }}
         >
-          <Arrows doc={doc} selectedEdge={selectedEdge} onSelect={canEdit ? setSelectedEdge : undefined} />
+          <Arrows
+            doc={doc}
+            selectedEdge={selectedEdge}
+            onSelect={canEdit ? setSelectedEdge : undefined}
+            hoverNodes={hoverNodes}
+            onHoverEdge={(e) => setHoverNodes(e ? [e.from, e.to] : [])}
+          />
 
           {doc.nodes.map((n) => (
             <Box
               key={n.id}
               node={n}
               selected={selected === n.id}
+              hovered={hoverNodes.includes(n.id)}
+              onHover={(on) => setHoverNodes(on ? [n.id] : [])}
               linking={linkFrom !== null}
               isLinkSource={linkFrom === n.id}
               canEdit={canEdit}
@@ -365,6 +380,8 @@ export function FlowChartEditor({
           answers={answers}
           onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); }}
+          hoverNodes={hoverNodes}
+          onHoverField={(id) => setHoverNodes(id ? [id] : [])}
         />
       </aside>
       </div>
@@ -558,6 +575,8 @@ const KIND_CLASS: Record<NodeKind, string> = {
 function Box({
   node: n,
   selected,
+  hovered,
+  onHover,
   linking,
   isLinkSource,
   canEdit,
@@ -568,6 +587,8 @@ function Box({
 }: {
   node: FlowNode;
   selected: boolean;
+  hovered: boolean;
+  onHover: (on: boolean) => void;
   linking: boolean;
   isLinkSource: boolean;
   canEdit: boolean;
@@ -580,11 +601,13 @@ function Box({
   return (
     <div
       onPointerDown={onPointerDown}
+      onMouseEnter={() => onHover(true)}
+      onMouseLeave={() => onHover(false)}
       onClick={onSelect}
       onDoubleClick={() => canEdit && setEditing(true)}
       className={`absolute flex flex-col items-center justify-center gap-0.5 border px-3 text-center transition-shadow ${KIND_CLASS[n.kind]} ${
         canEdit ? "cursor-grab active:cursor-grabbing" : ""
-      } ${selected ? "shadow-card-hover ring-2 ring-brand-500/60" : ""} ${
+      } ${selected ? "shadow-card-hover ring-2 ring-brand-500/60" : hovered ? "shadow-card-hover ring-2 ring-brand-300/70" : ""} ${
         linking && !isLinkSource ? "ring-1 ring-brand-400/40" : ""
       }`}
       style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
@@ -629,10 +652,14 @@ function Arrows({
   doc,
   selectedEdge,
   onSelect,
+  hoverNodes,
+  onHoverEdge,
 }: {
   doc: ChartDoc;
   selectedEdge: string | null;
   onSelect?: (id: string) => void;
+  hoverNodes: string[];
+  onHoverEdge: (e: { from: string; to: string } | null) => void;
 }) {
   const byId = new Map(doc.nodes.map((n) => [n.id, n]));
   return (
@@ -655,15 +682,18 @@ function Arrows({
         const mx = mid.x + -mid.dy * off;
         const my = mid.y + mid.dx * off;
         const on = selectedEdge === e.id;
+        // An arrow lights up when either box it touches is hovered, so
+        // hovering a field traces its route through the chart.
+        const lit = hoverNodes.includes(e.from) || hoverNodes.includes(e.to);
         // A conditional arrow is dashed: the rule is visible on the chart,
         // not only in the inspector.
         return (
-          <g key={e.id} className={on ? "text-brand-200" : "text-brand-400"}>
+          <g key={e.id} className={on || lit ? "text-brand-200" : "text-brand-400"}>
             <path
               d={d} fill="none"
-              stroke="currentColor" strokeWidth={on ? 2.5 : 1.5}
+              stroke="currentColor" strokeWidth={on ? 2.5 : lit ? 2.2 : 1.5}
               strokeDasharray={e.when ? "5 4" : undefined}
-              markerEnd="url(#fc-arrow)" opacity={on ? 1 : 0.75}
+              markerEnd="url(#fc-arrow)" opacity={on || lit ? 1 : 0.75}
             />
             {(e.label || e.when) && (() => {
               const t = e.label ?? `${e.when!.field} ${e.when!.op}${e.when!.value ? " " + e.when!.value : ""}`;
@@ -688,6 +718,8 @@ function Arrows({
               <path
                 d={d} fill="none"
                 stroke="transparent" strokeWidth="14" className="cursor-pointer"
+                onMouseEnter={() => onHoverEdge({ from: e.from, to: e.to })}
+                onMouseLeave={() => onHoverEdge(null)}
                 onClick={() => onSelect(e.id)}
               />
             )}
