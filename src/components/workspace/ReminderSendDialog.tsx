@@ -136,7 +136,12 @@ export function ReminderSendDialog({
         setTo(p.to.join(", "));
         setCc(p.cc.join(", "));
         setBody(p.paras.join("\n\n"));
-        setDeliverMode(p.mode);
+        // Always default a HUMAN send to the real recipients. The
+        // reminder's own mode governs what the scheduler does when
+        // nobody is watching; opening this dialog and pressing send is
+        // the approval, and what follows should be the actual send —
+        // not a copy the approver then has to forward by hand.
+        setDeliverMode("auto");
         loaded.current = true;
       })
       .catch((e) => !cancelled && setError((e as Error).message))
@@ -307,8 +312,8 @@ export function ReminderSendDialog({
           <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-elevated/60 p-1">
             {(
               [
-                ["auto", "Send to the team"],
-                ["manual", "Send me a copy to forward"],
+                ["auto", "Send to the team now"],
+                ["manual", "Just send me a copy"],
               ] as const
             ).map(([m, label]) => (
               <button
@@ -340,14 +345,14 @@ export function ReminderSendDialog({
             <div>
               {manual ? (
                 <>
-                  <strong>Manual — nothing goes to the recipients.</strong> A ready-to-forward copy
-                  is emailed to <strong>{preview.deliverTo.join(", ") || "the coordinator"}</strong>,
-                  with the To/Cc below printed at the top for you to paste.
+                  <strong>Nothing goes to the team.</strong> Only you get a copy, at{" "}
+                  <strong>{preview.deliverTo.join(", ") || "the coordinator"}</strong>, to forward by
+                  hand. Switch to “Send to the team now” to have the platform deliver it.
                 </>
               ) : (
                 <>
-                  <strong>Automatic — this sends straight to the recipients below</strong> as soon as
-                  you press send.
+                  <strong>The platform emails this to the recipients below</strong> the moment you
+                  press send. Nothing to forward.
                 </>
               )}
             </div>

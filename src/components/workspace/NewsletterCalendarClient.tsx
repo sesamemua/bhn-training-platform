@@ -337,8 +337,8 @@ function CycleFooter({
                             ? "Not sent — email isn't configured on this platform"
                             : "You chose not to send this one"
                           : r.mode === "manual"
-                            ? "Will email you a ready-to-send copy"
-                            : "Will send itself"}
+                            ? "Waits for you to approve, then sends"
+                            : "Sends itself on the day"}
                   </p>
                 </div>
 
@@ -375,7 +375,7 @@ function CycleFooter({
                         disabled={working}
                         className="text-[12px] text-muted hover:text-fg disabled:opacity-50"
                       >
-                        {r.mode === "auto" ? "Let me send it" : "Send automatically"}
+                        {r.mode === "auto" ? "Hold for my approval" : "Let it send itself"}
                       </button>
                     )}
                   </div>
@@ -627,8 +627,8 @@ function ConfigPanel({
                 }
                 className="border-0 border-b border-line bg-transparent px-0 py-0.5 text-[12.5px] font-semibold text-fg outline-none focus-visible:border-brand-500"
               >
-                <option value="auto">sends itself</option>
-                <option value="manual">I send it</option>
+                <option value="auto">sends itself on the day</option>
+                <option value="manual">waits for my approval</option>
               </select>
             </li>
           ))}

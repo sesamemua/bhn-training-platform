@@ -459,8 +459,8 @@ export function wrapForManualSend(
   const banner =
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;margin:0 auto 12px;background:#fff8e6;border:1px solid #f0d9a0;border-radius:10px;font-family:system-ui,-apple-system,sans-serif;">` +
     `<tbody><tr><td style="padding:14px 18px;font-size:14px;line-height:1.6;color:${INK};">` +
-    `<strong>Action needed — send this yourself.</strong><br>` +
-    `<span style="color:${MUTED};">${esc(REMINDER_LABEL[kind])} for this cycle is set to manual, so nothing has gone to the leads.</span><br><br>` +
+    `<strong>Waiting on you — nothing has gone to the team yet.</strong><br>` +
+    `<span style="color:${MUTED};">${esc(REMINDER_LABEL[kind])} is set to wait for your approval. Open the newsletter calendar and press send, and the platform will deliver it to the people below — or forward this copy yourself if you prefer.</span><br><br>` +
     `<strong>To:</strong> ${esc(toLine)}<br>` +
     (ccLine ? `<strong>Cc:</strong> ${esc(ccLine)}<br>` : "") +
     `<strong>Subject:</strong> ${esc(msg.subject)}` +
@@ -471,8 +471,9 @@ export function wrapForManualSend(
     subject: `[Send this] ${msg.subject}`,
     html: banner + msg.html,
     text:
-      `ACTION NEEDED — send this yourself.\n` +
-      `${REMINDER_LABEL[kind]} is set to manual, so nothing has gone to the leads.\n\n` +
+      `WAITING ON YOU — nothing has gone to the team yet.\n` +
+      `${REMINDER_LABEL[kind]} is set to wait for your approval. Open the newsletter\n` +
+      `calendar and press send to have the platform deliver it to the people below.\n\n` +
       `To: ${toLine}\n` +
       (ccLine ? `Cc: ${ccLine}\n` : "") +
       `Subject: ${msg.subject}\n\n` +
