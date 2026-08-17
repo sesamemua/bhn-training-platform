@@ -1,21 +1,38 @@
 # Outreach — sending email as info@biohubnet.ca
 
-Workspace → Outreach can now send its campaign emails itself instead of only
-handing you a `mailto:` link. **Do not use it for a real campaign until the DNS
-below is in place.** Nothing in the code can substitute for it.
+Workspace → Outreach can send its campaign emails itself instead of only
+handing you a `mailto:` link. The DNS below was the blocker; **as of
+2026-08-16 the authentication records are published** — see the current
+state table.
 
 ---
 
 ## Before the first real send
 
-Verified live on 2026-08-13:
+Re-verified live on 2026-08-16 (was all-blocking on 2026-08-13):
 
 | Record | State | Consequence |
 |---|---|---|
 | `MX biohubnet.ca` | `1 smtp.google.com` | The mailbox is Google Workspace |
-| `TXT biohubnet.ca` | **empty — no SPF at all** | Nothing authorises any server to send as the domain |
-| `google._domainkey.biohubnet.ca` | **empty** | Workspace DKIM was never switched on |
-| `TXT _dmarc.biohubnet.ca` | `v=DMARC1; p=none;` | Monitoring only, no reporting address |
+| `TXT biohubnet.ca` | ✅ `v=spf1 include:_spf.google.com ~all` | Google's servers are authorised to send as the domain |
+| `google._domainkey.biohubnet.ca` | ✅ `v=DKIM1; k=rsa; p=…` (2048-bit) | Workspace DKIM key is published |
+| `TXT _dmarc.biohubnet.ca` | ✅ `v=DMARC1; p=none; rua=mailto:info@biohubnet.ca` | Monitoring with a reporting address |
+
+Re-check any time with:
+
+```
+dig +short TXT biohubnet.ca
+dig +short TXT google._domainkey.biohubnet.ca
+dig +short TXT _dmarc.biohubnet.ca
+```
+
+**Still worth confirming once:** a published DKIM record does not prove
+signing is switched **on** — that is the separate "Start authentication"
+button in the Workspace admin console. The only proof is a real message:
+send one via Admin → System status → test email and check the received
+headers for `dkim=pass header.d=biohubnet.ca` and `spf=pass`. Gmail shows
+this under "Show original"; Outlook under "View message source"
+(`Authentication-Results:`).
 
 DNS is on Cloudflare (`davina`/`jaime.ns.cloudflare.com`), so all of this is
 editable by whoever holds that account.
@@ -25,7 +42,7 @@ university and hospital filters are exactly the ones that score unauthenticated
 bulk mail harshly. Sending before this is done risks the domain's reputation,
 which is slow and painful to repair.
 
-### 1. Publish SPF — blocking
+### 1. Publish SPF — blocking · ✅ DONE 2026-08-16
 
 Add **one** TXT record at the apex (`biohubnet.ca`):
 
@@ -36,7 +53,7 @@ v=spf1 include:_spf.google.com ~all
 Two separate SPF records is a permanent fail — if one already exists, merge the
 `include:` into it rather than adding a second.
 
-### 2. Turn on Workspace DKIM — blocking
+### 2. Turn on Workspace DKIM — blocking · ✅ RECORD PUBLISHED 2026-08-16 (confirm signing via headers)
 
 Google Workspace Admin → **Apps → Google Workspace → Gmail → Authenticate
 email**. Generate a 2048-bit key, publish the TXT record it gives you at
@@ -45,7 +62,7 @@ email**. Generate a 2048-bit key, publish the TXT record it gives you at
 Without this, outbound mail is signed with Google's `*.gappssmtp.com` key, which
 does not align with `biohubnet.ca`.
 
-### 3. Add a DMARC reporting address — do it now, not blocking
+### 3. Add a DMARC reporting address — ✅ DONE (rua=info@biohubnet.ca)
 
 ```
 v=DMARC1; p=none; rua=mailto:dmarc@biohubnet.ca
