@@ -5713,6 +5713,29 @@ model NewsletterPiece {
 /// calendar days, not timestamps: a production schedule is a human
 /// agreement about days, and storing instants invites an off-by-one
 /// every time the server and Toronto disagree about the date.
+/// A hand-drawn process diagram. Nodes and edges live in one JSON blob
+/// rather than as rows: a flow chart is edited as a whole (drag five
+/// boxes, redraw two arrows, save once), so per-node rows would mean a
+/// transaction per drag and no cheap undo. The shape is
+///   { nodes: [{id,x,y,w,h,kind,text}], edges: [{id,from,to,label}] }
+/// and is validated at the API boundary, never trusted from the client.
+model FlowChart {
+  id      String  @id @default(cuid())
+  title   String
+  /// URL-safe identifier, unique so a chart has a stable link.
+  slug    String  @unique
+  /// One-line description shown in the chart list.
+  summary String?
+  data    Json
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
 model NewsletterCycle {
   id               String  @id @default(cuid())
   /// First day of the month this issue belongs to, "YYYY-MM-01".

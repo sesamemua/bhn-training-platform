@@ -50,6 +50,7 @@ import {
   Lightbulb,
   FlaskConical,
   Menu,
+  Workflow,
   X,
   Compass,
   Milestone,
@@ -361,6 +362,19 @@ const workspaceWebsiteReviewItem: NavItem = {
   minRole: "instructor",
   description:
     "Comment on any page of biohubnet.ca, reply to each other, resolve as fixes land — then export the open threads as a revision brief for Claude Code or Codex, anchored to the exact text on the page.",
+};
+
+
+// WORKSPACE -> Flow charts. Its own subgroup: a process diagram is not a
+// campaign and not the website — it is how the team explains a workflow to
+// itself. Seeded with the Training Week registration flow.
+const workspaceFlowChartsItem: NavItem = {
+  label: "Flow Charts",
+  href: "/admin/workspace/flowcharts",
+  icon: Workflow,
+  minRole: "instructor",
+  description:
+    "Draw how a process runs — drag the boxes, connect them, rename anything. Opens on the Training Week registration flow.",
 };
 
 // WORKSPACE → Outreach. Sibling of Marketing and File Sharing. Two views:
@@ -1737,6 +1751,9 @@ export function Sidebar({
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Website">
               <NavLink item={workspaceWebsiteReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            </AdminSubgroup>
+            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.equip} label="Process">
+              <NavLink item={workspaceFlowChartsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Outreach">
               <NavLink item={workspaceOutreachContactsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

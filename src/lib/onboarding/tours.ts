@@ -33,6 +33,16 @@ export interface TourStep {
 export const TOUR_VERSION = "2026.09.15a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.flowcharts",
+    title: "Draw the process",
+    body: "Workspace \u2192 Process \u2192 **Flow Charts** is for explaining a workflow to the rest of the team. Drag the boxes, click Connect then a target to draw an arrow, double-click to rename. It opens on the Training Week registration flow, with the still-undecided parts drawn as dashed notes.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.18a",
+  },
   // ─── Newsletter production workflow
   {
     id: "workspace.newsletter.calendar",

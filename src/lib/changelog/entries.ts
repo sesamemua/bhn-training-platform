@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts
+  {
+    title: "Flow charts — draw how a process actually runs",
+    body: "Workspace \u2192 Process \u2192 Flow Charts. Drag boxes, connect them with arrows, rename anything, save. Shapes carry meaning: start, step, decision, end, and a dashed note for the parts nobody has decided yet.\n\nIt opens on the Training Week registration flow rather than a blank canvas \u2014 the real process, including the two open questions (auto-approve BHN trainees or review everyone; waitlist promotes itself or an organiser confirms) drawn as notes so they read as decisions still owed rather than settled steps.\n\nInstructors can read any chart; admins can edit.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Newsletter calendar redesign + workflow audit
   {
     title: "Newsletter calendar — drag the dates, and a pile of workflow fixes",
