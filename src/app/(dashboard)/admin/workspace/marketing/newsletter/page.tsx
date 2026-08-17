@@ -11,6 +11,7 @@ import { Mail } from "lucide-react";
 import { requireRole, isStaff } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
+import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
 import { NewsletterClient } from "@/components/workspace/NewsletterClient";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
 
@@ -24,10 +25,13 @@ export default async function NewsletterWorkshopPage() {
   const canEdit = role === "admin" || role === "superadmin";
   const meId = (session.user as { id?: string }).id ?? null;
 
-  // Most recent draft, else open one for this month.
-  let issue = await prisma.newsletterIssue.findFirst({
-    where: { status: { not: "sent" } },
-    orderBy: { createdAt: "desc" },
+  // The issue for the month the calendar says we are producing. Before
+  // this, Compose asked for "the most recent unsent issue" — which never
+  // rolled over, so every month's contributions stacked onto one draft.
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+  const resolved = await resolveCurrentIssue(today);
+  let issue = await prisma.newsletterIssue.findUnique({
+    where: { id: resolved.issueId },
     include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
   });
   if (!issue) {

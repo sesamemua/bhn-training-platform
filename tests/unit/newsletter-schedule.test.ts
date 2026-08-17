@@ -173,3 +173,72 @@ test("isIsoDate rejects impossible dates", () => {
   assert.equal(isIsoDate("19-08-2026"), false);
   assert.equal(isIsoDate(""), false);
 });
+
+// ── drag arithmetic ──────────────────────────────────────────────────
+
+test("snapping finds the nearest legal send day, never a Monday or Friday", async () => {
+  const { snapToSendDay } = await import("../../src/lib/newsletter/schedule");
+  // Fri 21 Aug 2026 → nearest legal is Thu 20 (one day back) not Tue 25.
+  assert.equal(snapToSendDay("2026-08-21"), "2026-08-20");
+  // Sat 22 → Tue 25 forward is 3 away, Thu 20 back is 2 → Thu wins.
+  assert.equal(snapToSendDay("2026-08-22"), "2026-08-20");
+  // Mon 24 → Tue 25 forward is 1 away.
+  assert.equal(snapToSendDay("2026-08-24"), "2026-08-25");
+  // A legal day is left alone.
+  assert.equal(snapToSendDay("2026-08-19"), "2026-08-19");
+  // A holiday on an otherwise legal day is refused.
+  assert.equal(snapToSendDay("2026-08-19", ["2026-08-19"]), "2026-08-20");
+});
+
+test("stepping always moves — the bug that made the arrow key look dead", async () => {
+  const { stepSendDay, weekdayOf } = await import("../../src/lib/newsletter/schedule");
+  // From Thursday, forward must reach the NEXT Tuesday, not snap back to
+  // the same Thursday (which is what nearest-neighbour snapping does).
+  assert.equal(stepSendDay("2026-08-20", 1), "2026-08-25");
+  assert.equal(stepSendDay("2026-08-25", -1), "2026-08-20");
+  assert.equal(stepSendDay("2026-08-19", 1), "2026-08-20");
+  // Never lands on Mon/Fri, stepping either way across a whole year.
+  let cur = "2026-01-06";
+  for (let i = 0; i < 200; i++) {
+    const next = stepSendDay(cur, 1);
+    assert.notEqual(next, cur, "a step must always move");
+    assert.ok([2, 3, 4].includes(weekdayOf(next)), `${next} is not Tue/Wed/Thu`);
+    cur = next;
+  }
+});
+
+test("planning from an explicit send date keeps the window shape", async () => {
+  const { planFromSendDate, businessDaysBetween } = await import("../../src/lib/newsletter/schedule");
+  const c = planFromSendDate("2026-08-25", "2026-08-01", { draftDays: 2, buildDays: 2, holidays: [] });
+  assert.equal(c.sendDate, "2026-08-25");
+  assert.equal(c.approvalDue, "2026-08-24");
+  assert.equal(c.buildStart, "2026-08-21");
+  assert.equal(c.draftDue, "2026-08-20");
+  assert.equal(c.draftOpen, "2026-08-19");
+  assert.equal(businessDaysBetween(c.draftOpen, c.draftDue), 2);
+  assert.equal(businessDaysBetween(c.buildStart, c.approvalDue), 2);
+});
+
+test("a dragged window round-trips: derive, measure, re-derive", async () => {
+  const { planFromSendDate, businessDaysBetween } = await import("../../src/lib/newsletter/schedule");
+  for (const draftDays of [1, 2, 3, 5]) {
+    for (const buildDays of [1, 2, 4]) {
+      const c = planFromSendDate("2026-09-16", "2026-09-01", { draftDays, buildDays, holidays: [] });
+      // Reading the rendered window back out must give the same numbers —
+      // this is exactly what a drag on an edge does.
+      assert.equal(businessDaysBetween(c.draftOpen, c.draftDue), draftDays);
+      assert.equal(businessDaysBetween(c.buildStart, c.approvalDue), buildDays);
+      assert.ok(c.draftOpen < c.draftDue || draftDays === 1);
+      assert.ok(c.buildStart <= c.approvalDue);
+    }
+  }
+});
+
+test("daysOfMonth spans exactly the month, including leap February", async () => {
+  const { daysOfMonth } = await import("../../src/lib/newsletter/schedule");
+  assert.equal(daysOfMonth(2026, 2).length, 28);
+  assert.equal(daysOfMonth(2028, 2).length, 29); // leap
+  assert.equal(daysOfMonth(2026, 8).length, 31);
+  assert.equal(daysOfMonth(2026, 8)[0], "2026-08-01");
+  assert.equal(daysOfMonth(2026, 8)[30], "2026-08-31");
+});

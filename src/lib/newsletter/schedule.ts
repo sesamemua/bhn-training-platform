@@ -242,6 +242,116 @@ export function planMonths(
   return out;
 }
 
+
+/**
+ * Snap an arbitrary date onto a legal send day (Tue/Wed/Thu, never a
+ * holiday). `prefer` biases which way we look first, so a drag feels like
+ * it follows the pointer rather than jumping backwards.
+ *
+ * This is what makes the rule learnable by touch: dragging across a
+ * Friday simply refuses to land there, and the band settles on Thursday
+ * or the following Tuesday. Nobody has to read that Mondays and Fridays
+ * are excluded — the interaction says so.
+ */
+export function snapToSendDay(
+  iso: string,
+  holidays: readonly string[] = [],
+  prefer: "forward" | "backward" = "forward",
+): string {
+  const legal = (d: string) =>
+    isSendWeekday(weekdayOf(d)) && isBusinessDay(d, holidays);
+  if (legal(iso)) return iso;
+
+  const dirs = prefer === "forward" ? [1, -1] : [-1, 1];
+  // Six days is enough to reach a legal day from anywhere in a week, in
+  // either direction, even with a holiday in the way.
+  for (let distance = 1; distance <= 6; distance++) {
+    for (const dir of dirs) {
+      const candidate = addDays(iso, dir * distance);
+      if (legal(candidate)) return candidate;
+    }
+  }
+  return iso;
+}
+
+/**
+ * The next legal send day strictly beyond `iso`, in the given direction.
+ *
+ * Distinct from snapToSendDay, and the distinction matters: snapping
+ * finds the NEAREST legal day, which is right for a drag (the band
+ * resists an illegal day and settles on the closest one). For a keyboard
+ * step it would be wrong — stepping right from a Thursday tries Friday,
+ * whose nearest legal neighbour is that same Thursday, so the arrow key
+ * would appear dead. A step must always move.
+ */
+export function stepSendDay(
+  iso: string,
+  direction: 1 | -1,
+  holidays: readonly string[] = [],
+): string {
+  for (let i = 1; i <= 14; i++) {
+    const candidate = addDays(iso, direction * i);
+    if (isSendWeekday(weekdayOf(candidate)) && isBusinessDay(candidate, holidays)) {
+      return candidate;
+    }
+  }
+  return iso;
+}
+
+/**
+ * Derive a full cycle from an EXPLICIT send date rather than from the
+ * nth-weekday rule — the path a drag takes. Milestones still walk
+ * backwards in business days, so a hand-placed send date produces the
+ * same shape of run-up as a generated one.
+ */
+export function planFromSendDate(
+  sendDate: string,
+  month: string,
+  config: Pick<ScheduleConfig, "draftDays" | "buildDays" | "holidays">,
+): PlannedCycle {
+  const approvalDue = addBusinessDays(sendDate, -1, config.holidays);
+  const buildStart = addBusinessDays(sendDate, -config.buildDays, config.holidays);
+  const draftDue = addBusinessDays(buildStart, -1, config.holidays);
+  const draftOpen = addBusinessDays(draftDue, -(config.draftDays - 1), config.holidays);
+  return {
+    month,
+    draftOpen,
+    draftDue,
+    buildStart,
+    approvalDue,
+    sendDate,
+    // A hand-placed date is by definition where the user wanted it.
+    sendDateAdjusted: false,
+  };
+}
+
+/**
+ * How many business days a window spans, inclusive of both ends. Used to
+ * read a dragged edge back out as a draftDays / buildDays number.
+ */
+export function businessDaysBetween(
+  fromIso: string,
+  toIso: string,
+  holidays: readonly string[] = [],
+): number {
+  if (toIso < fromIso) return 0;
+  let count = 0;
+  let cur = fromIso;
+  for (let guard = 0; guard < 400 && cur <= toIso; guard++) {
+    if (isBusinessDay(cur, holidays)) count++;
+    cur = addDays(cur, 1);
+  }
+  return count;
+}
+
+/** Every day of a month as "YYYY-MM-DD" — the calendar strip's axis. */
+export function daysOfMonth(year: number, month: number): string[] {
+  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return Array.from({ length: days }, (_, i) =>
+    `${year}-${String(month).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`,
+  );
+}
+
 // ── reminders ─────────────────────────────────────────────────────────
 
 /**

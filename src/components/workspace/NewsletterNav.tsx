@@ -20,7 +20,7 @@ const TABS = [
 export function NewsletterNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex w-fit items-center gap-1 rounded-lg bg-elevated/60 p-1">
+    <nav className="flex w-fit items-center gap-6 border-b border-line">
       {TABS.map((t) => {
         // Compose owns the bare base path only — otherwise it would light
         // up on every child route.
@@ -30,10 +30,10 @@ export function NewsletterNav() {
           <Link
             key={t.key}
             href={t.href}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500/50 ${
+            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-0.5 pb-2 text-[13px] font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500/50 ${
               active
-                ? "bg-card-solid text-fg shadow-card-rest"
-                : "text-muted hover:text-fg"
+                ? "border-brand-400 text-fg"
+                : "border-transparent text-muted hover:text-fg"
             }`}
           >
             <Icon size={13} />

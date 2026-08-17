@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Newsletter calendar redesign + workflow audit
+  {
+    title: "Newsletter calendar — drag the dates, and a pile of workflow fixes",
+    body: "**The calendar is now a calendar.** Each month is a strip of its real days with the production window drawn across it as a gradient band. Drag the band to move an issue and every deadline re-derives backwards; drag its left edge for more writing days, its inner seam for more build days. The send date snaps to Tuesday, Wednesday or Thursday, so dragging across a Friday simply won't land there — the rule teaches itself. Arrow keys do the same thing for anyone not using a mouse. A month you move by hand is remembered as yours: re-filling the calendar leaves it alone.\n\nThe page lost its boxes. Structure now comes from hairlines, type weight and one shared 31-column axis that all months line up on, which is what makes \"always the third week\" visible rather than something you're told. Status is a sentence, not a badge, and each month's reminders sit behind a one-line summary instead of twelve rows of buttons.\n\n**Fixes found by auditing the flow end to end.** The approval email said \"open the review and press Approve\" while the only Approve button lived on another tab — the sign-off is now on the Review page, under the issue it signs off. Compose never rolled over to a new issue, so every month's contributions would have stacked onto one immortal draft; each month now owns its own issue. Filling the calendar can no longer chase anyone about a deadline that has already passed. Sign-off stays closed until there is something built to sign off, sending a reminder asks first and names the recipients, and a failed reminder can be retried instead of being a dead end.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Newsletter production workflow
   {
     title: "Newsletter — a content calendar, chased deadlines, pinned review notes, and one sign-off",

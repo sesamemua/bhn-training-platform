@@ -54,12 +54,26 @@ export function NewsletterReviewClient({
   initialHtml,
   initialComments,
   unrendered,
+  signOff,
 }: {
   issueId: string;
   issueTitle: string;
   initialHtml: string;
   initialComments: Comment[];
   unrendered: number;
+  /**
+   * The sign-off, shown here because this is where the approval email
+   * sends people — it said "read it through and press Approve" while the
+   * only Approve button lived on another tab.
+   */
+  signOff: {
+    cycleId: string | null;
+    sendDate: string | null;
+    approvedAt: string | null;
+    approvedByName: string | null;
+    viewerIsApprover: boolean;
+    approverName: string;
+  };
 }) {
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -360,7 +374,113 @@ export function NewsletterReviewClient({
             ))}
           </ul>
         )}
+
+        <SignOff signOff={signOff} openCount={open.length} />
       </aside>
+    </div>
+  );
+}
+
+/**
+ * The approver's whole job, in one place: how much is still unresolved,
+ * when it sends, and one button.
+ */
+function SignOff({
+  signOff,
+  openCount,
+}: {
+  signOff: {
+    cycleId: string | null;
+    sendDate: string | null;
+    approvedAt: string | null;
+    approvedByName: string | null;
+    viewerIsApprover: boolean;
+    approverName: string;
+  };
+  openCount: number;
+}) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(signOff.approvedAt);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!signOff.cycleId) return null;
+
+  const sends = signOff.sendDate
+    ? new Date(signOff.sendDate + "T12:00:00Z").toLocaleDateString("en-CA", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      })
+    : null;
+
+  if (done) {
+    return (
+      <p className="border-t border-line pt-4 text-[13px] text-emerald-600">
+        Signed off by {signOff.approvedByName ?? signOff.approverName}. This issue may send.
+      </p>
+    );
+  }
+
+  if (!signOff.viewerIsApprover) {
+    return (
+      <p className="border-t border-line pt-4 text-[12.5px] text-subtle">
+        {signOff.approverName} signs this issue off{sends ? ` before it sends ${sends}` : ""}.
+      </p>
+    );
+  }
+
+  const approve = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/workspace/newsletter/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "approve",
+          cycleId: signOff.cycleId,
+          note: note.trim() || undefined,
+        }),
+      });
+      const j = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !j.ok) setErr(j.error ?? "Could not record the approval.");
+      else setDone(new Date().toISOString());
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-line pt-4">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
+        Your sign-off
+      </p>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+        {openCount === 0
+          ? "Nothing is left open."
+          : `${openCount} note${openCount === 1 ? " is" : "s are"} still open.`}
+        {sends ? ` This issue sends ${sends}.` : ""}
+      </p>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Add a note (optional)"
+        maxLength={500}
+        className="mt-2 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none placeholder:text-subtle focus-visible:border-brand-500"
+      />
+      <button
+        onClick={approve}
+        disabled={busy}
+        className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-emerald-600 transition-colors hover:text-emerald-500 disabled:opacity-50"
+      >
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+        Approve — this issue may send
+      </button>
+      {err && <p className="mt-2 text-[12.5px] text-red-500">{err}</p>}
     </div>
   );
 }

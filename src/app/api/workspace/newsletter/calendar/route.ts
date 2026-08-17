@@ -16,7 +16,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { generateCalendar, listCycles } from "@/lib/newsletter/calendar";
+import { effectiveSchedule, generateCalendar, listCycles, rescheduleCycle } from "@/lib/newsletter/calendar";
+import { isIsoDate, isSendWeekday, snapToSendDay, weekdayOf } from "@/lib/newsletter/schedule";
 import { dispatchReminder } from "@/lib/newsletter/reminders";
 import {
   getNewsletterConfig,
@@ -28,10 +29,14 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Today in Toronto as "YYYY-MM-DD" — the calendar's notion of "now". */
+function torontoToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+}
+
 /** First of the current month, in Toronto terms. */
 function currentMonthIso(): string {
-  const now = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
-  return `${now.slice(0, 7)}-01`;
+  return `${torontoToday().slice(0, 7)}-01`;
 }
 
 function workshopUrl(req: NextRequest): string {
@@ -72,6 +77,15 @@ const ReminderSchema = z.object({
   action: z.enum(["sendReminder", "skipReminder", "setReminderMode"]),
   reminderId: z.string().min(1),
   mode: z.enum(["auto", "manual"]).optional(),
+});
+
+const MoveSchema = z.object({
+  action: z.literal("moveCycle"),
+  cycleId: z.string().min(1),
+  /** New send date. Snapped server-side — never trusted as sent. */
+  sendDate: z.string().optional(),
+  draftDays: z.number().int().min(1).max(10).optional(),
+  buildDays: z.number().int().min(1).max(10).optional(),
 });
 
 const ApproveSchema = z.object({
@@ -135,6 +149,7 @@ export async function POST(req: NextRequest) {
       months: parsed.data.months,
       config,
       createdById: userId,
+      today: torontoToday(),
     });
     const cycles = await listCycles(currentMonthIso());
     return NextResponse.json({
@@ -144,6 +159,44 @@ export async function POST(req: NextRequest) {
       frozen: result.frozen,
       cycles,
     });
+  }
+
+  if (body.action === "moveCycle") {
+    const parsed = MoveSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    const config = await getNewsletterConfig();
+
+    // Snap on the server. The client snaps too, for feel, but the rule
+    // that an issue never goes out on a Monday or Friday is the domain's,
+    // not the UI's — a hand-rolled request must not be able to break it.
+    let sendDate: string | undefined;
+    if (parsed.data.sendDate) {
+      if (!isIsoDate(parsed.data.sendDate)) {
+        return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+      }
+      const holidays = effectiveSchedule(config, parsed.data.sendDate.slice(0, 7) + "-01", 1).holidays;
+      sendDate = snapToSendDay(parsed.data.sendDate, holidays);
+      if (!isSendWeekday(weekdayOf(sendDate))) {
+        return NextResponse.json(
+          { error: "An issue can only go out on a Tuesday, Wednesday or Thursday." },
+          { status: 400 },
+        );
+      }
+    }
+
+    try {
+      await rescheduleCycle({
+        cycleId: parsed.data.cycleId,
+        config,
+        sendDate,
+        draftDays: parsed.data.draftDays,
+        buildDays: parsed.data.buildDays,
+      });
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 409 });
+    }
+    const cycles = await listCycles(currentMonthIso());
+    return NextResponse.json({ ok: true, cycles });
   }
 
   if (body.action === "saveConfig") {

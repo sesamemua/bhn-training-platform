@@ -13,7 +13,7 @@ import { requireRole } from "@/lib/auth";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
 import { NewsletterCalendarClient } from "@/components/workspace/NewsletterCalendarClient";
-import { listCycles } from "@/lib/newsletter/calendar";
+import { effectiveSchedule, listCycles } from "@/lib/newsletter/calendar";
 import { getNewsletterConfig, isApprover } from "@/lib/newsletter/config";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,9 @@ export default async function NewsletterCalendarPage() {
     .slice(0, 7)}-01`;
 
   const [cycles, config] = await Promise.all([listCycles(monthIso), getNewsletterConfig()]);
+  // Holidays are computed server-side and handed down, so the lane's drag
+  // maths agrees exactly with what the server will accept.
+  const holidays = effectiveSchedule(config, monthIso, 24).holidays;
 
   return (
     <div className="space-y-6">
@@ -40,14 +43,17 @@ export default async function NewsletterCalendarPage() {
           </>
         }
         title="Newsletter calendar"
-        description="One issue a month, out in the third week. Deadlines are worked backwards from the send day in business days, and the reminders ride along."
+        description="One issue a month, landing in the third week. Drag a bar to move an issue; everything else follows."
       />
       <NewsletterNav />
       <NewsletterCalendarClient
         initialCycles={JSON.parse(JSON.stringify(cycles))}
         initialConfig={config}
+        holidays={holidays}
         canEdit={canEdit}
         viewerIsApprover={isApprover(config, user.email)}
+        coordinatorName={config.coordinator.name}
+        approverName={config.approver.name}
       />
     </div>
   );

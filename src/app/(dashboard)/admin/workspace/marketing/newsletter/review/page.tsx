@@ -9,6 +9,8 @@
 import { redirect } from "next/navigation";
 import { Mail } from "lucide-react";
 import { requireRole } from "@/lib/auth";
+import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
+import { getNewsletterConfig, isApprover } from "@/lib/newsletter/config";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
@@ -28,9 +30,13 @@ export default async function NewsletterReviewPage() {
   const session = await requireRole("instructor").catch(() => null);
   if (!session) redirect("/dashboard");
 
-  const issue = await prisma.newsletterIssue.findFirst({
-    where: { status: { not: "sent" } },
-    orderBy: { createdAt: "desc" },
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+  const [resolved, config] = await Promise.all([
+    resolveCurrentIssue(today),
+    getNewsletterConfig(),
+  ]);
+  const issue = await prisma.newsletterIssue.findUnique({
+    where: { id: resolved.issueId },
     include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
   });
 
@@ -103,6 +109,14 @@ export default async function NewsletterReviewPage() {
         initialHtml={html}
         initialComments={JSON.parse(JSON.stringify(comments))}
         unrendered={unrendered}
+        signOff={{
+          cycleId: resolved.cycleId,
+          sendDate: resolved.sendDate,
+          approvedAt: resolved.approvedAt ? resolved.approvedAt.toISOString() : null,
+          approvedByName: resolved.approvedByName,
+          viewerIsApprover: isApprover(config, (session.user as { email?: string }).email),
+          approverName: config.approver.name,
+        }}
       />
     </div>
   );

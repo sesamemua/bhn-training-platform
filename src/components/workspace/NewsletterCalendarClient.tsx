@@ -3,23 +3,25 @@
 /**
  * The newsletter content calendar.
  *
- * Reads as a production schedule, not a month grid: one row per issue,
- * each showing the four milestones in the order they happen and the four
- * reminders hanging off them. A month grid would waste most of its cells —
- * there is exactly one issue a month, and what a coordinator needs to see
- * is the run-up, not the empty days around it.
+ * Structure comes from hairlines and typography, not containers: one lane
+ * per month separated by a rule, all sharing a 31-column axis so the
+ * lanes align down the page and "always the third week" is something you
+ * see rather than something you're told. The only boxes left are the ones
+ * that are genuinely transient — a drag hint, an open disclosure.
+ *
+ * Reminders sit collapsed behind a one-line summary. Twelve months × four
+ * reminders × three controls is 144 always-live buttons, which is not a
+ * calendar, it is a control panel; at rest each month says what it will
+ * do in a sentence and opens only when asked.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  Check,
   CheckCircle2,
-  Clock,
+  ChevronRight,
   Loader2,
-  Send,
-  Settings2,
-  SkipForward,
   Sparkles,
+  Undo2,
 } from "lucide-react";
 import {
   REMINDER_LABEL,
@@ -29,6 +31,7 @@ import {
   type ReminderMode,
 } from "@/lib/newsletter/schedule";
 import type { NewsletterConfig } from "@/lib/newsletter/config";
+import { NewsletterMonthLane, type LaneCycle } from "./NewsletterMonthLane";
 
 interface Reminder {
   id: string;
@@ -38,20 +41,11 @@ interface Reminder {
   status: string;
   sentAt: string | null;
   sentTo: string[];
-  sentCc: string[];
   error: string | null;
 }
 
-interface Cycle {
-  id: string;
-  month: string;
-  draftOpen: string;
-  draftDue: string;
-  buildStart: string;
-  approvalDue: string;
-  sendDate: string;
+interface Cycle extends LaneCycle {
   sendDateAdjusted: boolean;
-  status: string;
   approvedAt: string | null;
   approvedByName: string | null;
   approvalNote: string | null;
@@ -60,14 +54,7 @@ interface Cycle {
 
 const API = "/api/workspace/newsletter/calendar";
 
-const monthLabel = (iso: string) => {
-  const [y, m] = iso.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-CA", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-};
+const todayIso = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
 
 const dayLabel = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -79,24 +66,28 @@ const dayLabel = (iso: string) => {
   });
 };
 
-const todayIso = () =>
-  new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
-
 export function NewsletterCalendarClient({
   initialCycles,
   initialConfig,
+  holidays,
   canEdit,
   viewerIsApprover,
+  coordinatorName,
+  approverName,
 }: {
   initialCycles: Cycle[];
   initialConfig: NewsletterConfig;
+  holidays: string[];
   canEdit: boolean;
   viewerIsApprover: boolean;
+  coordinatorName: string;
+  approverName: string;
 }) {
   const [cycles, setCycles] = useState<Cycle[]>(initialCycles);
   const [config, setConfig] = useState<NewsletterConfig>(initialConfig);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [months, setMonths] = useState(6);
 
@@ -104,7 +95,7 @@ export function NewsletterCalendarClient({
 
   const post = useCallback(async (payload: Record<string, unknown>, key: string) => {
     setBusy(key);
-    setNote(null);
+    setError(null);
     try {
       const res = await fetch(API, {
         method: "POST",
@@ -117,133 +108,139 @@ export function NewsletterCalendarClient({
         cycles?: Cycle[];
         config?: NewsletterConfig;
         created?: number;
-        updated?: number;
         frozen?: number;
-        result?: { status: string; to: string[]; error?: string };
         cycle?: Cycle;
       };
       if (!res.ok || !j.ok) {
-        setNote(j.error ?? "Something went wrong.");
+        setError(j.error ?? "Something went wrong.");
         return null;
       }
       if (j.cycles) setCycles(j.cycles);
       if (j.config) setConfig(j.config);
-      if (j.cycle) {
-        setCycles((cur) => cur.map((c) => (c.id === j.cycle!.id ? { ...c, ...j.cycle! } : c)));
-      }
+      if (j.cycle) setCycles((cur) => cur.map((c) => (c.id === j.cycle!.id ? { ...c, ...j.cycle! } : c)));
       return j;
     } catch (e) {
-      setNote((e as Error).message);
+      setError((e as Error).message);
       return null;
     } finally {
       setBusy(null);
     }
   }, []);
 
-  // Keep the view honest if someone else generates while this is open.
-  useEffect(() => {
-    setCycles(initialCycles);
-  }, [initialCycles]);
-
   const generate = async () => {
-    const start = today.slice(0, 7);
-    const j = await post({ action: "generate", startMonth: start, months }, "generate");
+    const j = await post(
+      { action: "generate", startMonth: today.slice(0, 7), months },
+      "generate",
+    );
     if (j) {
       setNote(
-        `Planned ${months} month${months === 1 ? "" : "s"} — ${j.created ?? 0} new, ${j.updated ?? 0} updated` +
-          (j.frozen ? `, ${j.frozen} left alone (already approved or sent)` : "") +
-          ".",
+        `Planned ${months} month${months === 1 ? "" : "s"}.` +
+          (j.frozen ? ` ${j.frozen} left as they were — already approved, sent, or moved by hand.` : ""),
       );
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* ── planner ─────────────────────────────────────────────── */}
-      {canEdit && (
-        <section className="rounded-xl border border-line bg-card p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="text-[15px] font-bold text-fg">Plan ahead</h2>
-              <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted">
-                One issue a month, out in the third week on a{" "}
-                <strong className="text-fg">
-                  {WEEKDAY_LABEL[config.schedule.sendWeekday]}
-                </strong>
-                . Every other date is worked backwards from the send day in
-                business days — {config.schedule.draftDays} to write,{" "}
-                {config.schedule.buildDays} to build and review. Re-planning
-                never touches a cycle that has been approved or sent.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-[12px] font-semibold text-muted" htmlFor="months">
-                Months
-              </label>
-              <input
-                id="months"
-                type="number"
-                min={1}
-                max={24}
-                value={months}
-                onChange={(e) => setMonths(Math.max(1, Math.min(24, Number(e.target.value) || 1)))}
-                className="w-16 rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
-              />
-              <button
-                onClick={generate}
-                disabled={busy !== null}
-                className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-50"
-              >
-                {busy === "generate" ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                Generate
-              </button>
-              <button
-                onClick={() => setShowConfig((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[13px] font-semibold text-muted hover:text-fg"
-              >
-                <Settings2 size={13} />
-                Settings
-              </button>
-            </div>
-          </div>
+    <div>
+      {/* ── the rule of the thing, stated once, before anyone is surprised ── */}
+      <p className="max-w-2xl text-[13px] leading-relaxed text-muted">
+        One issue a month, landing in the third week on a{" "}
+        <strong className="font-semibold text-fg">
+          {WEEKDAY_LABEL[config.schedule.sendWeekday]}
+        </strong>{" "}
+        — never a Monday or Friday. Every other date is counted backwards from
+        the send day in working days, skipping weekends and holidays:{" "}
+        {config.schedule.draftDays} for the program leads to write,{" "}
+        {config.schedule.buildDays} to build and review.
+        {canEdit && " Drag any bar to move an issue; drag its edges to change a window."}
+      </p>
 
-          {showConfig && (
-            <ConfigPanel
-              config={config}
-              busy={busy === "config"}
-              onSave={(next) => post({ action: "saveConfig", config: next }, "config")}
+      {canEdit && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line pb-5">
+          <div className="flex items-center gap-2">
+            <label htmlFor="months" className="text-[12px] text-muted">
+              Plan
+            </label>
+            <input
+              id="months"
+              type="number"
+              min={1}
+              max={24}
+              value={months}
+              onChange={(e) => setMonths(Math.max(1, Math.min(24, Number(e.target.value) || 1)))}
+              className="w-14 border-0 border-b border-line bg-transparent px-0 py-1 text-center text-[13px] font-semibold text-fg outline-none focus-visible:border-brand-500"
             />
-          )}
-        </section>
+            <span className="text-[12px] text-muted">months ahead</span>
+          </div>
+          <button
+            onClick={generate}
+            disabled={busy !== null}
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-400 transition-colors hover:text-brand-200 disabled:opacity-50"
+          >
+            {busy === "generate" ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Sparkles size={13} />
+            )}
+            Fill the calendar
+          </button>
+          <button
+            onClick={() => setShowConfig((v) => !v)}
+            className="text-[13px] font-semibold text-muted transition-colors hover:text-fg"
+          >
+            {showConfig ? "Hide settings" : "Settings"}
+          </button>
+        </div>
       )}
 
-      {note && (
-        <p className="rounded-lg border border-line bg-elevated px-4 py-2.5 text-[13px] text-muted">
-          {note}
+      {showConfig && canEdit && (
+        <ConfigPanel
+          config={config}
+          busy={busy === "config"}
+          onSave={(next) => post({ action: "saveConfig", config: next }, "config")}
+        />
+      )}
+
+      {(note || error) && (
+        <p
+          className={`mt-4 text-[13px] ${error ? "text-red-500" : "text-muted"}`}
+          role={error ? "alert" : "status"}
+        >
+          {error ?? note}
         </p>
       )}
 
-      {/* ── cycles ──────────────────────────────────────────────── */}
+      {/* ── lanes ───────────────────────────────────────────────────── */}
       {cycles.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-line px-6 py-14 text-center">
-          <p className="text-[15px] font-semibold text-fg">No issues planned yet</p>
+        <div className="py-16 text-center">
+          <p className="text-[15px] font-semibold text-fg">No dates published yet</p>
           <p className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed text-muted">
-            Generate a few months and the calendar will lay out every draft
-            deadline, build window and send date, with the reminders attached.
+            {canEdit
+              ? "Choose how many months to plan and fill the calendar. Nothing is emailed until you say so."
+              : `${coordinatorName} sets the newsletter schedule. You'll get an email when your section is due.`}
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="mt-2 divide-y divide-line">
           {cycles.map((c) => (
-            <CycleRow
+            <NewsletterMonthLane
               key={c.id}
               cycle={c}
               today={today}
-              canEdit={canEdit}
-              viewerIsApprover={viewerIsApprover}
-              busy={busy}
-              onAction={post}
-            />
+              holidays={holidays}
+              draggable={canEdit}
+              onCommit={(patch) => post({ action: "moveCycle", cycleId: c.id, ...patch }, c.id)}
+            >
+              <CycleFooter
+                cycle={c}
+                today={today}
+                canEdit={canEdit}
+                viewerIsApprover={viewerIsApprover}
+                approverName={approverName}
+                busy={busy}
+                onAction={post}
+              />
+            </NewsletterMonthLane>
           ))}
         </div>
       )}
@@ -251,20 +248,14 @@ export function NewsletterCalendarClient({
   );
 }
 
-// ── one issue ───────────────────────────────────────────────────────
+// ── per-month footer: reminders (collapsed) + sign-off ───────────────
 
-const STATUS_STYLE: Record<string, string> = {
-  planned: "text-subtle",
-  active: "text-brand-700",
-  approved: "text-emerald-600",
-  sent: "text-muted",
-};
-
-function CycleRow({
+function CycleFooter({
   cycle,
   today,
   canEdit,
   viewerIsApprover,
+  approverName,
   busy,
   onAction,
 }: {
@@ -272,174 +263,159 @@ function CycleRow({
   today: string;
   canEdit: boolean;
   viewerIsApprover: boolean;
+  approverName: string;
   busy: string | null;
   onAction: (payload: Record<string, unknown>, key: string) => Promise<unknown>;
 }) {
-  const milestones = [
-    { label: "Drafts open", date: cycle.draftOpen },
-    { label: "Drafts due", date: cycle.draftDue },
-    { label: "Build starts", date: cycle.buildStart },
-    { label: "Approval", date: cycle.approvalDue },
-    { label: "Send", date: cycle.sendDate },
-  ];
-  const isPast = cycle.sendDate < today;
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  const sent = cycle.reminders.filter((r) => r.status === "sent").length;
+  const failed = cycle.reminders.filter((r) => r.status === "failed").length;
+  const waiting = cycle.reminders.filter((r) => r.status === "pending").length;
+  const manualWaiting = cycle.reminders.filter(
+    (r) => r.status === "pending" && r.mode === "manual",
+  ).length;
+
+  // Sign-off only becomes real once there is something built to sign off.
+  const reviewable = today >= cycle.buildStart && cycle.status !== "sent";
+
+  const summary =
+    failed > 0
+      ? `${failed} reminder${failed === 1 ? "" : "s"} didn't send`
+      : waiting === 0
+        ? `All ${cycle.reminders.length} reminders handled`
+        : manualWaiting > 0
+          ? `${waiting} reminder${waiting === 1 ? "" : "s"} to come — you send ${manualWaiting} of them`
+          : `${waiting} reminder${waiting === 1 ? "" : "s"} to come, all automatic`;
 
   return (
-    <section className={`rounded-xl border border-line bg-card p-5 ${isPast ? "opacity-70" : ""}`}>
-      <header className="flex flex-wrap items-baseline justify-between gap-3">
-        <h3 className="text-[17px] font-bold text-fg">{monthLabel(cycle.month)}</h3>
-        <span className={`text-[11px] font-bold uppercase tracking-[0.14em] ${STATUS_STYLE[cycle.status] ?? "text-subtle"}`}>
-          {cycle.status}
-        </span>
-      </header>
+    <div className="mt-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 text-[12px] text-subtle transition-colors hover:text-muted"
+      >
+        <ChevronRight
+          size={12}
+          className={`transition-transform ${open ? "rotate-90" : ""}`}
+        />
+        {summary}
+        {sent > 0 && <span className="text-subtle"> · {sent} sent</span>}
+      </button>
 
-      {cycle.sendDateAdjusted && (
-        <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-amber-600">
-          <AlertTriangle size={12} />
-          Send date moved off its usual weekday — a holiday fell on it.
-        </p>
+      {open && (
+        <ul className="mt-2 space-y-2 border-l border-line pl-4">
+          {cycle.reminders.map((r) => {
+            const label = REMINDER_LABEL[r.kind as ReminderKind] ?? r.kind;
+            const working = busy === r.id;
+            const isConfirming = confirming === r.id;
+            return (
+              <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 text-[12.5px]">
+                <div className="min-w-0">
+                  <p className="text-fg">
+                    <span className="font-semibold">{label}</span>
+                    <span className="text-subtle"> · {dayLabel(r.scheduledFor)}</span>
+                  </p>
+                  <p className="mt-0.5 text-[11.5px] text-subtle">
+                    {r.status === "sent"
+                      ? `Sent to ${r.sentTo.join(", ") || "—"}`
+                      : r.status === "failed"
+                        ? `Didn't send — ${r.error ?? "unknown error"}`
+                        : r.status === "skipped"
+                          ? r.error === "SMTP not configured"
+                            ? "Not sent — email isn't configured on this platform"
+                            : "You chose not to send this one"
+                          : r.mode === "manual"
+                            ? "Will email you a ready-to-send copy"
+                            : "Will send itself"}
+                  </p>
+                </div>
+
+                {canEdit && (r.status === "pending" || r.status === "failed") && (
+                  <div className="flex shrink-0 items-center gap-3">
+                    {isConfirming ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setConfirming(null);
+                            onAction({ action: "sendReminder", reminderId: r.id }, r.id);
+                          }}
+                          disabled={working}
+                          className="text-[12px] font-semibold text-brand-300 hover:text-brand-200"
+                        >
+                          {working ? "Sending…" : "Yes, send"}
+                        </button>
+                        <button
+                          onClick={() => setConfirming(null)}
+                          className="text-[12px] text-subtle hover:text-fg"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setConfirming(r.id)}
+                          disabled={working}
+                          className="text-[12px] font-semibold text-brand-400 hover:text-brand-200 disabled:opacity-50"
+                        >
+                          {r.status === "failed" ? "Try again" : "Send now"}
+                        </button>
+                        {r.status === "pending" && (
+                          <button
+                            onClick={() =>
+                              onAction(
+                                {
+                                  action: "setReminderMode",
+                                  reminderId: r.id,
+                                  mode: r.mode === "auto" ? "manual" : "auto",
+                                },
+                                r.id,
+                              )
+                            }
+                            disabled={working}
+                            className="text-[12px] text-muted hover:text-fg disabled:opacity-50"
+                          >
+                            {r.mode === "auto" ? "Let me send it" : "Send automatically"}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
 
-      {/* milestones */}
-      <ol className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
-        {milestones.map((m) => {
-          const done = m.date < today;
-          const isToday = m.date === today;
-          return (
-            <li key={m.label}>
-              <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-subtle">
-                {m.label}
-              </p>
-              <p
-                className={`mt-0.5 text-[13.5px] font-semibold ${
-                  isToday ? "text-brand-700" : done ? "text-subtle" : "text-fg"
-                }`}
-              >
-                {dayLabel(m.date)}
-                {isToday && <span className="ml-1.5 text-[11px] font-bold">· today</span>}
-              </p>
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* reminders */}
-      {cycle.reminders.length > 0 && (
-        <div className="mt-5 border-t border-line pt-4">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-subtle">
-            Reminders
-          </p>
-          <ul className="mt-2 space-y-1.5">
-            {cycle.reminders.map((r) => (
-              <ReminderRow
-                key={r.id}
-                reminder={r}
-                canEdit={canEdit}
-                busy={busy}
-                onAction={onAction}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* approval */}
-      <div className="mt-5 border-t border-line pt-4">
+      {/* sign-off */}
+      <div className="mt-2">
         {cycle.approvedAt ? (
-          <p className="inline-flex items-center gap-2 text-[13px] text-emerald-600">
-            <CheckCircle2 size={14} />
-            <span>
-              Approved by <strong>{cycle.approvedByName ?? "the approver"}</strong> on{" "}
-              {new Date(cycle.approvedAt).toLocaleDateString("en-CA", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-              {cycle.approvalNote ? ` — “${cycle.approvalNote}”` : ""}
-            </span>
+          <p className="inline-flex items-center gap-1.5 text-[12.5px] text-emerald-600">
+            <CheckCircle2 size={13} />
+            Approved by {cycle.approvedByName ?? approverName}
+            {cycle.approvalNote ? ` — “${cycle.approvalNote}”` : ""}
+          </p>
+        ) : !reviewable ? (
+          <p className="text-[12px] text-subtle">
+            Sign-off opens {dayLabel(cycle.buildStart)}, once the issue is built.
           </p>
         ) : viewerIsApprover ? (
           <ApproveControl cycleId={cycle.id} busy={busy} onAction={onAction} />
         ) : (
-          <p className="text-[12.5px] text-subtle">
-            Awaiting final approval before this issue sends.
-          </p>
+          <p className="text-[12px] text-subtle">Waiting on {approverName} to sign off.</p>
         )}
       </div>
-    </section>
-  );
-}
 
-function ReminderRow({
-  reminder: r,
-  canEdit,
-  busy,
-  onAction,
-}: {
-  reminder: Reminder;
-  canEdit: boolean;
-  busy: string | null;
-  onAction: (payload: Record<string, unknown>, key: string) => Promise<unknown>;
-}) {
-  const label = REMINDER_LABEL[r.kind as ReminderKind] ?? r.kind;
-  const pending = r.status === "pending";
-  const working = busy === r.id;
-
-  return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
-      <span className="inline-flex w-4 justify-center">
-        {r.status === "sent" ? (
-          <Check size={13} className="text-emerald-600" />
-        ) : r.status === "failed" ? (
-          <AlertTriangle size={13} className="text-red-600" />
-        ) : r.status === "skipped" ? (
-          <SkipForward size={13} className="text-subtle" />
-        ) : (
-          <Clock size={13} className="text-subtle" />
-        )}
-      </span>
-      <span className="font-semibold text-fg">{label}</span>
-      <span className="text-subtle">{dayLabel(r.scheduledFor)}</span>
-      <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-subtle">
-        {r.mode === "auto" ? "sends itself" : "you send it"}
-      </span>
-      {r.status === "sent" && r.sentTo.length > 0 && (
-        <span className="text-[12px] text-subtle">→ {r.sentTo.join(", ")}</span>
+      {cycle.sendDateAdjusted && (
+        <p className="mt-1.5 inline-flex items-center gap-1.5 text-[11.5px] text-amber-600">
+          <AlertTriangle size={11} />
+          Moved off {WEEKDAY_LABEL[3]} — a holiday fell on the usual day.
+        </p>
       )}
-      {r.error && <span className="text-[12px] text-red-600">{r.error}</span>}
-
-      {canEdit && pending && (
-        <span className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() =>
-              onAction(
-                { action: "setReminderMode", reminderId: r.id, mode: r.mode === "auto" ? "manual" : "auto" },
-                r.id,
-              )
-            }
-            disabled={working}
-            className="text-[12px] font-semibold text-muted hover:text-fg disabled:opacity-50"
-          >
-            {r.mode === "auto" ? "Make manual" : "Make automatic"}
-          </button>
-          <button
-            onClick={() => onAction({ action: "sendReminder", reminderId: r.id }, r.id)}
-            disabled={working}
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-700 hover:text-brand-900 disabled:opacity-50"
-          >
-            {working ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
-            Send now
-          </button>
-          <button
-            onClick={() => onAction({ action: "skipReminder", reminderId: r.id }, r.id)}
-            disabled={working}
-            className="text-[12px] font-semibold text-muted hover:text-fg disabled:opacity-50"
-          >
-            Skip
-          </button>
-        </span>
-      )}
-    </li>
+    </div>
   );
 }
 
@@ -455,27 +431,45 @@ function ApproveControl({
   const [note, setNote] = useState("");
   const working = busy === cycleId;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <input
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Optional note"
-        maxLength={500}
-        className="min-w-0 flex-1 rounded-md border border-line bg-elevated px-3 py-1.5 text-[13px] text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
-      />
+    <div className="flex flex-wrap items-center gap-3">
       <button
         onClick={() => onAction({ action: "approve", cycleId, note: note.trim() || undefined }, cycleId)}
         disabled={working}
-        className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3.5 py-1.5 text-[13px] font-semibold text-white disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 text-[13px] font-bold text-emerald-600 transition-colors hover:text-emerald-500 disabled:opacity-50"
       >
         {working ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-        Approve this issue
+        Sign this issue off
       </button>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Add a note (optional)"
+        maxLength={500}
+        className="min-w-0 flex-1 border-0 border-b border-line bg-transparent px-0 py-1 text-[12.5px] text-fg outline-none placeholder:text-subtle focus-visible:border-brand-500"
+      />
     </div>
   );
 }
 
-// ── settings ────────────────────────────────────────────────────────
+// ── settings: underlines, not boxes ─────────────────────────────────
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">{label}</span>
+      <div className="mt-1">{children}</div>
+    </label>
+  );
+}
+
+const INPUT =
+  "w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none transition-colors focus-visible:border-brand-500";
 
 function ConfigPanel({
   config,
@@ -487,20 +481,17 @@ function ConfigPanel({
   onSave: (next: NewsletterConfig) => void;
 }) {
   const [draft, setDraft] = useState<NewsletterConfig>(config);
-  useEffect(() => setDraft(config), [config]);
-
   const setSchedule = (patch: Partial<NewsletterConfig["schedule"]>) =>
     setDraft((d) => ({ ...d, schedule: { ...d.schedule, ...patch } }));
 
   return (
-    <div className="mt-5 space-y-5 border-t border-line pt-5">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Send day</span>
+    <div className="space-y-6 border-b border-line py-6">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="Send day">
           <select
             value={draft.schedule.sendWeekday}
             onChange={(e) => setSchedule({ sendWeekday: Number(e.target.value) as 2 | 3 | 4 })}
-            className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg"
+            className={INPUT}
           >
             {SEND_WEEKDAYS.map((d) => (
               <option key={d} value={d}>
@@ -508,52 +499,52 @@ function ConfigPanel({
               </option>
             ))}
           </select>
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Week of month</span>
+        </Field>
+        <Field label="Week of month">
           <input
             type="number"
             min={1}
             max={5}
             value={draft.schedule.weekOfMonth}
             onChange={(e) => setSchedule({ weekOfMonth: Number(e.target.value) })}
-            className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg"
+            className={INPUT}
           />
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Writing days</span>
+        </Field>
+        <Field label="Writing days">
           <input
             type="number"
             min={1}
             max={10}
             value={draft.schedule.draftDays}
             onChange={(e) => setSchedule({ draftDays: Number(e.target.value) })}
-            className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg"
+            className={INPUT}
           />
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Build days</span>
+        </Field>
+        <Field label="Build days">
           <input
             type="number"
             min={1}
             max={10}
             value={draft.schedule.buildDays}
             onChange={(e) => setSchedule({ buildDays: Number(e.target.value) })}
-            className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg"
+            className={INPUT}
           />
-        </label>
+        </Field>
       </div>
 
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Program leads</p>
-        <ul className="mt-2 space-y-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
+          Who writes which section
+        </p>
+        <ul className="mt-2 space-y-2">
           {draft.leads.map((l, i) => (
-            <li key={`${l.section}-${i}`} className="flex flex-wrap items-center gap-2 text-[13px]">
-              <span className="w-24 shrink-0 font-semibold uppercase tracking-[0.08em] text-brand-700">
+            <li key={`${l.section}-${i}`} className="grid grid-cols-[5rem_1fr_1.4fr] items-baseline gap-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand-400">
                 {l.section}
               </span>
               <input
                 value={l.name}
+                aria-label={`${l.section} lead name`}
                 onChange={(e) =>
                   setDraft((d) => {
                     const leads = [...d.leads];
@@ -561,10 +552,11 @@ function ConfigPanel({
                     return { ...d, leads };
                   })
                 }
-                className="w-40 rounded-md border border-line bg-elevated px-2 py-1 text-[13px] text-fg"
+                className={INPUT}
               />
               <input
                 value={l.email}
+                aria-label={`${l.section} lead email`}
                 onChange={(e) =>
                   setDraft((d) => {
                     const leads = [...d.leads];
@@ -572,88 +564,97 @@ function ConfigPanel({
                     return { ...d, leads };
                   })
                 }
-                className="min-w-0 flex-1 rounded-md border border-line bg-elevated px-2 py-1 text-[13px] text-fg"
+                className={INPUT}
               />
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Cc on lead emails</span>
+      <div className="grid gap-5 sm:grid-cols-3">
+        <Field label="Copied on lead emails">
           <input
             value={draft.cc.join(", ")}
             onChange={(e) =>
-              setDraft((d) => ({ ...d, cc: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) }))
+              setDraft((d) => ({
+                ...d,
+                cc: e.target.value.split(",").map((x) => x.trim()).filter(Boolean),
+              }))
             }
-            className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg"
+            className={INPUT}
           />
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Approver</span>
+        </Field>
+        <Field label="Signs off">
           <input
             value={draft.approver.email}
             onChange={(e) => setDraft((d) => ({ ...d, approver: { ...d.approver, email: e.target.value } }))}
-            className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg"
+            className={INPUT}
           />
-        </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">Coordinator</span>
+        </Field>
+        <Field label="Coordinates (gets the manual reminders)">
           <input
             value={draft.coordinator.email}
             onChange={(e) =>
               setDraft((d) => ({ ...d, coordinator: { ...d.coordinator, email: e.target.value } }))
             }
-            className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg"
+            className={INPUT}
           />
-        </label>
+        </Field>
       </div>
 
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
           How each reminder goes out
         </p>
-        <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+        <ul className="mt-2 flex flex-wrap gap-x-8 gap-y-2">
           {(Object.keys(draft.modes) as ReminderKind[]).map((k) => (
-            <li key={k} className="flex items-center gap-2 text-[13px]">
-              <span className="text-fg">{REMINDER_LABEL[k]}</span>
+            <li key={k} className="flex items-baseline gap-2 text-[13px]">
+              <span className="text-muted">{REMINDER_LABEL[k]}</span>
               <select
                 value={draft.modes[k]}
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, modes: { ...d.modes, [k]: e.target.value as ReminderMode } }))
                 }
-                className="rounded-md border border-line bg-elevated px-2 py-1 text-[12.5px] text-fg"
+                className="border-0 border-b border-line bg-transparent px-0 py-0.5 text-[12.5px] font-semibold text-fg outline-none focus-visible:border-brand-500"
               >
                 <option value="auto">sends itself</option>
-                <option value="manual">reminds me to send</option>
+                <option value="manual">I send it</option>
               </select>
             </li>
           ))}
         </ul>
       </div>
 
-      <label className="flex items-center gap-2 text-[13px] text-fg">
+      <label className="flex items-center gap-2 text-[13px] text-muted">
         <input
           type="checkbox"
           checked={draft.useStatHolidays}
           onChange={(e) => setDraft((d) => ({ ...d, useStatHolidays: e.target.checked }))}
         />
-        Skip statutory holidays when counting business days
+        Skip statutory holidays when counting working days
       </label>
 
-      <button
-        onClick={() => onSave(draft)}
-        disabled={busy}
-        className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3.5 py-1.5 text-[13px] font-semibold text-white disabled:opacity-50"
-      >
-        {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-        Save settings
-      </button>
-      <p className="text-[12px] leading-relaxed text-subtle">
-        Saving settings does not move existing dates. Press Generate afterwards
-        to re-plan — cycles already approved or sent are left untouched.
-      </p>
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          onClick={() => onSave(draft)}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-400 hover:text-brand-200 disabled:opacity-50"
+        >
+          {busy ? <Loader2 size={13} className="animate-spin" /> : null}
+          Save settings
+        </button>
+        <button
+          onClick={() => setDraft(config)}
+          className="inline-flex items-center gap-1.5 text-[12.5px] text-muted hover:text-fg"
+        >
+          <Undo2 size={12} />
+          Reset
+        </button>
+        <p className="text-[12px] text-subtle">
+          Saving changes the rules, not the dates already on the calendar. Fill
+          the calendar again to apply them — months you moved by hand stay put.
+        </p>
+      </div>
     </div>
   );
 }
