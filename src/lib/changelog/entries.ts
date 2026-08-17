@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Sign-in now returns you to where you were headed
+  {
+    title: "Fix: signing in takes you where you were going",
+    body: "Links that ask you to sign in first — a showcase submission page, an event registration, an invite, a page linked from an email — now return you to that page once you're in. Until now every one of them dropped you on the dashboard instead, and you had to find your way back by hand.",
+    kind: "fix",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── Newsletter reminders: read it before it sends
   {
     title: "Newsletter reminders — read and edit before sending",

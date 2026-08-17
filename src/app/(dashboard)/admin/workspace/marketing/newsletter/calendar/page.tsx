@@ -9,7 +9,7 @@
  */
 import { redirect } from "next/navigation";
 import { Mail } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireRole, deniedRedirect } from "@/lib/auth";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
 import { NewsletterCalendarClient } from "@/components/workspace/NewsletterCalendarClient";
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewsletterCalendarPage() {
   const session = await requireRole("instructor").catch(() => null);
-  if (!session) redirect("/dashboard");
+  if (!session) redirect(await deniedRedirect("/admin/workspace/marketing/newsletter/calendar"));
 
   const user = session.user as { role?: string; email?: string };
   const canEdit = user.role === "admin" || user.role === "superadmin";

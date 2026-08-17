@@ -345,11 +345,17 @@ export function ReminderSendDialog({
           <div>
             <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-subtle">
               Preview — including the schedule calendar
+              <span className="ml-2 font-normal normal-case tracking-normal text-subtle">
+                links open in a new tab
+              </span>
             </p>
             <iframe
-              srcDoc={html}
+              // Links are rewritten to open in a new tab and the frame is
+              // allowed to pop one, so the CTA can actually be tested from
+              // here. Scripts and same-frame navigation stay blocked.
+              srcDoc={html.replace(/<a\s/gi, '<a target="_blank" rel="noreferrer" ')}
               title="Email preview"
-              sandbox=""
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
               className="h-[520px] w-full rounded-lg border border-line bg-white"
             />
           </div>

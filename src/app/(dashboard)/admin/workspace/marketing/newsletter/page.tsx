@@ -8,7 +8,7 @@
  */
 import { redirect } from "next/navigation";
 import { Mail } from "lucide-react";
-import { requireRole, isStaff } from "@/lib/auth";
+import { requireRole, isStaff, deniedRedirect } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewsletterWorkshopPage() {
   const session = await requireRole("instructor").catch(() => null);
-  if (!session) redirect("/dashboard");
+  if (!session) redirect(await deniedRedirect("/admin/workspace/marketing/newsletter"));
 
   const role = (session.user as { role?: string }).role ?? "user";
   const canEdit = role === "admin" || role === "superadmin";

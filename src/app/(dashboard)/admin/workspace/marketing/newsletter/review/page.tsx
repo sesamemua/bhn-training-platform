@@ -8,7 +8,7 @@
  */
 import { redirect } from "next/navigation";
 import { Mail } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireRole, deniedRedirect } from "@/lib/auth";
 import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
 import { getNewsletterConfig, isApprover } from "@/lib/newsletter/config";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewsletterReviewPage() {
   const session = await requireRole("instructor").catch(() => null);
-  if (!session) redirect("/dashboard");
+  if (!session) redirect(await deniedRedirect("/admin/workspace/marketing/newsletter/review"));
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
   const [resolved, config] = await Promise.all([

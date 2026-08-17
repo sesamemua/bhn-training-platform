@@ -345,6 +345,19 @@ export async function requireRole(minRole: "instructor" | "admin" | "superadmin"
   return session;
 }
 
+/**
+ * Where to send someone who just failed a role gate on `path`.
+ *
+ * Signed in but under-privileged → home; there is nothing to sign into.
+ * Signed OUT → the login page carrying a return path, so a link followed
+ * from an email survives the sign-in instead of dumping them on the
+ * dashboard having forgotten where they were going.
+ */
+export async function deniedRedirect(path: string): Promise<string> {
+  const session = await getSession();
+  return session ? "/dashboard" : `/login?callbackUrl=${encodeURIComponent(path)}`;
+}
+
 /** Admin or higher — manages users, audit, settings. */
 export function isAdmin(role: string) {
   return (ROLE_RANK[role] ?? 0) >= ROLE_RANK["admin"];

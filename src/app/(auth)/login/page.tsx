@@ -30,6 +30,13 @@ function LoginPageInner() {
   const params = useSearchParams();
   const justRegistered = params.get("registered") === "1";
   const prefillEmail = params.get("email") ?? "";
+  // Where to land after signing in. Links all over the app already pass
+  // ?callbackUrl= (showcase, events, invites, emailed deep links) but it
+  // was never read, so every one of them dumped the user on /dashboard.
+  // Only same-site absolute paths are honoured — a full URL, or the
+  // protocol-relative "//evil.com", would turn this into an open redirect.
+  const rawCallback = params.get("callbackUrl") ?? "";
+  const callbackUrl = /^\/(?!\/)/.test(rawCallback) ? rawCallback : "/dashboard";
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -150,7 +157,7 @@ function LoginPageInner() {
     if (res?.error) {
       setError(mfaRequired ? "Code didn't match — check your authenticator." : "Invalid email or password");
     } else {
-      router.push("/dashboard");
+      router.push(callbackUrl);
     }
   }
 
