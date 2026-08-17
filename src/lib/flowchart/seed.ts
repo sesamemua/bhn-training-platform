@@ -19,8 +19,11 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
       field: { key: "email", type: "email", required: true } },
     { id: "n3b", kind: "question", x: COL.b, y: row(2), w: 190, h: 66, text: "Are you a BioHubNet trainee?",
       field: { key: "trainee", type: "yesno", required: true } },
-    { id: "n3c", kind: "question", x: COL.c, y: row(2), w: 190, h: 78, text: "Which institution?",
-      field: { key: "institution", type: "text", help: "Only asked if you are not a BHN trainee." } },
+    // Affiliations are repeatable on purpose: someone can be a PhD student,
+    // a clinician and a founder at once, and a single box loses two of them.
+    { id: "n3c", kind: "question", x: COL.c, y: row(2), w: 190, h: 78, text: "Where are you affiliated?",
+      field: { key: "affiliations", type: "affiliation", required: true,
+        help: "Add every organisation you belong to — university, hospital, company." } },
     { id: "n4",  kind: "decision", x: COL.a, y: row(3), w: 190, h: 78, text: "Session full?" },
     { id: "n5",  kind: "step",     x: COL.b, y: row(3), w: 190, h: 66, text: "Added to waitlist", actor: "System" },
 

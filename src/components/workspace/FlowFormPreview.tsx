@@ -10,7 +10,15 @@
  */
 import { useMemo } from "react";
 import { CircleAlert } from "lucide-react";
-import { missingRequired, visibleFields, type Answers } from "@/lib/flowchart/form";
+import { missingRequired, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
+import {
+  EMPTY_AFFILIATION,
+  ORG_TYPES,
+  OTHER,
+  ROLES,
+  isComplete,
+  type Affiliation,
+} from "@/lib/flowchart/vocab";
 import { FIELD_TYPE_LABEL, type ChartDoc, type FieldType } from "@/lib/flowchart/types";
 
 const INPUT =
@@ -24,7 +32,7 @@ export function FlowFormPreview({
 }: {
   doc: ChartDoc;
   answers: Answers;
-  onChange: (key: string, value: string | string[]) => void;
+  onChange: (key: string, value: AnswerValue) => void;
   onFocusNode?: (nodeId: string) => void;
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
@@ -106,11 +114,18 @@ function Field({
 }: {
   type: FieldType;
   options: string[];
-  value: string | string[] | undefined;
-  onChange: (v: string | string[]) => void;
+  value: AnswerValue | undefined;
+  onChange: (v: AnswerValue) => void;
 }) {
   const s = typeof value === "string" ? value : "";
-  const arr = Array.isArray(value) ? value : [];
+  const arr = Array.isArray(value) ? (value as string[]).filter((x) => typeof x === "string") : [];
+
+  if (type === "affiliation") {
+    const list = (Array.isArray(value) && typeof value[0] === "object"
+      ? (value as Affiliation[])
+      : []) as Affiliation[];
+    return <AffiliationList list={list} onChange={onChange} />;
+  }
 
   if (type === "long") {
     return <textarea rows={3} value={s} onChange={(e) => onChange(e.target.value)} className={`${INPUT} resize-y`} />;
@@ -165,5 +180,125 @@ function Field({
       onChange={(e) => onChange(e.target.value)}
       className={`${INPUT} placeholder:text-subtle`}
     />
+  );
+}
+
+
+/**
+ * Affiliations, plural on purpose.
+ *
+ * Someone can be a PhD student at a university, a clinician at a hospital
+ * and a founder of a spin-out simultaneously — a single "organisation"
+ * box forces them to pick one and quietly loses the other two. Each entry
+ * codes the organisation TYPE and the ROLE from a fixed list so the data
+ * stays countable, with an Other box for the cases the list misses.
+ */
+function AffiliationList({
+  list,
+  onChange,
+}: {
+  list: Affiliation[];
+  onChange: (v: Affiliation[]) => void;
+}) {
+  const rows = list.length ? list : [{ ...EMPTY_AFFILIATION }];
+
+  const patch = (i: number, p: Partial<Affiliation>) =>
+    onChange(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
+
+  const setPrimary = (i: number) =>
+    onChange(rows.map((r, j) => ({ ...r, primary: j === i })));
+
+  const SELECT =
+    "mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[12.5px] text-fg outline-none focus-visible:border-brand-500";
+
+  return (
+    <div className="mt-1.5 space-y-3">
+      {rows.map((a, i) => (
+        <div key={i} className="border-l-2 border-line pl-3">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-subtle">
+              {i === 0 ? "Affiliation" : `Also affiliated with`}
+            </span>
+            {rows.length > 1 && (
+              <button
+                onClick={() => onChange(rows.filter((_, j) => j !== i))}
+                className="text-[11px] text-muted hover:text-red-500"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+
+          <label className="block">
+            <span className="sr-only">Type of organisation</span>
+            <select
+              value={a.orgType}
+              onChange={(e) => patch(i, { orgType: e.target.value })}
+              className={SELECT}
+            >
+              <option value="">Type of organisation…</option>
+              {ORG_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+          {a.orgType === OTHER && (
+            <input
+              value={a.orgOther ?? ""}
+              placeholder="What kind of organisation?"
+              onChange={(e) => patch(i, { orgOther: e.target.value })}
+              className={SELECT}
+            />
+          )}
+
+          <input
+            value={a.organisation}
+            placeholder="Name of the organisation"
+            onChange={(e) => patch(i, { organisation: e.target.value })}
+            className={SELECT}
+          />
+          <input
+            value={a.department ?? ""}
+            placeholder="Department or lab (optional)"
+            onChange={(e) => patch(i, { department: e.target.value })}
+            className={SELECT}
+          />
+
+          <select
+            value={a.role}
+            onChange={(e) => patch(i, { role: e.target.value })}
+            className={SELECT}
+          >
+            <option value="">Your role there…</option>
+            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+          {a.role === OTHER && (
+            <input
+              value={a.roleOther ?? ""}
+              placeholder="What is your role?"
+              onChange={(e) => patch(i, { roleOther: e.target.value })}
+              className={SELECT}
+            />
+          )}
+
+          {rows.length > 1 && (
+            <label className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted">
+              <input type="radio" checked={!!a.primary} onChange={() => setPrimary(i)} />
+              This is my main affiliation
+            </label>
+          )}
+        </div>
+      ))}
+
+      <button
+        onClick={() => onChange([...rows, { ...EMPTY_AFFILIATION }])}
+        className="text-[12px] font-semibold text-brand-400 hover:text-brand-200"
+      >
+        + Add another affiliation
+      </button>
+      {rows.filter(isComplete).length > 1 && (
+        <p className="text-[11px] text-subtle">
+          {rows.filter(isComplete).length} affiliations recorded.
+        </p>
+      )}
+    </div>
   );
 }

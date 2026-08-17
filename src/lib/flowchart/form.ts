@@ -11,11 +11,33 @@
  * can be tested directly rather than through a rendered form.
  */
 import type { ChartDoc, Condition, FlowNode } from "./types";
+import { codedOrgType, codedRole, isComplete, type Affiliation } from "./vocab";
 
-export type Answers = Record<string, string | string[]>;
+/** An answer is text, a set of choices, or a list of affiliations. */
+export type AnswerValue = string | string[] | Affiliation[];
+export type Answers = Record<string, AnswerValue>;
 
-const asArray = (v: string | string[] | undefined): string[] =>
-  v === undefined ? [] : Array.isArray(v) ? v : v === "" ? [] : [v];
+const isAffiliationList = (v: AnswerValue): v is Affiliation[] =>
+  Array.isArray(v) && v.length > 0 && typeof v[0] === "object";
+
+/**
+ * Flatten any answer to the strings a condition can match against.
+ *
+ * For affiliations that means the coded organisation types AND roles, so
+ * a rule can read "affiliation any of Teaching hospital" or "any of
+ * Clinician" without the author needing to know how the entry is stored.
+ */
+const asArray = (v: AnswerValue | undefined): string[] => {
+  if (v === undefined) return [];
+  if (isAffiliationList(v)) {
+    return v
+      .filter(isComplete)
+      .flatMap((a) => [codedOrgType(a), codedRole(a), a.organisation.trim()])
+      .filter(Boolean);
+  }
+  if (Array.isArray(v)) return v as string[];
+  return v === "" ? [] : [v];
+};
 
 const norm = (s: string) => s.trim().toLowerCase();
 

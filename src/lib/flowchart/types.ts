@@ -22,7 +22,7 @@ export const NODE_KIND_LABEL: Record<NodeKind, string> = {
 };
 
 /** Field types a question node can render in the linked form. */
-export const FIELD_TYPES = ["text", "long", "email", "number", "date", "choice", "multi", "yesno"] as const;
+export const FIELD_TYPES = ["text", "long", "email", "number", "date", "choice", "multi", "yesno", "affiliation"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
 export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
@@ -34,6 +34,7 @@ export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
   choice: "Choose one",
   multi: "Choose several",
   yesno: "Yes / no",
+  affiliation: "Affiliations (repeatable)",
 };
 
 export const FieldSchema = z.object({

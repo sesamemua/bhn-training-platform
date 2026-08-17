@@ -27,7 +27,8 @@ import {
   type FlowNode,
   type NodeKind,
 } from "@/lib/flowchart/types";
-import { orderedFields, suggestKey, type Answers } from "@/lib/flowchart/form";
+import { orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
+import { midpoint, routeEdge, toPath } from "@/lib/flowchart/route";
 import { FlowFormPreview } from "./FlowFormPreview";
 
 const GRID = 10;
@@ -345,7 +346,7 @@ export function FlowChartEditor({
         <FlowFormPreview
           doc={doc}
           answers={answers}
-          onChange={(k, v) => setAnswers((a) => ({ ...a, [k]: v }))}
+          onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); }}
         />
       </aside>
@@ -628,34 +629,41 @@ function Arrows({
         const a = byId.get(e.from);
         const b = byId.get(e.to);
         if (!a || !b) return null;
-        const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
-        const bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
-        const p1 = edgePoint(ac, bc, a);
-        const p2 = edgePoint(bc, ac, b);
-        const mx = (p1.x + p2.x) / 2;
-        const my = (p1.y + p2.y) / 2;
+        const pts = routeEdge(a, b, doc.nodes);
+        const d = toPath(pts);
+        const mid = midpoint(pts);
+        const mx = mid.x;
+        const my = mid.y;
         const on = selectedEdge === e.id;
         // A conditional arrow is dashed: the rule is visible on the chart,
         // not only in the inspector.
         return (
           <g key={e.id} className={on ? "text-brand-200" : "text-brand-400"}>
-            <line
-              x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+            <path
+              d={d} fill="none"
               stroke="currentColor" strokeWidth={on ? 2.5 : 1.5}
               strokeDasharray={e.when ? "5 4" : undefined}
               markerEnd="url(#fc-arrow)" opacity={on ? 1 : 0.75}
             />
-            {(e.label || e.when) && (
-              <text
-                x={mx} y={my - 5} textAnchor="middle"
-                className="fill-current text-[10px] font-semibold"
-              >
-                {e.label ?? `${e.when!.field} ${e.when!.op}${e.when!.value ? " " + e.when!.value : ""}`}
-              </text>
-            )}
+            {(e.label || e.when) && (() => {
+              const t = e.label ?? `${e.when!.field} ${e.when!.op}${e.when!.value ? " " + e.when!.value : ""}`;
+              return (
+                <>
+                  {/* a plate under the label so it never sits on the line */}
+                  <rect
+                    x={mx - t.length * 2.9 - 4} y={my - 13} rx="3"
+                    width={t.length * 5.8 + 8} height="14"
+                    className="fill-card"
+                  />
+                  <text x={mx} y={my - 3} textAnchor="middle" className="fill-current text-[10px] font-semibold">
+                    {t}
+                  </text>
+                </>
+              );
+            })()}
             {onSelect && (
-              <line
-                x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+              <path
+                d={d} fill="none"
                 stroke="transparent" strokeWidth="14" className="cursor-pointer"
                 onClick={() => onSelect(e.id)}
               />
@@ -667,16 +675,3 @@ function Arrows({
   );
 }
 
-/** Where the line from `from` toward `to` crosses `box`'s edge. */
-function edgePoint(from: { x: number; y: number }, to: { x: number; y: number }, box: FlowNode) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  if (dx === 0 && dy === 0) return from;
-  const hw = box.w / 2 + 4;
-  const hh = box.h / 2 + 4;
-  const scale = Math.min(
-    dx === 0 ? Infinity : hw / Math.abs(dx),
-    dy === 0 ? Infinity : hh / Math.abs(dy),
-  );
-  return { x: from.x + dx * scale, y: from.y + dy * scale };
-}
