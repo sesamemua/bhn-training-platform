@@ -15,7 +15,12 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
   nodes: [
     { id: "n1",  kind: "start",    x: COL.a, y: row(0), w: 190, h: 52, text: "Registration opens", actor: "Coordinator" },
     { id: "n2",  kind: "step",     x: COL.a, y: row(1), w: 190, h: 66, text: "Picks up to 3 sessions", actor: "Registrant" },
-    { id: "n3",  kind: "step",     x: COL.a, y: row(2), w: 190, h: 66, text: "Enters name + email", actor: "Registrant" },
+    { id: "n3",  kind: "question", x: COL.a, y: row(2), w: 190, h: 66, text: "Your email",
+      field: { key: "email", type: "email", required: true } },
+    { id: "n3b", kind: "question", x: COL.b, y: row(2), w: 190, h: 66, text: "Are you a BioHubNet trainee?",
+      field: { key: "trainee", type: "yesno", required: true } },
+    { id: "n3c", kind: "question", x: COL.c, y: row(2), w: 190, h: 78, text: "Which institution?",
+      field: { key: "institution", type: "text", help: "Only asked if you are not a BHN trainee." } },
     { id: "n4",  kind: "decision", x: COL.a, y: row(3), w: 190, h: 78, text: "Session full?" },
     { id: "n5",  kind: "step",     x: COL.b, y: row(3), w: 190, h: 66, text: "Added to waitlist", actor: "System" },
 
@@ -28,7 +33,16 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
     { id: "n11", kind: "step",     x: COL.a, y: row(6) + 10, w: 190, h: 66, text: "Seat confirmed", actor: "System" },
     { id: "n12", kind: "step",     x: COL.a, y: row(7) + 10, w: 190, h: 66, text: "Info pack emailed", actor: "System" },
     { id: "n13", kind: "step",     x: COL.b, y: row(7) + 10, w: 190, h: 66, text: "Reminder before the day", actor: "System" },
-    { id: "n14", kind: "end",      x: COL.c, y: row(7) + 10, w: 190, h: 52, text: "Attends" },
+
+    // Holding a seat is not the same as turning up. Registrants confirm
+    // before the day; an unconfirmed seat goes back to the waitlist rather
+    // than to an empty chair.
+    { id: "n17", kind: "step",     x: COL.c, y: row(7) + 10, w: 190, h: 66, text: "Asked to confirm attendance", actor: "System" },
+    { id: "n18", kind: "question", x: COL.d, y: row(7) + 10, w: 190, h: 78, text: "Can you still attend?",
+      field: { key: "confirmed", type: "yesno", required: true, help: "Confirm by the cut-off or the seat is released." } },
+    { id: "n19", kind: "decision", x: COL.d, y: row(8) + 20, w: 190, h: 78, text: "Confirmed in time?" },
+    { id: "n20", kind: "step",     x: COL.b, y: row(8) + 20, w: 190, h: 66, text: "Seat released", actor: "System" },
+    { id: "n14", kind: "end",      x: COL.c, y: row(9) + 20, w: 190, h: 52, text: "Attends" },
 
     { id: "n15", kind: "step",     x: COL.c, y: row(1), w: 190, h: 78, text: "Modify or cancel via emailed code", actor: "Registrant" },
     { id: "n16", kind: "step",     x: COL.d, y: row(1), w: 190, h: 78, text: "Freed seat offered to waitlist", actor: "System" },
@@ -39,7 +53,12 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
   edges: [
     { id: "e1",  from: "n1",  to: "n2" },
     { id: "e2",  from: "n2",  to: "n3" },
-    { id: "e3",  from: "n3",  to: "n4" },
+    { id: "e2b", from: "n3",  to: "n3b" },
+    // The rule that makes the form branch: the institution question only
+    // appears for someone who is not already a BHN trainee.
+    { id: "e2c", from: "n3b", to: "n3c", when: { field: "trainee", op: "is", value: "No" }, label: "not a trainee" },
+    { id: "e3",  from: "n3b", to: "n4", when: { field: "trainee", op: "is", value: "Yes" }, label: "trainee" },
+    { id: "e3b", from: "n3c", to: "n4" },
     { id: "e4",  from: "n4",  to: "n5",  label: "yes" },
     { id: "e5",  from: "n4",  to: "n6",  label: "no" },
     { id: "e6",  from: "n6",  to: "n11", label: "yes" },
@@ -50,7 +69,12 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
     { id: "e11", from: "n9",  to: "n10", label: "no" },
     { id: "e12", from: "n11", to: "n12" },
     { id: "e13", from: "n12", to: "n13" },
-    { id: "e14", from: "n13", to: "n14" },
+    { id: "e14", from: "n13", to: "n17" },
+    { id: "e17", from: "n17", to: "n18" },
+    { id: "e18", from: "n18", to: "n19" },
+    { id: "e19", from: "n19", to: "n14", when: { field: "confirmed", op: "is", value: "Yes" }, label: "confirmed" },
+    { id: "e20", from: "n19", to: "n20", when: { field: "confirmed", op: "is not", value: "Yes" }, label: "no reply" },
+    { id: "e21", from: "n20", to: "n16", label: "offer it on" },
     { id: "e15", from: "n15", to: "n16", label: "cancels" },
     { id: "e16", from: "n16", to: "n5",  label: "next in line" },
   ],

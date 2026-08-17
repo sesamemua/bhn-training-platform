@@ -18,7 +18,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { effectiveSchedule, generateCalendar, listCycles, rescheduleCycle } from "@/lib/newsletter/calendar";
 import { isIsoDate, isSendWeekday, snapToSendDay, weekdayOf } from "@/lib/newsletter/schedule";
-import { dispatchReminder } from "@/lib/newsletter/reminders";
+import { dispatchReminder, previewReminder } from "@/lib/newsletter/reminders";
 import {
   getNewsletterConfig,
   isApprover,
@@ -73,10 +73,23 @@ const ConfigSchema = z.object({
   config: z.unknown(),
 });
 
+/** Edits an admin made in the send dialog. Every field is optional; an
+ *  omitted one keeps the composed default. Paragraphs are plain text —
+ *  they are escaped at render time, so no markup can be injected here. */
+const OverridesSchema = z
+  .object({
+    subject: z.string().trim().min(1).max(300).optional(),
+    to: z.array(z.string().trim().email()).max(50).optional(),
+    cc: z.array(z.string().trim().email()).max(50).optional(),
+    paras: z.array(z.string().max(2000)).max(20).optional(),
+  })
+  .optional();
+
 const ReminderSchema = z.object({
-  action: z.enum(["sendReminder", "skipReminder", "setReminderMode"]),
+  action: z.enum(["sendReminder", "skipReminder", "setReminderMode", "previewReminder"]),
   reminderId: z.string().min(1),
   mode: z.enum(["auto", "manual"]).optional(),
+  overrides: OverridesSchema,
 });
 
 const MoveSchema = z.object({
@@ -206,9 +219,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, config });
   }
 
-  if (body.action === "sendReminder" || body.action === "skipReminder" || body.action === "setReminderMode") {
+  if (
+    body.action === "sendReminder" ||
+    body.action === "skipReminder" ||
+    body.action === "setReminderMode" ||
+    body.action === "previewReminder"
+  ) {
     const parsed = ReminderSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+
+    // Read-only: compose the mail so the admin can read and edit it
+    // before anything is claimed or sent.
+    if (parsed.data.action === "previewReminder") {
+      const config = await getNewsletterConfig();
+      try {
+        const preview = await previewReminder({
+          reminderId: parsed.data.reminderId,
+          config,
+          workshopUrl: workshopUrl(req),
+          overrides: parsed.data.overrides,
+        });
+        return NextResponse.json({ ok: true, preview });
+      } catch (e) {
+        return NextResponse.json({ error: (e as Error).message }, { status: 404 });
+      }
+    }
 
     if (parsed.data.action === "skipReminder") {
       await prisma.newsletterReminder.updateMany({
@@ -235,6 +270,7 @@ export async function POST(req: NextRequest) {
       config,
       workshopUrl: workshopUrl(req),
       sentById: userId,
+      overrides: parsed.data.overrides,
     });
     const cycles = await listCycles(currentMonthIso());
     return NextResponse.json({ ok: true, result, cycles });

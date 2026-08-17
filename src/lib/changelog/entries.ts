@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts drive a live form
+  {
+    title: "Flow charts now build the form beside them",
+    body: "A **question** box becomes a field in the live form on the right. Put a rule on an arrow \u2014 *follow this only when `trainee` is `No`* \u2014 and the field below it appears only when that answer matches. Conditional arrows are drawn dashed, so the logic is visible on the chart rather than buried in a settings panel.\n\nThere is no second definition of the form to keep in sync: the form is the chart, executed. Answer a question and any branch that stops matching disappears; a required question only counts as missing while it is actually being asked.\n\nThe seeded Training Week flow now includes the attendance-confirmation step \u2014 registrants confirm before the day, and an unconfirmed seat is released back to the waitlist rather than becoming an empty chair.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts
   {
     title: "Flow charts — draw how a process actually runs",

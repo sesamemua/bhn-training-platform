@@ -16,7 +16,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
-import { REMINDER_LABEL, type ReminderKind } from "./schedule";
+import { REMINDER_LABEL, type ReminderKind, type ReminderMode } from "./schedule";
 import { leadRecipients, type NewsletterConfig } from "./config";
 
 const esc = (s: string) =>
@@ -88,6 +88,41 @@ export interface ComposedReminder {
   html: string;
   to: string[];
   cc: string[];
+  /** Structured pieces, so the send dialog can show and edit the message
+   *  rather than firing an opaque template. `paras` is the editable
+   *  source of truth; html/text are rendered from it. */
+  heading: string;
+  paras: string[];
+  cta?: { label: string; url: string };
+}
+
+/** What an admin may change in the send dialog before the mail goes out. */
+export interface ReminderOverrides {
+  subject?: string;
+  to?: string[];
+  cc?: string[];
+  paras?: string[];
+}
+
+/** Paragraph source is plain text with `**bold**`; everything else is
+ *  escaped, so an edited paragraph can never inject markup. */
+const inlineHtml = (md: string) =>
+  esc(md).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+const inlineText = (md: string) => md.replace(/\*\*/g, "");
+
+/** Render the branded shell + plain-text alternative from the pieces. */
+export function renderReminder(parts: {
+  heading: string;
+  paras: string[];
+  cta?: { label: string; url: string };
+}): { html: string; text: string } {
+  return {
+    html: shell(parts.heading, parts.paras.map(inlineHtml), parts.cta),
+    text:
+      `${parts.heading}\n\n` +
+      parts.paras.map(inlineText).join("\n\n") +
+      (parts.cta ? `\n\n${parts.cta.label}: ${parts.cta.url}\n` : "\n"),
+  };
 }
 
 /** The message each reminder kind sends, and who it goes to. */
@@ -96,93 +131,92 @@ export function composeReminder(ctx: ReminderContext): ComposedReminder {
   const month = monthLabel(cycle.month);
   const leads = leadRecipients(config);
 
+  const build = (p: {
+    subject: string;
+    heading: string;
+    paras: string[];
+    cta?: { label: string; url: string };
+    to: string[];
+    cc: string[];
+  }): ComposedReminder => ({
+    ...p,
+    ...renderReminder({ heading: p.heading, paras: p.paras, cta: p.cta }),
+  });
+
   switch (ctx.kind) {
-    case "draft_request": {
-      const subject = `${month} newsletter — your section is due ${longDate(cycle.draftDue)}`;
-      const paras = [
-        `The <strong>${esc(month)}</strong> newsletter goes out on <strong>${esc(longDate(cycle.sendDate))}</strong>.`,
-        `Please drop your section into the workshop by <strong>end of day ${esc(longDate(cycle.draftDue))}</strong>. Plain prose is fine — no formatting needed. The layout is generated from what you write.`,
-        `Building and review run ${esc(longDate(cycle.buildStart))}–${esc(longDate(cycle.approvalDue))}, so anything after the deadline misses this issue.`,
-      ];
-      return {
-        subject,
-        html: shell(`${month} newsletter — drafts open`, paras, {
-          label: "Add your section",
-          url: ctx.workshopUrl,
-        }),
-        text:
-          `${month} newsletter — drafts open\n\n` +
-          `The ${month} newsletter goes out on ${longDate(cycle.sendDate)}.\n\n` +
-          `Please add your section by end of day ${longDate(cycle.draftDue)}. Plain prose is fine.\n\n` +
-          `Build + review: ${longDate(cycle.buildStart)}–${longDate(cycle.approvalDue)}.\n\n` +
-          `Add your section: ${ctx.workshopUrl}\n`,
+    case "draft_request":
+      return build({
+        subject: `${month} newsletter — your section is due ${longDate(cycle.draftDue)}`,
+        heading: `${month} newsletter — drafts open`,
+        paras: [
+          `The **${month}** newsletter goes out on **${longDate(cycle.sendDate)}**.`,
+          `Please drop your section into the workshop by **end of day ${longDate(cycle.draftDue)}**. Plain prose is fine — no formatting needed. The layout is generated from what you write.`,
+          `Building and review run ${longDate(cycle.buildStart)}–${longDate(cycle.approvalDue)}, so anything after the deadline misses this issue.`,
+        ],
+        cta: { label: "Add your section", url: ctx.workshopUrl },
         to: leads,
         cc: config.cc,
-      };
-    }
+      });
 
-    case "draft_due": {
-      const subject = `Today: ${month} newsletter drafts close`;
-      const paras = [
-        `A reminder that <strong>${esc(month)}</strong> newsletter sections are due <strong>end of day today</strong>.`,
-        `If yours is already in, thank you — nothing further needed. Building starts ${esc(longDate(cycle.buildStart))}.`,
-      ];
-      return {
-        subject,
-        html: shell(`${month} drafts close today`, paras, {
-          label: "Add your section",
-          url: ctx.workshopUrl,
-        }),
-        text:
-          `${month} drafts close today\n\n` +
-          `Sections are due end of day today. Building starts ${longDate(cycle.buildStart)}.\n\n` +
-          `${ctx.workshopUrl}\n`,
+    case "draft_due":
+      return build({
+        subject: `Today: ${month} newsletter drafts close`,
+        heading: `${month} drafts close today`,
+        paras: [
+          `A reminder that **${month}** newsletter sections are due **end of day today**.`,
+          `If yours is already in, thank you — nothing further needed. Building starts ${longDate(cycle.buildStart)}.`,
+        ],
+        cta: { label: "Add your section", url: ctx.workshopUrl },
         to: leads,
         cc: config.cc,
-      };
-    }
+      });
 
-    case "approval": {
-      const subject = `${month} newsletter is ready for your approval`;
-      const paras = [
-        `The <strong>${esc(month)}</strong> issue has been built and reviewed, and goes out <strong>${esc(longDate(cycle.sendDate))}</strong>.`,
-        `It needs your sign-off before it sends. Open the review, read it through, and press Approve.`,
-      ];
-      return {
-        subject,
-        html: shell(`${month} needs your approval`, paras, {
-          label: "Review and approve",
-          url: `${ctx.workshopUrl}/review`,
-        }),
-        text:
-          `${month} newsletter is ready for your approval\n\n` +
-          `Built and reviewed; goes out ${longDate(cycle.sendDate)}.\n\n` +
-          `Review and approve: ${ctx.workshopUrl}/review\n`,
+    case "approval":
+      return build({
+        subject: `${month} newsletter is ready for your approval`,
+        heading: `${month} needs your approval`,
+        paras: [
+          `The **${month}** issue has been built and reviewed, and goes out **${longDate(cycle.sendDate)}**.`,
+          `It needs your sign-off before it sends. Open the review, read it through, and press Approve.`,
+        ],
+        cta: { label: "Review and approve", url: `${ctx.workshopUrl}/review` },
         to: [config.approver.email],
         cc: [],
-      };
-    }
+      });
 
-    case "send_day": {
-      const subject = `Send day: the ${month} newsletter goes out today`;
-      const paras = [
-        `Today is the send day for the <strong>${esc(month)}</strong> issue.`,
-        `Generate the final HTML in the workshop, paste it into the Mailchimp code block, and send.`,
-      ];
-      return {
-        subject,
-        html: shell(`${month} goes out today`, paras, {
-          label: "Open the workshop",
-          url: ctx.workshopUrl,
-        }),
-        text:
-          `Send day: the ${month} newsletter goes out today.\n\n` +
-          `Generate the HTML, paste into Mailchimp, send.\n\n${ctx.workshopUrl}\n`,
+    case "send_day":
+      return build({
+        subject: `Send day: the ${month} newsletter goes out today`,
+        heading: `${month} goes out today`,
+        paras: [
+          `Today is the send day for the **${month}** issue.`,
+          `Generate the final HTML in the workshop, paste it into the Mailchimp code block, and send.`,
+        ],
+        cta: { label: "Open the workshop", url: ctx.workshopUrl },
         to: [config.coordinator.email],
         cc: [],
-      };
-    }
+      });
   }
+}
+
+/**
+ * Fold an admin's edits from the send dialog into a composed message.
+ * An explicitly empty `cc` clears the copy list; an omitted one keeps it.
+ */
+export function applyOverrides(
+  base: ComposedReminder,
+  o?: ReminderOverrides,
+): ComposedReminder {
+  if (!o) return base;
+  const paras = o.paras?.length ? o.paras : base.paras;
+  return {
+    ...base,
+    subject: o.subject?.trim() || base.subject,
+    to: o.to?.length ? o.to : base.to,
+    cc: o.cc ?? base.cc,
+    paras,
+    ...renderReminder({ heading: base.heading, paras, cta: base.cta }),
+  };
 }
 
 /**
@@ -208,6 +242,7 @@ export function wrapForManualSend(
     `</td></tr></tbody></table>`;
 
   return {
+    ...msg,
     subject: `[Send this] ${msg.subject}`,
     html: banner + msg.html,
     text:
@@ -231,6 +266,87 @@ export interface DispatchResult {
   error?: string;
 }
 
+export interface ReminderPreview {
+  reminderId: string;
+  kind: ReminderKind;
+  label: string;
+  status: string;
+  scheduledFor: string;
+  mode: ReminderMode;
+  /** Editable pieces, as they stand before any edits are applied. */
+  subject: string;
+  heading: string;
+  paras: string[];
+  /** Who the reminder is FOR. In manual mode these are printed in the
+   *  coordinator's banner rather than being mailed directly. */
+  to: string[];
+  cc: string[];
+  /** Who the platform will actually deliver to right now. */
+  deliverTo: string[];
+  deliverCc: string[];
+  /** Rendered HTML of exactly what lands in the inbox. */
+  html: string;
+  /** False when SMTP isn't configured — the send would be recorded as
+   *  skipped rather than delivered, so the dialog warns first. */
+  mailConfigured: boolean;
+}
+
+/**
+ * Compose a reminder WITHOUT sending it, so the admin can read it, see
+ * who it reaches, and adjust it first. Pass `overrides` to preview edits
+ * live. Purely read-only: it never claims or mutates the reminder row.
+ */
+export async function previewReminder(opts: {
+  reminderId: string;
+  config: NewsletterConfig;
+  workshopUrl: string;
+  overrides?: ReminderOverrides;
+}): Promise<ReminderPreview> {
+  const reminder = await prisma.newsletterReminder.findUnique({
+    where: { id: opts.reminderId },
+    include: { cycle: true },
+  });
+  if (!reminder) throw new Error("Reminder not found");
+
+  const kind = reminder.kind as ReminderKind;
+  const base = applyOverrides(
+    composeReminder({
+      kind,
+      config: opts.config,
+      cycle: reminder.cycle,
+      workshopUrl: opts.workshopUrl,
+    }),
+    opts.overrides,
+  );
+  // The row's mode is the per-reminder choice the calendar writes ("Let
+  // me send it" / "Send automatically"); config.modes is only the default
+  // it was seeded from. The row wins — otherwise that toggle is cosmetic
+  // and a chase the admin claimed would still go straight to the leads.
+  const mode: ReminderMode =
+    reminder.mode === "auto" || reminder.mode === "manual"
+      ? reminder.mode
+      : (opts.config.modes[kind] ?? "manual");
+  const delivered = mode === "manual" ? wrapForManualSend(base, opts.config, kind) : base;
+
+  return {
+    reminderId: reminder.id,
+    kind,
+    label: REMINDER_LABEL[kind],
+    status: reminder.status,
+    scheduledFor: reminder.scheduledFor,
+    mode,
+    subject: base.subject,
+    heading: base.heading,
+    paras: base.paras,
+    to: base.to,
+    cc: base.cc,
+    deliverTo: delivered.to,
+    deliverCc: delivered.cc,
+    html: delivered.html,
+    mailConfigured: mailConfigured(),
+  };
+}
+
 /**
  * Send one reminder, exactly once.
  *
@@ -244,6 +360,9 @@ export async function dispatchReminder(opts: {
   workshopUrl: string;
   sentById?: string | null;
   force?: boolean;
+  /** Edits made in the send dialog. Applied before the manual-mode wrap,
+   *  so a changed To/Subject shows in the coordinator's banner too. */
+  overrides?: ReminderOverrides;
 }): Promise<DispatchResult> {
   const reminder = await prisma.newsletterReminder.findUnique({
     where: { id: opts.reminderId },
@@ -252,13 +371,23 @@ export async function dispatchReminder(opts: {
   if (!reminder) throw new Error("Reminder not found");
 
   const kind = reminder.kind as ReminderKind;
-  const base = composeReminder({
-    kind,
-    config: opts.config,
-    cycle: reminder.cycle,
-    workshopUrl: opts.workshopUrl,
-  });
-  const mode = opts.config.modes[kind] ?? "manual";
+  const base = applyOverrides(
+    composeReminder({
+      kind,
+      config: opts.config,
+      cycle: reminder.cycle,
+      workshopUrl: opts.workshopUrl,
+    }),
+    opts.overrides,
+  );
+  // The row's mode is the per-reminder choice the calendar writes ("Let
+  // me send it" / "Send automatically"); config.modes is only the default
+  // it was seeded from. The row wins — otherwise that toggle is cosmetic
+  // and a chase the admin claimed would still go straight to the leads.
+  const mode: ReminderMode =
+    reminder.mode === "auto" || reminder.mode === "manual"
+      ? reminder.mode
+      : (opts.config.modes[kind] ?? "manual");
   const msg = mode === "manual" ? wrapForManualSend(base, opts.config, kind) : base;
 
   // Claim: only a pending row may be taken. updateMany returns a count, so

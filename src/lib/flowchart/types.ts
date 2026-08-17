@@ -9,16 +9,53 @@
 import { z } from "zod";
 
 /** What a box means. Shape follows kind — this is the only styling input. */
-export const NODE_KINDS = ["step", "decision", "start", "end", "note"] as const;
+export const NODE_KINDS = ["start", "question", "step", "decision", "end", "note"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
 export const NODE_KIND_LABEL: Record<NodeKind, string> = {
   start: "Start",
+  question: "Question",
   step: "Step",
   decision: "Decision",
   end: "End",
   note: "Note",
 };
+
+/** Field types a question node can render in the linked form. */
+export const FIELD_TYPES = ["text", "long", "email", "number", "date", "choice", "multi", "yesno"] as const;
+export type FieldType = (typeof FIELD_TYPES)[number];
+
+export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
+  text: "Short text",
+  long: "Paragraph",
+  email: "Email",
+  number: "Number",
+  date: "Date",
+  choice: "Choose one",
+  multi: "Choose several",
+  yesno: "Yes / no",
+};
+
+export const FieldSchema = z.object({
+  /** Stable key answers are stored under, and what conditions reference. */
+  key: z.string().min(1).max(40),
+  type: z.enum(FIELD_TYPES),
+  required: z.boolean().optional(),
+  help: z.string().max(160).optional(),
+  options: z.array(z.string().max(60)).max(20).optional(),
+});
+export type FieldDef = z.infer<typeof FieldSchema>;
+
+/** An edge condition: follow this arrow only when the answer matches. */
+export const OPS = ["is", "is not", "any of", "answered", "empty"] as const;
+export type ConditionOp = (typeof OPS)[number];
+
+export const ConditionSchema = z.object({
+  field: z.string().min(1).max(40),
+  op: z.enum(OPS),
+  value: z.string().max(120).optional(),
+});
+export type Condition = z.infer<typeof ConditionSchema>;
 
 export const NodeSchema = z.object({
   id: z.string().min(1).max(40),
@@ -30,6 +67,8 @@ export const NodeSchema = z.object({
   text: z.string().max(240),
   /** Who acts here — drawn as a small caption under the label. */
   actor: z.string().max(60).optional(),
+  /** Present on question nodes: what this asks in the linked form. */
+  field: FieldSchema.optional(),
 });
 
 export const EdgeSchema = z.object({
@@ -38,6 +77,12 @@ export const EdgeSchema = z.object({
   to: z.string().min(1).max(40),
   /** Branch label, e.g. "yes" / "no" off a decision. */
   label: z.string().max(40).optional(),
+  /**
+   * Follow this arrow only when the condition holds. An edge with no
+   * condition is always followed — that is what makes a plain chart still
+   * a valid form: everything is reachable until someone adds a rule.
+   */
+  when: ConditionSchema.optional(),
 });
 
 export const ChartSchema = z.object({

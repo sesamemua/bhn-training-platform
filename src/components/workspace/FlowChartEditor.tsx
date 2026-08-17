@@ -15,13 +15,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
 import {
+  FIELD_TYPES,
+  FIELD_TYPE_LABEL,
   NODE_KINDS,
   NODE_KIND_LABEL,
+  OPS,
   type ChartDoc,
+  type ConditionOp,
+  type FieldType,
   type FlowEdge,
   type FlowNode,
   type NodeKind,
 } from "@/lib/flowchart/types";
+import { orderedFields, suggestKey, type Answers } from "@/lib/flowchart/form";
+import { FlowFormPreview } from "./FlowFormPreview";
 
 const GRID = 10;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
@@ -51,6 +58,8 @@ export function FlowChartEditor({
   const [history, setHistory] = useState<ChartDoc[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Answers>({});
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -122,21 +131,31 @@ export function FlowChartEditor({
   // ── node + edge operations ────────────────────────────────────────
   const addNode = (kind: NodeKind) => {
     const id = uid();
-    mutate((d) => ({
-      ...d,
-      nodes: [
-        ...d.nodes,
-        {
-          id,
-          kind,
-          x: 40,
-          y: 40 + d.nodes.length * 12,
-          w: kind === "note" ? 210 : 190,
-          h: kind === "decision" ? 78 : kind === "note" ? 62 : 58,
-          text: NODE_KIND_LABEL[kind],
-        },
-      ],
-    }));
+    mutate((d) => {
+      const taken = d.nodes.map((n) => n.field?.key).filter(Boolean) as string[];
+      const text = kind === "question" ? "New question" : NODE_KIND_LABEL[kind];
+      return {
+        ...d,
+        nodes: [
+          ...d.nodes,
+          {
+            id,
+            kind,
+            x: 40,
+            y: 40 + d.nodes.length * 12,
+            w: kind === "note" ? 210 : 190,
+            h: kind === "decision" ? 78 : kind === "note" ? 62 : 58,
+            text,
+            // A question is useless without somewhere to store its answer,
+            // so give it a key immediately rather than making that a
+            // separate step someone can forget.
+            ...(kind === "question"
+              ? { field: { key: suggestKey(text, taken), type: "text" as FieldType } }
+              : {}),
+          },
+        ],
+      };
+    });
     setSelected(id);
   };
 
@@ -209,6 +228,11 @@ export function FlowChartEditor({
   }, [doc.nodes]);
 
   const sel = doc.nodes.find((n) => n.id === selected) ?? null;
+  const selEdge = doc.edges.find((e) => e.id === selectedEdge) ?? null;
+  const questionKeys = useMemo(
+    () => orderedFields(doc).map((f) => ({ key: f.key, label: f.label })),
+    [doc],
+  );
 
   if (!active) {
     return (
@@ -281,8 +305,9 @@ export function FlowChartEditor({
         </p>
       )}
 
-      {/* ── canvas ───────────────────────────────────────────────── */}
-      <div className="mt-3 overflow-auto rounded-lg border border-line bg-card">
+      {/* ── canvas + live form, side by side ─────────────────────── */}
+      <div className="mt-3 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="overflow-auto rounded-lg border border-line bg-card">
         <div
           ref={canvasRef}
           onPointerMove={onCanvasPointerMove}
@@ -297,7 +322,7 @@ export function FlowChartEditor({
             backgroundSize: `${GRID * 2}px ${GRID * 2}px`,
           }}
         >
-          <Arrows doc={doc} onRemove={canEdit ? removeEdge : undefined} onLabel={canEdit ? patchEdge : undefined} />
+          <Arrows doc={doc} selectedEdge={selectedEdge} onSelect={canEdit ? setSelectedEdge : undefined} />
 
           {doc.nodes.map((n) => (
             <Box
@@ -314,6 +339,16 @@ export function FlowChartEditor({
             />
           ))}
         </div>
+      </div>
+
+      <aside className="min-w-0 rounded-lg border border-line bg-card p-4">
+        <FlowFormPreview
+          doc={doc}
+          answers={answers}
+          onChange={(k, v) => setAnswers((a) => ({ ...a, [k]: v }))}
+          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); }}
+        />
+      </aside>
       </div>
 
       {/* ── inspector ────────────────────────────────────────────── */}
@@ -362,14 +397,140 @@ export function FlowChartEditor({
           </button>
         </div>
       )}
+
+      {/* what this question asks in the form */}
+      {canEdit && sel?.kind === "question" && sel.field && (
+        <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3">
+          <label className="w-40">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer type</span>
+            <select
+              value={sel.field.type}
+              onChange={(e) => patchNode(sel.id, { field: { ...sel.field!, type: e.target.value as FieldType } })}
+              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
+            >
+              {FIELD_TYPES.map((t) => (
+                <option key={t} value={t}>{FIELD_TYPE_LABEL[t]}</option>
+              ))}
+            </select>
+          </label>
+          <label className="w-36">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer key</span>
+            <input
+              value={sel.field.key}
+              onChange={(e) => patchNode(sel.id, { field: { ...sel.field!, key: e.target.value.slice(0, 40) } })}
+              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 font-mono text-[12.5px] text-fg outline-none focus-visible:border-brand-500"
+            />
+          </label>
+          {(sel.field.type === "choice" || sel.field.type === "multi") && (
+            <label className="min-w-[16rem] flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Choices, comma separated</span>
+              <input
+                value={(sel.field.options ?? []).join(", ")}
+                onChange={(e) =>
+                  patchNode(sel.id, {
+                    field: {
+                      ...sel.field!,
+                      options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 20),
+                    },
+                  })
+                }
+                className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
+              />
+            </label>
+          )}
+          <label className="flex items-center gap-2 pb-1.5 text-[12.5px] text-muted">
+            <input
+              type="checkbox"
+              checked={!!sel.field.required}
+              onChange={(e) => patchNode(sel.id, { field: { ...sel.field!, required: e.target.checked } })}
+            />
+            Required
+          </label>
+        </div>
+      )}
+
+      {/* the rule on an arrow */}
+      {canEdit && selEdge && (
+        <div className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-line pt-4">
+          <p className="w-full text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
+            Rule on this arrow
+          </p>
+          <p className="text-[12.5px] text-muted">
+            {nodeText(doc, selEdge.from)} <ArrowRight size={11} className="inline" /> {nodeText(doc, selEdge.to)}
+          </p>
+          <label className="w-40">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Follow when</span>
+            <select
+              value={selEdge.when?.field ?? ""}
+              onChange={(e) =>
+                patchEdge(selEdge.id, {
+                  when: e.target.value
+                    ? { field: e.target.value, op: selEdge.when?.op ?? "is", value: selEdge.when?.value }
+                    : undefined,
+                })
+              }
+              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
+            >
+              <option value="">always</option>
+              {questionKeys.map((q) => (
+                <option key={q.key} value={q.key}>{q.label}</option>
+              ))}
+            </select>
+          </label>
+          {selEdge.when && (
+            <>
+              <label className="w-32">
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Test</span>
+                <select
+                  value={selEdge.when.op}
+                  onChange={(e) => patchEdge(selEdge.id, { when: { ...selEdge.when!, op: e.target.value as ConditionOp } })}
+                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
+                >
+                  {OPS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </label>
+              {selEdge.when.op !== "answered" && selEdge.when.op !== "empty" && (
+                <label className="w-44">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Value</span>
+                  <input
+                    value={selEdge.when.value ?? ""}
+                    placeholder={selEdge.when.op === "any of" ? "a, b, c" : "Yes"}
+                    onChange={(e) => patchEdge(selEdge.id, { when: { ...selEdge.when!, value: e.target.value.slice(0, 120) } })}
+                    className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none placeholder:text-subtle focus-visible:border-brand-500"
+                  />
+                </label>
+              )}
+            </>
+          )}
+          <label className="w-32">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Arrow label</span>
+            <input
+              value={selEdge.label ?? ""}
+              onChange={(e) => patchEdge(selEdge.id, { label: e.target.value.slice(0, 40) || undefined })}
+              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
+            />
+          </label>
+          <button
+            onClick={() => { removeEdge(selEdge.id); setSelectedEdge(null); }}
+            className="inline-flex items-center gap-1 pb-1.5 text-[12.5px] text-muted hover:text-red-500"
+          >
+            <Trash2 size={12} /> Delete arrow
+          </button>
+        </div>
+      )}
     </div>
   );
+}
+
+function nodeText(doc: ChartDoc, id: string): string {
+  return doc.nodes.find((n) => n.id === id)?.text ?? "?";
 }
 
 // ── boxes ───────────────────────────────────────────────────────────
 
 const KIND_CLASS: Record<NodeKind, string> = {
   start: "rounded-full border-brand-400/70 bg-brand-500/12",
+  question: "rounded-md border-brand-400/70 bg-brand-500/8",
   end: "rounded-full border-line-strong bg-elevated",
   step: "rounded-md border-line-strong bg-elevated",
   decision: "rounded-md border-amber-500/60 bg-amber-500/10",
@@ -448,12 +609,12 @@ function Box({
  */
 function Arrows({
   doc,
-  onRemove,
-  onLabel,
+  selectedEdge,
+  onSelect,
 }: {
   doc: ChartDoc;
-  onRemove?: (id: string) => void;
-  onLabel?: (id: string, patch: Partial<FlowEdge>) => void;
+  selectedEdge: string | null;
+  onSelect?: (id: string) => void;
 }) {
   const byId = new Map(doc.nodes.map((n) => [n.id, n]));
   return (
@@ -473,29 +634,30 @@ function Arrows({
         const p2 = edgePoint(bc, ac, b);
         const mx = (p1.x + p2.x) / 2;
         const my = (p1.y + p2.y) / 2;
+        const on = selectedEdge === e.id;
+        // A conditional arrow is dashed: the rule is visible on the chart,
+        // not only in the inspector.
         return (
-          <g key={e.id} className="text-brand-400">
+          <g key={e.id} className={on ? "text-brand-200" : "text-brand-400"}>
             <line
               x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-              stroke="currentColor" strokeWidth="1.5" markerEnd="url(#fc-arrow)" opacity="0.75"
+              stroke="currentColor" strokeWidth={on ? 2.5 : 1.5}
+              strokeDasharray={e.when ? "5 4" : undefined}
+              markerEnd="url(#fc-arrow)" opacity={on ? 1 : 0.75}
             />
-            {e.label && (
+            {(e.label || e.when) && (
               <text
                 x={mx} y={my - 5} textAnchor="middle"
                 className="fill-current text-[10px] font-semibold"
               >
-                {e.label}
+                {e.label ?? `${e.when!.field} ${e.when!.op}${e.when!.value ? " " + e.when!.value : ""}`}
               </text>
             )}
-            {onRemove && (
-              <circle
-                cx={mx} cy={my} r="7" fill="transparent" className="cursor-pointer"
-                onClick={() => {
-                  const next = window.prompt("Arrow label (blank to keep, DELETE to remove)", e.label ?? "");
-                  if (next === null) return;
-                  if (next.trim().toUpperCase() === "DELETE") onRemove(e.id);
-                  else onLabel?.(e.id, { label: next.trim().slice(0, 40) || undefined });
-                }}
+            {onSelect && (
+              <line
+                x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+                stroke="transparent" strokeWidth="14" className="cursor-pointer"
+                onClick={() => onSelect(e.id)}
               />
             )}
           </g>
