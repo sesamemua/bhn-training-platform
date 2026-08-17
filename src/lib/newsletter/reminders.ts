@@ -495,6 +495,8 @@ export async function sendTestReminder(opts: {
   workshopUrl: string;
   to: string;
   overrides?: ReminderOverrides;
+  sentById?: string | null;
+  sentByName?: string | null;
 }): Promise<{ ok: boolean; to: string; error?: string }> {
   const reminder = await prisma.newsletterReminder.findUnique({
     where: { id: opts.reminderId },
@@ -538,10 +540,66 @@ export async function sendTestReminder(opts: {
         `Subject: ${msg.subject}\n\n---\n\n${msg.text}`,
       replyTo: opts.config.coordinator.email,
     });
+    await logTest("sent");
     return { ok: true, to: opts.to };
   } catch (e) {
-    return { ok: false, to: opts.to, error: (e as Error).message || "Send failed" };
+    const error = (e as Error).message || "Send failed";
+    await logTest("failed", error);
+    return { ok: false, to: opts.to, error };
   }
+
+  /** Tests appear in the history too — "did I already send myself one,
+   *  and what did it say" is the same question as for a real send. */
+  async function logTest(status: "sent" | "failed", error?: string) {
+    await prisma.newsletterSendLog
+      .create({
+        data: {
+          reminderId: opts.reminderId,
+          kind,
+          mode: "test",
+          status,
+          subject: `[TEST] ${msg.subject}`,
+          sentTo: [opts.to],
+          sentCc: [],
+          error: error ?? null,
+          sentById: opts.sentById ?? null,
+          sentByName: opts.sentByName ?? null,
+        },
+      })
+      .catch(() => null);
+  }
+}
+
+export interface SendLogEntry {
+  id: string;
+  mode: string;
+  status: string;
+  subject: string;
+  sentTo: string[];
+  sentCc: string[];
+  error: string | null;
+  sentByName: string | null;
+  createdAt: string;
+}
+
+/** Everything ever sent for this reminder, newest first. */
+export async function reminderHistory(reminderId: string): Promise<SendLogEntry[]> {
+  const rows = await prisma.newsletterSendLog.findMany({
+    where: { reminderId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    mode: r.mode,
+    status: r.status,
+    subject: r.subject,
+    sentTo: r.sentTo,
+    sentCc: r.sentCc,
+    error: r.error,
+    sentByName: r.sentByName,
+    createdAt: r.createdAt.toISOString(),
+  }));
 }
 
 export interface DispatchResult {
@@ -592,6 +650,8 @@ export async function previewReminder(opts: {
   overrides?: ReminderOverrides;
   /** The signed-in admin, so the dialog can offer a test to themselves. */
   viewerEmail?: string | null;
+  /** Preview a specific audience instead of the reminder's own mode. */
+  deliverMode?: ReminderMode;
 }): Promise<ReminderPreview> {
   const reminder = await prisma.newsletterReminder.findUnique({
     where: { id: opts.reminderId },
@@ -614,9 +674,10 @@ export async function previewReminder(opts: {
   // it was seeded from. The row wins — otherwise that toggle is cosmetic
   // and a chase the admin claimed would still go straight to the leads.
   const mode: ReminderMode =
-    reminder.mode === "auto" || reminder.mode === "manual"
+    opts.deliverMode ??
+    (reminder.mode === "auto" || reminder.mode === "manual"
       ? reminder.mode
-      : (opts.config.modes[kind] ?? "manual");
+      : (opts.config.modes[kind] ?? "manual"));
   const delivered = mode === "manual" ? wrapForManualSend(base, opts.config, kind) : base;
 
   return {
@@ -655,6 +716,10 @@ export async function dispatchReminder(opts: {
   /** Edits made in the send dialog. Applied before the manual-mode wrap,
    *  so a changed To/Subject shows in the coordinator's banner too. */
   overrides?: ReminderOverrides;
+  /** Audience for THIS send, overriding the reminder's own mode — the
+   *  dialog's "the team" vs "just me to forward" choice. */
+  deliverMode?: ReminderMode;
+  sentByName?: string | null;
 }): Promise<DispatchResult> {
   const reminder = await prisma.newsletterReminder.findUnique({
     where: { id: opts.reminderId },
@@ -677,10 +742,30 @@ export async function dispatchReminder(opts: {
   // it was seeded from. The row wins — otherwise that toggle is cosmetic
   // and a chase the admin claimed would still go straight to the leads.
   const mode: ReminderMode =
-    reminder.mode === "auto" || reminder.mode === "manual"
+    opts.deliverMode ??
+    (reminder.mode === "auto" || reminder.mode === "manual"
       ? reminder.mode
-      : (opts.config.modes[kind] ?? "manual");
+      : (opts.config.modes[kind] ?? "manual"));
   const msg = mode === "manual" ? wrapForManualSend(base, opts.config, kind) : base;
+
+  /** Append-only record of what actually happened, for the history list. */
+  const log = (status: "sent" | "failed", error?: string) =>
+    prisma.newsletterSendLog
+      .create({
+        data: {
+          reminderId: reminder.id,
+          kind,
+          mode,
+          status,
+          subject: msg.subject,
+          sentTo: msg.to,
+          sentCc: msg.cc,
+          error: error ?? null,
+          sentById: opts.sentById ?? null,
+          sentByName: opts.sentByName ?? null,
+        },
+      })
+      .catch(() => null); // a lost log line must never fail the send
 
   // Claim: only a pending row may be taken. updateMany returns a count, so
   // a losing racer sees 0 and stops without mailing.
@@ -725,6 +810,7 @@ export async function dispatchReminder(opts: {
         sentById: opts.sentById ?? null,
       },
     });
+    await log("sent");
     return { reminderId: reminder.id, kind, status: "sent", to: msg.to, cc: msg.cc };
   } catch (e) {
     const error = (e as Error).message || "Send failed";
@@ -732,6 +818,7 @@ export async function dispatchReminder(opts: {
       where: { id: reminder.id },
       data: { status: "failed", error },
     });
+    await log("failed", error);
     return { reminderId: reminder.id, kind, status: "failed", to: msg.to, cc: msg.cc, error };
   }
 }

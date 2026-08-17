@@ -13,7 +13,7 @@
  * at all — the coordinator gets a ready-to-forward copy instead.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Check, FlaskConical, Loader2, Mail, Send, UserCheck } from "lucide-react";
+import { AlertTriangle, Check, FlaskConical, History, Loader2, Mail, Send, UserCheck } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 
 const API = "/api/workspace/newsletter/calendar";
@@ -43,6 +43,29 @@ export interface ReminderOverrides {
   paras?: string[];
 }
 
+export interface SendArgs {
+  overrides: ReminderOverrides;
+  deliverMode: "auto" | "manual";
+  force: boolean;
+}
+
+interface HistoryEntry {
+  id: string;
+  mode: string;
+  status: string;
+  subject: string;
+  sentTo: string[];
+  error: string | null;
+  sentByName: string | null;
+  createdAt: string;
+}
+
+const MODE_LABEL: Record<string, string> = {
+  auto: "Sent to the team",
+  manual: "Copy to forward",
+  test: "Test to self",
+};
+
 const splitEmails = (s: string) =>
   s.split(/[,\s]+/).map((e) => e.trim()).filter(Boolean);
 const toParas = (s: string) =>
@@ -61,8 +84,13 @@ export function ReminderSendDialog({
   monthLabel: string;
   sending: boolean;
   onClose: () => void;
-  onSend: (overrides: ReminderOverrides) => void;
+  onSend: (args: SendArgs) => void;
 }) {
+  const [deliverMode, setDeliverMode] = useState<"auto" | "manual">("manual");
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  /** Bumped after a test send so the history refetches. */
+  const [historyTick, setHistoryTick] = useState(0);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,11 +106,11 @@ export function ReminderSendDialog({
   const loaded = useRef(false);
 
   const fetchPreview = useCallback(
-    async (id: string, overrides?: ReminderOverrides) => {
+    async (id: string, overrides?: ReminderOverrides, mode?: "auto" | "manual") => {
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "previewReminder", reminderId: id, overrides }),
+        body: JSON.stringify({ action: "previewReminder", reminderId: id, overrides, deliverMode: mode }),
       });
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; preview?: Preview; error?: string };
       if (!res.ok || !j.ok || !j.preview) throw new Error(j.error ?? "Couldn't load the preview.");
@@ -108,6 +136,7 @@ export function ReminderSendDialog({
         setTo(p.to.join(", "));
         setCc(p.cc.join(", "));
         setBody(p.paras.join("\n\n"));
+        setDeliverMode(p.mode);
         loaded.current = true;
       })
       .catch((e) => !cancelled && setError((e as Error).message))
@@ -120,12 +149,16 @@ export function ReminderSendDialog({
   useEffect(() => {
     if (!open || !reminderId || !loaded.current) return;
     const t = setTimeout(() => {
-      fetchPreview(reminderId, {
-        subject: subject.trim() || undefined,
-        to: splitEmails(to),
-        cc: splitEmails(cc),
-        paras: toParas(body),
-      })
+      fetchPreview(
+        reminderId,
+        {
+          subject: subject.trim() || undefined,
+          to: splitEmails(to),
+          cc: splitEmails(cc),
+          paras: toParas(body),
+        },
+        deliverMode,
+      )
         .then((p) => {
           setHtml(p.html);
           setPreview((cur) => (cur ? { ...cur, deliverTo: p.deliverTo, deliverCc: p.deliverCc } : cur));
@@ -133,7 +166,22 @@ export function ReminderSendDialog({
         .catch(() => { /* keep the last good render */ });
     }, 600);
     return () => clearTimeout(t);
-  }, [open, reminderId, subject, to, cc, body, fetchPreview]);
+  }, [open, reminderId, subject, to, cc, body, deliverMode, fetchPreview]);
+
+  // Send history, including tests, for this reminder.
+  useEffect(() => {
+    if (!open || !reminderId) return;
+    let cancelled = false;
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reminderHistory", reminderId }),
+    })
+      .then((r) => r.json())
+      .then((j: { history?: HistoryEntry[] }) => !cancelled && setHistory(j.history ?? []))
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open, reminderId, historyTick, sending]);
 
   const [testing, setTesting] = useState(false);
   const [testNote, setTestNote] = useState<string | null>(null);
@@ -172,6 +220,7 @@ export function ReminderSendDialog({
       setTestNote((e as Error).message);
     } finally {
       setTesting(false);
+      setHistoryTick((t) => t + 1);
     }
   }
 
@@ -218,18 +267,24 @@ export function ReminderSendDialog({
             disabled={!canSend}
             onClick={() =>
               onSend({
-                subject: subject.trim() || undefined,
-                to: recipients,
-                cc: splitEmails(cc),
-                paras: toParas(body),
+                overrides: {
+                  subject: subject.trim() || undefined,
+                  to: recipients,
+                  cc: splitEmails(cc),
+                  paras: toParas(body),
+                },
+                deliverMode,
+                // Already sent once? Then this is a deliberate resend.
+                force: preview?.status === "sent",
               })
             }
             className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-4 py-1.5 text-[13px] font-bold text-white transition hover:bg-brand-700 disabled:opacity-50"
           >
             {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            {preview?.status === "sent" ? "Resend " : "Send "}
             {manual
-              ? "Send me the copy"
-              : `Send to ${recipients.length} recipient${recipients.length === 1 ? "" : "s"}`}
+              ? "me the copy"
+              : `to the team (${recipients.length})`}
           </button>
         </>
       }
@@ -246,6 +301,32 @@ export function ReminderSendDialog({
 
       {preview && !loading && (
         <div className="space-y-4">
+          {/* Audience. The old flow hid this behind a per-reminder toggle
+              on the calendar row, so "does this actually email the team?"
+              could only be answered by knowing that setting existed. */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-elevated/60 p-1">
+            {(
+              [
+                ["auto", "Send to the team"],
+                ["manual", "Send me a copy to forward"],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setDeliverMode(m)}
+                className={[
+                  "flex-1 rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors",
+                  deliverMode === m
+                    ? "bg-card-solid text-fg shadow-card-rest"
+                    : "text-muted hover:text-fg",
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {/* Who actually receives this — the thing the old confirm hid. */}
           <div
             className={[
@@ -341,6 +422,50 @@ export function ReminderSendDialog({
               {testNote}
             </p>
           )}
+
+          {/* Send history — every real send, forward copy, and test. */}
+          <div className="rounded-lg border border-line">
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="flex w-full items-center gap-1.5 px-3 py-2 text-[12.5px] text-muted transition hover:text-fg"
+            >
+              <History size={13} />
+              {history.length === 0
+                ? "Nothing sent yet"
+                : `${history.length} send${history.length === 1 ? "" : "s"} so far`}
+              <span className="ml-auto text-[11px] text-subtle">{showHistory ? "Hide" : "Show"}</span>
+            </button>
+            {showHistory && history.length > 0 && (
+              <ul className="max-h-44 space-y-0.5 overflow-y-auto border-t border-line px-3 py-2">
+                {history.map((h) => (
+                  <li key={h.id} className="text-[11.5px] leading-relaxed">
+                    <span
+                      className={
+                        h.status === "failed"
+                          ? "font-semibold text-rose-600"
+                          : h.mode === "test"
+                            ? "font-semibold text-sky-700"
+                            : "font-semibold text-emerald-700"
+                      }
+                    >
+                      {h.status === "failed" ? "Failed" : MODE_LABEL[h.mode] ?? h.mode}
+                    </span>
+                    <span className="text-subtle">
+                      {" · "}
+                      {new Date(h.createdAt).toLocaleString(undefined, {
+                        month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                      })}
+                      {h.sentByName ? ` · ${h.sentByName}` : ""}
+                    </span>
+                    <div className="text-subtle">
+                      {h.error ? h.error : `→ ${h.sentTo.join(", ")}`}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <div>
             <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-subtle">

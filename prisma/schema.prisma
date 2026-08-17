@@ -5786,6 +5786,37 @@ model NewsletterCycle {
 /// the idempotency key: the daily sweep claims a row by flipping status
 /// before it mails, so a cron that runs twice cannot send twice — the
 /// same claim-before-send discipline as OutreachSend.
+/// Every send attempt for a reminder — real sends, forwarding copies,
+/// tests, and failures. NewsletterReminder only keeps the LAST send on
+/// itself, which cannot answer "did we already chase them, and what did
+/// we actually say". Append-only; nothing here is ever updated.
+model NewsletterSendLog {
+  id         String   @id @default(cuid())
+  reminderId String
+  /// draft_request | draft_due | approval | send_day — copied so the log
+  /// still reads correctly if the reminder row is later removed.
+  kind       String
+  /// auto — went to the real recipients.
+  /// manual — went to the coordinator to forward on.
+  /// test — went only to the admin previewing it.
+  mode       String
+  /// sent | failed
+  status     String
+  /// Snapshot of what actually went out, so an edited send is auditable.
+  subject    String
+  sentTo     String[] @default([])
+  sentCc     String[] @default([])
+  /// Transport error when status = failed.
+  error      String?
+  sentById   String?
+  sentByName String?
+  createdAt  DateTime @default(now())
+
+  reminder NewsletterReminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+
+  @@index([reminderId, createdAt])
+}
+
 model NewsletterReminder {
   id           String    @id @default(cuid())
   cycleId      String
@@ -5812,7 +5843,8 @@ model NewsletterReminder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cycle NewsletterCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  cycle NewsletterCycle     @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  sends NewsletterSendLog[]
 
   @@unique([cycleId, kind])
   @@index([status, scheduledFor])

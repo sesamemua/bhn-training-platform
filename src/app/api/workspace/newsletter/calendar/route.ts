@@ -18,7 +18,12 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { effectiveSchedule, generateCalendar, listCycles, rescheduleCycle } from "@/lib/newsletter/calendar";
 import { isIsoDate, isSendWeekday, snapToSendDay, weekdayOf } from "@/lib/newsletter/schedule";
-import { dispatchReminder, previewReminder, sendTestReminder } from "@/lib/newsletter/reminders";
+import {
+  dispatchReminder,
+  previewReminder,
+  reminderHistory,
+  sendTestReminder,
+} from "@/lib/newsletter/reminders";
 import {
   getNewsletterConfig,
   isApprover,
@@ -92,10 +97,15 @@ const ReminderSchema = z.object({
     "setReminderMode",
     "previewReminder",
     "testReminder",
+    "reminderHistory",
   ]),
   reminderId: z.string().min(1),
   mode: z.enum(["auto", "manual"]).optional(),
   overrides: OverridesSchema,
+  /** Audience for this one send — "the team" vs "me, to forward". */
+  deliverMode: z.enum(["auto", "manual"]).optional(),
+  /** Send again even though this reminder already went out. */
+  force: z.boolean().optional(),
 });
 
 const MoveSchema = z.object({
@@ -230,11 +240,17 @@ export async function POST(req: NextRequest) {
     body.action === "skipReminder" ||
     body.action === "setReminderMode" ||
     body.action === "previewReminder" ||
-    body.action === "testReminder"
+    body.action === "testReminder" ||
+    body.action === "reminderHistory"
   ) {
     const parsed = ReminderSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     const viewerEmail = (session.user as { email?: string }).email ?? null;
+    const viewerName = (session.user as { name?: string }).name ?? viewerEmail;
+
+    if (parsed.data.action === "reminderHistory") {
+      return NextResponse.json({ ok: true, history: await reminderHistory(parsed.data.reminderId) });
+    }
 
     // Read-only: compose the mail so the admin can read and edit it
     // before anything is claimed or sent.
@@ -247,6 +263,7 @@ export async function POST(req: NextRequest) {
           workshopUrl: workshopUrl(req),
           overrides: parsed.data.overrides,
           viewerEmail,
+          deliverMode: parsed.data.deliverMode,
         });
         return NextResponse.json({ ok: true, preview });
       } catch (e) {
@@ -269,6 +286,8 @@ export async function POST(req: NextRequest) {
           workshopUrl: workshopUrl(req),
           to: viewerEmail,
           overrides: parsed.data.overrides,
+          sentById: userId,
+          sentByName: viewerName,
         });
         if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
         return NextResponse.json({ ok: true, sentTo: result.to });
@@ -302,7 +321,12 @@ export async function POST(req: NextRequest) {
       config,
       workshopUrl: workshopUrl(req),
       sentById: userId,
+      sentByName: viewerName,
       overrides: parsed.data.overrides,
+      deliverMode: parsed.data.deliverMode,
+      // Resend: the claim exists to stop the cron double-sending, not to
+      // stop a human deliberately chasing again.
+      force: parsed.data.force,
     });
     const cycles = await listCycles(currentMonthIso());
     return NextResponse.json({ ok: true, result, cycles });

@@ -31,7 +31,7 @@ import {
 } from "@/lib/newsletter/schedule";
 import type { NewsletterConfig } from "@/lib/newsletter/config";
 import { NewsletterMonthGrid, type LaneCycle } from "./NewsletterMonthGrid";
-import { ReminderSendDialog, type ReminderOverrides } from "./ReminderSendDialog";
+import { ReminderSendDialog, type SendArgs } from "./ReminderSendDialog";
 
 interface Reminder {
   id: string;
@@ -342,14 +342,23 @@ function CycleFooter({
                   </p>
                 </div>
 
-                {canEdit && (r.status === "pending" || r.status === "failed") && (
+                {canEdit && (
                   <div className="flex shrink-0 items-center gap-3">
+                    {/* Available even once sent: a chase often needs sending
+                        twice, and the dialog is also where the send history
+                        lives. */}
                     <button
                       onClick={() => setSendFor(r.id)}
                       disabled={working}
                       className="text-[12px] font-semibold text-brand-400 hover:text-brand-200 disabled:opacity-50"
                     >
-                      {working ? "Sending…" : r.status === "failed" ? "Try again" : "Review and send…"}
+                      {working
+                        ? "Sending…"
+                        : r.status === "failed"
+                          ? "Try again"
+                          : r.status === "sent" || r.status === "skipped"
+                            ? "History / resend…"
+                            : "Review and send…"}
                     </button>
                     {r.status === "pending" && (
                       <button
@@ -409,10 +418,10 @@ function CycleFooter({
         monthLabel={monthLabel(cycle.month)}
         sending={busy !== null && busy === sendFor}
         onClose={() => setSendFor(null)}
-        onSend={async (overrides: ReminderOverrides) => {
+        onSend={async (args: SendArgs) => {
           const id = sendFor;
           if (!id) return;
-          const res = await onAction({ action: "sendReminder", reminderId: id, overrides }, id);
+          const res = await onAction({ action: "sendReminder", reminderId: id, ...args }, id);
           if (res) setSendFor(null);
         }}
       />
