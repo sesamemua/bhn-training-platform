@@ -53,6 +53,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
     since: "2026.09.18a",
   },
+  {
+    id: "workspace.flowcharts.column",
+    title: "The registration flow reads top to bottom",
+    body: "The Training Week chart is now a single column — registration is linear, so nothing scrolls sideways. One box can hold a whole group of questions (“About you” carries name, title, LinkedIn and category), and clicking any box opens a row per question at the bottom of the window: answer type, key, choices, hint, required. The live form beside the chart rebuilds as you edit.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.19a",
+  },
   // ─── Newsletter production workflow
   {
     id: "workspace.newsletter.calendar",

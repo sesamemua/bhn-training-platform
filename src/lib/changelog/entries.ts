@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts read as a column, and boxes group their questions
+  {
+    title: "Flow charts: the registration flow reads top to bottom",
+    body: "The Training Week chart is one column now. Registration is a linear process, so the old six-column layout meant scrolling sideways to follow something that only ever goes down; branches step one lane right and rejoin. A box can hold a whole group of questions — \"About you\" carries name, title, LinkedIn and category — so sixteen inputs read as six steps. Click any box and its questions open at the bottom of the window: answer type, key, choices, hint, required, with the live form beside the chart rebuilding as you edit. Arrows soften at the turn instead of sweeping in wide curves between them.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Sign-in now returns you to where you were headed
   {
     title: "Fix: signing in takes you where you were going",
