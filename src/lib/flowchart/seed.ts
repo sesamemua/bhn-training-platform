@@ -62,12 +62,12 @@ export const TRAINING_WEEK_FLOW: ChartDoc = {
     { id: "e1",  from: "n1",  to: "n2" },
     { id: "e2",  from: "n2",  to: "n3" },
     { id: "e2b", from: "n3",  to: "n3b" },
-    // The rule that makes the form branch: the institution question only
-    // appears for someone who is not already a BHN trainee.
-    { id: "e2c", from: "n3b", to: "n3c", when: { field: "trainee", op: "is", value: "No" }, label: "not a trainee" },
+    // Everyone answers the three affiliation questions — the 41 eligible
+    // institutions ARE the eligibility check, so gating them behind
+    // "not a trainee" hid the list from most registrants.
+    { id: "e2c", from: "n3b", to: "n3c" },
     { id: "e2d", from: "n3c", to: "n3d" },
     { id: "e2e", from: "n3d", to: "n3e" },
-    { id: "e3",  from: "n3b", to: "n4", when: { field: "trainee", op: "is", value: "Yes" }, label: "trainee" },
     { id: "e3b", from: "n3e", to: "n4" },
     { id: "e4",  from: "n4",  to: "n5",  label: "yes" },
     { id: "e5",  from: "n4",  to: "n6",  label: "no" },
