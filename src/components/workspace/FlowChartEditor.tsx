@@ -245,6 +245,19 @@ export function FlowChartEditor({
   const [doc, setDoc] = useState<ChartDoc>(active?.data ?? { nodes: [], edges: [] });
   const [history, setHistory] = useState<ChartDoc[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  /**
+   * Boxes selected as a group by dragging a rectangle over them.
+   *
+   * Kept alongside `selected` rather than replacing it: the options rail,
+   * the form alignment and the flash all work on ONE box, and a group of
+   * six has no single set of options to show. `selected` stays the box
+   * those columns talk about; this is what a drag moves.
+   */
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  /** The rectangle being dragged, in chart coordinates. */
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const marqueeRef = useRef<{ x0: number; y0: number } | null>(null);
+
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
   /**
    * The live end of a connection being drawn, in chart coordinates.
@@ -283,7 +296,12 @@ export function FlowChartEditor({
   const formPaneRef = useRef<HTMLElement | null>(null);
   const adminPaneRef = useRef<HTMLElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
+  const dragRef = useRef<{
+    id: string; dx: number; dy: number;
+    /** Where every group member started, so one delta moves them all. */
+    group?: { id: string; x: number; y: number }[];
+    anchor?: { x: number; y: number };
+  } | null>(null);
   /**
    * How wide the canvas pane actually is. The chart only needs ~650px, but
    * the pane is usually much wider, and that leftover width is where a
@@ -547,12 +565,64 @@ export function FlowChartEditor({
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* keep dragging */ }
     // rect is the SCALED box, so screen pixels have to be divided back
     // into chart coordinates or a drag runs away from the pointer.
+    const inGroup = groupIds.includes(n.id) && groupIds.length > 1;
     dragRef.current = {
       id: n.id,
       dx: (e.clientX - rect.left) / scale - n.x,
       dy: (e.clientY - rect.top) / scale - n.y,
+      // Snapshot taken once, at the start: applying a delta to live
+      // positions on every move compounds the rounding and the group
+      // slowly drifts apart.
+      group: inGroup
+        ? doc.nodes.filter((m) => groupIds.includes(m.id)).map((m) => ({ id: m.id, x: m.x, y: m.y }))
+        : undefined,
+      anchor: { x: n.x, y: n.y },
     };
     setSelected(n.id);
+  };
+
+  /**
+   * Start a rectangle on empty canvas.
+   *
+   * Only when the press lands on the canvas itself — a press on a box is a
+   * drag and a press on an arrow is a selection, and neither should paint
+   * a rectangle over the chart.
+   */
+  const onCanvasPointerDown = (e: React.PointerEvent) => {
+    if (!canEdit || linkFrom || relink) return;
+    if (e.target !== e.currentTarget) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const p = { x0: (e.clientX - rect.left) / scale, y0: (e.clientY - rect.top) / scale };
+    marqueeRef.current = p;
+    setMarquee({ ...p, x1: p.x0, y1: p.y0 });
+  };
+
+  const finishMarquee = () => {
+    const m = marquee;
+    marqueeRef.current = null;
+    setMarquee(null);
+    if (!m) return;
+
+    const x = Math.min(m.x0, m.x1), y = Math.min(m.y0, m.y1);
+    const w = Math.abs(m.x1 - m.x0), h = Math.abs(m.y1 - m.y0);
+    // A rectangle you did not mean to draw is a click on the background,
+    // which clears the selection rather than selecting nothing loudly.
+    if (w < 4 && h < 4) {
+      setGroupIds([]);
+      setSelected(null);
+      setSelectedEdge(null);
+      return;
+    }
+    const hit = doc.nodes.filter(
+      (n) => n.x < x + w && n.x + n.w > x && n.y < y + h && n.y + n.h > y,
+    );
+    setGroupIds(hit.map((n) => n.id));
+    // The rail needs one box to talk about; the topmost is the least
+    // surprising choice.
+    const primary = [...hit].sort((a, b) => a.y - b.y || a.x - b.x)[0] ?? null;
+    setSelected(primary ? primary.id : null);
+    setSelectedEdge(null);
   };
 
   const onCanvasPointerMove = (e: React.PointerEvent) => {
@@ -568,14 +638,38 @@ export function FlowChartEditor({
       });
     }
 
+    if (rect && marqueeRef.current) {
+      setMarquee({
+        ...marqueeRef.current,
+        x1: (e.clientX - rect.left) / scale,
+        y1: (e.clientY - rect.top) / scale,
+      });
+    }
+
     const d = dragRef.current;
     if (!d || !rect) return;
     const x = snap(Math.max(0, (e.clientX - rect.left) / scale - d.dx));
     const y = snap(Math.max(0, (e.clientY - rect.top) / scale - d.dy));
-    setDoc((cur) => ({
-      ...cur,
-      nodes: cur.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)),
-    }));
+
+    if (d.group && d.anchor) {
+      const ddx = x - d.anchor.x;
+      const ddy = y - d.anchor.y;
+      const start = new Map(d.group.map((g) => [g.id, g]));
+      setDoc((cur) => ({
+        ...cur,
+        nodes: cur.nodes.map((n) => {
+          const s0 = start.get(n.id);
+          return s0
+            ? { ...n, x: Math.max(0, s0.x + ddx), y: Math.max(0, s0.y + ddy) }
+            : n;
+        }),
+      }));
+    } else {
+      setDoc((cur) => ({
+        ...cur,
+        nodes: cur.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)),
+      }));
+    }
     setDirty(true);
   };
 
@@ -1011,7 +1105,8 @@ export function FlowChartEditor({
 
       {canEdit && (
         <p className="mt-1.5 text-[12.5px] text-subtle">
-          Drag a box to move it. {linkFrom
+          Drag a box to move it, or drag a rectangle on empty space to pick up
+          several at once. {linkFrom
             ? "Now click the box the arrow should point to, or press Escape."
             : "Click Connect on a box, then click its target to draw an arrow."}
         </p>
@@ -1044,9 +1139,10 @@ export function FlowChartEditor({
         <div style={{ width: bounds.w * scale, height: contentH * scale }}>
         <div
           ref={canvasRef}
+          onPointerDown={onCanvasPointerDown}
           onPointerMove={onCanvasPointerMove}
-          onPointerUp={endDrag}
-          onPointerLeave={endDrag}
+          onPointerUp={() => { endDrag(); finishMarquee(); }}
+          onPointerLeave={() => { endDrag(); finishMarquee(); }}
           className="relative origin-top-left"
           style={{
             width: bounds.w,
@@ -1080,11 +1176,24 @@ export function FlowChartEditor({
             onGrabEnd={canEdit ? startRelink : undefined}
           />
 
+          {marquee && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute z-20 rounded-sm border border-brand-400 bg-brand-500/15"
+              style={{
+                left: Math.min(marquee.x0, marquee.x1),
+                top: Math.min(marquee.y0, marquee.y1),
+                width: Math.abs(marquee.x1 - marquee.x0),
+                height: Math.abs(marquee.y1 - marquee.y0),
+              }}
+            />
+          )}
+
           {doc.nodes.map((n) => (
             <Box
               key={n.id}
               node={n}
-              selected={selected === n.id}
+              selected={selected === n.id || groupIds.includes(n.id)}
               hovered={litNodes.includes(n.id)}
               onHover={(on) => setHoverNodes(on ? [n.id] : [])}
               linking={linkFrom !== null || relink !== null}
@@ -1093,6 +1202,9 @@ export function FlowChartEditor({
               onPointerDown={onNodePointerDown(n)}
               onSelect={() => {
                 if (linkFrom || relink) { link(n.id); return; }
+                // Clicking one box is a fresh single selection; the group
+                // survives only while you are working with it.
+                if (!groupIds.includes(n.id)) setGroupIds([]);
                 setSelected(n.id);
                 setSelectedEdge(null);
                 if (selectedField?.nodeId !== n.id) setSelectedField(null);

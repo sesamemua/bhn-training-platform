@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.marquee",
+    title: "Move several boxes at once",
+    body: "Drag a rectangle across empty canvas to pick up every box it touches, then drag any one of them — the whole group moves together, keeping its spacing, and the arrows follow. Click a single box for a single selection, or empty space to clear it.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.28a",
+  },
+  {
     id: "workspace.flowcharts.connect",
     title: "Drawing and editing arrows",
     body: "Select a box and press **connect** (on the box, or in the Options column) — a line follows your cursor from the box edge until you click the box it points to. Escape cancels. Click any arrow to select it: drag either end onto a different box to re-point it, or press Delete to remove it. Questions can be moved up and down from the live form, the Options panel, or by dragging a row in the data sheet.",

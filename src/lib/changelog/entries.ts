@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: marquee selection and group move
+  {
+    title: "Flow charts: select several boxes at once and move them together",
+    body: "Drag a rectangle across empty canvas and every box it touches is picked up. Then drag any one of them and the whole group moves as a unit, keeping its spacing, with the arrows re-routing to follow. Clicking a single box goes back to a single selection, and clicking empty space clears it. Useful for shifting a branch out of the way without taking six boxes one at a time.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: unsaved work survives a crash
   {
     title: "Flow charts: unsaved changes are no longer lost when the page breaks",
