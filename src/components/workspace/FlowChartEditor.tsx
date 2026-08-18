@@ -134,13 +134,6 @@ export function FlowChartEditor({
    * one out, so "this field's settings" is one click from the field.
    */
   const [selectedField, setSelectedField] = useState<{ nodeId: string; index: number } | null>(null);
-  /**
-   * The middle column shows one of two readings of the same chart: what a
-   * registrant fills in, or what the organisers see afterwards. They are
-   * the same document, so they belong in the same slot rather than on
-   * separate pages where they could be edited out of step.
-   */
-  const [middle, setMiddle] = useState<"form" | "admin">("form");
   const [answers, setAnswers] = useState<Answers>({});
   /**
    * The node the pointer is over, on either side of the split. Hovering a
@@ -523,7 +516,11 @@ export function FlowChartEditor({
       {/* ── three columns: the chart, the form it makes, the settings
              behind it. Chart takes the slack; the two rails are fixed so
              the controls never reflow as the canvas grows. ─────────── */}
-      <div className="mt-3 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px_340px]">
+      {/* ── four columns: the chart, the form it makes, the panel the
+             organisers get, and the settings behind whatever is selected.
+             The chart takes the slack; the three rails are fixed so the
+             controls never reflow as the canvas grows. ─────────────── */}
+      <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px_300px_300px]">
       <div ref={paneRef} className="overflow-auto rounded-lg border border-line bg-card">
         <div
           ref={canvasRef}
@@ -577,41 +574,32 @@ export function FlowChartEditor({
           edit the chart, which only works if it stays on screen while you
           scroll a canvas taller than the viewport. */}
       <aside ref={formPaneRef} className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
-        <div className="mb-3 flex gap-4 border-b border-line pb-2 text-[11px] font-bold uppercase tracking-[0.12em]">
-          {(["form", "admin"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setMiddle(v)}
-              className={`-mb-2 border-b-2 pb-2 transition-colors ${
-                middle === v ? "border-brand-400 text-brand-400" : "border-transparent text-subtle hover:text-muted"
-              }`}
-            >
-              {v === "form" ? "What they fill in" : "What you see"}
-            </button>
-          ))}
-        </div>
-        {middle === "form" ? (
-          <FlowFormPreview
-            doc={doc}
-            answers={answers}
-            onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
-            onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
-            hoverNodes={hoverNodes}
-            onHoverField={(id) => setHoverNodes(id ? [id] : [])}
-            onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
-            selectedField={selectedField}
-            focusNodeId={selected}
-          />
-        ) : (
-          <FlowAdminPreview
-            doc={doc}
-            canEdit={canEdit}
-            onSettings={patchSettings}
-            hoverNodes={hoverNodes}
-            onHoverField={(id) => setHoverNodes(id ? [id] : [])}
-            onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
-          />
-        )}
+        <FlowFormPreview
+          doc={doc}
+          answers={answers}
+          onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
+          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
+          hoverNodes={hoverNodes}
+          onHoverField={(id) => setHoverNodes(id ? [id] : [])}
+          onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
+          selectedField={selectedField}
+          focusNodeId={selected}
+        />
+      </aside>
+
+      {/* The organisers' side of the same chart. A different surface on
+          purpose: the other three columns are the thing being designed,
+          this one is its consequence, and it should not read as more of
+          the same panel. */}
+      <aside className="min-w-0 self-start rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+        <FlowAdminPreview
+          doc={doc}
+          canEdit={canEdit}
+          onSettings={patchSettings}
+          hoverNodes={hoverNodes}
+          onHoverField={(id) => setHoverNodes(id ? [id] : [])}
+          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
+        />
       </aside>
 
       {/* The options behind whatever is selected. Sticky for the same

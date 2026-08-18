@@ -87,31 +87,35 @@ export function FlowAdminPreview({
       <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">
         Columns, in the order they are asked
       </p>
-      <div className="mt-1.5 overflow-x-auto rounded-md border border-line">
-        <table className="w-full text-left text-[11.5px]">
-          <thead>
-            <tr className="border-b border-line bg-elevated/50 text-subtle">
-              <th className="px-2.5 py-1.5 font-semibold">Column</th>
-              <th className="px-2.5 py-1.5 font-semibold">From</th>
-            </tr>
-          </thead>
-          <tbody>
-            {columns.map((c) => (
-              <tr
-                key={c.key}
-                className="border-b border-line/60 last:border-0"
-              >
-                <td className="px-2.5 py-1.5 text-fg">
-                  {c.label}
-                  {c.required && <span className="ml-1 text-brand-400">*</span>}
-                  <span className="ml-1.5 font-mono text-[10.5px] text-subtle">{c.key}</span>
-                </td>
-                <td className="px-2.5 py-1.5 text-muted">{c.group}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* A two-column table needed a scrollbar inside a 300px rail. The
+          same two facts stack instead: what the column is called, and
+          which box it came from. */}
+      <ul className="mt-1.5 divide-y divide-line/60 rounded-md border border-line">
+        {columns.map((c) => (
+          <li
+            key={c.key}
+            onMouseEnter={() => onHoverField?.(c.nodeId)}
+            onMouseLeave={() => onHoverField?.(null)}
+            className={`px-2.5 py-1.5 transition-colors ${
+              hoverNodes.includes(c.nodeId) ? "bg-brand-500/10" : ""
+            }`}
+          >
+            <button
+              onClick={() => onFocusNode?.(c.nodeId)}
+              className="block w-full text-left"
+              title="Show this box on the chart"
+            >
+              <span className="text-[12px] font-semibold text-fg">
+                {c.label}
+                {c.required && <span className="ml-1 text-brand-400">*</span>}
+              </span>
+              <span className="mt-0.5 block truncate text-[10.5px] text-subtle">
+                <span className="font-mono">{c.key}</span> · {c.group}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
       {columns.length > 14 && (
         <p className="mt-1.5 flex items-start gap-1 text-[11.5px] text-amber-600">
           <CircleAlert size={11} className="mt-0.5 shrink-0" />

@@ -16,6 +16,8 @@ import type { ChartDoc, FlowNode } from "./types";
 export interface AdminColumn {
   key: string;
   label: string;
+  /** The box it came from, so the panel can link back to the chart. */
+  nodeId: string;
   /** The question type, for how the cell should be rendered/filtered. */
   type: string;
   /** The box it came from — columns are grouped by it in the header. */
@@ -29,6 +31,7 @@ export function adminColumns(doc: ChartDoc): AdminColumn[] {
   return orderedFields(doc).map((f) => ({
     key: f.key,
     label: f.label,
+    nodeId: f.nodeId,
     type: f.field.type,
     group: f.node.text || "Questions",
     required: !!f.field.required,

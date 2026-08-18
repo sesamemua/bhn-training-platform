@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the admin panel gets its own column
+  {
+    title: "Flow charts: the admin panel is a column of its own",
+    body: "It was hidden behind a tab in the middle column, which meant you had to know it was there. It now sits in a fourth column on a lighter surface so it reads as a different kind of thing — the other three are the process being designed, this one is what it produces. The chart gave up the width: boxes are narrower and the whole drawing is about 90px slimmer, with the gap between the spine and its branches held where it was.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the admin panel the workflow implies, plus spacing
   {
     title: "Flow charts: see the admin panel your workflow produces",

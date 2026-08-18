@@ -13,9 +13,9 @@
  */
 import type { ChartDoc } from "./types";
 
-const MAIN = 60;   // the spine every step sits on
-const SIDE = 420;  // where a branch steps out to, and rejoins from
-const W = 250;
+const MAIN = 36;   // the spine every step sits on
+const SIDE = 366;  // where a branch steps out to, and rejoins from
+const W = 220;
 const TOP = 34;    // clear air above the first box
 const GAP = 54;    // between one step and the next
 
@@ -23,6 +23,11 @@ const GAP = 54;    // between one step and the next
  * The lane gap is 110px, not the 30 it started at. A branch sitting almost
  * against the spine reads as part of it, and left the arrow between them
  * no room to be seen — the two columns have to look like two columns.
+ *
+ * Boxes are 220 wide rather than 250: the page now carries four columns,
+ * and the chart is the one that can afford to give width back. The lane
+ * gap is held at 110 while doing it — narrowing the chart must not undo
+ * the separation between the spine and its branches.
  */
 
 /** Vertical cursor, so spacing stays even however the boxes change. */

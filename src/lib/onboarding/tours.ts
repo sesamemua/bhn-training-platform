@@ -96,7 +96,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.flowcharts.admin",
     title: "The admin panel the workflow implies",
-    body: "Switch the middle column to **What you see** and the chart shows the registrations table it produces: a column per question, a stage per non-question box. If a process yields a table nobody can read, you find out here rather than after the event. The same panel takes a link to the Google Sheet of current platform users, so registrants can be matched against existing accounts.",
+    body: "Flow Charts reads left to right in four columns: the chart, the live form, the **Admin panel**, and the options behind whatever is selected. The admin panel — on the lighter surface — is derived from the chart: a column per question, a stage per non-question box. If a process yields a table nobody can read, you find out here rather than after the event. It also takes a link to the Google Sheet of current platform users, so registrants can be matched against existing accounts.",
     path: "/admin/workspace/flowcharts",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],
