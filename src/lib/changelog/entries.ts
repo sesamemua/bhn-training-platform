@@ -24,8 +24,8 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // ── Flow charts: the crash, and marquee selection actually working
   {
-    title: "Flow charts: fixed the crash while editing, and drag-to-select now works",
-    body: "The crash was a loop: the canvas was sized to exactly the width of its column, a rounding error tipped it a fraction over, a scrollbar appeared, that made the column narrower, the canvas was re-sized to fit, the scrollbar went away — round and round until React gave up with \"maximum update depth exceeded\". The canvas now sits a pixel inside its column so the scrollbar never appears, and the measurement ignores changes under two pixels. Separately, dragging a rectangle to select several boxes never worked with a real mouse: the invisible arrow layer covers the whole canvas and was swallowing the press. It now lets presses through to the canvas, while arrows themselves stay clickable.",
+    title: "Flow charts: fixed the crash while editing, and drag-to-select now really works",
+    body: "The crash was a loop: the canvas was sized to exactly the width of its column, a rounding error tipped it a fraction over, a scrollbar appeared, that made the column narrower, the canvas was re-sized to fit, the scrollbar went away — round and round until React gave up with \"maximum update depth exceeded\". The canvas now sits a pixel inside its column so the scrollbar never appears, and the measurement ignores changes under two pixels. Separately, dragging a rectangle to select several boxes never worked with a real mouse: the invisible arrow layer covers the whole canvas and was swallowing the press. It now lets presses through to the canvas, while arrows themselves stay clickable — and the rectangle is read from a live reference rather than from state, so a quick flick selects the boxes it covers instead of quietly selecting nothing.",
     kind: "fix",
     visibleTo: STAFF,
     daysAgo: 0,

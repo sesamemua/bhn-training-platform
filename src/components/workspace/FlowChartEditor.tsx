@@ -257,7 +257,17 @@ export function FlowChartEditor({
   const [groupIds, setGroupIds] = useState<string[]>([]);
   /** The rectangle being dragged, in chart coordinates. */
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
-  const marqueeRef = useRef<{ x0: number; y0: number } | null>(null);
+  /**
+   * The live rectangle, mirrored in a ref.
+   *
+   * `pointerup` runs a handler created in an earlier render, so reading
+   * the rectangle from state there sees whatever it was when that render
+   * happened. On a slow drag there are renders in between and it looks
+   * fine; on a quick flick the move and the release land in one batch,
+   * the handler sees the zero-size starting rectangle, and the marquee
+   * silently does nothing. The ref is always current.
+   */
+  const marqueeRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
 
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
   /**
@@ -602,16 +612,28 @@ export function FlowChartEditor({
    */
   const onCanvasPointerDown = (e: React.PointerEvent) => {
     if (!canEdit || linkFrom || relink) return;
-    if (e.target !== e.currentTarget) return;
+
+    // Anything that is not a box or a control counts as background. The
+    // previous test — target must BE the canvas — failed the moment
+    // another full-size layer sat on top of it, which is exactly what the
+    // arrows SVG is; asking "did this land on something that handles its
+    // own press?" does not care how many layers there are.
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("[data-node-id], button, input, select, textarea, a")) return;
+
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const p = { x0: (e.clientX - rect.left) / scale, y0: (e.clientY - rect.top) / scale };
-    marqueeRef.current = p;
-    setMarquee({ ...p, x1: p.x0, y1: p.y0 });
+    const x = (e.clientX - rect.left) / scale;
+    const y = (e.clientY - rect.top) / scale;
+    marqueeRef.current = { x0: x, y0: y, x1: x, y1: y };
+    setMarquee(marqueeRef.current);
+    // Capture so a rectangle dragged past the edge of the canvas keeps
+    // tracking, and so the release still lands here rather than nowhere.
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* fine without it */ }
   };
 
   const finishMarquee = () => {
-    const m = marquee;
+    const m = marqueeRef.current;
     marqueeRef.current = null;
     setMarquee(null);
     if (!m) return;
@@ -651,11 +673,12 @@ export function FlowChartEditor({
     }
 
     if (rect && marqueeRef.current) {
-      setMarquee({
+      marqueeRef.current = {
         ...marqueeRef.current,
         x1: (e.clientX - rect.left) / scale,
         y1: (e.clientY - rect.top) / scale,
-      });
+      };
+      setMarquee(marqueeRef.current);
     }
 
     const d = dragRef.current;
