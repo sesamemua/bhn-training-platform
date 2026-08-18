@@ -9,7 +9,7 @@
  * here is a second definition of the form — it is the chart, executed.
  */
 import { useMemo } from "react";
-import { CircleAlert, TriangleAlert } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleAlert, TriangleAlert } from "lucide-react";
 import { limitState, missingRequired, orderedFields, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import {
   COMPANY_TYPES,
@@ -44,6 +44,7 @@ export function FlowFormPreview({
   onSelectField,
   selectedField,
   focusNodeId,
+  onMoveField,
 }: {
   doc: ChartDoc;
   answers: Answers;
@@ -63,6 +64,8 @@ export function FlowFormPreview({
    * it asks, not leave you to find it in a column of thirty inputs.
    */
   focusNodeId?: string | null;
+  /** Reorder a question within its box, straight from the form. */
+  onMoveField?: (nodeId: string, index: number, dir: -1 | 1) => void;
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
   const missing = useMemo(() => missingRequired(doc, answers), [doc, answers]);
@@ -108,7 +111,7 @@ export function FlowFormPreview({
               onMouseLeave={() => onHoverField?.(null)}
               // The tint is the same brand wash the box gets on the chart,
               // so the pair reads as one thing lit from two places.
-              className={`-mx-2 rounded-md px-2 py-1.5 transition-colors ${
+              className={`group/row -mx-2 rounded-md px-2 py-1.5 transition-colors ${
                 open
                   ? "bg-brand-500/20 ring-2 ring-brand-500"
                   : inFocus || lit
@@ -123,19 +126,41 @@ export function FlowFormPreview({
                   {f.groupTitle}
                 </p>
               )}
-              <button
-                onClick={() => {
-                  onFocusNode?.(f.nodeId);
-                  onSelectField?.(f.nodeId, f.index);
-                }}
-                className="group block text-left"
-                title="Open this question's options"
-              >
-                <span className="text-[13px] font-semibold text-fg group-hover:text-brand-300">
-                  {f.label}
-                  {def.required && <span className="ml-1 text-brand-400">*</span>}
-                </span>
-              </button>
+              <div className="flex items-start justify-between gap-2">
+                <button
+                  onClick={() => {
+                    onFocusNode?.(f.nodeId);
+                    onSelectField?.(f.nodeId, f.index);
+                  }}
+                  className="group block text-left"
+                  title="Open this question's options"
+                >
+                  <span className="text-[13px] font-semibold text-fg group-hover:text-brand-300">
+                    {f.label}
+                    {def.required && <span className="ml-1 text-brand-400">*</span>}
+                  </span>
+                </button>
+                {/* Reordering is a thought you have while READING the form,
+                    so the control lives here as well as in the sheet. */}
+                {onMoveField && (
+                  <span className="flex shrink-0 items-center opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                    <button
+                      onClick={() => onMoveField(f.nodeId, f.index, -1)}
+                      title="Move this question up"
+                      className="rounded p-0.5 text-subtle hover:bg-elevated hover:text-fg"
+                    >
+                      <ChevronUp size={12} />
+                    </button>
+                    <button
+                      onClick={() => onMoveField(f.nodeId, f.index, 1)}
+                      title="Move this question down"
+                      className="rounded p-0.5 text-subtle hover:bg-elevated hover:text-fg"
+                    >
+                      <ChevronDown size={12} />
+                    </button>
+                  </span>
+                )}
+              </div>
               {def.help && <p className="mt-0.5 text-[11.5px] text-subtle">{def.help}</p>}
               <Field
                 type={def.type}

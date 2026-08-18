@@ -12,7 +12,7 @@
  * form field maps to one card you can open straight from the form.
  */
 import { useEffect, useRef } from "react";
-import { ArrowRight, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import {
   FIELD_TYPES,
   FIELD_TYPE_LABEL,
@@ -45,6 +45,7 @@ export function FlowOptionsRail({
   onRemoveNode,
   onStartLink,
   onPatchField,
+  onMoveField,
   onPatchLimit,
   onAddField,
   onRemoveField,
@@ -63,6 +64,7 @@ export function FlowOptionsRail({
   onRemoveNode: (id: string) => void;
   onStartLink: (id: string) => void;
   onPatchField: (id: string, i: number, patch: Partial<FieldDef>) => void;
+  onMoveField: (id: string, i: number, dir: -1 | 1) => void;
   onPatchLimit: (id: string, patch: Partial<LimitDef>) => void;
   onAddField: (id: string) => void;
   onRemoveField: (id: string, i: number) => void;
@@ -345,13 +347,31 @@ export function FlowOptionsRail({
                       onChange={(e) => onPatchField(node.id, i, { key: e.target.value.slice(0, 40) })}
                       className="min-w-0 flex-1 border-0 bg-transparent px-0 py-0.5 font-mono text-[12px] font-semibold text-fg outline-none focus-visible:text-brand-300"
                     />
-                    <button
-                      onClick={() => onRemoveField(node.id, i)}
-                      className="shrink-0 text-muted hover:text-red-500"
-                      title="Remove this question from the box"
-                    >
-                      <Trash2 size={11} />
-                    </button>
+                    <span className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        onClick={() => onMoveField(node.id, i, -1)}
+                        disabled={i === 0}
+                        title="Move up"
+                        className="text-muted hover:text-fg disabled:opacity-30"
+                      >
+                        <ChevronUp size={12} />
+                      </button>
+                      <button
+                        onClick={() => onMoveField(node.id, i, 1)}
+                        disabled={i === fields.length - 1}
+                        title="Move down"
+                        className="text-muted hover:text-fg disabled:opacity-30"
+                      >
+                        <ChevronDown size={12} />
+                      </button>
+                      <button
+                        onClick={() => onRemoveField(node.id, i)}
+                        className="text-muted hover:text-red-500"
+                        title="Remove this question from the box"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </span>
                   </div>
 
                   <label className="mt-2 block">

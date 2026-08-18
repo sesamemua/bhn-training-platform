@@ -27,7 +27,7 @@ import {
   type NodeKind,
 } from "@/lib/flowchart/types";
 import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
-import { routeEdge, toPath } from "@/lib/flowchart/route";
+import { edgeAnchor, routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
@@ -211,6 +211,20 @@ export function FlowChartEditor({
   const [history, setHistory] = useState<ChartDoc[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
+  /**
+   * The live end of a connection being drawn, in chart coordinates.
+   *
+   * Set from the moment "connect" is pressed, so the line exists before
+   * the pointer has moved — starting it on the first pointermove means
+   * nothing is drawn until you happen to twitch, which reads as the
+   * button not having worked.
+   */
+  const [linkTip, setLinkTip] = useState<{ x: number; y: number } | null>(null);
+  /**
+   * Re-attaching one end of an existing arrow. Same rubber band, but on
+   * release it rewrites that end rather than creating an arrow.
+   */
+  const [relink, setRelink] = useState<{ edgeId: string; end: "from" | "to" } | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   /**
    * Which question the options rail has open. Selecting a box on its own
@@ -421,6 +435,28 @@ export function FlowChartEditor({
     }
   }, [activeId, charts]);
 
+  /**
+   * Escape backs out of a connection; Delete removes a selected arrow.
+   *
+   * Bound to the window rather than the canvas because the canvas is not
+   * focusable — after clicking "connect" in the options rail the focus is
+   * over in that column, and Escape still has to work.
+   */
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const t = ev.target as HTMLElement | null;
+      // Never steal a key from something being typed into.
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      if (ev.key === "Escape") { setLinkFrom(null); setRelink(null); setLinkTip(null); }
+      if ((ev.key === "Delete" || ev.key === "Backspace") && selectedEdge && canEdit) {
+        ev.preventDefault();
+        removeEdgeRef.current(selectedEdge);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedEdge, canEdit]);
+
   const mutate = useCallback((next: (d: ChartDoc) => ChartDoc) => {
     setDoc((cur) => {
       setHistory((h) => [...h.slice(-24), cur]);
@@ -462,8 +498,19 @@ export function FlowChartEditor({
   };
 
   const onCanvasPointerMove = (e: React.PointerEvent) => {
-    const d = dragRef.current;
     const rect = canvasRef.current?.getBoundingClientRect();
+
+    // While connecting, the loose end of the line is wherever the pointer
+    // is — in chart coordinates, so it lands on the same spot the arrow
+    // will when it is dropped.
+    if (rect && (linkFrom || relink)) {
+      setLinkTip({
+        x: (e.clientX - rect.left) / scale,
+        y: (e.clientY - rect.top) / scale,
+      });
+    }
+
+    const d = dragRef.current;
     if (!d || !rect) return;
     const x = snap(Math.max(0, (e.clientX - rect.left) / scale - d.dx));
     const y = snap(Math.max(0, (e.clientY - rect.top) / scale - d.dy));
@@ -516,14 +563,49 @@ export function FlowChartEditor({
       edges: d.edges.filter((e) => e.from !== id && e.to !== id),
     }));
 
+  /** Begin drawing from a box; the line exists immediately. */
+  const startLink = (id: string) => {
+    const n = doc.nodes.find((x) => x.id === id);
+    setLinkFrom(id);
+    setRelink(null);
+    setLinkTip(n ? { x: n.x + n.w / 2, y: n.y + n.h / 2 } : null);
+  };
+
+  /** Begin dragging one end of an existing arrow onto a different box. */
+  const startRelink = (edgeId: string, end: "from" | "to") => {
+    const e = doc.edges.find((x) => x.id === edgeId);
+    const anchorId = e ? (end === "to" ? e.from : e.to) : null;
+    const n = doc.nodes.find((x) => x.id === anchorId);
+    setRelink({ edgeId, end });
+    setLinkFrom(null);
+    setLinkTip(n ? { x: n.x + n.w / 2, y: n.y + n.h / 2 } : null);
+  };
+
+  const cancelLinking = () => { setLinkFrom(null); setRelink(null); setLinkTip(null); };
+
   const link = (toId: string) => {
-    if (!linkFrom || linkFrom === toId) { setLinkFrom(null); return; }
+    if (relink) {
+      const { edgeId, end } = relink;
+      // Refuse an arrow that would start and finish in the same box —
+      // it has no meaning and routes to a scribble.
+      mutate((d) => ({
+        ...d,
+        edges: d.edges.map((e) => {
+          if (e.id !== edgeId) return e;
+          const next = { ...e, [end]: toId };
+          return next.from === next.to ? e : next;
+        }),
+      }));
+      cancelLinking();
+      return;
+    }
+    if (!linkFrom || linkFrom === toId) { cancelLinking(); return; }
     mutate((d) =>
       d.edges.some((e) => e.from === linkFrom && e.to === toId)
         ? d
         : { ...d, edges: [...d.edges, { id: uid(), from: linkFrom, to: toId }] },
     );
-    setLinkFrom(null);
+    cancelLinking();
   };
 
   const patchNode = (id: string, patch: Partial<FlowNode>) =>
@@ -551,6 +633,23 @@ export function FlowChartEditor({
     writeFields(id, (fs) => {
       const taken = doc.nodes.flatMap((n) => fieldsOf(n).map((f) => f.key));
       return [...fs, { key: suggestKey("answer", taken), type: "text" as FieldType }];
+    });
+
+  /**
+   * Move a question one place up or down inside its box.
+   *
+   * Offered from the live form and the options rail as well as the sheet,
+   * because "this question should come first" is a thought you have while
+   * reading the form, not while looking at a grid.
+   */
+  const moveField = (id: string, i: number, dir: -1 | 1) =>
+    writeFields(id, (fs) => {
+      const to = i + dir;
+      if (to < 0 || to >= fs.length) return fs;
+      const next = [...fs];
+      const [m] = next.splice(i, 1);
+      next.splice(to, 0, m);
+      return next;
     });
 
   const removeField = (id: string, i: number) =>
@@ -640,6 +739,11 @@ export function FlowChartEditor({
 
   const patchEdge = (id: string, patch: Partial<FlowEdge>) =>
     mutate((d) => ({ ...d, edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+
+  const removeEdgeRef = useRef((id: string) => {
+    mutate((d) => ({ ...d, edges: d.edges.filter((e) => e.id !== id) }));
+    setSelectedEdge(null);
+  });
 
   const removeEdge = (id: string) =>
     mutate((d) => ({ ...d, edges: d.edges.filter((e) => e.id !== id) }));
@@ -873,6 +977,20 @@ export function FlowChartEditor({
             hoverNodes={litNodes}
             onHoverEdge={(e) => setHoverNodes(e ? [e.from, e.to] : [])}
             bounds={bounds}
+            live={
+              linkTip && (linkFrom || relink)
+                ? {
+                    fromId:
+                      linkFrom ??
+                      (() => {
+                        const e = doc.edges.find((x) => x.id === relink!.edgeId);
+                        return (relink!.end === "to" ? e?.from : e?.to) ?? "";
+                      })(),
+                    tip: linkTip,
+                  }
+                : null
+            }
+            onGrabEnd={canEdit ? startRelink : undefined}
           />
 
           {doc.nodes.map((n) => (
@@ -882,18 +1000,18 @@ export function FlowChartEditor({
               selected={selected === n.id}
               hovered={litNodes.includes(n.id)}
               onHover={(on) => setHoverNodes(on ? [n.id] : [])}
-              linking={linkFrom !== null}
+              linking={linkFrom !== null || relink !== null}
               isLinkSource={linkFrom === n.id}
               canEdit={canEdit}
               onPointerDown={onNodePointerDown(n)}
               onSelect={() => {
-                if (linkFrom) { link(n.id); return; }
+                if (linkFrom || relink) { link(n.id); return; }
                 setSelected(n.id);
                 setSelectedEdge(null);
                 if (selectedField?.nodeId !== n.id) setSelectedField(null);
                 alignAndFlash(n.id, "chart");
               }}
-              onStartLink={() => setLinkFrom(n.id)}
+              onStartLink={() => startLink(n.id)}
               onText={(text) => patchNode(n.id, { text })}
             />
           ))}
@@ -918,6 +1036,7 @@ export function FlowChartEditor({
           hoverNodes={litNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
+          onMoveField={canEdit ? moveField : undefined}
           selectedField={selectedField}
           focusNodeId={selected}
         />
@@ -957,8 +1076,9 @@ export function FlowChartEditor({
           canEdit={canEdit}
           onPatchNode={patchNode}
           onRemoveNode={(id) => { removeNode(id); setSelected(null); setSelectedField(null); }}
-          onStartLink={setLinkFrom}
+          onStartLink={startLink}
           onPatchField={patchField}
+          onMoveField={moveField}
           onPatchLimit={patchLimit}
           onAddField={addField}
           onRemoveField={removeField}
@@ -1123,6 +1243,8 @@ function Arrows({
   hoverNodes,
   onHoverEdge,
   bounds,
+  live,
+  onGrabEnd,
 }: {
   doc: ChartDoc;
   selectedEdge: string | null;
@@ -1130,6 +1252,10 @@ function Arrows({
   hoverNodes: string[];
   onHoverEdge: (e: { from: string; to: string } | null) => void;
   bounds: { w: number; h: number };
+  /** The connection currently being drawn, if any. */
+  live?: { fromId: string; tip: { x: number; y: number } } | null;
+  /** Grab one end of the selected arrow to point it somewhere else. */
+  onGrabEnd?: (edgeId: string, end: "from" | "to") => void;
 }) {
   const byId = new Map(doc.nodes.map((n) => [n.id, n]));
 
@@ -1158,6 +1284,25 @@ function Arrows({
           <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
         </marker>
       </defs>
+      {/* The connection being drawn. Dashed and unrouted on purpose: it
+          is a gesture in progress, not a decision, and routing it around
+          boxes on every pointermove would make it jump about. */}
+      {live && (() => {
+        const from = byId.get(live.fromId);
+        if (!from) return null;
+        const a = edgeAnchor(from, live.tip);
+        return (
+          <g className="pointer-events-none text-brand-400">
+            <line
+              x1={a.x} y1={a.y} x2={live.tip.x} y2={live.tip.y}
+              stroke="currentColor" strokeWidth="2" strokeDasharray="6 5"
+              markerEnd="url(#fc-arrow)"
+            />
+            <circle cx={a.x} cy={a.y} r="3.5" fill="currentColor" />
+          </g>
+        );
+      })()}
+
       {laid.map(({ edge: e, points: pts, text: t }, i) => {
         const d = toPath(pts);
         const spot = spots[i];
@@ -1211,6 +1356,25 @@ function Arrows({
                 onMouseLeave={() => onHoverEdge(null)}
                 onClick={() => onSelect(e.id)}
               />
+            )}
+
+            {/* Handles on a selected arrow: drag either end onto another
+                box to point it there. Only on the selected one, or the
+                chart would be covered in dots. */}
+            {on && onGrabEnd && (
+              <>
+                {([["from", pts[0]], ["to", pts[pts.length - 1]]] as const).map(([end, p]) => (
+                  <circle
+                    key={end}
+                    cx={p.x} cy={p.y} r="5"
+                    className="cursor-crosshair fill-card stroke-brand-500"
+                    strokeWidth="2"
+                    onPointerDown={(ev) => { ev.stopPropagation(); onGrabEnd(e.id, end); }}
+                  >
+                    <title>{end === "from" ? "Drag to change where this starts" : "Drag to change where this points"}</title>
+                  </circle>
+                ))}
+              </>
             )}
           </g>
         );

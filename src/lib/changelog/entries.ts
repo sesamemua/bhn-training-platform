@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: live connector, editable arrows, field reordering
+  {
+    title: "Flow charts: draw connections live, move arrows, reorder questions",
+    body: "Pressing **connect** now draws a line straight away — from the edge of the box, following your cursor, until you click the box it should point to. Escape backs out. Arrows are editable too: click one to select it, drag either end onto a different box to re-point it, and press Delete to remove it. And questions can be reordered with up/down arrows from wherever you happen to be reading — the live form, the options panel, or by dragging a row in the data sheet — with every view updating together.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: connect works, and selection lights the neighbours
   {
     title: "Flow charts: fixed the connect button, and selecting a box lights what it connects to",

@@ -182,6 +182,17 @@ export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
   return simplify(best);
 }
 
+/**
+ * Where a line aimed at `to` leaves `box` — the midpoint of whichever
+ * edge it faces. Exported for the rubber-band line drawn while a
+ * connection is being made, which needs the same anchor a finished arrow
+ * would use so the line does not jump when you let go.
+ */
+export function edgeAnchor(box: FlowNode, to: Pt): Pt {
+  const c = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+  return edgePointOf(c, to, box);
+}
+
 /** Where the straight line between two centres meets a box's edge. */
 function edgePointOf(from: Pt, to: Pt, box: FlowNode): Pt {
   const dx = to.x - from.x;

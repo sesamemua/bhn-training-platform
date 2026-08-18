@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.connect",
+    title: "Drawing and editing arrows",
+    body: "Select a box and press **connect** (on the box, or in the Options column) — a line follows your cursor from the box edge until you click the box it points to. Escape cancels. Click any arrow to select it: drag either end onto a different box to re-point it, or press Delete to remove it. Questions can be moved up and down from the live form, the Options panel, or by dragging a row in the data sheet.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.27a",
+  },
+  {
     id: "workspace.flowcharts.sheet",
     title: "The form as a spreadsheet",
     body: "The admin panel's **Data sheet** tab lists every question as a row — label, key, type, required, choices, and which box asks it. Arrow keys move, Enter edits, Escape backs out. It opens **locked**; press the padlock to make changes, then edit cells, drag rows to reorder, delete, or add. Everything you do there rewrites the chart and the live form, and Undo covers it.",
