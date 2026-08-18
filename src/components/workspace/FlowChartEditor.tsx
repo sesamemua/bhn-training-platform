@@ -1029,6 +1029,68 @@ export function FlowChartEditor({
   // width to the pane means it never scrolls until it has to, and the
   // spare width is available for labels that need to step aside.
   /**
+   * The height each box's text actually needs, measured from the DOM.
+   *
+   * Applied to LAYOUT only — the saved document keeps the height that was
+   * authored. Writing measurements back would mark a chart dirty just for
+   * being opened on a different machine, where a font renders a pixel
+   * taller, and would put a meaningless diff in everyone's history.
+   *
+   * The functional updater bails when nothing moved, so a box reporting
+   * the same number every render costs nothing.
+   */
+  const [autoH, setAutoH] = useState<Record<string, number>>({});
+  const measureBox = useCallback((id: string, needed: number) => {
+    setAutoH((prev) =>
+      Math.abs((prev[id] ?? 0) - needed) <= 1 ? prev : { ...prev, [id]: needed },
+    );
+  }, []);
+
+  /**
+   * The chart as it is drawn: authored positions, measured heights.
+   * Routing, labels and the canvas size all read this rather than `doc`,
+   * so an arrow lands on the box's real edge rather than where its stored
+   * height claims the edge is.
+   */
+  const laidDoc = useMemo<ChartDoc>(() => {
+    const sized = doc.nodes.map((n) => {
+      const needed = autoH[n.id];
+      return needed && Math.abs(needed - n.h) > 1 ? { ...n, h: needed } : n;
+    });
+
+    /**
+     * A box that grew has to take its extra height from somewhere, and
+     * the only honest place is below it — otherwise fitting the text just
+     * moves the problem, and the box lands on top of the next one.
+     *
+     * Everything below is pushed down by the growth above it. Nodes are
+     * shifted in BANDS of equal authored y rather than one at a time, so
+     * a step and the branch beside it stay level with each other; shifting
+     * per node would slide them apart. Only growth shifts anything: a box
+     * that shrank simply leaves a wider gap, which is untidy at worst,
+     * where pulling the chart up would move boxes nobody touched.
+     */
+    const bands = [...new Set(doc.nodes.map((n) => n.y))].sort((a, b) => a - b);
+    const shiftAt = new Map<number, number>();
+    let shift = 0;
+    for (const y of bands) {
+      shiftAt.set(y, shift);
+      const grew = doc.nodes
+        .filter((n) => n.y === y)
+        .map((n) => Math.max(0, (autoH[n.id] ?? n.h) - n.h));
+      shift += grew.length ? Math.max(...grew) : 0;
+    }
+
+    return {
+      ...doc,
+      nodes: sized.map((n, i) => {
+        const dy = shiftAt.get(doc.nodes[i].y) ?? 0;
+        return dy ? { ...n, y: n.y + dy } : n;
+      }),
+    };
+  }, [doc, autoH]);
+
+  /**
    * The chart's own size, and how much it has to shrink to fit the column.
    *
    * The chart is drawn at fixed coordinates — that is what lets arrows be
@@ -1041,8 +1103,8 @@ export function FlowChartEditor({
    * scrollbar is the more honest answer.
    */
   const { contentH, scale, bounds } = useMemo(() => {
-    const cw = Math.max(620, ...doc.nodes.map((n) => n.x + n.w + 60));
-    const ch = Math.max(560, ...doc.nodes.map((n) => n.y + n.h + 60));
+    const cw = Math.max(620, ...laidDoc.nodes.map((n) => n.x + n.w + 60));
+    const ch = Math.max(560, ...laidDoc.nodes.map((n) => n.y + n.h + 60));
 
     // One pixel narrower than the pane, always. Sized to exactly the pane
     // width, a rounding error puts the canvas a fraction over, a
@@ -1055,7 +1117,7 @@ export function FlowChartEditor({
     // Label placement works in unscaled coordinates, so the room it may
     // use is the visible width converted back through the scale.
     return { contentH: ch, scale: sc, bounds: { w: Math.max(cw, usable / sc), h: ch } };
-  }, [doc.nodes, paneW]);
+  }, [laidDoc.nodes, paneW]);
 
   /**
    * What lights up when something is selected: the box itself and every
@@ -1256,7 +1318,7 @@ export function FlowChartEditor({
           }}
         >
           <Arrows
-            doc={doc}
+            doc={laidDoc}
             selectedEdge={selectedEdge}
             onSelect={canEdit ? (id) => { setSelectedEdge(id); setSelected(null); } : undefined}
             hoverNodes={litNodes}
@@ -1291,7 +1353,7 @@ export function FlowChartEditor({
             />
           )}
 
-          {doc.nodes.map((n) => (
+          {laidDoc.nodes.map((n) => (
             <Box
               key={n.id}
               node={n}
@@ -1315,6 +1377,7 @@ export function FlowChartEditor({
               }}
               onStartLink={() => startLink(n.id)}
               onText={(text) => patchNode(n.id, { text })}
+              onMeasure={measureBox}
             />
           ))}
         </div>
@@ -1464,6 +1527,7 @@ function Box({
   onSelect,
   onStartLink,
   onText,
+  onMeasure,
 }: {
   node: FlowNode;
   number: number;
@@ -1477,8 +1541,31 @@ function Box({
   onSelect: () => void;
   onStartLink: () => void;
   onText: (t: string) => void;
+  /** Report the height this box's text actually needs. */
+  onMeasure?: (id: string, needed: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
+
+  /**
+   * Measure the content, not the box.
+   *
+   * The outer box has a fixed height, so its own scrollHeight only ever
+   * tells you when text is overflowing — never when there is room to
+   * spare. An inner wrapper is free to be its natural height, so the same
+   * number both grows a cramped box and shrinks a roomy one.
+   *
+   * Width is the fixed dimension and height the derived one, which is
+   * what keeps this from feeding back on itself: a taller box never
+   * changes how the text wraps.
+   */
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el || !onMeasure) return;
+    const pad = 20; // py-2.5 top and bottom
+    onMeasure(n.id, Math.ceil(el.scrollHeight) + pad);
+  });
+
   return (
     <div
       onPointerDown={onPointerDown}
@@ -1509,6 +1596,7 @@ function Box({
         {number}
       </span>
 
+      <div ref={contentRef} className="flex w-full flex-col items-center gap-0.5">
       {editing ? (
         <input
           autoFocus
@@ -1531,6 +1619,7 @@ function Box({
       {n.kind === "question" && fieldsOf(n).length > 1 && (
         <span className="text-[10.5px] text-brand-400">{fieldsOf(n).length} questions</span>
       )}
+      </div>
       {canEdit && selected && !editing && (
         <button
           onPointerDown={(e) => e.stopPropagation()}

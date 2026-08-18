@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: boxes size themselves to their text
+  {
+    title: "Flow charts: boxes grow and shrink to fit their text",
+    body: "Rename a box to something long and it gets taller instead of clipping the words; give it a short name and it tightens up. Everything below a box that grew moves down by the same amount, so fitting the text never lands one box on top of the next, and a step stays level with the branch beside it. The heights are worked out as the chart is drawn rather than saved into it — opening a chart on a machine where the font renders a pixel taller will not mark it as changed.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: a legend for the shapes
   {
     title: "Flow charts: a legend for what each shape means",
