@@ -467,11 +467,27 @@ export function FlowChartEditor({
    *
    * The window listener is for resizes that would not otherwise re-render.
    */
+  /**
+   * Accept a new pane width only if it differs enough to matter.
+   *
+   * The deadband lives in the updater rather than at each call site, so
+   * every path that measures gets it — including the ResizeObserver,
+   * which observes the element whose size this value decides. That is a
+   * loop by construction: measure, re-size, observe, measure. Returning
+   * the previous value makes React bail out of the render entirely, which
+   * is what stops it rather than merely slowing it down.
+   *
+   * Missing it on this path is what threw "maximum update depth exceeded"
+   * a second time, after the same bug had been fixed on the render path.
+   */
+  const acceptPaneW = useCallback((w: number) => {
+    setPaneW((prev) => (Math.abs(w - prev) <= 2 ? prev : w));
+  }, []);
+
   const measurePane = useCallback(() => {
     const el = paneRef.current;
-    if (!el) return;
-    setPaneW(el.clientWidth);
-  }, []);
+    if (el) acceptPaneW(el.clientWidth);
+  }, [acceptPaneW]);
 
   /**
    * Measure the canvas pane after every render.
@@ -480,30 +496,42 @@ export function FlowChartEditor({
    * this component never sees as state — a rail dragged, the sidebar
    * folded away, the page reflowed.
    *
-   * The 2px deadband matters, because this measurement feeds a width that
-   * changes what is being measured. Exact equality let a one-pixel
-   * disagreement ping-pong for ever and took the page down with "maximum
-   * update depth exceeded"; the canvas is also now sized a pixel inside
-   * the pane, so the scrollbar that drove that oscillation never appears.
+   * The deadband lives in acceptPaneW, so this path and the observer
+   * cannot disagree about it.
    */
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const el = paneRef.current;
-    if (!el) return;
-    const w = el.clientWidth;
-    if (Math.abs(w - paneW) <= 2) return;
-    setPaneW(w);
+    if (el) acceptPaneW(el.clientWidth);
   });
 
   useEffect(() => {
     window.addEventListener("resize", measurePane);
-    // Belt and braces: where ResizeObserver works it catches changes that
-    // never re-render this component, such as the sidebar collapsing.
+
+    // ResizeObserver catches changes that never re-render this component,
+    // such as the sidebar collapsing. It also observes the element whose
+    // size this measurement decides, so its callbacks are coalesced onto
+    // one animation frame: a burst of notifications then costs a single
+    // measurement instead of one render each, which is the difference
+    // between a settling layout and "maximum update depth exceeded".
+    //
+    // This path could not be exercised locally — ResizeObserver does not
+    // fire in the browser used to check this — so the deadband in
+    // acceptPaneW is the guard that actually has to hold.
+    let frame = 0;
+    const onResize = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        measurePane();
+      });
+    };
+
     const el = paneRef.current;
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measurePane) : null;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(onResize) : null;
     if (el && ro) ro.observe(el);
     return () => {
       window.removeEventListener("resize", measurePane);
+      if (frame) cancelAnimationFrame(frame);
       ro?.disconnect();
     };
   }, [measurePane]);

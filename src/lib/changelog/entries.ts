@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the second cause of the editing crash
+  {
+    title: "Flow charts: second fix for the crash while editing",
+    body: "The earlier fix caught one path into the loop and missed another. The editor watches its own canvas for size changes and then sets the size of what it is watching — measure, resize, notice, measure — and that second path had no guard on it at all. The check that a change is big enough to be worth acting on now lives in one place that every path goes through, and a burst of size notifications is collapsed into a single measurement per frame. If it still happens, the panel that replaces the crash shows the error text; please send it.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: keyboard undo
   {
     title: "Flow charts: Cmd+Z / Ctrl+Z undoes",
