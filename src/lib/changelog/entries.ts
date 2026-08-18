@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Institution picker: most likely regions first
+  {
+    title: "Institution picker leads with Ontario, Quebec and BC",
+    body: "The 41 eligible institutions are still grouped by region, but the groups are now ordered for the people using the form rather than for the published list: Ontario, then Quebec, then British Columbia, then the remaining regions by how many institutions they hold. Most registrants now find their own group without scrolling.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the two columns line up and pulse
   {
     title: "Flow charts: a box and its question line up, and both flash",

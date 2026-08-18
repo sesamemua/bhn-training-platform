@@ -1,10 +1,10 @@
 /**
  * The 41 CBRF/BRIF-affiliated institutions whose HQP are eligible.
  *
- * Grouped by region exactly as BioHubNet publishes them, because that is
- * how someone finds their own institution in a list of 41 — nobody scans
- * alphabetically past thirty names to reach "Université de Sherbrooke".
- * The regions become <optgroup>s in the picker.
+ * Grouped by region, because that is how someone finds their own
+ * institution in a list of 41 — nobody scans alphabetically past thirty
+ * names to reach "Université de Sherbrooke". The regions become
+ * <optgroup>s in the picker.
  *
  * Each entry also records its SECTOR: hospitals and health networks are
  * not universities, and the registration form asks about academic and
@@ -13,12 +13,23 @@
 
 export const OTHER = "Other";
 
+/**
+ * Region order in the picker, which is NOT the order BioHubNet publishes.
+ *
+ * A picker is scanned from the top, so the top should be where most
+ * people will find themselves. Ontario, Quebec and British Columbia lead
+ * because that is where the registrants come from; the rest follow by how
+ * many institutions they hold, so the longest remaining list is met first.
+ *
+ * Note this puts Quebec (7) above Prairies (8) — the three leaders are
+ * pinned deliberately and are not part of the size ranking.
+ */
 export const REGIONS = [
-  "British Columbia",
-  "Prairies",
-  "Ontario",
-  "Quebec",
-  "Atlantic Canada",
+  "Ontario",          // 20
+  "Quebec",           // 7
+  "British Columbia", // 4
+  "Prairies",         // 8, largest of the rest
+  "Atlantic Canada",  // 2
 ] as const;
 export type Region = (typeof REGIONS)[number];
 

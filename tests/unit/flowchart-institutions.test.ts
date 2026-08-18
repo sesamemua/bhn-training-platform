@@ -49,7 +49,24 @@ test("hospitals are classified as health, universities as academic", () => {
 });
 
 
-test("grouping preserves the published region order and drops empty groups", () => {
+test("the picker leads with Ontario, Quebec, BC, then the rest by size", () => {
+  // Pinned leaders first, then the remainder ranked by how many
+  // institutions they hold — so Prairies (8) sits below Quebec (7).
+  assert.deepEqual([...REGIONS], [
+    "Ontario", "Quebec", "British Columbia", "Prairies", "Atlantic Canada",
+  ]);
+
+  const size = (r: string) => INSTITUTIONS.filter((i) => i.region === r).length;
+  const rest = REGIONS.slice(3);
+  for (let i = 1; i < rest.length; i++) {
+    assert.ok(
+      size(rest[i - 1]) >= size(rest[i]),
+      `${rest[i - 1]} (${size(rest[i - 1])}) should not sit below ${rest[i]} (${size(rest[i])})`,
+    );
+  }
+});
+
+test("grouping follows the picker's region order and drops empty groups", () => {
   const academic = groupedBySector("academic");
   assert.deepEqual(academic.map((g) => g.region), [...REGIONS]);
   const health = groupedBySector("health");
