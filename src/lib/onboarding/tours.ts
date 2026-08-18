@@ -94,6 +94,14 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.22a",
   },
   {
+    id: "app.sidebar.collapse",
+    title: "Fold the menu away",
+    body: "The button beside the notification bell at the top of the sidebar hides the whole menu — useful on the wide pages like Flow Charts, the newsletter calendar and the Gantt views. A small button stays in the top-left corner to bring it back. Your choice is remembered.",
+    placement: "center",
+    roles: ["trainee", "evaluating", "employer", "instructor", "admin", "superadmin"],
+    since: "2026.09.24a",
+  },
+  {
     id: "workspace.flowcharts.admin",
     title: "The admin panel the workflow implies",
     body: "Flow Charts reads left to right in four columns: the chart, the live form, the **Admin panel**, and the options behind whatever is selected. The admin panel — on the lighter surface — is derived from the chart: a column per question, a stage per non-question box. If a process yields a table nobody can read, you find out here rather than after the event. It also takes a link to the Google Sheet of current platform users, so registrants can be matched against existing accounts.",

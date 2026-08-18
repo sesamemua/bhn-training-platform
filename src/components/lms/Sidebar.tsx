@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -50,6 +50,8 @@ import {
   Lightbulb,
   FlaskConical,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Workflow,
   X,
   Compass,
@@ -1313,6 +1315,44 @@ function NavLink({ item, pathname, onNavigate, queueCounts }: {
   );
 }
 
+const SIDEBAR_COLLAPSED_KEY = "bhn-sidebar-collapsed";
+
+/**
+ * The collapsed flag lives in localStorage, so it is external state and is
+ * read as such rather than copied into React with an effect.
+ *
+ * useSyncExternalStore gets three things for the same code: no setState in
+ * an effect, a server snapshot (always expanded) that keeps the server and
+ * client markup identical, and cross-tab sync through the `storage` event
+ * for nothing.
+ */
+const collapseListeners = new Set<() => void>();
+
+function subscribeRailCollapsed(onChange: () => void) {
+  collapseListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    collapseListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readRailCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false; // private mode — just stay open
+  }
+}
+
+function writeRailCollapsed(next: boolean) {
+  try {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+  } catch { /* not fatal — the toggle still works for this page */ }
+  // `storage` only fires in OTHER tabs, so this tab is told directly.
+  collapseListeners.forEach((fn) => fn());
+}
+
 export function Sidebar({
   role, realRole, actingAs, user, credits, allowPlatformContent = false,
   queueCounts,
@@ -1349,6 +1389,20 @@ export function Sidebar({
   // here rather than in the parent layout so the rest of the page
   // doesn't need to know about the toggle.
   const [mobileOpen, setMobileOpen] = useState(false);
+  /**
+   * Desktop only: fold the whole rail away and leave just the button.
+   *
+   * Not an icon rail. A page like Flow Charts wants every pixel of width,
+   * and a 64px strip of icons still costs the width while being harder to
+   * read than the full menu — so collapsing hides the nav outright and
+   * leaves one control to bring it back.
+   *
+   * Persisted, because a preference that resets on every reload is not a
+   * preference. The server snapshot is always "expanded", so the first
+   * paint matches the server and a collapsed rail folds on hydration.
+   */
+  const collapsed = useSyncExternalStore(subscribeRailCollapsed, readRailCollapsed, () => false);
+  const toggleCollapsed = () => writeRailCollapsed(!collapsed);
   // Close drawer on route change so the next page isn't covered.
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   // Body scroll-lock while the drawer is open.
@@ -1452,6 +1506,22 @@ export function Sidebar({
         <Menu size={18} />
       </button>
 
+      {/* The one thing left after collapsing. Mirrors the mobile
+          hamburger's position so the "open the menu" control is in the
+          same place at every width. */}
+      {collapsed && (
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label="Show menu"
+          aria-expanded={false}
+          title="Show menu"
+          className="hidden md:inline-flex fixed top-3 left-3 z-50 items-center justify-center w-10 h-10 rounded-xl bg-card border border-line shadow-md text-muted hover:bg-elevated hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
+        >
+          <PanelLeftOpen size={18} />
+        </button>
+      )}
+
       {/* Backdrop for mobile drawer. Pointer-events disabled when
           closed so it doesn't intercept clicks. */}
       <div
@@ -1473,6 +1543,8 @@ export function Sidebar({
           "md:relative md:w-64 md:translate-x-0",
           "fixed top-0 bottom-0 left-0 w-72 max-w-[85vw] transition-transform duration-200 ease-out",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          // Collapsed is a desktop state; the drawer still opens on mobile.
+          collapsed && "md:hidden",
         )}
       >
         {/* Mobile-only close button inside the drawer header. */}
@@ -1495,6 +1567,16 @@ export function Sidebar({
             </div>
           </Link>
           <NotificationBell initialUnreadCount={initialUnreadCount} />
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label="Hide menu"
+            aria-expanded
+            title="Hide menu"
+            className="hidden md:inline-flex items-center justify-center w-8 h-8 shrink-0 rounded-lg text-muted hover:bg-elevated hover:text-fg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
+          >
+            <PanelLeftClose size={16} />
+          </button>
         </div>
 
         {/* Global admin search — lives here (not on a single page) so
