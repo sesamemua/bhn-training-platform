@@ -448,19 +448,30 @@ export function FlowChartEditor({
    */
   const measurePane = useCallback(() => {
     const el = paneRef.current;
-    if (el) setPaneW(el.clientWidth);
+    if (!el) return;
+    setPaneW(el.clientWidth);
   }, []);
 
-  // No dependency list on purpose: the pane's width changes for reasons
-  // this component never sees as state — a rail dragged, the sidebar
-  // folded away, the page reflowed. The equality guard is what makes that
-  // safe, settling any render in one extra pass rather than looping.
+  /**
+   * Measure the canvas pane after every render.
+   *
+   * No dependency list on purpose: the pane's width changes for reasons
+   * this component never sees as state — a rail dragged, the sidebar
+   * folded away, the page reflowed.
+   *
+   * The 2px deadband matters, because this measurement feeds a width that
+   * changes what is being measured. Exact equality let a one-pixel
+   * disagreement ping-pong for ever and took the page down with "maximum
+   * update depth exceeded"; the canvas is also now sized a pixel inside
+   * the pane, so the scrollbar that drove that oscillation never appears.
+   */
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const el = paneRef.current;
     if (!el) return;
     const w = el.clientWidth;
-    if (w !== paneW) setPaneW(w);
+    if (Math.abs(w - paneW) <= 2) return;
+    setPaneW(w);
   });
 
   useEffect(() => {
@@ -960,10 +971,18 @@ export function FlowChartEditor({
   const { contentH, scale, bounds } = useMemo(() => {
     const cw = Math.max(620, ...doc.nodes.map((n) => n.x + n.w + 60));
     const ch = Math.max(560, ...doc.nodes.map((n) => n.y + n.h + 60));
-    const sc = paneW > 0 ? Math.max(0.45, Math.min(1, paneW / cw)) : 1;
+
+    // One pixel narrower than the pane, always. Sized to exactly the pane
+    // width, a rounding error puts the canvas a fraction over, a
+    // horizontal scrollbar appears, clientWidth drops by the scrollbar's
+    // width, the canvas is re-sized to fit, the scrollbar goes away — and
+    // round it goes. That feedback loop is what threw React error #185
+    // ("maximum update depth exceeded") mid-edit.
+    const usable = paneW > 0 ? paneW - 1 : 0;
+    const sc = usable > 0 ? Math.max(0.45, Math.min(1, usable / cw)) : 1;
     // Label placement works in unscaled coordinates, so the room it may
     // use is the visible width converted back through the scale.
-    return { contentH: ch, scale: sc, bounds: { w: Math.max(cw, paneW / sc), h: ch } };
+    return { contentH: ch, scale: sc, bounds: { w: Math.max(cw, usable / sc), h: ch } };
   }, [doc.nodes, paneW]);
 
   /**
@@ -1496,7 +1515,14 @@ function Arrows({
     bounds,
   );
   return (
-    <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="false">
+    /* The arrow layer covers the whole canvas, so left hit-testable it
+       swallows every press on empty space — which is where a marquee
+       starts. Transparent to the pointer as a whole; the few things that
+       ARE meant to be clickable opt back in below. */
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+      aria-hidden="false"
+    >
       <defs>
         <marker id="fc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
@@ -1569,7 +1595,7 @@ function Arrows({
             {onSelect && (
               <path
                 d={d} fill="none"
-                stroke="transparent" strokeWidth="14" className="cursor-pointer"
+                stroke="transparent" strokeWidth="14" className="pointer-events-auto cursor-pointer"
                 onMouseEnter={() => onHoverEdge({ from: e.from, to: e.to })}
                 onMouseLeave={() => onHoverEdge(null)}
                 onClick={() => onSelect(e.id)}
@@ -1585,7 +1611,7 @@ function Arrows({
                   <circle
                     key={end}
                     cx={p.x} cy={p.y} r="5"
-                    className="cursor-crosshair fill-card stroke-brand-500"
+                    className="pointer-events-auto cursor-crosshair fill-card stroke-brand-500"
                     strokeWidth="2"
                     onPointerDown={(ev) => { ev.stopPropagation(); onGrabEnd(e.id, end); }}
                   >
