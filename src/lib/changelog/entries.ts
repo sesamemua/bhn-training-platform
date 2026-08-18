@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: connect works, and selection lights the neighbours
+  {
+    title: "Flow charts: fixed the connect button, and selecting a box lights what it connects to",
+    body: "The **connect** chip on a selected box could not be clicked with a real mouse — pressing it started a box drag, which captured the pointer and swallowed the click. It now ignores presses that land on a control, and the chip is bigger with an arrow on it. Separately, selecting a box now highlights every box one arrow away as well, in all four columns at once: the chart, the live form, the data sheet and the overview all scroll to the matching rows and flash them. The highlight itself is much stronger than the faint tint it was.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Admin panel: a spreadsheet view of the questions
   {
     title: "Admin panel: edit the form as a spreadsheet",

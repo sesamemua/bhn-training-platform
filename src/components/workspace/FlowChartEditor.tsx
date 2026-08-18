@@ -13,7 +13,7 @@
  * SVG would mean hand-laying every line of text.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Check, ExternalLink, Loader2, Plus, Undo2 } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, Loader2, Plus, Undo2 } from "lucide-react";
 import {
   NODE_KINDS,
   NODE_KIND_LABEL,
@@ -232,6 +232,7 @@ export function FlowChartEditor({
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLDivElement | null>(null);
   const formPaneRef = useRef<HTMLElement | null>(null);
+  const adminPaneRef = useRef<HTMLElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
   /**
@@ -349,6 +350,20 @@ export function FlowChartEditor({
 
     flash(box);
     flash(row);
+
+    // The admin column shows the same question; a selection that moves two
+    // columns and leaves the third behind is worse than not moving at all.
+    const adminRow = adminPaneRef.current?.querySelector<HTMLElement>(
+      `[data-node-id="${CSS.escape(id)}"]`,
+    );
+    if (adminRow) {
+      const pane = adminPaneRef.current!;
+      const offset = adminRow.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+      const past = offset + adminRow.offsetHeight - pane.clientHeight;
+      if (offset < 0) pane.scrollTo({ top: pane.scrollTop + offset - 8, behavior: "smooth" });
+      else if (past > 0) pane.scrollTo({ top: pane.scrollTop + past + 8, behavior: "smooth" });
+      flash(adminRow);
+    }
   };
   /**
    * Measure the canvas pane after every render, and on window resize.
@@ -426,6 +441,11 @@ export function FlowChartEditor({
   // ── drag ──────────────────────────────────────────────────────────
   const onNodePointerDown = (n: FlowNode) => (e: React.PointerEvent) => {
     if (!canEdit) return;
+    // Pressing a control ON the box is not the start of a drag. Without
+    // this the box calls setPointerCapture, the capture retargets the
+    // click away from the button, and "connect" looks unclickable — it
+    // fires in a synthetic test and never for a real mouse.
+    if ((e.target as HTMLElement).closest("button")) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     // Capture is an optimisation, not a requirement: if the pointer id is
@@ -687,6 +707,26 @@ export function FlowChartEditor({
     return { contentH: ch, scale: sc, bounds: { w: Math.max(cw, paneW / sc), h: ch } };
   }, [doc.nodes, paneW]);
 
+  /**
+   * What lights up when something is selected: the box itself and every
+   * box one arrow away, in either direction.
+   *
+   * A box in a process is only meaningful next to what feeds it and what
+   * it feeds, so selecting one and lighting only that one throws away the
+   * answer to the question you were asking. Hover stays narrow — one box
+   * — because hover is a pointer sweeping around, not a decision.
+   */
+  const litNodes = useMemo(() => {
+    if (hoverNodes.length) return hoverNodes;
+    if (!selected) return [];
+    const near = new Set<string>([selected]);
+    for (const e of doc.edges) {
+      if (e.from === selected) near.add(e.to);
+      if (e.to === selected) near.add(e.from);
+    }
+    return [...near];
+  }, [selected, hoverNodes, doc.edges]);
+
   const sel = doc.nodes.find((n) => n.id === selected) ?? null;
   const selEdge = doc.edges.find((e) => e.id === selectedEdge) ?? null;
   const questionKeys = useMemo(
@@ -830,7 +870,7 @@ export function FlowChartEditor({
             doc={doc}
             selectedEdge={selectedEdge}
             onSelect={canEdit ? (id) => { setSelectedEdge(id); setSelected(null); } : undefined}
-            hoverNodes={hoverNodes}
+            hoverNodes={litNodes}
             onHoverEdge={(e) => setHoverNodes(e ? [e.from, e.to] : [])}
             bounds={bounds}
           />
@@ -840,7 +880,7 @@ export function FlowChartEditor({
               key={n.id}
               node={n}
               selected={selected === n.id}
-              hovered={hoverNodes.includes(n.id)}
+              hovered={litNodes.includes(n.id)}
               onHover={(on) => setHoverNodes(on ? [n.id] : [])}
               linking={linkFrom !== null}
               isLinkSource={linkFrom === n.id}
@@ -875,7 +915,7 @@ export function FlowChartEditor({
           answers={answers}
           onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
-          hoverNodes={hoverNodes}
+          hoverNodes={litNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
           selectedField={selectedField}
@@ -890,13 +930,13 @@ export function FlowChartEditor({
           the same panel. */}
       <div className="relative min-w-0">
         <RailHandle railKey="admin" onStart={onRailDragStart} label="Resize the admin panel" />
-        <aside className="min-w-0 rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+        <aside ref={adminPaneRef} className="min-w-0 rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
         <FlowAdminPreview
           doc={doc}
           canEdit={canEdit}
           onSettings={patchSettings}
           onDoc={canEdit ? (next) => mutate(() => next) : undefined}
-          hoverNodes={hoverNodes}
+          hoverNodes={litNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
         />
@@ -1021,7 +1061,13 @@ function Box({
       onDoubleClick={() => canEdit && setEditing(true)}
       className={`absolute flex flex-col items-center justify-center gap-0.5 border px-4 py-2.5 text-center transition-shadow ${KIND_CLASS[n.kind]} ${
         canEdit ? "cursor-grab active:cursor-grabbing" : ""
-      } ${selected ? "shadow-card-hover ring-2 ring-brand-500/60" : hovered ? "shadow-card-hover ring-2 ring-brand-300/70" : ""} ${
+      } ${
+        selected
+          ? "shadow-card-hover ring-[3px] ring-brand-500 z-10"
+          : hovered
+            ? "shadow-card-hover ring-2 ring-brand-400 bg-brand-500/15"
+            : ""
+      } ${
         linking && !isLinkSource ? "ring-1 ring-brand-400/40" : ""
       }`}
       style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
@@ -1051,10 +1097,12 @@ function Box({
       )}
       {canEdit && selected && !editing && (
         <button
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onStartLink(); }}
-          className="absolute -bottom-2.5 right-2 rounded bg-brand px-1.5 text-[9.5px] font-bold text-white"
+          title="Draw an arrow from this box — then click the box it points to"
+          className="absolute -bottom-3 right-1.5 inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white shadow-sm hover:brightness-110"
         >
-          connect
+          <ArrowRight size={10} /> connect
         </button>
       )}
     </div>

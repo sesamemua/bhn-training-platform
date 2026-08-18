@@ -110,9 +110,9 @@ export function FlowFormPreview({
               // so the pair reads as one thing lit from two places.
               className={`-mx-2 rounded-md px-2 py-1.5 transition-colors ${
                 open
-                  ? "bg-brand-500/10 ring-1 ring-brand-400/70"
+                  ? "bg-brand-500/20 ring-2 ring-brand-500"
                   : inFocus || lit
-                    ? "bg-brand-500/10 ring-1 ring-brand-300/50"
+                    ? "bg-brand-500/15 ring-2 ring-brand-400"
                     : ""
               }`}
             >

@@ -158,6 +158,7 @@ export function FlowDataSheet({
               return (
                 <tr
                   key={`${f.nodeId}-${f.index}-${f.key}`}
+                  data-node-id={f.nodeId}
                   draggable={editable}
                   onDragStart={() => { dragRow.current = i; }}
                   onDragOver={(e) => { if (editable) { e.preventDefault(); setDropRow(i); } }}
@@ -165,7 +166,9 @@ export function FlowDataSheet({
                   onDrop={() => onDrop(i)}
                   onMouseEnter={() => onHoverField?.(f.nodeId)}
                   onMouseLeave={() => onHoverField?.(null)}
-                  className={`${lit ? "bg-brand-500/10" : i % 2 ? "bg-elevated/25" : ""} ${
+                  className={`${
+                    lit ? "bg-brand-500/20 outline outline-1 -outline-offset-1 outline-brand-400" : i % 2 ? "bg-elevated/25" : ""
+                  } ${
                     isDrop ? "outline outline-1 outline-brand-400" : ""
                   }`}
                 >

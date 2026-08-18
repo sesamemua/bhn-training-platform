@@ -122,7 +122,7 @@ export function FlowAdminPreview({
             onClick={() => onFocusNode?.(s.id)}
             className={`rounded-full border px-2.5 py-1 text-[11.5px] transition-colors ${
               hoverNodes.includes(s.id)
-                ? "border-brand-400 bg-brand-500/15 text-fg"
+                ? "border-brand-400 bg-brand-500/30 text-fg ring-1 ring-brand-400"
                 : s.terminal
                   ? "border-line-strong bg-elevated text-muted"
                   : "border-brand-400/50 bg-brand-500/8 text-fg"
@@ -145,10 +145,11 @@ export function FlowAdminPreview({
         {columns.map((c) => (
           <li
             key={c.key}
+            data-node-id={c.nodeId}
             onMouseEnter={() => onHoverField?.(c.nodeId)}
             onMouseLeave={() => onHoverField?.(null)}
             className={`px-2.5 py-1.5 transition-colors ${
-              hoverNodes.includes(c.nodeId) ? "bg-brand-500/10" : ""
+              hoverNodes.includes(c.nodeId) ? "bg-brand-500/20 ring-1 ring-inset ring-brand-400/70" : ""
             }`}
           >
             <button
