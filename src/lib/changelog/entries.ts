@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: keyboard undo
+  {
+    title: "Flow charts: Cmd+Z / Ctrl+Z undoes",
+    body: "The keyboard shortcut now does what the Undo button does, and the button shows which one your machine uses. Inside a text box it is left alone, so undoing your typing still undoes your typing rather than the last change to the chart. There is no redo yet — say if you want one.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the crash, and marquee selection actually working
   {
     title: "Flow charts: fixed the crash while editing, and drag-to-select now really works",

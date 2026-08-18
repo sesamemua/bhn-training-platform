@@ -320,6 +320,17 @@ export function FlowChartEditor({
    * the last box and every label would be crammed into the column.
    */
   const [paneW, setPaneW] = useState(0);
+  /**
+   * "⌘Z" or "Ctrl+Z". Read from the browser rather than guessed, and only
+   * after mount — deciding on the server would print the wrong one for
+   * half the readers and disagree with what the client renders.
+   */
+  const [shortcutHint, setShortcutHint] = useState("");
+  useEffect(() => {
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShortcutHint(mac ? "⌘Z" : "Ctrl+Z");
+  }, []);
 
   /**
    * How wide each rail is.
@@ -510,6 +521,15 @@ export function FlowChartEditor({
     }
   }, [activeId, charts]);
 
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (!h.length) return h;
+      setDoc(h[h.length - 1]);
+      setDirty(true);
+      return h.slice(0, -1);
+    });
+  }, []);
+
   /**
    * Escape backs out of a connection; Delete removes a selected arrow.
    *
@@ -522,6 +542,15 @@ export function FlowChartEditor({
       const t = ev.target as HTMLElement | null;
       // Never steal a key from something being typed into.
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      // Cmd/Ctrl+Z. Deliberately after the "is something being typed
+      // into" check above, so inside a text field it falls through to the
+      // browser's own undo — which is what you meant by it there.
+      if ((ev.metaKey || ev.ctrlKey) && !ev.shiftKey && ev.key.toLowerCase() === "z") {
+        if (!canEdit) return;
+        ev.preventDefault();
+        undo();
+        return;
+      }
       if (ev.key === "Escape") { setLinkFrom(null); setRelink(null); setLinkTip(null); }
       if ((ev.key === "Delete" || ev.key === "Backspace") && selectedEdge && canEdit) {
         ev.preventDefault();
@@ -530,7 +559,7 @@ export function FlowChartEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedEdge, canEdit]);
+  }, [selectedEdge, canEdit, undo]);
 
   /** Offer to restore, rather than silently applying someone's old draft. */
   const [draftOffer, setDraftOffer] = useState<Draft | null>(null);
@@ -562,15 +591,6 @@ export function FlowChartEditor({
       return next(cur);
     });
   }, []);
-
-  const undo = () => {
-    setHistory((h) => {
-      if (!h.length) return h;
-      setDoc(h[h.length - 1]);
-      setDirty(true);
-      return h.slice(0, -1);
-    });
-  };
 
   // ── drag ──────────────────────────────────────────────────────────
   const onNodePointerDown = (n: FlowNode) => (e: React.PointerEvent) => {
@@ -1080,6 +1100,9 @@ export function FlowChartEditor({
               className="inline-flex items-center gap-1 text-[12.5px] text-muted hover:text-fg disabled:opacity-40"
             >
               <Undo2 size={12} /> Undo
+              <span className="ml-0.5 hidden text-[10px] font-normal text-subtle sm:inline">
+                {shortcutHint}
+              </span>
             </button>
             <button
               onClick={newChart}
