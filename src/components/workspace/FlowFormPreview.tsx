@@ -40,6 +40,8 @@ export function FlowFormPreview({
   onFocusNode,
   hoverNodes = [],
   onHoverField,
+  onSelectField,
+  selectedField,
 }: {
   doc: ChartDoc;
   answers: Answers;
@@ -49,6 +51,10 @@ export function FlowFormPreview({
   hoverNodes?: string[];
   /** Hovering a field lights its box, and the arrows touching it. */
   onHoverField?: (nodeId: string | null) => void;
+  /** Opening a field's settings in the options rail beside the form. */
+  onSelectField?: (nodeId: string, index: number) => void;
+  /** Which field the rail currently has open, so the form can mark it. */
+  selectedField?: { nodeId: string; index: number } | null;
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
   const missing = useMemo(() => missingRequired(doc, answers), [doc, answers]);
@@ -83,6 +89,7 @@ export function FlowFormPreview({
           const val = answers[f.key];
           const isMissing = missing.some((m) => m.key === f.key);
           const lit = hoverNodes.includes(f.nodeId);
+          const open = selectedField?.nodeId === f.nodeId && selectedField.index === f.index;
           return (
             <div
               key={f.key}
@@ -91,7 +98,11 @@ export function FlowFormPreview({
               // The tint is the same brand wash the box gets on the chart,
               // so the pair reads as one thing lit from two places.
               className={`-mx-2 rounded-md px-2 py-1.5 transition-colors ${
-                lit ? "bg-brand-500/10 ring-1 ring-brand-300/50" : ""
+                open
+                  ? "bg-brand-500/10 ring-1 ring-brand-400/70"
+                  : lit
+                    ? "bg-brand-500/10 ring-1 ring-brand-300/50"
+                    : ""
               }`}
             >
               {/* A box holding several fields prints its own title once,
@@ -102,11 +113,14 @@ export function FlowFormPreview({
                 </p>
               )}
               <button
-                onClick={() => onFocusNode?.(f.nodeId)}
-                className="block text-left"
-                title="Show this box on the chart"
+                onClick={() => {
+                  onFocusNode?.(f.nodeId);
+                  onSelectField?.(f.nodeId, f.index);
+                }}
+                className="group block text-left"
+                title="Open this question's options"
               >
-                <span className="text-[13px] font-semibold text-fg">
+                <span className="text-[13px] font-semibold text-fg group-hover:text-brand-300">
                   {f.label}
                   {def.required && <span className="ml-1 text-brand-400">*</span>}
                 </span>

@@ -118,3 +118,26 @@ test("suggested keys are unique and slug-like", () => {
   assert.equal(suggestKey("Role", ["role"]), "role_2");
   assert.equal(suggestKey("!!!", []), "field");
 });
+
+test("every derived field carries its position in its box", () => {
+  // The options rail edits a field by (nodeId, index), so the index has to
+  // survive the walk that flattens grouped boxes into one form.
+  const doc: ChartDoc = {
+    nodes: [
+      { id: "a", x: 0, y: 0, w: 190, h: 58, kind: "question", text: "About you",
+        fields: [
+          { key: "name", type: "text" },
+          { key: "email", type: "email" },
+          { key: "phone", type: "text" },
+        ] },
+      { id: "b", x: 0, y: 100, w: 190, h: 58, kind: "question", text: "Trainee?",
+        field: { key: "trainee", type: "yesno" } },
+    ],
+    edges: [{ id: "e", from: "a", to: "b" }],
+  };
+  const fields = orderedFields(doc);
+  assert.deepEqual(
+    fields.map((f) => [f.nodeId, f.index, f.key]),
+    [["a", 0, "name"], ["a", 1, "email"], ["a", 2, "phone"], ["b", 0, "trainee"]],
+  );
+});

@@ -63,6 +63,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
     since: "2026.09.19a",
   },
+  {
+    id: "workspace.flowcharts.rail",
+    title: "Chart, form, options — three columns",
+    body: "Flow Charts now uses the full width: the chart on the left, the live form in the middle, and the options behind each question on the right. Click a question in the live form and its card opens in the right column — answer type, the choice list, the hint, whether it is required. Click an arrow instead and its rule opens there.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.20a",
+  },
   // ─── Newsletter production workflow
   {
     id: "workspace.newsletter.calendar",

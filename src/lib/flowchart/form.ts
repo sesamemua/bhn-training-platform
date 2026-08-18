@@ -103,6 +103,8 @@ export function reachable(doc: ChartDoc, answers: Answers): Set<string> {
 
 export interface DerivedField {
   nodeId: string;
+  /** Position within its box's questions — what the options rail edits. */
+  index: number;
   key: string;
   label: string;
   /** The specific field, since a node may carry several. */
@@ -163,6 +165,7 @@ export function orderedFields(doc: ChartDoc): DerivedField[] {
     .flatMap((n) =>
       fieldsOf(n).map((fd, i) => ({
         nodeId: n.id,
+        index: i,
         key: fd.key,
         // A single-field box is titled by the box; a group titles each
         // field by its own key so the form does not repeat one heading.

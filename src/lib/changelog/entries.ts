@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: three columns
+  {
+    title: "Flow charts: chart, form and options side by side",
+    body: "The page is three columns now — the chart on the left, the live form it produces in the middle, and the settings behind each question on the right. The settings used to be a bar pinned across the bottom of the window while the right-hand third of the page sat empty. Click a question in the live form and its card opens in the right column, scrolled to and highlighted: answer type, the list of choices (one per line now, instead of comma-separated), the hint underneath, whether it is required. Clicking an arrow puts its rule there instead.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: arrow labels move out of the way
   {
     title: "Flow charts: arrow labels stop covering the boxes",

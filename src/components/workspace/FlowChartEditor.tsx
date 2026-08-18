@@ -13,15 +13,11 @@
  * SVG would mean hand-laying every line of text.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, Loader2, Plus, RotateCcw, Trash2, Undo2 } from "lucide-react";
+import { Check, Loader2, Plus, Undo2 } from "lucide-react";
 import {
-  FIELD_TYPES,
-  FIELD_TYPE_LABEL,
   NODE_KINDS,
   NODE_KIND_LABEL,
-  OPS,
   type ChartDoc,
-  type ConditionOp,
   type FieldDef,
   type FieldType,
   type FlowEdge,
@@ -32,6 +28,7 @@ import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } f
 import { routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { FlowFormPreview } from "./FlowFormPreview";
+import { FlowOptionsRail } from "./FlowOptionsRail";
 
 const GRID = 10;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
@@ -62,6 +59,12 @@ export function FlowChartEditor({
   const [selected, setSelected] = useState<string | null>(null);
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  /**
+   * Which question the options rail has open. Selecting a box on its own
+   * shows all of its questions; clicking one in the live form singles that
+   * one out, so "this field's settings" is one click from the field.
+   */
+  const [selectedField, setSelectedField] = useState<{ nodeId: string; index: number } | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
   /**
    * The node the pointer is over, on either side of the split. Hovering a
@@ -377,8 +380,10 @@ export function FlowChartEditor({
         </p>
       )}
 
-      {/* ── canvas + live form, side by side ─────────────────────── */}
-      <div className="mt-3 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      {/* ── three columns: the chart, the form it makes, the settings
+             behind it. Chart takes the slack; the two rails are fixed so
+             the controls never reflow as the canvas grows. ─────────── */}
+      <div className="mt-3 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px_340px]">
       <div ref={paneRef} className="overflow-auto rounded-lg border border-line bg-card">
         <div
           ref={canvasRef}
@@ -397,7 +402,7 @@ export function FlowChartEditor({
           <Arrows
             doc={doc}
             selectedEdge={selectedEdge}
-            onSelect={canEdit ? setSelectedEdge : undefined}
+            onSelect={canEdit ? (id) => { setSelectedEdge(id); setSelected(null); } : undefined}
             hoverNodes={hoverNodes}
             onHoverEdge={(e) => setHoverNodes(e ? [e.from, e.to] : [])}
             bounds={bounds}
@@ -414,7 +419,12 @@ export function FlowChartEditor({
               isLinkSource={linkFrom === n.id}
               canEdit={canEdit}
               onPointerDown={onNodePointerDown(n)}
-              onSelect={() => (linkFrom ? link(n.id) : setSelected(n.id))}
+              onSelect={() => {
+                if (linkFrom) { link(n.id); return; }
+                setSelected(n.id);
+                setSelectedEdge(null);
+                if (selectedField?.nodeId !== n.id) setSelectedField(null);
+              }}
               onStartLink={() => setLinkFrom(n.id)}
               onText={(text) => patchNode(n.id, { text })}
             />
@@ -433,218 +443,37 @@ export function FlowChartEditor({
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); }}
           hoverNodes={hoverNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
+          onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
+          selectedField={selectedField}
         />
       </aside>
-      </div>
 
-      {/* ── inspector ──────────────────────────────────────────────
-          Sticks to the bottom of the window. The chart is a tall column,
-          so a panel that sits after it is a thousand pixels below the box
-          you just clicked — which reads as "clicking does nothing". */}
-      <div
-        className={
-          canEdit && (sel || selEdge)
-            ? "sticky bottom-0 z-20 -mx-1 mt-4 max-h-[46vh] overflow-auto rounded-t-lg border border-b-0 border-line bg-card/95 px-4 pb-4 backdrop-blur"
-            : ""
-        }
-      >
-      {canEdit && sel && (
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-t border-line pt-4">
-          <label className="min-w-[16rem] flex-1">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Label</span>
-            <input
-              value={sel.text}
-              onChange={(e) => patchNode(sel.id, { text: e.target.value.slice(0, 240) })}
-              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
-            />
-          </label>
-          <label className="w-44">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Who acts</span>
-            <input
-              value={sel.actor ?? ""}
-              placeholder="optional"
-              onChange={(e) => patchNode(sel.id, { actor: e.target.value.slice(0, 60) })}
-              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none placeholder:text-subtle focus-visible:border-brand-500"
-            />
-          </label>
-          <label className="w-32">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Shape</span>
-            <select
-              value={sel.kind}
-              onChange={(e) => patchNode(sel.id, { kind: e.target.value as NodeKind })}
-              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
-            >
-              {NODE_KINDS.map((k) => (
-                <option key={k} value={k}>{NODE_KIND_LABEL[k]}</option>
-              ))}
-            </select>
-          </label>
-          <button
-            onClick={() => setLinkFrom(sel.id)}
-            className="inline-flex items-center gap-1 pb-1.5 text-[12.5px] font-semibold text-brand-400 hover:text-brand-200"
-          >
-            <ArrowRight size={12} /> Connect
-          </button>
-          <button
-            onClick={() => { removeNode(sel.id); setSelected(null); }}
-            className="inline-flex items-center gap-1 pb-1.5 text-[12.5px] text-muted hover:text-red-500"
-          >
-            <Trash2 size={12} /> Delete box
-          </button>
-        </div>
-      )}
-
-      {/* what this question asks in the form — one row per question, since
-          a box can group several ("your details", "your affiliations") */}
-      {canEdit && sel?.kind === "question" && (
-        <div className="mt-3 space-y-3">
-          {fieldsOf(sel).map((f, i) => (
-            <div key={i} className="flex flex-wrap items-end gap-x-5 gap-y-2 border-l-2 border-line pl-3">
-              <label className="w-40">
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer type</span>
-                <select
-                  value={f.type}
-                  onChange={(e) => patchField(sel.id, i, { type: e.target.value as FieldType })}
-                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
-                >
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t} value={t}>{FIELD_TYPE_LABEL[t]}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="w-36">
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Answer key</span>
-                <input
-                  value={f.key}
-                  onChange={(e) => patchField(sel.id, i, { key: e.target.value.slice(0, 40) })}
-                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 font-mono text-[12.5px] text-fg outline-none focus-visible:border-brand-500"
-                />
-              </label>
-              {(f.type === "choice" || f.type === "multi") && (
-                <label className="min-w-[16rem] flex-1">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Choices, comma separated</span>
-                  <input
-                    value={(f.options ?? []).join(", ")}
-                    onChange={(e) =>
-                      patchField(sel.id, i, {
-                        options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 20),
-                      })
-                    }
-                    className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13.5px] text-fg outline-none focus-visible:border-brand-500"
-                  />
-                </label>
-              )}
-              <label className="min-w-[12rem] flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Hint under the answer</span>
-                <input
-                  value={f.help ?? ""}
-                  onChange={(e) => patchField(sel.id, i, { help: e.target.value.slice(0, 200) || undefined })}
-                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
-                />
-              </label>
-              <label className="flex items-center gap-2 pb-1.5 text-[12.5px] text-muted">
-                <input
-                  type="checkbox"
-                  checked={!!f.required}
-                  onChange={(e) => patchField(sel.id, i, { required: e.target.checked })}
-                />
-                Required
-              </label>
-              <button
-                onClick={() => removeField(sel.id, i)}
-                className="pb-1.5 text-[12.5px] text-muted hover:text-red-500"
-                title="Remove this question from the box"
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => addField(sel.id)}
-            className="inline-flex items-center gap-1 text-[12.5px] text-brand-500 hover:text-brand-400"
-          >
-            <Plus size={12} /> Add a question to this box
-          </button>
-        </div>
-      )}
-
-      {/* the rule on an arrow */}
-      {canEdit && selEdge && (
-        <div className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-line pt-4">
-          <p className="w-full text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
-            Rule on this arrow
-          </p>
-          <p className="text-[12.5px] text-muted">
-            {nodeText(doc, selEdge.from)} <ArrowRight size={11} className="inline" /> {nodeText(doc, selEdge.to)}
-          </p>
-          <label className="w-40">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Follow when</span>
-            <select
-              value={selEdge.when?.field ?? ""}
-              onChange={(e) =>
-                patchEdge(selEdge.id, {
-                  when: e.target.value
-                    ? { field: e.target.value, op: selEdge.when?.op ?? "is", value: selEdge.when?.value }
-                    : undefined,
-                })
-              }
-              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
-            >
-              <option value="">always</option>
-              {questionKeys.map((q) => (
-                <option key={q.key} value={q.key}>{q.label}</option>
-              ))}
-            </select>
-          </label>
-          {selEdge.when && (
-            <>
-              <label className="w-32">
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Test</span>
-                <select
-                  value={selEdge.when.op}
-                  onChange={(e) => patchEdge(selEdge.id, { when: { ...selEdge.when!, op: e.target.value as ConditionOp } })}
-                  className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
-                >
-                  {OPS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </label>
-              {selEdge.when.op !== "answered" && selEdge.when.op !== "empty" && (
-                <label className="w-44">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Value</span>
-                  <input
-                    value={selEdge.when.value ?? ""}
-                    placeholder={selEdge.when.op === "any of" ? "a, b, c" : "Yes"}
-                    onChange={(e) => patchEdge(selEdge.id, { when: { ...selEdge.when!, value: e.target.value.slice(0, 120) } })}
-                    className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none placeholder:text-subtle focus-visible:border-brand-500"
-                  />
-                </label>
-              )}
-            </>
-          )}
-          <label className="w-32">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-subtle">Arrow label</span>
-            <input
-              value={selEdge.label ?? ""}
-              onChange={(e) => patchEdge(selEdge.id, { label: e.target.value.slice(0, 40) || undefined })}
-              className="mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500"
-            />
-          </label>
-          <button
-            onClick={() => { removeEdge(selEdge.id); setSelectedEdge(null); }}
-            className="inline-flex items-center gap-1 pb-1.5 text-[12.5px] text-muted hover:text-red-500"
-          >
-            <Trash2 size={12} /> Delete arrow
-          </button>
-        </div>
-      )}
+      {/* The options behind whatever is selected. Sticky for the same
+          reason as the form: the canvas is taller than the viewport. */}
+      <aside className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+        <FlowOptionsRail
+          doc={doc}
+          node={sel}
+          edge={selEdge}
+          selectedField={selectedField && sel && selectedField.nodeId === sel.id ? selectedField.index : null}
+          questionKeys={questionKeys}
+          canEdit={canEdit}
+          onPatchNode={patchNode}
+          onRemoveNode={(id) => { removeNode(id); setSelected(null); setSelectedField(null); }}
+          onStartLink={setLinkFrom}
+          onPatchField={patchField}
+          onAddField={addField}
+          onRemoveField={removeField}
+          onPatchEdge={patchEdge}
+          onRemoveEdge={(id) => { removeEdge(id); setSelectedEdge(null); }}
+          onHoverNode={(id) => setHoverNodes(id ? [id] : [])}
+        />
+      </aside>
       </div>
     </div>
   );
 }
 
-function nodeText(doc: ChartDoc, id: string): string {
-  return doc.nodes.find((n) => n.id === id)?.text ?? "?";
-}
 
 // ── boxes ───────────────────────────────────────────────────────────
 
