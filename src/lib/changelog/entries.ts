@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: a legend for the shapes
+  {
+    title: "Flow charts: a legend for what each shape means",
+    body: "One line above the chart shows the seven shapes with their names. Hover any of them for what it is for and a real example from the Training Week flow — so a decision is \"a fork; the arrows leaving it carry the answers\", with \"Any chosen session full? → yes / no\" underneath, which you can then go and look at. A chart's shapes are a vocabulary, and the difference between a step and a decision is obvious once someone says it and guessable-but-wrong until then.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the second cause of the editing crash
   {
     title: "Flow charts: second fix for the crash while editing",

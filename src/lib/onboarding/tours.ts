@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.legend",
+    title: "What the shapes mean",
+    body: "The **Shapes** row above the chart names all seven. Hover one for what it is for and an example from the Training Week flow — a decision is a fork whose arrows carry the answers, a limit constrains a question, a note is a remark that never reaches the form.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.29a",
+  },
+  {
     id: "workspace.flowcharts.marquee",
     title: "Move several boxes at once",
     body: "Drag a rectangle across empty canvas to pick up every box it touches, then drag any one of them — the whole group moves together, keeping its spacing, and the arrows follow. Click a single box for a single selection, or empty space to clear it.",

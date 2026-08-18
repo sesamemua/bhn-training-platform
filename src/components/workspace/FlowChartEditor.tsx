@@ -33,6 +33,7 @@ import { nodeNumbers } from "@/lib/flowchart/numbering";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
+import { FlowShapeLegend } from "./FlowShapeLegend";
 import { openFlowChannel, postFlow, readFlow } from "@/lib/flowchart/channel";
 
 /** Keep a computed scroll position inside what the pane can actually do. */
@@ -1179,7 +1180,11 @@ export function FlowChartEditor({
 
       {msg && <p className="mt-3 text-[12.5px] text-muted">{msg}</p>}
 
-      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-subtle">
+      <div className="mt-3">
+        <FlowShapeLegend />
+      </div>
+
+      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-subtle">
         <span className="inline-flex items-center gap-1.5">
           <svg width="26" height="6" aria-hidden><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" strokeWidth="1.5" className="text-brand-400" /></svg>
           always follows
