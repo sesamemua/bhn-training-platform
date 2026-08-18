@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Loader2,
+  Send,
   Sparkles,
   Undo2,
 } from "lucide-react";
@@ -101,6 +102,26 @@ export function NewsletterCalendarClient({
   const [months, setMonths] = useState(6);
 
   const today = useMemo(todayIso, []);
+  /** Reminder opened from the top-level "Email the team" button. */
+  const [quickSend, setQuickSend] = useState<string | null>(null);
+
+  // What "email the team" should open: the cycle being produced now (or
+  // next up), and within it the first reminder still waiting to go. Two
+  // clicks buried under a collapsed month is not a send button, so this
+  // resolves the choice rather than asking for it.
+  const quickTarget = useMemo(() => {
+    const live =
+      cycles.find((c) => c.draftOpen <= today && c.sendDate >= today && c.status !== "sent") ??
+      cycles.find((c) => c.sendDate >= today && c.status !== "sent") ??
+      cycles[0];
+    if (!live) return null;
+    const order = ["draft_request", "draft_due", "approval", "send_day"];
+    const pending = [...live.reminders]
+      .filter((r) => r.status === "pending" || r.status === "failed")
+      .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))[0];
+    const r = pending ?? live.reminders[0];
+    return r ? { cycle: live, reminder: r } : null;
+  }, [cycles, today]);
 
   const post = useCallback(async (payload: Record<string, unknown>, key: string) => {
     setBusy(key);
@@ -181,6 +202,18 @@ export function NewsletterCalendarClient({
             />
             <span className="text-[12px] text-muted">months ahead</span>
           </div>
+          {quickTarget && (
+            <button
+              onClick={() => setQuickSend(quickTarget.reminder.id)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3.5 py-1.5 text-[13px] font-bold text-white transition-colors hover:bg-brand-700"
+            >
+              <Send size={13} />
+              Email the team
+              <span className="font-medium opacity-75">
+                · {REMINDER_LABEL[quickTarget.reminder.kind as ReminderKind] ?? quickTarget.reminder.kind}
+              </span>
+            </button>
+          )}
           <button
             onClick={generate}
             disabled={busy !== null}
@@ -200,6 +233,22 @@ export function NewsletterCalendarClient({
             {showConfig ? "Hide settings" : "Settings"}
           </button>
         </div>
+      )}
+
+      {quickTarget && (
+        <ReminderSendDialog
+          open={quickSend !== null}
+          reminderId={quickSend}
+          monthLabel={monthLabel(quickTarget.cycle.month)}
+          sending={busy !== null && busy === quickSend}
+          onClose={() => setQuickSend(null)}
+          onSend={async (args: SendArgs) => {
+            const id = quickSend;
+            if (!id) return;
+            const res = await post({ action: "sendReminder", reminderId: id, ...args }, id);
+            if (res) setQuickSend(null);
+          }}
+        />
       )}
 
       {showConfig && canEdit && (
