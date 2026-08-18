@@ -15,17 +15,25 @@
  * full?", which the reader can go and look at.
  */
 import { NODE_KINDS, NODE_KIND_LABEL, type NodeKind } from "@/lib/flowchart/types";
+import { DASHED_KINDS, SHAPE_PAINT, shapePath } from "@/lib/flowchart/shapes";
 
-/** The swatch styling, matching how the canvas draws each kind. */
-const SWATCH: Record<NodeKind, string> = {
-  start: "rounded-full border-brand-400/70 bg-brand-500/12",
-  question: "rounded-[3px] border-brand-400/70 bg-brand-500/8",
-  step: "rounded-[3px] border-line-strong bg-elevated",
-  decision: "rounded-[3px] border-amber-500/60 bg-amber-500/10",
-  end: "rounded-full border-line-strong bg-elevated",
-  note: "rounded-[3px] border-dashed border-line-strong bg-transparent",
-  rule: "rounded-[3px] border-dashed border-amber-500/60 bg-amber-500/8",
-};
+/**
+ * The swatch is the real outline at 22x12, so the legend cannot drift
+ * from the canvas — both call shapePath.
+ */
+function Swatch({ kind }: { kind: NodeKind }) {
+  return (
+    <svg aria-hidden width="22" height="12" className="shrink-0 overflow-visible">
+      <path
+        d={shapePath(kind, 22, 12)}
+        className={SHAPE_PAINT[kind]}
+        strokeWidth="1"
+        strokeDasharray={DASHED_KINDS.includes(kind) ? "3 2" : undefined}
+        fillRule="evenodd"
+      />
+    </svg>
+  );
+}
 
 const MEANING: Record<NodeKind, { use: string; example: string }> = {
   start: {
@@ -56,6 +64,30 @@ const MEANING: Record<NodeKind, { use: string; example: string }> = {
     use: "A constraint on a question: how many may be picked, and which options clash because they run at once.",
     example: "Up to 3 sessions · the two Tuesday 1 PM workshops clash",
   },
+  document: {
+    use: "Something produced and handed over — a letter, an email, a PDF. Drawing only; it does not change the form.",
+    example: "Info pack emailed to the registrant",
+  },
+  data: {
+    use: "A list or record the process reads from or writes to.",
+    example: "The eligibility sheet of 41 member institutions",
+  },
+  subprocess: {
+    use: "A run of work defined somewhere else, folded into one box so this chart stays readable.",
+    example: "Travel-support approval (its own process)",
+  },
+  delay: {
+    use: "Waiting. Time passes here and nobody is doing anything.",
+    example: "Wait for the confirmation cut-off",
+  },
+  manual: {
+    use: "Something a person does by hand, off the platform.",
+    example: "Programme lead checks a name against the sheet",
+  },
+  connector: {
+    use: "A jump. Two connectors with the same label are the same point, for when a line would cross the whole chart.",
+    example: "A — continues under the waitlist branch",
+  },
 };
 
 export function FlowShapeLegend() {
@@ -66,10 +98,7 @@ export function FlowShapeLegend() {
       </span>
       {NODE_KINDS.map((k) => (
         <span key={k} className="group relative inline-flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className={`inline-block h-2.5 w-4 shrink-0 border ${SWATCH[k]}`}
-          />
+          <Swatch kind={k} />
           <span className="cursor-help text-[11.5px] text-muted group-hover:text-fg">
             {NODE_KIND_LABEL[k]}
           </span>

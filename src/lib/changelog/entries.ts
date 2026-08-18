@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: real shapes, easier creation, boxes that give way
+  {
+    title: "Flow charts: the standard shapes, and boxes that get out of each other's way",
+    body: "Six more shapes from the classic flowchart set — document, stored data, sub-process, wait, manual and connector — bringing it to thirteen, each drawn as its real outline rather than a tinted rectangle. A question is now a parallelogram and a decision a six-sided box, which is what those shapes mean to anyone who has read a flowchart before. To change a shape, select a box and pick from the little palette that appears above it. To add one without scrolling back to the top, use the shape bar that now floats over the canvas wherever you are, or just double-click empty space. And dragging a box no longer buries another: whatever is in the way steps aside, along whichever axis needs the smaller nudge, cascading to the box behind it.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: boxes size themselves to their text
   {
     title: "Flow charts: boxes grow and shrink to fit their text",

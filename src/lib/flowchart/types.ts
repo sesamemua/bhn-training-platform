@@ -9,7 +9,19 @@
 import { z } from "zod";
 
 /** What a box means. Shape follows kind — this is the only styling input. */
-export const NODE_KINDS = ["start", "question", "step", "decision", "end", "note", "rule"] as const;
+/**
+ * What a box means. Shape follows kind — this is the only styling input.
+ *
+ * The first seven carry behaviour: a question becomes a field in the live
+ * form, a limit constrains one, a decision is where arrows branch. The
+ * rest are drawing vocabulary from the classic flowchart set (ISO 5807 /
+ * ANSI X3.5) — they describe the process for a reader without changing
+ * what the form does.
+ */
+export const NODE_KINDS = [
+  "start", "question", "step", "decision", "end", "note", "rule",
+  "document", "data", "subprocess", "delay", "manual", "connector",
+] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
 export const NODE_KIND_LABEL: Record<NodeKind, string> = {
@@ -20,7 +32,16 @@ export const NODE_KIND_LABEL: Record<NodeKind, string> = {
   end: "End",
   note: "Note",
   rule: "Limit",
+  document: "Document",
+  data: "Stored data",
+  subprocess: "Sub-process",
+  delay: "Wait",
+  manual: "Manual",
+  connector: "Connector",
 };
+
+/** Kinds that change what the form does, as opposed to how it reads. */
+export const FUNCTIONAL_KINDS: NodeKind[] = ["start", "question", "step", "decision", "end", "rule"];
 
 /** Field types a question node can render in the linked form. */
 export const FIELD_TYPES = ["text", "long", "email", "number", "date", "choice", "multi", "yesno",

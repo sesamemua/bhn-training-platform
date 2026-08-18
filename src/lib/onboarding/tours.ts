@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.shapes2",
+    title: "Thirteen shapes, and three ways to place one",
+    body: "The classic flowchart set is all here — document, stored data, sub-process, wait, manual, connector — drawn as real outlines. **Select a box** and a shape palette appears above it, so changing a shape happens where the shape is. **Adding** one no longer means scrolling up: the shape bar floats over the canvas, or double-click any empty space. And dragging a box now pushes whatever is in its way instead of landing on top of it.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.legend",
     title: "What the shapes mean",
     body: "The **Shapes** row above the chart names all seven. Hover one for what it is for and an example from the Training Week flow — a decision is a fork whose arrows carry the answers, a limit constrains a question, a note is a remark that never reaches the form.",

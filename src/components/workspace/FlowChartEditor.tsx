@@ -30,6 +30,8 @@ import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } f
 import { edgeAnchor, routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { nodeNumbers } from "@/lib/flowchart/numbering";
+import { DASHED_KINDS, SHAPE_INSET, SHAPE_PAINT, shapePath } from "@/lib/flowchart/shapes";
+import { resolveCollisions } from "@/lib/flowchart/collide";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
@@ -659,6 +661,19 @@ export function FlowChartEditor({
    * drag and a press on an arrow is a selection, and neither should paint
    * a rectangle over the chart.
    */
+  /** Double-click empty canvas: a new box of the last kind, right there. */
+  const onCanvasDoubleClick = (e: React.MouseEvent) => {
+    if (!canEdit) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("[data-node-id], button, input, select, textarea, a")) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    addNode(lastKind, {
+      x: (e.clientX - rect.left) / scale,
+      y: (e.clientY - rect.top) / scale,
+    });
+  };
+
   const onCanvasPointerDown = (e: React.PointerEvent) => {
     if (!canEdit || linkFrom || relink) return;
 
@@ -736,22 +751,28 @@ export function FlowChartEditor({
     const y = snap(Math.max(0, (e.clientY - rect.top) / scale - d.dy));
 
     if (d.group && d.anchor) {
+      const group = d.group;
       const ddx = x - d.anchor.x;
       const ddy = y - d.anchor.y;
-      const start = new Map(d.group.map((g) => [g.id, g]));
+      const start = new Map(group.map((g) => [g.id, g]));
       setDoc((cur) => ({
         ...cur,
-        nodes: cur.nodes.map((n) => {
-          const s0 = start.get(n.id);
-          return s0
-            ? { ...n, x: Math.max(0, s0.x + ddx), y: Math.max(0, s0.y + ddy) }
-            : n;
-        }),
+        // Placed first, then everything they land on gives way.
+        nodes: resolveCollisions(
+          cur.nodes.map((n) => {
+            const s0 = start.get(n.id);
+            return s0 ? { ...n, x: Math.max(0, s0.x + ddx), y: Math.max(0, s0.y + ddy) } : n;
+          }),
+          group.map((g) => g.id),
+        ),
       }));
     } else {
       setDoc((cur) => ({
         ...cur,
-        nodes: cur.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)),
+        nodes: resolveCollisions(
+          cur.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)),
+          [d.id],
+        ),
       }));
     }
     setDirty(true);
@@ -763,7 +784,15 @@ export function FlowChartEditor({
   };
 
   // ── node + edge operations ────────────────────────────────────────
-  const addNode = (kind: NodeKind) => {
+  /**
+   * The kind added last, reused by double-click so the common case —
+   * several steps in a row — needs the toolbar once rather than once per
+   * box. Scrolling back to the top for every shape was the complaint.
+   */
+  const [lastKind, setLastKind] = useState<NodeKind>("step");
+
+  const addNode = (kind: NodeKind, at?: { x: number; y: number }) => {
+    setLastKind(kind);
     const id = uid();
     mutate((d) => {
       const taken = d.nodes.flatMap((n) => fieldsOf(n).map((f) => f.key));
@@ -775,8 +804,10 @@ export function FlowChartEditor({
           {
             id,
             kind,
-            x: 40,
-            y: 40 + d.nodes.length * 12,
+            // Placed where the pointer was, when there was one. A box that
+            // always lands at the top-left is a box you then have to drag.
+            x: at ? snap(Math.max(0, at.x - 110)) : 40,
+            y: at ? snap(Math.max(0, at.y - 24)) : 40 + d.nodes.length * 12,
             w: kind === "note" ? 210 : 190,
             h: kind === "decision" ? 78 : kind === "note" ? 62 : 58,
             text,
@@ -1297,13 +1328,38 @@ export function FlowChartEditor({
             : undefined,
         }}
       >
-      <div ref={paneRef} className="overflow-auto rounded-lg border border-line bg-card">
+      <div ref={paneRef} className="relative overflow-auto rounded-lg border border-line bg-card">
+        {canEdit && (
+          /* Pinned to the pane, not the page: scroll a thousand pixels
+             down the chart and the shapes are still here. The toolbar at
+             the top stays too — this is the copy you reach for. */
+          <div className="pointer-events-none sticky top-2 z-30 flex justify-center px-2">
+            <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full border border-line bg-card/95 px-2 py-1 shadow-card-hover backdrop-blur">
+              {NODE_KINDS.map((k) => (
+                <button
+                  key={k}
+                  onClick={() => addNode(k)}
+                  title={`Add a ${NODE_KIND_LABEL[k].toLowerCase()}`}
+                  className={`rounded-full px-2 py-0.5 text-[11px] transition-colors ${
+                    lastKind === k
+                      ? "bg-brand-500/20 font-semibold text-brand-300"
+                      : "text-muted hover:bg-elevated hover:text-fg"
+                  }`}
+                >
+                  {NODE_KIND_LABEL[k]}
+                </button>
+              ))}
+              <span className="px-1 text-[10px] text-subtle">or double-click the canvas</span>
+            </div>
+          </div>
+        )}
         {/* Sized in SCREEN pixels so the pane scrolls by what is visible,
             wrapping a drawing that keeps its own coordinate system. */}
         <div style={{ width: bounds.w * scale, height: contentH * scale }}>
         <div
           ref={canvasRef}
           onPointerDown={onCanvasPointerDown}
+          onDoubleClick={onCanvasDoubleClick}
           onPointerMove={onCanvasPointerMove}
           onPointerUp={() => { endDrag(); finishMarquee(); }}
           onPointerLeave={() => { endDrag(); finishMarquee(); }}
@@ -1377,6 +1433,7 @@ export function FlowChartEditor({
               }}
               onStartLink={() => startLink(n.id)}
               onText={(text) => patchNode(n.id, { text })}
+              onKind={(k) => patchNode(n.id, { kind: k })}
               onMeasure={measureBox}
             />
           ))}
@@ -1502,17 +1559,11 @@ function RailHandle({
 
 // ── boxes ───────────────────────────────────────────────────────────
 
-const KIND_CLASS: Record<NodeKind, string> = {
-  start: "rounded-full border-brand-400/70 bg-brand-500/12",
-  question: "rounded-md border-brand-400/70 bg-brand-500/8",
-  end: "rounded-full border-line-strong bg-elevated",
-  step: "rounded-md border-line-strong bg-elevated",
-  decision: "rounded-md border-amber-500/60 bg-amber-500/10",
-  note: "rounded-md border-dashed border-line-strong bg-transparent",
-  // A limit is a constraint on a question, not a step anyone performs —
-  // dashed like a note, but tinted so it reads as enforced, not advisory.
-  rule: "rounded-md border-dashed border-amber-500/60 bg-amber-500/8",
-};
+/**
+ * The box itself is now transparent — its outline is drawn as a path
+ * behind the text, so a decision can be a hexagon and a document can have
+ * a wave without losing its border to a clip.
+ */
 
 function Box({
   node: n,
@@ -1527,6 +1578,7 @@ function Box({
   onSelect,
   onStartLink,
   onText,
+  onKind,
   onMeasure,
 }: {
   node: FlowNode;
@@ -1541,6 +1593,7 @@ function Box({
   onSelect: () => void;
   onStartLink: () => void;
   onText: (t: string) => void;
+  onKind?: (k: NodeKind) => void;
   /** Report the height this box's text actually needs. */
   onMeasure?: (id: string, needed: number) => void;
 }) {
@@ -1573,30 +1626,61 @@ function Box({
       onMouseLeave={() => onHover(false)}
       onClick={onSelect}
       onDoubleClick={() => canEdit && setEditing(true)}
-      className={`absolute flex flex-col items-center justify-center gap-0.5 border px-4 py-2.5 text-center transition-shadow ${KIND_CLASS[n.kind]} ${
+      className={`absolute flex flex-col items-center justify-center gap-0.5 py-2.5 text-center ${
         canEdit ? "cursor-grab active:cursor-grabbing" : ""
-      } ${
-        selected
-          ? "shadow-card-hover ring-[3px] ring-brand-500 z-10"
-          : hovered
-            ? "shadow-card-hover ring-2 ring-brand-400 bg-brand-500/15"
-            : ""
-      } ${
-        linking && !isLinkSource ? "ring-1 ring-brand-400/40" : ""
-      }`}
-      style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
+      } ${selected ? "z-10" : ""}`}
+      style={{
+        left: n.x,
+        top: n.y,
+        width: n.w,
+        height: n.h,
+        // Slanted and chamfered outlines eat into the corners, so the
+        // text is held clear of them per kind rather than globally.
+        paddingLeft: 16 + (SHAPE_INSET[n.kind] ?? 0),
+        paddingRight: 16 + (SHAPE_INSET[n.kind] ?? 0),
+      }}
       data-node-id={n.id}
     >
+      {/* The outline. Selection thickens this stroke rather than ringing a
+          rectangle around a shape that is not one. */}
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-visible"
+        width={n.w}
+        height={n.h}
+      >
+        <path
+          d={shapePath(n.kind, n.w, n.h)}
+          className={`${SHAPE_PAINT[n.kind]} ${
+            selected ? "stroke-brand-500" : hovered ? "stroke-brand-400" : ""
+          }`}
+          strokeWidth={selected ? 3 : hovered ? 2 : 1}
+          strokeDasharray={DASHED_KINDS.includes(n.kind) ? "5 4" : undefined}
+          fillRule="evenodd"
+        />
+        {linking && !isLinkSource && (
+          <path
+            d={shapePath(n.kind, n.w, n.h)}
+            className="fill-none stroke-brand-400/50"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+          />
+        )}
+      </svg>
       {/* The box's number, for pointing at it. Outside the box's own
           padding so it never pushes the label around. */}
       <span
         aria-hidden
-        className="absolute -left-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-line-strong bg-card px-1 text-[9px] font-bold tabular-nums text-muted"
+        className="absolute -left-1.5 -top-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-line-strong bg-card px-1 text-[9px] font-bold tabular-nums text-muted"
       >
         {number}
       </span>
 
-      <div ref={contentRef} className="flex w-full flex-col items-center gap-0.5">
+      {/* `relative` so the text paints above the outline: the outline is
+          absolutely positioned, and an absolute sibling covers a static
+          one no matter which comes first in the markup. Opaque fills were
+          hiding the label. */}
+      <div ref={contentRef} className="relative flex w-full flex-col items-center gap-0.5">
       {editing ? (
         <input
           autoFocus
@@ -1620,6 +1704,35 @@ function Box({
         <span className="text-[10.5px] text-brand-400">{fieldsOf(n).length} questions</span>
       )}
       </div>
+      {canEdit && selected && !editing && onKind && (
+        /* Change the shape from the shape. The options rail can do this
+           too, but nobody looks three columns right to restyle the thing
+           under their cursor. */
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute -top-7 left-0 z-20 flex max-w-[240px] flex-wrap items-center gap-0.5 rounded-full border border-line bg-card/95 px-1 py-0.5 shadow-card-hover backdrop-blur"
+        >
+          {NODE_KINDS.map((k) => (
+            <button
+              key={k}
+              onClick={(e) => { e.stopPropagation(); onKind(k); }}
+              title={NODE_KIND_LABEL[k]}
+              className={`rounded-full p-0.5 ${k === n.kind ? "bg-brand-500/25" : "hover:bg-elevated"}`}
+            >
+              <svg aria-hidden width="16" height="10" className="block overflow-visible">
+                <path
+                  d={shapePath(k, 16, 10)}
+                  className={SHAPE_PAINT[k]}
+                  strokeWidth="1"
+                  strokeDasharray={DASHED_KINDS.includes(k) ? "2 2" : undefined}
+                  fillRule="evenodd"
+                />
+              </svg>
+            </button>
+          ))}
+        </div>
+      )}
+
       {canEdit && selected && !editing && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
