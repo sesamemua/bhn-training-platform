@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: a shorter Training Week chart
+  {
+    title: "Flow charts: the Training Week chart is a third shorter",
+    body: "Every box is now the height its own text actually needs plus a little air, and the space between steps came down from 54px to 34px. The whole registration flow is 1206px tall instead of 1674 — it fits on one screen on a normal monitor, where before it took two. Measuring also turned up three boxes that were a few pixels too SHORT for their text, which is not something you can see but is worth fixing.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: draggable columns + a pop-out admin panel
   {
     title: "Flow charts: drag the columns, and pop the admin panel into its own window",

@@ -16,8 +16,8 @@ import type { ChartDoc } from "./types";
 const MAIN = 36;   // the spine every step sits on
 const SIDE = 366;  // where a branch steps out to, and rejoins from
 const W = 220;
-const TOP = 34;    // clear air above the first box
-const GAP = 54;    // between one step and the next
+const TOP = 24;    // clear air above the first box
+const GAP = 34;    // between one step and the next
 
 /**
  * The lane gap is 110px, not the 30 it started at. A branch sitting almost
@@ -28,6 +28,14 @@ const GAP = 54;    // between one step and the next
  * and the chart is the one that can afford to give width back. The lane
  * gap is held at 110 while doing it — narrowing the chart must not undo
  * the separation between the spine and its branches.
+ */
+
+/**
+ * Box heights are the measured height of their own content plus a little
+ * air, not a round number picked by eye. Measuring found 30–40px of slack
+ * in most boxes and three that were actually a few pixels SHORT, which is
+ * the sort of thing you cannot see but adds a third to the height of the
+ * whole chart.
  */
 
 /** Vertical cursor, so spacing stays even however the boxes change. */
@@ -43,10 +51,10 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
 
   // Taller than the other pills: a start node carries a label AND an
   // actor, and 48px put both lines hard against the rounded ends.
-  const n1 = { id: "n1", kind: "start" as const, x: MAIN, y: at(66), w: W, h: 66,
+  const n1 = { id: "n1", kind: "start" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "Registration opens", actor: "Coordinator" };
 
-  const n2 = { id: "n2", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
+  const n2 = { id: "n2", kind: "question" as const, x: MAIN, y: at(46), w: W, h: 46,
     text: "Choose your sessions",
     field: { key: "sessions", type: "multi" as const, required: true,
       help: "Pick the ones you want to attend.",
@@ -63,7 +71,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
   // and which sessions run against each other. Drawn beside the question
   // rather than buried in its settings, because "three, and the Tuesday
   // pair clash" is part of the process a reader needs to see.
-  const n2r = { id: "n2r", kind: "rule" as const, x: SIDE, y: n2.y, w: W, h: 84,
+  const n2r = { id: "n2r", kind: "rule" as const, x: SIDE, y: n2.y, w: W, h: 62,
     text: "Up to 3 sessions · clashes flagged",
     limit: {
       field: "sessions",
@@ -79,7 +87,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       ],
     } };
 
-  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(86), w: W, h: 86,
+  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "About you",
     fields: [
       { key: "contact", type: "contact" as const, required: true },
@@ -89,7 +97,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
         options: ["Industry", "Academia", "Government", "Other"] },
     ] };
 
-  const n4 = { id: "n4", kind: "question" as const, x: MAIN, y: at(86), w: W, h: 86,
+  const n4 = { id: "n4", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "Your affiliations",
     // Repeatable on purpose: one person can be a PhD student, a clinician
     // and a founder at once, and a single box loses two of them.
@@ -99,7 +107,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       { key: "company", type: "company" as const, help: "Leave blank if none." },
     ] };
 
-  const n5 = { id: "n5", kind: "question" as const, x: MAIN, y: at(86), w: W, h: 86,
+  const n5 = { id: "n5", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "Your work",
     fields: [
       { key: "expertise", type: "multi" as const, required: true,
@@ -108,7 +116,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       { key: "trainee", type: "yesno" as const, required: true },
     ] };
 
-  const n6 = { id: "n6", kind: "question" as const, x: SIDE, y: at(86), w: W, h: 86,
+  const n6 = { id: "n6", kind: "question" as const, x: SIDE, y: at(62), w: W, h: 62,
     text: "Trainee details",
     fields: [
       { key: "trainee_status", type: "choice" as const,
@@ -120,7 +128,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
         help: "City or town you would travel from, if you need support. Subject to approval." },
     ] };
 
-  const n7 = { id: "n7", kind: "question" as const, x: MAIN, y: at(86), w: W, h: 86,
+  const n7 = { id: "n7", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "Before you finish",
     fields: [
       { key: "dietary", type: "text" as const, help: "Dietary requirements or allergies. Blank if none." },
@@ -129,32 +137,32 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
         help: "BioHubNet may capture photographs and video and use them for promotional purposes." },
     ] };
 
-  const n8 = { id: "n8", kind: "decision" as const, x: MAIN, y: at(74), w: W, h: 74,
+  const n8 = { id: "n8", kind: "decision" as const, x: MAIN, y: at(46), w: W, h: 46,
     text: "Any chosen session full?" };
-  const n9 = { id: "n9", kind: "step" as const, x: SIDE, y: n8.y, w: W, h: 64,
+  const n9 = { id: "n9", kind: "step" as const, x: SIDE, y: n8.y, w: W, h: 62,
     text: "Added to the waitlist", actor: "System" };
 
-  const n10 = { id: "n10", kind: "step" as const, x: MAIN, y: at(68), w: W, h: 68,
+  const n10 = { id: "n10", kind: "step" as const, x: MAIN, y: at(78), w: W, h: 78,
     text: "Checked against the eligibility sheet", actor: "Program lead" };
 
-  const n11 = { id: "n11", kind: "decision" as const, x: MAIN, y: at(74), w: W, h: 74,
+  const n11 = { id: "n11", kind: "decision" as const, x: MAIN, y: at(46), w: W, h: 46,
     text: "Eligible?" };
-  const n12 = { id: "n12", kind: "end" as const, x: SIDE, y: n11.y, w: W, h: 54,
+  const n12 = { id: "n12", kind: "end" as const, x: SIDE, y: n11.y, w: W, h: 46,
     text: "Declined, with a reason" };
 
-  const n13 = { id: "n13", kind: "step" as const, x: MAIN, y: at(68), w: W, h: 68,
+  const n13 = { id: "n13", kind: "step" as const, x: MAIN, y: at(78), w: W, h: 78,
     text: "Seat confirmed, info pack emailed", actor: "System" };
 
   // Holding a seat is not the same as turning up. An unconfirmed seat goes
   // back to the waitlist rather than to an empty chair.
-  const n14 = { id: "n14", kind: "question" as const, x: MAIN, y: at(80), w: W, h: 80,
+  const n14 = { id: "n14", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "Confirm you can still attend",
     field: { key: "confirmed", type: "yesno" as const, required: true,
       help: "Asked before the day. Confirm by the cut-off or the seat is released." } };
-  const n15 = { id: "n15", kind: "step" as const, x: SIDE, y: n14.y, w: W, h: 64,
+  const n15 = { id: "n15", kind: "step" as const, x: SIDE, y: n14.y, w: W, h: 78,
     text: "Seat released to the waitlist", actor: "System" };
 
-  const n16 = { id: "n16", kind: "end" as const, x: MAIN, y: at(54), w: W, h: 54,
+  const n16 = { id: "n16", kind: "end" as const, x: MAIN, y: at(46), w: W, h: 46,
     text: "Attends" };
 
   return {
