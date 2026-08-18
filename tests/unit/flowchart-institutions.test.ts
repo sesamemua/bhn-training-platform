@@ -74,3 +74,36 @@ test("grouping follows the picker's region order and drops empty groups", () => 
   assert.deepEqual(health.map((g) => g.region), ["Ontario", "Quebec"]);
   assert.equal(health.flatMap((g) => g.names).length, HEALTH_ORGANISATIONS.length);
 });
+
+test("each region's list opens with its largest life-science institutions", () => {
+  // The ranking inside a region is editorial and expected to be argued
+  // with; what must not happen is a later alphabetical re-sort quietly
+  // undoing it. Pinning the head of each list catches that.
+  const heads = (sector: "academic" | "health") =>
+    Object.fromEntries(groupedBySector(sector).map((g) => [g.region, g.names.slice(0, 3)]));
+
+  assert.deepEqual(heads("academic")["Ontario"], [
+    "University of Toronto", "McMaster University", "University of Ottawa",
+  ]);
+  assert.deepEqual(heads("academic")["Quebec"], [
+    "Université de Montréal", "McGill University", "Université Laval",
+  ]);
+  assert.deepEqual(heads("academic")["British Columbia"], [
+    "University of British Columbia", "Simon Fraser University", "University of Victoria",
+  ]);
+  assert.deepEqual(heads("academic")["Prairies"], [
+    "University of Alberta", "University of Calgary", "University of Manitoba",
+  ]);
+  assert.deepEqual(heads("health")["Ontario"], [
+    "University Health Network", "Hospital for Sick Children", "Sunnybrook Research Institute",
+  ]);
+
+  // Not alphabetical — that is the failure mode this guards against.
+  for (const sector of ["academic", "health"] as const) {
+    for (const g of groupedBySector(sector)) {
+      if (g.names.length < 3) continue;
+      const sorted = [...g.names].sort((a, b) => a.localeCompare(b));
+      assert.notDeepEqual(g.names, sorted, `${g.region} ${sector} looks alphabetical, not ranked`);
+    }
+  }
+});

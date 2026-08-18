@@ -25,7 +25,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // ── Institution picker: most likely regions first
   {
     title: "Institution picker leads with Ontario, Quebec and BC",
-    body: "The 41 eligible institutions are still grouped by region, but the groups are now ordered for the people using the form rather than for the published list: Ontario, then Quebec, then British Columbia, then the remaining regions by how many institutions they hold. Most registrants now find their own group without scrolling.",
+    body: "The 41 eligible institutions are still grouped by region, but the groups are now ordered for the people using the form rather than for the published list: Ontario, then Quebec, then British Columbia, then the remaining regions by how many institutions they hold. Inside each region the institutions are ranked by the size of their life-science and health-research enterprise too — so Ontario opens with Toronto, McMaster and Ottawa, and the hospital list opens with UHN and SickKids. Most registrants now find themselves without scrolling. The within-region ranking is a judgement call rather than a computed figure; tell us if it reads wrong.",
     kind: "improvement",
     visibleTo: STAFF,
     daysAgo: 0,
