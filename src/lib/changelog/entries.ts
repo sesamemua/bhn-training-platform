@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: draggable columns + a pop-out admin panel
+  {
+    title: "Flow charts: drag the columns, and pop the admin panel into its own window",
+    body: "The seams between the four columns are draggable — pull one left or right and the chart gives up or takes back the difference. Widths are remembered, and \"Reset column widths\" puts them back. There is also \"Admin panel in its own window\", which opens the panel as a separate window that follows the chart live: rename a box and the window updates immediately, with no save in between, so you can keep it on a second screen while you work. Anything you can edit there — the roster sheet link — travels back to the chart.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Collapsible sidebar
   {
     title: "The menu folds away",

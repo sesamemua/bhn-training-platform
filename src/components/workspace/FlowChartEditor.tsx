@@ -12,8 +12,8 @@
  * while SVG gives clean lines between arbitrary points. Doing it all in
  * SVG would mean hand-laying every line of text.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Plus, Undo2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Check, ExternalLink, Loader2, Plus, Undo2 } from "lucide-react";
 import {
   NODE_KINDS,
   NODE_KIND_LABEL,
@@ -32,6 +32,7 @@ import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
+import { openFlowChannel, postFlow, readFlow } from "@/lib/flowchart/channel";
 
 /** Keep a computed scroll position inside what the pane can actually do. */
 function clampScroll(pane: HTMLElement, top: number): number {
@@ -99,6 +100,87 @@ function flash(el: HTMLElement | null | undefined) {
   window.setTimeout(() => el.classList.remove("fc-flash"), 1000);
 }
 
+/** Rail widths, in px. The chart takes whatever is left. */
+type RailKey = "form" | "admin" | "options";
+type RailWidths = Record<RailKey, number>;
+
+const RAIL_DEFAULTS: RailWidths = { form: 280, admin: 300, options: 300 };
+const RAIL_MIN = 200;
+const RAIL_MAX = 620;
+const RAIL_STORAGE_KEY = "bhn-flowchart-rails";
+
+function readRails(): RailWidths {
+  try {
+    const raw = localStorage.getItem(RAIL_STORAGE_KEY);
+    if (!raw) return RAIL_DEFAULTS;
+    const parsed = JSON.parse(raw) as Partial<RailWidths>;
+    const clamp = (n: unknown, fallback: number) =>
+      typeof n === "number" && Number.isFinite(n)
+        ? Math.min(RAIL_MAX, Math.max(RAIL_MIN, Math.round(n)))
+        : fallback;
+    return {
+      form: clamp(parsed.form, RAIL_DEFAULTS.form),
+      admin: clamp(parsed.admin, RAIL_DEFAULTS.admin),
+      options: clamp(parsed.options, RAIL_DEFAULTS.options),
+    };
+  } catch {
+    return RAIL_DEFAULTS;
+  }
+}
+
+/**
+ * Whether the four-column layout is on, straight from matchMedia.
+ *
+ * The widths are a runtime value, so the breakpoint has to be one too.
+ * Two attempts went through CSS first — a Tailwind arbitrary value
+ * (`grid-cols-[var(--fc-cols)]`, which collapsed the grid to a single
+ * 34px column) and a hand-written `@media` rule (which the build dropped
+ * without a word). Asking the browser directly depends on nothing that
+ * can be optimised away.
+ */
+const WIDE_QUERY = "(min-width: 80rem)";
+
+function subscribeWide(onChange: () => void) {
+  const mql = window.matchMedia(WIDE_QUERY);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+
+function wideSnapshot(): boolean {
+  return window.matchMedia(WIDE_QUERY).matches;
+}
+
+const railListeners = new Set<() => void>();
+
+function subscribeRails(onChange: () => void) {
+  railListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    railListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+/** Cached so the snapshot is referentially stable between reads —
+ *  useSyncExternalStore loops forever on a fresh object every call. */
+let railCache: RailWidths = RAIL_DEFAULTS;
+let railCacheRaw: string | null = null;
+
+function railSnapshot(): RailWidths {
+  let raw: string | null = null;
+  try { raw = localStorage.getItem(RAIL_STORAGE_KEY); } catch { raw = null; }
+  if (raw !== railCacheRaw) {
+    railCacheRaw = raw;
+    railCache = readRails();
+  }
+  return railCache;
+}
+
+function writeRails(next: RailWidths) {
+  try { localStorage.setItem(RAIL_STORAGE_KEY, JSON.stringify(next)); } catch { /* not fatal */ }
+  railListeners.forEach((fn) => fn());
+}
+
 const GRID = 10;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -156,6 +238,52 @@ export function FlowChartEditor({
    * the last box and every label would be crammed into the column.
    */
   const [paneW, setPaneW] = useState(0);
+
+  /**
+   * How wide each rail is.
+   *
+   * The saved widths are external state (localStorage), read as such so
+   * the server snapshot is the defaults and the first paint matches. A
+   * drag in progress is separate and transient: committing every
+   * pointermove to storage would be a write per frame, and the saved
+   * value should be where you let go, not every pixel on the way.
+   */
+  const savedRails = useSyncExternalStore(subscribeRails, railSnapshot, () => RAIL_DEFAULTS);
+  const isWide = useSyncExternalStore(subscribeWide, wideSnapshot, () => false);
+  const [dragRails, setDragRails] = useState<RailWidths | null>(null);
+  const rails = dragRails ?? savedRails;
+  const dragRailRef = useRef<{ key: RailKey; startX: number; startW: number } | null>(null);
+
+  /**
+   * Drag the seam to the LEFT of a rail. Moving left widens it, because
+   * that is the edge being pulled — the chart on the other side gives up
+   * the pixels, which is what makes the chart column the flexible one.
+   */
+  const onRailDragStart = (e: React.PointerEvent, key: RailKey) => {
+    e.preventDefault();
+    dragRailRef.current = { key, startX: e.clientX, startW: rails[key] };
+    setDragRails(rails);
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* keep dragging */ }
+  };
+
+  const onRailDragMove = (e: React.PointerEvent) => {
+    const d = dragRailRef.current;
+    if (!d) return;
+    const next = Math.min(RAIL_MAX, Math.max(RAIL_MIN, d.startW + (d.startX - e.clientX)));
+    setDragRails((r) => ({ ...(r ?? savedRails), [d.key]: next }));
+  };
+
+  const onRailDragEnd = () => {
+    if (!dragRailRef.current) return;
+    dragRailRef.current = null;
+    if (dragRails) writeRails(dragRails);
+    setDragRails(null);
+  };
+
+  const resetRails = () => {
+    setDragRails(null);
+    writeRails(RAIL_DEFAULTS);
+  };
 
   /**
    * Bring a box into view in the canvas pane.
@@ -369,6 +497,67 @@ export function FlowChartEditor({
   const patchSettings = (patch: Partial<ChartSettings>) =>
     mutate((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
 
+  /**
+   * Keep a popped-out admin panel in step.
+   *
+   * The panel is a view of the document being edited, not of the one last
+   * saved, so it is fed from state rather than from the server — an
+   * unsaved experiment shows up there too, which is the whole point of
+   * having it open on a second screen.
+   *
+   * Refs hold the latest doc and handler so the channel is opened once and
+   * never torn down mid-conversation; re-subscribing on every keystroke
+   * would drop the request a panel sends on mount.
+   */
+  const docRef = useRef(doc);
+  const titleRef = useRef(active?.title ?? "");
+  const patchSettingsRef = useRef(patchSettings);
+  useEffect(() => {
+    docRef.current = doc;
+    titleRef.current = active?.title ?? "";
+    patchSettingsRef.current = patchSettings;
+  });
+
+  const channelRef = useRef<BroadcastChannel | null>(null);
+  useEffect(() => {
+    const ch = openFlowChannel();
+    channelRef.current = ch;
+    if (!ch) return;
+    ch.onmessage = (e) => {
+      const m = readFlow(e);
+      if (!m) return;
+      if (m.type === "request") {
+        postFlow(ch, { type: "doc", doc: docRef.current, title: titleRef.current });
+      } else if (m.type === "settings") {
+        patchSettingsRef.current(m.patch);
+      }
+    };
+    const bye = () => postFlow(ch, { type: "editor-closed" });
+    window.addEventListener("pagehide", bye);
+    return () => {
+      bye();
+      window.removeEventListener("pagehide", bye);
+      ch.close();
+      channelRef.current = null;
+    };
+  }, []);
+
+  // Push on change, coalesced — a drag fires this on every pointermove.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      postFlow(channelRef.current, { type: "doc", doc, title: active?.title ?? "" });
+    }, 120);
+    return () => window.clearTimeout(id);
+  }, [doc, active?.title]);
+
+  const openPanelWindow = () => {
+    window.open(
+      "/flowchart-panel",
+      "bhn-flowchart-panel",
+      "width=560,height=920,menubar=no,toolbar=no,location=no",
+    );
+  };
+
   const patchEdge = (id: string, patch: Partial<FlowEdge>) =>
     mutate((d) => ({ ...d, edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
 
@@ -503,6 +692,15 @@ export function FlowChartEditor({
           only when its rule matches
         </span>
         <span>Click an arrow to set or clear its rule.</span>
+        <button
+          onClick={openPanelWindow}
+          className="inline-flex items-center gap-1 font-semibold text-brand-400 hover:text-brand-200"
+        >
+          <ExternalLink size={11} /> Admin panel in its own window
+        </button>
+        <button onClick={resetRails} className="text-subtle hover:text-muted">
+          Reset column widths
+        </button>
       </p>
 
       {canEdit && (
@@ -520,7 +718,19 @@ export function FlowChartEditor({
              organisers get, and the settings behind whatever is selected.
              The chart takes the slack; the three rails are fixed so the
              controls never reflow as the canvas grows. ─────────────── */}
-      <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px_300px_300px]">
+      <div
+        className="mt-3 grid gap-4"
+        onPointerMove={onRailDragMove}
+        onPointerUp={onRailDragEnd}
+        onPointerCancel={onRailDragEnd}
+        style={{
+          // Below the breakpoint this is undefined and the page stacks,
+          // which is what the removed `xl:` class used to do.
+          gridTemplateColumns: isWide
+            ? `minmax(0,1fr) ${rails.form}px ${rails.admin}px ${rails.options}px`
+            : undefined,
+        }}
+      >
       <div ref={paneRef} className="overflow-auto rounded-lg border border-line bg-card">
         <div
           ref={canvasRef}
@@ -573,7 +783,9 @@ export function FlowChartEditor({
       {/* Sticky: the point of the pane is watching the form change as you
           edit the chart, which only works if it stays on screen while you
           scroll a canvas taller than the viewport. */}
-      <aside ref={formPaneRef} className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+      <aside ref={formPaneRef} className="relative min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+          {/* Drag the seam to change how much room this column gets. */}
+          <RailHandle railKey="form" onStart={onRailDragStart} label="Resize the live form" />
         <FlowFormPreview
           doc={doc}
           answers={answers}
@@ -591,7 +803,9 @@ export function FlowChartEditor({
           purpose: the other three columns are the thing being designed,
           this one is its consequence, and it should not read as more of
           the same panel. */}
-      <aside className="min-w-0 self-start rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+      <aside className="relative min-w-0 self-start rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+          {/* Drag the seam to change how much room this column gets. */}
+          <RailHandle railKey="admin" onStart={onRailDragStart} label="Resize the admin panel" />
         <FlowAdminPreview
           doc={doc}
           canEdit={canEdit}
@@ -604,7 +818,9 @@ export function FlowChartEditor({
 
       {/* The options behind whatever is selected. Sticky for the same
           reason as the form: the canvas is taller than the viewport. */}
-      <aside className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+      <aside className="relative min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+          {/* Drag the seam to change how much room this column gets. */}
+          <RailHandle railKey="options" onStart={onRailDragStart} label="Resize the options" />
         <FlowOptionsRail
           doc={doc}
           node={sel}
@@ -629,6 +845,35 @@ export function FlowChartEditor({
   );
 }
 
+
+/**
+ * The seam on a rail's left edge.
+ *
+ * Sits in the gap between two columns rather than inside either, and is
+ * wider than it looks — 12px of grab for a 1px line, because a 1px target
+ * is easy to describe and miserable to hit.
+ */
+function RailHandle({
+  railKey,
+  onStart,
+  label,
+}: {
+  railKey: RailKey;
+  onStart: (e: React.PointerEvent, key: RailKey) => void;
+  label: string;
+}) {
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      onPointerDown={(e) => onStart(e, railKey)}
+      className="group absolute -left-3 top-0 bottom-0 z-10 hidden w-3 cursor-col-resize touch-none xl:block"
+    >
+      <div className="mx-auto h-full w-px bg-transparent transition-colors group-hover:bg-brand-400/70" />
+    </div>
+  );
+}
 
 // ── boxes ───────────────────────────────────────────────────────────
 

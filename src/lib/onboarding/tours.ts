@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.columns",
+    title: "Drag the columns, pop out the panel",
+    body: "The gaps between the four columns are draggable — the chart gives up or takes back whatever the rails need, and the widths are remembered. **Admin panel in its own window** opens the panel as a separate window that follows the chart live, with no save in between: useful on a second screen while you change the process.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.25a",
+  },
+  {
     id: "workspace.flowcharts.admin",
     title: "The admin panel the workflow implies",
     body: "Flow Charts reads left to right in four columns: the chart, the live form, the **Admin panel**, and the options behind whatever is selected. The admin panel — on the lighter surface — is derived from the chart: a column per question, a stage per non-question box. If a process yields a table nobody can read, you find out here rather than after the event. It also takes a link to the Google Sheet of current platform users, so registrants can be matched against existing accounts.",

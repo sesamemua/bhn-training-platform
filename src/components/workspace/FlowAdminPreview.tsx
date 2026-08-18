@@ -34,10 +34,25 @@ export function FlowAdminPreview({
 }) {
   const columns = useMemo(() => adminColumns(doc), [doc]);
   const stages = useMemo(() => processStages(doc), [doc]);
-  const [draft, setDraft] = useState(doc.settings?.rosterSheetUrl ?? "");
+  const saved = doc.settings?.rosterSheetUrl ?? "";
+  const [draft, setDraft] = useState(saved);
+
+  /**
+   * Follow the saved value when it changes from OUTSIDE this component —
+   * the popped-out panel writes the same setting, and the editor's own
+   * copy of this field would otherwise sit stale until a reload.
+   *
+   * Adjusted during render rather than in an effect: this is the case
+   * React documents for it, and it avoids a frame showing the old value.
+   * Guarded by `lastSaved` so it never fights someone mid-type.
+   */
+  const [lastSaved, setLastSaved] = useState(saved);
+  if (saved !== lastSaved) {
+    setLastSaved(saved);
+    setDraft(saved);
+  }
 
   const sheet = parseSheetUrl(draft);
-  const saved = doc.settings?.rosterSheetUrl ?? "";
 
   return (
     <div>
