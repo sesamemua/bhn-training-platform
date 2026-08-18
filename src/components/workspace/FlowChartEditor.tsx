@@ -12,7 +12,7 @@
  * while SVG gives clean lines between arbitrary points. Doing it all in
  * SVG would mean hand-laying every line of text.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Check, ExternalLink, Loader2, Plus, Undo2 } from "lucide-react";
 import {
   NODE_KINDS,
@@ -341,7 +341,7 @@ export function FlowChartEditor({
       const node = doc.nodes.find((n) => n.id === id);
       if (node && canvasPane.scrollWidth > canvasPane.clientWidth) {
         canvasPane.scrollTo({
-          left: Math.max(0, node.x + node.w / 2 - canvasPane.clientWidth / 2),
+          left: Math.max(0, (node.x + node.w / 2) * scale - canvasPane.clientWidth / 2),
           behavior: "smooth",
         });
       }
@@ -350,14 +350,48 @@ export function FlowChartEditor({
     flash(box);
     flash(row);
   };
-  useEffect(() => {
+  /**
+   * Measure the canvas pane after every render, and on window resize.
+   *
+   * This used to be a ResizeObserver alone, which is the obvious tool and
+   * turned out to be the wrong bet: in one of the browsers this runs in it
+   * never fired at all, so the pane width stayed at whatever it was on the
+   * first paint and the chart silently never rescaled. Reading the width
+   * in a layout effect covers every React-driven change — dragging a
+   * column seam, collapsing the sidebar, switching charts — and needs
+   * nothing from the environment beyond `clientWidth`.
+   *
+   * The window listener is for resizes that would not otherwise re-render.
+   */
+  const measurePane = useCallback(() => {
     const el = paneRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setPaneW(el.clientWidth));
-    ro.observe(el);
-    setPaneW(el.clientWidth);
-    return () => ro.disconnect();
+    if (el) setPaneW(el.clientWidth);
   }, []);
+
+  // No dependency list on purpose: the pane's width changes for reasons
+  // this component never sees as state — a rail dragged, the sidebar
+  // folded away, the page reflowed. The equality guard is what makes that
+  // safe, settling any render in one extra pass rather than looping.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const el = paneRef.current;
+    if (!el) return;
+    const w = el.clientWidth;
+    if (w !== paneW) setPaneW(w);
+  });
+
+  useEffect(() => {
+    window.addEventListener("resize", measurePane);
+    // Belt and braces: where ResizeObserver works it catches changes that
+    // never re-render this component, such as the sidebar collapsing.
+    const el = paneRef.current;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measurePane) : null;
+    if (el && ro) ro.observe(el);
+    return () => {
+      window.removeEventListener("resize", measurePane);
+      ro?.disconnect();
+    };
+  }, [measurePane]);
 
   // Switching charts abandons nothing — the previous one was either saved
   // or explicitly discarded, so load straight over the top.
@@ -397,10 +431,12 @@ export function FlowChartEditor({
     // Capture is an optimisation, not a requirement: if the pointer id is
     // not capturable the drag must still work rather than dying here.
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* keep dragging */ }
+    // rect is the SCALED box, so screen pixels have to be divided back
+    // into chart coordinates or a drag runs away from the pointer.
     dragRef.current = {
       id: n.id,
-      dx: e.clientX - rect.left - n.x,
-      dy: e.clientY - rect.top - n.y,
+      dx: (e.clientX - rect.left) / scale - n.x,
+      dy: (e.clientY - rect.top) / scale - n.y,
     };
     setSelected(n.id);
   };
@@ -409,8 +445,8 @@ export function FlowChartEditor({
     const d = dragRef.current;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!d || !rect) return;
-    const x = snap(Math.max(0, e.clientX - rect.left - d.dx));
-    const y = snap(Math.max(0, e.clientY - rect.top - d.dy));
+    const x = snap(Math.max(0, (e.clientX - rect.left) / scale - d.dx));
+    const y = snap(Math.max(0, (e.clientY - rect.top) / scale - d.dy));
     setDoc((cur) => ({
       ...cur,
       nodes: cur.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)),
@@ -623,10 +659,25 @@ export function FlowChartEditor({
   // scrollbar on a column layout that never used the space; tying the
   // width to the pane means it never scrolls until it has to, and the
   // spare width is available for labels that need to step aside.
-  const bounds = useMemo(() => {
-    const content = Math.max(620, ...doc.nodes.map((n) => n.x + n.w + 60));
-    const h = Math.max(560, ...doc.nodes.map((n) => n.y + n.h + 60));
-    return { w: Math.max(content, paneW), h };
+  /**
+   * The chart's own size, and how much it has to shrink to fit the column.
+   *
+   * The chart is drawn at fixed coordinates — that is what lets arrows be
+   * routed and labels placed — so "responsive" here means scaling the
+   * whole drawing to the width available, not reflowing it. Dragging a
+   * column seam then resizes the chart live instead of just revealing
+   * more or less of a fixed canvas.
+   *
+   * Floored at 0.45: past that the labels stop being readable and a
+   * scrollbar is the more honest answer.
+   */
+  const { contentH, scale, bounds } = useMemo(() => {
+    const cw = Math.max(620, ...doc.nodes.map((n) => n.x + n.w + 60));
+    const ch = Math.max(560, ...doc.nodes.map((n) => n.y + n.h + 60));
+    const sc = paneW > 0 ? Math.max(0.45, Math.min(1, paneW / cw)) : 1;
+    // Label placement works in unscaled coordinates, so the room it may
+    // use is the visible width converted back through the scale.
+    return { contentH: ch, scale: sc, bounds: { w: Math.max(cw, paneW / sc), h: ch } };
   }, [doc.nodes, paneW]);
 
   const sel = doc.nodes.find((n) => n.id === selected) ?? null;
@@ -750,15 +801,19 @@ export function FlowChartEditor({
         }}
       >
       <div ref={paneRef} className="overflow-auto rounded-lg border border-line bg-card">
+        {/* Sized in SCREEN pixels so the pane scrolls by what is visible,
+            wrapping a drawing that keeps its own coordinate system. */}
+        <div style={{ width: bounds.w * scale, height: contentH * scale }}>
         <div
           ref={canvasRef}
           onPointerMove={onCanvasPointerMove}
           onPointerUp={endDrag}
           onPointerLeave={endDrag}
-          className="relative"
+          className="relative origin-top-left"
           style={{
             width: bounds.w,
             height: bounds.h,
+            transform: scale === 1 ? undefined : `scale(${scale})`,
             backgroundImage:
               "radial-gradient(circle, color-mix(in srgb, var(--fg) 9%, transparent) 1px, transparent 1px)",
             backgroundSize: `${GRID * 2}px ${GRID * 2}px`,
@@ -796,14 +851,18 @@ export function FlowChartEditor({
             />
           ))}
         </div>
+        </div>
       </div>
 
       {/* Sticky: the point of the pane is watching the form change as you
           edit the chart, which only works if it stays on screen while you
           scroll a canvas taller than the viewport. */}
-      <aside ref={formPaneRef} className="relative min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
-          {/* Drag the seam to change how much room this column gets. */}
-          <RailHandle railKey="form" onStart={onRailDragStart} label="Resize the live form" />
+      <div className="relative min-w-0">
+        {/* OUTSIDE the aside on purpose: the aside is `overflow-auto`, which
+            clips anything positioned past its edge — the handle was there,
+            measured 32px wide, and could not be hit with a real pointer. */}
+        <RailHandle railKey="form" onStart={onRailDragStart} label="Resize the live form" />
+        <aside ref={formPaneRef} className="min-w-0 rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
         <FlowFormPreview
           doc={doc}
           answers={answers}
@@ -815,15 +874,16 @@ export function FlowChartEditor({
           selectedField={selectedField}
           focusNodeId={selected}
         />
-      </aside>
+        </aside>
+      </div>
 
       {/* The organisers' side of the same chart. A different surface on
           purpose: the other three columns are the thing being designed,
           this one is its consequence, and it should not read as more of
           the same panel. */}
-      <aside className="relative min-w-0 self-start rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
-          {/* Drag the seam to change how much room this column gets. */}
-          <RailHandle railKey="admin" onStart={onRailDragStart} label="Resize the admin panel" />
+      <div className="relative min-w-0">
+        <RailHandle railKey="admin" onStart={onRailDragStart} label="Resize the admin panel" />
+        <aside className="min-w-0 rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
         <FlowAdminPreview
           doc={doc}
           canEdit={canEdit}
@@ -832,13 +892,14 @@ export function FlowChartEditor({
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
         />
-      </aside>
+        </aside>
+      </div>
 
       {/* The options behind whatever is selected. Sticky for the same
           reason as the form: the canvas is taller than the viewport. */}
-      <aside className="relative min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
-          {/* Drag the seam to change how much room this column gets. */}
-          <RailHandle railKey="options" onStart={onRailDragStart} label="Resize the options" />
+      <div className="relative min-w-0">
+        <RailHandle railKey="options" onStart={onRailDragStart} label="Resize the options" />
+        <aside className="min-w-0 rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
         <FlowOptionsRail
           doc={doc}
           node={sel}
@@ -857,7 +918,8 @@ export function FlowChartEditor({
           onRemoveEdge={(id) => { removeEdge(id); setSelectedEdge(null); }}
           onHoverNode={(id) => setHoverNodes(id ? [id] : [])}
         />
-      </aside>
+        </aside>
+      </div>
       </div>
     </div>
   );

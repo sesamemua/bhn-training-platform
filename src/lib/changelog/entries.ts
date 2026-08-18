@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the seams actually work, and the chart scales
+  {
+    title: "Flow charts: the whole gap between columns drags, and the chart resizes with it",
+    body: "Two fixes. The drag handle filled the gap on paper but was clipped by the panel it lived inside, so most of it could not be clicked — it now sits outside the panel and the full 32px band is grabbable, edge to edge. And the chart itself now scales to whatever width its column has: drag a seam and the drawing shrinks or grows to fit instead of just revealing more or less of a fixed canvas. Boxes still follow the pointer exactly when you drag them.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: a shorter Training Week chart
   {
     title: "Flow charts: the Training Week chart is a third shorter",
