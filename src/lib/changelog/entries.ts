@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: limit boxes + selection follows you across columns
+  {
+    title: "Flow charts: session limits, and clicking one column moves the others",
+    body: "A new box type, Limit, hangs off a \"choose several\" question and says what it will accept: how many may be picked (three for Training Week, editable), and which options run at the same time. The live form enforces the count — the remaining options grey out once you hit it — and warns, without blocking, when you pick two sessions from the same slot: you can ask for both, but only one is likely to be approved. Separately, the three columns now stay in step: click a box on the chart and the live form scrolls to its questions and highlights them; click a question in the form and the chart scrolls to its box. The Registration opens box also got the height it needed for its caption.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: three columns
   {
     title: "Flow charts: chart, form and options side by side",

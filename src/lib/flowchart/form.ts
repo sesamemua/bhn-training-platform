@@ -210,3 +210,57 @@ export function suggestKey(text: string, taken: string[]): string {
   for (let i = 2; i < 100; i++) if (!taken.includes(`${base}_${i}`)) return `${base}_${i}`;
   return `${base}_${Date.now().toString(36).slice(-3)}`;
 }
+
+// ── limits ──────────────────────────────────────────────────────────
+
+/** Every limit box in the chart that governs `key`. */
+export function limitsFor(doc: ChartDoc, key: string) {
+  return doc.nodes
+    .filter((n) => n.kind === "rule" && n.limit?.field === key)
+    .map((n) => n.limit!)
+    .filter(Boolean);
+}
+
+export interface LimitState {
+  /** Most options that may be ticked, or null when uncapped. */
+  max: number | null;
+  /** True once the cap is reached — further options are not selectable. */
+  atCap: boolean;
+  /**
+   * True when MORE than the cap is already ticked. Only reachable by
+   * lowering the cap after someone has answered, but then the honest
+   * thing is to say so rather than print "3 of 2 picked".
+   */
+  over: boolean;
+  /** Clashing sets the current answer has picked more than one from. */
+  clashes: { label: string; picked: string[] }[];
+}
+
+/**
+ * How a `multi` answer stands against the limits on it.
+ *
+ * The cap is enforced (you cannot tick past it); a clash is only
+ * reported. Nothing here mutates the answer — the caller decides whether
+ * to disable a checkbox or print a warning, and both readings come from
+ * the same evaluation so they can never disagree.
+ */
+export function limitState(doc: ChartDoc, key: string, chosen: string[]): LimitState {
+  const limits = limitsFor(doc, key);
+  const maxes = limits.map((l) => l.max).filter((m): m is number => typeof m === "number");
+  const max = maxes.length ? Math.min(...maxes) : null;
+
+  const clashes: { label: string; picked: string[] }[] = [];
+  for (const l of limits) {
+    for (const c of l.clashes ?? []) {
+      const picked = c.options.filter((o) => chosen.includes(o));
+      if (picked.length > 1) clashes.push({ label: c.label, picked });
+    }
+  }
+
+  return {
+    max,
+    atCap: max !== null && chosen.length >= max,
+    over: max !== null && chosen.length > max,
+    clashes,
+  };
+}

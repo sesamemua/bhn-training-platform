@@ -25,6 +25,7 @@ import {
   type FieldType,
   type FlowEdge,
   type FlowNode,
+  type LimitDef,
   type NodeKind,
 } from "@/lib/flowchart/types";
 import { fieldsOf } from "@/lib/flowchart/form";
@@ -44,6 +45,7 @@ export function FlowOptionsRail({
   onRemoveNode,
   onStartLink,
   onPatchField,
+  onPatchLimit,
   onAddField,
   onRemoveField,
   onPatchEdge,
@@ -61,6 +63,7 @@ export function FlowOptionsRail({
   onRemoveNode: (id: string) => void;
   onStartLink: (id: string) => void;
   onPatchField: (id: string, i: number, patch: Partial<FieldDef>) => void;
+  onPatchLimit: (id: string, patch: Partial<LimitDef>) => void;
   onAddField: (id: string) => void;
   onRemoveField: (id: string, i: number) => void;
   onPatchEdge: (id: string, patch: Partial<FlowEdge>) => void;
@@ -221,6 +224,93 @@ export function FlowOptionsRail({
           <Trash2 size={12} /> Delete box
         </button>
       </div>
+
+      {node.kind === "rule" && (
+        <>
+          <Header className="mt-6">What it limits</Header>
+          <label className="block">
+            <span className={LABEL}>Question</span>
+            <select
+              value={node.limit?.field ?? ""}
+              onChange={(e) => onPatchLimit(node.id, { field: e.target.value })}
+              className={LINE}
+            >
+              <option value="">choose a question…</option>
+              {questionKeys.map((q) => (
+                <option key={q.key} value={q.key}>{q.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="mt-3 block">
+            <span className={LABEL}>Most that may be chosen</span>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={node.limit?.max ?? ""}
+              placeholder="no limit"
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                onPatchLimit(node.id, { max: Number.isFinite(n) ? Math.min(20, Math.max(1, n)) : undefined });
+              }}
+              className={`${LINE} placeholder:text-subtle`}
+            />
+          </label>
+
+          <p className={`${LABEL} mt-4 block`}>Sessions that run at the same time</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-subtle">
+            Picking more than one from a set is allowed, but the form warns
+            that only one is likely to be approved.
+          </p>
+          <div className="mt-2 space-y-3">
+            {(node.limit?.clashes ?? []).map((c, i) => (
+              <div key={i} className="rounded-md border border-line bg-elevated/40 px-3 py-2.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <input
+                    value={c.label}
+                    placeholder="When they clash, e.g. Tuesday 1 PM"
+                    onChange={(e) => onPatchLimit(node.id, {
+                      clashes: (node.limit?.clashes ?? []).map((x, j) =>
+                        j === i ? { ...x, label: e.target.value.slice(0, 60) } : x),
+                    })}
+                    className="min-w-0 flex-1 border-0 bg-transparent px-0 py-0.5 text-[12.5px] font-semibold text-fg outline-none placeholder:text-subtle"
+                  />
+                  <button
+                    onClick={() => onPatchLimit(node.id, {
+                      clashes: (node.limit?.clashes ?? []).filter((_, j) => j !== i),
+                    })}
+                    className="shrink-0 text-muted hover:text-red-500"
+                    title="Remove this clash"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+                <textarea
+                  rows={Math.min(8, Math.max(2, c.options.length + 1))}
+                  value={c.options.join("\n")}
+                  placeholder="One option per line, exactly as written in the question"
+                  onChange={(e) => onPatchLimit(node.id, {
+                    clashes: (node.limit?.clashes ?? []).map((x, j) =>
+                      j === i
+                        ? { ...x, options: e.target.value.split("\n").map((t) => t.trim()).filter(Boolean).slice(0, 20) }
+                        : x),
+                  })}
+                  className="mt-1.5 w-full resize-y rounded-md border border-line bg-elevated px-2 py-1.5 text-[12px] text-fg outline-none placeholder:text-subtle focus-visible:border-brand-500"
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => onPatchLimit(node.id, {
+              clashes: [...(node.limit?.clashes ?? []), { label: "", options: [] }],
+            })}
+            className="mt-3 inline-flex items-center gap-1 text-[12.5px] text-brand-500 hover:text-brand-400"
+          >
+            <Plus size={12} /> Add a clashing set
+          </button>
+        </>
+      )}
 
       {node.kind === "question" && (
         <>

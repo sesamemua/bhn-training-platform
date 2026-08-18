@@ -9,7 +9,7 @@
 import { z } from "zod";
 
 /** What a box means. Shape follows kind — this is the only styling input. */
-export const NODE_KINDS = ["start", "question", "step", "decision", "end", "note"] as const;
+export const NODE_KINDS = ["start", "question", "step", "decision", "end", "note", "rule"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
 export const NODE_KIND_LABEL: Record<NodeKind, string> = {
@@ -19,6 +19,7 @@ export const NODE_KIND_LABEL: Record<NodeKind, string> = {
   decision: "Decision",
   end: "End",
   note: "Note",
+  rule: "Limit",
 };
 
 /** Field types a question node can render in the linked form. */
@@ -52,6 +53,37 @@ export const FieldSchema = z.object({
 });
 export type FieldDef = z.infer<typeof FieldSchema>;
 
+/**
+ * A limit on a "choose several" question, drawn as its own box beside the
+ * question it governs.
+ *
+ * Two different things, deliberately kept apart:
+ *
+ *   • `max` is a HARD cap — you cannot tick a fourth workshop, because
+ *     three is what the week has room for.
+ *   • `clashes` are WARNINGS — two sessions in the same slot can both be
+ *     ticked, but the form says only one is likely to be approved. It is
+ *     a warning rather than a block because the registrant may genuinely
+ *     want to express a second preference, and because the organiser, not
+ *     the form, decides which one they get.
+ *
+ * It lives in the chart rather than inside the field so the constraint is
+ * visible to whoever is reading the process, and adjustable without
+ * hunting through the question's settings.
+ */
+export const LimitSchema = z.object({
+  /** The `multi` question this governs. */
+  field: z.string().min(1).max(40),
+  /** Most options that may be chosen at once. */
+  max: z.number().int().min(1).max(20).optional(),
+  /** Sets of options that run at the same time. */
+  clashes: z.array(z.object({
+    label: z.string().max(60),
+    options: z.array(z.string().max(60)).max(20),
+  })).max(10).optional(),
+});
+export type LimitDef = z.infer<typeof LimitSchema>;
+
 /** An edge condition: follow this arrow only when the answer matches. */
 export const OPS = ["is", "is not", "any of", "answered", "empty"] as const;
 export type ConditionOp = (typeof OPS)[number];
@@ -82,6 +114,8 @@ export const NodeSchema = z.object({
    * stays a readable column instead of a wall.
    */
   fields: z.array(FieldSchema).max(12).optional(),
+  /** Present on `rule` nodes: the cap and clashes it imposes. */
+  limit: LimitSchema.optional(),
 });
 
 export const EdgeSchema = z.object({

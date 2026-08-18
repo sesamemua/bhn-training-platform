@@ -73,6 +73,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
     since: "2026.09.20a",
   },
+  {
+    id: "workspace.flowcharts.limits",
+    title: "Limits on what people can pick",
+    body: "Add a **Limit** box next to any \"choose several\" question and set two things: how many options may be picked, and which options clash because they run at the same time. The count is enforced in the live form; a clash is only a warning — the registrant can ask for both Tuesday 1 PM workshops, and the form tells them only one is likely to be approved. Clicking any box now also scrolls the live form to its questions, and clicking a question scrolls the chart to its box.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.21a",
+  },
   // ─── Newsletter production workflow
   {
     id: "workspace.newsletter.calendar",

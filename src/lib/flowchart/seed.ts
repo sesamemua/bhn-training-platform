@@ -28,13 +28,15 @@ const at = (h: number, gap = 44) => {
 export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
   cursor = 0;
 
-  const n1 = { id: "n1", kind: "start" as const, x: MAIN, y: at(48), w: W, h: 48,
+  // Taller than the other pills: a start node carries a label AND an
+  // actor, and 48px put both lines hard against the rounded ends.
+  const n1 = { id: "n1", kind: "start" as const, x: MAIN, y: at(66), w: W, h: 66,
     text: "Registration opens", actor: "Coordinator" };
 
   const n2 = { id: "n2", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
     text: "Choose your sessions",
     field: { key: "sessions", type: "multi" as const, required: true,
-      help: "Up to three. The two Tuesday 1 PM workshops run against each other.",
+      help: "Pick the ones you want to attend.",
       options: [
         "Mon 26 · CCRM tour + Lunch & Learn",
         "Mon 26 · Catalent tour + Lunch & Learn",
@@ -43,6 +45,26 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
         "Tue 27 · Negotiation Skills (1 PM)",
         "Wed 28 · Innovation showcase",
       ] } };
+
+  // The limits on that pick, as their own box: what the week can hold,
+  // and which sessions run against each other. Drawn beside the question
+  // rather than buried in its settings, because "three, and the Tuesday
+  // pair clash" is part of the process a reader needs to see.
+  const n2r = { id: "n2r", kind: "rule" as const, x: SIDE, y: n2.y, w: W, h: 84,
+    text: "Up to 3 sessions · clashes flagged",
+    limit: {
+      field: "sessions",
+      max: 3,
+      clashes: [
+        {
+          label: "Tuesday 1 PM",
+          options: [
+            "Tue 27 · Communication Chameleon (1 PM)",
+            "Tue 27 · Negotiation Skills (1 PM)",
+          ],
+        },
+      ],
+    } };
 
   const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(86), w: W, h: 86,
     text: "About you",
@@ -123,10 +145,11 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
     text: "Attends" };
 
   return {
-    nodes: [n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15, n16],
+    nodes: [n1, n2, n2r, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15, n16],
     edges: [
       { id: "e1", from: "n1", to: "n2" },
       { id: "e2", from: "n2", to: "n3" },
+      { id: "e2r", from: "n2", to: "n2r", label: "limits" },
       { id: "e3", from: "n3", to: "n4" },
       { id: "e4", from: "n4", to: "n5" },
       // Trainee-only questions step aside and rejoin the spine.

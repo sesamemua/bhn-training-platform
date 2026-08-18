@@ -22,6 +22,7 @@ import {
   type FieldType,
   type FlowEdge,
   type FlowNode,
+  type LimitDef,
   type NodeKind,
 } from "@/lib/flowchart/types";
 import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
@@ -86,6 +87,23 @@ export function FlowChartEditor({
    * the last box and every label would be crammed into the column.
    */
   const [paneW, setPaneW] = useState(0);
+
+  /**
+   * Bring a box into view in the canvas pane.
+   *
+   * The mirror of the form scrolling to a selected box: whichever column
+   * you click in, all three end up pointing at the same thing. Computed
+   * from the node's own coordinates rather than by finding its element,
+   * because the box may be scrolled far outside the pane.
+   */
+  const revealNode = (id: string) => {
+    const pane = paneRef.current;
+    const node = doc.nodes.find((n) => n.id === id);
+    if (!pane || !node) return;
+    const top = node.y + node.h / 2 - pane.clientHeight / 2;
+    const left = node.x + node.w / 2 - pane.clientWidth / 2;
+    pane.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior: "smooth" });
+  };
   useEffect(() => {
     const el = paneRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -235,6 +253,17 @@ export function FlowChartEditor({
 
   const removeField = (id: string, i: number) =>
     writeFields(id, (fs) => fs.filter((_, j) => j !== i));
+
+  /** Edit a limit box's rule. A `rule` node with no limit yet gets one. */
+  const patchLimit = (id: string, patch: Partial<LimitDef>) =>
+    mutate((d) => ({
+      ...d,
+      nodes: d.nodes.map((n) =>
+        n.id === id
+          ? { ...n, limit: { field: "", ...n.limit, ...patch } }
+          : n,
+      ),
+    }));
 
   const patchEdge = (id: string, patch: Partial<FlowEdge>) =>
     mutate((d) => ({ ...d, edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
@@ -440,11 +469,12 @@ export function FlowChartEditor({
           doc={doc}
           answers={answers}
           onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
-          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); }}
+          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); revealNode(id); }}
           hoverNodes={hoverNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
           selectedField={selectedField}
+          focusNodeId={selected}
         />
       </aside>
 
@@ -462,6 +492,7 @@ export function FlowChartEditor({
           onRemoveNode={(id) => { removeNode(id); setSelected(null); setSelectedField(null); }}
           onStartLink={setLinkFrom}
           onPatchField={patchField}
+          onPatchLimit={patchLimit}
           onAddField={addField}
           onRemoveField={removeField}
           onPatchEdge={patchEdge}
@@ -484,6 +515,9 @@ const KIND_CLASS: Record<NodeKind, string> = {
   step: "rounded-md border-line-strong bg-elevated",
   decision: "rounded-md border-amber-500/60 bg-amber-500/10",
   note: "rounded-md border-dashed border-line-strong bg-transparent",
+  // A limit is a constraint on a question, not a step anyone performs —
+  // dashed like a note, but tinted so it reads as enforced, not advisory.
+  rule: "rounded-md border-dashed border-amber-500/60 bg-amber-500/8",
 };
 
 function Box({

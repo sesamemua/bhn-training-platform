@@ -8,9 +8,9 @@
  * matching disappears, because the field is no longer reachable. Nothing
  * here is a second definition of the form — it is the chart, executed.
  */
-import { useMemo } from "react";
-import { CircleAlert } from "lucide-react";
-import { missingRequired, orderedFields, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
+import { useEffect, useMemo, useRef } from "react";
+import { CircleAlert, TriangleAlert } from "lucide-react";
+import { limitState, missingRequired, orderedFields, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import {
   COMPANY_TYPES,
   OTHER as INST_OTHER,
@@ -29,6 +29,7 @@ import {
   type Affiliation,
 } from "@/lib/flowchart/vocab";
 import { FIELD_TYPE_LABEL, type ChartDoc, type FieldType } from "@/lib/flowchart/types";
+import type { LimitState } from "@/lib/flowchart/form";
 
 const INPUT =
   "mt-1 w-full rounded-md border border-line bg-elevated px-3 py-2 text-[13.5px] text-fg outline-none transition-colors focus-visible:border-brand-500";
@@ -42,6 +43,7 @@ export function FlowFormPreview({
   onHoverField,
   onSelectField,
   selectedField,
+  focusNodeId,
 }: {
   doc: ChartDoc;
   answers: Answers;
@@ -55,8 +57,24 @@ export function FlowFormPreview({
   onSelectField?: (nodeId: string, index: number) => void;
   /** Which field the rail currently has open, so the form can mark it. */
   selectedField?: { nodeId: string; index: number } | null;
+  /**
+   * The box selected on the chart. Its fields are marked, and the form
+   * scrolls to the first of them — clicking a box should take you to what
+   * it asks, not leave you to find it in a column of thirty inputs.
+   */
+  focusNodeId?: string | null;
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (!focusNodeId) return;
+    const first = fields.find((f) => f.nodeId === focusNodeId);
+    if (first) rowRefs.current[first.key]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // `fields` is intentionally excluded: this should fire when the
+    // selection changes, not on every keystroke that re-derives the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNodeId]);
   const missing = useMemo(() => missingRequired(doc, answers), [doc, answers]);
   const total = orderedFields(doc).length;
   const hidden = total - fields.length;
@@ -90,9 +108,11 @@ export function FlowFormPreview({
           const isMissing = missing.some((m) => m.key === f.key);
           const lit = hoverNodes.includes(f.nodeId);
           const open = selectedField?.nodeId === f.nodeId && selectedField.index === f.index;
+          const inFocus = !!focusNodeId && f.nodeId === focusNodeId;
           return (
             <div
               key={f.key}
+              ref={(el) => { rowRefs.current[f.key] = el; }}
               onMouseEnter={() => onHoverField?.(f.nodeId)}
               onMouseLeave={() => onHoverField?.(null)}
               // The tint is the same brand wash the box gets on the chart,
@@ -100,7 +120,7 @@ export function FlowFormPreview({
               className={`-mx-2 rounded-md px-2 py-1.5 transition-colors ${
                 open
                   ? "bg-brand-500/10 ring-1 ring-brand-400/70"
-                  : lit
+                  : inFocus || lit
                     ? "bg-brand-500/10 ring-1 ring-brand-300/50"
                     : ""
               }`}
@@ -131,6 +151,9 @@ export function FlowFormPreview({
                 options={def.options ?? []}
                 value={val}
                 onChange={(v) => onChange(f.key, v)}
+                limit={def.type === "multi"
+                  ? limitState(doc, f.key, Array.isArray(val) ? (val as string[]) : [])
+                  : undefined}
               />
               {isMissing && (
                 <p className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-amber-600">
@@ -158,11 +181,14 @@ function Field({
   options,
   value,
   onChange,
+  limit,
 }: {
   type: FieldType;
   options: string[];
   value: AnswerValue | undefined;
   onChange: (v: AnswerValue) => void;
+  /** Cap and clashes from the limit boxes attached to this question. */
+  limit?: LimitState;
 }) {
   const s = typeof value === "string" ? value : "";
   const arr = Array.isArray(value) ? (value as string[]).filter((x) => typeof x === "string") : [];
@@ -214,17 +240,54 @@ function Field({
     );
   }
   if (type === "multi") {
+    const clashing = new Set((limit?.clashes ?? []).flatMap((c) => c.picked));
     return (
-      <div className="mt-1.5 flex flex-col gap-1.5">
-        {(options.length ? options : ["Option A", "Option B"]).map((o) => (
-          <label key={o} className="flex items-center gap-1.5 text-[13px] text-fg">
-            <input
-              type="checkbox"
-              checked={arr.includes(o)}
-              onChange={(e) => onChange(e.target.checked ? [...arr, o] : arr.filter((x) => x !== o))}
-            />
-            {o}
-          </label>
+      <div className="mt-1.5">
+        {limit?.max != null && (
+          <p className={`mb-1.5 text-[11.5px] ${limit.over ? "text-amber-600" : "text-subtle"}`}>
+            {limit.over
+              ? `Choose up to ${limit.max} — you have ${arr.length}. Untick ${arr.length - limit.max}.`
+              : `Choose up to ${limit.max}. ${arr.length} of ${limit.max} picked.`}
+          </p>
+        )}
+        <div className="flex flex-col gap-1.5">
+          {(options.length ? options : ["Option A", "Option B"]).map((o) => {
+            const on = arr.includes(o);
+            // At the cap, the remaining options go quiet rather than
+            // vanishing — you can still see what you chose against.
+            const blocked = !on && !!limit?.atCap;
+            return (
+              <label
+                key={o}
+                className={`flex items-start gap-1.5 text-[13px] ${
+                  blocked ? "text-subtle" : clashing.has(o) ? "text-amber-600" : "text-fg"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={on}
+                  disabled={blocked}
+                  onChange={(e) => onChange(e.target.checked ? [...arr, o] : arr.filter((x) => x !== o))}
+                />
+                {o}
+              </label>
+            );
+          })}
+        </div>
+        {limit?.atCap && (
+          <p className="mt-1.5 text-[11.5px] text-subtle">
+            That is the limit. Untick one to swap it for another.
+          </p>
+        )}
+        {(limit?.clashes ?? []).map((c) => (
+          <p key={c.label} className="mt-1.5 flex items-start gap-1 text-[11.5px] text-amber-600">
+            <TriangleAlert size={11} className="mt-0.5 shrink-0" />
+            <span>
+              {c.picked.length} of your picks run at the same time ({c.label}). You can
+              ask for both, but only one is likely to be approved.
+            </span>
+          </p>
         ))}
       </div>
     );
