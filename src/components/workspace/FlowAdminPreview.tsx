@@ -23,6 +23,7 @@ export function FlowAdminPreview({
   canEdit,
   onSettings,
   onDoc,
+  numbers,
   hoverNodes = [],
   onHoverField,
   onFocusNode,
@@ -32,6 +33,8 @@ export function FlowAdminPreview({
   onSettings: (patch: Partial<ChartSettings>) => void;
   /** Present when this copy of the panel may rewrite the chart. */
   onDoc?: (next: ChartDoc) => void;
+  /** Box numbers, matching the badges on the chart. */
+  numbers?: Map<string, number>;
   hoverNodes?: string[];
   onHoverField?: (nodeId: string | null) => void;
   onFocusNode?: (nodeId: string) => void;
@@ -90,6 +93,7 @@ export function FlowAdminPreview({
       {view === "sheet" && (
         <FlowDataSheet
           doc={doc}
+          numbers={numbers}
           onDoc={onDoc}
           canEdit={canEdit}
           onFocusNode={onFocusNode}
@@ -129,7 +133,7 @@ export function FlowAdminPreview({
             }`}
             title="Show this box on the chart"
           >
-            {s.label}
+            {numbers?.get(s.id) ? `${numbers.get(s.id)} · ` : ""}{s.label}
           </button>
         ))}
       </div>

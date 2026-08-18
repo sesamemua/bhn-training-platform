@@ -33,6 +33,7 @@ interface Cell { row: number; col: Col }
 
 export function FlowDataSheet({
   doc,
+  numbers,
   onDoc,
   canEdit,
   onFocusNode,
@@ -40,6 +41,7 @@ export function FlowDataSheet({
   onHoverField,
 }: {
   doc: ChartDoc;
+  numbers?: Map<string, number>;
   onDoc?: (next: ChartDoc) => void;
   canEdit: boolean;
   onFocusNode?: (nodeId: string) => void;
@@ -195,6 +197,7 @@ export function FlowDataSheet({
                         <CellBody
                           col={col}
                           row={f}
+                          numbers={numbers}
                           boxes={boxes}
                           editing={on && editing && editable}
                           editable={editable}
@@ -251,6 +254,7 @@ export function FlowDataSheet({
 function CellBody({
   col,
   row,
+  numbers,
   boxes,
   editing,
   editable,
@@ -260,6 +264,7 @@ function CellBody({
 }: {
   col: Col;
   row: ReturnType<typeof orderedFields>[number];
+  numbers?: Map<string, number>;
   boxes: { id: string; text: string }[];
   editing: boolean;
   editable: boolean;
@@ -306,7 +311,7 @@ function CellBody({
       </select>
     ) : (
       <button onClick={() => onFocusNode?.(row.nodeId)} className="text-left text-muted hover:text-brand-300">
-        {row.node.text}
+        {numbers?.get(row.nodeId) ? `${numbers.get(row.nodeId)} · ` : ""}{row.node.text}
       </button>
     );
   }

@@ -45,6 +45,7 @@ export function FlowFormPreview({
   selectedField,
   focusNodeId,
   onMoveField,
+  numbers,
 }: {
   doc: ChartDoc;
   answers: Answers;
@@ -66,6 +67,8 @@ export function FlowFormPreview({
   focusNodeId?: string | null;
   /** Reorder a question within its box, straight from the form. */
   onMoveField?: (nodeId: string, index: number, dir: -1 | 1) => void;
+  /** Box numbers, so a heading here names the same box as the chart. */
+  numbers?: Map<string, number>;
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
   const missing = useMemo(() => missingRequired(doc, answers), [doc, answers]);
@@ -122,7 +125,12 @@ export function FlowFormPreview({
               {/* A box holding several fields prints its own title once,
                   so the form reads as grouped steps rather than a list. */}
               {f.groupTitle && (
-                <p className="mb-1.5 mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
+                <p className="mb-1.5 mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-400">
+                  {numbers?.get(f.nodeId) && (
+                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full border border-line-strong bg-card px-1 text-[9px] tabular-nums text-muted">
+                      {numbers.get(f.nodeId)}
+                    </span>
+                  )}
                   {f.groupTitle}
                 </p>
               )}

@@ -29,6 +29,7 @@ import {
 import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import { edgeAnchor, routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
+import { nodeNumbers } from "@/lib/flowchart/numbering";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
@@ -985,6 +986,9 @@ export function FlowChartEditor({
     return [...near];
   }, [selected, hoverNodes, doc.edges]);
 
+  /** Box numbers, so a box can be named out loud. */
+  const numbers = useMemo(() => nodeNumbers(doc), [doc]);
+
   const sel = doc.nodes.find((n) => n.id === selected) ?? null;
   const selEdge = doc.edges.find((e) => e.id === selectedEdge) ?? null;
   const questionKeys = useMemo(
@@ -1193,6 +1197,7 @@ export function FlowChartEditor({
             <Box
               key={n.id}
               node={n}
+              number={numbers.get(n.id) ?? 0}
               selected={selected === n.id || groupIds.includes(n.id)}
               hovered={litNodes.includes(n.id)}
               onHover={(on) => setHoverNodes(on ? [n.id] : [])}
@@ -1236,6 +1241,7 @@ export function FlowChartEditor({
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
           onMoveField={canEdit ? moveField : undefined}
+          numbers={numbers}
           selectedField={selectedField}
           focusNodeId={selected}
         />
@@ -1254,6 +1260,7 @@ export function FlowChartEditor({
           canEdit={canEdit}
           onSettings={patchSettings}
           onDoc={canEdit ? (next) => mutate(() => next) : undefined}
+          numbers={numbers}
           hoverNodes={litNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
@@ -1271,6 +1278,7 @@ export function FlowChartEditor({
           node={sel}
           edge={selEdge}
           selectedField={selectedField && sel && selectedField.nodeId === sel.id ? selectedField.index : null}
+          number={sel ? numbers.get(sel.id) ?? 0 : 0}
           questionKeys={questionKeys}
           canEdit={canEdit}
           onPatchNode={patchNode}
@@ -1347,6 +1355,7 @@ const KIND_CLASS: Record<NodeKind, string> = {
 
 function Box({
   node: n,
+  number,
   selected,
   hovered,
   onHover,
@@ -1359,6 +1368,7 @@ function Box({
   onText,
 }: {
   node: FlowNode;
+  number: number;
   selected: boolean;
   hovered: boolean;
   onHover: (on: boolean) => void;
@@ -1392,6 +1402,15 @@ function Box({
       style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
       data-node-id={n.id}
     >
+      {/* The box's number, for pointing at it. Outside the box's own
+          padding so it never pushes the label around. */}
+      <span
+        aria-hidden
+        className="absolute -left-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-line-strong bg-card px-1 text-[9px] font-bold tabular-nums text-muted"
+      >
+        {number}
+      </span>
+
       {editing ? (
         <input
           autoFocus

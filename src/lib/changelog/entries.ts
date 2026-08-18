@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: every box carries a number
+  {
+    title: "Flow charts: every box has a number",
+    body: "Each box now carries a small number in its corner, and the same number appears beside its questions in the live form, on its stage chip and column rows in the admin panel, in the data sheet, and in the options header. So \"box 7\" means one thing whichever column you are looking at, which makes a chart far easier to talk about. Numbers run in reading order — down the page, then across — so you can check one by counting rather than by tracing arrows. Moving a box renumbers it, because the number always describes what is on screen.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the side columns use the whole window height
   {
     title: "Flow charts: the side columns run the full height of the window",

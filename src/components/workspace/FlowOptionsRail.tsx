@@ -39,6 +39,7 @@ export function FlowOptionsRail({
   node,
   edge,
   selectedField,
+  number,
   questionKeys,
   canEdit,
   onPatchNode,
@@ -58,6 +59,8 @@ export function FlowOptionsRail({
   edge: FlowEdge | null;
   /** Which of the node's questions the form asked us to open, if any. */
   selectedField: number | null;
+  /** The selected box's number, matching its badge on the chart. */
+  number?: number;
   questionKeys: { key: string; label: string }[];
   canEdit: boolean;
   onPatchNode: (id: string, patch: Partial<FlowNode>) => void;
@@ -187,7 +190,7 @@ export function FlowOptionsRail({
 
   return (
     <div onMouseEnter={() => onHoverNode(node.id)} onMouseLeave={() => onHoverNode(null)}>
-      <Header>Selected box</Header>
+      <Header>Selected box{number ? ` · ${number}` : ""}</Header>
 
       <label className="block">
         <span className={LABEL}>Label</span>
