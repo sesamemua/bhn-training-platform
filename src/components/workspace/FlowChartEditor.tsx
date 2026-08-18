@@ -847,11 +847,13 @@ export function FlowChartEditor({
 
 
 /**
- * The seam on a rail's left edge.
+ * The seam between two columns.
  *
- * Sits in the gap between two columns rather than inside either, and is
- * wider than it looks — 12px of grab for a 1px line, because a 1px target
- * is easy to describe and miserable to hit.
+ * Centred in the gutter, not tucked against a box edge: the thing being
+ * dragged is the boundary between two columns, so the grab target is the
+ * whole 16px gap and the grip sits on its midline. Hugging the edge made
+ * it read as part of the panel to its right and put half the target on
+ * top of that panel's border.
  */
 function RailHandle({
   railKey,
@@ -868,9 +870,12 @@ function RailHandle({
       aria-orientation="vertical"
       aria-label={label}
       onPointerDown={(e) => onStart(e, railKey)}
-      className="group absolute -left-3 top-0 bottom-0 z-10 hidden w-3 cursor-col-resize touch-none xl:block"
+      className="group absolute -left-4 top-0 bottom-0 z-10 hidden w-4 cursor-col-resize touch-none xl:flex xl:items-center xl:justify-center"
     >
-      <div className="mx-auto h-full w-px bg-transparent transition-colors group-hover:bg-brand-400/70" />
+      {/* A grip rather than a hairline — a line that only appears on hover
+          is invisible until you already know it is there. */}
+      <div className="h-full w-px bg-line transition-colors group-hover:bg-brand-400/70" />
+      <div className="absolute h-9 w-1 rounded-full bg-line-strong opacity-0 transition-opacity group-hover:opacity-100" />
     </div>
   );
 }
