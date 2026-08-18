@@ -1403,6 +1403,19 @@ export function Sidebar({
    */
   const collapsed = useSyncExternalStore(subscribeRailCollapsed, readRailCollapsed, () => false);
   const toggleCollapsed = () => writeRailCollapsed(!collapsed);
+
+  /**
+   * Mirror the state onto <html> so plain CSS can respond to it.
+   *
+   * A page cannot widen the layout container it renders inside from React
+   * — the container is an ancestor, and a server component at that. An
+   * attribute on the root plus one `:has()` rule lets a page opt into the
+   * width the collapsed rail just freed, with no context and no prop
+   * threaded through the layout.
+   */
+  useEffect(() => {
+    document.documentElement.dataset.rail = collapsed ? "collapsed" : "open";
+  }, [collapsed]);
   // Close drawer on route change so the next page isn't covered.
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   // Body scroll-lock while the drawer is open.

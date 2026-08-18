@@ -10,6 +10,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { FlowChartEditor, type ChartRecord } from "@/components/workspace/FlowChartEditor";
+import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { parseChart } from "@/lib/flowchart/types";
 import { TRAINING_WEEK_FLOW } from "@/lib/flowchart/seed";
 
@@ -47,6 +48,9 @@ export default async function FlowChartsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Four columns of chart, form, admin panel and options are worth
+          every pixel the collapsed rail gave back. */}
+      <FullWidthWhenCollapsed />
       <PageHero
         eyebrow={<><Workflow size={11} /> Workspace</>}
         title="Flow charts"

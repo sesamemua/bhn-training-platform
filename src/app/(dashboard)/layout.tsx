@@ -132,7 +132,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <LayoutBannersSlot /> inside DSPageHeader, fed by
             <LayoutBannerProvider> wrapping the page content below. */}
         <LayoutBannerProvider data={bannerData}>
-          <div className="max-w-screen-2xl mx-auto px-6 py-8 pt-16">
+          <div className="dashboard-container max-w-screen-2xl mx-auto px-6 py-8 pt-16">
             {children}
             {/* Portal target for <DemoSeedAndClearTray />. The tray
                 component uses createPortal to render itself here no

@@ -25,7 +25,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // ── Collapsible sidebar
   {
     title: "The menu folds away",
-    body: "There is a button at the top of the sidebar, beside the notification bell, that hides it. It hides the whole thing rather than shrinking it to a strip of icons — pages like Flow Charts and the Gantt views want every pixel of width, and a narrow icon rail still costs the width while being harder to read. A small button stays in the top-left corner to bring it back, in the same place as the menu button on a phone. Your choice is remembered, and it applies across tabs.",
+    body: "There is a button at the top of the sidebar, beside the notification bell, that hides it. It hides the whole thing rather than shrinking it to a strip of icons — pages like Flow Charts and the Gantt views want every pixel of width, and a narrow icon rail still costs the width while being harder to read. A small button stays in the top-left corner to bring it back, in the same place as the menu button on a phone. Your choice is remembered, and it applies across tabs. Flow Charts goes further: with the menu hidden it drops the usual centred page width and runs the full window, so the chart column grows from about 440px to 710px on a standard screen.",
     kind: "improvement",
     visibleTo: ALL,
     daysAgo: 0,

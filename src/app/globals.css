@@ -4301,3 +4301,19 @@ h1, h2, h3 {
 @media (prefers-reduced-motion: reduce) {
   .fc-flash { animation: none; }
 }
+
+/* ── collapsed rail: let a page claim the width it freed ───────────────
+   The dashboard container is centred at max-w-screen-2xl, which is right
+   for reading and wrong for a four-column workspace. A page opts in by
+   rendering `.wants-full-width`; the container only widens when the rail
+   is actually collapsed, so nothing reflows for people who keep the menu
+   open. Both flags live on <html> — the page sets `data-wide` by
+   rendering <FullWidthWhenCollapsed/>, the sidebar sets `data-rail` —
+   because a page cannot style the server-rendered container it lives
+   inside, and the `:has()` version of this rule was silently dropped at
+   build time. */
+:root[data-rail="collapsed"][data-wide="1"] .dashboard-container {
+  max-width: none;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
