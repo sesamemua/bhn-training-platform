@@ -65,6 +65,13 @@ export function FlowAdminPanelWindow({ canEdit }: { canEdit: boolean }) {
     );
   }
 
+  const onEditDoc = (next: ChartDoc) => {
+    // Applied here first so the grid does not lag a round-trip behind the
+    // typing, then sent to the editor, which owns the document.
+    setDoc(next);
+    postFlow(channelRef.current, { type: "doc-edit", doc: next });
+  };
+
   return (
     <div className="min-h-screen bg-elevated">
       <div className="mx-auto max-w-2xl px-4 py-4">
@@ -78,7 +85,7 @@ export function FlowAdminPanelWindow({ canEdit }: { canEdit: boolean }) {
             )}
           </p>
         </div>
-        <FlowAdminPreview doc={doc} canEdit={canEdit} onSettings={onSettings} />
+        <FlowAdminPreview doc={doc} canEdit={canEdit} onSettings={onSettings} onDoc={canEdit ? onEditDoc : undefined} />
       </div>
     </div>
   );

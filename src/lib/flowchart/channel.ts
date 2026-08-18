@@ -23,6 +23,13 @@ export type FlowMessage =
   | { type: "doc"; doc: ChartDoc; title: string }
   /** Panel → editor: change a chart-level setting. */
   | { type: "settings"; patch: Partial<ChartSettings> }
+  /**
+   * Panel → editor: the whole document, after an edit made in the sheet.
+   * The panel holds the document already, so it computes the result with
+   * the same functions the editor would and sends the answer, rather than
+   * the two windows growing separate half-implementations of each edit.
+   */
+  | { type: "doc-edit"; doc: ChartDoc }
   /** Editor → panel: the editor is going away. */
   | { type: "editor-closed" };
 
@@ -55,6 +62,7 @@ export function readFlow(e: MessageEvent): FlowMessage | null {
     case "editor-closed":
       return d;
     case "doc":
+    case "doc-edit":
       return d.doc && typeof d.doc === "object" ? d : null;
     case "settings":
       return d.patch && typeof d.patch === "object" ? d : null;

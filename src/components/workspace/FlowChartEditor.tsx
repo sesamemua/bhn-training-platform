@@ -565,10 +565,12 @@ export function FlowChartEditor({
   const docRef = useRef(doc);
   const titleRef = useRef(active?.title ?? "");
   const patchSettingsRef = useRef(patchSettings);
+  const applyDocRef = useRef((next: ChartDoc) => mutate(() => next));
   useEffect(() => {
     docRef.current = doc;
     titleRef.current = active?.title ?? "";
     patchSettingsRef.current = patchSettings;
+    applyDocRef.current = (next: ChartDoc) => mutate(() => next);
   });
 
   const channelRef = useRef<BroadcastChannel | null>(null);
@@ -583,6 +585,11 @@ export function FlowChartEditor({
         postFlow(ch, { type: "doc", doc: docRef.current, title: titleRef.current });
       } else if (m.type === "settings") {
         patchSettingsRef.current(m.patch);
+      } else if (m.type === "doc-edit") {
+        // Goes through mutate() so it lands in the undo history like any
+        // other edit — a change made in the other window should be as
+        // undoable here as one made in this one.
+        applyDocRef.current(m.doc);
       }
     };
     const bye = () => postFlow(ch, { type: "editor-closed" });
@@ -888,6 +895,7 @@ export function FlowChartEditor({
           doc={doc}
           canEdit={canEdit}
           onSettings={patchSettings}
+          onDoc={canEdit ? (next) => mutate(() => next) : undefined}
           hoverNodes={hoverNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}

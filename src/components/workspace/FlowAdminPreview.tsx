@@ -13,14 +13,16 @@
  * plausible names would make a mock-up look like data.
  */
 import { useMemo, useState } from "react";
-import { CircleAlert, ExternalLink, Table2 } from "lucide-react";
+import { CircleAlert, ExternalLink, Rows3, Table2 } from "lucide-react";
 import { adminColumns, parseSheetUrl, processStages } from "@/lib/flowchart/admin";
 import type { ChartDoc, ChartSettings } from "@/lib/flowchart/types";
+import { FlowDataSheet } from "./FlowDataSheet";
 
 export function FlowAdminPreview({
   doc,
   canEdit,
   onSettings,
+  onDoc,
   hoverNodes = [],
   onHoverField,
   onFocusNode,
@@ -28,6 +30,8 @@ export function FlowAdminPreview({
   doc: ChartDoc;
   canEdit: boolean;
   onSettings: (patch: Partial<ChartSettings>) => void;
+  /** Present when this copy of the panel may rewrite the chart. */
+  onDoc?: (next: ChartDoc) => void;
   hoverNodes?: string[];
   onHoverField?: (nodeId: string | null) => void;
   onFocusNode?: (nodeId: string) => void;
@@ -36,6 +40,7 @@ export function FlowAdminPreview({
   const stages = useMemo(() => processStages(doc), [doc]);
   const saved = doc.settings?.rosterSheetUrl ?? "";
   const [draft, setDraft] = useState(saved);
+  const [view, setView] = useState<"summary" | "sheet">("summary");
 
   /**
    * Follow the saved value when it changes from OUTSIDE this component —
@@ -64,6 +69,37 @@ export function FlowAdminPreview({
           {columns.length} columns · {stages.length} stages
         </p>
       </div>
+
+      {/* Two readings of the same thing: the shape of the panel, or its
+          contents as a grid you can work in. */}
+      <div className="mb-3 flex gap-4 border-b border-line pb-2 text-[11px] font-bold uppercase tracking-[0.12em]">
+        {([["summary", "Overview"], ["sheet", "Data sheet"]] as const).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`-mb-2 inline-flex items-center gap-1 border-b-2 pb-2 transition-colors ${
+              view === v ? "border-brand-400 text-brand-400" : "border-transparent text-subtle hover:text-muted"
+            }`}
+          >
+            {v === "sheet" && <Rows3 size={11} />}
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "sheet" && (
+        <FlowDataSheet
+          doc={doc}
+          onDoc={onDoc}
+          canEdit={canEdit}
+          onFocusNode={onFocusNode}
+          hoverNodes={hoverNodes}
+          onHoverField={onHoverField}
+        />
+      )}
+
+      {view === "summary" && (
+      <>
 
       <p className="pb-4 text-[12px] leading-relaxed text-muted">
         Built from the chart. Every question becomes a column; every box
@@ -139,6 +175,9 @@ export function FlowAdminPreview({
             decision reads better on the person&rsquo;s own record than in the list.
           </span>
         </p>
+      )}
+
+      </>
       )}
 
       {/* ── the roster sheet ───────────────────────────────────── */}

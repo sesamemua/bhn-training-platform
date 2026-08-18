@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.sheet",
+    title: "The form as a spreadsheet",
+    body: "The admin panel's **Data sheet** tab lists every question as a row — label, key, type, required, choices, and which box asks it. Arrow keys move, Enter edits, Escape backs out. It opens **locked**; press the padlock to make changes, then edit cells, drag rows to reorder, delete, or add. Everything you do there rewrites the chart and the live form, and Undo covers it.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.26a",
+  },
+  {
     id: "workspace.flowcharts.columns",
     title: "Drag the columns, pop out the panel",
     body: "The gaps between the four columns are draggable — the chart gives up or takes back whatever the rails need, and the widths are remembered. **Admin panel in its own window** opens the panel as a separate window that follows the chart live, with no save in between: useful on a second screen while you change the process.",

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Admin panel: a spreadsheet view of the questions
+  {
+    title: "Admin panel: edit the form as a spreadsheet",
+    body: "The admin panel has a **Data sheet** tab: every question as a row, with columns for the label, the answer key, the type, whether it is required, the choices, and which box asks it. It drives like a spreadsheet — arrow keys move, Enter or a double-click edits a cell, Escape backs out, Tab goes right, row numbers down the left. It opens **locked**, and stays read-only until you press the padlock, because a grid you can type into by accident is a good way to change a live form without meaning to. Unlocked, you can edit any cell, drag a row by its handle to reorder it (or onto another group to move it there), delete a row, and add questions. Every change flows straight to the chart and the live form, and Undo works on all of it.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the seams actually work, and the chart scales
   {
     title: "Flow charts: the whole gap between columns drags, and the chart resizes with it",
