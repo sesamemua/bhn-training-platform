@@ -21,6 +21,7 @@ import {
   type FieldDef,
   type FieldType,
   type FlowEdge,
+  type ChartSettings,
   type FlowNode,
   type LimitDef,
   type NodeKind,
@@ -30,6 +31,7 @@ import { routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
+import { FlowAdminPreview } from "./FlowAdminPreview";
 
 /** Keep a computed scroll position inside what the pane can actually do. */
 function clampScroll(pane: HTMLElement, top: number): number {
@@ -132,6 +134,13 @@ export function FlowChartEditor({
    * one out, so "this field's settings" is one click from the field.
    */
   const [selectedField, setSelectedField] = useState<{ nodeId: string; index: number } | null>(null);
+  /**
+   * The middle column shows one of two readings of the same chart: what a
+   * registrant fills in, or what the organisers see afterwards. They are
+   * the same document, so they belong in the same slot rather than on
+   * separate pages where they could be edited out of step.
+   */
+  const [middle, setMiddle] = useState<"form" | "admin">("form");
   const [answers, setAnswers] = useState<Answers>({});
   /**
    * The node the pointer is over, on either side of the split. Hovering a
@@ -364,6 +373,9 @@ export function FlowChartEditor({
       ),
     }));
 
+  const patchSettings = (patch: Partial<ChartSettings>) =>
+    mutate((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
+
   const patchEdge = (id: string, patch: Partial<FlowEdge>) =>
     mutate((d) => ({ ...d, edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
 
@@ -565,17 +577,41 @@ export function FlowChartEditor({
           edit the chart, which only works if it stays on screen while you
           scroll a canvas taller than the viewport. */}
       <aside ref={formPaneRef} className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
-        <FlowFormPreview
-          doc={doc}
-          answers={answers}
-          onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
-          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
-          hoverNodes={hoverNodes}
-          onHoverField={(id) => setHoverNodes(id ? [id] : [])}
-          onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
-          selectedField={selectedField}
-          focusNodeId={selected}
-        />
+        <div className="mb-3 flex gap-4 border-b border-line pb-2 text-[11px] font-bold uppercase tracking-[0.12em]">
+          {(["form", "admin"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setMiddle(v)}
+              className={`-mb-2 border-b-2 pb-2 transition-colors ${
+                middle === v ? "border-brand-400 text-brand-400" : "border-transparent text-subtle hover:text-muted"
+              }`}
+            >
+              {v === "form" ? "What they fill in" : "What you see"}
+            </button>
+          ))}
+        </div>
+        {middle === "form" ? (
+          <FlowFormPreview
+            doc={doc}
+            answers={answers}
+            onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
+            onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
+            hoverNodes={hoverNodes}
+            onHoverField={(id) => setHoverNodes(id ? [id] : [])}
+            onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
+            selectedField={selectedField}
+            focusNodeId={selected}
+          />
+        ) : (
+          <FlowAdminPreview
+            doc={doc}
+            canEdit={canEdit}
+            onSettings={patchSettings}
+            hoverNodes={hoverNodes}
+            onHoverField={(id) => setHoverNodes(id ? [id] : [])}
+            onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
+          />
+        )}
       </aside>
 
       {/* The options behind whatever is selected. Sticky for the same
@@ -653,7 +689,7 @@ function Box({
       onMouseLeave={() => onHover(false)}
       onClick={onSelect}
       onDoubleClick={() => canEdit && setEditing(true)}
-      className={`absolute flex flex-col items-center justify-center gap-0.5 border px-3 text-center transition-shadow ${KIND_CLASS[n.kind]} ${
+      className={`absolute flex flex-col items-center justify-center gap-0.5 border px-4 py-2.5 text-center transition-shadow ${KIND_CLASS[n.kind]} ${
         canEdit ? "cursor-grab active:cursor-grabbing" : ""
       } ${selected ? "shadow-card-hover ring-2 ring-brand-500/60" : hovered ? "shadow-card-hover ring-2 ring-brand-300/70" : ""} ${
         linking && !isLinkSource ? "ring-1 ring-brand-400/40" : ""

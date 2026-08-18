@@ -14,19 +14,27 @@
 import type { ChartDoc } from "./types";
 
 const MAIN = 60;   // the spine every step sits on
-const SIDE = 340;  // where a branch steps out to, and rejoins from
+const SIDE = 420;  // where a branch steps out to, and rejoins from
 const W = 250;
+const TOP = 34;    // clear air above the first box
+const GAP = 54;    // between one step and the next
+
+/**
+ * The lane gap is 110px, not the 30 it started at. A branch sitting almost
+ * against the spine reads as part of it, and left the arrow between them
+ * no room to be seen — the two columns have to look like two columns.
+ */
 
 /** Vertical cursor, so spacing stays even however the boxes change. */
-let cursor = 0;
-const at = (h: number, gap = 44) => {
+let cursor = TOP;
+const at = (h: number, gap = GAP) => {
   const top = cursor;
   cursor += h + gap;
   return top;
 };
 
 export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
-  cursor = 0;
+  cursor = TOP;
 
   // Taller than the other pills: a start node carries a label AND an
   // actor, and 48px put both lines hard against the rounded ends.

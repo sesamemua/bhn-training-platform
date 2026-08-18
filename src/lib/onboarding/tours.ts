@@ -93,6 +93,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
     since: "2026.09.22a",
   },
+  {
+    id: "workspace.flowcharts.admin",
+    title: "The admin panel the workflow implies",
+    body: "Switch the middle column to **What you see** and the chart shows the registrations table it produces: a column per question, a stage per non-question box. If a process yields a table nobody can read, you find out here rather than after the event. The same panel takes a link to the Google Sheet of current platform users, so registrants can be matched against existing accounts.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.23a",
+  },
   // ─── Newsletter production workflow
   {
     id: "workspace.newsletter.calendar",

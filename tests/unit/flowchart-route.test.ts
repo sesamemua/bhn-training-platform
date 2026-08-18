@@ -129,7 +129,7 @@ test("a wall of boxes still yields a box-free route", () => {
  */
 test("the seeded chart stays narrow enough not to scroll sideways", () => {
   const right = Math.max(...TRAINING_WEEK_FLOW.nodes.map((n) => n.x + n.w));
-  assert.ok(right <= 620, `chart is ${right}px wide; it should stay within one pane`);
+  assert.ok(right <= 760, `chart is ${right}px wide; it should stay within one pane`);
   // At most two columns: the spine, plus the lane branches step out to.
   const columns = new Set(TRAINING_WEEK_FLOW.nodes.map((n) => n.x));
   assert.ok(columns.size <= 2, `expected a spine and one branch lane, got ${columns.size} columns`);

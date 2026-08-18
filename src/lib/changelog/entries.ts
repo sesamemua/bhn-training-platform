@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the admin panel the workflow implies, plus spacing
+  {
+    title: "Flow charts: see the admin panel your workflow produces",
+    body: "The middle column now switches between two readings of the same chart — \"What they fill in\" (the live form) and \"What you see\" (the registrations table the organisers get). The table is derived, not designed separately: every question becomes a column, every box that is not a question becomes a stage a registrant can sit in, and it warns when the process has produced a table too wide to read. There is also a field to drop in the Google Sheet of current BHN Training Platform users, so the panel can eventually mark which registrants already have an account; the link is validated and stored with the chart, though nothing is read from the sheet yet. Separately the chart got a spacing pass: clear air above the first box, a wider gap between the spine and the branch lane, more room between steps, and more padding inside every box.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Institution picker: most likely regions first
   {
     title: "Institution picker leads with Ontario, Quebec and BC",

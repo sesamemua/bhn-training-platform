@@ -132,9 +132,23 @@ export const EdgeSchema = z.object({
   when: ConditionSchema.optional(),
 });
 
+/** Chart-level settings that are not part of the drawing. */
+export const ChartSettingsSchema = z.object({
+  /**
+   * A Google Sheet of the platform's current users, so the admin panel can
+   * say whether a registrant already has an account instead of making
+   * someone check by hand. Stored as the URL that was pasted; the id is
+   * parsed out at read time so a link that changes shape still works.
+   */
+  rosterSheetUrl: z.string().max(500).optional(),
+  rosterSheetLabel: z.string().max(80).optional(),
+});
+export type ChartSettings = z.infer<typeof ChartSettingsSchema>;
+
 export const ChartSchema = z.object({
   nodes: z.array(NodeSchema).max(120),
   edges: z.array(EdgeSchema).max(240),
+  settings: ChartSettingsSchema.optional(),
 });
 
 export type FlowNode = z.infer<typeof NodeSchema>;
