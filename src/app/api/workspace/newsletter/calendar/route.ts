@@ -324,11 +324,31 @@ export async function POST(req: NextRequest) {
       sentByName: viewerName,
       overrides: parsed.data.overrides,
       deliverMode: parsed.data.deliverMode,
-      // Resend: the claim exists to stop the cron double-sending, not to
-      // stop a human deliberately chasing again.
-      force: parsed.data.force,
+      // A human pressing Send has seen the history and the recipients, so
+      // this always sends. The claim exists to stop the CRON firing the
+      // same reminder twice; applied to a human it silently swallowed
+      // every retry — once a reminder was sent, skipped, or failed, the
+      // claim could never be taken again and the send became a no-op that
+      // still reported success.
+      force: parsed.data.force ?? true,
     });
     const cycles = await listCycles(currentMonthIso());
+
+    // Anything that did not actually reach a mailbox is an error here.
+    // Returning ok for these is what made "send" look like it worked
+    // while nothing left the building.
+    if (result.status === "skipped") {
+      return NextResponse.json(
+        { error: "Email isn't configured on this platform (no SMTP), so nothing was delivered.", cycles },
+        { status: 502 },
+      );
+    }
+    if (result.status === "failed") {
+      return NextResponse.json({ error: result.error ?? "The mail server rejected it.", cycles }, { status: 502 });
+    }
+    if (result.status === "already") {
+      return NextResponse.json({ error: "Already sent — nothing was sent again.", cycles }, { status: 409 });
+    }
     return NextResponse.json({ ok: true, result, cycles });
   }
 

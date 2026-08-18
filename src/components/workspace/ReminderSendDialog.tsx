@@ -229,7 +229,9 @@ export function ReminderSendDialog({
     }
   }
 
-  const manual = preview?.mode === "manual";
+  // Follows the toggle, not the reminder's stored mode — the banner and
+  // the button must describe the send about to happen.
+  const manual = deliverMode === "manual";
   const recipients = splitEmails(to);
   const invalid = recipients.filter((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
   const canSend = !!preview && !loading && !sending && recipients.length > 0 && invalid.length === 0;
@@ -279,8 +281,10 @@ export function ReminderSendDialog({
                   paras: toParas(body),
                 },
                 deliverMode,
-                // Already sent once? Then this is a deliberate resend.
-                force: preview?.status === "sent",
+                // Anything that is not still pending has already consumed
+                // its one-shot claim, so a resend must force past it —
+                // skipped and failed included, not just sent.
+                force: preview?.status !== "pending",
               })
             }
             className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-4 py-1.5 text-[13px] font-bold text-white transition hover:bg-brand-700 disabled:opacity-50"
