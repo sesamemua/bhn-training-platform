@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the side columns use the whole window height
+  {
+    title: "Flow charts: the side columns run the full height of the window",
+    body: "The live form, admin panel and options columns were capped at 80% of the window, so they stopped well short of the chart beside them and wasted the bottom of the screen. They now run to the bottom edge and scroll inside themselves, which on a normal monitor is about a fifth more of each visible at a time.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: marquee selection and group move
   {
     title: "Flow charts: select several boxes at once and move them together",

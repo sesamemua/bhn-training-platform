@@ -1226,7 +1226,7 @@ export function FlowChartEditor({
             clips anything positioned past its edge — the handle was there,
             measured 32px wide, and could not be hit with a real pointer. */}
         <RailHandle railKey="form" onStart={onRailDragStart} label="Resize the live form" />
-        <aside ref={formPaneRef} className="min-w-0 rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+        <aside ref={formPaneRef} className="min-w-0 rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-auto">
         <FlowFormPreview
           doc={doc}
           answers={answers}
@@ -1248,7 +1248,7 @@ export function FlowChartEditor({
           the same panel. */}
       <div className="relative min-w-0">
         <RailHandle railKey="admin" onStart={onRailDragStart} label="Resize the admin panel" />
-        <aside ref={adminPaneRef} className="min-w-0 rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+        <aside ref={adminPaneRef} className="min-w-0 rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-auto">
         <FlowAdminPreview
           doc={doc}
           canEdit={canEdit}
@@ -1265,7 +1265,7 @@ export function FlowChartEditor({
           reason as the form: the canvas is taller than the viewport. */}
       <div className="relative min-w-0">
         <RailHandle railKey="options" onStart={onRailDragStart} label="Resize the options" />
-        <aside className="min-w-0 rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+        <aside className="min-w-0 rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-auto">
         <FlowOptionsRail
           doc={doc}
           node={sel}
