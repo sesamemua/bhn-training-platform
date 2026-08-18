@@ -183,6 +183,41 @@ function writeRails(next: RailWidths) {
   railListeners.forEach((fn) => fn());
 }
 
+/**
+ * Unsaved work, kept out of the page's own memory.
+ *
+ * The editor holds a whole document in state and only writes it on Save,
+ * so anything that unmounts the component — a crash, a stray reload, a
+ * closed tab — used to take the edits with it. A draft per chart costs one
+ * localStorage write per keystroke-ish and removes that whole class of
+ * loss. It is offered back rather than applied silently: waking up to a
+ * chart you do not recognise is its own kind of bad.
+ */
+const DRAFT_PREFIX = "bhn-flowchart-draft:";
+
+interface Draft { at: number; doc: ChartDoc }
+
+function readDraft(chartId: string): Draft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_PREFIX + chartId);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Draft;
+    return d && d.doc && Array.isArray(d.doc.nodes) ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(chartId: string, doc: ChartDoc) {
+  try {
+    localStorage.setItem(DRAFT_PREFIX + chartId, JSON.stringify({ at: Date.now(), doc }));
+  } catch { /* quota or private mode — the editor still works */ }
+}
+
+function clearDraft(chartId: string) {
+  try { localStorage.removeItem(DRAFT_PREFIX + chartId); } catch { /* nothing to do */ }
+}
+
 const GRID = 10;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -456,6 +491,29 @@ export function FlowChartEditor({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedEdge, canEdit]);
+
+  /** Offer to restore, rather than silently applying someone's old draft. */
+  const [draftOffer, setDraftOffer] = useState<Draft | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    const d = readDraft(active.id);
+    // Only worth offering if it actually differs from what the server has.
+    // Read here rather than during render: localStorage does not exist on
+    // the server, and deriving the banner in a memo would make the first
+    // client render disagree with the markup Next sent.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraftOffer(d && JSON.stringify(d.doc) !== JSON.stringify(active.data) ? d : null);
+    // Deliberately keyed on the chart, not on `doc`: this is the question
+    // asked when a chart is opened, not after every edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id]);
+
+  useEffect(() => {
+    if (!active || !dirty) return;
+    const id = window.setTimeout(() => writeDraft(active.id, doc), 400);
+    return () => window.clearTimeout(id);
+  }, [doc, dirty, active]);
 
   const mutate = useCallback((next: (d: ChartDoc) => ChartDoc) => {
     setDoc((cur) => {
@@ -763,6 +821,8 @@ export function FlowChartEditor({
       if (!res.ok || !j.ok) { setMsg(j.error ?? "Could not save."); return; }
       setCharts((cur) => cur.map((c) => (c.id === active.id ? { ...c, data: doc } : c)));
       setDirty(false);
+      clearDraft(active.id);
+      setDraftOffer(null);
       setMsg("Saved.");
     } finally {
       setSaving(false);
@@ -898,6 +958,33 @@ export function FlowChartEditor({
           </>
         )}
       </div>
+
+      {draftOffer && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-amber-500/60 bg-amber-500/8 px-3 py-2">
+          <p className="text-[12.5px] text-fg">
+            Unsaved changes from {new Date(draftOffer.at).toLocaleString()} were kept
+            after this page closed.
+          </p>
+          <button
+            onClick={() => {
+              mutate(() => draftOffer.doc);
+              setDraftOffer(null);
+            }}
+            className="text-[12.5px] font-semibold text-brand-400 hover:text-brand-200"
+          >
+            Restore them
+          </button>
+          <button
+            onClick={() => {
+              if (active) clearDraft(active.id);
+              setDraftOffer(null);
+            }}
+            className="text-[12.5px] text-muted hover:text-fg"
+          >
+            Discard
+          </button>
+        </div>
+      )}
 
       {msg && <p className="mt-3 text-[12.5px] text-muted">{msg}</p>}
 

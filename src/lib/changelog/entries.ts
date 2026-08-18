@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: unsaved work survives a crash
+  {
+    title: "Flow charts: unsaved changes are no longer lost when the page breaks",
+    body: "Two changes after reports of the editor dying mid-edit and taking the work with it. Your working chart is now kept as you go, so if the page crashes, reloads or is closed, opening it again offers the unsaved version back — you choose whether to restore or discard it. And a crash inside the editor no longer blanks the whole page: it shows a panel with the actual error message and a Try again button, which both keeps the rest of the page usable and gives us the one detail needed to fix the underlying fault. If you hit it again, please send that message.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: live connector, editable arrows, field reordering
   {
     title: "Flow charts: draw connections live, move arrows, reorder questions",

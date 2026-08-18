@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { FlowChartEditor, type ChartRecord } from "@/components/workspace/FlowChartEditor";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
+import { FlowChartBoundary } from "@/components/workspace/FlowChartBoundary";
 import { parseChart } from "@/lib/flowchart/types";
 import { TRAINING_WEEK_FLOW } from "@/lib/flowchart/seed";
 
@@ -56,7 +57,9 @@ export default async function FlowChartsPage() {
         title="Flow charts"
         description="Draw how a process actually runs. Drag the boxes, connect them, rename anything."
       />
-      <FlowChartEditor charts={charts} canEdit={canEdit} />
+      <FlowChartBoundary>
+        <FlowChartEditor charts={charts} canEdit={canEdit} />
+      </FlowChartBoundary>
     </div>
   );
 }
