@@ -29,7 +29,8 @@ import {
   type NodeKind,
 } from "@/lib/flowchart/types";
 import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
-import { midpointWithDir, routeEdge, toPath } from "@/lib/flowchart/route";
+import { routeEdge, toPath } from "@/lib/flowchart/route";
+import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { FlowFormPreview } from "./FlowFormPreview";
 
 const GRID = 10;
@@ -73,7 +74,23 @@ export function FlowChartEditor({
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const paneRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
+  /**
+   * How wide the canvas pane actually is. The chart only needs ~650px, but
+   * the pane is usually much wider, and that leftover width is where a
+   * blocked arrow label goes. Without measuring it the canvas would end at
+   * the last box and every label would be crammed into the column.
+   */
+  const [paneW, setPaneW] = useState(0);
+  useEffect(() => {
+    const el = paneRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setPaneW(el.clientWidth));
+    ro.observe(el);
+    setPaneW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
 
   // Switching charts abandons nothing — the previous one was either saved
   // or explicitly discarded, so load straight over the top.
@@ -259,15 +276,16 @@ export function FlowChartEditor({
     }
   };
 
-  // The canvas is only as wide as the chart needs. A generous minimum
-  // width guaranteed a horizontal scrollbar on a column layout that never
-  // used the space — scrolling sideways to see nothing is worse than a
-  // narrow canvas.
+  // The canvas fills its pane, and grows past it only when the chart is
+  // genuinely wider. A fixed generous minimum used to force a horizontal
+  // scrollbar on a column layout that never used the space; tying the
+  // width to the pane means it never scrolls until it has to, and the
+  // spare width is available for labels that need to step aside.
   const bounds = useMemo(() => {
-    const w = Math.max(620, ...doc.nodes.map((n) => n.x + n.w + 60));
+    const content = Math.max(620, ...doc.nodes.map((n) => n.x + n.w + 60));
     const h = Math.max(560, ...doc.nodes.map((n) => n.y + n.h + 60));
-    return { w, h };
-  }, [doc.nodes]);
+    return { w: Math.max(content, paneW), h };
+  }, [doc.nodes, paneW]);
 
   const sel = doc.nodes.find((n) => n.id === selected) ?? null;
   const selEdge = doc.edges.find((e) => e.id === selectedEdge) ?? null;
@@ -361,7 +379,7 @@ export function FlowChartEditor({
 
       {/* ── canvas + live form, side by side ─────────────────────── */}
       <div className="mt-3 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="overflow-auto rounded-lg border border-line bg-card">
+      <div ref={paneRef} className="overflow-auto rounded-lg border border-line bg-card">
         <div
           ref={canvasRef}
           onPointerMove={onCanvasPointerMove}
@@ -382,6 +400,7 @@ export function FlowChartEditor({
             onSelect={canEdit ? setSelectedEdge : undefined}
             hoverNodes={hoverNodes}
             onHoverEdge={(e) => setHoverNodes(e ? [e.from, e.to] : [])}
+            bounds={bounds}
           />
 
           {doc.nodes.map((n) => (
@@ -725,14 +744,35 @@ function Arrows({
   onSelect,
   hoverNodes,
   onHoverEdge,
+  bounds,
 }: {
   doc: ChartDoc;
   selectedEdge: string | null;
   onSelect?: (id: string) => void;
   hoverNodes: string[];
   onHoverEdge: (e: { from: string; to: string } | null) => void;
+  bounds: { w: number; h: number };
 }) {
   const byId = new Map(doc.nodes.map((n) => [n.id, n]));
+
+  // Route every arrow first, then place all the labels together. Labels
+  // have to know about each other — placed one at a time in isolation they
+  // happily stack on the same free spot.
+  const laid = doc.edges.flatMap((e) => {
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (!a || !b) return [];
+    const points = routeEdge(a, b, doc.nodes);
+    const text = e.label ?? (e.when
+      ? `${e.when.field} ${e.when.op}${e.when.value ? " " + e.when.value : ""}`
+      : "");
+    return [{ edge: e, points, text }];
+  });
+  const spots = placeLabels(
+    laid.map((l) => ({ points: l.points, text: l.text })),
+    doc.nodes,
+    bounds,
+  );
   return (
     <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="false">
       <defs>
@@ -740,18 +780,9 @@ function Arrows({
           <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
         </marker>
       </defs>
-      {doc.edges.map((e) => {
-        const a = byId.get(e.from);
-        const b = byId.get(e.to);
-        if (!a || !b) return null;
-        const pts = routeEdge(a, b, doc.nodes);
+      {laid.map(({ edge: e, points: pts, text: t }, i) => {
         const d = toPath(pts);
-        const mid = midpointWithDir(pts);
-        // Push the label off the line along its perpendicular, so the
-        // plate behind it never covers the arrow it belongs to.
-        const off = 11;
-        const mx = mid.x + -mid.dy * off;
-        const my = mid.y + mid.dx * off;
+        const spot = spots[i];
         const on = selectedEdge === e.id;
         // An arrow lights up when either box it touches is hovered, so
         // hovering a field traces its route through the chart.
@@ -766,18 +797,27 @@ function Arrows({
               strokeDasharray={e.when ? "5 4" : undefined}
               markerEnd="url(#fc-arrow)" opacity={on || lit ? 1 : 0.75}
             />
-            {(e.label || e.when) && (() => {
-              const t = e.label ?? `${e.when!.field} ${e.when!.op}${e.when!.value ? " " + e.when!.value : ""}`;
+            {t && (() => {
+              const size = labelSize(t);
+              // Far from the line, a bare label is ambiguous about which
+              // arrow it names — so draw a hairline back to the arrow.
+              const away = Math.hypot(spot.x - spot.anchorX, spot.y - spot.anchorY);
               return (
                 <>
+                  {away > 26 && (
+                    <line
+                      x1={spot.anchorX} y1={spot.anchorY} x2={spot.x} y2={spot.y}
+                      stroke="currentColor" strokeWidth="1" opacity="0.35"
+                    />
+                  )}
                   {/* a plate under the label so it never sits on the line */}
                   <rect
-                    x={mx - t.length * 2.9 - 5} y={my - 7} rx="3"
-                    width={t.length * 5.8 + 10} height="14"
+                    x={spot.x - size.w / 2} y={spot.y - size.h / 2} rx="3"
+                    width={size.w} height={size.h}
                     className="fill-card"
                   />
                   <text
-                    x={mx} y={my} dominantBaseline="middle" textAnchor="middle"
+                    x={spot.x} y={spot.y} dominantBaseline="middle" textAnchor="middle"
                     className="fill-current text-[10px] font-semibold"
                   >
                     {t}

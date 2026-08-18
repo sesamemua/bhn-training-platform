@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: arrow labels move out of the way
+  {
+    title: "Flow charts: arrow labels stop covering the boxes",
+    body: "Labels on the arrows (\"trainee\", \"no reply\", \"offer it on\") used to sit a fixed nudge to the side of the line, which on a top-to-bottom chart put them squarely on the next box down. Each label now looks for clear space — first beside its line, then further out into the empty margins either side of the chart — and no two labels share a spot. The canvas also fills its pane instead of stopping at the last box, so that spare width is there to be used.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts read as a column, and boxes group their questions
   {
     title: "Flow charts: the registration flow reads top to bottom",

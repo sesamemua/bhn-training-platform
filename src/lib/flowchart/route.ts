@@ -241,19 +241,22 @@ export function toPath(points: Pt[], radius = 22): string {
 }
 
 /**
- * Midpoint of the polyline plus the direction of travel there, so a label
- * can be pushed perpendicular to the line instead of sitting on top of
- * it. A plate drawn centred on the path punches a visible gap in the
- * arrow — which reads as a disconnected line, not as a label.
+ * A point some fraction of the way along the polyline, plus the direction
+ * of travel there — so a label can be pushed perpendicular to the line
+ * instead of sitting on top of it, and can slide along the line when the
+ * midpoint has nowhere free to go.
+ *
+ * A plate drawn centred on the path punches a visible gap in the arrow,
+ * which reads as a disconnected line rather than as a label.
  */
-export function midpointWithDir(points: Pt[]): Pt & { dx: number; dy: number } {
-  const total = length(points);
+export function pointAt(points: Pt[], frac: number): Pt & { dx: number; dy: number } {
+  const target = length(points) * Math.min(1, Math.max(0, frac));
   let run = 0;
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1], b = points[i];
     const seg = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
-    if (run + seg >= total / 2) {
-      const t = seg === 0 ? 0 : (total / 2 - run) / seg;
+    if (run + seg >= target) {
+      const t = seg === 0 ? 0 : (target - run) / seg;
       const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
       return {
         x: a.x + (b.x - a.x) * t,
@@ -266,6 +269,11 @@ export function midpointWithDir(points: Pt[]): Pt & { dx: number; dy: number } {
   }
   const last = points[points.length - 1];
   return { ...last, dx: 1, dy: 0 };
+}
+
+/** The middle of the polyline, with its direction of travel. */
+export function midpointWithDir(points: Pt[]): Pt & { dx: number; dy: number } {
+  return pointAt(points, 0.5);
 }
 
 /** Midpoint of the polyline, for placing a label. */
