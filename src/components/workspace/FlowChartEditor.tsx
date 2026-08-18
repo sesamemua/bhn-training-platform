@@ -107,6 +107,8 @@ type RailWidths = Record<RailKey, number>;
 const RAIL_DEFAULTS: RailWidths = { form: 280, admin: 300, options: 300 };
 const RAIL_MIN = 200;
 const RAIL_MAX = 620;
+/** The chart never gives up more than this — see onRailDragMove. */
+const CHART_MIN = 280;
 const RAIL_STORAGE_KEY = "bhn-flowchart-rails";
 
 function readRails(): RailWidths {
@@ -230,6 +232,7 @@ export function FlowChartEditor({
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLDivElement | null>(null);
   const formPaneRef = useRef<HTMLElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
   /**
    * How wide the canvas pane actually is. The chart only needs ~650px, but
@@ -269,7 +272,21 @@ export function FlowChartEditor({
   const onRailDragMove = (e: React.PointerEvent) => {
     const d = dragRailRef.current;
     if (!d) return;
-    const next = Math.min(RAIL_MAX, Math.max(RAIL_MIN, d.startW + (d.startX - e.clientX)));
+    let next = Math.min(RAIL_MAX, Math.max(RAIL_MIN, d.startW + (d.startX - e.clientX)));
+
+    // The chart is the column that absorbs every change, so without a
+    // floor a rail can be dragged until the chart is a sliver — and once
+    // it is, there is nothing left to aim at to drag it back.
+    const grid = gridRef.current;
+    if (grid) {
+      const gaps = 32 * 3;
+      const others = (["form", "admin", "options"] as RailKey[])
+        .filter((k) => k !== d.key)
+        .reduce((sum, k) => sum + rails[k], 0);
+      const room = grid.clientWidth - gaps - others - CHART_MIN;
+      if (Number.isFinite(room)) next = Math.max(RAIL_MIN, Math.min(next, room));
+    }
+
     setDragRails((r) => ({ ...(r ?? savedRails), [d.key]: next }));
   };
 
@@ -719,7 +736,8 @@ export function FlowChartEditor({
              The chart takes the slack; the three rails are fixed so the
              controls never reflow as the canvas grows. ─────────────── */}
       <div
-        className="mt-3 grid gap-4"
+        ref={gridRef}
+        className="mt-3 grid gap-3 xl:gap-8"
         onPointerMove={onRailDragMove}
         onPointerUp={onRailDragEnd}
         onPointerCancel={onRailDragEnd}
@@ -849,11 +867,15 @@ export function FlowChartEditor({
 /**
  * The seam between two columns.
  *
- * Centred in the gutter, not tucked against a box edge: the thing being
- * dragged is the boundary between two columns, so the grab target is the
- * whole 16px gap and the grip sits on its midline. Hugging the edge made
- * it read as part of the panel to its right and put half the target on
- * top of that panel's border.
+ * The whole gutter is the handle — all 32px of it, centred by
+ * construction because it IS the gap. Two earlier versions were too thin
+ * to use: a 12px strip tucked against the panel edge, then the full gap
+ * when the gap was only 16px. A pointer target wants tens of pixels, so
+ * the gutter was widened until the handle could be one.
+ *
+ * The whole band tints on hover rather than just the hairline, so the
+ * answer to "what exactly can I grab here" is the thing you are already
+ * pointing at.
  */
 function RailHandle({
   railKey,
@@ -870,12 +892,12 @@ function RailHandle({
       aria-orientation="vertical"
       aria-label={label}
       onPointerDown={(e) => onStart(e, railKey)}
-      className="group absolute -left-4 top-0 bottom-0 z-10 hidden w-4 cursor-col-resize touch-none xl:flex xl:items-center xl:justify-center"
+      className="group absolute -left-8 top-0 bottom-0 z-10 hidden w-8 cursor-col-resize touch-none rounded-md transition-colors hover:bg-brand-500/10 xl:flex xl:items-center xl:justify-center"
     >
-      {/* A grip rather than a hairline — a line that only appears on hover
-          is invisible until you already know it is there. */}
+      {/* Always drawn, so the seam is findable before you hover it. */}
       <div className="h-full w-px bg-line transition-colors group-hover:bg-brand-400/70" />
-      <div className="absolute h-9 w-1 rounded-full bg-line-strong opacity-0 transition-opacity group-hover:opacity-100" />
+      {/* The grip, on the midline of the gutter. */}
+      <div className="absolute h-10 w-1.5 rounded-full bg-line-strong transition-colors group-hover:bg-brand-400" />
     </div>
   );
 }
