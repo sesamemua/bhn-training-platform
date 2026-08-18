@@ -8,10 +8,11 @@
  * multi-day event. Structure between months comes from hairlines and
  * typography rather than cards.
  *
- * Reminders sit collapsed behind a one-line summary. Twelve months × four
- * reminders × three controls is 144 always-live buttons, which is not a
- * calendar, it is a control panel; at rest each month says what it will
- * do in a sentence and opens only when asked.
+ * Each month lists its reminders openly: who gets chased, when, and what
+ * is still to send. They were collapsed behind a one-line summary to keep
+ * twelve months from reading as a control panel, but that hid the actions
+ * people came for — the summary line stays as a heading and a way to fold
+ * a month away, not as the default state.
  */
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -325,7 +326,10 @@ function CycleFooter({
   busy: string | null;
   onAction: (payload: Record<string, unknown>, key: string) => Promise<unknown>;
 }) {
-  const [open, setOpen] = useState(false);
+  // Expanded by default. Folding these away hid the only controls that
+  // matter — who has been chased and what is still to send — behind a
+  // summary line that read like a status, not a disclosure.
+  const [open, setOpen] = useState(true);
   /** Reminder whose send dialog is open. The dialog is the confirm step —
    *  it shows the composed mail and its real recipients before sending. */
   const [sendFor, setSendFor] = useState<string | null>(null);
