@@ -83,6 +83,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
     since: "2026.09.21a",
   },
+  {
+    id: "workspace.flowcharts.align",
+    title: "The columns line up on what you clicked",
+    body: "Click a box and the live form scrolls until that box's question is at the same height on screen — then both flash once so you can see which pair moved. Clicking a question in the form does the reverse, scrolling the chart to its box.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.22a",
+  },
   // ─── Newsletter production workflow
   {
     id: "workspace.newsletter.calendar",

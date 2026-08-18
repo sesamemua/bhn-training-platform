@@ -4281,3 +4281,23 @@ h1, h2, h3 {
   .print-section { break-inside: avoid; }
   .page-break { break-before: page; }
 }
+
+/* ── flow chart: flash a box and its form field when they line up ──────
+   Clicking a box scrolls the live form so its question sits at the same
+   height, which is a silent change if you happened to be looking at the
+   other column. One pulse on each end says "these two are the same
+   thing" better than any amount of static highlight.
+
+   Driven by adding the class (with a reflow to restart it) rather than by
+   the Web Animations API, so the pulse picks up whichever theme's brand
+   colour is active. */
+@keyframes fc-flash {
+  0%   { box-shadow: 0 0 0 0   color-mix(in srgb, var(--brand-400) 60%, transparent); }
+  55%  { box-shadow: 0 0 0 7px color-mix(in srgb, var(--brand-400) 22%, transparent); }
+  100% { box-shadow: 0 0 0 0   color-mix(in srgb, var(--brand-400) 0%,  transparent); }
+}
+.fc-flash { animation: fc-flash 900ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-flash { animation: none; }
+}

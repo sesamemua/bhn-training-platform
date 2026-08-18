@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the two columns line up and pulse
+  {
+    title: "Flow charts: a box and its question line up, and both flash",
+    body: "Clicking a box on the chart now scrolls the live form so that box's question sits at the same height on screen, and both ends pulse once. Clicking a question in the form does the mirror image — the chart scrolls until its box is level with the question. Reading across the page is then reading one thing, instead of finding where the other column happened to put it. The pulse matters because a column that scrolls while you are looking at the other one is otherwise a silent change.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: limit boxes + selection follows you across columns
   {
     title: "Flow charts: session limits, and clicking one column moves the others",

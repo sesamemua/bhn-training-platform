@@ -8,7 +8,7 @@
  * matching disappears, because the field is no longer reachable. Nothing
  * here is a second definition of the form — it is the chart, executed.
  */
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { CircleAlert, TriangleAlert } from "lucide-react";
 import { limitState, missingRequired, orderedFields, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
 import {
@@ -65,16 +65,6 @@ export function FlowFormPreview({
   focusNodeId?: string | null;
 }) {
   const fields = useMemo(() => visibleFields(doc, answers), [doc, answers]);
-  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  useEffect(() => {
-    if (!focusNodeId) return;
-    const first = fields.find((f) => f.nodeId === focusNodeId);
-    if (first) rowRefs.current[first.key]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    // `fields` is intentionally excluded: this should fire when the
-    // selection changes, not on every keystroke that re-derives the form.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusNodeId]);
   const missing = useMemo(() => missingRequired(doc, answers), [doc, answers]);
   const total = orderedFields(doc).length;
   const hidden = total - fields.length;
@@ -112,7 +102,8 @@ export function FlowFormPreview({
           return (
             <div
               key={f.key}
-              ref={(el) => { rowRefs.current[f.key] = el; }}
+              data-node-id={f.nodeId}
+              data-field-key={f.key}
               onMouseEnter={() => onHoverField?.(f.nodeId)}
               onMouseLeave={() => onHoverField?.(null)}
               // The tint is the same brand wash the box gets on the chart,

@@ -31,6 +31,72 @@ import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 
+/** Keep a computed scroll position inside what the pane can actually do. */
+function clampScroll(pane: HTMLElement, top: number): number {
+  return Math.max(0, Math.min(top, pane.scrollHeight - pane.clientHeight));
+}
+
+/**
+ * The thing that actually scrolls when this element needs to move.
+ *
+ * Not necessarily its nearest `overflow-auto` parent: the canvas pane is
+ * `overflow-auto` but sized to its content, so it never scrolls vertically
+ * — the page does. Assuming the pane was why lining the chart up with the
+ * form worked in one direction and silently did nothing in the other.
+ */
+function scrollParent(el: HTMLElement): HTMLElement {
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const oy = getComputedStyle(node).overflowY;
+    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return (document.scrollingElement as HTMLElement) ?? document.documentElement;
+}
+
+/**
+ * Scroll `mover`'s pane until `mover` sits at the same height as `anchor`.
+ *
+ * Iterative rather than one calculated jump, because a single pass cannot
+ * converge when the other column is `sticky`: scrolling the page also
+ * moves the sticky column until it pins, so part of the first scroll is
+ * eaten and the pair lands short. Two or three passes settle it, and the
+ * loop stops as soon as they line up.
+ */
+function alignTops(mover: HTMLElement, anchor: HTMLElement, pass = 0) {
+  const scroller = scrollParent(mover);
+  const delta = mover.getBoundingClientRect().top - anchor.getBoundingClientRect().top;
+  if (Math.abs(delta) < 2 || pass > 4) return;
+
+  const top = clampScroll(scroller, scroller.scrollTop + delta);
+  const isPage = scroller === document.scrollingElement || scroller === document.documentElement;
+  // The document's scrolling element ignores scrollTo() in some engines;
+  // window.scrollTo is the one that always takes.
+  if (isPage) window.scrollTo({ top, behavior: pass === 0 ? "smooth" : "auto" });
+  else scroller.scrollTo({ top, behavior: pass === 0 ? "smooth" : "auto" });
+
+  // Give the first (smooth) pass time to land, then correct instantly.
+  window.setTimeout(() => alignTops(mover, anchor, pass + 1), pass === 0 ? 380 : 60);
+}
+
+/**
+ * One pulse on an element.
+ *
+ * The class has to come off, force a reflow, and go back on — without the
+ * reflow the browser coalesces the two class changes and the animation
+ * never restarts, so clicking the same box twice does nothing the second
+ * time.
+ */
+function flash(el: HTMLElement | null | undefined) {
+  if (!el) return;
+  el.classList.remove("fc-flash");
+  void el.offsetWidth;
+  el.classList.add("fc-flash");
+  window.setTimeout(() => el.classList.remove("fc-flash"), 1000);
+}
+
 const GRID = 10;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -79,6 +145,7 @@ export function FlowChartEditor({
   const [msg, setMsg] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLDivElement | null>(null);
+  const formPaneRef = useRef<HTMLElement | null>(null);
   const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
   /**
    * How wide the canvas pane actually is. The chart only needs ~650px, but
@@ -96,13 +163,45 @@ export function FlowChartEditor({
    * from the node's own coordinates rather than by finding its element,
    * because the box may be scrolled far outside the pane.
    */
-  const revealNode = (id: string) => {
-    const pane = paneRef.current;
-    const node = doc.nodes.find((n) => n.id === id);
-    if (!pane || !node) return;
-    const top = node.y + node.h / 2 - pane.clientHeight / 2;
-    const left = node.x + node.w / 2 - pane.clientWidth / 2;
-    pane.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior: "smooth" });
+  /**
+   * Line a box up with the question it asks, and pulse both.
+   *
+   * Whichever column you click in, the other one scrolls so its half of
+   * the pair sits at the SAME height on screen — reading across the page
+   * then means reading one thing, not hunting for where the other column
+   * put it. `from` says which column the click came from, because that is
+   * the one that must not move.
+   *
+   * Both ends flash afterwards: a pane that scrolls while you are looking
+   * at the other column is otherwise a silent change.
+   */
+  const alignAndFlash = (id: string, from: "chart" | "form") => {
+    const canvasPane = paneRef.current;
+    const box = canvasPane?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"]`);
+    // A box whose questions are hidden by a branch rule has no row; the
+    // selection still stands, there is just nothing to line it up with.
+    const row = formPaneRef.current?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"]`);
+
+    // Whichever column was clicked stays put; the other moves to meet it.
+    const mover = from === "chart" ? row : box;
+    const anchor = from === "chart" ? box : row;
+
+    if (mover && anchor) alignTops(mover, anchor);
+
+    // The form has no horizontal axis, so bringing a box into view
+    // sideways is always the canvas pane's job.
+    if (canvasPane && from === "form") {
+      const node = doc.nodes.find((n) => n.id === id);
+      if (node && canvasPane.scrollWidth > canvasPane.clientWidth) {
+        canvasPane.scrollTo({
+          left: Math.max(0, node.x + node.w / 2 - canvasPane.clientWidth / 2),
+          behavior: "smooth",
+        });
+      }
+    }
+
+    flash(box);
+    flash(row);
   };
   useEffect(() => {
     const el = paneRef.current;
@@ -453,6 +552,7 @@ export function FlowChartEditor({
                 setSelected(n.id);
                 setSelectedEdge(null);
                 if (selectedField?.nodeId !== n.id) setSelectedField(null);
+                alignAndFlash(n.id, "chart");
               }}
               onStartLink={() => setLinkFrom(n.id)}
               onText={(text) => patchNode(n.id, { text })}
@@ -464,12 +564,12 @@ export function FlowChartEditor({
       {/* Sticky: the point of the pane is watching the form change as you
           edit the chart, which only works if it stays on screen while you
           scroll a canvas taller than the viewport. */}
-      <aside className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
+      <aside ref={formPaneRef} className="min-w-0 self-start rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[80vh] xl:overflow-auto">
         <FlowFormPreview
           doc={doc}
           answers={answers}
           onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
-          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); revealNode(id); }}
+          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
           hoverNodes={hoverNodes}
           onHoverField={(id) => setHoverNodes(id ? [id] : [])}
           onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
@@ -559,6 +659,7 @@ function Box({
         linking && !isLinkSource ? "ring-1 ring-brand-400/40" : ""
       }`}
       style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
+      data-node-id={n.id}
     >
       {editing ? (
         <input

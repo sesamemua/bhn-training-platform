@@ -74,10 +74,20 @@ export function FlowOptionsRail({
 
   // Clicking a field in the middle column should land you on its card,
   // not somewhere in a rail you then have to search.
+  //
+  // Scrolled by hand rather than with scrollIntoView, because that also
+  // scrolls every ancestor that can move — including the page, which
+  // undoes the chart/form alignment done a moment earlier. The rail is
+  // the only thing that should move here.
   useEffect(() => {
-    if (selectedField !== null) {
-      openRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
+    const el = openRef.current;
+    if (selectedField === null || !el) return;
+    const pane = el.closest("aside");
+    if (!pane) return;
+    const offset = el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+    const past = offset + el.offsetHeight - pane.clientHeight;
+    if (offset < 0) pane.scrollTo({ top: pane.scrollTop + offset - 8, behavior: "smooth" });
+    else if (past > 0) pane.scrollTo({ top: pane.scrollTop + past + 8, behavior: "smooth" });
   }, [selectedField, node?.id]);
 
   if (!canEdit) {
