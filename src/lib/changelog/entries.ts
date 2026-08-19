@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Flow charts: the admin panel goes, arrows stop merging
+  {
+    title: "Flow charts: the admin panel is gone, and arrows into the same box no longer merge",
+    body: "The admin panel column has been removed along with its code, its pop-out window and its data-sheet view — it was not being used, and an unused panel is worse than no panel because it still has to be read past. The workspace is now the chart, the live form it makes, and the options for whatever is selected, which gives the chart back about a third of the width. The one setting that lived in the panel, the trainee roster sheet link, has moved to Options — the panel you get when nothing is selected. Arrows arriving at the same box now fan across its face instead of stacking on one point: four arrows into one box used to draw as a single thick line with one arrowhead, and there was no way to tell which of them carried the rule you were reading. The direction beads are also sparser and slower — one every thirty pixels rather than every sixteen — so a chart with thirty arrows reads as a diagram rather than as traffic. And the registration form collects academic institution, hospital and company separately again, because one person is often a student, a clinician and a founder at once; which of them is primary is still named by the organisation-type question.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: arrows you can catch, read and write on
   {
     title: "Flow charts: arrows are easier to catch, and show which way they flow",

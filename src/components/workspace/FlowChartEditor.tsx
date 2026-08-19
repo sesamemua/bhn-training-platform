@@ -13,7 +13,7 @@
  * SVG would mean hand-laying every line of text.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowRight, Check, ExternalLink, Loader2, Plus, Undo2 } from "lucide-react";
+import { ArrowRight, Check, Loader2, Plus, Undo2 } from "lucide-react";
 import {
   NODE_KINDS,
   NODE_KIND_LABEL,
@@ -27,17 +27,15 @@ import {
   type NodeKind,
 } from "@/lib/flowchart/types";
 import { fieldsOf, orderedFields, suggestKey, type AnswerValue, type Answers } from "@/lib/flowchart/form";
-import { edgeAnchor, routeEdge, toPath } from "@/lib/flowchart/route";
+import { arrivals, edgeAnchor, routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { nodeNumbers } from "@/lib/flowchart/numbering";
 import { DASHED_KINDS, SHAPE_INSET, SHAPE_PAINT, shapePath } from "@/lib/flowchart/shapes";
 import { limitDrag, settleGrowth } from "@/lib/flowchart/collide";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
-import { FlowAdminPreview } from "./FlowAdminPreview";
 import { FlowShapePalette } from "./FlowShapePalette";
 import { FlowReviewPanel } from "./FlowReviewPanel";
-import { openFlowChannel, postFlow, readFlow } from "@/lib/flowchart/channel";
 
 /** Keep a computed scroll position inside what the pane can actually do. */
 function clampScroll(pane: HTMLElement, top: number): number {
@@ -106,10 +104,10 @@ function flash(el: HTMLElement | null | undefined) {
 }
 
 /** Rail widths, in px. The chart takes whatever is left. */
-type RailKey = "form" | "admin" | "options";
+type RailKey = "form" | "options";
 type RailWidths = Record<RailKey, number>;
 
-const RAIL_DEFAULTS: RailWidths = { form: 280, admin: 300, options: 300 };
+const RAIL_DEFAULTS: RailWidths = { form: 340, options: 320 };
 const RAIL_MIN = 200;
 const RAIL_MAX = 620;
 /** The chart never gives up more than this — see onRailDragMove. */
@@ -127,7 +125,6 @@ function readRails(): RailWidths {
         : fallback;
     return {
       form: clamp(parsed.form, RAIL_DEFAULTS.form),
-      admin: clamp(parsed.admin, RAIL_DEFAULTS.admin),
       options: clamp(parsed.options, RAIL_DEFAULTS.options),
     };
   } catch {
@@ -316,7 +313,6 @@ export function FlowChartEditor({
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLDivElement | null>(null);
   const formPaneRef = useRef<HTMLElement | null>(null);
-  const adminPaneRef = useRef<HTMLElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     id: string; dx: number; dy: number;
@@ -380,8 +376,8 @@ export function FlowChartEditor({
     // it is, there is nothing left to aim at to drag it back.
     const grid = gridRef.current;
     if (grid) {
-      const gaps = 32 * 3;
-      const others = (["form", "admin", "options"] as RailKey[])
+      const gaps = 32 * 2;
+      const others = (["form", "options"] as RailKey[])
         .filter((k) => k !== d.key)
         .reduce((sum, k) => sum + rails[k], 0);
       const room = grid.clientWidth - gaps - others - CHART_MIN;
@@ -451,19 +447,6 @@ export function FlowChartEditor({
     flash(box);
     flash(row);
 
-    // The admin column shows the same question; a selection that moves two
-    // columns and leaves the third behind is worse than not moving at all.
-    const adminRow = adminPaneRef.current?.querySelector<HTMLElement>(
-      `[data-node-id="${CSS.escape(id)}"]`,
-    );
-    if (adminRow) {
-      const pane = adminPaneRef.current!;
-      const offset = adminRow.getBoundingClientRect().top - pane.getBoundingClientRect().top;
-      const past = offset + adminRow.offsetHeight - pane.clientHeight;
-      if (offset < 0) pane.scrollTo({ top: pane.scrollTop + offset - 8, behavior: "smooth" });
-      else if (past > 0) pane.scrollTo({ top: pane.scrollTop + past + 8, behavior: "smooth" });
-      flash(adminRow);
-    }
   };
   /**
    * Measure the canvas pane after every render, and on window resize.
@@ -1063,74 +1046,6 @@ export function FlowChartEditor({
   const patchSettings = (patch: Partial<ChartSettings>) =>
     mutate((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
 
-  /**
-   * Keep a popped-out admin panel in step.
-   *
-   * The panel is a view of the document being edited, not of the one last
-   * saved, so it is fed from state rather than from the server — an
-   * unsaved experiment shows up there too, which is the whole point of
-   * having it open on a second screen.
-   *
-   * Refs hold the latest doc and handler so the channel is opened once and
-   * never torn down mid-conversation; re-subscribing on every keystroke
-   * would drop the request a panel sends on mount.
-   */
-  const docRef = useRef(doc);
-  const titleRef = useRef(active?.title ?? "");
-  const patchSettingsRef = useRef(patchSettings);
-  const applyDocRef = useRef((next: ChartDoc) => mutate(() => next));
-  useEffect(() => {
-    docRef.current = doc;
-    titleRef.current = active?.title ?? "";
-    patchSettingsRef.current = patchSettings;
-    applyDocRef.current = (next: ChartDoc) => mutate(() => next);
-  });
-
-  const channelRef = useRef<BroadcastChannel | null>(null);
-  useEffect(() => {
-    const ch = openFlowChannel();
-    channelRef.current = ch;
-    if (!ch) return;
-    ch.onmessage = (e) => {
-      const m = readFlow(e);
-      if (!m) return;
-      if (m.type === "request") {
-        postFlow(ch, { type: "doc", doc: docRef.current, title: titleRef.current });
-      } else if (m.type === "settings") {
-        patchSettingsRef.current(m.patch);
-      } else if (m.type === "doc-edit") {
-        // Goes through mutate() so it lands in the undo history like any
-        // other edit — a change made in the other window should be as
-        // undoable here as one made in this one.
-        applyDocRef.current(m.doc);
-      }
-    };
-    const bye = () => postFlow(ch, { type: "editor-closed" });
-    window.addEventListener("pagehide", bye);
-    return () => {
-      bye();
-      window.removeEventListener("pagehide", bye);
-      ch.close();
-      channelRef.current = null;
-    };
-  }, []);
-
-  // Push on change, coalesced — a drag fires this on every pointermove.
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      postFlow(channelRef.current, { type: "doc", doc, title: active?.title ?? "" });
-    }, 120);
-    return () => window.clearTimeout(id);
-  }, [doc, active?.title]);
-
-  const openPanelWindow = () => {
-    window.open(
-      "/flowchart-panel",
-      "bhn-flowchart-panel",
-      "width=560,height=920,menubar=no,toolbar=no,location=no",
-    );
-  };
-
   const patchEdge = (id: string, patch: Partial<FlowEdge>) =>
     mutate((d) => ({ ...d, edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
 
@@ -1440,12 +1355,6 @@ export function FlowChartEditor({
           only when its rule matches
         </span>
         <span>Click an arrow to set or clear its rule.</span>
-        <button
-          onClick={openPanelWindow}
-          className="inline-flex items-center gap-1 font-semibold text-brand-400 hover:text-brand-200"
-        >
-          <ExternalLink size={11} /> Admin panel in its own window
-        </button>
         <button onClick={resetRails} className="text-subtle hover:text-muted">
           Reset column widths
         </button>
@@ -1476,7 +1385,7 @@ export function FlowChartEditor({
           // Below the breakpoint this is undefined and the page stacks,
           // which is what the removed `xl:` class used to do.
           gridTemplateColumns: isWide
-            ? `minmax(0,1fr) ${rails.form}px ${rails.admin}px ${rails.options}px`
+            ? `minmax(0,1fr) ${rails.form}px ${rails.options}px`
             : undefined,
         }}
       >
@@ -1668,26 +1577,6 @@ export function FlowChartEditor({
         </aside>
       </div>
 
-      {/* The organisers' side of the same chart. A different surface on
-          purpose: the other three columns are the thing being designed,
-          this one is its consequence, and it should not read as more of
-          the same panel. */}
-      <div className="relative min-w-0">
-        <RailHandle railKey="admin" onStart={onRailDragStart} label="Resize the admin panel" />
-        <aside ref={adminPaneRef} className="min-w-0 rounded-lg border border-line-strong bg-elevated p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-auto">
-        <FlowAdminPreview
-          doc={doc}
-          canEdit={canEdit}
-          onSettings={patchSettings}
-          onDoc={canEdit ? (next) => mutate(() => next) : undefined}
-          numbers={numbers}
-          hoverNodes={litNodes}
-          onHoverField={(id) => setHoverNodes(id ? [id] : [])}
-          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
-        />
-        </aside>
-      </div>
-
       {/* The options behind whatever is selected. Sticky for the same
           reason as the form: the canvas is taller than the viewport. */}
       <div className="relative min-w-0">
@@ -1697,6 +1586,7 @@ export function FlowChartEditor({
           doc={doc}
           node={sel}
           edge={selEdge}
+          onSettings={canEdit ? patchSettings : undefined}
           selectedField={selectedField && sel && selectedField.nodeId === sel.id ? selectedField.index : null}
           number={sel ? numbers.get(sel.id) ?? 0 : 0}
           questionKeys={questionKeys}
@@ -2078,11 +1968,14 @@ function Arrows({
   // Route every arrow first, then place all the labels together. Labels
   // have to know about each other — placed one at a time in isolation they
   // happily stack on the same free spot.
+  // Worked out for the whole chart before any arrow is routed: an arrow
+  // only knows to stand aside if it knows what else is arriving.
+  const fan = arrivals(doc.edges);
   const laid = doc.edges.flatMap((e) => {
     const a = byId.get(e.from);
     const b = byId.get(e.to);
     if (!a || !b) return [];
-    const points = routeEdge(a, b, doc.nodes);
+    const points = routeEdge(a, b, doc.nodes, fan.get(e.id));
     const text = e.label ?? (e.when
       ? `${e.when.field} ${e.when.op}${e.when.value ? " " + e.when.value : ""}`
       : "");

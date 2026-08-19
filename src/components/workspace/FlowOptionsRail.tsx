@@ -62,6 +62,7 @@ export function FlowOptionsRail({
   onPatchEdge,
   onRemoveEdge,
   onHoverNode,
+  onSettings,
   suggestionDismissed,
   onDismissSuggestion,
 }: {
@@ -74,6 +75,8 @@ export function FlowOptionsRail({
   number?: number;
   questionKeys: { key: string; label: string }[];
   canEdit: boolean;
+  /** Chart-wide settings, edited when nothing in particular is selected. */
+  onSettings?: (patch: { rosterSheetUrl?: string }) => void;
   onPatchNode: (id: string, patch: Partial<FlowNode>) => void;
   /** True once this box's current wording has been waved away. */
   suggestionDismissed: boolean;
@@ -196,6 +199,29 @@ export function FlowOptionsRail({
           settings open here — answer type, the list of choices, the hint
           underneath, whether it is required.
         </p>
+
+        {/* Chart-wide settings live here, in the panel you get when
+            nothing in particular is selected. There is exactly one of
+            them, and it belongs to the chart rather than to any box. */}
+        {onSettings && (
+          <label className="mt-5 block border-t border-line pt-4">
+            <span className={LABEL}>Trainee roster sheet</span>
+            <input
+              defaultValue={doc.settings?.rosterSheetUrl ?? ""}
+              placeholder="https://docs.google.com/spreadsheets/..."
+              disabled={!canEdit}
+              onBlur={(e) => {
+                const next = e.target.value.trim();
+                onSettings({ rosterSheetUrl: next || undefined });
+              }}
+              className={`${LINE} placeholder:text-subtle`}
+            />
+            <span className="mt-1.5 block text-[11.5px] leading-snug text-subtle">
+              The live sheet a trainee&rsquo;s name and email are checked
+              against. The review below the chart says whether it is set.
+            </span>
+          </label>
+        )}
       </>
     );
   }

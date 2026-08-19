@@ -116,7 +116,55 @@ function sidePairs(from: FlowNode, to: FlowNode): [Side, Side][] {
  * Route one arrow. Returns the points of an orthogonal polyline, already
  * simplified, starting on `from`'s edge and ending on `to`'s.
  */
-export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
+/**
+ * Where one arrow arrives when several share a target.
+ *
+ * `index` of `count`, both counted over the arrows entering that node.
+ */
+export interface Arrival { index: number; count: number }
+
+/** Gap between two arrows arriving at the same box. */
+const FAN = 16;
+
+/**
+ * Slide the arrival point sideways so converging arrows stay apart.
+ *
+ * Every arrow into a box used to land on the same spot — the middle of
+ * whichever side it approached from — so four arrows into one box drew
+ * as one thick line with a single arrowhead, and which of them carried
+ * the condition you were reading was anybody's guess. Fanning the last
+ * point across the face of the box keeps them countable.
+ *
+ * Perpendicular to the final approach, and clamped inside the box's own
+ * width or height, so a fanned arrow still points at the box it means.
+ */
+function fanArrival(pts: Pt[], to: FlowNode, at: Arrival): Pt[] {
+  if (at.count < 2 || pts.length < 2) return pts;
+  const end = pts[pts.length - 1];
+  const prev = pts[pts.length - 2];
+  const dx = end.x - prev.x;
+  const dy = end.y - prev.y;
+  if (dx === 0 && dy === 0) return pts;
+
+  const offset = (at.index - (at.count - 1) / 2) * FAN;
+  const horizontal = Math.abs(dy) > Math.abs(dx); // arriving top or bottom
+  const half = (horizontal ? to.w : to.h) / 2 - 8;
+  const shift = Math.max(-half, Math.min(half, offset));
+
+  const moved = horizontal
+    ? { x: end.x + shift, y: end.y }
+    : { x: end.x, y: end.y + shift };
+
+  // Move the approach with it, so the last run stays square to the box
+  // instead of arriving at a slant.
+  const before = horizontal
+    ? { x: moved.x, y: prev.y }
+    : { x: prev.x, y: moved.y };
+
+  return [...pts.slice(0, -2), before, moved];
+}
+
+export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[], at?: Arrival): Pt[] {
   const obstacles = all.filter((n) => n.id !== from.id && n.id !== to.id);
 
   // A clear shot needs no routing at all. Straight beats a curve, and a
@@ -124,7 +172,9 @@ export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
   const ac = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
   const bc = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
   const straight = [edgePointOf(ac, bc, from), edgePointOf(bc, ac, to)];
-  if (crossings(straight, obstacles) === 0) return straight;
+  if (crossings(straight, obstacles) === 0) {
+    return at ? fanArrival(straight, to, at) : straight;
+  }
   const candidates: Pt[][] = [];
 
   for (const [sa, sb] of sidePairs(from, to)) {
@@ -179,7 +229,29 @@ export function routeEdge(from: FlowNode, to: FlowNode, all: FlowNode[]): Pt[] {
     const score = crossings(p, obstacles) * 1000 + length(p) + p.length * 60;
     if (score < bestScore) { bestScore = score; best = p; }
   }
-  return simplify(best);
+  const chosen = simplify(best);
+  return at ? fanArrival(chosen, to, at) : chosen;
+}
+
+/**
+ * How each edge arrives, keyed by edge id.
+ *
+ * Computed over the whole chart at once because fanning is a property of
+ * a GROUP of arrows, not of any one of them — an arrow cannot know it
+ * needs to move aside without knowing what else is arriving.
+ */
+export function arrivals(edges: { id: string; to: string }[]): Map<string, Arrival> {
+  const byTarget = new Map<string, string[]>();
+  for (const e of edges) {
+    const list = byTarget.get(e.to);
+    if (list) list.push(e.id);
+    else byTarget.set(e.to, [e.id]);
+  }
+  const out = new Map<string, Arrival>();
+  for (const ids of byTarget.values()) {
+    ids.forEach((id, index) => out.set(id, { index, count: ids.length }));
+  }
+  return out;
 }
 
 /**

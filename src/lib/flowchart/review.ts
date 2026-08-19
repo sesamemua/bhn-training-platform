@@ -47,7 +47,7 @@ const mentions = (doc: ChartDoc, re: RegExp) =>
       ),
   );
 
-const PICKER_TYPES = ["academic", "health", "company"];
+const PICKER_TYPES = ["academic", "health", "company"] as const;
 
 /**
  * Free text whose answers cannot be a menu, so it is not evidence of
@@ -248,10 +248,10 @@ export const NOTE_REVIEW: ReviewItem[] = [
     check: (doc) => {
       const url = doc.settings?.rosterSheetUrl;
       return url
-        ? { status: "met", evidence: "A roster sheet is configured in the admin panel." }
+        ? { status: "met", evidence: "A roster sheet is configured." }
         : {
             status: "attention",
-            evidence: "Waiting on the sheet. Paste its link into the admin panel and this row turns green; the workflow is otherwise ready for it.",
+            evidence: "Waiting on the sheet. Paste its link into Options — the panel shown when nothing is selected — and this row turns green; the workflow is otherwise ready for it.",
           };
     },
   },
@@ -267,7 +267,7 @@ export const NOTE_REVIEW: ReviewItem[] = [
       return stage
         ? {
             status: "met",
-            evidence: `"${stage.text}" is a stage in the admin panel, so the status is visible per registrant.`,
+            evidence: `"${stage.text}" is a step in the flow, so a confirmed registrant is distinguishable from an unconfirmed one.`,
           }
         : { status: "missed", evidence: "Nothing records a confirmed-trainee status." };
     },
@@ -327,7 +327,7 @@ export const NOTE_REVIEW: ReviewItem[] = [
       "Institutions arrive as a drop-down pick, not typing — last year University of Toronto was written more than 20 ways.",
     source: "Q. Institution / Company (b)",
     check: (doc) => {
-      const pickers = allFields(doc).filter((x) => PICKER_TYPES.includes(x.field.type));
+      const pickers = allFields(doc).filter((x) => (PICKER_TYPES as readonly string[]).includes(x.field.type));
       return pickers.length
         ? {
             status: "met",
@@ -339,38 +339,34 @@ export const NOTE_REVIEW: ReviewItem[] = [
   {
     id: "one-primary-institution",
     request:
-      "Collect ONE institution, identified as the primary — multiple entries per person could not be compiled.",
-    source: "Q. Institution / Company (c)",
+      "Identify the PRIMARY institution — last year people wrote several and none could be compiled. Amended August 2026: academic, hospital and company are each still collected, separately, because one person is often all three; the primary is named rather than the others refused.",
+    source: "Q. Institution / Company (c), amended by the follow-up note",
     check: (doc) => {
-      const repeatable = allFields(doc).filter((x) => x.field.type === "affiliation");
-      if (repeatable.length)
+      const typed = allFields(doc).filter(
+        (x) =>
+          (x.field.type === "text" || x.field.type === "long") &&
+          /institution|hospital|company|university/i.test(x.field.key),
+      );
+      if (typed.length)
         return {
           status: "missed",
-          evidence: "A repeatable affiliations question still allows several entries per person.",
+          evidence: `Typed rather than picked: ${typed.map((x) => x.field.key).join(", ")}.`,
         };
-      const pickers = doc.nodes.filter((n) =>
-        fieldsOf(n).some((f) => PICKER_TYPES.includes(f.type) || f.key === "org_other"),
-      );
-      const unbranched = pickers.filter((n) =>
-        doc.edges.filter((e) => e.to === n.id).every((e) => !e.when),
-      );
-      if (!pickers.length)
-        return { status: "missed", evidence: "No primary-institution question exists." };
-      if (unbranched.length)
+      const pickers = allFields(doc).filter((x) => (PICKER_TYPES as readonly string[]).includes(x.field.type));
+      const kinds = new Set(pickers.map((x) => x.field.type));
+      const primary = findField(doc, "primary_org");
+      if (!primary)
+        return { status: "missed", evidence: "Nothing identifies which affiliation is the primary one." };
+      const missing = PICKER_TYPES.filter((t) => !kinds.has(t));
+      if (missing.length)
         return {
-          status: "attention",
-          evidence: `Every person can reach ${unbranched.map((n) => `"${n.text}"`).join(", ")} — more than one institution question may be answered.`,
+          status: "missed",
+          evidence: `Not collected separately: ${missing.join(", ")}.`,
         };
-      const primary = pickers.every((n) => /primary/i.test(n.text));
-      return primary
-        ? {
-            status: "met",
-            evidence: "Each person meets exactly one institution question — chosen by their organisation type — and it asks for the primary.",
-          }
-        : {
-            status: "attention",
-            evidence: `The branching guarantees one answer, but not every question says "primary": ${pickers.map((n) => `"${n.text}"`).join(", ")}.`,
-          };
+      return {
+        status: "met",
+        evidence: "Academic, hospital and company are collected separately, each as a picker so entries arrive standardised, and \"Primary organization of engagement\" names which one counts as primary.",
+      };
     },
   },
   {

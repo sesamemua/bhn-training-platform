@@ -224,26 +224,36 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
         ] },
     ] };
 
-  // ONE primary institution, as a pick rather than a text box — last
-  // year University of Toronto arrived spelled twenty different ways.
-  // Which picker you meet depends on the organisation type you just
-  // gave, so nobody is asked to find a hospital in a university list.
-  const n4a = { id: "n4a", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
-    text: "Primary institution",
-    field: { key: "academic", type: "academic" as const, required: true,
-      help: "The institution you study or work at. One — your primary." } };
-  const n4b = { id: "n4b", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
-    text: "Primary hospital or network",
-    field: { key: "health", type: "health" as const, required: true,
-      help: "One — your primary." } };
-  const n4c = { id: "n4c", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
-    text: "Primary company",
-    field: { key: "company", type: "company" as const, required: true,
-      help: "One — your primary." } };
-  const n4d = { id: "n4d", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
-    text: "Primary organization",
+  /*
+   * All three affiliations, collected separately.
+   *
+   * A person can be a PhD student at a university, a clinician at a
+   * hospital and a founder of a company at the same time, and the team
+   * needs each of those counted in its own column — one box would lose
+   * two of them. Which one is PRIMARY is answered above, by the
+   * organisation-type question, so the note's "one primary institution"
+   * is satisfied by naming it rather than by refusing to hear the rest.
+   *
+   * Each is a picker, never typing: that is what stopped University of
+   * Toronto arriving spelled twenty different ways.
+   */
+  const n4a = { id: "n4a", kind: "question" as const, x: MAIN, y: at(94), w: W, h: 94,
+    text: "Your affiliations",
+    fields: [
+      { key: "academic", type: "academic" as const,
+        help: "Your university or research institute. Leave blank if none." },
+      { key: "health", type: "health" as const,
+        help: "Your hospital or health network. Leave blank if none." },
+      { key: "company", type: "company" as const,
+        help: "Your company, startup or venture. Leave blank if none." },
+    ] };
+
+  // The one demographic no list covers, asked only of the people it
+  // applies to so nobody else meets an empty text box.
+  const n4d = { id: "n4d", kind: "question" as const, x: SIDE, y: n4a.y, w: W, h: 62,
+    text: "Name your organization",
     field: { key: "org_other", type: "text" as const, required: true,
-      help: "Its name as it should appear in reports. One — your primary." } };
+      help: "As it should appear in reports." } };
 
   const n5 = { id: "n5", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "Your work",
@@ -299,7 +309,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
 
   return {
     nodes: [n1, nT, nTinfo, nTv, nTroster, nTd, nTc, nTx, n6,
-            n3, n2, n2r, n3b, n4a, n4b, n4c, n4d, n5, n5r, n7,
+            n3, n2, n2r, n3b, n4a, n4d, n5, n5r, n7,
             n8, n9, n10, nPri, n11, n12, n13, n14, n15, n16],
     edges: [
       { id: "e1", from: "n1", to: "nT" },
@@ -327,14 +337,9 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       // One institution question per demographic — the org type answered
       // above decides which one is asked. The unlabelled spine arrow is
       // what keeps the rest of the form visible before it is answered.
-      { id: "e4a", from: "n3b", to: "n4a", when: { field: "primary_org", op: "any of", value: "Academic Institution" }, label: "academic" },
-      { id: "e4b", from: "n3b", to: "n4b", when: { field: "primary_org", op: "any of", value: "Healthcare / Hospital" }, label: "hospital" },
-      { id: "e4c", from: "n3b", to: "n4c", when: { field: "primary_org", op: "any of", value: "Industry / Private Sector,Startup,Entrepreneurial Venture" }, label: "industry" },
+      { id: "e4a", from: "n3b", to: "n4a" },
       { id: "e4d", from: "n3b", to: "n4d", when: { field: "primary_org", op: "any of", value: "Government,Non-Profit,Other" }, label: "other" },
-      { id: "e4s", from: "n3b", to: "n5" },
       { id: "e5a", from: "n4a", to: "n5" },
-      { id: "e5b", from: "n4b", to: "n5" },
-      { id: "e5c", from: "n4c", to: "n5" },
       { id: "e5d", from: "n4d", to: "n5" },
       { id: "e5r", from: "n5", to: "n5r", label: "flagged" },
       { id: "e6", from: "n5", to: "n7" },

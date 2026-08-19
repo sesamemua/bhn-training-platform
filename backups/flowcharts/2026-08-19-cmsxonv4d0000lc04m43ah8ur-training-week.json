@@ -11,12 +11,6 @@
         "from": "n1"
       },
       {
-        "id": "eTn",
-        "to": "nTinfo",
-        "from": "nT",
-        "label": "if not"
-      },
-      {
         "id": "eT1",
         "to": "nTv",
         "from": "nT",
@@ -28,8 +22,8 @@
         "label": "yes"
       },
       {
-        "id": "eT2",
-        "to": "n2",
+        "id": "eTn",
+        "to": "nTinfo",
         "from": "nT",
         "when": {
           "op": "is not",
@@ -37,6 +31,11 @@
           "value": "Yes"
         },
         "label": "no"
+      },
+      {
+        "id": "eT2",
+        "to": "n3",
+        "from": "nTinfo"
       },
       {
         "id": "eT3",
@@ -68,18 +67,18 @@
       },
       {
         "id": "eT8",
-        "to": "n2",
+        "to": "n3",
         "from": "n6"
       },
       {
         "id": "eT9",
-        "to": "n2",
+        "to": "n3",
         "from": "nTx"
       },
       {
         "id": "e2",
-        "to": "n3",
-        "from": "n2"
+        "to": "n2",
+        "from": "n3"
       },
       {
         "id": "e2r",
@@ -90,7 +89,7 @@
       {
         "id": "e3b",
         "to": "n3b",
-        "from": "n3"
+        "from": "n2"
       },
       {
         "id": "e4a",
@@ -282,19 +281,27 @@
         "text": "Note: not a trainee? You can apply to a programme — applications take time to review — and register now regardless, as long as you are HQP at one of the 41 member institutions."
       },
       {
-        "h": 78,
+        "h": 94,
         "w": 220,
         "x": 36,
         "y": 216,
         "id": "nTv",
         "kind": "question",
-        "text": "Confirm the email we know you by",
-        "field": {
-          "key": "trainee_email",
-          "help": "Your institutional email, or the secondary email registered with BioHubNet. It is checked against the trainee roster and used for nothing else on this form.",
-          "type": "email",
-          "required": true
-        }
+        "text": "Confirm the details we know you by",
+        "fields": [
+          {
+            "key": "trainee_name",
+            "help": "Your name as it appears on your BioHubNet record. Give that one even if you go by something else now.",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "trainee_email",
+            "help": "Your institutional email, or the secondary email registered with BioHubNet. It is checked against the trainee roster and used for nothing else on this form.",
+            "type": "email",
+            "required": true
+          }
+        ]
       },
       {
         "h": 62,
@@ -309,7 +316,7 @@
         "h": 46,
         "w": 220,
         "x": 36,
-        "y": 328,
+        "y": 344,
         "id": "nTd",
         "kind": "decision",
         "text": "Found on the roster?"
@@ -318,7 +325,7 @@
         "h": 62,
         "w": 220,
         "x": 36,
-        "y": 408,
+        "y": 424,
         "id": "nTc",
         "kind": "step",
         "text": "Current trainee confirmed",
@@ -328,7 +335,7 @@
         "h": 78,
         "w": 220,
         "x": 366,
-        "y": 408,
+        "y": 424,
         "id": "nTx",
         "kind": "step",
         "text": "Not on the roster · continues as HQP",
@@ -338,7 +345,7 @@
         "h": 78,
         "w": 220,
         "x": 36,
-        "y": 504,
+        "y": 520,
         "id": "n6",
         "kind": "question",
         "text": "Trainee details",
@@ -360,10 +367,32 @@
         ]
       },
       {
+        "h": 62,
+        "w": 220,
+        "x": 36,
+        "y": 632,
+        "id": "n3",
+        "kind": "question",
+        "text": "About you",
+        "fields": [
+          {
+            "key": "contact",
+            "help": "How the coordinator should reach you about Training Week.",
+            "type": "contact",
+            "required": true
+          },
+          {
+            "key": "linkedin",
+            "help": "Optional.",
+            "type": "text"
+          }
+        ]
+      },
+      {
         "h": 46,
         "w": 220,
         "x": 36,
-        "y": 616,
+        "y": 728,
         "id": "n2",
         "kind": "question",
         "text": "Choose your sessions",
@@ -386,7 +415,7 @@
         "h": 62,
         "w": 220,
         "x": 366,
-        "y": 616,
+        "y": 728,
         "id": "n2r",
         "kind": "rule",
         "text": "Up to 3 sessions · clashes flagged",
@@ -405,31 +434,10 @@
         }
       },
       {
-        "h": 62,
-        "w": 220,
-        "x": 36,
-        "y": 696,
-        "id": "n3",
-        "kind": "question",
-        "text": "About you",
-        "fields": [
-          {
-            "key": "contact",
-            "type": "contact",
-            "required": true
-          },
-          {
-            "key": "linkedin",
-            "help": "Optional.",
-            "type": "text"
-          }
-        ]
-      },
-      {
         "h": 78,
         "w": 220,
         "x": 36,
-        "y": 792,
+        "y": 808,
         "id": "n3b",
         "kind": "question",
         "text": "Your role",
@@ -474,7 +482,7 @@
         "h": 56,
         "w": 220,
         "x": 366,
-        "y": 904,
+        "y": 920,
         "id": "n4a",
         "kind": "question",
         "text": "Primary institution",
@@ -489,7 +497,7 @@
         "h": 56,
         "w": 220,
         "x": 366,
-        "y": 994,
+        "y": 1010,
         "id": "n4b",
         "kind": "question",
         "text": "Primary hospital or network",
@@ -504,7 +512,7 @@
         "h": 56,
         "w": 220,
         "x": 366,
-        "y": 1084,
+        "y": 1100,
         "id": "n4c",
         "kind": "question",
         "text": "Primary company",
@@ -519,7 +527,7 @@
         "h": 56,
         "w": 220,
         "x": 366,
-        "y": 1174,
+        "y": 1190,
         "id": "n4d",
         "kind": "question",
         "text": "Primary organization",
@@ -534,7 +542,7 @@
         "h": 62,
         "w": 220,
         "x": 36,
-        "y": 1264,
+        "y": 1280,
         "id": "n5",
         "kind": "question",
         "text": "Your work",
@@ -558,7 +566,7 @@
         "h": 62,
         "w": 220,
         "x": 366,
-        "y": 1264,
+        "y": 1280,
         "id": "n5r",
         "kind": "note",
         "text": "Note: the 2026 note asks whether 'Area of expertise' is still needed. Keep or drop is the coordinator's call — see the review below."
@@ -567,7 +575,7 @@
         "h": 78,
         "w": 220,
         "x": 36,
-        "y": 1360,
+        "y": 1376,
         "id": "n7",
         "kind": "question",
         "text": "Before you finish",
@@ -593,7 +601,7 @@
         "h": 46,
         "w": 220,
         "x": 36,
-        "y": 1472,
+        "y": 1488,
         "id": "n8",
         "kind": "decision",
         "text": "Any chosen session full?"
@@ -602,7 +610,7 @@
         "h": 62,
         "w": 220,
         "x": 366,
-        "y": 1472,
+        "y": 1488,
         "id": "n9",
         "kind": "step",
         "text": "Added to the waitlist",
@@ -612,7 +620,7 @@
         "h": 78,
         "w": 220,
         "x": 36,
-        "y": 1552,
+        "y": 1568,
         "id": "n10",
         "kind": "step",
         "text": "Checked against the eligibility sheet",
@@ -622,7 +630,7 @@
         "h": 62,
         "w": 220,
         "x": 366,
-        "y": 1552,
+        "y": 1568,
         "id": "nPri",
         "kind": "rule",
         "text": "Confirmed trainees are considered first for places"
@@ -631,7 +639,7 @@
         "h": 46,
         "w": 220,
         "x": 36,
-        "y": 1664,
+        "y": 1680,
         "id": "n11",
         "kind": "decision",
         "text": "Eligible?"
@@ -640,7 +648,7 @@
         "h": 46,
         "w": 220,
         "x": 366,
-        "y": 1664,
+        "y": 1680,
         "id": "n12",
         "kind": "end",
         "text": "Declined, with a reason"
@@ -649,7 +657,7 @@
         "h": 78,
         "w": 220,
         "x": 36,
-        "y": 1744,
+        "y": 1760,
         "id": "n13",
         "kind": "step",
         "text": "Seat confirmed, info pack emailed",
@@ -659,7 +667,7 @@
         "h": 62,
         "w": 220,
         "x": 36,
-        "y": 1856,
+        "y": 1872,
         "id": "n14",
         "kind": "question",
         "text": "Confirm you can still attend",
@@ -674,7 +682,7 @@
         "h": 78,
         "w": 220,
         "x": 366,
-        "y": 1856,
+        "y": 1872,
         "id": "n15",
         "kind": "step",
         "text": "Seat released to the waitlist",
@@ -684,7 +692,7 @@
         "h": 46,
         "w": 220,
         "x": 36,
-        "y": 1952,
+        "y": 1968,
         "id": "n16",
         "kind": "end",
         "text": "Attends"
@@ -694,5 +702,5 @@
   "createdById": null,
   "updatedById": "cmota65hp0000ji04j9x39b5d",
   "createdAt": "2026-08-17T20:25:23.534Z",
-  "updatedAt": "2026-08-19T18:25:11.839Z"
+  "updatedAt": "2026-08-19T18:41:11.827Z"
 }

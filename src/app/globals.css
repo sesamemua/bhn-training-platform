@@ -4349,11 +4349,14 @@ h1, h2, h3 {
 @keyframes fc-flow {
   /* Negative offset marches the pattern FORWARD along the path, i.e.
      from the box the arrow leaves toward the box it points at. */
-  to { stroke-dashoffset: -16; }
+  to { stroke-dashoffset: -30; }
 }
 .fc-flow {
-  stroke-dasharray: 2 14;
-  animation: fc-flow 1.15s linear infinite;
+  /* Sparse on purpose: one bead every 30px, not every 16. Enough to read
+     the direction at a glance, few enough that thirty arrows do not look
+     like traffic. */
+  stroke-dasharray: 2 28;
+  animation: fc-flow 1.9s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

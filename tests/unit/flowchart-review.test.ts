@@ -173,13 +173,26 @@ test("a free-text institution question is caught", () => {
   assert.equal(statusOf(doc, "drop-institution-free-text"), "missed");
 });
 
-test("making every institution question unconditional loses the one-primary guarantee", () => {
-  const doc: ChartDoc = {
-    ...TRAINING_WEEK_FLOW,
-    edges: TRAINING_WEEK_FLOW.edges.map((e) => (e.id === "e4a" ? { ...e, when: undefined } : e)),
-    nodes: TRAINING_WEEK_FLOW.nodes,
-  };
-  assert.equal(statusOf(doc, "one-primary-institution"), "attention");
+test("dropping one of the three affiliations is caught", () => {
+  // All three are collected separately on purpose — one person is often
+  // a student, a clinician and a founder at once.
+  const doc = doctored((nodes) =>
+    nodes.map((n) =>
+      n.id === "n4a" ? { ...n, fields: n.fields!.filter((f) => f.type !== "health") } : n,
+    ),
+  );
+  assert.equal(statusOf(doc, "one-primary-institution"), "missed");
+});
+
+test("typing an institution instead of picking one is caught", () => {
+  const doc = doctored((nodes) =>
+    nodes.map((n) =>
+      n.id === "n5"
+        ? { ...n, field: { key: "institution", type: "text" as const, required: true } }
+        : n,
+    ),
+  );
+  assert.equal(statusOf(doc, "one-primary-institution"), "missed");
 });
 
 test("stripping the definitions from the questions is caught", () => {
