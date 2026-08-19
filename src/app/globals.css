@@ -1132,6 +1132,19 @@ button[data-section-tone="hr-preview"] {
 }
 
 html, body { background: var(--bg); }
+
+/* The document scrollbar's space is always reserved. On machines with
+ * classic (space-taking) scrollbars, a scrollbar that comes and goes
+ * changes the viewport width by ~15px, which shifts every layout that
+ * depends on it. Reserving the gutter keeps viewport width constant.
+ *
+ * Note what this does NOT cover: dashboard routes. Their shell is
+ * `flex h-screen`, so the document there never overflows and this
+ * rule never engages — the scroller on those routes is the layout's
+ * <main>, which reserves its own gutter (see (dashboard)/layout.tsx,
+ * where the flow-chart editor's #185 loop was actually closed).
+ * (Overlay-scrollbar systems are unaffected — their gutter is 0px.) */
+html { scrollbar-gutter: stable; }
 body {
   color: var(--fg);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

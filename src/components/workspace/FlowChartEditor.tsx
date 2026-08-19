@@ -490,7 +490,73 @@ export function FlowChartEditor({
    * Missing it on this path is what threw "maximum update depth exceeded"
    * a second time, after the same bug had been fixed on the render path.
    */
+  /**
+   * The airbag under the deadband: at most eight accepted measurements
+   * between two paints.
+   *
+   * The deadband handles jitter; it cannot handle geometry that genuinely
+   * oscillates — the dashboard <main>'s classic scrollbar toggling moves
+   * this measurement ~15px per iteration, seven times the deadband. That
+   * cycle is closed at the source now (scrollbar-gutter on the layout's
+   * <main>, the only scroller on dashboard routes), but this
+   * component keeps earning new ways to measure something its own output
+   * moves, and each one found so far was found by crashing in front of
+   * the user. So the invariant is enforced here instead: a measure →
+   * setState → re-measure chain that fails to converge gets eight
+   * iterations, then waits for the browser to paint and takes one more
+   * reading. A residual oscillation becomes a once-per-frame flicker in
+   * the worst case — visible, reportable, and fixable — instead of
+   * "maximum update depth exceeded" and a dead editor.
+   *
+   * The budget is anchored to paints, not time: requestAnimationFrame
+   * only runs when the main thread yields, so a synchronous cascade
+   * cannot reset its own allowance, while ordinary pointermoves — one
+   * task each, frames between them — never feel the cap.
+   */
+  const paneGate = useRef({ sinceFrame: 0, frozen: false, armed: false });
+  /**
+   * Run `fn` once, on the next frame or after 120ms, whichever happens.
+   *
+   * Not just requestAnimationFrame: rAF is suspended in hidden tabs, and
+   * this editor renders in hidden tabs — the popped-out admin panel
+   * syncs it over BroadcastChannel. With rAF alone, a render burst in a
+   * background tab would trip the gate and then never reset it, leaving
+   * the chart frozen at a stale scale until the tab was next shown. The
+   * timeout keeps the gate live where rAF sleeps; the flag keeps the
+   * two paths from both running.
+   */
+  const onNextBreath = (fn: () => void) => {
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      fn();
+    };
+    requestAnimationFrame(run);
+    setTimeout(run, 120);
+  };
   const acceptPaneW = useCallback((w: number) => {
+    const g = paneGate.current;
+    if (g.frozen) return;
+    g.sinceFrame += 1;
+    if (g.sinceFrame > 8) {
+      g.frozen = true;
+      onNextBreath(() => {
+        g.sinceFrame = 0;
+        g.frozen = false;
+        g.armed = false;
+        const el = paneRef.current;
+        if (el) setPaneW((prev) => (Math.abs(el.clientWidth - prev) <= 2 ? prev : el.clientWidth));
+      });
+      return;
+    }
+    if (!g.armed) {
+      g.armed = true;
+      onNextBreath(() => {
+        g.sinceFrame = 0;
+        g.armed = false;
+      });
+    }
     setPaneW((prev) => (Math.abs(w - prev) <= 2 ? prev : w));
   }, []);
 

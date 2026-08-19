@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the column-drag crash, found and killed
+  {
+    title: "Flow charts: dragging a column divider no longer crashes the editor",
+    body: "The crash that hit while dragging the divider between columns is fixed — and this time it was reproduced live before being fixed, oscillating about ten times a second in a test rig, and killed on the spot. The cause: on machines whose scrollbars take up space, the page's scrollbar appearing stole ~15 pixels of width, the chart rescaled itself narrower, the page got short enough for the scrollbar to leave, the width came back, and around it went — thousands of times in a blink. The page now reserves the scrollbar's lane permanently so its width never depends on whether the scrollbar is present, and as a second line of defence the chart refuses to re-measure itself more than eight times between two screen paints, so even a loop nobody has imagined yet becomes a brief flicker instead of a dead editor.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the editor stops crashing mid-edit
   {
     title: "Flow charts: the editor no longer breaks while you are working",

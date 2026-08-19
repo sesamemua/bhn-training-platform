@@ -123,7 +123,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
         )}
         initialUnreadCount={unreadCount}
       />
-      <main className="flex-1 overflow-y-auto relative">
+      {/* scrollbar-gutter: stable — this <main> is the ONLY vertical
+          scroller on dashboard routes (the shell is flex h-screen, so
+          the document itself can never overflow). Anything below that
+          derives a size from width — the flow-chart editor computes its
+          scale from a pane whose width couples 1:1 to this element's
+          clientWidth — would otherwise oscillate on machines with
+          classic (non-overlay) scrollbars: content grows past the
+          fold, the scrollbar appears, clientWidth drops ~15px, the
+          content shrinks to fit, the scrollbar leaves, and around
+          again ("maximum update depth exceeded"). Reserving the gutter
+          makes clientWidth independent of whether the scrollbar is
+          present. Overlay-scrollbar systems are unaffected. */}
+      <main
+        className="flex-1 overflow-y-auto relative"
+        style={{ scrollbarGutter: "stable" }}
+      >
         {/* Platform rule: the editorial hero (DSPageHeader) is the
             absolute top of every page. Layout-level banners
             (impersonation, demo expiry, unverified email, AutoPipette
