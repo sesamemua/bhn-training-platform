@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: heights re-settle when the chart is swapped
+  {
+    title: "Flow charts: boxes stop at each other properly after switching charts",
+    body: "Switching to another chart, or restoring an unsaved draft, left the chart drawn at one set of box heights while dragging and lasso-selection used another — about nine pixels per box. Boxes stopped short of each other with a visible gap instead of meeting cleanly, and a lasso caught a strip of empty canvas below each box, so you could select something you had not drawn a rectangle around. Heights are now re-settled whenever the chart is replaced, not only when the text changes.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: one position per box
   {
     title: "Flow charts: picking up a box no longer drops it down the page",

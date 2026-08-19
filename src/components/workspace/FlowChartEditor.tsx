@@ -1261,7 +1261,19 @@ export function FlowChartEditor({
       const next = settleGrowth(cur.nodes, autoH);
       return next === cur.nodes ? cur : { ...cur, nodes: next };
     });
-  }, [autoH]);
+    // Keyed on the document as well as the measurements. Switching chart
+    // or restoring a draft installs a document carrying its AUTHORED
+    // heights, and the boxes then re-measure to numbers already in autoH
+    // — so autoH keeps its identity and, on `[autoH]` alone, this never
+    // ran again. The chart was drawn at the measured heights while
+    // collision and marquee selection still used the stored ones, a gap
+    // of ~9px per box on the seeded chart: boxes stopped short of each
+    // other and a lasso caught a strip of empty canvas below each box.
+    //
+    // It cannot loop. settleGrowth returns its input array by identity
+    // once the heights agree, this bails on that identity, and React
+    // drops a render that sets state to the object it already holds.
+  }, [autoH, doc]);
 
   /**
    * The chart's own size, and how much it has to shrink to fit the column.
