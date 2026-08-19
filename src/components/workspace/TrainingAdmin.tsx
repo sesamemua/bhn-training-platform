@@ -58,6 +58,18 @@ const BTN =
 const PRIMARY =
   "inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-[12.5px] font-bold text-white hover:brightness-110 disabled:opacity-40";
 
+/**
+ * Out of town, from the only location the account carries.
+ *
+ * `undefined` where the country is blank — unknown is not the same as
+ * local, and a rule that treats every blank field as "lives here" hands
+ * seats to whoever filled their profile in.
+ */
+const outOfTown = (country: string | null | undefined): boolean | undefined => {
+  if (!country || !country.trim()) return undefined;
+  return country.trim().toLowerCase() !== "canada";
+};
+
 const seatsOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "confirmed").length;
 const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "waitlist").length;
 const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending").length;
@@ -177,6 +189,13 @@ function DecisionModel({ initial, workshops }: { initial: Rule[]; workshops: Adm
                         km
                       </label>
                     )}
+                    {r.kind === "out_of_town" && (
+                      <p className="mt-1 text-[11px] leading-snug text-subtle">
+                        Until the registration form carries a travel origin
+                        through, this reads the country on the account, and
+                        the distance above has nothing to measure.
+                      </p>
+                    )}
                   </div>
                   <span className="flex shrink-0 items-center gap-1">
                     <button onClick={() => move(i, -1)} disabled={i === 0} title="Higher priority" className="rounded p-1 text-subtle hover:bg-elevated hover:text-fg disabled:opacity-25">
@@ -261,19 +280,47 @@ function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWork
 
   const ranked = useMemo(() => {
     if (!busiest) return [];
+    // Seats held across the WHOLE week, not just this room — the rule
+    // is about how much of the week one person is taking.
+    const heldBy = new Map<string, number>();
+    for (const w of workshops)
+      for (const bk of w.bookings)
+        if (bk.user && bk.status !== "cancelled")
+          heldBy.set(bk.user.id, (heldBy.get(bk.user.id) ?? 0) + 1);
+
     const applicants: Applicant[] = busiest.bookings
       .filter((b) => b.status !== "cancelled")
       .map((b) => ({
         id: b.id,
         name: b.user?.name || b.user?.email || "Unnamed",
         appliedAt: b.bookedAt,
-        // Out of town is inferred from the country on the account until
-        // travel origin is carried through from the registration form.
-        isOutOfTown: !!b.user?.country && b.user.country.toLowerCase() !== "canada",
+        // Every field the rules can read is supplied, or the rule that
+        // reads it silently ranks nobody — three of the five kinds used
+        // to be unable to move a single person in the one place the
+        // model is ever seen running.
+        isOutOfTown: outOfTown(b.user?.country),
+        isCurrentTrainee: b.status === "confirmed",
         organizationType: b.user?.organization ?? null,
-        seatsHeld: 0,
+        seatsHeld: b.user ? heldBy.get(b.user.id) ?? 0 : 0,
       }));
     return rankApplicants(applicants, rules, busiest.capacity);
+  }, [busiest, rules, workshops]);
+
+  // Which active rules have no field to read across this audience.
+  const starved = useMemo(() => {
+    if (!busiest) return [];
+    const rows = busiest.bookings.filter((b) => b.status !== "cancelled");
+    const none = (f: (b: (typeof rows)[number]) => unknown) => rows.length > 0 && rows.every((b) => !f(b));
+    return rules
+      .filter((r) => r.isActive)
+      .filter((r) =>
+        r.kind === "out_of_town"
+          ? none((b) => b.user?.country)
+          : r.kind === "under_represented_org"
+            ? none((b) => b.user?.organization)
+            : false,
+      )
+      .map((r) => r.label);
   }, [busiest, rules]);
 
   if (!busiest) {
@@ -292,6 +339,15 @@ function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWork
         {ranked.length} applicants, {busiest.capacity} seats. Reorder the rules
         and this reorders with them.
       </p>
+      {/* A rule with no data to read ranks nobody, and silently. Better
+          to say which ones those are than to let an admin promote a rule
+          to the top and conclude the model is broken. */}
+      {starved.length > 0 && (
+        <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] leading-snug text-amber-600">
+          Nothing to rank on yet for: {starved.join(", ")}. These change no
+          order until the registration form carries that answer through.
+        </p>
+      )}
       {ranked.length === 0 ? (
         <p className="mt-3 text-[12.5px] text-muted">Nobody has booked this one yet.</p>
       ) : (
@@ -325,6 +381,18 @@ function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWork
 function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWorkshop[] }) {
   const [pending, start] = useTransition();
   const [adding, setAdding] = useState(false);
+  const [armed, setArmed] = useState<string | null>(null);
+  // A refused write has to say so. Showing 40 in a box the database
+  // never accepted is worse than showing 20, because the admin walks
+  // away believing the room is bigger than it is.
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const commit = (id: string, patch: Parameters<typeof updateWorkshop>[1], revert: () => void) =>
+    start(async () => {
+      const res = await updateWorkshop(id, patch).catch(() => ({ ok: false as const, problem: "Could not save — you may have been signed out." }));
+      if (!res.ok) { setProblem(res.problem ?? "Could not save."); revert(); }
+      else setProblem(null);
+    });
 
   return (
     <div>
@@ -337,6 +405,12 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
           <Plus size={12} /> Add a workshop
         </button>
       </div>
+
+      {problem && (
+        <p className="mt-3 inline-flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2.5 text-[12.5px] text-amber-600">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {problem}
+        </p>
+      )}
 
       {adding && <NewWorkshop eventId={eventId} onDone={() => setAdding(false)} />}
 
@@ -362,20 +436,40 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
                   <NumberField
                     label="Seats"
                     value={w.capacity}
-                    onCommit={(v) => start(() => void updateWorkshop(w.id, { capacity: v }))}
+                    onCommit={(v, revert) => commit(w.id, { capacity: v }, revert)}
                   />
                   <NumberField
                     label="Waitlist"
                     value={w.waitlistCapacity}
-                    onCommit={(v) => start(() => void updateWorkshop(w.id, { waitlistCapacity: v }))}
+                    onCommit={(v, revert) => commit(w.id, { waitlistCapacity: v }, revert)}
                   />
-                  <button
-                    className="rounded p-1.5 text-subtle hover:bg-elevated hover:text-red-500"
-                    title={w.bookings.length ? "Retire this workshop (it has bookings)" : "Delete this workshop"}
-                    onClick={() => start(() => void removeWorkshop(w.id))}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {/* Two steps. The trash icon sits next to the Waitlist
+                      field, and a single unconfirmed click on it used to
+                      permanently delete a workshop that had no bookings
+                      yet — the one case where there is nothing to undo
+                      it from. */}
+                  {armed === w.id ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-red-500/50 bg-red-500/10 px-2 py-1 text-[11.5px] text-red-500">
+                      {w.bookings.length
+                        ? `Retire? ${w.bookings.length} booking${w.bookings.length === 1 ? "" : "s"} kept`
+                        : "Delete for good?"}
+                      <button
+                        className="font-bold underline"
+                        onClick={() => start(async () => { await removeWorkshop(w.id); setArmed(null); })}
+                      >
+                        Yes
+                      </button>
+                      <button className="underline" onClick={() => setArmed(null)}>No</button>
+                    </span>
+                  ) : (
+                    <button
+                      className="rounded p-1.5 text-subtle hover:bg-elevated hover:text-red-500"
+                      title={w.bookings.length ? "Retire this workshop (it has bookings)" : "Delete this workshop"}
+                      onClick={() => setArmed(w.id)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -403,7 +497,7 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
 }
 
 /** A number that saves on blur rather than on every keystroke. */
-function NumberField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }) {
+function NumberField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number, revert: () => void) => void }) {
   const [v, setV] = useState(String(value));
   return (
     <label className="block">
@@ -415,7 +509,7 @@ function NumberField({ label, value, onCommit }: { label: string; value: number;
         onChange={(e) => setV(e.target.value)}
         onBlur={() => {
           const n = Number(v);
-          if (Number.isFinite(n) && n >= 0 && n !== value) onCommit(n);
+          if (Number.isFinite(n) && n >= 0 && n !== value) onCommit(n, () => setV(String(value)));
           else setV(String(value));
         }}
         className="mt-0.5 w-20 rounded-md border border-line bg-elevated px-2 py-1 text-[13px] text-fg outline-none focus-visible:border-brand-500"
@@ -426,6 +520,7 @@ function NumberField({ label, value, onCommit }: { label: string; value: number;
 
 function NewWorkshop({ eventId, onDone }: { eventId: string; onDone: () => void }) {
   const [pending, start] = useTransition();
+  const [problem, setProblem] = useState<string | null>(null);
   const [f, setF] = useState({
     title: "", kind: "workshop", startDateTime: "", endDateTime: "",
     capacity: 20, waitlistCapacity: 5, locationName: "", partnerOrganization: "",
@@ -457,11 +552,28 @@ function NewWorkshop({ eventId, onDone }: { eventId: string; onDone: () => void 
         <button
           className={PRIMARY}
           disabled={!ready || pending}
-          onClick={() => start(async () => { await createWorkshop(eventId, f); onDone(); })}
+          onClick={() =>
+            start(async () => {
+              // A datetime-local value carries no zone. Sent as-is, the
+              // server reads "2026-09-15T09:00" in ITS timezone — UTC on
+              // Vercel — and a 9am Toronto tour is stored as 9am UTC,
+              // which is 5am to everyone who reads it back. Stamping the
+              // browser's offset here is what makes the two agree.
+              const stamp = (v: string) => (v ? new Date(v).toISOString() : v);
+              const res = await createWorkshop(eventId, {
+                ...f,
+                startDateTime: stamp(f.startDateTime),
+                endDateTime: stamp(f.endDateTime),
+              });
+              if (res.ok) onDone();
+              else setProblem(res.problem ?? "Could not create it.");
+            })
+          }
         >
           {pending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Create
         </button>
         <button className={BTN} onClick={onDone}>Cancel</button>
+        {problem && <span className="text-[12.5px] text-amber-600">{problem}</span>}
       </div>
     </div>
   );
@@ -635,8 +747,13 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
           {confirming && plan && (
             <span className="inline-flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 text-[12.5px] text-amber-600">
               Send to {plan.recipients.length} people? This cannot be undone.
+              {/* Disabled while it runs. Several hundred messages take
+                  minutes, and a strip that does not change is an
+                  invitation to click again — which used to send the
+                  whole audience a second time. */}
               <button
-                className="rounded bg-brand px-2 py-1 text-[11.5px] font-bold text-white hover:brightness-110"
+                className="rounded bg-brand px-2 py-1 text-[11.5px] font-bold text-white hover:brightness-110 disabled:opacity-50"
+                disabled={pending}
                 onClick={() =>
                   start(async () => {
                     const r = await sendToAudience({
@@ -648,9 +765,9 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
                   })
                 }
               >
-                Yes, send
+                {pending ? "Sending…" : "Yes, send"}
               </button>
-              <button className="text-[11.5px] underline" onClick={() => setConfirming(false)}>Cancel</button>
+              <button className="text-[11.5px] underline disabled:opacity-40" disabled={pending} onClick={() => setConfirming(false)}>Cancel</button>
             </span>
           )}
           {result && <span className="text-[12.5px] text-muted">{result}</span>}

@@ -65,7 +65,7 @@ export const RULE_KINDS: Record<RuleKind, RuleKindInfo> = {
     blurb:
       "Someone travelling in is ranked above someone local, because a local can more easily come to the next one.",
     caution:
-      "Needs a travel origin on the registration. Anyone who left it blank counts as local.",
+      "Reads the country on the account until the registration form carries a travel origin through. Someone with no location recorded is ranked as unknown, not as local — they simply fall to the tiebreak.",
     configurable: true,
   },
   current_trainee: {
@@ -147,8 +147,16 @@ function compareBy(rule: Rule, a: Applicant, b: Applicant): number {
     }
     case "fewest_seats_held":
       return (a.seatsHeld ?? 0) - (b.seatsHeld ?? 0);
-    case "first_come":
-      return time(a.appliedAt) - time(b.appliedAt);
+    case "first_come": {
+      const ta = time(a.appliedAt);
+      const tb = time(b.appliedAt);
+      // An unreadable date gives NaN, and NaN is not an ordering: it
+      // compares false in both directions, so returning it hands the
+      // sort a comparator that contradicts itself. Treated as "cannot
+      // tell", which falls through to the id and stays reproducible.
+      if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
+      return ta - tb;
+    }
     default:
       return 0;
   }

@@ -112,3 +112,40 @@ test("a corrupt stored blob falls back to the shipped policy", () => {
   const good = JSON.stringify([{ id: "f", kind: "first_come", label: "FCFS", isActive: true }]);
   assert.equal(parseRules(good).length, 1);
 });
+
+// ── regressions from the adversarial review ─────────────────────────
+
+test("an applicant with no known location is not treated as local", () => {
+  // A rule that reads a blank field as "lives here" hands seats to
+  // whoever filled their profile in.
+  const people = [
+    who("unknown", { isOutOfTown: undefined, appliedAt: "2026-09-05T09:00:00Z" }),
+    who("known-local", { isOutOfTown: false, appliedAt: "2026-09-01T09:00:00Z" }),
+  ];
+  const ranked = rankApplicants(people, DEFAULT_RULES, 1);
+  // Neither is out of town as far as the rule can tell, so the tiebreak
+  // decides — and it must not claim the unknown one is local.
+  assert.equal(ranked[0].applicant.id, "known-local");
+  assert.equal(ranked[0].decidedBy, "First come, first served");
+});
+
+test("seats already held ranks the person taking least of the week first", () => {
+  const rules: Rule[] = [
+    { id: "s", kind: "fewest_seats_held", label: "Fewest seats already held", isActive: true },
+    { id: "f", kind: "first_come", label: "First come, first served", isActive: true },
+  ];
+  const people = [
+    who("greedy", { seatsHeld: 3, appliedAt: "2026-09-01T09:00:00Z" }),
+    who("none-yet", { seatsHeld: 0, appliedAt: "2026-09-08T09:00:00Z" }),
+  ];
+  assert.deepEqual(order(rankApplicants(people, rules, 1)), ["none-yet", "greedy"]);
+});
+
+test("an unreadable application date cannot corrupt the order", () => {
+  // Date.parse returns NaN, and NaN comparisons are false in both
+  // directions — a comparator that returns NaN is not an ordering.
+  const people = [who("bad", { appliedAt: "not a date" }), who("good"), who("also-good")];
+  const ranked = rankApplicants(people, DEFAULT_RULES, 2);
+  assert.equal(ranked.length, 3);
+  assert.equal(new Set(ranked.map((r) => r.applicant.id)).size, 3, "nobody lost or duplicated");
+});
