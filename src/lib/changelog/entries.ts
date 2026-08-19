@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: a shape tray you drag from
+  {
+    title: "Flow charts: drag shapes onto the chart from a tray",
+    body: "The row of shape names across the top of the page is gone. The shapes now sit on the chart itself as a small tray of outlines that stays with you as you scroll — drag one onto the canvas and a dashed preview shows where it will land before you let go, or click one to drop it in. Double-clicking empty space still works. Thirteen names spelled out in a header was a lot of words for something that is better shown than said.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: real shapes, easier creation, boxes that give way
   {
     title: "Flow charts: the standard shapes, and boxes that get out of each other's way",

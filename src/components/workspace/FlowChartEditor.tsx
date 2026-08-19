@@ -222,6 +222,13 @@ function clearDraft(chartId: string) {
   try { localStorage.removeItem(DRAFT_PREFIX + chartId); } catch { /* nothing to do */ }
 }
 
+/**
+ * The drag payload when a shape is pulled off the tray. A named type
+ * rather than text/plain so a stray drag from somewhere else — a link, a
+ * file, a selection — cannot drop a box onto the chart.
+ */
+const KIND_MIME = "application/x-bhn-flow-kind";
+
 const GRID = 10;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -674,6 +681,38 @@ export function FlowChartEditor({
     });
   };
 
+  /**
+   * Dropping a shape from the tray.
+   *
+   * The ghost follows the pointer so you can see where the box will land
+   * before letting go — dropping blind and then dragging the result into
+   * place is two gestures for one intention.
+   */
+  const pointInChart = (e: { clientX: number; clientY: number }) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
+  };
+
+  const onCanvasDragOver = (e: React.DragEvent) => {
+    if (!canEdit || !e.dataTransfer.types.includes(KIND_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    const p = pointInChart(e);
+    if (p) setDropAt(p);
+  };
+
+  const onCanvasDrop = (e: React.DragEvent) => {
+    if (!canEdit) return;
+    const kind = e.dataTransfer.getData(KIND_MIME) as NodeKind;
+    if (!kind || !NODE_KINDS.includes(kind)) return;
+    e.preventDefault();
+    const p = pointInChart(e);
+    setDragKind(null);
+    setDropAt(null);
+    if (p) addNode(kind, p);
+  };
+
   const onCanvasPointerDown = (e: React.PointerEvent) => {
     if (!canEdit || linkFrom || relink) return;
 
@@ -790,6 +829,9 @@ export function FlowChartEditor({
    * box. Scrolling back to the top for every shape was the complaint.
    */
   const [lastKind, setLastKind] = useState<NodeKind>("step");
+  /** The shape being dragged off the tray, and where it would land. */
+  const [dragKind, setDragKind] = useState<NodeKind | null>(null);
+  const [dropAt, setDropAt] = useState<{ x: number; y: number } | null>(null);
 
   const addNode = (kind: NodeKind, at?: { x: number; y: number }) => {
     setLastKind(kind);
@@ -1204,18 +1246,6 @@ export function FlowChartEditor({
 
         {canEdit && (
           <>
-            <span className="flex items-center gap-2 text-[12.5px] text-muted">
-              Add
-              {NODE_KINDS.map((k) => (
-                <button
-                  key={k}
-                  onClick={() => addNode(k)}
-                  className="font-semibold text-brand-400 transition-colors hover:text-brand-200"
-                >
-                  {NODE_KIND_LABEL[k].toLowerCase()}
-                </button>
-              ))}
-            </span>
             <button
               onClick={undo}
               disabled={!history.length}
@@ -1300,6 +1330,7 @@ export function FlowChartEditor({
 
       {canEdit && (
         <p className="mt-1.5 text-[12.5px] text-subtle">
+          Drag a shape off the tray onto the chart, or double-click empty space.
           Drag a box to move it, or drag a rectangle on empty space to pick up
           several at once. {linkFrom
             ? "Now click the box the arrow should point to, or press Escape."
@@ -1334,22 +1365,34 @@ export function FlowChartEditor({
              down the chart and the shapes are still here. The toolbar at
              the top stays too — this is the copy you reach for. */
           <div className="pointer-events-none sticky top-2 z-30 flex justify-center px-2">
-            <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full border border-line bg-card/95 px-2 py-1 shadow-card-hover backdrop-blur">
+            <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-full border border-line bg-card/95 px-1.5 py-1 shadow-card-hover backdrop-blur">
               {NODE_KINDS.map((k) => (
                 <button
                   key={k}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(KIND_MIME, k);
+                    e.dataTransfer.effectAllowed = "copy";
+                    setDragKind(k);
+                  }}
+                  onDragEnd={() => { setDragKind(null); setDropAt(null); }}
                   onClick={() => addNode(k)}
-                  title={`Add a ${NODE_KIND_LABEL[k].toLowerCase()}`}
-                  className={`rounded-full px-2 py-0.5 text-[11px] transition-colors ${
-                    lastKind === k
-                      ? "bg-brand-500/20 font-semibold text-brand-300"
-                      : "text-muted hover:bg-elevated hover:text-fg"
+                  title={`${NODE_KIND_LABEL[k]} — drag onto the chart, or click to drop one in`}
+                  className={`cursor-grab rounded-md p-1 transition-colors active:cursor-grabbing ${
+                    lastKind === k ? "bg-brand-500/20" : "hover:bg-elevated"
                   }`}
                 >
-                  {NODE_KIND_LABEL[k]}
+                  <svg aria-hidden width="22" height="13" className="block overflow-visible">
+                    <path
+                      d={shapePath(k, 22, 13)}
+                      className={SHAPE_PAINT[k]}
+                      strokeWidth="1"
+                      strokeDasharray={DASHED_KINDS.includes(k) ? "3 2" : undefined}
+                      fillRule="evenodd"
+                    />
+                  </svg>
                 </button>
               ))}
-              <span className="px-1 text-[10px] text-subtle">or double-click the canvas</span>
             </div>
           </div>
         )}
@@ -1360,6 +1403,9 @@ export function FlowChartEditor({
           ref={canvasRef}
           onPointerDown={onCanvasPointerDown}
           onDoubleClick={onCanvasDoubleClick}
+          onDragOver={onCanvasDragOver}
+          onDrop={onCanvasDrop}
+          onDragLeave={() => setDropAt(null)}
           onPointerMove={onCanvasPointerMove}
           onPointerUp={() => { endDrag(); finishMarquee(); }}
           onPointerLeave={() => { endDrag(); finishMarquee(); }}
@@ -1395,6 +1441,24 @@ export function FlowChartEditor({
             }
             onGrabEnd={canEdit ? startRelink : undefined}
           />
+
+          {dragKind && dropAt && (
+            <svg
+              aria-hidden
+              className="pointer-events-none absolute z-20 overflow-visible"
+              style={{ left: dropAt.x - 110, top: dropAt.y - 24, width: 220, height: 48 }}
+              width={220}
+              height={48}
+            >
+              <path
+                d={shapePath(dragKind, 220, 48)}
+                className="fill-brand-500/10 stroke-brand-400"
+                strokeWidth="1.5"
+                strokeDasharray="6 4"
+                fillRule="evenodd"
+              />
+            </svg>
+          )}
 
           {marquee && (
             <div
