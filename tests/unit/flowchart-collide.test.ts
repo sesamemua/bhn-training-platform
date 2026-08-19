@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CLEARANCE, limitDrag } from "../../src/lib/flowchart/collide";
+import { CLEARANCE, limitDrag, settleGrowth } from "../../src/lib/flowchart/collide";
 import type { FlowNode } from "../../src/lib/flowchart/types";
 
 const node = (id: string, x: number, y: number, w = 220, h = 60): FlowNode =>
@@ -9,6 +9,8 @@ const node = (id: string, x: number, y: number, w = 220, h = 60): FlowNode =>
 /** Drag `id` toward (x, y) and report where it is allowed to end up. */
 const drag = (nodes: FlowNode[], id: string, x: number, y: number) =>
   limitDrag(nodes, [id], new Map([[id, { x, y }]])).get(id)!;
+
+const at = (nodes: FlowNode[], id: string) => nodes.find((n) => n.id === id)!;
 
 /** Positions of everything that was NOT dragged. */
 const bystanders = (nodes: FlowNode[], movingIds: string[], want: Map<string, { x: number; y: number }>) => {
@@ -102,4 +104,48 @@ test("dragging nothing is a no-op", () => {
   const nodes = [node("a", 0, 0)];
   const out = limitDrag(nodes, [], new Map());
   assert.equal(out.size, 0);
+});
+
+// ── settleGrowth ────────────────────────────────────────────────────
+
+test("a box that grows into the gap below it moves nothing", () => {
+  // 100px of gap, 20px of growth: nobody needs to move.
+  const nodes = [node("top", 0, 0, 220, 60), node("below", 0, 160)];
+  const out = settleGrowth(nodes, { top: 80 });
+  assert.equal(at(out, "top").h, 80, "the box itself gets its measured height");
+  assert.equal(at(out, "below").y, 160, "the box below did not have to move");
+});
+
+test("a box that grows past the one below pushes it down, and no further", () => {
+  const nodes = [node("top", 0, 0, 220, 60), node("below", 0, 100)];
+  const out = settleGrowth(nodes, { top: 140 }); // bottom now 140
+  assert.equal(at(out, "below").y, 140 + CLEARANCE, "moved exactly clear, not more");
+});
+
+test("the push cascades to boxes further down", () => {
+  const nodes = [node("top", 0, 0, 220, 60), node("mid", 0, 100), node("low", 0, 170)];
+  const out = settleGrowth(nodes, { top: 140 });
+  const mid = at(out, "mid");
+  const low = at(out, "low");
+  assert.equal(mid.y, 140 + CLEARANCE);
+  assert.ok(low.y >= mid.y + mid.h + CLEARANCE, "the third box is cleared too");
+});
+
+test("growth in one column leaves a different column alone", () => {
+  const nodes = [node("top", 0, 0, 220, 60), node("aside", 400, 100)];
+  const out = settleGrowth(nodes, { top: 200 });
+  assert.equal(at(out, "aside").y, 100, "a box in another column is not below it");
+});
+
+test("settling is idempotent — the second pass changes nothing", () => {
+  const nodes = [node("top", 0, 0, 220, 60), node("below", 0, 100)];
+  const once = settleGrowth(nodes, { top: 140 });
+  const heights = Object.fromEntries(once.map((n) => [n.id, n.h]));
+  const twice = settleGrowth(once, heights);
+  assert.equal(twice, once, "identity returned, so no render loop");
+});
+
+test("a measurement within the deadband is ignored entirely", () => {
+  const nodes = [node("a", 0, 0, 220, 60)];
+  assert.equal(settleGrowth(nodes, { a: 61 }), nodes, "1px of noise must not rewrite the doc");
 });

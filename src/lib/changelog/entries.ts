@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: one position per box
+  {
+    title: "Flow charts: picking up a box no longer drops it down the page",
+    body: "On a chart where any box had been given longer text, clicking a box below it sent that box jumping down the page — about a hundred pixels on a typical chart — and you had to drag it back up before you could move it anywhere. The reason: a box had two positions. The one stored in the chart, and the one it was drawn at, which was pushed down to make room for text that had grown above it. Picking a box up read the drawn position and filed it as the stored one, so the gap got added a second time. There is one position per box now: text growth is applied to the chart itself, once, at the moment the text is measured. It also only moves the boxes it genuinely has to — growth that fits in the gap already there moves nothing, where before every box below shifted whether it needed to or not.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: dragging stops rearranging the chart
   {
     title: "Flow charts: dragging a box no longer shoves the other boxes around",

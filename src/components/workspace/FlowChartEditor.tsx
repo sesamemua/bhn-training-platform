@@ -31,7 +31,7 @@ import { edgeAnchor, routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { nodeNumbers } from "@/lib/flowchart/numbering";
 import { DASHED_KINDS, SHAPE_INSET, SHAPE_PAINT, shapePath } from "@/lib/flowchart/shapes";
-import { limitDrag } from "@/lib/flowchart/collide";
+import { limitDrag, settleGrowth } from "@/lib/flowchart/collide";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
@@ -1215,43 +1215,53 @@ export function FlowChartEditor({
    * so an arrow lands on the box's real edge rather than where its stored
    * height claims the edge is.
    */
+  /**
+   * The document as drawn.
+   *
+   * ONLY the height is substituted, and only to cover the single frame
+   * between a box being measured and that measurement reaching the
+   * document. Positions are never touched here.
+   *
+   * There used to be a y-shift too: every box was drawn pushed down by
+   * the growth of the boxes above it. That gave a box two positions —
+   * the one in the document and the one on the screen — and every piece
+   * of code that read a position off the screen and wrote it back as a
+   * document position silently added the shift again. Picking up a box
+   * dropped it the height of the shift, which on an edited chart is
+   * about a hundred pixels. Growth is applied to the document once now,
+   * by settleGrowth, so there is one position per box.
+   */
   const laidDoc = useMemo<ChartDoc>(() => {
-    const sized = doc.nodes.map((n) => {
+    let changed = false;
+    const nodes = doc.nodes.map((n) => {
       const needed = autoH[n.id];
-      return needed && Math.abs(needed - n.h) > 1 ? { ...n, h: needed } : n;
+      if (needed && Math.abs(needed - n.h) > 2) {
+        changed = true;
+        return { ...n, h: needed };
+      }
+      return n;
     });
-
-    /**
-     * A box that grew has to take its extra height from somewhere, and
-     * the only honest place is below it — otherwise fitting the text just
-     * moves the problem, and the box lands on top of the next one.
-     *
-     * Everything below is pushed down by the growth above it. Nodes are
-     * shifted in BANDS of equal authored y rather than one at a time, so
-     * a step and the branch beside it stay level with each other; shifting
-     * per node would slide them apart. Only growth shifts anything: a box
-     * that shrank simply leaves a wider gap, which is untidy at worst,
-     * where pulling the chart up would move boxes nobody touched.
-     */
-    const bands = [...new Set(doc.nodes.map((n) => n.y))].sort((a, b) => a - b);
-    const shiftAt = new Map<number, number>();
-    let shift = 0;
-    for (const y of bands) {
-      shiftAt.set(y, shift);
-      const grew = doc.nodes
-        .filter((n) => n.y === y)
-        .map((n) => Math.max(0, (autoH[n.id] ?? n.h) - n.h));
-      shift += grew.length ? Math.max(...grew) : 0;
-    }
-
-    return {
-      ...doc,
-      nodes: sized.map((n, i) => {
-        const dy = shiftAt.get(doc.nodes[i].y) ?? 0;
-        return dy ? { ...n, y: n.y + dy } : n;
-      }),
-    };
+    return changed ? { ...doc, nodes } : doc;
   }, [doc, autoH]);
+
+  /**
+   * Fold measured heights into the document, pushing down only what a
+   * taller box would otherwise land on.
+   *
+   * Deliberately not history and not "unsaved changes": re-measuring on
+   * load is not an edit the person made, and a chart should not ask to
+   * be saved just because it was opened. It converges because a box's
+   * height depends on its width and its text, neither of which this
+   * changes — so the next measurement returns the same number and the
+   * guard stops the write.
+   */
+  useEffect(() => {
+    if (!Object.keys(autoH).length) return;
+    setDoc((cur) => {
+      const next = settleGrowth(cur.nodes, autoH);
+      return next === cur.nodes ? cur : { ...cur, nodes: next };
+    });
+  }, [autoH]);
 
   /**
    * The chart's own size, and how much it has to shrink to fit the column.

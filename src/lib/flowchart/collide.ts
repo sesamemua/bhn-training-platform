@@ -127,3 +127,54 @@ export function limitDrag(
   for (const m of movers) out.set(m.id, { x: m.x + dx, y: m.y + dy });
   return out;
 }
+
+/**
+ * Settle the chart after boxes have been re-measured.
+ *
+ * Text that grows has to take its extra height from somewhere, and the
+ * only honest place is below. This used to be done at render time, as a
+ * shift applied on the way to the screen — which meant a box was DRAWN
+ * somewhere other than where the document said it was. Dragging then
+ * read the drawn position and wrote it back as a document position,
+ * adding the shift a second time, so picking a box up dropped it a
+ * hundred pixels down the chart. Applying the growth to the document
+ * once, here, keeps one position per box and one meaning for it.
+ *
+ * Only boxes that would actually be overlapped move. Growth that fits in
+ * the gap already there moves nothing, because a box that did not have
+ * to move should not.
+ */
+export function settleGrowth(
+  nodes: FlowNode[],
+  measured: Record<string, number>,
+): FlowNode[] {
+  const sized = nodes.map((n) => {
+    const h = measured[n.id];
+    return h && Math.abs(h - n.h) > 2 ? { ...n, h } : n;
+  });
+  if (sized.every((n, i) => n === nodes[i])) return nodes;
+
+  // Top down, so a box that is itself pushed passes the push on.
+  const order = sized.map((_, i) => i).sort((a, b) => sized[a].y - sized[b].y);
+  const push = new Map<string, number>();
+
+  for (const i of order) {
+    const b = sized[i];
+    let need = 0;
+    for (const j of order) {
+      if (j === i) continue;
+      const a = sized[j];
+      if (a.y > b.y || (a.y === b.y && j > i)) continue; // only boxes above
+      const sharesColumn = a.x < b.x + b.w + CLEARANCE && b.x < a.x + a.w + CLEARANCE;
+      if (!sharesColumn) continue;
+      const aBottom = a.y + (push.get(a.id) ?? 0) + a.h + CLEARANCE;
+      need = Math.max(need, aBottom - b.y);
+    }
+    if (need > 0) push.set(b.id, need);
+  }
+
+  return sized.map((n) => {
+    const dy = push.get(n.id) ?? 0;
+    return dy ? { ...n, y: n.y + dy } : n;
+  });
+}
