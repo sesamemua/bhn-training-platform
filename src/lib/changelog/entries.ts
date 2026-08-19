@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Workspace: the Training Week admin tab
+  {
+    title: "Workspace → Process → Admin: seat allocation, capacity, registrants and email",
+    body: "A new tab beside Flow Charts, for running the week the flow chart designs. The decision model is the heart of it: an ordered, editable list of rules that decides who gets a seat when a room is oversubscribed — out-of-town applicants first, then first come first served, as it stands. Reorder them, switch one off, change what counts as out of town, add rules for confirmed trainees or fewest seats already held, and a live panel beside them re-ranks the busiest workshop's real applicants as you go, saying which rule put each person where. A rule list with no final tiebreak is refused outright, because two people ordered by nothing is an allocation you cannot explain to either of them. Capacity shows seats taken against seats available per room, red when a room is over, with the numbers editable in place and workshops addable and removable — one with bookings is retired rather than deleted, so nobody silently loses a seat. Registrants is the spreadsheet view, filterable across every column and copyable as CSV. And email writes to a chosen audience — confirmed, waitlisted, awaiting approval, or everyone — one personalised message each rather than a bcc blast. Sending takes two deliberate clicks and shows exactly who it reaches first; nothing is sent, and no addresses are even displayed, until you ask.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Live form: the reorder arrows stop hiding
   {
     title: "Live form: the up and down arrows on a question are visible now",

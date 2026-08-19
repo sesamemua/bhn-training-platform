@@ -370,6 +370,19 @@ const workspaceWebsiteReviewItem: NavItem = {
 // WORKSPACE -> Flow charts. Its own subgroup: a process diagram is not a
 // campaign and not the website — it is how the team explains a workflow to
 // itself. Seeded with the Training Week registration flow.
+// The operational half of the same process: who gets a seat when a room
+// is oversubscribed, how full each room is, and how to write to the
+// people in it. Admin-only — Flow Charts is readable by instructors,
+// this one changes who attends.
+const workspaceTrainingAdminItem: NavItem = {
+  label: "Admin",
+  href: "/admin/workspace/training-admin",
+  icon: SlidersHorizontal,
+  minRole: "admin",
+  description:
+    "Seat allocation rules, workshop capacity, the registrant sheet, and email to the people booked.",
+};
+
 const workspaceFlowChartsItem: NavItem = {
   label: "Flow Charts",
   href: "/admin/workspace/flowcharts",
@@ -1849,6 +1862,7 @@ export function Sidebar({
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.equip} label="Process">
               <NavLink item={workspaceFlowChartsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Outreach">
               <NavLink item={workspaceOutreachContactsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

@@ -162,6 +162,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.30a",
   },
   {
+    id: "workspace.trainingadmin",
+    title: "Running the week, not just drawing it",
+    body: "**Workspace → Process → Admin** is the operational half of the flow chart. The **decision model** decides who gets a seat when a room is oversubscribed — an ordered list of rules you can reorder, switch off or add to, with a live preview that re-ranks real applicants and names the rule that placed each one. **Capacity** shows how full each room is and lets you change the numbers in place. **Registrants** is the spreadsheet. **Email** writes to the people booked — it shows you who it reaches before it will send, and asks twice.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Admin", href: "/admin/workspace/training-admin" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.review",
     title: "The review section keeps score",
     body: "Below the chart, the **Review** section lists every request from the 2026 registration note and measures the chart against it **live**. Edit anything and the checks re-run: break a request — say, a question that mentions the symposium — and its row flips to *Not met* and names the box. There are no comments to leave or read; the checks look at the chart itself, so they cannot go stale.",
