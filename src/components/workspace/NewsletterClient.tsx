@@ -10,7 +10,7 @@
  */
 import { useState } from "react";
 import {
-  Loader2, Plus, Sparkles, Trash2, ArrowUp, ArrowDown, Copy, Check,
+  Loader2, Plus, Sparkles, Trash2, ArrowUp, ArrowDown, Copy, Check, Pencil,
   Link2, Mail,
 } from "lucide-react";
 import { SECTIONS, SECTION_THEME } from "@/lib/newsletter/types";
@@ -26,6 +26,10 @@ interface Issue {
 }
 
 export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issue; canEdit: boolean }) {
+  /** Piece currently open for editing, with its working copy. A
+   *  contribution used to be final the moment it was added — the only
+   *  way to fix a typo was to delete it and retype the whole thing. */
+  const [editing, setEditing] = useState<{ id: string; body: string; url: string } | null>(null);
   const [issue, setIssue] = useState<Issue>(initialIssue);
   const [drafts, setDrafts] = useState<Record<string, { body: string; url: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -104,7 +108,52 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 <div className="p-4 space-y-2">
                   {mine.map((p, i) => (
                     <div key={p.id} className="rounded-lg bg-elevated/60 ring-1 ring-inset ring-line px-3 py-2">
-                      <p className="text-[13px] text-fg leading-snug line-clamp-3 whitespace-pre-wrap">{p.rawBody}</p>
+                      {editing?.id === p.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editing.body}
+                            autoFocus
+                            onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+                            rows={5}
+                            className="w-full resize-y rounded-md border border-line bg-card-solid px-2.5 py-2 text-[13px] leading-relaxed text-fg outline-none focus:border-brand-400"
+                          />
+                          <input
+                            value={editing.url}
+                            onChange={(e) => setEditing({ ...editing, url: e.target.value })}
+                            placeholder="Source link (optional)"
+                            className="w-full rounded-md border border-line bg-card-solid px-2.5 py-1.5 text-[12px] text-fg outline-none focus:border-brand-400"
+                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setEditing(null)}
+                              className="rounded-md border border-line px-2.5 py-1 text-[12px] font-medium text-fg hover:border-line-strong"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              disabled={!!busy || editing.body.trim().length < 10}
+                              onClick={async () => {
+                                const ok = await post(
+                                  {
+                                    action: "updatePiece",
+                                    pieceId: p.id,
+                                    rawBody: editing.body.trim(),
+                                    sourceUrl: editing.url.trim(),
+                                  },
+                                  p.id,
+                                );
+                                if (ok) setEditing(null);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+                            >
+                              {busy === p.id ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[13px] text-fg leading-snug whitespace-pre-wrap">{p.rawBody}</p>
+                      )}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {p.authorName && <span className="text-[10px] text-subtle">{p.authorName}</span>}
                         {p.sourceUrl && (
@@ -120,6 +169,9 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                             <button aria-label="Move down" disabled={i === mine.length - 1 || !!busy}
                               onClick={() => post({ action: "movePiece", pieceId: p.id, direction: "down" }, p.id)}
                               className="p-1 rounded hover:bg-raised disabled:opacity-30"><ArrowDown size={12} /></button>
+                            <button aria-label="Edit" disabled={!!busy}
+                              onClick={() => setEditing({ id: p.id, body: p.rawBody, url: p.sourceUrl ?? "" })}
+                              className="p-1 rounded hover:bg-raised disabled:opacity-30"><Pencil size={12} /></button>
                             <button aria-label="Remove" disabled={!!busy}
                               onClick={() => post({ action: "deletePiece", pieceId: p.id }, p.id)}
                               className="p-1 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-30"><Trash2 size={12} /></button>

@@ -36,6 +36,14 @@ const IdSchema = z.object({
   pieceId: z.string().min(1),
   direction: z.union([z.literal("up"), z.literal("down")]).optional(),
 });
+/** Editing a contribution after it lands. Same limits as adding one:
+ *  a piece that could not be submitted should not be reachable by edit. */
+const UpdateSchema = z.object({
+  action: z.literal("updatePiece"),
+  pieceId: z.string().min(1),
+  rawBody: z.string().trim().min(10, "Give us a sentence or two at least.").max(6000),
+  sourceUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
+});
 const GenerateSchema = z.object({ action: z.literal("generate") });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -77,6 +85,32 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   // ── remove / reorder ─────────────────────────────────────────
+  // ── edit a contribution already in the issue ─────────────────
+  if (action === "updatePiece") {
+    const session = await requireRole("instructor").catch(() => null);
+    if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const parsed = UpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Check the submission." },
+        { status: 400 },
+      );
+    }
+    const piece = await prisma.newsletterPiece.findFirst({
+      where: { id: parsed.data.pieceId, issueId: id },
+      select: { id: true },
+    });
+    if (!piece) return NextResponse.json({ error: "No such piece." }, { status: 404 });
+    await prisma.newsletterPiece.update({
+      where: { id: piece.id },
+      data: {
+        rawBody: parsed.data.rawBody,
+        sourceUrl: parsed.data.sourceUrl?.trim() || null,
+      },
+    });
+    return NextResponse.json({ ok: true, ...(await loadIssue(id)) });
+  }
+
   if (action === "deletePiece" || action === "movePiece") {
     const session = await requireRole("admin").catch(() => null);
     if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
