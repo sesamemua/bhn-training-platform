@@ -1412,9 +1412,6 @@ export function FlowChartEditor({
         </p>
       )}
 
-      {/* ── three columns: the chart, the form it makes, the settings
-             behind it. Chart takes the slack; the two rails are fixed so
-             the controls never reflow as the canvas grows. ─────────── */}
       {/* ── four columns: the chart, the form it makes, the panel the
              organisers get, and the settings behind whatever is selected.
              The chart takes the slack; the three rails are fixed so the
@@ -1565,6 +1562,27 @@ export function FlowChartEditor({
         </div>
       </div>
 
+
+        {canEdit && (
+          /* An overlay the width of the pane, with no overflow of its own,
+             so the panel inside it sticks to the viewport as the page
+             scrolls. Transparent to the pointer except the panel itself. */
+          <div className="pointer-events-none absolute inset-0 z-30">
+            <div className="sticky top-3 flex justify-end pr-3">
+              <div className="pointer-events-auto">
+                <FlowShapePalette
+                  mime={KIND_MIME}
+                  active={lastKind}
+                  onPick={(k) => addNode(k)}
+                  onDragKind={setDragKind}
+                  onDragEnd={() => { setDragKind(null); setDropAt(null); }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Sticky: the point of the pane is watching the form change as you
           edit the chart, which only works if it stays on screen while you
           scroll a canvas taller than the viewport. */}
@@ -1588,26 +1606,6 @@ export function FlowChartEditor({
           focusNodeId={selected}
         />
         </aside>
-      </div>
-
-        {canEdit && (
-          /* An overlay the width of the pane, with no overflow of its own,
-             so the panel inside it sticks to the viewport as the page
-             scrolls. Transparent to the pointer except the panel itself. */
-          <div className="pointer-events-none absolute inset-0 z-30">
-            <div className="sticky top-3 flex justify-end pr-3">
-              <div className="pointer-events-auto">
-                <FlowShapePalette
-                  mime={KIND_MIME}
-                  active={lastKind}
-                  onPick={(k) => addNode(k)}
-                  onDragKind={setDragKind}
-                  onDragEnd={() => { setDragKind(null); setDropAt(null); }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* The organisers' side of the same chart. A different surface on

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the live form is a column again
+  {
+    title: "Flow charts: the live form is the middle column again, and it resizes",
+    body: "The live form had slipped inside the chart's own column, so it sat underneath the chart instead of beside it, its divider was parked off the left edge of the screen where no pointer could reach it, and a fourth empty column sat on the right quietly eating two hundred pixels. Because the columns and their dividers had drifted out of step, every divider was resizing the wrong panel — the one labelled \"live form\" was actually resizing the admin panel. The four columns are now chart, live form, admin panel and options, in that order, each with the divider that belongs to it. The chart still gives up the space when you widen a panel, and still refuses to shrink below its floor.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the column-drag crash, found and killed
   {
     title: "Flow charts: dragging a column divider no longer crashes the editor",

@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.columns",
+    title: "Four columns, four dividers",
+    body: "Left to right: the **chart**, the **live form** it produces, the **admin panel** the organisers get, and the **options** for whatever you have selected. Drag the gap between any two to resize — the whole gap is the handle, and the chart absorbs the change, down to a floor so it can never become a sliver you cannot grab. **Reset column widths** in the toolbar puts them back.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.stability",
     title: "Your edits survive the save",
     body: "Two things used to lose work here, and both are fixed. **Saving no longer reloads the chart underneath you** — it used to re-fetch the list and quietly reset the canvas, taking every edit and undo step made since the save with it. And the crash that swapped the editor for *This page couldn't load* mid-edit is gone; it came from measurements that changed the very thing they measured. If the editor does hit a problem now it stays put, names the part that failed, and gives you a **Copy the details** button — your unsaved chart is still there behind it.",
