@@ -82,3 +82,48 @@ test("suggestionFor never offers to restyle a question that carries form fields"
   assert.equal(suggestionFor(node, 3), null);
   assert.equal(suggestionFor(node, 0)?.kind, "delay");
 });
+
+// ── cases found by red-teaming the rules ────────────────────────────
+// Every one of these was a real misclassification, found by generating
+// realistic labels for this registration flow and running them. They
+// are here so the rules cannot quietly loosen again.
+
+test("an elided form question is not a fork", () => {
+  // Matching bare auxiliaries ("any", "is", "has") turned every one of
+  // these into a diamond. A fork names a STATE; these ask a person.
+  assert.equal(kindOf("Any dietary requirements?"), "question");
+  assert.equal(kindOf("Anything else we should know?"), "question");
+  // ...while the genuine forks in this flow still read as forks.
+  assert.equal(kindOf("Any chosen session full?"), "decision");
+  assert.equal(kindOf("Eligible?"), "decision");
+});
+
+test("the process asking about itself is a fork, not a form field", () => {
+  assert.equal(kindOf("Have we heard back?"), "decision");
+});
+
+test("words that name a manual act do not outrank being asked of someone", () => {
+  assert.equal(kindOf("Are you attending in person?"), "question");
+  // The manual reading survives where nobody is being asked.
+  assert.equal(kindOf("Programme lead phones the registrant"), "manual");
+  assert.equal(kindOf("Checked manually"), "manual");
+});
+
+test("a wait is stated, never asked", () => {
+  assert.equal(kindOf("Has the cut-off passed?"), "decision");
+  assert.equal(kindOf("Has the confirmation cut-off passed?"), "decision");
+  assert.equal(kindOf("Wait for the confirmation cut-off"), "delay");
+  assert.equal(kindOf("Hold until the deadline"), "delay");
+  assert.equal(kindOf("On hold pending eligibility check"), "delay");
+});
+
+test("a deadline mentioned in passing does not make the box a wait", () => {
+  // "before the deadline" is a temporal adjunct; the emailing is the box.
+  assert.equal(kindOf("Reminder emailed before the deadline"), "document");
+});
+
+test("a limit is stated; asking about one is a fork, and offering one is a question", () => {
+  assert.equal(kindOf("Up to 3 sessions · clashes flagged"), "rule");
+  assert.equal(kindOf("Any clashes?"), "decision");
+  assert.equal(kindOf("Choose up to 3 sessions"), "question");
+});

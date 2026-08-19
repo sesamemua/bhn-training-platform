@@ -32,6 +32,23 @@ export interface Suggestion {
 const SECOND_PERSON = /\b(you|your|yours)\b/i;
 
 /**
+ * Is this sentence aimed at the registrant?
+ *
+ * Wider than the second person, because a form drops it constantly:
+ * "Anything else we should know?" is asked OF someone even though the
+ * only pronoun in it is "we". Kept to whole phrases — letting bare
+ * we/us/our in would swallow genuine forks like "Have we heard back?",
+ * which the process asks about itself.
+ */
+const ADDRESSED = (t: string) =>
+  SECOND_PERSON.test(t)
+  || /\b(tell us|let us know|anything else|we should know|we need to know)\b/i.test(t);
+
+/** States a fork can test. A fork asks whether something IS the case. */
+const PREDICATE =
+  /\b(full|eligible|approved|valid|exists?|match(es)?|already|over|under|more than|fewer than|left|remaining|complete[d]?|confirmed|expired|passed|reached|available|closed|open|clash(es)?|duplicate|missing|late)\b/i;
+
+/**
  * The first clause of a label.
  *
  * A label joining two clauses with a comma — "Seat confirmed, info pack
@@ -86,12 +103,26 @@ const RULES: Rule[] = [
   {
     kind: "delay",
     why: "time passes here and nobody is doing anything",
-    test: (t) => /\b(wait|waits|waiting|hold until|on hold|pending|cut-?off|deadline|until the|sleep|cooling.off)\b/i.test(t),
+    // Two guards. A wait box is always a statement — "Has the cut-off
+    // passed?" is a fork ABOUT a deadline, not a wait. And a bare clock
+    // noun only means waiting when the box is about the clock: "before
+    // the deadline" is a temporal adjunct hung off some other action,
+    // and the action is what the box is.
+    test: (t) => !t.trim().endsWith("?")
+      && (/\b(wait|waits|waiting|hold until|on hold|pending|until the|sleep|cooling.off)\b/i.test(t)
+        || (/\b(cut-?off|deadline)\b/i.test(t)
+          && !/\b(before|after|by|ahead of|prior to|up to)\s+(the\s+|a\s+|our\s+)?(\w+\s+){0,2}(cut-?off|deadline)\b/i.test(t))),
   },
   {
     kind: "rule",
     why: "it constrains an answer rather than asking for one",
-    test: (t) => /\b(max|maximum|at most|no more than|up to \d|only one|only \d|limit(ed)?|cannot|can't|must not|clash(es)?|conflict|concurrent|mutually exclusive)\b/i.test(t),
+    // A constraint is stated, never asked: "Any clashes?" is a fork
+    // about clashes, not a rule. And "Choose up to 3 sessions" is an
+    // instruction to the registrant — the limit is in it, but the box
+    // is the asking.
+    test: (t) => !t.trim().endsWith("?")
+      && !/^(choose|pick|select|enter|upload|tell us)\b/i.test(t)
+      && /\b(max|maximum|at most|no more than|up to \d|only one|only \d|limit(ed)?|cannot|can't|must not|clash(es)?|conflict|concurrent|mutually exclusive)\b/i.test(t),
   },
   {
     kind: "data",
@@ -115,23 +146,40 @@ const RULES: Rule[] = [
     // The only rule that reads the actor: "Programme lead" beside
     // "phones the registrant" is what makes it manual rather than
     // something the platform does.
-    test: (t, actor) => /\b(by hand|manually|off-?platform|in person|phones?|calls? them)\b/i.test(t)
+    // "Are you attending in person?" contains "in person" and is a form
+    // question, not a manual step. Anything asked of the registrant is
+    // theirs to answer whatever words it happens to contain.
+    test: (t, actor) => (!(t.trim().endsWith("?") && ADDRESSED(t))
+        && /\b(by hand|manually|off-?platform|in person|phones?|calls? them)\b/i.test(t))
       || (/\b(lead|coordinator|officer|staff|administrator|organiser|organizer)\b/i.test(actor)
         && /\b(phones?|calls?|posts?|signs?|stamps?|files?)\b/i.test(t)),
   },
   {
     kind: "decision",
     why: "it is a fork the process evaluates, not something the registrant answers",
+    // Keyed on the PREDICATE, not on the auxiliary. Matching bare
+    // "any/is/do/has" made every elided form question a diamond —
+    // "Any dietary requirements?" is something a registrant answers,
+    // and only "requirements" tells you so. A fork names a state.
     test: (t) => t.trim().endsWith("?")
-      && !SECOND_PERSON.test(t)
-      && /\b(any|all|does|do|is|are|was|were|has|have|had|can|should|already|full|eligible|approved|valid|exists?|match(es)?|over|under|more than|fewer than)\b/i.test(t),
+      && !ADDRESSED(t)
+      // Either it names a state, or the organisation is asking about
+      // itself — "Have we heard back?" is the process checking its own
+      // position, and the registrant is not the one who answers it.
+      // The ADDRESSED guard above is what keeps "Anything else we
+      // should know?" on the form side of this line.
+      && (PREDICATE.test(t) || /\b(we|us|our)\b/i.test(t)),
   },
   {
     kind: "question",
     why: "the registrant answers this, so it becomes a field in the form",
-    test: (t) => (t.trim().endsWith("?") && SECOND_PERSON.test(t))
-      || /^(what|which|when|where|who|how many|how much|tell us|choose|pick|select|enter|upload)\b/i.test(t)
-      || /^(your|about you)\b/i.test(t),
+    // The last branch is the domain rule that makes the two "?" shapes
+    // exhaustive: only a fork and a question end in a question mark, so
+    // anything still asking by the time it reaches here — having been
+    // offered to the decision rule first — is being asked of a person.
+    test: (t) => /^(what|which|when|where|who|how many|how much|tell us|choose|pick|select|enter|upload)\b/i.test(t)
+      || /^(your|about you)\b/i.test(t)
+      || t.trim().endsWith("?"),
   },
   {
     kind: "start",
