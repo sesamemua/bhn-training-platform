@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Live form: the reorder arrows stop hiding
+  {
+    title: "Live form: the up and down arrows on a question are visible now",
+    body: "You could already reorder the questions in a step, but the arrows only appeared once your pointer was over the row — so unless you happened to hover the right few pixels, the feature did not appear to exist. They are drawn all the time now, faint until you approach. At the top and bottom of a step the arrow is greyed rather than missing, and hovering it says why: either it is already first, or it is the only question in that step, in which case what you want is to move the step itself on the chart. A question stays inside its own step on purpose — a step holding a single question borrows that step's wording as the question's label, so a question that hopped between steps would arrive wearing the wrong name.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the admin panel goes, arrows stop merging
   {
     title: "Flow charts: the admin panel is gone, and arrows into the same box no longer merge",

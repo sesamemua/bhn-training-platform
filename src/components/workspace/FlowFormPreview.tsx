@@ -11,6 +11,7 @@
 import { useMemo } from "react";
 import { ChevronDown, ChevronUp, CircleAlert, TriangleAlert } from "lucide-react";
 import { limitState, missingRequired, orderedFields, visibleFields, type AnswerValue, type Answers } from "@/lib/flowchart/form";
+import { moveBounds } from "@/lib/flowchart/fields";
 import {
   COMPANY_TYPES,
   OTHER as INST_OTHER,
@@ -150,24 +151,41 @@ export function FlowFormPreview({
                 </button>
                 {/* Reordering is a thought you have while READING the form,
                     so the control lives here as well as in the sheet. */}
-                {onMoveField && (
-                  <span className="flex shrink-0 items-center opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                {/* Always drawn, never hidden behind a hover. A control
+                    you cannot see is a control you do not know exists,
+                    and "can I reorder these?" is a question the form
+                    should answer by looking at it. Faint until you
+                    approach, so a long form does not look like a
+                    cockpit. Greyed at the ends of the form rather than
+                    absent, because a missing arrow reads as a bug. */}
+                {onMoveField && (() => {
+                  // A question moves within its step. Greyed at the ends
+                  // with the reason in the tooltip, because an arrow that
+                  // looks alive and ignores the click is what made this
+                  // feature look absent in the first place.
+                  const { canMoveUp, canMoveDown, upReason, downReason } =
+                    moveBounds(doc, f.nodeId, f.index);
+                  return (
+                  <span className="flex shrink-0 items-center opacity-45 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
                     <button
                       onClick={() => onMoveField(f.nodeId, f.index, -1)}
-                      title="Move this question up"
-                      className="rounded p-0.5 text-subtle hover:bg-elevated hover:text-fg"
+                      disabled={!canMoveUp}
+                      title={canMoveUp ? "Move this question up" : upReason}
+                      className="rounded p-0.5 text-subtle hover:bg-elevated hover:text-fg disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
                     >
                       <ChevronUp size={12} />
                     </button>
                     <button
                       onClick={() => onMoveField(f.nodeId, f.index, 1)}
-                      title="Move this question down"
-                      className="rounded p-0.5 text-subtle hover:bg-elevated hover:text-fg"
+                      disabled={!canMoveDown}
+                      title={canMoveDown ? "Move this question down" : downReason}
+                      className="rounded p-0.5 text-subtle hover:bg-elevated hover:text-fg disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
                     >
                       <ChevronDown size={12} />
                     </button>
                   </span>
-                )}
+                  );
+                })()}
               </div>
               {def.help && <p className="mt-0.5 text-[11.5px] text-subtle">{def.help}</p>}
               <Field

@@ -32,6 +32,7 @@ import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { nodeNumbers } from "@/lib/flowchart/numbering";
 import { DASHED_KINDS, SHAPE_INSET, SHAPE_PAINT, shapePath } from "@/lib/flowchart/shapes";
 import { limitDrag, settleGrowth } from "@/lib/flowchart/collide";
+import { moveBounds, moveFieldInForm } from "@/lib/flowchart/fields";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowShapePalette } from "./FlowShapePalette";
@@ -1019,15 +1020,10 @@ export function FlowChartEditor({
    * because "this question should come first" is a thought you have while
    * reading the form, not while looking at a grid.
    */
+  // Up and down the FORM, not up and down within one box — see
+  // moveFieldInForm for why the box-local version read as broken.
   const moveField = (id: string, i: number, dir: -1 | 1) =>
-    writeFields(id, (fs) => {
-      const to = i + dir;
-      if (to < 0 || to >= fs.length) return fs;
-      const next = [...fs];
-      const [m] = next.splice(i, 1);
-      next.splice(to, 0, m);
-      return next;
-    });
+    mutate((d) => moveFieldInForm(d, id, i, dir));
 
   const removeField = (id: string, i: number) =>
     writeFields(id, (fs) => fs.filter((_, j) => j !== i));
