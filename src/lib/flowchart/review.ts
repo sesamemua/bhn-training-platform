@@ -49,6 +49,29 @@ const mentions = (doc: ChartDoc, re: RegExp) =>
 
 const PICKER_TYPES = ["academic", "health", "company"];
 
+/**
+ * Free text whose answers cannot be a menu, so it is not evidence of
+ * sloppy data collection. A person's name is the whole example: there
+ * is no list of them, and the note's complaint was never about names —
+ * it was about institutions, positions and categories, which ARE
+ * knowable in advance.
+ */
+const OPEN_BY_NATURE = ["org_other", "trainee_name"];
+
+/** Can `from` reach `to` by following arrows, whatever their conditions? */
+function canReach(doc: ChartDoc, from: string, to: string): boolean {
+  const seen = new Set<string>();
+  const queue = [from];
+  while (queue.length) {
+    const id = queue.shift()!;
+    if (id === to) return true;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const e of doc.edges) if (e.from === id && !seen.has(e.to)) queue.push(e.to);
+  }
+  return false;
+}
+
 // ── the note, item by item ───────────────────────────────────────────
 
 export const NOTE_REVIEW: ReviewItem[] = [
@@ -198,6 +221,27 @@ export const NOTE_REVIEW: ReviewItem[] = [
     },
   },
   {
+    id: "trainee-name-confirm",
+    request: "Ask the trainee to confirm their name, as well as their email.",
+    source: "Trainee gate · follow-up note",
+    check: (doc) => {
+      const email = allFields(doc).find((x) => x.field.type === "email" && /trainee/i.test(x.field.key));
+      if (!email) return { status: "missed", evidence: "No trainee verification question exists." };
+      const name = fieldsOf(email.node).find((f) => /name/i.test(f.key));
+      if (!name)
+        return {
+          status: "missed",
+          evidence: `"${email.node.text}" asks for an email but never confirms the name.`,
+        };
+      if (!name.required)
+        return { status: "attention", evidence: "The name is asked but is optional, so a match may rest on the email alone." };
+      return {
+        status: "met",
+        evidence: `"${email.node.text}" confirms the name and the email together, so a trainee whose address has changed can still be matched.`,
+      };
+    },
+  },
+  {
     id: "roster-sheet-configured",
     request: "The live Google Sheet behind the roster check — to be provided.",
     source: "Trainee gate · follow-up note",
@@ -240,8 +284,10 @@ export const NOTE_REVIEW: ReviewItem[] = [
       if (!sessions) return { status: "missed", evidence: "No sessions question to carry on to." };
       const reachedWhenNo = reachable(doc, { trainee: "No" }).has(sessions.id);
       const notFound = doc.nodes.find((n) => /not on the roster|not found/i.test(n.text));
-      const notFoundContinues =
-        !!notFound && doc.edges.some((e) => e.from === notFound.id && e.to === sessions.id);
+      // Reachability, not a direct edge: the spine legitimately passes
+      // through other questions on the way, and testing for one hop
+      // reported a reordering of the form as a dead end.
+      const notFoundContinues = !!notFound && canReach(doc, notFound.id, sessions.id);
       if (reachedWhenNo && notFoundContinues)
         return {
           status: "met",
@@ -481,7 +527,9 @@ export const NOTE_REVIEW: ReviewItem[] = [
         (x) => (x.field.type === "text" || x.field.type === "long") && x.field.required,
       );
       const structured = fields.filter((x) => x.field.type !== "text" && x.field.type !== "long");
-      const names = freeRequired.map((x) => x.field.key).filter((k) => k !== "org_other");
+      const names = freeRequired
+        .map((x) => x.field.key)
+        .filter((k) => !OPEN_BY_NATURE.includes(k));
       return names.length
         ? {
             status: "attention",
@@ -489,7 +537,7 @@ export const NOTE_REVIEW: ReviewItem[] = [
           }
         : {
             status: "met",
-            evidence: `${structured.length} structured questions; the only required typing is the org name for the rare demographic no list covers.`,
+            evidence: `${structured.length} structured questions. The only required typing is a person's own name and, for the rare demographic no list covers, their organisation — neither of which any menu could hold.`,
           };
     },
   },

@@ -99,10 +99,19 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
     text: "Note: not a trainee? You can apply to a programme — applications take time to review — and register now regardless, as long as you are HQP at one of the 41 member institutions." };
 
   // Yes branch: confirm who they are against the roster, then carry on.
-  const nTv = { id: "nTv", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
-    text: "Confirm the email we know you by",
-    field: { key: "trainee_email", type: "email" as const, required: true,
-      help: "Your institutional email, or the secondary email registered with BioHubNet. It is checked against the trainee roster and used for nothing else on this form." } };
+  const nTv = { id: "nTv", kind: "question" as const, x: MAIN, y: at(94), w: W, h: 94,
+    text: "Confirm the details we know you by",
+    // Name AND email, because either alone loses people: a trainee may
+    // register with a personal address and appear on the roster under
+    // an institutional one, or be on it under a name they no longer
+    // use. Two fields let a near-miss be recognised rather than
+    // rejected, and the pair is what the roster is matched on.
+    fields: [
+      { key: "trainee_name", type: "text" as const, required: true,
+        help: "Your name as it appears on your BioHubNet record. Give that one even if you go by something else now." },
+      { key: "trainee_email", type: "email" as const, required: true,
+        help: "Your institutional email, or the secondary email registered with BioHubNet. It is checked against the trainee roster and used for nothing else on this form." },
+    ] };
 
   // The roster is a record the process READS, so it is drawn as one —
   // out on its own lane, because it is not a step anybody performs. The
@@ -127,6 +136,25 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
         options: ["ENGAGE", "EXPERIENCE", "EQUIP"] },
       { key: "travel_origin", type: "text" as const,
         help: "City or town you would travel from, if you need support. Subject to approval." },
+    ] };
+
+  /*
+   * Who you are comes before what you are picking.
+   *
+   * Choosing three workshops and only then being asked who you are puts
+   * the investment before the introduction. It also keeps the two
+   * name-and-email questions next to each other, which is what makes
+   * the difference between them legible: the box above confirms the
+   * details BioHubNet already holds, for matching against the roster;
+   * this one is where the coordinator should write to you about this
+   * event. Far apart they look like the same question asked twice.
+   */
+  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
+    text: "About you",
+    fields: [
+      { key: "contact", type: "contact" as const, required: true,
+        help: "How the coordinator should reach you about Training Week." },
+      { key: "linkedin", type: "text" as const, help: "Optional." },
     ] };
 
   const n2 = { id: "n2", kind: "question" as const, x: MAIN, y: at(46), w: W, h: 46,
@@ -161,14 +189,6 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
         },
       ],
     } };
-
-  // Contact details only — who you ARE was settled at the gate.
-  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
-    text: "About you",
-    fields: [
-      { key: "contact", type: "contact" as const, required: true },
-      { key: "linkedin", type: "text" as const, help: "Optional." },
-    ] };
 
   // The note's 2026 questions, verbatim lists. The definitions live in
   // the questions themselves — last year "Industry" swallowed students
@@ -279,27 +299,31 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
 
   return {
     nodes: [n1, nT, nTinfo, nTv, nTroster, nTd, nTc, nTx, n6,
-            n2, n2r, n3, n3b, n4a, n4b, n4c, n4d, n5, n5r, n7,
+            n3, n2, n2r, n3b, n4a, n4b, n4c, n4d, n5, n5r, n7,
             n8, n9, n10, nPri, n11, n12, n13, n14, n15, n16],
     edges: [
       { id: "e1", from: "n1", to: "nT" },
-      { id: "eTn", from: "nT", to: "nTinfo", label: "if not" },
       // Saying yes means proving it; saying no costs nothing and the
       // registration carries straight on to the sessions.
       { id: "eT1", from: "nT", to: "nTv", when: { field: "trainee", op: "is", value: "Yes" }, label: "yes" },
-      { id: "eT2", from: "nT", to: "n2", when: { field: "trainee", op: "is not", value: "Yes" }, label: "no" },
+      // The No path runs THROUGH the note, because the note is what
+      // "no" means: apply, or register now as HQP. Reading it is the
+      // step. It also keeps the skip arrow off the spine, where its
+      // label had nowhere to sit that was not on top of a box.
+      { id: "eTn", from: "nT", to: "nTinfo", when: { field: "trainee", op: "is not", value: "Yes" }, label: "no" },
+      { id: "eT2", from: "nTinfo", to: "n3" },
       { id: "eT3", from: "nTv", to: "nTd" },
       { id: "eT4", from: "nTv", to: "nTroster", label: "checked against" },
       { id: "eT5", from: "nTd", to: "nTc", label: "found" },
       { id: "eT6", from: "nTd", to: "nTx", label: "not found" },
       { id: "eT7", from: "nTc", to: "n6" },
-      { id: "eT8", from: "n6", to: "n2" },
+      { id: "eT8", from: "n6", to: "n3" },
       // Not being on the roster is not a rejection — it settles the
       // status and rejoins the same spine.
-      { id: "eT9", from: "nTx", to: "n2" },
-      { id: "e2", from: "n2", to: "n3" },
+      { id: "eT9", from: "nTx", to: "n3" },
+      { id: "e2", from: "n3", to: "n2" },
       { id: "e2r", from: "n2", to: "n2r", label: "limits" },
-      { id: "e3b", from: "n3", to: "n3b" },
+      { id: "e3b", from: "n2", to: "n3b" },
       // One institution question per demographic — the org type answered
       // above decides which one is asked. The unlabelled spine arrow is
       // what keeps the rest of the form visible before it is answered.

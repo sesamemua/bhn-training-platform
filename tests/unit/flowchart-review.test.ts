@@ -25,6 +25,7 @@ test("the shipped chart answers the note", () => {
     "trainee-priority": "met",
     "trainee-apply-or-register": "met",
     "trainee-email-check": "met",
+    "trainee-name-confirm": "met",
     // Waiting on the sheet itself, which the coordinator will provide.
     "roster-sheet-configured": "attention",
     "trainee-status-backend": "met",
@@ -102,6 +103,37 @@ test("a trainee not found on the roster must not be a dead end", () => {
     edges: TRAINING_WEEK_FLOW.edges.filter((e) => e.id !== "eT9"),
   };
   assert.equal(statusOf(doc, "non-trainee-continues"), "missed");
+});
+
+test("carrying on through another question first is not a dead end", () => {
+  // The not-found step reaches the sessions VIA "About you". An earlier
+  // version of this check tested for a single hop and called that a
+  // dead end, which turned a reordering of the form into a red row.
+  assert.equal(statusOf(TRAINING_WEEK_FLOW, "non-trainee-continues"), "met");
+});
+
+test("the trainee confirms a name as well as an email", () => {
+  const noName = doctored((nodes) =>
+    nodes.map((n) =>
+      n.id === "nTv" ? { ...n, fields: n.fields!.filter((f) => !/name/i.test(f.key)) } : n,
+    ),
+  );
+  assert.equal(statusOf(noName, "trainee-name-confirm"), "missed");
+
+  const optional = doctored((nodes) =>
+    nodes.map((n) =>
+      n.id === "nTv"
+        ? { ...n, fields: n.fields!.map((f) => (/name/i.test(f.key) ? { ...f, required: undefined } : f)) }
+        : n,
+    ),
+  );
+  assert.equal(statusOf(optional, "trainee-name-confirm"), "attention");
+});
+
+test("a person's own name does not count against standardised data", () => {
+  // Names have no menu to pick from; the note's complaint was about
+  // institutions, positions and categories, which do.
+  assert.equal(statusOf(TRAINING_WEEK_FLOW, "standardised-data"), "met");
 });
 
 test("removing the roster record breaks the verification check", () => {

@@ -6,9 +6,9 @@ import type { ChartDoc } from "../../src/lib/flowchart/types";
 
 test("columns are the questions, in the order the form asks them", () => {
   const cols = adminColumns(TRAINING_WEEK_FLOW);
-  assert.deepEqual(cols.slice(0, 3).map((c) => c.key), ["trainee", "trainee_email", "bhn_programs"]);
+  assert.deepEqual(cols.slice(0, 3).map((c) => c.key), ["trainee", "trainee_name", "trainee_email"]);
   // Every column names the box it came from, so the header can group them.
-  assert.equal(cols[1].group, "Confirm the email we know you by");
+  assert.equal(cols[1].group, "Confirm the details we know you by");
   assert.ok(cols.every((c) => c.label.length > 0 && c.key.length > 0));
 });
 

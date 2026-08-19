@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Registration: About you moves up, and trainees confirm a name
+  {
+    title: "Registration asks who you are before what you want, and trainees confirm a name as well as an email",
+    body: "\"About you\" now comes before \"Choose your sessions\" — picking three workshops and only then being asked who you are put the investment before the introduction. It also puts the two name-and-email questions next to each other, which is what makes the difference between them readable: the box above confirms the details BioHubNet already holds, for matching against the trainee roster; \"About you\" is how the coordinator should reach you about this event. Far apart they looked like the same question asked twice. The trainee check now confirms a name alongside the email, because either alone loses people — someone may have registered with a personal address and appear on the roster under an institutional one, or be listed under a name they no longer use. Two fields let a near-miss be recognised instead of rejected.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Registration: the trainee gate
   {
     title: "Training Week registration now opens with the BioHubNet trainee check",

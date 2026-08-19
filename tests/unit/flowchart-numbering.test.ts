@@ -49,7 +49,7 @@ test("numbering is stable for the same document", () => {
 test("the seeded chart numbers its spine in the order it reads", () => {
   const n = nodeNumbers(TRAINING_WEEK_FLOW);
   assert.equal(n.get("n1"), 1);            // Registration opens
-  assert.ok(n.get("n2")! < n.get("n3")!);  // sessions before About you
+  assert.ok(n.get("n3")! < n.get("n2")!);  // About you before the sessions
   assert.ok(n.get("n16")! === TRAINING_WEEK_FLOW.nodes.length); // Attends is last
 });
 
