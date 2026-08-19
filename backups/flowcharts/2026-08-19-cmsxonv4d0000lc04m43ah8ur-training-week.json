@@ -1,0 +1,590 @@
+{
+  "id": "cmsxonv4d0000lc04m43ah8ur",
+  "title": "Training Week registration",
+  "slug": "training-week-registration",
+  "summary": "How a person gets a seat, from opening to attending.",
+  "data": {
+    "edges": [
+      {
+        "id": "e1",
+        "to": "akhh0yi",
+        "from": "n1"
+      },
+      {
+        "id": "e2",
+        "to": "n3",
+        "from": "n2"
+      },
+      {
+        "id": "e2r",
+        "to": "n2r",
+        "from": "n2",
+        "label": "limits"
+      },
+      {
+        "id": "e3",
+        "to": "n4",
+        "from": "n3"
+      },
+      {
+        "id": "e6",
+        "to": "n7",
+        "from": "n6"
+      },
+      {
+        "id": "e8",
+        "to": "n8",
+        "from": "n7"
+      },
+      {
+        "id": "e9",
+        "to": "n9",
+        "from": "n8",
+        "label": "yes"
+      },
+      {
+        "id": "e10",
+        "to": "n10",
+        "from": "n8",
+        "label": "no"
+      },
+      {
+        "id": "e11",
+        "to": "n11",
+        "from": "n10"
+      },
+      {
+        "id": "e12",
+        "to": "n12",
+        "from": "n11",
+        "label": "no"
+      },
+      {
+        "id": "e13",
+        "to": "n13",
+        "from": "n11",
+        "label": "yes"
+      },
+      {
+        "id": "e14",
+        "to": "n14",
+        "from": "n13"
+      },
+      {
+        "id": "e15",
+        "to": "n16",
+        "from": "n14",
+        "when": {
+          "op": "is",
+          "field": "confirmed",
+          "value": "Yes"
+        },
+        "label": "confirmed"
+      },
+      {
+        "id": "e16",
+        "to": "n15",
+        "from": "n14",
+        "when": {
+          "op": "is not",
+          "field": "confirmed",
+          "value": "Yes"
+        },
+        "label": "no reply"
+      },
+      {
+        "id": "e17",
+        "to": "n9",
+        "from": "n15",
+        "label": "offer it on"
+      },
+      {
+        "id": "qc9u9uo",
+        "to": "n2",
+        "from": "n4"
+      },
+      {
+        "id": "w77cxyb",
+        "to": "2369v7l",
+        "from": "akhh0yi"
+      },
+      {
+        "id": "3r0bm4r",
+        "to": "dtsnlh1",
+        "from": "akhh0yi"
+      },
+      {
+        "id": "o1olz79",
+        "to": "0dydqro",
+        "from": "2369v7l"
+      },
+      {
+        "id": "k4x9sot",
+        "to": "dsddm3i",
+        "from": "dtsnlh1"
+      },
+      {
+        "id": "zn08x8e",
+        "to": "r8ywwex",
+        "from": "0dydqro"
+      },
+      {
+        "id": "wlqji0s",
+        "to": "bfaxicz",
+        "from": "r8ywwex"
+      },
+      {
+        "id": "k6uh9n0",
+        "to": "5tr7xyj",
+        "from": "r8ywwex"
+      },
+      {
+        "id": "ucabxi5",
+        "to": "gg87dvq",
+        "from": "5tr7xyj"
+      },
+      {
+        "id": "o6rzzrl",
+        "to": "0ymivue",
+        "from": "gg87dvq"
+      },
+      {
+        "id": "nkfmx42",
+        "to": "g2cn1vb",
+        "from": "0ymivue"
+      },
+      {
+        "id": "h4f83du",
+        "to": "wwno0q4",
+        "from": "0ymivue"
+      },
+      {
+        "id": "edgxz7r",
+        "to": "4k83lk1",
+        "from": "0ymivue"
+      },
+      {
+        "id": "zbvg7hi",
+        "to": "n2",
+        "from": "bfaxicz"
+      }
+    ],
+    "nodes": [
+      {
+        "h": 51,
+        "w": 250,
+        "x": 230,
+        "y": 40,
+        "id": "n1",
+        "kind": "start",
+        "text": "Training Week Registration opens",
+        "actor": ""
+      },
+      {
+        "h": 36,
+        "w": 250,
+        "x": 100,
+        "y": 1080,
+        "id": "n2",
+        "kind": "question",
+        "text": "Choose your sessions",
+        "field": {
+          "key": "sessions",
+          "help": "Pick the ones you want to attend.",
+          "type": "multi",
+          "options": [
+            "Mon 26 · CCRM tour + Lunch & Learn",
+            "Mon 26 · Catalent tour + Lunch & Learn",
+            "Mon 26 · CL3 workshop",
+            "Tue 27 · Communication Chameleon (1 PM)",
+            "Tue 27 · Negotiation Skills (1 PM)",
+            "Wed 28 · Innovation showcase"
+          ],
+          "required": true
+        }
+      },
+      {
+        "h": 51,
+        "w": 250,
+        "x": 430,
+        "y": 1074,
+        "id": "n2r",
+        "kind": "rule",
+        "text": "Up to 3 sessions · clashes flagged",
+        "limit": {
+          "max": 3,
+          "field": "sessions",
+          "clashes": [
+            {
+              "label": "Tuesday 1 PM",
+              "options": [
+                "Tue 27 · Communication Chameleon (1 PM)",
+                "Tue 27 · Negotiation Skills (1 PM)"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "h": 53,
+        "w": 250,
+        "x": 110,
+        "y": 1250,
+        "id": "n3",
+        "kind": "question",
+        "text": "About you",
+        "fields": [
+          {
+            "key": "contact",
+            "type": "contact",
+            "required": true
+          },
+          {
+            "key": "position_title",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "linkedin",
+            "help": "Optional.",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "h": 53,
+        "w": 250,
+        "x": 80,
+        "y": 1374,
+        "id": "n4",
+        "kind": "question",
+        "text": "Your affiliations",
+        "fields": [
+          {
+            "key": "academic",
+            "help": "Leave blank if none.",
+            "type": "academic"
+          },
+          {
+            "key": "Hospital / Research Institute",
+            "help": "Leave blank if none.",
+            "type": "health"
+          },
+          {
+            "key": "company",
+            "help": "If you are a entrepreneur please enter your company name. Leave blank if not applicable.",
+            "type": "company"
+          }
+        ]
+      },
+      {
+        "h": 53,
+        "w": 250,
+        "x": 450,
+        "y": 1460,
+        "id": "n6",
+        "kind": "question",
+        "text": "Trainee details",
+        "fields": [
+          {
+            "key": "trainee_status",
+            "type": "choice",
+            "options": [
+              "Master's Student",
+              "PhD Student",
+              "Post-doctoral Fellow",
+              "Research Associate",
+              "Laboratory Technician",
+              "Other"
+            ]
+          },
+          {
+            "key": "bhn_programs",
+            "type": "multi",
+            "options": [
+              "ENGAGE",
+              "EXPERIENCE",
+              "EQUIP"
+            ]
+          },
+          {
+            "key": "travel_origin",
+            "help": "City or town you would travel from, if you need support. Subject to approval.",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "h": 53,
+        "w": 250,
+        "x": 90,
+        "y": 1600,
+        "id": "n7",
+        "kind": "question",
+        "text": "Before you finish",
+        "fields": [
+          {
+            "key": "newsletter_optin",
+            "type": "yesno"
+          },
+          {
+            "key": "media_consent",
+            "help": "BioHubNet may capture photographs and video and use them for promotional purposes.",
+            "type": "yesno",
+            "required": true
+          }
+        ]
+      },
+      {
+        "h": 36,
+        "w": 250,
+        "x": 90,
+        "y": 1734,
+        "id": "n8",
+        "kind": "decision",
+        "text": "Any chosen session full?"
+      },
+      {
+        "h": 53,
+        "w": 250,
+        "x": 520,
+        "y": 1684,
+        "id": "n9",
+        "kind": "step",
+        "text": "Added to the waitlist",
+        "actor": "System"
+      },
+      {
+        "h": 68,
+        "w": 250,
+        "x": 90,
+        "y": 1868,
+        "id": "n10",
+        "kind": "step",
+        "text": "Checked against the eligibility sheet",
+        "actor": "Program lead"
+      },
+      {
+        "h": 36,
+        "w": 250,
+        "x": 90,
+        "y": 1990,
+        "id": "n11",
+        "kind": "decision",
+        "text": "Eligible?"
+      },
+      {
+        "h": 36,
+        "w": 250,
+        "x": 500,
+        "y": 2004,
+        "id": "n12",
+        "kind": "end",
+        "text": "Declined, with a reason"
+      },
+      {
+        "h": 68,
+        "w": 250,
+        "x": 90,
+        "y": 2118,
+        "id": "n13",
+        "kind": "step",
+        "text": "Seat confirmed, info pack emailed",
+        "actor": "System"
+      },
+      {
+        "h": 51,
+        "w": 250,
+        "x": 90,
+        "y": 2240,
+        "id": "n14",
+        "kind": "question",
+        "text": "Confirm you can still attend",
+        "field": {
+          "key": "confirmed",
+          "help": "Asked before the day. Confirm by the cut-off or the seat is released.",
+          "type": "yesno",
+          "required": true
+        }
+      },
+      {
+        "h": 69,
+        "w": 250,
+        "x": 450,
+        "y": 2240,
+        "id": "n15",
+        "kind": "step",
+        "text": "Seat released to the waitlist",
+        "actor": "System"
+      },
+      {
+        "h": 36,
+        "w": 250,
+        "x": 90,
+        "y": 2374,
+        "id": "n16",
+        "kind": "end",
+        "text": "Attends"
+      },
+      {
+        "h": 145,
+        "w": 190,
+        "x": 250,
+        "y": 130,
+        "id": "akhh0yi",
+        "kind": "question",
+        "text": "Are you currently an approved BioHubNet Trainee? In either one of our programs: ENGAGE, EXPERIENCE or EQUIP?",
+        "field": {
+          "key": "new_question",
+          "type": "text"
+        }
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 40,
+        "y": 289,
+        "id": "2369v7l",
+        "kind": "question",
+        "text": "Yes",
+        "field": {
+          "key": "new_question_2",
+          "type": "text"
+        }
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 480,
+        "y": 270,
+        "id": "dtsnlh1",
+        "kind": "question",
+        "text": "No",
+        "field": {
+          "key": "new_question_3",
+          "type": "text"
+        }
+      },
+      {
+        "h": 145,
+        "w": 190,
+        "x": 500,
+        "y": 340,
+        "id": "dsddm3i",
+        "kind": "question",
+        "text": "Approved BioHubNet Trainees receive priority consideration for the training week. Do you wish to ",
+        "field": {
+          "key": "new_question_4",
+          "type": "text"
+        }
+      },
+      {
+        "h": 83,
+        "w": 190,
+        "x": 40,
+        "y": 392,
+        "id": "0dydqro",
+        "kind": "step",
+        "text": "What's your email associated with your BioHubNet Training Platform?"
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 40,
+        "y": 610,
+        "id": "bfaxicz",
+        "kind": "question",
+        "text": "Exists",
+        "field": {
+          "key": "new_question_5",
+          "type": "text"
+        }
+      },
+      {
+        "h": 67,
+        "w": 190,
+        "x": 40,
+        "y": 490,
+        "id": "r8ywwex",
+        "kind": "step",
+        "text": "check against live sheet of bhn trainees"
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 280,
+        "y": 610,
+        "id": "5tr7xyj",
+        "kind": "question",
+        "text": "does not exist",
+        "field": {
+          "key": "new_question_6",
+          "type": "text"
+        }
+      },
+      {
+        "h": 51,
+        "w": 190,
+        "x": 280,
+        "y": 700,
+        "id": "gg87dvq",
+        "kind": "question",
+        "text": "request manual confirmation",
+        "field": {
+          "key": "new_question_7",
+          "type": "text"
+        }
+      },
+      {
+        "h": 53,
+        "w": 190,
+        "x": 280,
+        "y": 800,
+        "id": "0ymivue",
+        "kind": "decision",
+        "text": "Decision",
+        "actor": "Epshita"
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 520,
+        "y": 860,
+        "id": "wwno0q4",
+        "kind": "step",
+        "text": "manual reachout"
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 280,
+        "y": 900,
+        "id": "g2cn1vb",
+        "kind": "step",
+        "text": "manual overide"
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 520,
+        "y": 790,
+        "id": "4k83lk1",
+        "kind": "step",
+        "text": "decline"
+      },
+      {
+        "h": 36,
+        "w": 190,
+        "x": 780,
+        "y": 740,
+        "id": "ps8aoqz",
+        "kind": "step",
+        "text": "Step"
+      }
+    ]
+  },
+  "createdById": null,
+  "updatedById": "cmota65hp0000ji04j9x39b5d",
+  "createdAt": "2026-08-17T20:25:23.534Z",
+  "updatedAt": "2026-08-19T16:40:21.930Z"
+}

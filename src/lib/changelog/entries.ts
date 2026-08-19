@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Flow charts: the 2026 registration note, implemented and measured
+  {
+    title: "Training Week registration rebuilt against the 2026 note, with a live review section",
+    body: "The registration workflow now implements the coordinator's note on last year's data. It registers Training Week only — nothing mentions the symposium, which registers separately. \"Are you a current BioHubNet trainee?\" leads. The free-text Institution/Company question is gone: position and organisation type are the note's two 2026 drop-downs, with the definitions in the questions themselves (\"Industry Professional\" means a member of a private company, not a student), hospitals included, and the institution collected as a single primary pick — the picker you meet depends on the organisation type you gave, so nobody hunts for a hospital in a university list. Position title is a drop-down with Other. \"Area of expertise\" is kept but flagged, since the note asks for a decision rather than making one. Under the chart sits a new Review section: every request from the note as its own row, re-measured against the chart on every edit — no comments to go stale; if someone drags the workflow somewhere that breaks a request, its row turns \"Not met\" and says which box did it.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: heights re-settle when the chart is swapped
   {
     title: "Flow charts: boxes stop at each other properly after switching charts",

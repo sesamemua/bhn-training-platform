@@ -142,6 +142,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.30a",
   },
   {
+    id: "workspace.flowcharts.review",
+    title: "The review section keeps score",
+    body: "Below the chart, the **Review** section lists every request from the 2026 registration note and measures the chart against it **live**. Edit anything and the checks re-run: break a request — say, a question that mentions the symposium — and its row flips to *Not met* and names the box. There are no comments to leave or read; the checks look at the chart itself, so they cannot go stale.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.stability",
     title: "Your edits survive the save",
     body: "Two things used to lose work here, and both are fixed. **Saving no longer reloads the chart underneath you** — it used to re-fetch the list and quietly reset the canvas, taking every edit and undo step made since the save with it. And the crash that swapped the editor for *This page couldn't load* mid-edit is gone; it came from measurements that changed the very thing they measured. If the editor does hit a problem now it stays put, names the part that failed, and gives you a **Copy the details** button — your unsaved chart is still there behind it.",

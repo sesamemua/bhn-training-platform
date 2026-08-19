@@ -49,6 +49,28 @@ const at = (h: number, gap = GAP) => {
 export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
   cursor = TOP;
 
+  /*
+   * Restructured August 2026 against the coordinator's note on last
+   * year's data. The requests, in one line each — the Review section
+   * under the chart measures the live chart against every one of them:
+   *
+   *   • Training Week ONLY. The symposium registers separately, so no
+   *     question here may mention it.
+   *   • Lead with "Are you a current BioHubNet trainee?" — the week is
+   *     for HQP, and eligibility should be visible early.
+   *   • No free-text "Institution / Company" (20+ spellings of UofT,
+   *     inflated industry figures). Position and organisation type are
+   *     two dropdowns, and the institution is a dropdown pick — ONE,
+   *     the primary.
+   *   • The old three-way Category (Industry/Academia/Government) is
+   *     gone. Positions and org types follow the note's 2026 lists,
+   *     with the definitions IN the question, hospitals included, and
+   *     "Industry Professional" labelled exactly that.
+   *   • Position title is a dropdown with Other, not free text.
+   *   • "Area of expertise" is kept but flagged: the note asks whether
+   *     it is still wanted for 2026, and that is the colleague's call.
+   */
+
   // Taller than the other pills: a start node carries a label AND an
   // actor, and 48px put both lines hard against the rounded ends.
   const n1 = { id: "n1", kind: "start" as const, x: MAIN, y: at(62), w: W, h: 62,
@@ -87,48 +109,93 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       ],
     } };
 
-  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
+  // The trainee question leads, per the note: Training Week is for HQP,
+  // so who you are comes before what you do.
+  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
     text: "About you",
     fields: [
       { key: "contact", type: "contact" as const, required: true },
-      { key: "position_title", type: "text" as const, required: true },
+      { key: "trainee", type: "yesno" as const, required: true,
+        help: "Are you a current BioHubNet trainee?" },
       { key: "linkedin", type: "text" as const, help: "Optional." },
-      { key: "category", type: "choice" as const, required: true,
-        options: ["Industry", "Academia", "Government", "Other"] },
     ] };
 
-  const n4 = { id: "n4", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
-    text: "Your affiliations",
-    // Repeatable on purpose: one person can be a PhD student, a clinician
-    // and a founder at once, and a single box loses two of them.
-    fields: [
-      { key: "academic", type: "academic" as const, help: "Leave blank if none." },
-      { key: "health", type: "health" as const, help: "Leave blank if none." },
-      { key: "company", type: "company" as const, help: "Leave blank if none." },
-    ] };
-
-  const n5 = { id: "n5", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
-    text: "Your work",
-    fields: [
-      { key: "expertise", type: "multi" as const, required: true,
-        options: ["R & D", "QA/QC", "Manufacturing", "Clinical Operations",
-                  "Regulatory Affairs", "Medical Affairs", "Business Development", "Other"] },
-      { key: "trainee", type: "yesno" as const, required: true },
-    ] };
-
-  const n6 = { id: "n6", kind: "question" as const, x: SIDE, y: at(62), w: W, h: 62,
+  // Trainee-only questions step aside and rejoin the spine.
+  const n6 = { id: "n6", kind: "question" as const, x: SIDE, y: n3.y, w: W, h: 78,
     text: "Trainee details",
     fields: [
-      { key: "trainee_status", type: "choice" as const,
-        options: ["Master's Student", "PhD Student", "Post-doctoral Fellow",
-                  "Research Associate", "Laboratory Technician", "Other"] },
       { key: "bhn_programs", type: "multi" as const,
         options: ["ENGAGE", "EXPERIENCE", "EQUIP"] },
       { key: "travel_origin", type: "text" as const,
         help: "City or town you would travel from, if you need support. Subject to approval." },
     ] };
 
-  const n7 = { id: "n7", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
+  // The note's 2026 questions, verbatim lists. The definitions live in
+  // the questions themselves — last year "Industry" swallowed students
+  // with company ties, and the fix the note asks for is words, not code.
+  const n3b = { id: "n3b", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
+    text: "Your role",
+    fields: [
+      { key: "primary_position", type: "choice" as const, required: true,
+        help: "Students pick a student option even if they also work with a company. Industry Professional means a member of a private company, not a student.",
+        options: [
+          "Undergraduate Student",
+          "Master's Student",
+          "PhD Student",
+          "Postdoctoral Fellow",
+          "Laboratory Technician / Research Associate",
+          "Faculty Member / Research Staff",
+          "Administrative Staff",
+          "Industry Professional",
+          "Entrepreneur / Founder",
+          "Other",
+        ] },
+      { key: "primary_org", type: "choice" as const, required: true,
+        help: "Where you mainly work or study. Academia covers faculty, staff and students.",
+        options: [
+          "Academic Institution",
+          "Industry / Private Sector",
+          "Startup",
+          "Government",
+          "Healthcare / Hospital",
+          "Non-Profit",
+          "Entrepreneurial Venture",
+          "Other",
+        ] },
+    ] };
+
+  // ONE primary institution, as a pick rather than a text box — last
+  // year University of Toronto arrived spelled twenty different ways.
+  // Which picker you meet depends on the organisation type you just
+  // gave, so nobody is asked to find a hospital in a university list.
+  const n4a = { id: "n4a", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
+    text: "Primary institution",
+    field: { key: "academic", type: "academic" as const, required: true,
+      help: "The institution you study or work at. One — your primary." } };
+  const n4b = { id: "n4b", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
+    text: "Primary hospital or network",
+    field: { key: "health", type: "health" as const, required: true,
+      help: "One — your primary." } };
+  const n4c = { id: "n4c", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
+    text: "Primary company",
+    field: { key: "company", type: "company" as const, required: true,
+      help: "One — your primary." } };
+  const n4d = { id: "n4d", kind: "question" as const, x: SIDE, y: at(56), w: W, h: 56,
+    text: "Primary organization",
+    field: { key: "org_other", type: "text" as const, required: true,
+      help: "Its name as it should appear in reports. One — your primary." } };
+
+  const n5 = { id: "n5", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
+    text: "Your work",
+    field: { key: "expertise", type: "multi" as const, required: true,
+      options: ["R & D", "QA/QC", "Manufacturing", "Clinical Operations",
+                "Regulatory Affairs", "Medical Affairs", "Business Development", "Other"] } };
+
+  // The note does not decide this one — it asks. Kept, and flagged.
+  const n5r = { id: "n5r", kind: "note" as const, x: SIDE, y: n5.y, w: W, h: 62,
+    text: "Note: the 2026 note asks whether 'Area of expertise' is still needed. Keep or drop is the coordinator's call — see the review below." };
+
+  const n7 = { id: "n7", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
     text: "Before you finish",
     fields: [
       { key: "dietary", type: "text" as const, help: "Dietary requirements or allergies. Blank if none." },
@@ -166,17 +233,30 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
     text: "Attends" };
 
   return {
-    nodes: [n1, n2, n2r, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15, n16],
+    nodes: [n1, n2, n2r, n3, n6, n3b, n4a, n4b, n4c, n4d, n5, n5r, n7,
+            n8, n9, n10, n11, n12, n13, n14, n15, n16],
     edges: [
       { id: "e1", from: "n1", to: "n2" },
       { id: "e2", from: "n2", to: "n3" },
       { id: "e2r", from: "n2", to: "n2r", label: "limits" },
-      { id: "e3", from: "n3", to: "n4" },
-      { id: "e4", from: "n4", to: "n5" },
       // Trainee-only questions step aside and rejoin the spine.
-      { id: "e5", from: "n5", to: "n6", when: { field: "trainee", op: "is", value: "Yes" }, label: "trainee" },
-      { id: "e6", from: "n6", to: "n7" },
-      { id: "e7", from: "n5", to: "n7", when: { field: "trainee", op: "is not", value: "Yes" }, label: "not a trainee" },
+      { id: "e3a", from: "n3", to: "n6", when: { field: "trainee", op: "is", value: "Yes" }, label: "trainee" },
+      { id: "e3b", from: "n6", to: "n3b" },
+      { id: "e3c", from: "n3", to: "n3b", when: { field: "trainee", op: "is not", value: "Yes" }, label: "not a trainee" },
+      // One institution question per demographic — the org type answered
+      // above decides which one is asked. The unlabelled spine arrow is
+      // what keeps the rest of the form visible before it is answered.
+      { id: "e4a", from: "n3b", to: "n4a", when: { field: "primary_org", op: "any of", value: "Academic Institution" }, label: "academic" },
+      { id: "e4b", from: "n3b", to: "n4b", when: { field: "primary_org", op: "any of", value: "Healthcare / Hospital" }, label: "hospital" },
+      { id: "e4c", from: "n3b", to: "n4c", when: { field: "primary_org", op: "any of", value: "Industry / Private Sector,Startup,Entrepreneurial Venture" }, label: "industry" },
+      { id: "e4d", from: "n3b", to: "n4d", when: { field: "primary_org", op: "any of", value: "Government,Non-Profit,Other" }, label: "other" },
+      { id: "e4s", from: "n3b", to: "n5" },
+      { id: "e5a", from: "n4a", to: "n5" },
+      { id: "e5b", from: "n4b", to: "n5" },
+      { id: "e5c", from: "n4c", to: "n5" },
+      { id: "e5d", from: "n4d", to: "n5" },
+      { id: "e5r", from: "n5", to: "n5r", label: "flagged" },
+      { id: "e6", from: "n5", to: "n7" },
       { id: "e8", from: "n7", to: "n8" },
       { id: "e9", from: "n8", to: "n9", label: "yes" },
       { id: "e10", from: "n8", to: "n10", label: "no" },

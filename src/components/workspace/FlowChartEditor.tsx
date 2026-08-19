@@ -36,6 +36,7 @@ import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
 import { FlowShapePalette } from "./FlowShapePalette";
+import { FlowReviewPanel } from "./FlowReviewPanel";
 import { openFlowChannel, postFlow, readFlow } from "@/lib/flowchart/channel";
 
 /** Keep a computed scroll position inside what the pane can actually do. */
@@ -1722,6 +1723,11 @@ export function FlowChartEditor({
         </aside>
       </div>
       </div>
+
+      {/* Below the working columns rather than among them: the review is
+          about the whole workflow, not any one pane, and it re-measures
+          the coordinator's note against the chart on every edit. */}
+      <FlowReviewPanel doc={doc} />
     </div>
   );
 }
