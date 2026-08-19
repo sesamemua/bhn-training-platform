@@ -87,6 +87,11 @@ export interface PersonRow {
 }
 
 /** What the AI derives from a raw submission — the renderer's input. */
+export interface LinkRow {
+  label: string;
+  url: string;
+}
+
 export interface PieceLayout {
   headline: string;
   subhead?: string;
@@ -98,6 +103,10 @@ export interface PieceLayout {
   peopleLabel?: string;
   ctaLabel?: string;
   ctaUrl?: string;
+  /** Several related destinations — the outlined two-across chip grid the
+   *  June issue uses to list the four Biomanufacturing pathways. Distinct
+   *  from the single solid CTA, which stays the piece's one main action. */
+  links?: LinkRow[];
   /** Short callout rendered as a tinted card — "Coming soon" notes. */
   note?: string;
   noteBadge?: string;

@@ -46,6 +46,14 @@ const LayoutSchema = z
     noteBadge: z.string().nullable().optional(),
     ctaLabel: z.string().nullable().optional(),
     ctaUrl: z.string().nullable().optional(),
+    links: z
+      .array(
+        z.object({
+          label: z.string().optional(),
+          url: z.string().optional(),
+        }).passthrough(),
+      )
+      .optional(),
   })
   .passthrough();
 
@@ -80,18 +88,28 @@ export async function normalisePiece(
     content: [
       "You lay out a monthly biotech-training newsletter. You receive one colleague's raw submission and decide how it should be presented.",
       "Output JSON only. Schema:",
-      '{ "headline": "...", "subhead": "..."|null, "body": ["para", ...], "glance": [{"label":"DATES","value":"...","accent":false}]|null, "peopleLabel": "..."|null, "people": [{"name":"...","detail":"...","org":"..."}]|null, "note": "..."|null, "noteBadge": "..."|null, "ctaLabel": "..."|null, "ctaUrl": "..."|null }',
+      '{ "headline": "...", "subhead": "..."|null, "body": ["para", ...], "glance": [{"label":"DATES","value":"...","accent":false}]|null, "peopleLabel": "..."|null, "people": [{"name":"...","detail":"...","org":"..."}]|null, "links": [{"label":"...","url":"..."}]|null, "note": "..."|null, "noteBadge": "..."|null, "ctaLabel": "..."|null, "ctaUrl": "..."|null }',
       "",
       "Choosing the shape:",
       "- 'glance' — ONLY when the submission states concrete logistics. Labels are short and uppercase: DATES, LOCATION, FORMAT, COMMITMENT, APPLY BY. Set accent:true on a deadline row so it renders in alert red.",
       "- 'people' — when the submission names individuals (awardees, matches, new hires). 'detail' is their programme or institution; 'org' is the employer / host lab. 'peopleLabel' groups them, e.g. 'Long-Term Placement · 4 to 6 Months'.",
       "- 'note' — a short forward-looking aside ('Round 5 opens in mid-July'). 'noteBadge' is a 1-2 word chip like 'Coming Soon'.",
+      "- 'links' — when the submission lists SEVERAL named destinations of equal weight (individual courses, pathways, postings), each with its own URL. Renders as outlined chips, two across. Labels are the thing's own name, 2-5 words, no trailing punctuation. Use this instead of burying the names in a paragraph.",
       "- 'body' — everything else, as 1-3 tight paragraphs. Keep the contributor's facts and tone; tighten wording only.",
       "Use only the parts that fit. Most pieces need just headline + body.",
+      "",
+      "Worked example — the shape the shipped June issue uses for a programme launch:",
+      'Submission: "We are partnering with CATTI and CASTL to launch Biomanufacturing Learning Pathways covering aseptic best practices and biomanufacturing workflows... Courses: Aseptic Cell Culture Basics (https://x/1), Closed Systems and CAR-T (https://x/2), Biologics Manufacturing (https://x/3), mRNA-LNP Manufacturing (https://x/4)."',
+      'Layout: { "headline": "Biomanufacturing Learning Pathways", "body": ["BioHubNet is proud to partner with ... regulated environments."], "links": [{"label":"Aseptic Cell Culture Basics","url":"https://x/1"}, {"label":"Closed Systems and CAR-T","url":"https://x/2"}, {"label":"Biologics Manufacturing","url":"https://x/3"}, {"label":"mRNA-LNP Manufacturing","url":"https://x/4"}] }',
+      "Note what it does NOT do: no invented dates, no CTA (no single destination), no glance card (no logistics stated). One headline, one paragraph, the four courses as chips.",
+      "",
+      "A second shape — a single course with a delivery partner: headline is the course name, 'subhead' is the partner line ('Delivered by CATTI'), body carries the detail, and a glance card holds DATES / LOCATION / FORMAT only if the submission states them.",
       "",
       "Hard rules:",
       "- NEVER invent dates, deadlines, names, numbers, institutions or URLs. If the submission doesn't state it, leave the field out.",
       "- Do not write a CTA unless a URL was supplied. ctaLabel is 2-4 words ('Learn More', 'Apply Now', 'Hire an Intern').",
+      "- Never put the same URL in both 'links' and the CTA. If there are several destinations use 'links'; if there is one use the CTA.",
+      "- Every entry in 'links' needs a real URL taken from the submission. Never emit a link with a guessed or empty URL.",
       "- Headline is a noun phrase under 60 characters, not a sentence.",
       "- Plain text only — no HTML, no markdown, no emoji.",
     ].join("\n"),
@@ -137,6 +155,9 @@ export async function normalisePiece(
     peopleLabel: orNull(d.peopleLabel),
     note: orNull(d.note),
     noteBadge: orNull(d.noteBadge),
+    links: (d.links ?? [])
+      .map((x) => ({ label: str(x.label), url: str(x.url) }))
+      .filter((x) => x.label && /^https?:\/\//i.test(x.url)),
     ctaLabel: orNull(d.ctaLabel),
     // The CTA can only ever point at the contributor's own link — the
     // model is never trusted to supply a URL.

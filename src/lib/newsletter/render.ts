@@ -12,7 +12,7 @@
  * gradient strips top and bottom, one ribbon per section.
  */
 import { SECTION_THEME, SECTIONS } from "./types";
-import type { Section, PieceLayout, GlanceRow, PersonRow } from "./types";
+import type { Section, PieceLayout, GlanceRow, PersonRow, LinkRow } from "./types";
 
 /** Escape for HTML text nodes. Contributions are pasted prose, so this is
  *  the only thing standing between a stray `<` and a broken email. */
@@ -80,6 +80,25 @@ function noteCard(text: string, badge: string | undefined, accent: string): stri
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px 0; background-color:#f4f9fb; background-image:linear-gradient(135deg, #f4f9fb 0%, #ffffff 100%); border-radius:12px; border:1px solid #e6eef2;" class="bhn-card-teal"><tbody><tr><td style="padding:20px 24px;">${chip}<p style="margin:0; font-family:${FONT}; font-size:15px; line-height:23px; color:#0b3558; font-weight:600;">${esc(text)}</p></td></tr></tbody></table>`;
 }
 
+/** Two-across outlined chips, as in the June issue's pathway list. A
+ *  two-column table rather than inline-blocks: Outlook ignores
+ *  display:inline-block widths and would stack them full-bleed. */
+function linkGrid(rows: LinkRow[], accent: string): string {
+  const cells = rows.map((r) => {
+    const url = safeUrl(r.url);
+    if (!url) return null;
+    return `<td width="50%" style="padding:0 6px 10px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td align="center" style="border:1px solid ${accent}; border-radius:6px;"><a href="${url}" target="_blank" style="display:block; padding:11px 10px; font-family:${FONT}; font-size:13px; line-height:18px; color:${accent}; text-decoration:none; font-weight:700;">${esc(r.label)} &rarr;</a></td></tr></tbody></table></td>`;
+  }).filter(Boolean) as string[];
+  if (cells.length === 0) return "";
+  const trs: string[] = [];
+  for (let i = 0; i < cells.length; i += 2) {
+    const pair = cells.slice(i, i + 2);
+    if (pair.length === 1) pair.push(`<td width="50%">&nbsp;</td>`);
+    trs.push(`<tr>${pair.join("")}</tr>`);
+  }
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:2px 0 18px 0;"><tbody>${trs.join("")}</tbody></table>`;
+}
+
 function button(label: string, url: string, solid: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td align="center" style="background-color:${solid}; background-image:linear-gradient(135deg, ${solid} 0%, ${solid} 100%); border-radius:30px;"><a href="${url}" target="_blank" style="display:inline-block; padding:14px 32px; font-family:${FONT}; font-size:15px; line-height:20px; color:#ffffff; text-decoration:none; font-weight:600; letter-spacing:0.3px;">${esc(label)} &rarr;</a></td></tr></tbody></table></td></tr></tbody></table>`;
 }
@@ -107,6 +126,7 @@ function renderPiece(l: PieceLayout, s: Section, isLast: boolean, pieceId?: stri
   );
   if (l.people?.length) out.push(peopleList(l.people, l.peopleLabel, t.accent));
   if (l.glance?.length) out.push(glanceCard(l.glance, t.accent));
+  if (l.links?.length) out.push(linkGrid(l.links, t.accent));
   if (l.note) out.push(noteCard(l.note, l.noteBadge, t.accent));
   const url = safeUrl(l.ctaUrl);
   if (url && l.ctaLabel) out.push(button(l.ctaLabel, url, t.solid));
