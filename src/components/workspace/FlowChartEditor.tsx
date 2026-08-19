@@ -31,7 +31,7 @@ import { edgeAnchor, routeEdge, toPath } from "@/lib/flowchart/route";
 import { labelSize, placeLabels } from "@/lib/flowchart/labels";
 import { nodeNumbers } from "@/lib/flowchart/numbering";
 import { DASHED_KINDS, SHAPE_INSET, SHAPE_PAINT, shapePath } from "@/lib/flowchart/shapes";
-import { resolveCollisions } from "@/lib/flowchart/collide";
+import { limitDrag } from "@/lib/flowchart/collide";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
@@ -865,26 +865,38 @@ export function FlowChartEditor({
       const group = d.group;
       const ddx = x - d.anchor.x;
       const ddy = y - d.anchor.y;
-      const start = new Map(group.map((g) => [g.id, g]));
-      setDoc((cur) => ({
-        ...cur,
-        // Placed first, then everything they land on gives way.
-        nodes: resolveCollisions(
-          cur.nodes.map((n) => {
-            const s0 = start.get(n.id);
-            return s0 ? { ...n, x: Math.max(0, s0.x + ddx), y: Math.max(0, s0.y + ddy) } : n;
+      const ids = group.map((g) => g.id);
+      // Where the pointer is asking the group to be, measured from where
+      // it picked them up rather than from the last frame, so a group
+      // held up against something does not drift out of the cursor's
+      // grip once it is free again.
+      const want = new Map(
+        group.map((g) => [
+          g.id,
+          { x: Math.max(0, g.x + ddx), y: Math.max(0, g.y + ddy) },
+        ]),
+      );
+      setDoc((cur) => {
+        const at = limitDrag(cur.nodes, ids, want);
+        return {
+          ...cur,
+          // Only the boxes in hand move. Everything else stays put.
+          nodes: cur.nodes.map((n) => {
+            const p = at.get(n.id);
+            return p ? { ...n, x: p.x, y: p.y } : n;
           }),
-          group.map((g) => g.id),
-        ),
-      }));
+        };
+      });
     } else {
-      setDoc((cur) => ({
-        ...cur,
-        nodes: resolveCollisions(
-          cur.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)),
-          [d.id],
-        ),
-      }));
+      const want = new Map([[d.id, { x, y }]]);
+      setDoc((cur) => {
+        const p = limitDrag(cur.nodes, [d.id], want).get(d.id);
+        if (!p) return cur;
+        return {
+          ...cur,
+          nodes: cur.nodes.map((n) => (n.id === d.id ? { ...n, x: p.x, y: p.y } : n)),
+        };
+      });
     }
     setDirty(true);
   };

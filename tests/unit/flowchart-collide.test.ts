@@ -1,70 +1,105 @@
-import assert from "node:assert/strict";
 import test from "node:test";
-import { CLEARANCE, resolveCollisions } from "../../src/lib/flowchart/collide";
+import assert from "node:assert/strict";
+import { CLEARANCE, limitDrag } from "../../src/lib/flowchart/collide";
 import type { FlowNode } from "../../src/lib/flowchart/types";
 
-const box = (id: string, x: number, y: number, w = 200, h = 60): FlowNode =>
-  ({ id, kind: "step", x, y, w, h, text: id });
+const node = (id: string, x: number, y: number, w = 220, h = 60): FlowNode =>
+  ({ id, x, y, w, h, kind: "step", text: id }) as FlowNode;
 
-const at = (ns: FlowNode[], id: string) => ns.find((n) => n.id === id)!;
+/** Drag `id` toward (x, y) and report where it is allowed to end up. */
+const drag = (nodes: FlowNode[], id: string, x: number, y: number) =>
+  limitDrag(nodes, [id], new Map([[id, { x, y }]])).get(id)!;
 
-test("the box being dragged always lands where it was dragged", () => {
-  const nodes = [box("mover", 0, 0), box("other", 10, 10)];
-  const out = resolveCollisions(nodes, ["mover"]);
-  assert.equal(at(out, "mover").x, 0);
-  assert.equal(at(out, "mover").y, 0);
+/** Positions of everything that was NOT dragged. */
+const bystanders = (nodes: FlowNode[], movingIds: string[], want: Map<string, { x: number; y: number }>) => {
+  const out = limitDrag(nodes, movingIds, want);
+  return nodes.filter((n) => !movingIds.includes(n.id)).map((n) => ({ id: n.id, moved: out.has(n.id) }));
+};
+
+test("a box moves freely when nothing is in the way", () => {
+  const nodes = [node("mover", 0, 0), node("far", 0, 900)];
+  const at = drag(nodes, "mover", 120, 300);
+  assert.deepEqual(at, { x: 120, y: 300 });
 });
 
-test("a box in the way is pushed clear, not overlapped", () => {
-  const nodes = [box("mover", 0, 0), box("other", 0, 20)];
-  const out = resolveCollisions(nodes, ["mover"]);
-  const m = at(out, "mover"), o = at(out, "other");
-  assert.ok(o.y >= m.y + m.h + CLEARANCE - 1, `expected clearance, got ${o.y - (m.y + m.h)}`);
+test("the box being dragged stops short instead of overlapping", () => {
+  const nodes = [node("mover", 0, 0), node("wall", 0, 200)];
+  const at = drag(nodes, "mover", 0, 400); // straight through the wall
+  assert.equal(at.y, 200 - CLEARANCE - 60, "should rest one clearance above the wall");
+  assert.ok(at.y + 60 + CLEARANCE <= 200, "must not overlap");
 });
 
-test("it pushes along the cheaper axis", () => {
-  // Deep vertical overlap, shallow horizontal: shove sideways.
-  const nodes = [box("mover", 0, 0), box("other", 190, 2)];
-  const out = resolveCollisions(nodes, ["mover"]);
-  const o = at(out, "other");
-  assert.ok(o.x > 190, "should have moved right");
-  assert.equal(o.y, 2, "should not have moved vertically");
+test("boxes that are NOT being dragged never move", () => {
+  const nodes = [node("mover", 0, 0), node("a", 0, 200), node("b", 0, 400)];
+  const seen = bystanders(nodes, ["mover"], new Map([["mover", { x: 0, y: 600 }]]));
+  assert.deepEqual(seen, [
+    { id: "a", moved: false },
+    { id: "b", moved: false },
+  ]);
 });
 
-test("a push cascades to the next box along", () => {
-  const nodes = [box("mover", 0, 0), box("a", 0, 20), box("a2", 0, 90)];
-  const out = resolveCollisions(nodes, ["mover"]);
-  const m = at(out, "mover"), a = at(out, "a"), a2 = at(out, "a2");
-  assert.ok(a.y >= m.y + m.h + CLEARANCE - 1);
-  assert.ok(a2.y >= a.y + a.h + CLEARANCE - 1, "the second box should have been shoved too");
+test("a box far away does not block, however hard you drag past it", () => {
+  // 'aside' shares no rows with the mover's path along x.
+  const nodes = [node("mover", 0, 0), node("aside", 600, 800)];
+  const at = drag(nodes, "mover", 900, 0);
+  assert.deepEqual(at, { x: 900, y: 0 });
 });
 
-test("boxes that were already overlapping are left alone", () => {
-  // Nothing is being dragged, so nothing should be tidied up behind the
-  // author's back.
-  const nodes = [box("a", 0, 0), box("b", 5, 5)];
-  const out = resolveCollisions(nodes, []);
-  assert.deepEqual(out.map((n) => [n.x, n.y]), [[0, 0], [5, 5]]);
+test("a box one clearance away is not blocked until it actually closes the gap", () => {
+  const nodes = [node("mover", 0, 0), node("wall", 0, 200)];
+  // Asking for less than the gap is granted in full.
+  const near = drag(nodes, "mover", 0, 100);
+  assert.equal(near.y, 100);
 });
 
-test("a whole group being dragged never pushes its own members", () => {
-  const nodes = [box("g1", 0, 0), box("g2", 0, 74), box("other", 0, 150)];
-  const out = resolveCollisions(nodes, ["g1", "g2"]);
-  assert.deepEqual([at(out, "g1").y, at(out, "g2").y], [0, 74]);
-  assert.ok(at(out, "other").y >= 74 + 60 + CLEARANCE - 1);
+test("blocked on one axis, still free on the other — it slides", () => {
+  const nodes = [node("mover", 0, 100), node("wall", 300, 100)];
+  // Push right into the wall and down at the same time.
+  const at = drag(nodes, "mover", 400, 260);
+  assert.equal(at.x, 300 - CLEARANCE - 220, "held at the wall's face");
+  assert.equal(at.y, 260, "but the vertical part of the move is granted");
 });
 
-test("nothing is pushed off the canvas", () => {
-  const nodes = [box("mover", 0, 100), box("other", 0, 60)];
-  const out = resolveCollisions(nodes, ["mover"]);
-  assert.ok(at(out, "other").x >= 0);
-  assert.ok(at(out, "other").y >= 0);
+test("a group moves rigidly — one member blocked holds the whole group", () => {
+  const nodes = [node("g1", 0, 0), node("g2", 0, 100), node("wall", 0, 300)];
+  const want = new Map([
+    ["g1", { x: 0, y: 200 }],
+    ["g2", { x: 0, y: 300 }],
+  ]);
+  const out = limitDrag(nodes, ["g1", "g2"], want);
+  const g1 = out.get("g1")!;
+  const g2 = out.get("g2")!;
+  assert.equal(g2.y - g1.y, 100, "the group must not deform");
+  assert.ok(g2.y + 60 + CLEARANCE <= 300, "the trailing member stops at the wall");
 });
 
-test("a chart with nothing touching comes back unchanged", () => {
-  const nodes = [box("a", 0, 0), box("b", 0, 400), box("c", 400, 0)];
-  const out = resolveCollisions(nodes, ["a"]);
-  assert.equal(out[0], nodes[0]);
-  assert.equal(out[1], nodes[1]);
-  assert.equal(out[2], nodes[2]);
+test("a group is stopped by the canvas edge without squashing", () => {
+  const nodes = [node("g1", 100, 0), node("g2", 300, 0)];
+  const want = new Map([
+    ["g1", { x: -200, y: 0 }],
+    ["g2", { x: 0, y: 0 }],
+  ]);
+  const out = limitDrag(nodes, ["g1", "g2"], want);
+  assert.equal(out.get("g1")!.x, 0);
+  assert.equal(out.get("g2")!.x, 200, "spacing preserved against the edge");
+});
+
+test("a box that already overlaps another can still be dragged free", () => {
+  // Charts authored before these rules can hold overlaps; a box must
+  // never be welded in place by one.
+  const nodes = [node("mover", 0, 0), node("under", 10, 10)];
+  const at = drag(nodes, "mover", 0, 400);
+  assert.equal(at.y, 400, "an existing overlap does not trap the box");
+});
+
+test("moving away from a box is never restricted", () => {
+  const nodes = [node("mover", 0, 200), node("wall", 0, 400)];
+  const at = drag(nodes, "mover", 0, 0);
+  assert.equal(at.y, 0);
+});
+
+test("dragging nothing is a no-op", () => {
+  const nodes = [node("a", 0, 0)];
+  const out = limitDrag(nodes, [], new Map());
+  assert.equal(out.size, 0);
 });

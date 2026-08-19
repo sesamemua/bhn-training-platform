@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: dragging stops rearranging the chart
+  {
+    title: "Flow charts: dragging a box no longer shoves the other boxes around",
+    body: "Moving one box used to push every box it came near out of the way — and \"near\" meant within fourteen pixels, so boxes shoved each other while plainly not touching, and one small move could leave three other boxes somewhere you did not put them. That is now reversed. Every box you are not holding stays exactly where you left it, and the box under the pointer is stopped at the edge of anything in its way. It does not simply jam, either: push into something and the box slides along its face, so you can still steer around a crowded part of the chart, and the moment your way is clear the box catches straight back up with the cursor. The gap it keeps has come down from fourteen pixels to four, enough to keep two borders from merging and no more.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the shape hat becomes a corner badge
   {
     title: "Flow charts: selecting a box no longer puts a hat of shapes on it",

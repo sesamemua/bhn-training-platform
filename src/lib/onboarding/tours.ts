@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.dragging",
+    title: "Moving a box leaves the others alone",
+    body: "Drag a box anywhere you like — **nothing else moves**. The box you are holding is stopped at the edge of whatever is in its way rather than pushing through it, and if you keep pushing it **slides along** that edge, so you can steer it around a busy part of the chart. Once past, it catches back up with your cursor. Select several with a rectangle and they move together as one.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.shapebadge",
     title: "Changing a box's shape",
     body: "Select a box and a small round **badge** appears on its top-left corner, drawn as the shape that box currently is. Click the badge for the full set of thirteen and pick a new one — it opens over empty canvas so it never hides the box you are changing. The **Shapes panel** in the chart's corner is still there for dragging new boxes in.",
