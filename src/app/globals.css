@@ -4331,3 +4331,32 @@ h1, h2, h3 {
   padding-right: 1rem;
 }
 
+
+
+/* ── flow-chart arrows ──────────────────────────────────────────────
+ *
+ * Beads travelling along an arrow, in the direction it points.
+ *
+ * An arrowhead states the direction at one end; on a long line that has
+ * gone round two boxes to get there, the end is not where you are
+ * looking. The beads say the same thing everywhere along the line at
+ * once, which is what makes a route readable without tracing it.
+ *
+ * Drawn as a separate overlay path so the line underneath keeps its own
+ * meaning — solid for "always", dashed for "only when the rule matches"
+ * — instead of the animation having to encode both.
+ */
+@keyframes fc-flow {
+  /* Negative offset marches the pattern FORWARD along the path, i.e.
+     from the box the arrow leaves toward the box it points at. */
+  to { stroke-dashoffset: -16; }
+}
+.fc-flow {
+  stroke-dasharray: 2 14;
+  animation: fc-flow 1.15s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Direction still readable: the beads stay, they just stop moving. */
+  .fc-flow { animation: none; }
+}

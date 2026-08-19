@@ -142,6 +142,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.30a",
   },
   {
+    id: "workspace.flowcharts.arrows",
+    title: "Working with the arrows",
+    body: "**Click** an arrow to select it — the grab strip is far wider than the line, so you do not have to be precise. **Double-click** it to write on it: a box opens on the arrow, type and press Enter. Selected, an arrow shows **handles at both ends** you can drag onto a different box, and a small **delete cross**; the Delete key works too. The **beads travelling along each line** show which way it flows, which is the quickest way to read a route that bends around other boxes.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.traineegate",
     title: "The registration opens with the trainee check",
     body: "The first question asks whether someone is a **current BioHubNet trainee** — accepted into ENGAGE, EXPERIENCE or EQUIP, which is not the same as having a platform account. Saying yes asks for the email registered with us and checks it against the **live trainee roster**; a match sets a confirmed-trainee status you can see in the admin panel. Saying no, or not being found, never blocks the registration — it only settles which status the person holds. Paste the roster sheet link into the **admin panel** to switch the check on.",

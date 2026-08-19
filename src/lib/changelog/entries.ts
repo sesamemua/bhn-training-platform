@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Flow charts: arrows you can catch, read and write on
+  {
+    title: "Flow charts: arrows are easier to catch, and show which way they flow",
+    body: "Every arrow now carries beads that travel along it in the direction it points, so a line that has gone around two boxes tells you which way it runs anywhere along its length, not just at the arrowhead you have to hunt for. They are faint by default and brighten on the arrow you are pointing at, and they stop moving if your system asks for reduced motion. Arrows are also much easier to hit: the grab strip is now 24 pixels wide against a one-pixel line, because nobody clicks a hairline first try. Select one and you get bigger, easier endpoint handles to drag onto a different box, and a small delete cross right where you are already pointing — the Delete key and the options rail still work too. And to write on a line, double-click it: a box opens on the arrow itself, type and press Enter. The label field in the options rail is still there for anyone who prefers it.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Registration: About you moves up, and trainees confirm a name
   {
     title: "Registration asks who you are before what you want, and trainees confirm a name as well as an email",

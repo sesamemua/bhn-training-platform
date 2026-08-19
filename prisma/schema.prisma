@@ -2526,6 +2526,11 @@ model BhnEvent {
   id                   String    @id @default(cuid())
   /// URL-safe identifier, e.g. "2025-annual-symposium".
   slug                 String    @unique
+  /// When true the public speaker-intake form at /events/<slug>/speaker
+  /// accepts submissions. Off by default so the link cannot be guessed
+  /// into an open door before invitations go out — same shape as
+  /// ShowcaseGroup.active.
+  speakerIntakeOpen    Boolean   @default(false)
   title                String
   /// Short marketing line shown on the landing-page hero.
   tagline              String?
@@ -2909,7 +2914,7 @@ model SymposiumSession {
 /// in multiple events as separate Speaker rows — bio/title might
 /// evolve between editions).
 model Speaker {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   eventId      String
   fullName     String
   title        String?
@@ -2919,9 +2924,18 @@ model Speaker {
   photoUrl     String?
   /// JSON array of { platform, url } — twitter, linkedin, etc.
   socialLinks  Json?
-  displayOrder Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  /// What they can speak to — shown as chips on the public speaker card
+  /// and used when grouping a panel. Free text, supplied by the speaker.
+  topics       String[]  @default([])
+  /// Where to reach them about the appearance, so an admin can chase a
+  /// missing headshot without hunting for the original invitation.
+  contactEmail String?
+  /// Set when the speaker filled the public intake form themselves.
+  /// NULL means an admin (or the seed) entered them.
+  submittedAt  DateTime?
+  displayOrder Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   event    BhnEvent                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sessions SymposiumSessionSpeaker[]

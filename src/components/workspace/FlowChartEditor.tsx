@@ -1457,7 +1457,8 @@ export function FlowChartEditor({
           Drag a box to move it, or drag a rectangle on empty space to pick up
           several at once. {linkFrom
             ? "Now click the box the arrow should point to, or press Escape."
-            : "Click Connect on a box, then click its target to draw an arrow."}
+            : "Click Connect on a box, then click its target to draw an arrow."}{" "}
+          Click an arrow to select it, double-click it to write on it.
         </p>
       )}
 
@@ -1536,6 +1537,8 @@ export function FlowChartEditor({
           <Arrows
             doc={laidDoc}
             selectedEdge={selectedEdge}
+            onLabel={canEdit ? (id, text) => patchEdge(id, { label: text.trim().slice(0, 40) || undefined }) : undefined}
+            onRemove={canEdit ? (id) => { removeEdge(id); setSelectedEdge(null); } : undefined}
             onSelect={canEdit ? (id) => { setSelectedEdge(id); setSelected(null); } : undefined}
             hoverNodes={litNodes}
             onHoverEdge={(e) => setHoverNodes(e ? [e.from, e.to] : [])}
@@ -2046,6 +2049,8 @@ function Arrows({
   bounds,
   live,
   onGrabEnd,
+  onLabel,
+  onRemove,
 }: {
   doc: ChartDoc;
   selectedEdge: string | null;
@@ -2057,7 +2062,17 @@ function Arrows({
   live?: { fromId: string; tip: { x: number; y: number } } | null;
   /** Grab one end of the selected arrow to point it somewhere else. */
   onGrabEnd?: (edgeId: string, end: "from" | "to") => void;
+  /** Write the text that rides on an arrow. */
+  onLabel?: (edgeId: string, text: string) => void;
+  onRemove?: (edgeId: string) => void;
 }) {
+  // Which arrow's label is open for typing. Local: nothing outside this
+  // layer needs to know, and it must clear when the arrow is deselected.
+  const [naming, setNaming] = useState<string | null>(null);
+  // Closes only when the arrow itself is gone. It used to close whenever
+  // the arrow was deselected, which threw away whatever had been typed —
+  // the commit lives on the input, so nothing else may unmount it first.
+  if (naming && !doc.edges.some((e) => e.id === naming)) setNaming(null);
   const byId = new Map(doc.nodes.map((n) => [n.id, n]));
 
   // Route every arrow first, then place all the labels together. Labels
@@ -2128,6 +2143,14 @@ function Arrows({
               strokeDasharray={e.when ? "5 4" : undefined}
               markerEnd="url(#fc-arrow)" opacity={on || lit ? 1 : 0.75}
             />
+            {/* The beads. Faint by default so thirty arrows do not
+                strobe, brighter on the one you are looking at. */}
+            <path
+              d={d} fill="none" stroke="currentColor" strokeLinecap="round"
+              strokeWidth={on || lit ? 3.5 : 2.5}
+              opacity={on || lit ? 0.95 : 0.4}
+              className="fc-flow pointer-events-none"
+            />
             {t && (() => {
               const size = labelSize(t);
               // Far from the line, a bare label is ambiguous about which
@@ -2157,13 +2180,58 @@ function Arrows({
               );
             })()}
             {onSelect && (
+              /* The grab strip. 24px wide against a 1.5px line: what you
+                 are aiming at is a line, but what you can hit is a band
+                 either side of it, because nobody clicks a hairline on
+                 the first try. Double-click opens its label, matching
+                 double-click-to-rename on a box. */
               <path
                 d={d} fill="none"
-                stroke="transparent" strokeWidth="14" className="pointer-events-auto cursor-pointer"
+                stroke="transparent" strokeWidth="24" strokeLinecap="round"
+                className="pointer-events-auto cursor-pointer"
                 onMouseEnter={() => onHoverEdge({ from: e.from, to: e.to })}
                 onMouseLeave={() => onHoverEdge(null)}
                 onClick={() => onSelect(e.id)}
-              />
+                onDoubleClick={(ev) => {
+                  ev.stopPropagation();
+                  onSelect(e.id);
+                  if (onLabel) setNaming(e.id);
+                }}
+              >
+                <title>
+                  {t ? `"${t}" — click to select, double-click to retype` : "Click to select, double-click to add a label"}
+                </title>
+              </path>
+            )}
+
+            {/* Typing a label, where the label sits. */}
+            {naming === e.id && onLabel && (
+              <foreignObject
+                x={spot.x - 70} y={spot.y - 13} width="140" height="26"
+                className="pointer-events-auto overflow-visible"
+              >
+                <input
+                  autoFocus
+                  defaultValue={t}
+                  placeholder="label this arrow"
+                  onPointerDown={(ev) => ev.stopPropagation()}
+                  // Enter writes the text ITSELF rather than calling
+                  // blur() and trusting onBlur to do it. Deselecting the
+                  // arrow unmounts this input, and an unmounted input
+                  // never delivers its blur — so the whole edit was
+                  // being dropped whenever anything took the selection
+                  // between the keypress and the event.
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter") {
+                      onLabel(e.id, (ev.target as HTMLInputElement).value);
+                      setNaming(null);
+                    }
+                    if (ev.key === "Escape") setNaming(null);
+                  }}
+                  onBlur={(ev) => { onLabel(e.id, ev.target.value); setNaming(null); }}
+                  className="w-full rounded-md border border-brand-400 bg-card px-1.5 py-0.5 text-center text-[11px] font-semibold text-fg outline-none"
+                />
+              </foreignObject>
             )}
 
             {/* Handles on a selected arrow: drag either end onto another
@@ -2172,16 +2240,44 @@ function Arrows({
             {on && onGrabEnd && (
               <>
                 {([["from", pts[0]], ["to", pts[pts.length - 1]]] as const).map(([end, p]) => (
-                  <circle
-                    key={end}
-                    cx={p.x} cy={p.y} r="5"
-                    className="pointer-events-auto cursor-crosshair fill-card stroke-brand-500"
-                    strokeWidth="2"
-                    onPointerDown={(ev) => { ev.stopPropagation(); onGrabEnd(e.id, end); }}
-                  >
-                    <title>{end === "from" ? "Drag to change where this starts" : "Drag to change where this points"}</title>
-                  </circle>
+                  <g key={end}>
+                    {/* A wide invisible target under a small visible dot:
+                        the handle can look light and still be catchable. */}
+                    <circle
+                      cx={p.x} cy={p.y} r="13" fill="transparent"
+                      className="pointer-events-auto cursor-grab"
+                      onPointerDown={(ev) => { ev.stopPropagation(); onGrabEnd(e.id, end); }}
+                    >
+                      <title>{end === "from" ? "Drag to change where this starts" : "Drag to change where this points"}</title>
+                    </circle>
+                    <circle
+                      cx={p.x} cy={p.y} r="5.5"
+                      className="pointer-events-none fill-card stroke-brand-500"
+                      strokeWidth="2.5"
+                    />
+                  </g>
                 ))}
+                {/* Delete without leaving the arrow. The keyboard and the
+                    rail both still work; this is the one that is where
+                    you are already pointing. */}
+                {onRemove && (() => {
+                  const mid = pts[Math.floor(pts.length / 2)];
+                  return (
+                    <g
+                      className="pointer-events-auto cursor-pointer"
+                      onPointerDown={(ev) => ev.stopPropagation()}
+                      onClick={(ev) => { ev.stopPropagation(); onRemove(e.id); }}
+                    >
+                      <title>Delete this arrow</title>
+                      <circle cx={mid.x + 16} cy={mid.y - 14} r="9" className="fill-card stroke-line" strokeWidth="1" />
+                      <path
+                        d={`M ${mid.x + 12.5} ${mid.y - 17.5} L ${mid.x + 19.5} ${mid.y - 10.5} M ${mid.x + 19.5} ${mid.y - 17.5} L ${mid.x + 12.5} ${mid.y - 10.5}`}
+                        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+                        className="text-red-500"
+                      />
+                    </g>
+                  );
+                })()}
               </>
             )}
           </g>

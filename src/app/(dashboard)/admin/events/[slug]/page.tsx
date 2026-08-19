@@ -109,6 +109,12 @@ export default async function AdminEventDetailPage({
           Custom questions
         </Link>
         <Link
+          href={`/admin/events/${event.slug}/speakers`}
+          className="inline-flex items-center gap-2 rounded-xl border border-line bg-card px-4 py-2 text-sm font-bold text-fg hover:border-brand-300"
+        >
+          Speakers
+        </Link>
+        <Link
           href={`/admin/events/${event.slug}/hosts`}
           className="inline-flex items-center gap-2 rounded-xl border border-line bg-card px-4 py-2 text-sm font-bold text-fg hover:border-brand-300"
         >
