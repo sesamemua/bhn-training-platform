@@ -1196,6 +1196,20 @@ export function FlowChartEditor({
    * The functional updater bails when nothing moved, so a box reporting
    * the same number every render costs nothing.
    */
+  /**
+   * Shape suggestions the author has waved away.
+   *
+   * Keyed on the box AND its wording, not the box alone. Dismissing
+   * "Wait for the cut-off" should not also silence the suggester when
+   * that box is later retyped into something else entirely — the reason
+   * it spoke has gone, so its dismissal should go with it. Rewording
+   * back to the dismissed text stays quiet, which is the behaviour you
+   * want if you were experimenting.
+   */
+  const [dismissedShape, setDismissedShape] = useState<Set<string>>(new Set());
+  const suggestionKey = (n: { id: string; text: string }) =>
+    `${n.id}::${n.text.trim().toLowerCase()}`;
+
   const [autoH, setAutoH] = useState<Record<string, number>>({});
   const measureBox = useCallback((id: string, needed: number) => {
     setAutoH((prev) => {
@@ -1694,6 +1708,16 @@ export function FlowChartEditor({
           onPatchEdge={patchEdge}
           onRemoveEdge={(id) => { removeEdge(id); setSelectedEdge(null); }}
           onHoverNode={(id) => setHoverNodes(id ? [id] : [])}
+          suggestionDismissed={sel ? dismissedShape.has(suggestionKey(sel)) : false}
+          onDismissSuggestion={() => {
+            if (!sel) return;
+            const key = suggestionKey(sel);
+            setDismissedShape((prev) => {
+              const next = new Set(prev);
+              next.add(key);
+              return next;
+            });
+          }}
         />
         </aside>
       </div>

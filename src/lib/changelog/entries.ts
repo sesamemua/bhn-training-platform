@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the chart reads what you type and offers a shape
+  {
+    title: "Flow charts: the chart reads your wording and offers the right shape",
+    body: "Thirteen shapes are only useful if you remember what they mean, so the chart now reads along as you type a box's label and offers the one that fits — under the Label field, with the reason in plain words. Type \"Wait for the confirmation cut-off\" into a plain step and it says this reads like a wait, because time passes here and nobody is doing anything; one click takes it, or Keep leaves the box as it is and stays quiet. It only speaks when the wording points somewhere clearly, and says nothing when it does not — a suggester that guesses is worse than none, because it costs you a decision every time it appears. Checked against the real Training Week chart: it agrees with the author on every box it has an opinion about, and stays silent on the rest. It also never offers to restyle a question that already has form fields, since changing that shape would drop them.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: heights re-settle when the chart is swapped
   {
     title: "Flow charts: boxes stop at each other properly after switching charts",

@@ -29,8 +29,17 @@ import {
   type NodeKind,
 } from "@/lib/flowchart/types";
 import { fieldsOf } from "@/lib/flowchart/form";
+import { suggestionFor } from "@/lib/flowchart/suggest";
+import { shapePath, SHAPE_PAINT, DASHED_KINDS } from "@/lib/flowchart/shapes";
 
 const LABEL = "text-[10px] font-bold uppercase tracking-[0.12em] text-subtle";
+
+/** So the suggestion reads as a sentence rather than as a slot filled in. */
+const ARTICLE: Record<NodeKind, string> = {
+  start: "a", question: "a", step: "a", decision: "a", end: "an",
+  note: "a", rule: "a", document: "a", data: "", subprocess: "a",
+  delay: "a", manual: "a", connector: "a",
+};
 const LINE =
   "mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500";
 
@@ -53,6 +62,8 @@ export function FlowOptionsRail({
   onPatchEdge,
   onRemoveEdge,
   onHoverNode,
+  suggestionDismissed,
+  onDismissSuggestion,
 }: {
   doc: ChartDoc;
   node: FlowNode | null;
@@ -64,6 +75,9 @@ export function FlowOptionsRail({
   questionKeys: { key: string; label: string }[];
   canEdit: boolean;
   onPatchNode: (id: string, patch: Partial<FlowNode>) => void;
+  /** True once this box's current wording has been waved away. */
+  suggestionDismissed: boolean;
+  onDismissSuggestion: () => void;
   onRemoveNode: (id: string) => void;
   onStartLink: (id: string) => void;
   onPatchField: (id: string, i: number, patch: Partial<FieldDef>) => void;
@@ -188,6 +202,13 @@ export function FlowOptionsRail({
 
   const fields = fieldsOf(node);
 
+  /* Read along as the label is typed and say what shape it looks like.
+     Silent unless the words point somewhere clearly, and silent once
+     this box's suggestion has been waved away — see onDismissSuggestion
+     for why dismissal is keyed to the text and not just the box. */
+  const suggestion = suggestionFor(node, fields.length);
+  const showSuggestion = suggestion && !suggestionDismissed;
+
   return (
     <div onMouseEnter={() => onHoverNode(node.id)} onMouseLeave={() => onHoverNode(null)}>
       <Header>Selected box{number ? ` · ${number}` : ""}</Header>
@@ -200,6 +221,46 @@ export function FlowOptionsRail({
           className={LINE}
         />
       </label>
+
+      {showSuggestion && (
+        /* Under the field being typed into, where the words are — not up
+           by the Shape control, which is where you would look only if you
+           already knew you wanted a different shape. */
+        <div className="mt-2 flex items-start gap-2 rounded-md border border-brand-500/40 bg-brand-500/8 px-2.5 py-2">
+          <svg aria-hidden width="18" height="12" className="mt-0.5 shrink-0 overflow-visible">
+            <path
+              d={shapePath(suggestion.kind, 18, 12)}
+              className={SHAPE_PAINT[suggestion.kind]}
+              strokeWidth="1"
+              strokeDasharray={DASHED_KINDS.includes(suggestion.kind) ? "2 2" : undefined}
+              fillRule="evenodd"
+            />
+          </svg>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] leading-snug text-fg">
+              This reads like{" "}
+              <strong className="font-semibold">
+                {ARTICLE[suggestion.kind]} {NODE_KIND_LABEL[suggestion.kind].toLowerCase()}
+              </strong>{" "}
+              — {suggestion.why}.
+            </p>
+            <div className="mt-1.5 flex items-center gap-3">
+              <button
+                onClick={() => onPatchNode(node.id, { kind: suggestion.kind })}
+                className="text-[12px] font-semibold text-brand-400 hover:text-brand-200"
+              >
+                Use {NODE_KIND_LABEL[suggestion.kind].toLowerCase()}
+              </button>
+              <button
+                onClick={onDismissSuggestion}
+                className="text-[12px] text-subtle hover:text-fg"
+              >
+                Keep {NODE_KIND_LABEL[node.kind].toLowerCase()}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 grid grid-cols-2 gap-x-4">
         <label className="block">

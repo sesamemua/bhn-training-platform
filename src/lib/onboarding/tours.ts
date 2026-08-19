@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.suggest",
+    title: "The chart reads what you type",
+    body: "As you write a box's **Label**, the chart reads it and offers the shape that fits — shown right under the field, with the reason in plain words. Write \"Wait for the confirmation cut-off\" and it offers **Wait**; write \"Info pack emailed\" and it offers **Document**. Take it with one click, or **Keep** the shape you have and it stays quiet for that wording. It only speaks when your words point somewhere clearly, so most of the time you will not hear from it at all.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.dragging",
     title: "Moving a box leaves the others alone",
     body: "Drag a box anywhere you like — **nothing else moves**. The box you are holding is stopped at the edge of whatever is in its way rather than pushing through it, and if you keep pushing it **slides along** that edge, so you can steer it around a busy part of the chart. Once past, it catches back up with your cursor. Select several with a rectangle and they move together as one.",
