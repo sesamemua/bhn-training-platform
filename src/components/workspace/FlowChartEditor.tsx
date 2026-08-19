@@ -1471,6 +1471,14 @@ export function FlowChartEditor({
             width: bounds.w,
             height: bounds.h,
             transform: scale === 1 ? undefined : `scale(${scale})`,
+            // The chart scales; its controls must not. At the 0.45 floor a
+            // 20px button lands as 9px on screen, which is smaller than the
+            // pointer that has to hit it. Anything that is chrome rather
+            // than content counter-scales by this.
+            ["--fc-inv" as string]: String(1 / scale),
+            // ...and the scale itself, for converting a length that is in
+            // chart coordinates into the counter-scaled chrome's own space.
+            ["--fc-scale" as string]: String(scale),
             backgroundImage:
               "radial-gradient(circle, color-mix(in srgb, var(--fg) 9%, transparent) 1px, transparent 1px)",
             backgroundSize: `${GRID * 2}px ${GRID * 2}px`,
@@ -1740,6 +1748,10 @@ function Box({
   onMeasure?: (id: string, needed: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [shapeOpen, setShapeOpen] = useState(false);
+  // Deselecting or renaming closes the picker, so it can never be left
+  // hanging over a box that is no longer the one being worked on.
+  if (shapeOpen && (!selected || editing)) setShapeOpen(false);
 
   /**
    * Measure the content, not the box.
@@ -1856,29 +1868,86 @@ function Box({
       {canEdit && selected && !editing && onKind && (
         /* Change the shape from the shape. The options rail can do this
            too, but nobody looks three columns right to restyle the thing
-           under their cursor. */
+           under their cursor.
+         *
+         * One badge, not a rack. All thirteen outlines used to sit in a
+         * pill above every selected box; at that width the pill wrapped
+         * onto two rows and wore the box like a hat, hiding whatever was
+         * above it and shouting louder than the chart. A single corner
+         * button carrying the CURRENT outline says the same thing — this
+         * is the shape, and it is changeable — and the thirteen only
+         * appear once you ask for them. */
         <div
-          onPointerDown={(e) => e.stopPropagation()}
-          className="absolute -top-7 left-0 z-20 flex max-w-[240px] flex-wrap items-center gap-0.5 rounded-full border border-line bg-card/95 px-1 py-0.5 shadow-card-hover backdrop-blur"
+          className="absolute -left-2.5 -top-2.5 z-30 origin-top-left"
+          style={{ transform: "scale(var(--fc-inv, 1))" }}
         >
-          {NODE_KINDS.map((k) => (
-            <button
-              key={k}
-              onClick={(e) => { e.stopPropagation(); onKind(k); }}
-              title={NODE_KIND_LABEL[k]}
-              className={`rounded-full p-0.5 ${k === n.kind ? "bg-brand-500/25" : "hover:bg-elevated"}`}
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); setShapeOpen((v) => !v); }}
+            aria-haspopup="menu"
+            aria-expanded={shapeOpen}
+            title={`Shape: ${NODE_KIND_LABEL[n.kind]} — click to change`}
+            className={`flex h-5 w-5 items-center justify-center rounded-full border shadow-sm transition-colors ${
+              shapeOpen
+                ? "border-brand-400 bg-brand-500/25"
+                : "border-line bg-card hover:border-brand-400 hover:bg-elevated"
+            }`}
+          >
+            <svg aria-hidden width="11" height="8" className="block overflow-visible">
+              <path
+                d={shapePath(n.kind, 11, 8)}
+                className={SHAPE_PAINT[n.kind]}
+                strokeWidth="1"
+                strokeDasharray={DASHED_KINDS.includes(n.kind) ? "2 2" : undefined}
+                fillRule="evenodd"
+              />
+            </svg>
+          </button>
+
+          {shapeOpen && (
+            /* Opens upward, onto the empty canvas above the box, so the
+               thirteen choices never cover the box being restyled — you
+               need to see what you are changing. Near the top of the
+               chart there is no room up there, so it drops down instead
+               rather than being clipped by the pane. */
+            <div
+              role="menu"
+              onPointerDown={(e) => e.stopPropagation()}
+              className="absolute left-0 grid w-[188px] grid-cols-5 gap-0.5 rounded-lg border border-line bg-card/95 p-1.5 shadow-card-hover backdrop-blur"
+              style={
+                n.y > 120
+                  ? { bottom: "calc(100% + 6px)" }
+                  // Dropping down has to clear the whole box, not just the
+                  // badge on its corner — otherwise the choices sit on top
+                  // of the thing being restyled. The badge is inset 10px
+                  // above the box, and the wrapper counter-scales, so the
+                  // box's own height converts back through --fc-inv.
+                  : { top: `calc(${n.h + 10}px * var(--fc-scale, 1) + 6px)` }
+              }
             >
-              <svg aria-hidden width="16" height="10" className="block overflow-visible">
-                <path
-                  d={shapePath(k, 16, 10)}
-                  className={SHAPE_PAINT[k]}
-                  strokeWidth="1"
-                  strokeDasharray={DASHED_KINDS.includes(k) ? "2 2" : undefined}
-                  fillRule="evenodd"
-                />
-              </svg>
-            </button>
-          ))}
+              {NODE_KINDS.map((k) => (
+                <button
+                  key={k}
+                  role="menuitem"
+                  onClick={(e) => { e.stopPropagation(); onKind(k); setShapeOpen(false); }}
+                  title={NODE_KIND_LABEL[k]}
+                  className={`flex h-6 items-center justify-center rounded-md ${
+                    k === n.kind ? "bg-brand-500/25 ring-1 ring-brand-400" : "hover:bg-elevated"
+                  }`}
+                >
+                  <svg aria-hidden width="18" height="11" className="block overflow-visible">
+                    <path
+                      d={shapePath(k, 18, 11)}
+                      className={SHAPE_PAINT[k]}
+                      strokeWidth="1"
+                      strokeDasharray={DASHED_KINDS.includes(k) ? "2 2" : undefined}
+                      fillRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1887,7 +1956,8 @@ function Box({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onStartLink(); }}
           title="Draw an arrow from this box — then click the box it points to"
-          className="absolute -bottom-3 right-1.5 inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white shadow-sm hover:brightness-110"
+          className="absolute -bottom-3 right-1.5 inline-flex origin-bottom-right items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white shadow-sm hover:brightness-110"
+          style={{ transform: "scale(var(--fc-inv, 1))" }}
         >
           <ArrowRight size={10} /> connect
         </button>

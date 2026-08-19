@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.shapebadge",
+    title: "Changing a box's shape",
+    body: "Select a box and a small round **badge** appears on its top-left corner, drawn as the shape that box currently is. Click the badge for the full set of thirteen and pick a new one — it opens over empty canvas so it never hides the box you are changing. The **Shapes panel** in the chart's corner is still there for dragging new boxes in.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.columns",
     title: "Four columns, four dividers",
     body: "Left to right: the **chart**, the **live form** it produces, the **admin panel** the organisers get, and the **options** for whatever you have selected. Drag the gap between any two to resize — the whole gap is the handle, and the chart absorbs the change, down to a floor so it can never become a sliver you cannot grab. **Reset column widths** in the toolbar puts them back.",

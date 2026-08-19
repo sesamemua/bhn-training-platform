@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the shape hat becomes a corner badge
+  {
+    title: "Flow charts: selecting a box no longer puts a hat of shapes on it",
+    body: "Clicking a box used to raise a pill of all thirteen shape outlines across the top of it — wide enough to wrap onto two rows, cover whatever sat above, and generally shout. In its place is a small round badge on the box's top-left corner showing the shape the box currently is. Click it and the thirteen appear as a tidy grid, opening upward onto empty canvas so they never cover the box you are restyling; pick one and it closes. Boxes near the top of the chart drop the grid downward instead, clear of the box, so it is never cut off. The badge and the Connect button also now hold their size as the chart scales down — at the smallest zoom a button was rendering nine pixels across, smaller than the pointer trying to hit it.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the live form is a column again
   {
     title: "Flow charts: the live form is the middle column again, and it resizes",
