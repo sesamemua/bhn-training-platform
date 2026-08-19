@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: one shape panel, on the chart, that follows you
+  {
+    title: "Flow charts: one shape panel that names, explains and hands you the shapes",
+    body: "The legend that explained the shapes and the tray you dragged them from are now the same panel, sitting in the chart's top-right corner. Every row is the outline, its name, and a handle you can drag onto the canvas; hover one for what it is for and an example from this registration flow. It stays with you as you scroll — no going back to the top — and collapses if you want the corner back.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: a shape tray you drag from
   {
     title: "Flow charts: drag shapes onto the chart from a tray",

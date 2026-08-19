@@ -35,7 +35,7 @@ import { resolveCollisions } from "@/lib/flowchart/collide";
 import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowAdminPreview } from "./FlowAdminPreview";
-import { FlowShapeLegend } from "./FlowShapeLegend";
+import { FlowShapePalette } from "./FlowShapePalette";
 import { openFlowChannel, postFlow, readFlow } from "@/lib/flowchart/channel";
 
 /** Keep a computed scroll position inside what the pane can actually do. */
@@ -1303,10 +1303,6 @@ export function FlowChartEditor({
 
       {msg && <p className="mt-3 text-[12.5px] text-muted">{msg}</p>}
 
-      <div className="mt-3">
-        <FlowShapeLegend />
-      </div>
-
       <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-subtle">
         <span className="inline-flex items-center gap-1.5">
           <svg width="26" height="6" aria-hidden><line x1="0" y1="3" x2="26" y2="3" stroke="currentColor" strokeWidth="1.5" className="text-brand-400" /></svg>
@@ -1359,43 +1355,14 @@ export function FlowChartEditor({
             : undefined,
         }}
       >
+      {/* The pane is `overflow-auto`, which makes it a scrollport — and a
+          sticky child binds to the nearest one. Since the pane is sized to
+          its content it never scrolls vertically, so a palette sticky
+          INSIDE it simply rode the page off the top of the screen. The
+          palette therefore lives in this wrapper, outside the scrollport,
+          where sticky binds to the page instead. */}
+      <div className="relative">
       <div ref={paneRef} className="relative overflow-auto rounded-lg border border-line bg-card">
-        {canEdit && (
-          /* Pinned to the pane, not the page: scroll a thousand pixels
-             down the chart and the shapes are still here. The toolbar at
-             the top stays too — this is the copy you reach for. */
-          <div className="pointer-events-none sticky top-2 z-30 flex justify-center px-2">
-            <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-full border border-line bg-card/95 px-1.5 py-1 shadow-card-hover backdrop-blur">
-              {NODE_KINDS.map((k) => (
-                <button
-                  key={k}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData(KIND_MIME, k);
-                    e.dataTransfer.effectAllowed = "copy";
-                    setDragKind(k);
-                  }}
-                  onDragEnd={() => { setDragKind(null); setDropAt(null); }}
-                  onClick={() => addNode(k)}
-                  title={`${NODE_KIND_LABEL[k]} — drag onto the chart, or click to drop one in`}
-                  className={`cursor-grab rounded-md p-1 transition-colors active:cursor-grabbing ${
-                    lastKind === k ? "bg-brand-500/20" : "hover:bg-elevated"
-                  }`}
-                >
-                  <svg aria-hidden width="22" height="13" className="block overflow-visible">
-                    <path
-                      d={shapePath(k, 22, 13)}
-                      className={SHAPE_PAINT[k]}
-                      strokeWidth="1"
-                      strokeDasharray={DASHED_KINDS.includes(k) ? "3 2" : undefined}
-                      fillRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         {/* Sized in SCREEN pixels so the pane scrolls by what is visible,
             wrapping a drawing that keeps its own coordinate system. */}
         <div style={{ width: bounds.w * scale, height: contentH * scale }}>
@@ -1528,6 +1495,26 @@ export function FlowChartEditor({
           focusNodeId={selected}
         />
         </aside>
+      </div>
+
+        {canEdit && (
+          /* An overlay the width of the pane, with no overflow of its own,
+             so the panel inside it sticks to the viewport as the page
+             scrolls. Transparent to the pointer except the panel itself. */
+          <div className="pointer-events-none absolute inset-0 z-30">
+            <div className="sticky top-3 flex justify-end pr-3">
+              <div className="pointer-events-auto">
+                <FlowShapePalette
+                  mime={KIND_MIME}
+                  active={lastKind}
+                  onPick={(k) => addNode(k)}
+                  onDragKind={setDragKind}
+                  onDragEnd={() => { setDragKind(null); setDropAt(null); }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* The organisers' side of the same chart. A different surface on

@@ -104,7 +104,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.flowcharts.shapes2",
     title: "Thirteen shapes, and three ways to place one",
-    body: "The classic flowchart set is all here — document, stored data, sub-process, wait, manual, connector — drawn as real outlines. They live in a **tray on the chart** that follows you as you scroll: drag one onto the canvas, with a preview of where it will land, or click to drop one in. Double-clicking empty space works too. **Select a box** and a shape palette appears above it, so changing a shape happens where the shape is. And dragging a box now pushes whatever is in its way instead of landing on top of it.",
+    body: "The **Shapes panel** in the chart's top-right corner is the whole vocabulary: each row names a shape, explains it on hover with an example from this registration flow, and can be dragged straight onto the canvas — with a preview of where it lands. It follows you as you scroll, and collapses if you want the corner back. Double-clicking empty space also drops one in. **Select a box** and a shape palette appears above it, so changing a shape happens where the shape is. And dragging a box now pushes whatever is in its way instead of landing on top of it.",
     path: "/admin/workspace/flowcharts",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],
