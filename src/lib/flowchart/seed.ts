@@ -76,6 +76,59 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
   const n1 = { id: "n1", kind: "start" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "Registration opens", actor: "Coordinator" };
 
+  /*
+   * The trainee gate comes FIRST, before the sessions are even shown.
+   *
+   * Training Week is for HQP and current trainees get priority for
+   * places, so who is asking is the first thing the process needs to
+   * know — asking it after someone has picked three workshops invites
+   * them to invest in a choice their status may not support.
+   *
+   * The distinction this question exists to draw: being REGISTERED on
+   * the training platform is not being ACCEPTED into a programme. Last
+   * year that conflation is what produced registrations the team then
+   * had to reject by hand.
+   */
+  const nT = { id: "nT", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
+    text: "Are you a current BioHubNet trainee?",
+    field: { key: "trainee", type: "yesno" as const, required: true,
+      help: "A current trainee has been accepted into ENGAGE, EXPERIENCE or EQUIP. Having an account on the BioHubNet training platform is not the same thing — if you registered but were not accepted into a programme, answer No. Current trainees get priority consideration for Training Week places." } };
+
+  // The answer for everyone who says No, said where they will read it.
+  const nTinfo = { id: "nTinfo", kind: "note" as const, x: SIDE, y: nT.y, w: W, h: 78,
+    text: "Note: not a trainee? You can apply to a programme — applications take time to review — and register now regardless, as long as you are HQP at one of the 41 member institutions." };
+
+  // Yes branch: confirm who they are against the roster, then carry on.
+  const nTv = { id: "nTv", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
+    text: "Confirm the email we know you by",
+    field: { key: "trainee_email", type: "email" as const, required: true,
+      help: "Your institutional email, or the secondary email registered with BioHubNet. It is checked against the trainee roster and used for nothing else on this form." } };
+
+  // The roster is a record the process READS, so it is drawn as one —
+  // out on its own lane, because it is not a step anybody performs. The
+  // live sheet behind it is set in the admin panel.
+  const nTroster = { id: "nTroster", kind: "data" as const, x: SIDE, y: nTv.y, w: W, h: 62,
+    text: "BioHubNet trainee roster · live sheet" };
+
+  const nTd = { id: "nTd", kind: "decision" as const, x: MAIN, y: at(46), w: W, h: 46,
+    text: "Found on the roster?" };
+
+  // Confirming sets the backend status; failing to confirm does NOT stop
+  // the registration. The gate only settles WHICH status someone holds.
+  const nTc = { id: "nTc", kind: "step" as const, x: MAIN, y: at(62), w: W, h: 62,
+    text: "Current trainee confirmed", actor: "System" };
+  const nTx = { id: "nTx", kind: "step" as const, x: SIDE, y: nTc.y, w: W, h: 78,
+    text: "Not on the roster · continues as HQP", actor: "System" };
+
+  const n6 = { id: "n6", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
+    text: "Trainee details",
+    fields: [
+      { key: "bhn_programs", type: "multi" as const,
+        options: ["ENGAGE", "EXPERIENCE", "EQUIP"] },
+      { key: "travel_origin", type: "text" as const,
+        help: "City or town you would travel from, if you need support. Subject to approval." },
+    ] };
+
   const n2 = { id: "n2", kind: "question" as const, x: MAIN, y: at(46), w: W, h: 46,
     text: "Choose your sessions",
     field: { key: "sessions", type: "multi" as const, required: true,
@@ -109,25 +162,12 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       ],
     } };
 
-  // The trainee question leads, per the note: Training Week is for HQP,
-  // so who you are comes before what you do.
-  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(78), w: W, h: 78,
+  // Contact details only — who you ARE was settled at the gate.
+  const n3 = { id: "n3", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
     text: "About you",
     fields: [
       { key: "contact", type: "contact" as const, required: true },
-      { key: "trainee", type: "yesno" as const, required: true,
-        help: "Are you a current BioHubNet trainee?" },
       { key: "linkedin", type: "text" as const, help: "Optional." },
-    ] };
-
-  // Trainee-only questions step aside and rejoin the spine.
-  const n6 = { id: "n6", kind: "question" as const, x: SIDE, y: n3.y, w: W, h: 78,
-    text: "Trainee details",
-    fields: [
-      { key: "bhn_programs", type: "multi" as const,
-        options: ["ENGAGE", "EXPERIENCE", "EQUIP"] },
-      { key: "travel_origin", type: "text" as const,
-        help: "City or town you would travel from, if you need support. Subject to approval." },
     ] };
 
   // The note's 2026 questions, verbatim lists. The definitions live in
@@ -212,6 +252,11 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
   const n10 = { id: "n10", kind: "step" as const, x: MAIN, y: at(78), w: W, h: 78,
     text: "Checked against the eligibility sheet", actor: "Program lead" };
 
+  // Why the roster check earns its place: a confirmed trainee is ahead
+  // of an unconfirmed one when the week is oversubscribed.
+  const nPri = { id: "nPri", kind: "rule" as const, x: SIDE, y: n10.y, w: W, h: 62,
+    text: "Confirmed trainees are considered first for places" };
+
   const n11 = { id: "n11", kind: "decision" as const, x: MAIN, y: at(46), w: W, h: 46,
     text: "Eligible?" };
   const n12 = { id: "n12", kind: "end" as const, x: SIDE, y: n11.y, w: W, h: 46,
@@ -233,16 +278,28 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
     text: "Attends" };
 
   return {
-    nodes: [n1, n2, n2r, n3, n6, n3b, n4a, n4b, n4c, n4d, n5, n5r, n7,
-            n8, n9, n10, n11, n12, n13, n14, n15, n16],
+    nodes: [n1, nT, nTinfo, nTv, nTroster, nTd, nTc, nTx, n6,
+            n2, n2r, n3, n3b, n4a, n4b, n4c, n4d, n5, n5r, n7,
+            n8, n9, n10, nPri, n11, n12, n13, n14, n15, n16],
     edges: [
-      { id: "e1", from: "n1", to: "n2" },
+      { id: "e1", from: "n1", to: "nT" },
+      { id: "eTn", from: "nT", to: "nTinfo", label: "if not" },
+      // Saying yes means proving it; saying no costs nothing and the
+      // registration carries straight on to the sessions.
+      { id: "eT1", from: "nT", to: "nTv", when: { field: "trainee", op: "is", value: "Yes" }, label: "yes" },
+      { id: "eT2", from: "nT", to: "n2", when: { field: "trainee", op: "is not", value: "Yes" }, label: "no" },
+      { id: "eT3", from: "nTv", to: "nTd" },
+      { id: "eT4", from: "nTv", to: "nTroster", label: "checked against" },
+      { id: "eT5", from: "nTd", to: "nTc", label: "found" },
+      { id: "eT6", from: "nTd", to: "nTx", label: "not found" },
+      { id: "eT7", from: "nTc", to: "n6" },
+      { id: "eT8", from: "n6", to: "n2" },
+      // Not being on the roster is not a rejection — it settles the
+      // status and rejoins the same spine.
+      { id: "eT9", from: "nTx", to: "n2" },
       { id: "e2", from: "n2", to: "n3" },
       { id: "e2r", from: "n2", to: "n2r", label: "limits" },
-      // Trainee-only questions step aside and rejoin the spine.
-      { id: "e3a", from: "n3", to: "n6", when: { field: "trainee", op: "is", value: "Yes" }, label: "trainee" },
-      { id: "e3b", from: "n6", to: "n3b" },
-      { id: "e3c", from: "n3", to: "n3b", when: { field: "trainee", op: "is not", value: "Yes" }, label: "not a trainee" },
+      { id: "e3b", from: "n3", to: "n3b" },
       // One institution question per demographic — the org type answered
       // above decides which one is asked. The unlabelled spine arrow is
       // what keeps the rest of the form visible before it is answered.
@@ -261,6 +318,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       { id: "e9", from: "n8", to: "n9", label: "yes" },
       { id: "e10", from: "n8", to: "n10", label: "no" },
       { id: "e11", from: "n10", to: "n11" },
+      { id: "e11p", from: "n10", to: "nPri", label: "priority" },
       { id: "e12", from: "n11", to: "n12", label: "no" },
       { id: "e13", from: "n11", to: "n13", label: "yes" },
       { id: "e14", from: "n13", to: "n14" },

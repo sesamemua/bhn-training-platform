@@ -142,6 +142,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.30a",
   },
   {
+    id: "workspace.flowcharts.traineegate",
+    title: "The registration opens with the trainee check",
+    body: "The first question asks whether someone is a **current BioHubNet trainee** — accepted into ENGAGE, EXPERIENCE or EQUIP, which is not the same as having a platform account. Saying yes asks for the email registered with us and checks it against the **live trainee roster**; a match sets a confirmed-trainee status you can see in the admin panel. Saying no, or not being found, never blocks the registration — it only settles which status the person holds. Paste the roster sheet link into the **admin panel** to switch the check on.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.review",
     title: "The review section keeps score",
     body: "Below the chart, the **Review** section lists every request from the 2026 registration note and measures the chart against it **live**. Edit anything and the checks re-run: break a request — say, a question that mentions the symposium — and its row flips to *Not met* and names the box. There are no comments to leave or read; the checks look at the chart itself, so they cannot go stale.",

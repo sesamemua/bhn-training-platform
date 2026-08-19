@@ -69,7 +69,13 @@ export const FieldSchema = z.object({
   key: z.string().min(1).max(40),
   type: z.enum(FIELD_TYPES),
   required: z.boolean().optional(),
-  help: z.string().max(160).optional(),
+  /**
+   * 400, not 160: a gate question has to state a policy — what counts as
+   * a trainee, that trainees get priority, and what to do if you are not
+   * one. That does not fit in a caption, and splitting it onto the chart
+   * hides it from the person actually answering.
+   */
+  help: z.string().max(400).optional(),
   options: z.array(z.string().max(60)).max(20).optional(),
 });
 export type FieldDef = z.infer<typeof FieldSchema>;

@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Registration: the trainee gate
+  {
+    title: "Training Week registration now opens with the BioHubNet trainee check",
+    body: "The first question is now \"Are you a current BioHubNet trainee?\", asked before anyone picks a session — investing in three workshop choices before finding out where you stand was the wrong order. The question names ENGAGE, EXPERIENCE and EQUIP, says plainly that having an account on the training platform is not the same as being accepted into a programme, and tells registrants that current trainees get priority consideration for places. Answer yes and you are asked for the institutional or secondary email registered with BioHubNet, which is checked against the live trainee roster: found, and the registrant carries a confirmed-trainee status into the admin panel; not found, and they carry on registering as HQP. Answer no and you go straight to the sessions — a note beside the question explains that you can apply to a programme, that applications take time to review, and that you may register meanwhile if you are HQP at one of the 41 member institutions. The gate settles which status someone holds; it never blocks a registration. The roster sheet itself is pasted into the admin panel, and the review section below the chart shows that row amber until it is.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: the 2026 registration note, implemented and measured
   {
     title: "Training Week registration rebuilt against the 2026 note, with a live review section",

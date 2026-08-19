@@ -46,7 +46,7 @@ const ADDRESSED = (t: string) =>
 
 /** States a fork can test. A fork asks whether something IS the case. */
 const PREDICATE =
-  /\b(full|eligible|approved|valid|exists?|match(es)?|already|over|under|more than|fewer than|left|remaining|complete[d]?|confirmed|expired|passed|reached|available|closed|open|clash(es)?|duplicate|missing|late)\b/i;
+  /\b(full|eligible|approved|valid|exists?|match(es)?|already|over|under|more than|fewer than|left|remaining|complete[d]?|confirmed|expired|passed|reached|available|closed|open|clash(es)?|duplicate|missing|late|found|listed|verified)\b/i;
 
 /**
  * The first clause of a label.
