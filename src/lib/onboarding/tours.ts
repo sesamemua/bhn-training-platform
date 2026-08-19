@@ -102,6 +102,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.24a",
   },
   {
+    id: "workspace.flowcharts.stability",
+    title: "Your edits survive the save",
+    body: "Two things used to lose work here, and both are fixed. **Saving no longer reloads the chart underneath you** — it used to re-fetch the list and quietly reset the canvas, taking every edit and undo step made since the save with it. And the crash that swapped the editor for *This page couldn't load* mid-edit is gone; it came from measurements that changed the very thing they measured. If the editor does hit a problem now it stays put, names the part that failed, and gives you a **Copy the details** button — your unsaved chart is still there behind it.",
+    path: "/admin/workspace/flowcharts",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Flow Charts", href: "/admin/workspace/flowcharts" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.flowcharts.shapes2",
     title: "Thirteen shapes, and three ways to place one",
     body: "The **Shapes panel** in the chart's top-right corner is the whole vocabulary: each row names a shape, explains it on hover with an example from this registration flow, and can be dragged straight onto the canvas — with a preview of where it lands. It follows you as you scroll, and collapses if you want the corner back. Double-clicking empty space also drops one in. **Select a box** and a shape palette appears above it, so changing a shape happens where the shape is. And dragging a box now pushes whatever is in its way instead of landing on top of it.",

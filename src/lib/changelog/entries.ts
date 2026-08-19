@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Flow charts: the editor stops crashing mid-edit
+  {
+    title: "Flow charts: the editor no longer breaks while you are working",
+    body: "The crash that replaced the editor with \"This page couldn't load\" partway through an edit is fixed. Three separate things could set it off, all of them the same shape: a measurement that changed the thing it was measuring. Box heights were being re-measured on every single redraw rather than only when the text changed; the canvas read its own width from an element whose width depended on whether that canvas overflowed; and saving reloaded the chart list, which quietly threw away every edit and undo step made since the save. If the editor does hit a problem now, the panel names the component that failed and gives you a button to copy the details, instead of a number.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Flow charts: one shape panel, on the chart, that follows you
   {
     title: "Flow charts: one shape panel that names, explains and hands you the shapes",

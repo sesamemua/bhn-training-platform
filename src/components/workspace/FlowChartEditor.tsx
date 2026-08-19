@@ -548,15 +548,21 @@ export function FlowChartEditor({
 
   // Switching charts abandons nothing — the previous one was either saved
   // or explicitly discarded, so load straight over the top.
+  const loadedId = useRef<string | null>(null);
   useEffect(() => {
+    // Keyed on the id, not on `charts`. Saving replaces the whole list
+    // (setCharts with a fresh fetch), so depending on the array meant
+    // every save re-ran this and threw away the edits made since — and
+    // the undo history with them.
+    if (loadedId.current === activeId) return;
     const c = charts.find((x) => x.id === activeId);
-    if (c) {
-      setDoc(c.data);
-      setHistory([]);
-      setDirty(false);
-      setSelected(null);
-      setLinkFrom(null);
-    }
+    if (!c) return;
+    loadedId.current = activeId;
+    setDoc(c.data);
+    setHistory([]);
+    setDirty(false);
+    setSelected(null);
+    setLinkFrom(null);
   }, [activeId, charts]);
 
   const undo = useCallback(() => {
@@ -1114,9 +1120,15 @@ export function FlowChartEditor({
    */
   const [autoH, setAutoH] = useState<Record<string, number>>({});
   const measureBox = useCallback((id: string, needed: number) => {
-    setAutoH((prev) =>
-      Math.abs((prev[id] ?? 0) - needed) <= 1 ? prev : { ...prev, [id]: needed },
-    );
+    setAutoH((prev) => {
+      const had = prev[id];
+      // Returning `prev` unchanged makes React drop the render entirely,
+      // which is what makes a measurement that feeds a size safe. 2px
+      // rather than 1: text metrics can differ by a fraction between
+      // renders, and a fraction is enough to ping-pong for ever.
+      if (had !== undefined && Math.abs(had - needed) <= 2) return prev;
+      return { ...prev, [id]: needed };
+    });
   }, []);
 
   /**
@@ -1362,7 +1374,22 @@ export function FlowChartEditor({
           palette therefore lives in this wrapper, outside the scrollport,
           where sticky binds to the page instead. */}
       <div className="relative">
-      <div ref={paneRef} className="relative overflow-auto rounded-lg border border-line bg-card">
+      {/* scrollbar-gutter: stable is load-bearing, not cosmetic.
+          `scale` is computed from this element's clientWidth, and the
+          canvas height is computed from `scale`. Without a reserved
+          gutter, a canvas tall enough to overflow raises a vertical
+          scrollbar, which takes ~15px off clientWidth, which shrinks
+          `scale`, which shortens the canvas below the overflow point,
+          which removes the scrollbar again — a ~15px oscillation that
+          no deadband small enough to be useful can absorb. Reserving
+          the gutter makes clientWidth constant, so the measurement
+          stops depending on its own result. This was the third and
+          last cause of "maximum update depth exceeded" here. */}
+      <div
+        ref={paneRef}
+        style={{ scrollbarGutter: "stable" }}
+        className="relative overflow-auto rounded-lg border border-line bg-card"
+      >
         {/* Sized in SCREEN pixels so the pane scrolls by what is visible,
             wrapping a drawing that keeps its own coordinate system. */}
         <div style={{ width: bounds.w * scale, height: contentH * scale }}>
@@ -1663,12 +1690,19 @@ function Box({
    * changes how the text wraps.
    */
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const fieldCount = fieldsOf(n).length;
   useLayoutEffect(() => {
     const el = contentRef.current;
     if (!el || !onMeasure) return;
     const pad = 20; // py-2.5 top and bottom
     onMeasure(n.id, Math.ceil(el.scrollHeight) + pad);
-  });
+    // Dependencies are the things that can change how tall the text is —
+    // and nothing else. Measuring on EVERY render meant every box called
+    // setState on every render of the chart, which only stays finite while
+    // every one of those calls happens to bail out. One that does not is
+    // "maximum update depth exceeded", and with seventeen boxes measuring
+    // continuously the odds of that are not small.
+  }, [onMeasure, n.id, n.text, n.actor, n.kind, n.w, fieldCount, editing]);
 
   return (
     <div

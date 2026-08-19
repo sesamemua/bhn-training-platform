@@ -15,23 +15,34 @@ import { Component, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 
 interface Props { children: ReactNode }
-interface State { error: Error | null }
+interface State { error: Error | null; stack: string | null }
 
 export class FlowChartBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, stack: null };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error) {
     return { error };
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
-    // Kept in the console so the details survive for a bug report even
-    // after the panel below is dismissed.
+    // The component stack is shown, not just logged. A production build
+    // minifies the message down to "Minified React error #185", which
+    // names the fault but not the place — and the place is the entire
+    // question. Three rounds of guessing at which component was looping
+    // is what this is here to end.
+    this.setState({ stack: info.componentStack ?? null });
     console.error("Flow chart editor crashed:", error, info.componentStack);
   }
 
+  private report() {
+    const { error, stack } = this.state;
+    return [error?.message ?? String(error), "", (stack ?? "").trim()]
+      .join("\n")
+      .trim();
+  }
+
   render() {
-    const { error } = this.state;
+    const { error, stack } = this.state;
     if (!error) return this.props.children;
 
     return (
@@ -44,12 +55,19 @@ export class FlowChartBoundary extends Component<Props, State> {
           back. Please send the message below; it says which part broke, which
           is the bit that is otherwise impossible to guess.
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-md border border-line bg-card p-3 text-[11.5px] text-fg">
+        <pre className="mt-3 max-h-56 overflow-auto rounded-md border border-line bg-card p-3 text-[11.5px] leading-relaxed text-fg">
           {error.message || String(error)}
+          {stack ? `\n${stack.trim()}` : ""}
         </pre>
         <div className="mt-3 flex flex-wrap gap-3">
           <button
-            onClick={() => this.setState({ error: null })}
+            onClick={() => navigator.clipboard?.writeText(this.report())}
+            className="rounded-md bg-brand-600 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-brand-500"
+          >
+            Copy the details
+          </button>
+          <button
+            onClick={() => this.setState({ error: null, stack: null })}
             className="rounded-md border border-line px-3 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated"
           >
             Try again
