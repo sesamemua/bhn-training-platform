@@ -13,10 +13,14 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseRules, validateRules, type Rule } from "@/lib/allocation/model";
-import { RULES_KEY, type Audience, type EmailPlan, type TemplateBundle, type WorkshopInput } from "@/lib/allocation/admin-types";
 import {
-  needsOneSession, parseOverrides, problemsWith, render, resolveTemplates,
-  SUPPORT_URL_KEY, templateById, TEMPLATES_KEY, type Override,
+  isAudience, isId, RULES_KEY,
+  type Audience, type EmailPlan, type TemplateBundle, type WorkshopInput,
+} from "@/lib/allocation/admin-types";
+import {
+  isEdit, OverrideSchema, parseOverrides, problemsWith, refusesMultiSession, render,
+  resolveTemplates, SUPPORT_URL_KEY, templateById, TEMPLATES_KEY, unfilledGlobals,
+  type Override,
 } from "@/lib/allocation/email-templates";
 
 const PAGE = "/admin/workspace/training-admin";
@@ -216,10 +220,18 @@ function sessionVars(w: { title: string; startDateTime: Date; endDateTime: Date;
 
 export async function previewAudience(eventId: string, audience: Audience, workshopId?: string): Promise<EmailPlan> {
   await requireAdmin();
+  // Narrowed, not trusted. This one only reads, so an unrecognised
+  // audience falls back to the safest interpretation rather than
+  // refusing; the send path below refuses outright instead, because
+  // quietly substituting a default is not a thing to do to a send.
+  const who: Audience = isAudience(audience) ? audience : "confirmed";
+  if (!isId(eventId)) return { recipients: [], configured: mailConfigured(), manySessions: false };
+  const one = isId(workshopId) ? workshopId : undefined;
+
   const bookings = await prisma.workshopBooking.findMany({
     where: {
-      workshop: { eventId, ...(workshopId ? { id: workshopId } : {}) },
-      ...(audience === "all" ? { status: { not: "cancelled" } } : { status: audience }),
+      workshop: { eventId, ...(one ? { id: one } : {}) },
+      ...(who === "all" ? { status: { not: "cancelled" } } : { status: who }),
     },
     select: {
       status: true,
@@ -281,6 +293,15 @@ export async function sendToAudience(input: {
   // without ever opening the editor.
   const wrong = problemsWith(input.subject, input.body);
   if (wrong.length > 0) return { ok: false, sent: 0, failed: 0, problem: wrong.join(" ") };
+  // Refused, never narrowed. A send that quietly picked a different
+  // audience from the one it was asked for would be worse than one
+  // that failed.
+  if (!isAudience(input.audience) || !isId(input.eventId)) {
+    return { ok: false, sent: 0, failed: 0, problem: "That is not an audience this can send to." };
+  }
+  if (input.workshopId !== undefined && !isId(input.workshopId)) {
+    return { ok: false, sent: 0, failed: 0, problem: "That is not a workshop." };
+  }
   if (!mailConfigured()) {
     return { ok: false, sent: 0, failed: 0, problem: "Mail is not configured on this deployment." };
   }
@@ -304,11 +325,36 @@ export async function sendToAudience(input: {
    * sent with authority, and the reader has no way to know. The words
    * decide: only wording that actually uses a per-session field is held
    * back, so a general note still goes to everybody.
+   *
+   * The rule lives in one function shared with the tab that warns about
+   * it, so the warning and the refusal cannot describe different rules.
    */
-  if (plan.manySessions && needsOneSession(`${input.subject}\n${input.body}`)) {
+  const refusal = refusesMultiSession(input.subject, input.body, plan.manySessions);
+  if (refusal) return { ok: false, sent: 0, failed: 0, problem: refusal };
+
+  /*
+   * Fields that are the same for everybody, checked BEFORE the lock.
+   *
+   * A support letter sent from a deployment where nobody has set the
+   * form link used to take the fifteen-minute lock, write an audit row
+   * claiming N recipients, then skip all N — leaving a record that said
+   * it had reached people it never wrote to, and a feature that looked
+   * jammed for a quarter of an hour.
+   */
+  const supportRow = await prisma.platformSetting
+    .findUnique({ where: { key: SUPPORT_URL_KEY } })
+    .catch(() => null);
+  const globals = {
+    event: eventName,
+    reply_by: input.replyBy?.trim() || undefined,
+    support_form_link: supportRow?.value || undefined,
+    coordinator: "The BioHubNet team",
+  };
+  const unfilled = unfilledGlobals(input.subject, input.body, globals);
+  if (unfilled.length > 0) {
     return {
       ok: false, sent: 0, failed: 0,
-      problem: "This message names a session, but the audience covers more than one. Pick a single workshop, or take the session details out.",
+      problem: `Nothing to put in ${unfilled.map((f) => `{{${f}}}`).join(", ")}. Fill it in before sending.`,
     };
   }
 
@@ -352,19 +398,15 @@ export async function sendToAudience(input: {
   let failed = 0;
   const errors: string[] = [];
   try {
-    const supportRow = await prisma.platformSetting.findUnique({ where: { key: SUPPORT_URL_KEY } }).catch(() => null);
     for (const r of plan.recipients) {
       const vars = {
+        ...globals,
         name: r.name || "there",
         first_name: (r.name || "").trim().split(/\s+/)[0] || "there",
-        event: eventName,
         session: r.workshop,
         session_date: r.sessionDate,
         session_time: r.sessionTime,
         session_venue: r.sessionVenue,
-        reply_by: input.replyBy?.trim() || undefined,
-        support_form_link: supportRow?.value || undefined,
-        coordinator: "The BioHubNet team",
       };
       const rendered = render(input.body, vars);
       const renderedSubject = render(input.subject, vars);
@@ -470,34 +512,62 @@ export async function loadEmailTemplates(): Promise<TemplateBundle> {
 export async function saveEmailTemplate(
   id: string, subject: string, body: string,
 ): Promise<{ ok: boolean; problems?: string[] }> {
-  await requireAdmin();
-  if (!templateById(id)) return { ok: false, problems: ["No template with that id."] };
+  const admin = await requireAdmin();
+  const shipped = templateById(id);
+  if (!shipped) return { ok: false, problems: ["No template with that id."] };
 
   const problems = problemsWith(subject, body);
   if (problems.length > 0) return { ok: false, problems };
 
   const row = await prisma.platformSetting.findUnique({ where: { key: TEMPLATES_KEY } }).catch(() => null);
   const kept = parseOverrides(row?.value).filter((o) => o.id !== id);
-  const next: Override[] = [...kept, { id, subject: subject.trim(), body }];
+  const entry: Override = { id, subject: subject.trim(), body };
+
+  // The read path validates and DROPS what it cannot parse. A row that
+  // would not survive that must not be written at all, or the save
+  // reports success, vanishes on the next read, and takes the previous
+  // good wording with it.
+  const check = OverrideSchema.safeParse(entry);
+  if (!check.success) return { ok: false, problems: ["That does not fit — shorten it and try again."] };
+
+  // Wording identical to the shipped letter is stored as NOTHING. An
+  // override that merely repeats the default cannot be told apart from
+  // a real edit later, hides the reset button, and freezes that wording
+  // through every future deploy.
+  const next: Override[] = isEdit(shipped, entry) ? [...kept, entry] : kept;
 
   await prisma.platformSetting.upsert({
     where: { key: TEMPLATES_KEY },
     create: { key: TEMPLATES_KEY, value: JSON.stringify(next) },
     update: { value: JSON.stringify(next) },
   });
+  await logSend(admin.id, "training_admin.template_saved", { id, subject: entry.subject });
   revalidatePath(PAGE);
   return { ok: true };
 }
 
-/** Put one template back to the wording it shipped with. */
+/**
+ * Put one template back to the wording it shipped with.
+ *
+ * Destructive and unversioned, so the discarded wording is written to
+ * the audit log on the way out. Somebody negotiated those words; losing
+ * them to a mis-click should at least be recoverable by reading the log.
+ */
 export async function resetEmailTemplate(id: string): Promise<{ ok: boolean }> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const row = await prisma.platformSetting.findUnique({ where: { key: TEMPLATES_KEY } }).catch(() => null);
-  const kept = parseOverrides(row?.value).filter((o) => o.id !== id);
+  const all = parseOverrides(row?.value);
+  const going = all.find((o) => o.id === id);
+  if (!going) return { ok: true };
+
+  const kept = all.filter((o) => o.id !== id);
   await prisma.platformSetting.upsert({
     where: { key: TEMPLATES_KEY },
     create: { key: TEMPLATES_KEY, value: JSON.stringify(kept) },
     update: { value: JSON.stringify(kept) },
+  });
+  await logSend(admin.id, "training_admin.template_reset", {
+    id, discardedSubject: going.subject, discardedBody: going.body,
   });
   revalidatePath(PAGE);
   return { ok: true };

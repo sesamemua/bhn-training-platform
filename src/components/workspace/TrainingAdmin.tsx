@@ -8,7 +8,7 @@
  * capacity, then write to the people it just let in — and a navigation
  * between each of those is four chances to lose your place.
  */
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowUp, Check, ChevronDown, Eye, FileText, Loader2, Mail,
   Plus, RotateCcw, Trash2, Users,
@@ -23,8 +23,8 @@ import {
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import type { Audience } from "@/lib/allocation/admin-types";
 import {
-  fieldsUsed, MERGE_FIELDS, needsOneSession, render, STAGE_LABELS, STAGES,
-  type ResolvedTemplate, type Stage,
+  BODY_MAX, fieldsUsed, MERGE_FIELDS, needsOneSession, refusesMultiSession, render,
+  STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
 } from "@/lib/allocation/email-templates";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { idOf, label, place, timeGrid, titleOf } from "@/lib/allocation/schedule";
@@ -1027,8 +1027,11 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
   const [bundle, setBundle] = useState<{ templates: ResolvedTemplate[]; supportFormUrl: string } | null>(null);
   const [loading, startLoad] = useTransition();
 
-  const reload = () => startLoad(async () => setBundle(await loadEmailTemplates()));
-  useEffect(reload, []);
+  // Wrapped rather than passed straight to useEffect: startTransition
+  // returns void today, but an effect callback's return value is read as
+  // a cleanup function and that is not a thing to leave to luck.
+  const reload = () => { startLoad(async () => setBundle(await loadEmailTemplates())); };
+  useEffect(() => { reload(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div>
@@ -1036,6 +1039,7 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
         {([["compose", "Write one now", Mail], ["templates", "Standing letters", FileText]] as const).map(([id, text, Icon]) => (
           <button
             key={id}
+            aria-pressed={half === id}
             onClick={() => setHalf(id)}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
               half === id ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
@@ -1046,13 +1050,23 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
         ))}
       </div>
 
-      {half === "compose"
-        ? <Compose eventId={eventId} workshops={workshops} templates={bundle?.templates ?? []} />
-        : <Templates
-            bundle={bundle}
-            loading={loading}
-            onChanged={reload}
-          />}
+      {/* Both rendered, one hidden — not a ternary.
+          Compose holds the half-written message in local state, and the
+          tab's own help text tells you to go and look at Standing
+          letters, so unmounting it means following that advice throws
+          away what you typed. Cheap here: the bundle is loaded once by
+          this component either way. */}
+      <div hidden={half !== "compose"}>
+        <Compose
+          eventId={eventId}
+          workshops={workshops}
+          templates={bundle?.templates ?? []}
+          supportFormUrl={bundle?.supportFormUrl ?? ""}
+        />
+      </div>
+      <div hidden={half !== "templates"}>
+        <Templates bundle={bundle} loading={loading} onChanged={reload} />
+      </div>
     </div>
   );
 }
@@ -1195,14 +1209,24 @@ function TemplateRow({
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.body);
   const [problems, setProblems] = useState<string[]>([]);
-  const [saved, setSaved] = useState(false);
+  // A SNAPSHOT of what was saved, not a boolean.
+  //
+  // The badge used to be gated on a flag the re-seed effect cleared, and
+  // that effect fires on the reload the save itself triggers — so it
+  // painted for about one frame. A snapshot compared against the props
+  // survives the reload and retires itself when anything moves on.
+  const [savedAs, setSavedAs] = useState<{ s: string; b: string } | null>(null);
+  const [arming, setArming] = useState(false);
   const [pending, start] = useTransition();
   const [preview, setPreview] = useState(false);
 
   // Re-seeded when the stored version changes under us — after a reset,
   // or after somebody else saved.
-  useEffect(() => { setSubject(template.subject); setBody(template.body); setSaved(false); },
+  useEffect(() => { setSubject(template.subject); setBody(template.body); setArming(false); },
     [template.subject, template.body]);
+
+  const saved = savedAs !== null
+    && savedAs.s === template.subject.trim() && savedAs.b === template.body;
 
   const dirty = subject !== template.subject || body !== template.body;
   const sample = Object.fromEntries(MERGE_FIELDS.map((f) => [
@@ -1213,7 +1237,11 @@ function TemplateRow({
 
   return (
     <li className={open ? "bg-elevated/30" : ""}>
-      <button onClick={onToggle} className="flex w-full items-start gap-3 px-3.5 py-3 text-left hover:bg-elevated/50">
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-start gap-3 px-3.5 py-3 text-left hover:bg-elevated/50"
+      >
         <ChevronDown size={14} className={`mt-0.5 shrink-0 text-subtle transition-transform ${open ? "rotate-180" : ""}`} />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
@@ -1232,13 +1260,19 @@ function TemplateRow({
       {open && (
         <div className="border-t border-line px-3.5 py-3">
           <label className="block"><span className={LABEL}>Subject</span>
-            <input className={LINE} value={subject} onChange={(e) => { setSubject(e.target.value); setSaved(false); }} /></label>
+            <input
+              className={LINE}
+              maxLength={SUBJECT_MAX}
+              value={subject}
+              onChange={(e) => { setSubject(e.target.value); setSavedAs(null); setArming(false); }}
+            /></label>
           <label className="mt-3 block"><span className={LABEL}>Message</span>
             <textarea
               rows={16}
+              maxLength={BODY_MAX}
               className={`${LINE} font-mono text-[12.5px] leading-relaxed`}
               value={body}
-              onChange={(e) => { setBody(e.target.value); setSaved(false); }}
+              onChange={(e) => { setBody(e.target.value); setSavedAs(null); setArming(false); }}
             /></label>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1248,7 +1282,7 @@ function TemplateRow({
               onClick={() => start(async () => {
                 const r = await saveEmailTemplate(template.id, subject, body);
                 setProblems(r.problems ?? []);
-                if (r.ok) { setSaved(true); onChanged(); }
+                if (r.ok) { setSavedAs({ s: subject.trim(), b: body }); onChanged(); }
               })}
             >
               {pending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
@@ -1256,20 +1290,39 @@ function TemplateRow({
             <button className={BTN} onClick={() => setPreview(!preview)}>
               <Eye size={13} /> {preview ? "Hide" : "Preview"}
             </button>
-            {template.edited && (
-              <button
-                className={BTN}
-                disabled={pending}
-                onClick={() => start(async () => { await resetEmailTemplate(template.id); setProblems([]); onChanged(); })}
-              >
-                <RotateCcw size={13} /> Back to the original
+            {/* Two clicks, like sending. Somebody negotiated these
+                words and there is no version history to get them back
+                from — only the audit log. Sending in this same file is
+                deliberately two clicks for a smaller loss than this. */}
+            {template.edited && !arming && (
+              <button className={BTN} disabled={pending} onClick={() => setArming(true)}>
+                <RotateCcw size={13} /> Discard my wording
               </button>
             )}
-            {saved && !dirty && <span className="text-[11.5px] text-emerald-600">Saved.</span>}
+            {arming && (
+              <span role="alert" className="inline-flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-2.5 py-1.5 text-[11.5px] text-amber-600">
+                Throw away your wording and go back to the shipped letter?
+                {dirty && " Unsaved changes go too."}
+                <button
+                  className="rounded bg-brand px-2 py-0.5 text-[11px] font-bold text-white hover:brightness-110 disabled:opacity-50"
+                  disabled={pending}
+                  onClick={() => start(async () => {
+                    await resetEmailTemplate(template.id);
+                    setProblems([]); setSavedAs(null); setArming(false); onChanged();
+                  })}
+                >
+                  {pending ? "Discarding…" : "Yes, discard"}
+                </button>
+                <button className="underline disabled:opacity-40" disabled={pending} onClick={() => setArming(false)}>
+                  Keep it
+                </button>
+              </span>
+            )}
+            {saved && !dirty && <span role="status" className="text-[11.5px] text-emerald-600">Saved.</span>}
           </div>
 
           {problems.length > 0 && (
-            <ul className="mt-2 space-y-1 rounded-md border border-red-500/50 bg-red-500/10 p-2">
+            <ul role="alert" className="mt-2 space-y-1 rounded-md border border-red-500/50 bg-red-500/10 p-2">
               {problems.map((p) => <li key={p} className="text-[11.5px] text-red-500">{p}</li>)}
             </ul>
           )}
@@ -1285,7 +1338,8 @@ function TemplateRow({
                 <p className="mt-2 text-[11.5px] text-amber-600">
                   Nothing to put in{" "}
                   {[...new Set([...shownSubject.missing, ...shownBody.missing])].map((m) => `{{${m}}}`).join(", ")}
-                  {" "}yet — it stays blank here and sending will refuse until it has a value.
+                  {" "}yet — the placeholder is left in the text exactly as you see it above,
+                  and the letter cannot go out until it has a value.
                 </p>
               )}
             </div>
@@ -1299,8 +1353,11 @@ function TemplateRow({
 /* ── writing one now ──────────────────────────────────────────────── */
 
 function Compose({
-  eventId, workshops, templates,
-}: { eventId: string; workshops: AdminWorkshop[]; templates: ResolvedTemplate[] }) {
+  eventId, workshops, templates, supportFormUrl,
+}: {
+  eventId: string; workshops: AdminWorkshop[];
+  templates: ResolvedTemplate[]; supportFormUrl: string;
+}) {
   const [audience, setAudience] = useState<Audience>("confirmed");
   const [workshopId, setWorkshopId] = useState("");
   const [subject, setSubject] = useState("");
@@ -1311,17 +1368,42 @@ function Compose({
     { recipients: { email: string; name: string }[]; configured: boolean; manySessions: boolean } | null
   >(null);
   const [result, setResult] = useState<string | null>(null);
+  const [failedSend, setFailedSend] = useState(false);
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
 
-  const sessionSpecific = needsOneSession(`${subject}\n${body}`);
   const usesReplyBy = fieldsUsed(`${subject}\n${body}`).includes("reply_by");
-  const blocked =
-    (plan?.manySessions && sessionSpecific) || (usesReplyBy && !replyBy.trim());
+  // The same function the send action refuses with, so the warning here
+  // and the refusal there cannot describe different rules.
+  const refusal = refusesMultiSession(subject, body, plan?.manySessions ?? false);
+  const missingGlobals = unfilledGlobals(subject, body, {
+    event: "the event", coordinator: "the team",
+    reply_by: replyBy.trim() || undefined,
+    support_form_link: supportFormUrl || undefined,
+  });
+  const blocked = Boolean(refusal) || missingGlobals.length > 0 || (usesReplyBy && !replyBy.trim());
+
+  /*
+   * Typing anything disarms the confirm strip.
+   *
+   * Arming and then editing used to leave "Yes, send" live against
+   * wording the guards had not seen — clear {{reply_by}} after arming
+   * and the send went through and failed every recipient. Two clicks
+   * only means something if the second one is about what the first one
+   * showed you.
+   */
+  const edit = <T,>(set: (v: T) => void) => (v: T) => { set(v); setConfirming(false); };
+
+  // The arm button unmounts when the strip appears, which drops focus to
+  // the body — a keyboard user is left nowhere, and a screen reader is
+  // told nothing about the confirmation that just appeared.
+  useEffect(() => { if (confirming) confirmRef.current?.focus(); }, [confirming]);
 
   const check = () =>
     start(async () => {
       setResult(null);
+      setFailedSend(false);
       setConfirming(false);
       setPlan(await previewAudience(eventId, audience, workshopId || undefined));
     });
@@ -1352,12 +1434,24 @@ function Compose({
             className={LINE}
             value={from}
             onChange={(e) => {
-              const t = templates.find((x) => x.id === e.target.value);
-              setFrom(e.target.value);
+              const id = e.target.value;
+              const t = templates.find((x) => x.id === id);
+              // Loading over something written is not undoable — React
+              // sets the value programmatically, so the browser's own
+              // undo does not bring it back. Asked only when there is
+              // something to lose.
+              const written = subject.trim() || body.trim();
+              if (written && !confirm("Replace what you have written with this letter?")) {
+                e.target.value = from;
+                return;
+              }
+              setFrom(id);
+              setConfirming(false);
               if (t) { setSubject(t.subject); setBody(t.body); }
+              else { setSubject(""); setBody(""); }
             }}
           >
-            <option value="">A blank message</option>
+            <option value="">Start from nothing — clears the message</option>
             {STAGES.map((stage) => {
               const group = templates.filter((t) => t.stage === stage);
               if (group.length === 0) return null;
@@ -1370,13 +1464,13 @@ function Compose({
           </select></label>
 
         <label className="mt-3 block"><span className={LABEL}>Subject</span>
-          <input className={LINE} value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
+          <input className={LINE} value={subject} onChange={(e) => edit(setSubject)(e.target.value)} /></label>
         <label className="mt-3 block"><span className={LABEL}>Message</span>
           <textarea
             rows={9}
             className={`${LINE} font-mono text-[12.5px]`}
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => edit(setBody)(e.target.value)}
             placeholder={"Hello {{name}},\n\n…"}
           /></label>
         {usesReplyBy && (
@@ -1385,7 +1479,7 @@ function Compose({
               className={LINE}
               value={replyBy}
               placeholder="Monday 19 October"
-              onChange={(e) => setReplyBy(e.target.value)}
+              onChange={(e) => edit(setReplyBy)(e.target.value)}
             />
             <span className="mt-1 block text-[11.5px] text-subtle">
               Fills <code className="font-mono">{"{{reply_by}}"}</code>. Sending refuses while it is blank.
@@ -1401,11 +1495,16 @@ function Compose({
         {/* Said before the send button, not after it is refused: a
             warning that only appears once you have already committed is
             not a warning, it is a report. */}
-        {plan?.manySessions && sessionSpecific && (
-          <p className="mt-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[11.5px] leading-relaxed text-amber-600">
-            This message names a session, but the audience covers more than one — some
-            people would be told a time that is not theirs. Pick a single workshop above,
-            or take the session details out.
+        {refusal && (
+          <p role="alert" className="mt-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[11.5px] leading-relaxed text-amber-600">
+            {refusal}
+          </p>
+        )}
+        {missingGlobals.length > 0 && (
+          <p role="alert" className="mt-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[11.5px] leading-relaxed text-amber-600">
+            Nothing to put in {missingGlobals.map((f) => `{{${f}}}`).join(", ")}.
+            {missingGlobals.includes("support_form_link") && " Set the form link under Standing letters."}
+            {" "}Sending refuses until it has a value.
           </p>
         )}
 
@@ -1426,15 +1525,16 @@ function Compose({
             </button>
           )}
           {confirming && plan && (
-            <span className="inline-flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 text-[12.5px] text-amber-600">
+            <span role="alert" className="inline-flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 text-[12.5px] text-amber-600">
               Send to {plan.recipients.length} people? This cannot be undone.
               {/* Disabled while it runs. Several hundred messages take
                   minutes, and a strip that does not change is an
                   invitation to click again — which used to send the
                   whole audience a second time. */}
               <button
+                ref={confirmRef}
                 className="rounded bg-brand px-2 py-1 text-[11.5px] font-bold text-white hover:brightness-110 disabled:opacity-50"
-                disabled={pending}
+                disabled={pending || blocked || !plan.configured}
                 onClick={() =>
                   start(async () => {
                     const r = await sendToAudience({
@@ -1443,7 +1543,18 @@ function Compose({
                       replyBy: replyBy.trim() || undefined,
                     });
                     setConfirming(false);
-                    setResult(r.ok ? `Sent ${r.sent}${r.failed ? `, ${r.failed} failed` : ""}.` : r.problem ?? "Failed.");
+                    // The reason is shown whether or not ok is true.
+                    // sendToAudience returns ok with a problem set when
+                    // some messages failed, and "Sent 0, 40 failed."
+                    // with no reason is indistinguishable from an
+                    // outage — so the next thing anybody does is send
+                    // the whole list again.
+                    setFailedSend(!r.ok || r.failed > 0);
+                    setResult(
+                      r.ok
+                        ? `Sent ${r.sent}${r.failed ? `, ${r.failed} failed` : ""}.${r.problem ? ` ${r.problem}` : ""}`
+                        : r.problem ?? "Failed.",
+                    );
                   })
                 }
               >
@@ -1452,7 +1563,16 @@ function Compose({
               <button className="text-[11.5px] underline disabled:opacity-40" disabled={pending} onClick={() => setConfirming(false)}>Cancel</button>
             </span>
           )}
-          {result && <span className="text-[12.5px] text-muted">{result}</span>}
+          {result && (
+            <span
+              role="status"
+              className={`inline-flex items-center gap-1.5 text-[12.5px] ${
+                failedSend ? "text-red-500" : "text-emerald-600"
+              }`}
+            >
+              {failedSend ? <AlertTriangle size={13} /> : <Check size={13} />} {result}
+            </span>
+          )}
         </div>
       </div>
 

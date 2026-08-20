@@ -24,7 +24,23 @@ export interface WorkshopInput {
   isActive: boolean;
 }
 
-export type Audience = "confirmed" | "waitlist" | "pending" | "all";
+export const AUDIENCES = ["confirmed", "waitlist", "pending", "all"] as const;
+export type Audience = (typeof AUDIENCES)[number];
+
+/**
+ * Is this actually one of the four?
+ *
+ * A server action receives whatever the caller sends, and `status` is a
+ * plain String column the Prisma client will happily filter on. Without
+ * this, `audience: "cancelled"` writes to exactly the people who
+ * withdrew, and `audience: { not: "__none__" }` reaches everybody.
+ */
+export const isAudience = (v: unknown): v is Audience =>
+  typeof v === "string" && (AUDIENCES as readonly string[]).includes(v);
+
+/** A database id, or nothing. Rejects an object pretending to be one. */
+export const isId = (v: unknown): v is string =>
+  typeof v === "string" && v.length > 0 && v.length <= 60;
 
 export interface EmailPlan {
   recipients: {

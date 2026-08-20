@@ -103,7 +103,7 @@ function statusMeta(input: RegistrationConfirmationInput) {
         body:
           `Your registration is <strong>pending admin approval</strong>. ` +
           `Your spot is not guaranteed until the BHN events team confirms it — we'll email you ` +
-          `as soon as it's approved (usually within 1–2 business days).`,
+          `as soon as it's been reviewed.`,
         subject: `Registration received — ${input.eventTitle} (pending approval)`,
       };
     default:

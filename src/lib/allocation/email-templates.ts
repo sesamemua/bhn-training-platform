@@ -67,8 +67,29 @@ export function fieldsUsed(text: string): string[] {
   return out;
 }
 
+/**
+ * Everything written in double braces, whatever is inside them.
+ *
+ * DELIBERATELY looser than `fieldsUsed`. A field name is letters and
+ * underscores, so `{{first-name}}`, `{{session2}}` and `{{first.name}}`
+ * are not fields at all — which meant they slipped past the check
+ * entirely and were posted to people exactly as typed. Detection has to
+ * see anything that LOOKS like a field; substitution stays strict.
+ *
+ * Bounded to 60 characters and stopped at a newline: an unbounded match
+ * swallows whole paragraphs and turns the warning into a wall of text.
+ */
+export function bracedNames(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/\{\{([^{}\n]{1,60})\}\}/g)) {
+    const name = m[1].trim();
+    if (name && !out.includes(name)) out.push(name);
+  }
+  return out;
+}
+
 /** Fields that are written but do not exist — a typo about to be posted. */
-export const unknownFields = (text: string) => fieldsUsed(text).filter((f) => !FIELD_KEYS.has(f));
+export const unknownFields = (text: string) => bracedNames(text).filter((f) => !FIELD_KEYS.has(f));
 
 /** True when this text can only honestly go to one session's list. */
 export const needsOneSession = (text: string) => fieldsUsed(text).some((f) => PER_SESSION.has(f));
@@ -137,11 +158,11 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     body:
       `Hello {{first_name}},
 
-Thank you for registering for {{event}}. This is to confirm we have your request — you do not need to do anything else yet.
+You will already have an automatic note saying we have your registration for {{event}}. This one is from a person, and it tells you how long the wait actually is.
 
-What happens next: places are limited and every registration is reviewed, so it takes us two to three weeks to come back to you. We will write to you either way, whether or not we can offer you a place. If you have not heard from us after three weeks, reply to this message and we will chase it.
+Places are limited and every registration is reviewed together rather than as it arrives, so it takes us two to three weeks to come back to you. We will write to you either way, whether or not we can offer you a place — you do not need to do anything in the meantime. If you have not heard from us after three weeks, reply to this message and we will chase it.
 
-Current BioHubNet trainees are given priority consideration. If you asked for travel or accommodation support, we will send you a separate note about that.` + SIGN_OFF,
+Current BioHubNet trainees are given priority consideration. If you asked for travel or accommodation support, that is assessed separately and we will write to you about it.` + SIGN_OFF,
   },
   {
     id: "approved",
@@ -165,7 +186,7 @@ If you already know you cannot come, tell us now rather than later. Somebody els
     id: "declined",
     stage: "registration",
     name: "Not able to offer a place",
-    when: "When there is no seat. Short, clear, and it does not pretend.",
+    when: "When there is no seat at the week at all. For turning down ONE clashing session, use the letter below instead.",
     subject: "About your registration for {{event}}",
     body:
       `Hello {{first_name}},
@@ -175,6 +196,21 @@ We are not able to offer you a place at {{event}} this year. We had more registr
 This is not a judgement of your application. If you are not yet a BioHubNet trainee, applying to ENGAGE, EXPERIENCE or EQUIP is the thing that changes the outcome next time, and we would encourage it.
 
 We will write to you when registration opens again.` + SIGN_OFF,
+  },
+  {
+    id: "session_declined",
+    stage: "registration",
+    name: "Not able to offer one session",
+    when: "When somebody picked two sessions that clash and only one can be approved. Their other places stand — say so.",
+    subject: "About your place at {{session}}",
+    body:
+      `Hello {{first_name}},
+
+We are not able to give you a place at {{session}}.
+
+You chose more than one session running at the same hour, and only one of a clashing pair can be approved. We have given you the other.
+
+Any other session you were given a place at is unaffected, and you will hear about each of them separately. If you would rather have had this one, reply and tell us — we cannot promise a swap, but we would rather know.` + SIGN_OFF,
   },
   {
     id: "waitlisted",
@@ -327,10 +363,20 @@ See you there.` + SIGN_OFF,
 
 /* ── overrides ───────────────────────────────────────────────────── */
 
+/**
+ * The limits, in one place.
+ *
+ * They used to live only in the schema, which is the READ path — so an
+ * over-long body saved happily, reported success, and was then dropped
+ * on the next read, taking the previous good wording with it.
+ */
+export const SUBJECT_MAX = 200;
+export const BODY_MAX = 20000;
+
 export const OverrideSchema = z.object({
   id: z.string().min(1).max(60),
-  subject: z.string().max(200),
-  body: z.string().max(20000),
+  subject: z.string().max(SUBJECT_MAX),
+  body: z.string().max(BODY_MAX),
 });
 export type Override = z.infer<typeof OverrideSchema>;
 
@@ -366,11 +412,21 @@ export function resolveTemplates(overrides: Override[]): ResolvedTemplate[] {
   const byId = new Map(overrides.map((o) => [o.id, o]));
   return DEFAULT_TEMPLATES.map((t) => {
     const o = byId.get(t.id);
-    if (!o) return { ...t, edited: false };
-    const edited = o.subject !== t.subject || o.body !== t.body;
-    return { ...t, subject: o.subject, body: o.body, edited };
+    // An override that merely repeats the default is treated as ABSENT,
+    // not as an edit that happens to match. Otherwise saving the shipped
+    // words back — or leaving a trailing space in the subject, which is
+    // trimmed on the way in — writes a row that wins silently, cannot be
+    // cleared from the page because the reset button is hidden, and pins
+    // that wording through every future deploy. Self-heals rows already
+    // written, which a guard on the write path alone could not.
+    if (!o || !isEdit(t, o)) return { ...t, edited: false };
+    return { ...t, subject: o.subject, body: o.body, edited: true };
   });
 }
+
+/** Does this stored row actually differ from the shipped wording? */
+export const isEdit = (t: EmailTemplate, o: { subject: string; body: string }) =>
+  o.subject.trim() !== t.subject.trim() || o.body !== t.body;
 
 export const templateById = (id: string) => DEFAULT_TEMPLATES.find((t) => t.id === id);
 
@@ -379,8 +435,45 @@ export function problemsWith(subject: string, body: string): string[] {
   const out: string[] = [];
   if (!subject.trim()) out.push("It needs a subject.");
   if (!body.trim()) out.push("It needs a message.");
+  // Measured on what is STORED — the subject is trimmed on the way in,
+  // so checking the untrimmed length would refuse one that would fit.
+  if (subject.trim().length > SUBJECT_MAX) {
+    out.push(`The subject is ${subject.trim().length} characters; the most it can be is ${SUBJECT_MAX}.`);
+  }
+  if (body.length > BODY_MAX) {
+    out.push(`The message is ${body.length} characters; the most it can be is ${BODY_MAX}.`);
+  }
   for (const f of [...unknownFields(subject), ...unknownFields(body)]) {
     out.push(`“{{${f}}}” is not a field — it would be sent to people exactly as written.`);
   }
   return [...new Set(out)];
+}
+
+/**
+ * Why a message may not go to this audience, or null if it may.
+ *
+ * ONE implementation, called by the send action and by the tab that
+ * warns before you get there. It was written out three times — twice as
+ * a condition and once as the sentence explaining it — which is how a
+ * warning and the refusal it warns about end up disagreeing.
+ */
+export function refusesMultiSession(subject: string, body: string, manySessions: boolean): string | null {
+  if (!manySessions || !needsOneSession(`${subject}\n${body}`)) return null;
+  return "This message names a session, but the audience covers more than one — some people would be told a time that is not theirs. Pick a single workshop, or take the session details out.";
+}
+
+/**
+ * Fields the SENDER has to supply that are still empty.
+ *
+ * Only the ones that are the same for everybody. A per-session gap is
+ * deliberately a per-recipient skip, but a missing support-form link
+ * fails the entire list — and it used to do that only after taking the
+ * send lock and writing an audit row claiming N recipients, so the one
+ * record of the attempt said it reached people it never wrote to.
+ */
+export const GLOBAL_FIELDS = ["event", "reply_by", "support_form_link", "coordinator"] as const;
+
+export function unfilledGlobals(subject: string, body: string, vars: Record<string, string | undefined>): string[] {
+  const used = new Set(fieldsUsed(`${subject}\n${body}`));
+  return GLOBAL_FIELDS.filter((f) => used.has(f) && !vars[f]);
 }
