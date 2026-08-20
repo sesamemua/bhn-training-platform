@@ -12,7 +12,7 @@
  * "contact" widget is not a builder.
  */
 import { INSTITUTIONS } from "@/lib/flowchart/institutions";
-import type { BuiltForm } from "./types";
+import { BuiltFormSchema, type BuiltForm } from "./types";
 
 const OTHER = "Other — not listed";
 
@@ -38,7 +38,15 @@ export const SESSIONS_2026 = [
   "Wed 28 Oct · Innovation showcase",
 ];
 
-export const TRAINING_WEEK_FORM: BuiltForm = {
+/*
+ * Parsed through the schema at import rather than asserted as the
+ * output type. Two reasons: the literals below can leave out anything
+ * with a default (slots, options) instead of repeating `slots: []`
+ * twenty-two times, and a field that breaks a limit fails LOUDLY here,
+ * at module load, rather than being silently dropped by parseForm at
+ * runtime — which is exactly how the consent question disappeared once.
+ */
+export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
   version: 1,
   sources: [],
   fields: [
@@ -79,9 +87,28 @@ export const TRAINING_WEEK_FORM: BuiltForm = {
     { id: "f_phone", key: "phone", label: "Phone", type: "phone", required: false, options: [], showWhen: [], help: "Optional." },
     { id: "f_li", key: "linkedin", label: "LinkedIn", type: "short_text", required: false, options: [], showWhen: [], help: "Optional." },
     {
+      /*
+       * Drawn as a week, not a list.
+       *
+       * Two of the Monday tours and both Tuesday sessions run at the
+       * same hour. In a column of tick-boxes that is invisible, so
+       * people pick both, one gets approved and the other becomes a
+       * disappointment the form could have shown them at the time.
+       * You may still tick both — a second choice is worth expressing —
+       * but the clash is drawn and the consequence is stated.
+       */
       id: "f_sessions", key: "sessions", label: "Choose your sessions",
       type: "multi", required: true, options: SESSIONS_2026, showWhen: [],
-      help: "Pick the ones you want to attend — up to 3. The two Tuesday 1 PM sessions run against each other, so only one of those is likely to be approved.",
+      approveFromClash: 1,
+      slots: [
+        { option: SESSIONS_2026[0], day: "2026-10-26", start: "11:00", end: "14:00" },
+        { option: SESSIONS_2026[1], day: "2026-10-26", start: "11:00", end: "14:00" },
+        { option: SESSIONS_2026[2], day: "2026-10-26", start: "09:00", end: "12:00" },
+        { option: SESSIONS_2026[3], day: "2026-10-27", start: "13:00", end: "16:00" },
+        { option: SESSIONS_2026[4], day: "2026-10-27", start: "13:00", end: "16:00" },
+        { option: SESSIONS_2026[5], day: "2026-10-28", start: "09:00", end: "16:00" },
+      ],
+      help: "Pick the ones you want to attend — up to 3. Sessions drawn side by side run at the same time: you may choose both, but only one of a clashing pair can be approved.",
     },
     {
       id: "f_pos", key: "primary_position", label: "Primary position",
@@ -199,4 +226,4 @@ export const TRAINING_WEEK_FORM: BuiltForm = {
     { id: "w_attends", kind: "end", label: "Attends", when: [] },
     { id: "w_released", kind: "end", label: "Seat released to the waitlist", when: [] },
   ],
-};
+});

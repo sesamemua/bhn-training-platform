@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Sessions as a week; hints that fit; the submission timestamp
+  {
+    title: "Choosing sessions is a calendar now, and hint boxes fit their text",
+    body: "The sessions question is drawn as the week it actually is. Each session is a cell under its day, showing its hours, and sessions that run at the same time sit side by side — which is the whole point, because in a column of tick-boxes a clash is invisible until someone has already picked both. You can still tick both: a second preference is worth telling us. The two go amber and a note says only one of a clashing pair can be approved, so the disappointment happens at the form rather than after the decision. Sessions with no time set still appear as ordinary options, so a half-filled schedule degrades rather than breaks. The hint box under each answer now grows to fit what is in it — a one-line hint had two rows of empty space and a four-line consent statement had a scrollbar. And the moment a form is submitted is recorded automatically: the builder now says so, because an admin who does not know it exists would otherwise add a \"when did you apply\" question that people answer wrongly, and it is what the seat rule First come, first served ranks on.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Fewer boxes, more lines
   {
     title: "The form builder uses lines instead of boxes",

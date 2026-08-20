@@ -94,6 +94,23 @@ export const FieldSchema = z.object({
   /** For `lookup`: which sheet supplies the options. */
   sourceId: z.string().max(40).optional(),
   /**
+   * When each option happens, so a "choose several" question can be
+   * drawn as a week instead of a list and a clash becomes visible
+   * rather than discovered after approval.
+   *
+   * `option` matches the option string exactly. Options without a slot
+   * simply fall back to the list, so half-filled schedules degrade
+   * rather than break.
+   */
+  slots: z.array(z.object({
+    option: z.string().max(120),
+    day: z.string().max(10),
+    start: z.string().max(5),
+    end: z.string().max(5),
+  })).max(200).default([]),
+  /** How many of a clashing pair will actually be granted. */
+  approveFromClash: z.number().int().min(1).max(10).optional(),
+  /**
    * ALL of these must hold for the field to be shown. An empty list
    * means always — the common case, and the one that should need no
    * ceremony to express.

@@ -27,6 +27,7 @@ import {
 import {
   missing, optionsFor, problems, visibleFields, walk, type Answers,
 } from "@/lib/formbuilder/logic";
+import { chosenClashes, packWeek } from "@/lib/formbuilder/calendar";
 import { readSheet, saveForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
 
 const CARD = "rounded-lg border border-line bg-card p-3";
@@ -168,6 +169,16 @@ export function FormBuilder({
         </div>
       </div>
 
+      {/* Recorded whether or not anybody asks for it, and worth saying
+          so: it is what the seat-allocation rule "first come, first
+          served" reads, and an admin who does not know it exists will
+          add a "when did you apply" question that people answer wrongly. */}
+      <p className="mt-5 text-[11.5px] leading-snug text-subtle">
+        Every submission is stamped with the moment it arrived. You do not need
+        a question for it — Admin → Registrants shows it, and the seat-allocation
+        rule <strong>First come, first served</strong> ranks on it.
+      </p>
+
       {found.length > 0 && (
         <section className="mt-5 rounded-lg border border-amber-500/50 bg-amber-500/8 p-4">
           <p className={LABEL}>Things to fix</p>
@@ -215,7 +226,7 @@ function FieldList({
         ...d,
         fields: [
           ...d.fields,
-          { id: uid("f"), key, label: "New question", type: "short_text", required: false, options: [], showWhen: [] },
+          { id: uid("f"), key, label: "New question", type: "short_text", required: false, options: [], showWhen: [], slots: [] },
         ],
       };
     });
@@ -324,8 +335,8 @@ function FieldEditor({
             onChange={(e) => patch({ key: e.target.value.replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 60) })} /></label>
       </div>
       <label className="mt-2 block"><span className={LABEL}>Hint under the answer</span>
-        <textarea rows={2} className={LINE} value={field.help ?? ""} disabled={!canEdit}
-          onChange={(e) => patch({ help: e.target.value.slice(0, 400) })} /></label>
+        <AutoTextarea value={field.help ?? ""} disabled={!canEdit}
+          onChange={(v) => patch({ help: v.slice(0, 1000) })} /></label>
 
       <label className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-muted">
         <input type="checkbox" checked={field.required} disabled={!canEdit}
@@ -361,6 +372,45 @@ function FieldEditor({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * A textarea the height of its own text.
+ *
+ * A consent statement is four lines and a hint is one; a fixed two rows
+ * gives the first a scrollbar and the second an empty gap. Measured
+ * after every change rather than counting newlines, because what
+ * matters is how the text WRAPS at the current width, which only the
+ * browser knows.
+ */
+function AutoTextarea({
+  value, onChange, disabled,
+}: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Nothing to measure against at zero width, and the answer would be
+    // nonsense rather than merely wrong: every character wraps to its
+    // own line, so a 500-character hint asks for an 8000px box. Happens
+    // whenever the pane is collapsed or the element is not laid out yet.
+    if (el.clientWidth === 0) return;
+    // Collapse first: scrollHeight only ever grows against the current
+    // height, so measuring without resetting can never shrink the box.
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${LINE} resize-none overflow-hidden leading-snug`}
+    />
   );
 }
 
@@ -611,6 +661,105 @@ function Workflow({
   );
 }
 
+/**
+ * A "choose several" question drawn as the week it actually is.
+ *
+ * Cells sit side by side when they run at the same time, which is the
+ * whole point: a clash is a shape on the screen instead of something
+ * you find out after approval. Both may still be ticked — a second
+ * choice is worth expressing — and the consequence is spelled out
+ * underneath rather than enforced by a disabled control.
+ */
+function SessionCalendar({
+  field, chosen, onToggle,
+}: { field: FormField; chosen: string[]; onToggle: (option: string) => void }) {
+  const week = useMemo(() => packWeek(field.slots), [field.slots]);
+  const clashing = useMemo(() => chosenClashes(field.slots, chosen), [field.slots, chosen]);
+  // Options with no time given still need somewhere to be chosen.
+  const unscheduled = field.options.filter((o) => !field.slots.some((s) => s.option === o));
+
+  const dayName = (d: string) =>
+    new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+
+  return (
+    <div className="mt-2">
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${week.length}, minmax(0,1fr))` }}>
+        {week.map(({ day, slots }) => (
+          <div key={day} className="min-w-0">
+            <p className="pb-1 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{dayName(day)}</p>
+            <div className="space-y-1.5">
+              {/* Grouped by start time so two concurrent sessions share a
+                  row and read as alternatives to each other. */}
+              {[...new Set(slots.map((s) => s.start))].sort().map((start) => {
+                const row = slots.filter((s) => s.start === start);
+                return (
+                  <div key={start} className="flex gap-1.5">
+                    {row.map((sl) => {
+                      const on = chosen.includes(sl.option);
+                      const clashes = clashing.some(([a, b]) => a === sl.option || b === sl.option);
+                      // Cells are wide, not tall: the label is what has
+                      // to be readable, not the duration.
+                      return (
+                        <button
+                          key={sl.option}
+                          onClick={() => onToggle(sl.option)}
+                          style={{ flex: `1 1 ${100 / sl.lanes}%` }}
+                          className={`min-w-0 rounded-md border p-2 text-left transition-colors ${
+                            on
+                              ? clashes
+                                ? "border-amber-500 bg-amber-500/12"
+                                : "border-brand-500 bg-brand-500/12"
+                              : "border-line bg-elevated hover:border-brand-400"
+                          }`}
+                        >
+                          <span className="block text-[11px] font-mono text-subtle">
+                            {sl.start}–{sl.end}
+                          </span>
+                          <span className={`mt-0.5 block text-[11.5px] leading-snug ${on ? "font-semibold text-fg" : "text-muted"}`}>
+                            {/* The day prefix is already the column. */}
+                            {sl.option.replace(/^[^·]+·\s*/, "")}
+                          </span>
+                          {row.length > 1 && (
+                            <span className="mt-1 block text-[10px] text-subtle">
+                              runs against {row.length - 1} other
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {unscheduled.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {unscheduled.map((o) => (
+            <button key={o} onClick={() => onToggle(o)}
+              className={`rounded-md border px-2 py-1 text-[11.5px] ${
+                chosen.includes(o) ? "border-brand-500 bg-brand-500/12 text-fg" : "border-line text-muted hover:bg-elevated"
+              }`}>
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {clashing.length > 0 && (
+        <p className="mt-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[11.5px] leading-snug text-amber-600">
+          {clashing.length === 1 ? "Two of your choices run" : `${clashing.length} pairs of your choices run`}{" "}
+          at the same time. You can leave both ticked — it tells us your second
+          preference — but only {field.approveFromClash ?? 1} of a clashing pair
+          can be approved.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── the live preview ─────────────────────────────────────────────────
 
 function Preview({
@@ -673,6 +822,15 @@ function Preview({
                   <option value="">Choose…</option>
                   {opts.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
+              ) : f.type === "multi" && f.slots.length > 0 ? (
+                <SessionCalendar
+                  field={f}
+                  chosen={Array.isArray(answers[f.key]) ? (answers[f.key] as string[]) : []}
+                  onToggle={(o) => {
+                    const arr = Array.isArray(answers[f.key]) ? (answers[f.key] as string[]) : [];
+                    set(f.key, arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o]);
+                  }}
+                />
               ) : f.type === "multi" ? (
                 <span className="mt-1 flex flex-wrap gap-1.5">
                   {opts.map((o) => {

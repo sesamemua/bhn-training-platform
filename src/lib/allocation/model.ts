@@ -92,7 +92,7 @@ export const RULE_KINDS: Record<RuleKind, RuleKindInfo> = {
   first_come: {
     label: "First come, first served",
     blurb:
-      "Earlier application wins. This can never tie, which is what makes the whole order reproducible.",
+      "Earlier application wins, read from the moment the registration form was submitted. This can never tie, which is what makes the whole order reproducible.",
     caution: "Rewards whoever was at a keyboard when registration opened.",
     configurable: false,
   },
