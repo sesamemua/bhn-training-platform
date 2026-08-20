@@ -25,6 +25,13 @@ export interface MerchTier {
   blurb: string;
 }
 
+/** One of the supplier's published quantity breaks. */
+export interface MerchPriceBreak {
+  /** Order this many or more and each unit costs `unitCad`. */
+  minQty: number;
+  unitCad: number;
+}
+
 export interface MerchItem {
   id: string;
   name: string;
@@ -34,6 +41,14 @@ export interface MerchItem {
   category: string;
   /** Fits flat in a laptop bag. The shortlist's packability rule. */
   pocketFlat: boolean;
+  /** The supplier's own break pricing, ascending by minQty. This is read
+   *  off their listing rather than estimated, which is why the board can
+   *  quote a real number at any quantity instead of a range. */
+  priceBreaks: MerchPriceBreak[];
+  /** Decoration setup for this item — screen/die/engraving charge, on top
+   *  of the flat per-order setup in meta.setupFeeCad. */
+  decorationSetupCad: number;
+  /** Cheapest and dearest break, kept for the at-a-glance range. */
   estUnitCostCad: { low: number; high: number };
   supplierProductName: string;
   supplierItemCode: string;
@@ -74,6 +89,33 @@ export interface MerchCatalogue {
 }
 
 export const MERCH: MerchCatalogue = raw as MerchCatalogue;
+
+/**
+ * Unit price at a given quantity: the highest break the order reaches.
+ * Below the smallest break the supplier will not quote a lower price, so
+ * the first break's rate is used rather than pretending it scales down.
+ */
+export function unitPriceAt(item: MerchItem, qty: number): number {
+  const breaks = [...item.priceBreaks].sort((a, b) => a.minQty - b.minQty);
+  if (breaks.length === 0) return item.estUnitCostCad.high;
+  let price = breaks[0].unitCad;
+  for (const b of breaks) if (qty >= b.minQty) price = b.unitCad;
+  return price;
+}
+
+/**
+ * The next break up, when one exists — "500 units drops this to $4.24".
+ * The cliff between breaks is often steeper than the quantity increase,
+ * so it is worth showing rather than leaving someone to spot it.
+ */
+export function nextBreak(item: MerchItem, qty: number): MerchPriceBreak | null {
+  return [...item.priceBreaks].sort((a, b) => a.minQty - b.minQty).find((b) => b.minQty > qty) ?? null;
+}
+
+/** Landed cost for one item at a quantity: units + its own setup. */
+export function itemCostAt(item: MerchItem, qty: number, orderSetupCad: number): number {
+  return qty * unitPriceAt(item, qty) + item.decorationSetupCad + orderSetupCad;
+}
 
 /** Tiers in display order, with their numeric key alongside. */
 export function orderedTiers(catalogue: MerchCatalogue = MERCH): { tier: number; meta: MerchTier }[] {

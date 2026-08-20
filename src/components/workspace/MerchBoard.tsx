@@ -17,7 +17,7 @@ import {
   Search, ExternalLink, Check, Copy, Sparkles, AlertTriangle, PackageCheck, X,
 } from "lucide-react";
 import {
-  MERCH, allCategories, orderedTiers, type MerchItem,
+  MERCH, allCategories, orderedTiers, unitPriceAt, nextBreak, itemCostAt, type MerchItem,
 } from "@/lib/merch/types";
 import {
   EMPTY_FILTERS, buildQuoteEmail, estimateSpend, filterItems, formatCad,
@@ -215,8 +215,12 @@ export function MerchBoard() {
               {spend.count} item{spend.count === 1 ? "" : "s"} selected
             </p>
             <p className="text-[11px] text-brand-800">
-              {formatCad(spend.low)} – {formatCad(spend.high)} estimated, at {qty} units each
-              <span className="text-brand-700"> (incl. {formatCad(MERCH.meta.setupFeeCad)} setup per item)</span>
+              {formatCad(spend.low)} at {qty} units each
+              <span className="text-brand-700">
+                {" "}
+                — supplier break pricing, plus each item&apos;s decoration setup and{" "}
+                {formatCad(MERCH.meta.setupFeeCad)} order setup
+              </span>
             </p>
           </div>
 
@@ -306,11 +310,33 @@ export function MerchBoard() {
                           </p>
 
                           <p className="mt-2 font-mono text-sm font-bold tabular-nums text-fg">
-                            ${item.estUnitCostCad.low.toFixed(2)} – ${item.estUnitCostCad.high.toFixed(2)}
+                            ${unitPriceAt(item, qty).toFixed(2)}
                             <span className="ml-1 font-sans text-[10px] font-medium text-subtle">
-                              est. / unit
+                              / unit at {qty}
                             </span>
                           </p>
+                          <p className="font-mono text-[11px] tabular-nums text-muted">
+                            {formatCad(itemCostAt(item, qty, MERCH.meta.setupFeeCad))}
+                            <span className="ml-1 font-sans text-[10px] text-subtle">
+                              all-in ({qty} + ${item.decorationSetupCad.toFixed(2)} decoration
+                              + ${MERCH.meta.setupFeeCad.toFixed(2)} setup)
+                            </span>
+                          </p>
+                          {(() => {
+                            // The jump between breaks is often steeper than
+                            // the extra units cost, so it is worth naming.
+                            const nb = nextBreak(item, qty);
+                            if (!nb) return null;
+                            const now = unitPriceAt(item, qty);
+                            if (nb.unitCad >= now) return null;
+                            return (
+                              <p className="mt-0.5 text-[10.5px] font-medium text-emerald-700">
+                                {nb.minQty.toLocaleString("en-CA")} units drops it to $
+                                {nb.unitCad.toFixed(2)} — saving{" "}
+                                {formatCad((now - nb.unitCad) * nb.minQty)} on that order
+                              </p>
+                            );
+                          })()}
 
                           <p className="mt-2 text-xs leading-relaxed text-muted">{item.whyItWorks}</p>
 

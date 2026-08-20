@@ -5,7 +5,7 @@
  * without rendering anything: the same functions produce what the screen
  * shows and what the clipboard receives, so the two cannot drift.
  */
-import type { MerchItem, MerchMeta } from "./types";
+import { itemCostAt, type MerchItem, type MerchMeta } from "./types";
 
 export interface MerchFilters {
   /** Tier numbers to include. Empty = all tiers. */
@@ -71,13 +71,11 @@ export function estimateSpend(
   qty: number,
   meta: Pick<MerchMeta, "setupFeeCad">,
 ): SpendEstimate {
-  const setup = meta.setupFeeCad;
-  return {
-    count: selected.length,
-    qty,
-    low: selected.reduce((sum, i) => sum + qty * i.estUnitCostCad.low + setup, 0),
-    high: selected.reduce((sum, i) => sum + qty * i.estUnitCostCad.high + setup, 0),
-  };
+  // Both ends now come from the supplier's real break for this quantity,
+  // so at a given qty they are equal — the range only widens when an item
+  // has no published breaks. Kept as low/high so callers are unchanged.
+  const exact = selected.reduce((sum, i) => sum + itemCostAt(i, qty, meta.setupFeeCad), 0);
+  return { count: selected.length, qty, low: exact, high: exact };
 }
 
 /** "$1,234" — whole dollars; these are estimates, so cents are false precision. */

@@ -1,507 +1,188 @@
 {
-  "meta": {
-    "currency": "CAD",
-    "quantityBasis": 275,
-    "setupFeeCad": 65,
-    "supplier": "Business Edge",
-    "priceDisclaimer": "Unit costs shown are internal planning estimates, not quotes from Business Edge. Confirm every price and the setup charge with the supplier before committing budget.",
-    "urlPatterns": {
-      "productUrl": "https://products.thebiznessedge.com{href}",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN={supplierItemCode}&P={photoId}&I=1&PX=400"
-    }
+ "meta": {
+  "currency": "CAD",
+  "quantityBasis": 300,
+  "setupFeeCad": 75,
+  "supplier": "Business Edge",
+  "priceDisclaimer": "Unit prices and setup charges are read from Business Edge's own listings and are real published break pricing, not guesses — but they are still not a quote. US-sourced goods carry exchange, brokerage and duty on top, and shipping is billed at actual cost. Confirm before committing budget.",
+  "urlPatterns": {
+   "productUrl": "https://products.thebiznessedge.com{href}",
+   "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN={supplierItemCode}&P={photoId}&I=1&PX=400"
+  }
+ },
+ "tiers": {
+  "1": {
+   "key": "walk-up",
+   "label": "Tier 1 · Walk-up",
+   "blurb": "Hand to anyone who stops. Cheap enough that a few hundred units doesn't hurt, good enough that it isn't insulting."
   },
-  "tiers": {
-    "1": {
-      "key": "walk-up",
-      "label": "Tier 1 · Walk-up",
-      "blurb": "Hand to anyone who stops. Cheap enough that 200 units doesn't hurt, good enough that it isn't insulting. Target roughly $1.50–$4 landed."
-    },
-    "2": {
-      "key": "real-conversation",
-      "label": "Tier 2 · Real conversation",
-      "blurb": "For someone who scanned, asked a question, or stood at the booth for more than a minute. This is where the money is best spent — the sweet spot for 'useful, not junk'."
-    },
-    "3": {
-      "key": "qualified-lead",
-      "label": "Tier 3 · Qualified lead",
-      "blurb": "Twenty units, kept under the counter, handed over after a real conversation with someone who matters. Perceived value should read at 2–3× what you paid."
-    }
+  "2": {
+   "key": "real-conversation",
+   "label": "Tier 2 · Real conversation",
+   "blurb": "For someone who scanned, asked a question, or stood at the booth for more than a minute. The sweet spot for 'useful, not junk'."
   },
-  "items": [
+  "3": {
+   "key": "qualified-lead",
+   "label": "Tier 3 · Qualified lead",
+   "blurb": "Kept under the counter and handed over after a real conversation with someone who matters. Perceived value should read well above what you paid."
+  }
+ },
+ "items": [
+  {
+   "id": "boulevard-foldable-ripstop-tote",
+   "name": "Boulevard foldable ripstop tote",
+   "tier": 3,
+   "tierKey": "qualified-lead",
+   "category": "Carry",
+   "pocketFlat": true,
+   "priceBreaks": [
     {
-      "id": "microfiber-screen-cloth-in-a-pouch",
-      "name": "Microfiber screen cloth in a pouch",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 1.5,
-        "high": 3
-      },
-      "supplierProductName": "Ultra Opper Fiber® Microfiber Cloth in Vinyl Pouch, Full Colour 6\"×6\"",
-      "supplierItemCode": "68249",
-      "productUrl": "https://products.thebiznessedge.com/p/DSVDH-GYAXS/ultra-opper-fiber-microfiber-cloth-in-vinyl-pouch-full-color-6x-6",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=68249&P=363164296&I=1&PX=400",
-      "whyItWorks": "Weighs nothing, costs nothing, and gets used every single day by anyone with glasses, a phone, or a laptop. The highest use-per-dollar item on this whole list.",
-      "decoration": "Full-colour dye sublimation on the cloth — you get the entire surface, not a tiny logo box.",
-      "watchOut": "Ask for 250gsm+ suede-finish. Their cheaper bulk version (Synthetix, no pouch) drops the price but the pouch is what makes it feel like a product."
+     "minQty": 50,
+     "unitCad": 17.95
     },
     {
-      "id": "aluminium-luggage-tag",
-      "name": "Aluminium luggage tag",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Carry",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 2,
-        "high": 3.75
-      },
-      "supplierProductName": "Aluminum Luggage Tag",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/DSZDC-HQGWP/aluminum-luggage-tag",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=753484691&I=1&PX=400",
-      "whyItWorks": "Trade show crowd flies. A tag lives on the bag for years and gets seen at every carousel — and unlike a keychain it has an actual job.",
-      "decoration": "Laser engrave. It never wears off, and engraved metal reads as more expensive than it is.",
-      "watchOut": "Confirm the strap type — insist on a steel cable loop, not an elastic band. Those snap in the first month."
+     "minQty": 250,
+     "unitCad": 16.4
     },
     {
-      "id": "adhesive-silicone-phone-card-wallet",
-      "name": "Adhesive silicone phone card wallet",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 2,
-        "high": 3.5
-      },
-      "supplierProductName": "Silicone Adhesive Card Holder for Phone Back",
-      "supplierItemCode": "53648",
-      "productUrl": "https://products.thebiznessedge.com/p/FNZJC-UOUUH/silicone-adhesive-card-holder-for-phone-back",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=53648&P=599399631&I=1&PX=400",
-      "whyItWorks": "Sticks to the back of a phone and holds a transit card or hotel key. Once it's on, it's on for the life of the case — and it's visible every time they pull out their phone.",
-      "decoration": "Pad print or debossed silicone.",
-      "watchOut": "Confirm it's 3M adhesive. Off-brand adhesive lets go in a week and takes your brand with it."
+     "minQty": 500,
+     "unitCad": 15.75
     },
     {
-      "id": "enamel-lapel-pin",
-      "name": "Enamel lapel pin",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Desk",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 1.5,
-        "high": 3.5
-      },
-      "supplierProductName": "1\" Economy Soft Enamel Pin",
-      "supplierItemCode": "50444",
-      "productUrl": "https://products.thebiznessedge.com/p/LQXGC-KUHRH/1-economy-soft-enamel-pin",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=50444&P=974926461&I=1&PX=400",
-      "whyItWorks": "The one category where people will actively ask for a second one — if the art is good. This is a design spend, not a product spend.",
-      "decoration": "Soft enamel at this price; hard enamel costs more but holds finer detail and feels better.",
-      "watchOut": "Only works if the artwork is genuinely nice. A logo on a circle is not a pin; it's a button nobody wears."
+     "minQty": 1000,
+     "unitCad": 15.18
     },
     {
-      "id": "webcam-privacy-cover",
-      "name": "Webcam privacy cover",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 1.5,
-        "high": 2.75
-      },
-      "supplierProductName": "Webcam Privacy Cover",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/AVVIF-MEKSA/webcam-privacy-cover",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=345561244&I=1&PX=400",
-      "whyItWorks": "Sticks on a laptop lid and stays there for the life of the machine. Every video call is an impression — including calls with their whole team.",
-      "decoration": "Laser engrave or pad print on the slider face.",
-      "watchOut": "Ask for the thickness spec in writing. Over ~0.8mm and it stops the laptop closing flush, which means it gets peeled off."
-    },
-    {
-      "id": "retractable-gel-pen",
-      "name": "Retractable gel pen",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Desk",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 2,
-        "high": 4.25
-      },
-      "supplierProductName": "Zebra Sarasa Dry X-20 Retractable Gel Pen with Rubber Grip",
-      "supplierItemCode": "67682",
-      "productUrl": "https://products.thebiznessedge.com/p/HRTMB-POVDW/zebra-sarasa-dry-x-20-wh-retractable-gel-pen-with-white-body--rubber-grip",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67682&P=727115000&I=1&PX=400",
-      "whyItWorks": "Pens still work — but only good ones. A branded Zebra gel writes smoothly, gets kept, and gets stolen by coworkers. A scratchy stick pen actively damages the impression.",
-      "decoration": "Pad print or wrap.",
-      "watchOut": "Do not let anyone talk you into the $0.59 pen to stretch the budget. That saving is the whole point of failure."
-    },
-    {
-      "id": "bottle-opener-card-wallet-size",
-      "name": "Bottle-opener card (wallet-size)",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Carry",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 2.5,
-        "high": 4.25
-      },
-      "supplierProductName": "Bottle Opener Business Card",
-      "supplierItemCode": "51602",
-      "productUrl": "https://products.thebiznessedge.com/p/LSXDE-QISDX/bottle-opener-business-card",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=51602&P=557464493&I=1&PX=400",
-      "whyItWorks": "Flat as a credit card, lives in a wallet, and doubles as your business card. High novelty on the floor, real utility afterward.",
-      "decoration": "Laser engrave.",
-      "watchOut": "Their multi-tool search mostly returns tape measures — if you want screwdriver/ruler functions too, ask Bei specifically for a multi-tool card, not a bottle opener."
-    },
-    {
-      "id": "lip-balm",
-      "name": "Lip balm",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Consumable",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 1.5,
-        "high": 2.75
-      },
-      "supplierProductName": "Soft Touch Lip Balm Cube (non-SPF)",
-      "supplierItemCode": "69347",
-      "productUrl": "https://products.thebiznessedge.com/p/EWBJH-RXLVO/soft-touch-lip-balm-cube--non-spf",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69347&P=568180836&I=1&PX=400",
-      "whyItWorks": "Consumable = no clutter guilt, so nobody refuses it. Convention centres are bone dry and this genuinely gets used before the show ends.",
-      "decoration": "Full-wrap label — the whole surface is yours.",
-      "watchOut": "Note this one is explicitly non-SPF, and their SPF-15 option is flagged US-only. If you want SPF for a Canadian show, Bei needs to source a version with an NPN."
-    },
-    {
-      "id": "self-adhesive-cable-organizer",
-      "name": "Self-adhesive cable organizer",
-      "tier": 1,
-      "tierKey": "walk-up",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 2,
-        "high": 4
-      },
-      "supplierProductName": "Adjustable 11.8\" Self-Adhesive Cable Organizer",
-      "supplierItemCode": "53290",
-      "productUrl": "https://products.thebiznessedge.com/p/DPAEC-SQQGZ/adjustable-11.8-l-self-adhesive-owl-shape-cable-organizer",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=53290&P=348517781&I=1&PX=400",
-      "whyItWorks": "Anyone who travels with a laptop has a bag full of tangled cables. Small, dull, and used constantly — the definition of good swag.",
-      "decoration": "Deboss or silkscreen.",
-      "watchOut": "Ask for a set of two or three. A single strap feels like an offcut; a 3-pack feels like a product."
-    },
-    {
-      "id": "custom-knit-crew-socks",
-      "name": "Custom knit crew socks",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Wearable",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 8,
-        "high": 14
-      },
-      "supplierProductName": "Custom Dress Crew Socks (Made in America)",
-      "supplierItemCode": "51149",
-      "productUrl": "https://products.thebiznessedge.com/p/VRXHI-LPWIB/custom-dress-crew-socks-made-in-america",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=51149&P=935305457&I=1&PX=400",
-      "whyItWorks": "The most requested swag item going, and for good reason — everyone wears socks, they roll down to nothing in a bag, and the logo is knitted into the fabric so it never cracks or peels.",
-      "decoration": "Knit-in jacquard, not print. Print on socks looks cheap after one wash.",
-      "watchOut": "Confirm the minimum — custom knit socks often start at 288 pairs, which is right at the top of your range. Also ask whether they'll split M/L sizing."
-    },
-    {
-      "id": "dual-retractable-charging-cable",
-      "name": "Dual retractable charging cable",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 7,
-        "high": 13
-      },
-      "supplierProductName": "Dual Retractable Charging Cable",
-      "supplierItemCode": "69353",
-      "productUrl": "https://products.thebiznessedge.com/p/HVCKC-RVGGV/dual-retractable-charging-cable",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69353&P=368141921&I=1&PX=400",
-      "whyItWorks": "Solves the exact problem people have at a trade show, on the day. Fits a pocket, gets thrown in a bag, and stays there as the emergency backup cable forever.",
-      "decoration": "Pad print or laser on the housing.",
-      "watchOut": "Confirm it carries data and at least 20W, and that the USB-C tip is real USB-C. Cheap retractables are charge-only and slow — people notice. Their TerraTone 3-in-1 is the alternative if you want three tips."
-    },
-    {
-      "id": "magnetic-magsafe-style-phone-wallet",
-      "name": "Magnetic MagSafe-style phone wallet",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 8,
-        "high": 15
-      },
-      "supplierProductName": "Magnecard Phone Wallet",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/DQCMF-RMZTG/magnecard-phone-wallet",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=197996904&I=1&PX=400",
-      "whyItWorks": "Snaps to the back of a phone, and the better versions fold out into a kickstand. Currently the highest-perceived-value item at this price — it reads as a $30 accessory.",
-      "decoration": "Deboss on vegan leather, or pad print.",
-      "watchOut": "Magnet strength is where cheap units fail. Ask for the magnet grade and shake-test a sample before committing."
-    },
-    {
-      "id": "foldable-ripstop-tote",
-      "name": "Foldable ripstop tote",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Carry",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 6,
-        "high": 11
-      },
-      "supplierProductName": "Boulevard Foldable Ripstop Tote with Cinch Cord Handles",
-      "supplierItemCode": "69400",
-      "productUrl": "https://products.thebiznessedge.com/p/FTBLE-TLLTD/boulevard-foldable-ripstop-tote-with-cinch-cord-handles",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69400&P=308883813&I=1&PX=400",
-      "whyItWorks": "The one bag worth giving. It packs down to nothing, so it lives in a purse or glovebox and gets used for groceries — unlike the canvas tote it replaces.",
-      "decoration": "Silkscreen or full-colour transfer.",
-      "watchOut": "Check the seams. Unlined ripstop without taped seams tears on the first heavy load, and then it's a bad memory of your brand."
-    },
-    {
-      "id": "softcover-journal",
-      "name": "Softcover journal",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Desk",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 7,
-        "high": 12
-      },
-      "supplierProductName": "Eccolo® Legend Journal",
-      "supplierItemCode": "69353",
-      "productUrl": "https://products.thebiznessedge.com/p/DPUIJ-SCJNG/eccolo-legend-journal",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69353&P=738267148&I=1&PX=400",
-      "whyItWorks": "Opened daily for months, which is more brand exposure than almost anything else here. Works because it's slim — padded hardcovers are too heavy to carry and end up in a drawer.",
-      "decoration": "Blind deboss on the cover. Much classier than print, and it's what makes it look like a bookshop notebook.",
-      "watchOut": "Ask for the page count and whether it lies flat. And keep the logo small — a giant mark on the cover is what turns a notebook into swag."
-    },
-    {
-      "id": "mirror-sport-sunglasses",
-      "name": "Mirror sport sunglasses",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Wearable",
-      "pocketFlat": false,
-      "estUnitCostCad": {
-        "low": 9,
-        "high": 14
-      },
-      "supplierProductName": "Sport Viper Mirror Sunglasses w/ 1-Colour Lens Imprint",
-      "supplierItemCode": "69443",
-      "productUrl": "https://products.thebiznessedge.com/p/HNULB-PQTPU/sport-viper-mirror-sunglasses-w-1-color-lens-imprint",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69443&P=377149110&I=1&PX=400",
-      "whyItWorks": "One of the few items people put on immediately, at the booth — free walking advertising for the rest of the show. Good for spring/summer outdoor events.",
-      "decoration": "Pad print on the temple arm. Skip the lens imprint — people scrape it off.",
-      "watchOut": "Confirm genuine UV400. Also a seasonal bet: dead weight at a February show."
-    },
-    {
-      "id": "blue-light-blocking-glasses",
-      "name": "Blue-light blocking glasses",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Wearable",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 9,
-        "high": 15
-      },
-      "supplierProductName": "Blue Light Blocking Retro Glasses w/ 1-Colour Imprint",
-      "supplierItemCode": "69443",
-      "productUrl": "https://products.thebiznessedge.com/p/JUVDD-NBUTO/blue-light-blocking-retro-promotional-glasses-w-1-color-imprint",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69443&P=945972292&I=1&PX=400",
-      "whyItWorks": "Reads as a wellness gift rather than swag. Screen-heavy audiences — tech, finance, design — take these seriously and keep them at the desk.",
-      "decoration": "Pad print on the arm, small.",
-      "watchOut": "Don't make medical claims in your copy. 'Filters blue light,' not 'prevents eye strain.' Ask whether a case is included; without one they get scratched and binned."
-    },
-    {
-      "id": "recycled-knit-beanie",
-      "name": "Recycled knit beanie",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Wearable",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 9,
-        "high": 15
-      },
-      "supplierProductName": "Harbour Pom Recycled Plastic Beanie",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/ORWMK-UIWLX/harbour-pom-recycled-plastic-beanie",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=559295309&I=1&PX=400",
-      "whyItWorks": "For any Canadian show from October to March this outperforms every cap. Squashes flat in a bag, gets worn daily for five months of the year — and the recycled angle is an easy talking point.",
-      "decoration": "Woven label or small embroidered patch on the cuff.",
-      "watchOut": "Fully seasonal. Great in Toronto in November, useless in Vegas in June. The pom is polarising — ask if there's a plain version."
-    },
-    {
-      "id": "microfiber-golf-towel",
-      "name": "Microfiber golf towel",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Wearable",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 6,
-        "high": 9
-      },
-      "supplierProductName": "\"Dormie\" Microfiber Golf Towel",
-      "supplierItemCode": "66166",
-      "productUrl": "https://products.thebiznessedge.com/p/GOXJF-TZJPQ/dormie-microfiber-golf-towel",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=66166&P=109128434&I=1&PX=400",
-      "whyItWorks": "Ends up clipped to a gym bag or golf bag, which is a lot of repeat visibility for the money. Quietly one of the highest-retention mid-tier items.",
-      "decoration": "Full-colour sublimation.",
-      "watchOut": "Ask for the GSM. Waffle-weave at 400gsm+ absorbs; the thin ones don't, and get thrown out."
-    },
-    {
-      "id": "usb-wall-charger",
-      "name": "USB wall charger",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 11,
-        "high": 17
-      },
-      "supplierProductName": "Powercycle Wall Charger",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/MRTMC-QZURX/powercycle-wall-charger",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=107765001&I=1&PX=400",
-      "whyItWorks": "Everyone needs a second charger for the travel bag, and almost nobody gets around to buying one. High utility, and it stays plugged in at a bedside for years.",
-      "decoration": "Pad print on the body.",
-      "watchOut": "Non-negotiable: cUL or CSA certification for Canada — ask for the certificate number, not a reassurance. Also confirm it's 20W+ USB-C, not a 5W USB-A relic."
-    },
-    {
-      "id": "mini-maple-syrup",
-      "name": "Mini maple syrup",
-      "tier": 2,
-      "tierKey": "real-conversation",
-      "category": "Consumable",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 4,
-        "high": 8
-      },
-      "supplierProductName": "50ml Maple Syrup in Leaf Bottle",
-      "supplierItemCode": "69161",
-      "productUrl": "https://products.thebiznessedge.com/p/GVXIE-SVYVJ/50ml-maple-syrup-in-leaf-bottle",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69161&P=978611443&I=1&PX=400",
-      "whyItWorks": "The item for people who visibly don't want more stuff — and it's a genuinely nice thing for an international attendee to take home from a Canadian show. Zero clutter guilt, high charm.",
-      "decoration": "Custom label on the bottle.",
-      "watchOut": "Glass and liquid: heavier to ship, and a US attendee flying carry-on can't take much liquid. Fine for a Canadian audience, awkward for a fly-in crowd."
-    },
-    {
-      "id": "wireless-power-bank",
-      "name": "Wireless power bank",
-      "tier": 3,
-      "tierKey": "qualified-lead",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 25,
-        "high": 40
-      },
-      "supplierProductName": "The Slim Wireless 2000mAh Power Bank",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/XUAGK-SSBGB/the-slim-wireless-2000mah-power-bank",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=738542769&I=1&PX=400",
-      "whyItWorks": "Charges by sticking to the back of the phone with no cable — the version people actually use rather than leave at home. Solves the single most common problem at a conference.",
-      "decoration": "Laser or pad print on the flat face.",
-      "watchOut": "2,000mAh is under half a phone charge — thin, but people notice. Ask Bei for a 5,000mAh magnetic option instead. Also: lithium air-freight needs UN38.3 paperwork, so order early."
-    },
-    {
-      "id": "find-my-luggage-tracker",
-      "name": "Find My luggage tracker",
-      "tier": 3,
-      "tierKey": "qualified-lead",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 22,
-        "high": 35
-      },
-      "supplierProductName": "Echo Luggage Tag with Apple Find My",
-      "supplierItemCode": "65332",
-      "productUrl": "https://products.thebiznessedge.com/p/EWZGK-SVIWZ/echo-luggage-tag-with-apple-find-my",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=65332&P=708600669&I=1&PX=400",
-      "whyItWorks": "Genuinely Apple Find My certified, not a clone that needs its own app. Goes straight onto a suitcase and stays there for years — very high perceived value, and a natural conversation piece at the booth.",
-      "decoration": "Laser engrave.",
-      "watchOut": "Apple-ecosystem only. If your audience skews Android, ask whether there's a Google Find My Device equivalent before you commit the budget."
-    },
-    {
-      "id": "rfid-card-holder",
-      "name": "RFID card holder",
-      "tier": 3,
-      "tierKey": "qualified-lead",
-      "category": "Carry",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 18,
-        "high": 30
-      },
-      "supplierProductName": "Safeguard Card Holder",
-      "supplierItemCode": "69353",
-      "productUrl": "https://products.thebiznessedge.com/p/NNZKI-MMHKL/safeguard-card-holder",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69353&P=355699627&I=1&PX=400",
-      "whyItWorks": "A daily-carry object, which is the highest tier of swag there is. Understated enough that a senior person will actually use it.",
-      "decoration": "Blind deboss only. A printed logo on leather looks like a giveaway; a debossed one looks like a gift.",
-      "watchOut": "Ask what the material actually is. Split-leather sold as 'genuine leather' cracks within a year and undoes the whole effect — full-grain or a good microfibre PU is what you want."
-    },
-    {
-      "id": "folding-phone-stand",
-      "name": "Folding phone stand",
-      "tier": 3,
-      "tierKey": "qualified-lead",
-      "category": "Tech",
-      "pocketFlat": true,
-      "estUnitCostCad": {
-        "low": 15,
-        "high": 25
-      },
-      "supplierProductName": "Evermore Folding Phone Stand",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/LRTDJ-OQJFE/evermore-folding-phone-stand",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=346685098&I=1&PX=400",
-      "whyItWorks": "Folds to the size of a deck of cards, gets unfolded on every flight and hotel desk. Feels engineered, which is the point at this tier.",
-      "decoration": "Laser engrave on the base.",
-      "watchOut": "Test the hinge on a sample. The cheap ones go floppy after a month and then it's a paperweight."
-    },
-    {
-      "id": "insulated-bottle",
-      "name": "Insulated bottle",
-      "tier": 3,
-      "tierKey": "qualified-lead",
-      "category": "Carry",
-      "pocketFlat": false,
-      "estUnitCostCad": {
-        "low": 35,
-        "high": 58
-      },
-      "supplierProductName": "Rockit BPM 500ml (17oz) Bottle",
-      "supplierItemCode": "67658",
-      "productUrl": "https://products.thebiznessedge.com/p/SSXKB-MIADW/rockit-bpm-500-ml.-17-fl.-oz.-bottle",
-      "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=905624420&I=1&PX=400",
-      "whyItWorks": "The one bulky exception, and only for qualified leads. Worth it mainly if you can co-brand with a name people recognise — a known brand borrows a quality reputation your logo can't.",
-      "decoration": "Laser or wrap.",
-      "watchOut": "This is Bei's generic line. Ask specifically whether they carry CamelBak, Corkcicle or similar — the co-brand is most of the value here. And offer to ship it to the lead's office rather than hand it over at the booth."
+     "minQty": 2000,
+     "unitCad": 14.6
     }
-  ]
+   ],
+   "decorationSetupCad": 78.75,
+   "estUnitCostCad": {
+    "low": 14.6,
+    "high": 17.95
+   },
+   "supplierProductName": "Boulevard Foldable Ripstop Tote with Cinch Cord Handles",
+   "supplierItemCode": "FTBLE-TLLTD",
+   "productUrl": "https://products.thebiznessedge.com/p/FTBLE-TLLTD/boulevard-foldable-ripstop-tote-with-cinch-cord-handles",
+   "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69400&P=308883813&PX=400",
+   "whyItWorks": "The one item on this list someone carries out of the venue in front of everyone else. Ripstop folds down to nothing and clips shut with its own elastic band, so it lives in a bag until it is needed rather than being binned at the hotel.",
+   "decoration": "Screen print as standard. Full-colour heat transfer is +$2.10 a unit if the logo needs the gradient; a second colour or location adds $78.75 setup plus $0.63 a unit.",
+   "watchOut": "By far the most expensive line here — at 300 units it is more than the other three combined. Grey is the only colour, and it is a US-sourced good, so exchange and duty land on top."
+  },
+  {
+   "id": "pop-up-phone-holder",
+   "name": "Pop-up phone holder",
+   "tier": 2,
+   "tierKey": "real-conversation",
+   "category": "Tech",
+   "pocketFlat": true,
+   "priceBreaks": [
+    {
+     "minQty": 100,
+     "unitCad": 9.26
+    },
+    {
+     "minQty": 250,
+     "unitCad": 6.07
+    },
+    {
+     "minQty": 501,
+     "unitCad": 4.24
+    },
+    {
+     "minQty": 1001,
+     "unitCad": 2.78
+    }
+   ],
+   "decorationSetupCad": 120.0,
+   "estUnitCostCad": {
+    "low": 2.78,
+    "high": 9.26
+   },
+   "supplierProductName": "Pop up Phone Holder",
+   "supplierItemCode": "DQTKC-LWSRD",
+   "productUrl": "https://products.thebiznessedge.com/p/DQTKC-LWSRD/pop-up-phone-holder",
+   "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=62994&P=705426021&PX=400",
+   "whyItWorks": "Sticks to the back of a phone and stays there for months, which is months of logo exposure rather than one afternoon. Doubles as a stand and a cord wrap. Full-colour digital print over a large area, so the mark reads properly.",
+   "decoration": "Full-colour digital print across the whole button. White or black base.",
+   "watchOut": "The price cliff is the whole story: $6.07 at 250 but $4.24 at 501. If the real number lands near 500, ordering the extra units costs almost nothing. Free shipping to one metro location."
+  },
+  {
+   "id": "b-safe-key-touchless-tool",
+   "name": "B-Safe key touchless tool",
+   "tier": 2,
+   "tierKey": "real-conversation",
+   "category": "Health",
+   "pocketFlat": true,
+   "priceBreaks": [
+    {
+     "minQty": 250,
+     "unitCad": 7.89
+    },
+    {
+     "minQty": 500,
+     "unitCad": 7.19
+    },
+    {
+     "minQty": 1000,
+     "unitCad": 6.89
+    }
+   ],
+   "decorationSetupCad": 100.0,
+   "estUnitCostCad": {
+    "low": 6.89,
+    "high": 7.89
+   },
+   "supplierProductName": "B-Safe Key Touchless Tool",
+   "supplierItemCode": "GTALJ-NTNLM",
+   "productUrl": "https://products.thebiznessedge.com/p/GTALJ-NTNLM/b-safe-key-touchless-tool",
+   "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69574&P=126283718&PX=400",
+   "whyItWorks": "Brushed copper, keyring-sized, and genuinely on-theme for a life-sciences audience — copper's antimicrobial property is the product, not a claim on a sticker. Opens doors, presses buttons and taps screens.",
+   "decoration": "Laser engraving is +$1.00 a unit plus $62.11 engraving setup, on top of the $100 die. Blank is an option if budget is tight.",
+   "watchOut": "The $100 die is a one-off tooling charge, not a per-order setup — worth confirming whether a repeat order re-charges it. Minimum break starts at 250, so there is no small-run price."
+  },
+  {
+   "id": "accent-dye-sublimated-mouse-pad",
+   "name": "Accent dye-sublimated mouse pad",
+   "tier": 1,
+   "tierKey": "walk-up",
+   "category": "Desk",
+   "pocketFlat": true,
+   "priceBreaks": [
+    {
+     "minQty": 100,
+     "unitCad": 6.23
+    },
+    {
+     "minQty": 250,
+     "unitCad": 5.85
+    },
+    {
+     "minQty": 500,
+     "unitCad": 5.6
+    },
+    {
+     "minQty": 1000,
+     "unitCad": 5.37
+    },
+    {
+     "minQty": 2500,
+     "unitCad": 5.2
+    }
+   ],
+   "decorationSetupCad": 78.75,
+   "estUnitCostCad": {
+    "low": 5.2,
+    "high": 6.23
+   },
+   "supplierProductName": "Accent Dye Sublimated Mouse Pad with Antimicrobial Additive",
+   "supplierItemCode": "STULJ-OUFVI",
+   "productUrl": "https://products.thebiznessedge.com/p/STULJ-OUFVI/accent-dye-sublimated-mouse-pad-with-antimicrobial-additive",
+   "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69400&P=576753118&PX=400",
+   "whyItWorks": "Edge-to-edge dye sublimation means the whole surface is yours — a full design, not a logo in a corner. It then sits on a desk in the person's line of sight every working day.",
+   "decoration": "Edge-to-edge dye sublimation, full colour. Per-imprint personalisation is +$1.40 a unit if each pad needs a different name.",
+   "watchOut": "The flattest price curve of the four — going from 300 to 1,000 units only saves about 50 cents each, so there is little reason to over-order. 9\" × 7.5\", so it ships as a box, not an envelope."
+  }
+ ]
 }
