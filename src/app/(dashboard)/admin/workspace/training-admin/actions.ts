@@ -13,7 +13,11 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseRules, validateRules, type Rule } from "@/lib/allocation/model";
-import { RULES_KEY, type Audience, type EmailPlan, type WorkshopInput } from "@/lib/allocation/admin-types";
+import { RULES_KEY, type Audience, type EmailPlan, type TemplateBundle, type WorkshopInput } from "@/lib/allocation/admin-types";
+import {
+  needsOneSession, parseOverrides, problemsWith, render, resolveTemplates,
+  SUPPORT_URL_KEY, templateById, TEMPLATES_KEY, type Override,
+} from "@/lib/allocation/email-templates";
 
 const PAGE = "/admin/workspace/training-admin";
 
@@ -195,6 +199,21 @@ export async function removeWorkshop(id: string) {
 // ── email ────────────────────────────────────────────────────────────
 
 /** Who a send would reach. Read-only: nothing leaves the building. */
+/** "Monday 26 October" / "11:00–13:30" / a venue, all in Toronto. */
+function sessionVars(w: { title: string; startDateTime: Date; endDateTime: Date; locationName: string | null }) {
+  const day = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Toronto", weekday: "long", day: "numeric", month: "long",
+  }).format(w.startDateTime);
+  const clock = (d: Date) =>
+    new Intl.DateTimeFormat("en-GB", { timeZone: "America/Toronto", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+  return {
+    session: w.title,
+    sessionDate: day,
+    sessionTime: `${clock(w.startDateTime)}\u2013${clock(w.endDateTime)}`,
+    sessionVenue: w.locationName || "to be confirmed",
+  };
+}
+
 export async function previewAudience(eventId: string, audience: Audience, workshopId?: string): Promise<EmailPlan> {
   await requireAdmin();
   const bookings = await prisma.workshopBooking.findMany({
@@ -205,25 +224,31 @@ export async function previewAudience(eventId: string, audience: Audience, works
     select: {
       status: true,
       user: { select: { email: true, name: true } },
-      workshop: { select: { title: true } },
+      workshop: { select: { id: true, title: true, startDateTime: true, endDateTime: true, locationName: true } },
     },
     orderBy: { bookedAt: "asc" },
   });
 
   const seen = new Set<string>();
+  const workshopsSeen = new Set<string>();
   const recipients: EmailPlan["recipients"] = [];
   for (const b of bookings) {
     const email = b.user?.email;
+    workshopsSeen.add(b.workshop.id);
     if (!email || seen.has(email)) continue;
     seen.add(email);
+    const v = sessionVars(b.workshop);
     recipients.push({
       email,
       name: b.user?.name ?? "",
       status: b.status,
-      workshop: b.workshop.title,
+      workshop: v.session,
+      sessionDate: v.sessionDate,
+      sessionTime: v.sessionTime,
+      sessionVenue: v.sessionVenue,
     });
   }
-  return { recipients, configured: mailConfigured() };
+  return { recipients, configured: mailConfigured(), manySessions: workshopsSeen.size > 1 };
 }
 
 /**
@@ -241,6 +266,8 @@ export async function sendToAudience(input: {
   subject: string;
   body: string;
   confirmed: boolean;
+  /** Fills {{reply_by}}, when the letter asks for an answer by a date. */
+  replyBy?: string;
 }): Promise<{ ok: boolean; sent: number; failed: number; problem?: string }> {
   const admin = await requireAdmin();
   if (!input.confirmed) {
@@ -249,13 +276,40 @@ export async function sendToAudience(input: {
   if (!input.subject.trim() || !input.body.trim()) {
     return { ok: false, sent: 0, failed: 0, problem: "A subject and a message are both needed." };
   }
+  // A typo in a merge field would be posted verbatim. Checked at the
+  // door as well as in the editor, because a server action is reachable
+  // without ever opening the editor.
+  const wrong = problemsWith(input.subject, input.body);
+  if (wrong.length > 0) return { ok: false, sent: 0, failed: 0, problem: wrong.join(" ") };
   if (!mailConfigured()) {
     return { ok: false, sent: 0, failed: 0, problem: "Mail is not configured on this deployment." };
   }
 
+  const event = await prisma.bhnEvent.findUnique({
+    where: { id: input.eventId }, select: { title: true },
+  }).catch(() => null);
+  const eventName = event?.title ?? "BioHubNet Training Week";
+
   const plan = await previewAudience(input.eventId, input.audience, input.workshopId);
   if (plan.recipients.length === 0) {
     return { ok: false, sent: 0, failed: 0, problem: "That audience is empty." };
+  }
+
+  /*
+   * A letter that names a session cannot go to a list that spans
+   * several.
+   *
+   * "Your session is at 11:00 in Room 850" is not a formatting problem
+   * when it reaches the Wednesday showcase — it is wrong information
+   * sent with authority, and the reader has no way to know. The words
+   * decide: only wording that actually uses a per-session field is held
+   * back, so a general note still goes to everybody.
+   */
+  if (plan.manySessions && needsOneSession(`${input.subject}\n${input.body}`)) {
+    return {
+      ok: false, sent: 0, failed: 0,
+      problem: "This message names a session, but the audience covers more than one. Pick a single workshop, or take the session details out.",
+    };
   }
 
   /*
@@ -298,8 +352,42 @@ export async function sendToAudience(input: {
   let failed = 0;
   const errors: string[] = [];
   try {
+    const supportRow = await prisma.platformSetting.findUnique({ where: { key: SUPPORT_URL_KEY } }).catch(() => null);
     for (const r of plan.recipients) {
-      const text = input.body.replace(/\{\{\s*name\s*\}\}/g, r.name || "there");
+      const vars = {
+        name: r.name || "there",
+        first_name: (r.name || "").trim().split(/\s+/)[0] || "there",
+        event: eventName,
+        session: r.workshop,
+        session_date: r.sessionDate,
+        session_time: r.sessionTime,
+        session_venue: r.sessionVenue,
+        reply_by: input.replyBy?.trim() || undefined,
+        support_form_link: supportRow?.value || undefined,
+        coordinator: "The BioHubNet team",
+      };
+      const rendered = render(input.body, vars);
+      const renderedSubject = render(input.subject, vars);
+      // A field left unresolved is skipped, not posted. Checked across
+      // the SUBJECT as well as the body — a subject line is the one part
+      // everybody reads, so "Reply by {{reply_by}}" in an inbox is the
+      // worst place for this to show up, not an acceptable one.
+      //
+      // Per recipient rather than up front: the whole list stopping
+      // because one person has no session is worse than one person not
+      // hearing, and the report says which.
+      const missing = [...new Set([...renderedSubject.missing, ...rendered.missing])];
+      if (missing.length > 0) {
+        failed += 1;
+        if (errors.length < 5) errors.push(`${r.email}: nothing to put in {{${missing[0]}}}`);
+        continue;
+      }
+      // A newline in a subject is a header break. nodemailer encodes
+      // headers, but the subject is built from admin free text and a
+      // registrant's own name, and neither is worth trusting to a
+      // library's escaping when collapsing it costs one line.
+      const subject = renderedSubject.text.replace(/[\r\n]+/g, " ").trim();
+      const text = rendered.text;
       // One message each, sequentially. Not a bcc blast: a bcc means one
       // bounce loses the lot, and personalising the greeting is the least
       // a registrant is owed.
@@ -309,7 +397,7 @@ export async function sendToAudience(input: {
       // message as failed — and an admin told "0 sent, 240 failed" sends
       // the whole thing again.
       try {
-        await sendMail({ to: r.email, subject: input.subject, text });
+        await sendMail({ to: r.email, subject, text });
         sent += 1;
       } catch (err) {
         failed += 1;
@@ -351,4 +439,94 @@ async function logSend(actorId: string | undefined, action: string, detail: unkn
   await prisma.auditLog
     .create({ data: { action, actorId, detail: JSON.stringify(detail) } })
     .catch(() => null);
+}
+
+// ── email templates ──────────────────────────────────────────────────
+
+export async function loadEmailTemplates(): Promise<TemplateBundle> {
+  // Guarded even though it only reads. A server action is a public
+  // endpoint, and the letters name who gets priority and what the fund
+  // could not cover.
+  await requireAdmin();
+  const [stored, url] = await Promise.all([
+    prisma.platformSetting.findUnique({ where: { key: TEMPLATES_KEY } }).catch(() => null),
+    prisma.platformSetting.findUnique({ where: { key: SUPPORT_URL_KEY } }).catch(() => null),
+  ]);
+  return {
+    templates: resolveTemplates(parseOverrides(stored?.value)),
+    supportFormUrl: url?.value ?? "",
+  };
+}
+
+/**
+ * Save one template's wording.
+ *
+ * Refused rather than saved when it names a field that does not exist:
+ * an unresolved {{sesion}} is not a cosmetic problem, it is a hundred
+ * people receiving a letter with a curly-braced typo where their session
+ * should be, and the moment to catch it is while somebody is looking at
+ * it.
+ */
+export async function saveEmailTemplate(
+  id: string, subject: string, body: string,
+): Promise<{ ok: boolean; problems?: string[] }> {
+  await requireAdmin();
+  if (!templateById(id)) return { ok: false, problems: ["No template with that id."] };
+
+  const problems = problemsWith(subject, body);
+  if (problems.length > 0) return { ok: false, problems };
+
+  const row = await prisma.platformSetting.findUnique({ where: { key: TEMPLATES_KEY } }).catch(() => null);
+  const kept = parseOverrides(row?.value).filter((o) => o.id !== id);
+  const next: Override[] = [...kept, { id, subject: subject.trim(), body }];
+
+  await prisma.platformSetting.upsert({
+    where: { key: TEMPLATES_KEY },
+    create: { key: TEMPLATES_KEY, value: JSON.stringify(next) },
+    update: { value: JSON.stringify(next) },
+  });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+/** Put one template back to the wording it shipped with. */
+export async function resetEmailTemplate(id: string): Promise<{ ok: boolean }> {
+  await requireAdmin();
+  const row = await prisma.platformSetting.findUnique({ where: { key: TEMPLATES_KEY } }).catch(() => null);
+  const kept = parseOverrides(row?.value).filter((o) => o.id !== id);
+  await prisma.platformSetting.upsert({
+    where: { key: TEMPLATES_KEY },
+    create: { key: TEMPLATES_KEY, value: JSON.stringify(kept) },
+    update: { value: JSON.stringify(kept) },
+  });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+/**
+ * Set the travel-and-accommodation form link.
+ *
+ * Held as a setting rather than typed into the letter, because the same
+ * URL appears in more than one template and a link that is right in one
+ * of them and stale in another is worse than no link.
+ */
+export async function saveSupportFormUrl(url: string): Promise<{ ok: boolean; problem?: string }> {
+  await requireAdmin();
+  const trimmed = url.trim();
+  if (trimmed) {
+    let parsed: URL;
+    try { parsed = new URL(trimmed); } catch { return { ok: false, problem: "That is not a URL." }; }
+    // Anything else — javascript:, data:, mailto: — has no business
+    // being posted to several hundred people as "the form".
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return { ok: false, problem: "The link has to be http or https." };
+    }
+  }
+  await prisma.platformSetting.upsert({
+    where: { key: SUPPORT_URL_KEY },
+    create: { key: SUPPORT_URL_KEY, value: trimmed },
+    update: { value: trimmed },
+  });
+  revalidatePath(PAGE);
+  return { ok: true };
 }

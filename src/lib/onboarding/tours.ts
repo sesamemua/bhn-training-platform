@@ -2286,6 +2286,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Admin calendar", href: "/admin/workspace/training-admin" },
   },
   {
+    id: "training-week-email-templates",
+    title: "The letters Training Week sends are written already",
+    body: "**Workspace → Process → Admin → Email** now has two halves. **Standing letters** holds twelve pre-written templates — registration received (with the two-to-three-week turnaround stated), approved, declined, waitlisted, a place opening up, *Can you still make it?*, place released, the travel-and-accommodation form request, support granted, support declined, three days before, and on the day. Edit any of them; the original is one click away. **Write one now** starts from any of them rather than a blank box. Text in `{{double braces}}` is filled in per person — name, session, date, time, venue. A letter that names a session can only go to one workshop's list, and sending refuses if the audience is wider. Set the travel-and-accommodation form link once at the top and every letter that mentions it stays in step.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Open the letters", href: "/admin/workspace/training-admin" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

@@ -27,6 +27,25 @@ export interface WorkshopInput {
 export type Audience = "confirmed" | "waitlist" | "pending" | "all";
 
 export interface EmailPlan {
-  recipients: { email: string; name: string; status: string; workshop: string }[];
+  recipients: {
+    email: string; name: string; status: string; workshop: string;
+    /** Filled in so the preview shows the letter people will actually get. */
+    sessionDate: string; sessionTime: string; sessionVenue: string;
+  }[];
   configured: boolean;
+  /**
+   * True when this audience spans more than one session.
+   *
+   * A letter saying "your session is at 11:00" cannot honestly go to a
+   * list where that is only true for some of them, so the caller checks
+   * this against whether the wording is session-specific.
+   */
+  manySessions: boolean;
+}
+
+/** What the Email tab needs to draw the template editor. */
+export interface TemplateBundle {
+  templates: import("./email-templates").ResolvedTemplate[];
+  /** The travel-and-accommodation form, once somebody has set one. */
+  supportFormUrl: string;
 }

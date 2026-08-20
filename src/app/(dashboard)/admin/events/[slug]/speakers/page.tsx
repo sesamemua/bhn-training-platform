@@ -38,6 +38,8 @@ export default async function EventSpeakersPage({
     organization: s.organization,
     bio: s.bio,
     topics: s.topics,
+    linkedinUrl: s.linkedinUrl,
+    sessionPitch: s.sessionPitch,
     photoUrl: s.photoUrl,
     contactEmail: s.contactEmail,
     submittedAt: s.submittedAt ? s.submittedAt.toISOString() : null,

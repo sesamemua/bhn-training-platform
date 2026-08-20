@@ -19,7 +19,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
-import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor } from "@/lib/showcase/validation";
+import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor, normaliseLinkedin } from "@/lib/showcase/validation";
+import { BIO_LIMIT } from "./shorten/route";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -56,6 +57,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const organization = String(form.get("organization") ?? "").trim();
   const bio = String(form.get("bio") ?? "").trim();
   const email = String(form.get("email") ?? "").trim();
+  const linkedinRaw = String(form.get("linkedin") ?? "").trim();
+  const sessionPitch = String(form.get("sessionPitch") ?? "").trim();
   const topics = String(form.get("topics") ?? "")
     .split(/[,\n]/)
     .map((t) => t.trim())
@@ -72,8 +75,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   if (organization.length > 160) {
     return NextResponse.json({ error: "Organisation is a little long — keep it under 160 characters." }, { status: 400 });
   }
-  if (bio.length < 20 || bio.length > 2500) {
-    return NextResponse.json({ error: "A short bio of at least a sentence or two, please (under 2500 characters)." }, { status: 400 });
+  // Hard-capped at the same limit the form counts down to, so a pasted
+  // bio cannot slip past the counter.
+  if (bio.length < 20 || bio.length > BIO_LIMIT) {
+    return NextResponse.json(
+      { error: `A short bio, please — between 20 and ${BIO_LIMIT} characters. Yours is ${bio.length}.` },
+      { status: 400 },
+    );
+  }
+  if (sessionPitch.length > 600) {
+    return NextResponse.json({ error: "Keep the session description under 600 characters." }, { status: 400 });
+  }
+
+  // Accepts a full URL or a bare handle; stored canonical or not at all.
+  const linkedinUrl = linkedinRaw ? normaliseLinkedin(linkedinRaw) : null;
+  if (linkedinRaw && !linkedinUrl) {
+    return NextResponse.json(
+      { error: "That LinkedIn link doesn't look right — paste the full profile URL, or just your handle." },
+      { status: 400 },
+    );
   }
   if (email && !isEmail(email)) {
     return NextResponse.json({ error: "That email address doesn't look right." }, { status: 400 });
@@ -130,6 +150,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
         organization: organization || null,
         bio: bio || null,
         topics,
+        linkedinUrl,
+        sessionPitch: sessionPitch || null,
         contactEmail: email || null,
         photoUrl: r2PublicUrl(photoKey),
         submittedAt: new Date(),

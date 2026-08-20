@@ -4317,4 +4317,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Training Week now has written letters for every stage, and you can edit them",
+    body: "Registration is a conversation with somebody who applied and is now waiting, and most of what goes wrong in it is silence. **Workspace \u2192 Process \u2192 Admin \u2192 Email** now carries the whole conversation as editable templates.\n\n**Twelve letters, pre-written.** Registration received \u2014 which states plainly that it takes two to three weeks to come back and promises an answer either way. Place approved. Not able to offer a place. On the waitlist. A place has opened up. Can you still make it. Place released. Travel and accommodation \u2014 more details needed. Support granted. Support not available. Three days before. On the day.\n\n**Edit anything; the original is one click away.** Only your changes are stored, so a letter added in a future release turns up without anything being re-seeded, and \u201cback to the original\u201d simply drops the edit.\n\n**Fields are filled in per person.** `{{first_name}}`, `{{session}}`, `{{session_date}}`, `{{session_time}}`, `{{session_venue}}`, `{{reply_by}}`, `{{support_form_link}}`. A typo like `{{frist_name}}` is refused at save rather than posted to two hundred people, and a field with nothing to put in it stops that message rather than going out with a blank where the time should be.\n\n**A letter that names a session can only go to one session\u2019s list.** \u201cYours is at 11:00 in Room 850\u201d is not a formatting problem when it reaches the Wednesday showcase \u2014 it is wrong information sent with authority. The Email tab warns before you commit and the send refuses outright.\n\n**The travel-and-accommodation form link is one setting.** Paste it once at the top of Standing letters and every template that mentions it stays in step. Until it is set, the letters that need it will not send.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

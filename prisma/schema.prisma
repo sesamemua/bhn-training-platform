@@ -2930,6 +2930,13 @@ model Speaker {
   /// Where to reach them about the appearance, so an admin can chase a
   /// missing headshot without hunting for the original invitation.
   contactEmail String?
+  /// Canonical https://www.linkedin.com/in/<slug>/ URL. Normalised on
+  /// the way in from whatever the speaker pasted.
+  linkedinUrl  String?
+  /// "A brief description of the advice or insights you plan to share, or
+  /// who would benefit most from attending" — the speaker's own framing
+  /// of their session, used on the programme page.
+  sessionPitch String?
   /// Set when the speaker filled the public intake form themselves.
   /// NULL means an admin (or the seed) entered them.
   submittedAt  DateTime?

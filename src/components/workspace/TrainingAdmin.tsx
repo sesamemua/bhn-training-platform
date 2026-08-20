@@ -8,20 +8,24 @@
  * capacity, then write to the people it just let in — and a navigation
  * between each of those is four chances to lose your place.
  */
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
-  AlertTriangle, ArrowDown, ArrowUp, Check, ChevronDown, Loader2, Mail,
-  Plus, Trash2, Users,
+  AlertTriangle, ArrowDown, ArrowUp, Check, ChevronDown, Eye, FileText, Loader2, Mail,
+  Plus, RotateCcw, Trash2, Users,
 } from "lucide-react";
 import {
   DEFAULT_RULES, RULE_KINDS, rankApplicants, validateRules,
   type Applicant, type Rule, type RuleKind,
 } from "@/lib/allocation/model";
 import {
-  createWorkshop, previewAudience, removeWorkshop, saveRules, sendToAudience,
-  updateWorkshop,
+  createWorkshop, loadEmailTemplates, previewAudience, removeWorkshop, resetEmailTemplate,
+  saveEmailTemplate, saveRules, saveSupportFormUrl, sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import type { Audience } from "@/lib/allocation/admin-types";
+import {
+  fieldsUsed, MERGE_FIELDS, needsOneSession, render, STAGE_LABELS, STAGES,
+  type ResolvedTemplate, type Stage,
+} from "@/lib/allocation/email-templates";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { idOf, label, place, timeGrid, titleOf } from "@/lib/allocation/schedule";
 import { DAYS, LEARNING_PATHS, SHARED } from "@/lib/training-week/schedule-2026";
@@ -1009,15 +1013,311 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
 
 // ── email ────────────────────────────────────────────────────────────
 
+/**
+ * The letters, and the editor for them.
+ *
+ * Email is two different jobs sharing a tab. One is "write to these
+ * forty people now"; the other is "the wording we use when somebody is
+ * declined" — which is a decision, not a message, and it wants to be
+ * settled once when nobody is under pressure rather than improvised in
+ * the moment somebody has to send it.
+ */
 function EmailSection({ eventId, workshops }: { eventId: string; workshops: AdminWorkshop[] }) {
+  const [half, setHalf] = useState<"compose" | "templates">("compose");
+  const [bundle, setBundle] = useState<{ templates: ResolvedTemplate[]; supportFormUrl: string } | null>(null);
+  const [loading, startLoad] = useTransition();
+
+  const reload = () => startLoad(async () => setBundle(await loadEmailTemplates()));
+  useEffect(reload, []);
+
+  return (
+    <div>
+      <div className="mb-4 inline-flex rounded-lg border border-line bg-elevated p-0.5">
+        {([["compose", "Write one now", Mail], ["templates", "Standing letters", FileText]] as const).map(([id, text, Icon]) => (
+          <button
+            key={id}
+            onClick={() => setHalf(id)}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
+              half === id ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
+            }`}
+          >
+            <Icon size={13} /> {text}
+          </button>
+        ))}
+      </div>
+
+      {half === "compose"
+        ? <Compose eventId={eventId} workshops={workshops} templates={bundle?.templates ?? []} />
+        : <Templates
+            bundle={bundle}
+            loading={loading}
+            onChanged={reload}
+          />}
+    </div>
+  );
+}
+
+/* ── the standing letters ─────────────────────────────────────────── */
+
+function Templates({
+  bundle, loading, onChanged,
+}: {
+  bundle: { templates: ResolvedTemplate[]; supportFormUrl: string } | null;
+  loading: boolean;
+  onChanged: () => void;
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  if (!bundle) {
+    return (
+      <p className="text-[12.5px] text-muted">
+        {loading ? "Loading the letters…" : "Could not load the letters."}
+      </p>
+    );
+  }
+
+  const usesLink = bundle.templates.filter((t) => fieldsUsed(`${t.subject}\n${t.body}`).includes("support_form_link"));
+
+  return (
+    <div className="max-w-3xl">
+      <p className="text-[12.5px] leading-relaxed text-muted">
+        The wording each stage starts from. Edit any of them and the change is kept —
+        the original is always one click away. Nothing here sends anything; to send,
+        open <span className="font-semibold text-fg">Write one now</span> and pick a letter.
+      </p>
+
+      <SupportLink url={bundle.supportFormUrl} usedBy={usesLink.length} onSaved={onChanged} />
+
+      {STAGES.map((stage) => {
+        const group = bundle.templates.filter((t) => t.stage === stage);
+        if (group.length === 0) return null;
+        return (
+          <section key={stage} className="mt-5">
+            <p className={LABEL}>{STAGE_LABELS[stage as Stage]}</p>
+            <ul className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
+              {group.map((t) => (
+                <TemplateRow
+                  key={t.id}
+                  template={t}
+                  supportFormUrl={bundle.supportFormUrl}
+                  open={openId === t.id}
+                  onToggle={() => setOpenId(openId === t.id ? null : t.id)}
+                  onChanged={onChanged}
+                />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+
+      <details className="mt-5 rounded-lg border border-line bg-elevated/40 p-3">
+        <summary className="cursor-pointer text-[12.5px] font-semibold text-fg">
+          What you can put in a letter
+        </summary>
+        <ul className="mt-2 divide-y divide-line">
+          {MERGE_FIELDS.map((f) => (
+            <li key={f.key} className="flex flex-wrap items-baseline gap-x-2 py-1.5">
+              <code className="font-mono text-[11.5px] text-brand-500">{`{{${f.key}}}`}</code>
+              <span className="text-[12px] text-muted">{f.means}</span>
+              {f.perSession && (
+                <span className="rounded border border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] text-amber-600">
+                  one session only
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-subtle">
+          A letter using a <span className="text-amber-600">one session only</span> field
+          can be sent to one workshop&rsquo;s list, not to the whole week — otherwise it
+          would tell some people a time that is not theirs. Sending refuses in that case.
+        </p>
+      </details>
+    </div>
+  );
+}
+
+/**
+ * The travel-and-accommodation form link.
+ *
+ * One setting rather than a URL typed into each letter that mentions it:
+ * the same link appears in more than one, and a link that is right in
+ * one and stale in the other is worse than having none.
+ */
+function SupportLink({ url, usedBy, onSaved }: { url: string; usedBy: number; onSaved: () => void }) {
+  const [value, setValue] = useState(url);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [pending, start] = useTransition();
+  useEffect(() => { setValue(url); }, [url]);
+
+  return (
+    <div className={`mt-4 ${CARD} ${!url ? "border-amber-500/50" : ""}`}>
+      <p className={LABEL}>Travel &amp; accommodation form</p>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted">
+        Where <code className="font-mono text-[11.5px] text-brand-500">{"{{support_form_link}}"}</code> points.
+        {usedBy > 0 && ` Used by ${usedBy} letter${usedBy > 1 ? "s" : ""}.`}
+        {!url && " Not set yet — a letter that needs it cannot be sent until it is."}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <input
+          className={`${LINE} min-w-0 flex-1`}
+          value={value}
+          placeholder="https://…"
+          onChange={(e) => { setValue(e.target.value); setSaved(false); setProblem(null); }}
+        />
+        <button
+          className={BTN}
+          disabled={pending || value === url}
+          onClick={() => start(async () => {
+            const r = await saveSupportFormUrl(value);
+            if (r.ok) { setSaved(true); onSaved(); } else setProblem(r.problem ?? "Could not save it.");
+          })}
+        >
+          {pending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
+        </button>
+      </div>
+      {problem && <p className="mt-1.5 text-[11.5px] text-red-500">{problem}</p>}
+      {saved && !problem && <p className="mt-1.5 text-[11.5px] text-emerald-600">Saved.</p>}
+    </div>
+  );
+}
+
+function TemplateRow({
+  template, supportFormUrl, open, onToggle, onChanged,
+}: {
+  template: ResolvedTemplate;
+  supportFormUrl: string;
+  open: boolean;
+  onToggle: () => void;
+  onChanged: () => void;
+}) {
+  const [subject, setSubject] = useState(template.subject);
+  const [body, setBody] = useState(template.body);
+  const [problems, setProblems] = useState<string[]>([]);
+  const [saved, setSaved] = useState(false);
+  const [pending, start] = useTransition();
+  const [preview, setPreview] = useState(false);
+
+  // Re-seeded when the stored version changes under us — after a reset,
+  // or after somebody else saved.
+  useEffect(() => { setSubject(template.subject); setBody(template.body); setSaved(false); },
+    [template.subject, template.body]);
+
+  const dirty = subject !== template.subject || body !== template.body;
+  const sample = Object.fromEntries(MERGE_FIELDS.map((f) => [
+    f.key, f.key === "support_form_link" ? (supportFormUrl || "") : f.sample,
+  ]));
+  const shownSubject = render(subject, sample);
+  const shownBody = render(body, sample);
+
+  return (
+    <li className={open ? "bg-elevated/30" : ""}>
+      <button onClick={onToggle} className="flex w-full items-start gap-3 px-3.5 py-3 text-left hover:bg-elevated/50">
+        <ChevronDown size={14} className={`mt-0.5 shrink-0 text-subtle transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] font-semibold text-fg">{template.name}</span>
+            {template.edited && (
+              <span className="rounded border border-brand-500/50 bg-brand-500/10 px-1.5 text-[10px] text-brand-500">edited</span>
+            )}
+            {needsOneSession(`${template.subject}\n${template.body}`) && (
+              <span className="rounded border border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] text-amber-600">one session</span>
+            )}
+          </span>
+          <span className="mt-0.5 block text-[11.5px] leading-snug text-muted">{template.when}</span>
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-t border-line px-3.5 py-3">
+          <label className="block"><span className={LABEL}>Subject</span>
+            <input className={LINE} value={subject} onChange={(e) => { setSubject(e.target.value); setSaved(false); }} /></label>
+          <label className="mt-3 block"><span className={LABEL}>Message</span>
+            <textarea
+              rows={16}
+              className={`${LINE} font-mono text-[12.5px] leading-relaxed`}
+              value={body}
+              onChange={(e) => { setBody(e.target.value); setSaved(false); }}
+            /></label>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              className={PRIMARY}
+              disabled={pending || !dirty}
+              onClick={() => start(async () => {
+                const r = await saveEmailTemplate(template.id, subject, body);
+                setProblems(r.problems ?? []);
+                if (r.ok) { setSaved(true); onChanged(); }
+              })}
+            >
+              {pending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
+            </button>
+            <button className={BTN} onClick={() => setPreview(!preview)}>
+              <Eye size={13} /> {preview ? "Hide" : "Preview"}
+            </button>
+            {template.edited && (
+              <button
+                className={BTN}
+                disabled={pending}
+                onClick={() => start(async () => { await resetEmailTemplate(template.id); setProblems([]); onChanged(); })}
+              >
+                <RotateCcw size={13} /> Back to the original
+              </button>
+            )}
+            {saved && !dirty && <span className="text-[11.5px] text-emerald-600">Saved.</span>}
+          </div>
+
+          {problems.length > 0 && (
+            <ul className="mt-2 space-y-1 rounded-md border border-red-500/50 bg-red-500/10 p-2">
+              {problems.map((p) => <li key={p} className="text-[11.5px] text-red-500">{p}</li>)}
+            </ul>
+          )}
+
+          {preview && (
+            <div className="mt-3 rounded-lg border border-line bg-card p-3">
+              <p className={LABEL}>As one person would read it</p>
+              <p className="mt-1.5 text-[12.5px] font-semibold text-fg">{shownSubject.text}</p>
+              <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-[12.5px] leading-relaxed text-muted">
+                {shownBody.text}
+              </pre>
+              {[...new Set([...shownSubject.missing, ...shownBody.missing])].length > 0 && (
+                <p className="mt-2 text-[11.5px] text-amber-600">
+                  Nothing to put in{" "}
+                  {[...new Set([...shownSubject.missing, ...shownBody.missing])].map((m) => `{{${m}}}`).join(", ")}
+                  {" "}yet — it stays blank here and sending will refuse until it has a value.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+/* ── writing one now ──────────────────────────────────────────────── */
+
+function Compose({
+  eventId, workshops, templates,
+}: { eventId: string; workshops: AdminWorkshop[]; templates: ResolvedTemplate[] }) {
   const [audience, setAudience] = useState<Audience>("confirmed");
   const [workshopId, setWorkshopId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [plan, setPlan] = useState<{ recipients: { email: string; name: string }[]; configured: boolean } | null>(null);
+  const [replyBy, setReplyBy] = useState("");
+  const [from, setFrom] = useState("");
+  const [plan, setPlan] = useState<
+    { recipients: { email: string; name: string }[]; configured: boolean; manySessions: boolean } | null
+  >(null);
   const [result, setResult] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
+
+  const sessionSpecific = needsOneSession(`${subject}\n${body}`);
+  const usesReplyBy = fieldsUsed(`${subject}\n${body}`).includes("reply_by");
+  const blocked =
+    (plan?.manySessions && sessionSpecific) || (usesReplyBy && !replyBy.trim());
 
   const check = () =>
     start(async () => {
@@ -1043,6 +1343,32 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
               {workshops.map((w) => <option key={w.id} value={w.id}>{w.title}</option>)}
             </select></label>
         </div>
+        {/* Start from a standing letter rather than from a blank box.
+            The wording for a decline should be the one that was agreed
+            when nobody was in a hurry, not whatever gets typed at the
+            moment somebody has forty of them to send. */}
+        <label className="mt-3 block"><span className={LABEL}>Start from</span>
+          <select
+            className={LINE}
+            value={from}
+            onChange={(e) => {
+              const t = templates.find((x) => x.id === e.target.value);
+              setFrom(e.target.value);
+              if (t) { setSubject(t.subject); setBody(t.body); }
+            }}
+          >
+            <option value="">A blank message</option>
+            {STAGES.map((stage) => {
+              const group = templates.filter((t) => t.stage === stage);
+              if (group.length === 0) return null;
+              return (
+                <optgroup key={stage} label={STAGE_LABELS[stage as Stage]}>
+                  {group.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </optgroup>
+              );
+            })}
+          </select></label>
+
         <label className="mt-3 block"><span className={LABEL}>Subject</span>
           <input className={LINE} value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
         <label className="mt-3 block"><span className={LABEL}>Message</span>
@@ -1053,10 +1379,35 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
             onChange={(e) => setBody(e.target.value)}
             placeholder={"Hello {{name}},\n\n…"}
           /></label>
-        <p className="mt-1 text-[11.5px] text-subtle">
-          <code className="font-mono">{"{{name}}"}</code> becomes the person&rsquo;s name,
-          or &ldquo;there&rdquo; if we do not have one. One message each — never a bcc blast.
+        {usesReplyBy && (
+          <label className="mt-3 block"><span className={LABEL}>Reply needed by</span>
+            <input
+              className={LINE}
+              value={replyBy}
+              placeholder="Monday 19 October"
+              onChange={(e) => setReplyBy(e.target.value)}
+            />
+            <span className="mt-1 block text-[11.5px] text-subtle">
+              Fills <code className="font-mono">{"{{reply_by}}"}</code>. Sending refuses while it is blank.
+            </span></label>
+        )}
+
+        <p className="mt-1 text-[11.5px] leading-relaxed text-subtle">
+          Fields in <code className="font-mono">{"{{double braces}}"}</code> are filled in per person —
+          the full list is under <span className="font-semibold">Standing letters</span>.
+          One message each, never a bcc blast.
         </p>
+
+        {/* Said before the send button, not after it is refused: a
+            warning that only appears once you have already committed is
+            not a warning, it is a report. */}
+        {plan?.manySessions && sessionSpecific && (
+          <p className="mt-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[11.5px] leading-relaxed text-amber-600">
+            This message names a session, but the audience covers more than one — some
+            people would be told a time that is not theirs. Pick a single workshop above,
+            or take the session details out.
+          </p>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button className={BTN} onClick={check} disabled={pending}>
@@ -1068,7 +1419,7 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
           {plan && plan.recipients.length > 0 && !confirming && (
             <button
               className={PRIMARY}
-              disabled={!subject.trim() || !body.trim()}
+              disabled={!subject.trim() || !body.trim() || blocked}
               onClick={() => setConfirming(true)}
             >
               <Mail size={13} /> Send to {plan.recipients.length}…
@@ -1089,6 +1440,7 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
                     const r = await sendToAudience({
                       eventId, audience, workshopId: workshopId || undefined,
                       subject, body, confirmed: true,
+                      replyBy: replyBy.trim() || undefined,
                     });
                     setConfirming(false);
                     setResult(r.ok ? `Sent ${r.sent}${r.failed ? `, ${r.failed} failed` : ""}.` : r.problem ?? "Failed.");

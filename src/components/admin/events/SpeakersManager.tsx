@@ -17,6 +17,8 @@ export interface SpeakerRow {
   organization: string | null;
   bio: string | null;
   topics: string[];
+  linkedinUrl: string | null;
+  sessionPitch: string | null;
   photoUrl: string | null;
   contactEmail: string | null;
   submittedAt: string | null;
@@ -233,7 +235,17 @@ export function SpeakersManager({
                         ))}
                       </div>
                     )}
-                    {s.bio && <p className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed text-muted">{s.bio}</p>}
+                    {s.bio && <p className="mt-1.5 text-[12px] leading-relaxed text-muted">{s.bio}</p>}
+                    {s.sessionPitch && (
+                      <p className="mt-1.5 rounded-md bg-elevated/60 px-2 py-1.5 text-[11.5px] leading-relaxed text-fg-subtle">
+                        <span className="font-semibold text-fg">Session: </span>{s.sessionPitch}
+                      </p>
+                    )}
+                    {s.linkedinUrl && (
+                      <a href={s.linkedinUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] font-medium text-brand-700 hover:underline">
+                        LinkedIn profile
+                      </a>
+                    )}
                     {s.contactEmail && <p className="mt-1 text-[11px] text-subtle">{s.contactEmail}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
