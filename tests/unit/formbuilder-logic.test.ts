@@ -9,7 +9,8 @@ const form = (over: Partial<BuiltForm> = {}): BuiltForm =>
   ({ version: 1, fields: [], sources: [], steps: [], ...over }) as BuiltForm;
 
 const field = (key: string, over: Record<string, unknown> = {}) =>
-  ({ id: key, key, label: key, type: "short_text", required: false, options: [], showWhen: [], ...over }) as never;
+  ({ id: key, key, label: key, type: "short_text", required: false, options: [],
+     showWhen: [], slots: [], stage: "registration", ...over }) as never;
 
 test("a condition reads the answers, and unanswered is not the same as 'not X'", () => {
   assert.equal(holds({ field: "a", op: "is", value: "Yes" }, { a: "Yes" }), true);
@@ -169,4 +170,38 @@ test("every question in the shipped Training Week form survives being parsed", (
   const consent = parsed.fields.find((f) => f.key === "media_consent")!;
   assert.equal(consent.type, "consent", "one box to tick, not a yes/no pair");
   assert.equal(consent.required, true, "ticking it is required to register");
+});
+
+test("a confirmation question is not on the registration form", () => {
+  const f = form({
+    fields: [
+      field("name"),
+      field("confirmed", { type: "yesno", required: true, stage: "confirmation" }),
+    ],
+  });
+  assert.deepEqual(visibleFields(f, {}).map((x) => x.key), ["name"], "registration by default");
+  assert.deepEqual(visibleFields(f, {}, "confirmation").map((x) => x.key), ["confirmed"]);
+});
+
+test("a required confirmation question does not block the registration form", () => {
+  // Otherwise somebody signing up is told they have not answered a
+  // question that will not be put to them for another three weeks.
+  const f = form({
+    fields: [
+      field("name", { required: true }),
+      field("confirmed", { type: "yesno", required: true, stage: "confirmation" }),
+    ],
+  });
+  assert.deepEqual(missing(f, {}).map((x) => x.key), ["name"]);
+  assert.deepEqual(missing(f, { name: "x" }).map((x) => x.key), []);
+  assert.deepEqual(missing(f, { name: "x" }, "confirmation").map((x) => x.key), ["confirmed"]);
+});
+
+test("the shipped form asks 'Can you still make it?' only after approval", () => {
+  const conf = TRAINING_WEEK_FORM.fields.find((f) => f.key === "confirmed")!;
+  assert.equal(conf.stage, "confirmation");
+  const onForm = visibleFields(TRAINING_WEEK_FORM, {}).map((f) => f.key);
+  assert.ok(!onForm.includes("confirmed"), "it must not appear while registering");
+  // And the workflow still reads it, from the step that sends the email.
+  assert.ok(TRAINING_WEEK_FORM.steps.some((s) => s.when.some((c) => c.field === "confirmed")));
 });

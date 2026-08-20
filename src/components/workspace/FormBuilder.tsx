@@ -20,14 +20,15 @@ import {
   AlertTriangle, ArrowDown, ArrowUp, Check, Loader2, Plus, RefreshCw, Table2, Trash2,
 } from "lucide-react";
 import {
-  CONDITION_OPS, FIELD_TYPES, FIELD_TYPE_LABEL, keyFor,
-  type BuiltForm, type Condition, type DataSource, type FormField,
+  CONDITION_OPS, FIELD_STAGES, FIELD_STAGE_LABEL, FIELD_TYPES, FIELD_TYPE_LABEL, keyFor,
+  type BuiltForm, type Condition, type DataSource, type FieldStage, type FormField,
   type StepKind, type WorkflowStep,
 } from "@/lib/formbuilder/types";
 import {
   missing, optionsFor, problems, visibleFields, walk, type Answers,
 } from "@/lib/formbuilder/logic";
 import { chosenClashes, packWeek } from "@/lib/formbuilder/calendar";
+import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { readSheet, saveForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
 
 const CARD = "rounded-lg border border-line bg-card p-3";
@@ -57,6 +58,9 @@ export function FormBuilder({
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [answers, setAnswers] = useState<Answers>({});
+  // Which of the two moments the preview is showing. The registration
+  // form is the one people meet first, so it is what opens.
+  const [stage, setStage] = useState<FieldStage>("registration");
   const [split, setSplit] = useState(56); // percent given to the left pane
 
   const edit = useCallback((next: (d: BuiltForm) => BuiltForm) => {
@@ -66,9 +70,9 @@ export function FormBuilder({
   }, []);
 
   const found = useMemo(() => problems(doc), [doc]);
-  const shown = useMemo(() => visibleFields(doc, answers), [doc, answers]);
+  const shown = useMemo(() => visibleFields(doc, answers, stage), [doc, answers, stage]);
   const path = useMemo(() => walk(doc, answers), [doc, answers]);
-  const stillMissing = useMemo(() => missing(doc, answers), [doc, answers]);
+  const stillMissing = useMemo(() => missing(doc, answers, stage), [doc, answers, stage]);
 
   // ── the draggable seam ─────────────────────────────────────────────
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -165,6 +169,8 @@ export function FormBuilder({
             answers={answers}
             setAnswers={setAnswers}
             missingCount={stillMissing.length}
+            stage={stage}
+            setStage={setStage}
           />
         </div>
       </div>
@@ -226,7 +232,7 @@ function FieldList({
         ...d,
         fields: [
           ...d.fields,
-          { id: uid("f"), key, label: "New question", type: "short_text", required: false, options: [], showWhen: [], slots: [] },
+          { id: uid("f"), key, label: "New question", type: "short_text", required: false, options: [], showWhen: [], slots: [], stage: "registration" },
         ],
       };
     });
@@ -283,6 +289,7 @@ function FieldList({
                 <p className="mt-1 font-mono text-[10.5px] text-subtle">
                   {f.key} · {FIELD_TYPE_LABEL[f.type]}
                   {f.required ? " · required" : ""}
+                  {f.stage !== "registration" ? " · asked after approval" : ""}
                   {f.showWhen.length > 0 ? ` · shown when ${f.showWhen.length} rule${f.showWhen.length === 1 ? "" : "s"} match` : ""}
                 </p>
               </div>
@@ -333,6 +340,19 @@ function FieldEditor({
         <label><span className={LABEL}>Key</span>
           <input className={`${LINE} font-mono`} value={field.key} disabled={!canEdit}
             onChange={(e) => patch({ key: e.target.value.replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 60) })} /></label>
+        <label className="sm:col-span-2"><span className={LABEL}>When it is asked</span>
+          <select className={LINE} value={field.stage} disabled={!canEdit}
+            onChange={(e) => patch({ stage: e.target.value as FieldStage })}>
+            {FIELD_STAGES.map((st) => <option key={st} value={st}>{FIELD_STAGE_LABEL[st]}</option>)}
+          </select>
+          {field.stage === "confirmation" && (
+            <span className="mt-1 block text-[11px] leading-snug text-subtle">
+              Not on the registration form. It goes out by email once a place has
+              been approved — asking it while somebody is signing up gets an
+              answer about a seat they have not been given yet.
+            </span>
+          )}
+        </label>
       </div>
       <label className="mt-2 block"><span className={LABEL}>Hint under the answer</span>
         <AutoTextarea value={field.help ?? ""} disabled={!canEdit}
@@ -763,20 +783,43 @@ function SessionCalendar({
 // ── the live preview ─────────────────────────────────────────────────
 
 function Preview({
-  doc, shown, answers, setAnswers, missingCount,
+  doc, shown, answers, setAnswers, missingCount, stage, setStage,
 }: {
   doc: BuiltForm; shown: FormField[]; answers: Answers;
   setAnswers: (a: Answers) => void; missingCount: number;
+  stage: FieldStage; setStage: (s: FieldStage) => void;
 }) {
   const set = (k: string, v: Answers[string]) => setAnswers({ ...answers, [k]: v });
+  const inStage = doc.fields.filter((f) => f.stage === stage).length;
 
   return (
     <section className="mt-5">
-      <p className={LABEL}>Preview</p>
-      <p className="mt-1 text-[11.5px] text-subtle">
-        {shown.length} of {doc.fields.length} shown
-        {missingCount > 0 ? ` · ${missingCount} still needed` : ""}. Answering
-        here drives both the questions above and the workflow.
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={LABEL}>Preview</p>
+        {/* Two moments, previewed separately. The confirmation questions
+            are not hidden by a rule that might accidentally be true —
+            they are simply not part of the registration form, and the
+            only honest way to check them is to look at that stage. */}
+        <span className="flex rounded-md border border-line p-0.5">
+          {FIELD_STAGES.map((st) => (
+            <button
+              key={st}
+              onClick={() => setStage(st)}
+              className={`rounded px-2 py-1 text-[11px] font-semibold transition-colors ${
+                stage === st ? "bg-brand-500/15 text-fg" : "text-muted hover:text-fg"
+              }`}
+            >
+              {st === "registration" ? "Registration form" : "After approval"}
+            </button>
+          ))}
+        </span>
+      </div>
+      <p className="mt-1 text-[11.5px] leading-snug text-subtle">
+        {stage === "registration"
+          ? "What somebody sees when they sign up."
+          : `Sent by email once a place is approved, about ${CONFIRM_DAYS_BEFORE} days before the session.`}{" "}
+        {shown.length} of {inStage} shown
+        {missingCount > 0 ? ` · ${missingCount} still needed` : ""}.
       </p>
 
       <div className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">

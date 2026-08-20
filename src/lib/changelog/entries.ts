@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── "Can you still make it?" moves to the confirmation email
+  {
+    title: "“Can you still make it?” is asked after approval, not while registering",
+    body: "It was on the registration form, which asked people to confirm attendance at a session they had not been given yet. Questions now belong to a stage: on the registration form, or in the confirmation email that goes out once a place has been approved, about a week before the session. The preview has a switch for the two, because the only honest way to check the later questions is to look at that moment on its own — they are not hidden by a rule that might accidentally be true, they are simply not part of the earlier form. A required question in the later stage no longer blocks the registration form either, which it would have done: somebody signing up was told they had not answered a question nobody would put to them for another three weeks.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Sessions as a week; hints that fit; the submission timestamp
   {
     title: "Choosing sessions is a calendar now, and hint boxes fit their text",

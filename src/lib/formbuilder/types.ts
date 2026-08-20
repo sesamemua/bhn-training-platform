@@ -74,6 +74,26 @@ export const ConditionSchema = z.object({
 });
 export type Condition = z.infer<typeof ConditionSchema>;
 
+/**
+ * When a question is asked.
+ *
+ * Not everything on a form is asked at the same moment. "Can you still
+ * make it?" belongs weeks after registration, in an email sent once a
+ * place has been approved — asking it on the day somebody signs up gets
+ * an answer about a session they have not been given yet.
+ *
+ * One document still, because it is one process and the workflow reads
+ * both. Splitting it into two forms would mean two places to keep the
+ * keys, the logic and the wording in step.
+ */
+export const FIELD_STAGES = ["registration", "confirmation"] as const;
+export type FieldStage = (typeof FIELD_STAGES)[number];
+
+export const FIELD_STAGE_LABEL: Record<FieldStage, string> = {
+  registration: "On the registration form",
+  confirmation: "In the confirmation email, after approval",
+};
+
 export const FieldSchema = z.object({
   id: z.string().min(1).max(40),
   /** Stable key answers are stored under, and what conditions read. */
@@ -91,6 +111,8 @@ export const FieldSchema = z.object({
   help: z.string().max(1000).optional(),
   required: z.boolean().default(false),
   options: z.array(z.string().max(120)).max(200).default([]),
+  /** When this question is put to the person. */
+  stage: z.enum(FIELD_STAGES).default("registration"),
   /** For `lookup`: which sheet supplies the options. */
   sourceId: z.string().max(40).optional(),
   /**

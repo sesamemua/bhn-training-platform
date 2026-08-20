@@ -9,7 +9,7 @@
  *
  * Pure module: no React, no I/O.
  */
-import type { BuiltForm, Condition, FormField, WorkflowStep } from "./types";
+import type { BuiltForm, Condition, FieldStage, FormField, WorkflowStep } from "./types";
 
 export type Answer = string | string[] | number | boolean | undefined;
 export type Answers = Record<string, Answer>;
@@ -59,14 +59,34 @@ export function holds(c: Condition, answers: Answers): boolean {
 export const allHold = (cs: Condition[], answers: Answers) =>
   cs.length === 0 || cs.every((c) => holds(c, answers));
 
-/** The fields a person can see right now, in order. */
-export function visibleFields(form: BuiltForm, answers: Answers): FormField[] {
-  return form.fields.filter((f) => allHold(f.showWhen, answers));
+/**
+ * The fields a person can see right now, in order.
+ *
+ * Filtered by STAGE first. A question asked later by email is not
+ * hidden from the registration form by a rule that could accidentally
+ * be true — it is simply not part of that form.
+ */
+export function visibleFields(
+  form: BuiltForm,
+  answers: Answers,
+  stage: FieldStage = "registration",
+): FormField[] {
+  // A field with no stage at all is a registration field. parseForm
+  // fills the default, but anything that skips it — a document written
+  // before stages existed, a literal built in a test — would otherwise
+  // vanish from every stage rather than showing up in the obvious one.
+  return form.fields.filter(
+    (f) => (f.stage ?? "registration") === stage && allHold(f.showWhen, answers),
+  );
 }
 
-/** Required fields that are visible and still unanswered. */
-export function missing(form: BuiltForm, answers: Answers): FormField[] {
-  return visibleFields(form, answers).filter(
+/** Required fields that are visible in this stage and still unanswered. */
+export function missing(
+  form: BuiltForm,
+  answers: Answers,
+  stage: FieldStage = "registration",
+): FormField[] {
+  return visibleFields(form, answers, stage).filter(
     (f) => f.required && asList(answers[f.key]).length === 0,
   );
 }

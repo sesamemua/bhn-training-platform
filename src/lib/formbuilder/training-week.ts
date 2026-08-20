@@ -180,13 +180,17 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     },
     {
       /*
-       * Not asked at registration — asked again later, by email, once a
-       * place has actually been approved. It lives in the form so the
-       * answer has somewhere to go and the workflow has something to
-       * read; nobody meets it on the day they sign up.
+       * Stage "confirmation": NOT on the registration form.
+       *
+       * It goes out by email once a place has been approved, about a
+       * week before the session. Asking it on the day somebody signs up
+       * gets an answer about a seat they have not been given yet. It
+       * lives in the same document so the answer has somewhere to go and
+       * the workflow has something to read.
        */
       id: "f_conf", key: "confirmed", label: "Can you still make it?",
       type: "yesno", required: true, options: [], showWhen: [],
+      stage: "confirmation",
       help: `Asked by email once your place is approved, about ${CONFIRM_DAYS_BEFORE} days before the session. Yes holds your seat. No releases it to the next person on the waitlist — which is the kind thing to do if you already know you cannot come. No reply by the cut-off is treated as No.`,
     },
   ],
