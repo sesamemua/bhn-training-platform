@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Consent becomes one tick-box; the save button follows you
+  {
+    title: "Photography consent is one box you tick, and Save follows you down the page",
+    body: "The photography and video question was a Yes/No pair, which invites a No the form then has to refuse. It is now a single box: ticking it IS the agreement, and ticking it is required to register. The wording says what actually happens rather than sounding legal — there will be a photographer and a video crew, pictures that include you may appear on the website, on social media, in newsletters, in reports to funders and in print, they can be seen by anyone and may stay online indefinitely, you are giving this free of charge, and if you would rather not be filmed you should speak to the coordinator before registering. The Save button is now large, says \"Save changes\" with \"Unsaved changes\" beside it, and sticks to the top of the page as you scroll — a form is long, and Save is the one control you reach for from anywhere in it. Confirming attendance has also been drawn properly: a place is approved, held quietly, and only about a week before the session does the coordinator send one batch of confirmation emails asking each person to confirm or say they cannot make it. No reply by the cut-off is treated as a no and the seat goes to the waitlist. The dashboard measures its \"by cut-off\" column against that same number, so the deadline the process uses and the deadline the reporting uses cannot drift apart.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Admin opens on a dashboard; the 2026 week replaces last year's
   {
     title: "Admin opens on a dashboard, and Training Week is the 2026 sessions",

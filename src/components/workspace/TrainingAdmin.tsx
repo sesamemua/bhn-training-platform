@@ -22,6 +22,7 @@ import {
   updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import type { Audience } from "@/lib/allocation/admin-types";
+import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 
 export interface AdminBooking {
   id: string;
@@ -83,7 +84,10 @@ const outOfTown = (country: string | null | undefined): boolean | undefined => {
  * approved a booking, not when the registrant themselves confirmed. The
  * column says what it measures rather than implying the other thing.
  */
-export const CUT_OFF_DAYS = 7;
+// One number for the deadline the process uses and the deadline the
+// reporting measures against — two would drift the first time either
+// changed.
+const CUT_OFF_DAYS = CONFIRM_DAYS_BEFORE;
 
 export function countsOf(w: AdminWorkshop) {
   const live = w.bookings.filter((b) => b.status !== "cancelled");

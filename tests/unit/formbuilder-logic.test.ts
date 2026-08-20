@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { allHold, holds, missing, optionsFor, problems, visibleFields, walk } from "../../src/lib/formbuilder/logic";
 import { parseForm, keyFor, type BuiltForm } from "../../src/lib/formbuilder/types";
 import { parseCsv as parseCsvFn } from "../../src/lib/formbuilder/csv";
+import { TRAINING_WEEK_FORM } from "../../src/lib/formbuilder/training-week";
 
 const form = (over: Partial<BuiltForm> = {}): BuiltForm =>
   ({ version: 1, fields: [], sources: [], steps: [], ...over }) as BuiltForm;
@@ -154,4 +155,18 @@ test("CSV keeps a comma that lives inside a quoted cell", () => {
 test("CSV survives escaped quotes and blank lines", () => {
   const rows = parseCsvFn('A\n"say ""hi"""\n\nB\n');
   assert.deepEqual(rows, [["A"], ['say "hi"'], ["B"]]);
+});
+
+test("every question in the shipped Training Week form survives being parsed", () => {
+  // parseForm drops a field it cannot validate, silently and by design.
+  // That is right for a corrupt blob and lethal for a field this repo
+  // ships: a help string over the cap once removed the whole photography
+  // consent question, and the only symptom was a count going down by one.
+  const parsed = parseForm(TRAINING_WEEK_FORM as unknown);
+  assert.equal(parsed.fields.length, TRAINING_WEEK_FORM.fields.length,
+    "a question was dropped by validation");
+  assert.equal(parsed.steps.length, TRAINING_WEEK_FORM.steps.length);
+  const consent = parsed.fields.find((f) => f.key === "media_consent")!;
+  assert.equal(consent.type, "consent", "one box to tick, not a yes/no pair");
+  assert.equal(consent.required, true, "ticking it is required to register");
 });

@@ -18,7 +18,7 @@ import { z } from "zod";
 
 export const FIELD_TYPES = [
   "short_text", "long_text", "email", "phone", "number", "date",
-  "choice", "multi", "yesno", "lookup",
+  "choice", "multi", "yesno", "consent", "lookup",
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
@@ -32,6 +32,7 @@ export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
   choice: "Choose one",
   multi: "Choose several",
   yesno: "Yes / no",
+  consent: "Consent — one box to tick",
   lookup: "Pick from a data sheet",
 };
 
@@ -79,7 +80,15 @@ export const FieldSchema = z.object({
   key: z.string().min(1).max(60),
   label: z.string().max(160),
   type: z.enum(FIELD_TYPES),
-  help: z.string().max(400).optional(),
+  /**
+   * 1000, not 400. A hint under a text box is a sentence; a consent
+   * statement has to say what is recorded, where it can end up, how
+   * long it lasts and what to do about it, and 400 characters silently
+   * DROPPED the whole question — parseForm discards a field it cannot
+   * validate, which is right for resilience and merciless for a cap set
+   * too low.
+   */
+  help: z.string().max(1000).optional(),
   required: z.boolean().default(false),
   options: z.array(z.string().max(120)).max(200).default([]),
   /** For `lookup`: which sheet supplies the options. */

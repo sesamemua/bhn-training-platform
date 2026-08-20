@@ -19,6 +19,15 @@ const OTHER = "Other — not listed";
 const academic = [...INSTITUTIONS.filter((i) => i.sector === "academic").map((i) => i.name), OTHER];
 const health = [...INSTITUTIONS.filter((i) => i.sector === "health").map((i) => i.name), OTHER];
 
+/**
+ * How long before a session the confirmation email goes out.
+ *
+ * The same number the Admin dashboard measures "confirmed by cut-off"
+ * against, so the two cannot drift apart — a deadline the process uses
+ * and a deadline the reporting uses have to be one number.
+ */
+export const CONFIRM_DAYS_BEFORE = 7;
+
 /** The 2026 sessions, the same six the live form offered. */
 export const SESSIONS_2026 = [
   "Mon 26 Oct · CCRM tour + Lunch & Learn",
@@ -127,14 +136,31 @@ export const TRAINING_WEEK_FORM: BuiltForm = {
     },
     { id: "f_news", key: "newsletter_optin", label: "Send me the BioHubNet newsletter", type: "yesno", required: false, options: [], showWhen: [] },
     {
-      id: "f_media", key: "media_consent", label: "Photography and video consent",
-      type: "yesno", required: true, options: [], showWhen: [],
-      help: "BioHubNet may capture photographs and video during Training Week and use them for promotional purposes.",
+      /*
+       * One box, and ticking it IS the agreement.
+       *
+       * A Yes/No pair invites a No that the form then has to refuse,
+       * which is a worse conversation than saying up front that
+       * agreeing is part of registering. The wording is written to be
+       * understood rather than to be legally impressive: what will be
+       * recorded, where it can end up, how long it lasts, and what to
+       * do if you are not comfortable.
+       */
+      id: "f_media", key: "media_consent",
+      label: "I agree to be photographed and filmed at Training Week, and to BioHubNet using those pictures and recordings to promote its programmes.",
+      type: "consent", required: true, options: [], showWhen: [],
+      help: "What this means in practice: there will be a photographer and a video crew at the sessions. Pictures and footage that include you may appear on the BioHubNet website, on its social media, in newsletters, in reports to funders, and in printed material. They can be seen by anyone and may stay online indefinitely. You are giving this permission free of charge. Ticking the box is required to register — if you would rather not be filmed, please contact the coordinator before you register and they will talk it through with you.",
     },
     {
-      id: "f_conf", key: "confirmed", label: "Confirm you can still attend",
+      /*
+       * Not asked at registration — asked again later, by email, once a
+       * place has actually been approved. It lives in the form so the
+       * answer has somewhere to go and the workflow has something to
+       * read; nobody meets it on the day they sign up.
+       */
+      id: "f_conf", key: "confirmed", label: "Can you still make it?",
       type: "yesno", required: true, options: [], showWhen: [],
-      help: "Asked before the day. Confirm by the cut-off or the seat is released to the waitlist.",
+      help: `Asked by email once your place is approved, about ${CONFIRM_DAYS_BEFORE} days before the session. Yes holds your seat. No releases it to the next person on the waitlist — which is the kind thing to do if you already know you cannot come. No reply by the cut-off is treated as No.`,
     },
   ],
   steps: [
@@ -159,9 +185,14 @@ export const TRAINING_WEEK_FORM: BuiltForm = {
       next: "w_seat", otherwise: "w_declined",
     },
     { id: "w_declined", kind: "end", label: "Declined, with a reason", when: [] },
-    { id: "w_seat", kind: "action", label: "Seat confirmed, info pack emailed", when: [], next: "w_stillcoming" },
+    { id: "w_seat", kind: "action", label: "Place approved, info pack emailed", when: [], next: "w_hold",
+      note: "The seat is held from here. Nothing is asked of the registrant yet." },
+    { id: "w_hold", kind: "action", label: `Held until ${CONFIRM_DAYS_BEFORE} days before the session`, when: [], next: "w_ask",
+      note: "A quiet period. Approval is not attendance, and asking on the day someone is approved gets an answer about a session weeks away." },
+    { id: "w_ask", kind: "action", label: "Coordinator sends the confirmation email, in one batch", when: [], next: "w_stillcoming",
+      note: "One send to everyone approved for that session, from Admin → Email. Each person is asked to confirm or say they cannot make it." },
     {
-      id: "w_stillcoming", kind: "check", label: "Confirmed they can still attend?",
+      id: "w_stillcoming", kind: "check", label: "Said they can still make it?",
       when: [{ field: "confirmed", op: "is", value: "Yes" }],
       next: "w_attends", otherwise: "w_released",
     },

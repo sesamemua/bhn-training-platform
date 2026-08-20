@@ -84,27 +84,49 @@ export function FormBuilder({
 
   return (
     <div className="mt-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          className={PRIMARY}
-          disabled={!canEdit || !dirty || pending}
-          onClick={() =>
-            start(async () => {
-              const res = await saveForm(formId, doc);
-              if (res.ok) { setDirty(false); setSaved("Saved."); }
-              else setSaved(res.problem ?? "Could not save.");
-            })
-          }
-        >
-          {pending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-          {dirty ? "Save" : "Saved"}
-        </button>
-        {saved && <span className="text-[12.5px] text-muted">{saved}</span>}
-        {found.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 text-[12.5px] text-amber-600">
-            <AlertTriangle size={13} /> {found.length} thing{found.length === 1 ? "" : "s"} to fix
-          </span>
-        )}
+      {/* Stays with you down the page.
+          A form is long, and the Save is the one control you reach for
+          from anywhere in it — parking it at the top means scrolling
+          back to a place you were not reading to press a button you
+          were already thinking about. Sticky rather than a floating
+          blob in a corner, so it never sits on top of the question you
+          are editing. */}
+      <div className="sticky top-2 z-30 -mx-2 rounded-xl border border-line bg-card/95 px-3 py-2.5 shadow-card-hover backdrop-blur">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            className={`inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-[14px] font-bold transition-all ${
+              dirty && canEdit
+                ? "bg-brand text-white shadow-lg hover:brightness-110"
+                : "border border-line bg-elevated text-subtle"
+            } disabled:opacity-60`}
+            disabled={!canEdit || !dirty || pending}
+            onClick={() =>
+              start(async () => {
+                const res = await saveForm(formId, doc);
+                if (res.ok) { setDirty(false); setSaved("Saved."); }
+                else setSaved(res.problem ?? "Could not save.");
+              })
+            }
+          >
+            {pending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {pending ? "Saving…" : dirty ? "Save changes" : "Saved"}
+          </button>
+
+          {/* The unsaved state said out loud, not left to the button's
+              colour — a colour change is easy to miss on a long page. */}
+          {dirty && !pending && (
+            <span className="text-[12.5px] font-semibold text-amber-600">
+              Unsaved changes
+            </span>
+          )}
+          {saved && !dirty && <span className="text-[12.5px] text-muted">{saved}</span>}
+
+          {found.length > 0 && (
+            <span className="ml-auto inline-flex items-center gap-1.5 text-[12.5px] text-amber-600">
+              <AlertTriangle size={13} /> {found.length} thing{found.length === 1 ? "" : "s"} to fix
+            </span>
+          )}
+        </div>
       </div>
 
       <div ref={wrapRef} className="mt-4 flex items-start gap-0">
@@ -571,11 +593,26 @@ function Preview({
           const opts = optionsFor(doc, f);
           return (
             <label key={f.id} className="block">
-              <span className="text-[12.5px] font-semibold text-fg">
-                {f.label}{f.required && <span className="ml-1 text-brand-400">*</span>}
-              </span>
+              {f.type !== "consent" && (
+                <span className="text-[12.5px] font-semibold text-fg">
+                  {f.label}{f.required && <span className="ml-1 text-brand-400">*</span>}
+                </span>
+              )}
               {f.help && <span className="mt-0.5 block text-[11px] text-subtle">{f.help}</span>}
-              {f.type === "yesno" ? (
+              {f.type === "consent" ? (
+                // The label IS the statement, so it sits beside the box
+                // rather than above it — you tick the sentence you are
+                // agreeing to, not a box under a heading.
+                <span className="mt-1 flex items-start gap-2 rounded-md border border-line bg-elevated p-2.5">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--brand-500)]"
+                    checked={answers[f.key] === "Yes"}
+                    onChange={(e) => set(f.key, e.target.checked ? "Yes" : undefined)}
+                  />
+                  <span className="text-[12px] leading-snug text-fg">{f.label}</span>
+                </span>
+              ) : f.type === "yesno" ? (
                 <span className="mt-1 flex gap-2">
                   {["Yes", "No"].map((v) => (
                     <button key={v} onClick={() => set(f.key, v)}
