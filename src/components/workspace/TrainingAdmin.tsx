@@ -23,6 +23,7 @@ import {
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import type { Audience } from "@/lib/allocation/admin-types";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
+import { idOf, label, place, timeGrid, titleOf } from "@/lib/allocation/schedule";
 
 export interface AdminBooking {
   id: string;
@@ -280,68 +281,115 @@ function Dashboard({
 }
 
 /**
- * The week, laid out as days.
+ * The week as a time grid: hours down the side, a column per day.
  *
- * A list sorted by date already tells you the order; a calendar tells
- * you the SHAPE — that Monday holds three sessions and two of them
- * collide, which is the thing a list hides.
+ * It used to be three lists under three headings, which says what is on
+ * each day and nothing about when. Two tours at the same hour and a tour
+ * that runs all afternoon looked the same, and telling them apart is the
+ * only reason to draw a calendar rather than a table.
+ *
+ * All three days share one vertical scale, so 1pm on Monday is level
+ * with 1pm on Wednesday and a clash is a shape rather than something you
+ * work out from two timestamps.
  */
 function Calendar({ workshops }: { workshops: AdminWorkshop[] }) {
-  const days = useMemo(() => {
-    const byDay = new Map<string, AdminWorkshop[]>();
-    for (const w of [...workshops].sort((a, b) => a.startDateTime.localeCompare(b.startDateTime))) {
-      const key = new Date(w.startDateTime).toDateString();
-      byDay.set(key, [...(byDay.get(key) ?? []), w]);
-    }
-    return [...byDay.entries()];
-  }, [workshops]);
+  const grid = useMemo(() => timeGrid(workshops), [workshops]);
+  const byId = useMemo(() => new Map(workshops.map((w) => [w.id, w])), [workshops]);
 
-  const time = (iso: string) =>
-    new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  // Tall enough that an hour is a comfortable band, short enough that
+  // three days fit on a screen without scrolling.
+  const HOUR_PX = 56;
+  const height = ((grid.endMin - grid.startMin) / 60) * HOUR_PX;
+
+  if (grid.days.length === 0) {
+    return (
+      <section>
+        <p className={LABEL}>Calendar</p>
+        <p className="mt-2 text-[12.5px] text-muted">No sessions scheduled.</p>
+      </section>
+    );
+  }
 
   return (
     <section>
       <p className={LABEL}>Calendar</p>
-      {days.length === 0 ? (
-        <p className="mt-2 text-[12.5px] text-muted">No sessions scheduled.</p>
-      ) : (
-        <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {days.map(([day, list]) => (
-            <div key={day} className={CARD}>
-              <p className="text-[12px] font-bold text-fg">
-                {new Date(day).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+      <div className="mt-2 overflow-x-auto rounded-xl border-2 border-line-strong bg-card p-3">
+        <div className="flex min-w-[560px] gap-2">
+          {/* The time scale. Labels sit ON the hour line rather than in
+              the band below it, so a session starting at 11:00 has its
+              top edge against the 11:00 label. */}
+          <div className="relative w-12 shrink-0" style={{ height }}>
+            {grid.hours.map((m) => (
+              <span
+                key={m}
+                className="absolute right-1 -translate-y-1/2 font-mono text-[10.5px] text-subtle"
+                style={{ top: `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%` }}
+              >
+                {label(m)}
+              </span>
+            ))}
+          </div>
+
+          {grid.days.map(({ day, slots }) => (
+            <div key={day} className="min-w-0 flex-1">
+              <p className="pb-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-subtle">
+                {new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
+                  weekday: "short", day: "numeric", month: "short",
+                })}
               </p>
-              <ul className="mt-2 space-y-1.5">
-                {list.map((w) => {
+              <div className="relative rounded-lg border border-line bg-elevated/40" style={{ height }}>
+                {/* Hour rules, drawn on every column so the eye can carry
+                    a time across the week. */}
+                {grid.hours.map((m) => (
+                  <div
+                    key={m}
+                    className="absolute inset-x-0 border-t border-line/60"
+                    style={{ top: `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%` }}
+                  />
+                ))}
+
+                {slots.map((sl) => {
+                  const w = byId.get(idOf(sl.option));
+                  if (!w) return null;
                   const c = countsOf(w);
-                  // Two sessions starting at the same minute cannot both
-                  // be attended, which is worth saying on the calendar
-                  // rather than leaving to be discovered.
-                  const clash = list.some((o) => o.id !== w.id && o.startDateTime === w.startDateTime);
+                  const pos = place(sl, grid);
+                  const full = c.confirmed >= c.capacity && c.capacity > 0;
                   return (
-                    <li key={w.id} className="rounded-md border border-line bg-elevated px-2 py-1.5">
-                      <p className="text-[12px] font-semibold text-fg">{w.title}</p>
-                      <p className="mt-0.5 text-[11px] text-subtle">
-                        {time(w.startDateTime)}–{time(w.endDateTime)}
-                        {w.locationName ? ` · ${w.locationName}` : ""}
+                    <div
+                      key={sl.option}
+                      title={`${titleOf(sl.option)} · ${sl.start}–${sl.end}${w.locationName ? ` · ${w.locationName}` : ""}`}
+                      className={`absolute overflow-hidden rounded-md border px-1.5 py-1 ${
+                        full ? "border-amber-500/70 bg-amber-500/12" : "border-brand-500/60 bg-brand-500/12"
+                      }`}
+                      style={{
+                        top: `${pos.top}%`,
+                        height: `${pos.height}%`,
+                        // Side by side when they clash, full width when
+                        // nothing is competing for the hour.
+                        left: `${(sl.lane / sl.lanes) * 100}%`,
+                        width: `calc(${100 / sl.lanes}% - 2px)`,
+                      }}
+                    >
+                      <p className="truncate text-[10.5px] font-mono text-subtle">{sl.start}</p>
+                      <p className="text-[11px] font-semibold leading-tight text-fg line-clamp-2">
+                        {titleOf(sl.option)}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-muted">
-                        {c.confirmed}/{c.capacity} seats
-                        {c.waitlisted > 0 ? ` · ${c.waitlisted} waiting` : ""}
+                      <p className="mt-0.5 truncate text-[10px] text-muted">
+                        {c.confirmed}/{c.capacity}
+                        {c.waitlisted > 0 ? ` · ${c.waitlisted} wait` : ""}
                       </p>
-                      {clash && (
-                        <p className="mt-0.5 text-[10.5px] font-semibold text-amber-600">
-                          Runs against another session
-                        </p>
-                      )}
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </div>
           ))}
         </div>
-      )}
+      </div>
+      <p className="mt-1.5 text-[11px] text-subtle">
+        All three days share one scale, so sessions level with each other run
+        at the same time. Amber means the room is full.
+      </p>
     </section>
   );
 }

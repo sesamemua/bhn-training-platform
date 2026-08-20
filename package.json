@@ -24,6 +24,7 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "deploy:demo": "bash scripts/deploy-demo.sh",
     "test:newsletter": "tsx --test tests/unit/newsletter-schedule.test.ts tests/unit/newsletter-config.test.ts",
+    "test:schedule": "tsx --test tests/unit/allocation-schedule.test.ts",
     "test:flowchart": "tsx --test tests/unit/flowchart-form.test.ts tests/unit/flowchart-route.test.ts tests/unit/flowchart-institutions.test.ts"
   },
   "dependencies": {

@@ -4303,4 +4303,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Admin workshop calendar now has a vertical time scale, with all three days aligned",
+    body: "The Process \u2192 Admin dashboard calendar used to group sessions under a day heading and list them, which told you *what* ran each day and nothing about *when* \u2014 two concurrent tours and a tour that ran all afternoon looked identical.\n\nIt is now a real time grid: hours down the left-hand gutter, one column per day, and every session drawn at its own start time and sized by its duration. All three days share one pair of bounds (the earliest start and latest end of the whole week, rounded to whole hours), so 1 PM on Monday sits at exactly the same height as 1 PM on Wednesday and the week can be read straight across. Sessions that run at the same time on the same day sit side by side in their own lanes rather than hiding each other, and a full room is drawn in amber.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];
