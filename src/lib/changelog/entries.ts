@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Forms split away from the chart, and get a builder
+  {
+    title: "Flow Charts and forms are separate now, and forms have their own builder",
+    body: "The flow chart no longer doubles as the definition of the live form, and the form column is gone from that page — the chart takes the full width, which is most of a third more room. They were one thing because the chart's question boxes generated the form's fields, and that meant you could not redraw a diagram without changing what people were asked. A chart is a drawing of a process for people to read; a form is a thing people fill in. In its place, Workspace → Process → Forms: build any form and see the workflow its answers run through, side by side, with a seam between them you can drag. Questions can be any of ten types, reordered, made required, and shown only when earlier answers match — the rules only offer questions asked before this one, because a rule reading a later answer could never be true. A question can also draw its choices from a Google Sheet: paste a view-only link, read it, pick which column supplies the options, and look at the rows without leaving the page. On the right, the workflow: start, checks that read the answers, actions and endings, with the steps your preview answers actually reach highlighted as you type. Both halves are checked continuously and anything broken is listed plainly — a question that can never show, two questions sharing a key, a step pointing at one you deleted, a choice with nothing to choose from.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Workspace: the Training Week admin tab
   {
     title: "Workspace → Process → Admin: seat allocation, capacity, registrants and email",

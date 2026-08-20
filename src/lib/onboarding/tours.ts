@@ -162,6 +162,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.30a",
   },
   {
+    id: "workspace.forms",
+    title: "Forms have their own tab now",
+    body: "**Workspace → Process → Forms** builds a form and the workflow its answers run through, side by side — drag the seam to give whichever half you are working on more room. Questions can be shown only when earlier answers match, and can draw their choices from a **Google Sheet** you paste a view-only link to. On the right, the steps your preview answers actually reach light up as you type. The **flow chart no longer defines the form** — it is a drawing of a process, and it now takes the whole page.",
+    path: "/admin/workspace/forms",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Forms", href: "/admin/workspace/forms" },
+    since: "2026.09.30a",
+  },
+  {
     id: "workspace.trainingadmin",
     title: "Running the week, not just drawing it",
     body: "**Workspace → Process → Admin** is the operational half of the flow chart. The **decision model** decides who gets a seat when a room is oversubscribed — an ordered list of rules you can reorder, switch off or add to, with a live preview that re-ranks real applicants and names the rule that placed each one. **Capacity** shows how full each room is and lets you change the numbers in place. **Registrants** is the spreadsheet. **Email** writes to the people booked — it shows you who it reaches before it will send, and asks twice.",

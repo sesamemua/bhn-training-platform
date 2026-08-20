@@ -374,6 +374,18 @@ const workspaceWebsiteReviewItem: NavItem = {
 // is oversubscribed, how full each room is, and how to write to the
 // people in it. Admin-only — Flow Charts is readable by instructors,
 // this one changes who attends.
+// Forms are their own thing now. The chart used to double as the form's
+// definition, which meant a drawing could not be redrawn without
+// changing what people were asked.
+const workspaceFormsItem: NavItem = {
+  label: "Forms",
+  href: "/admin/workspace/forms",
+  icon: ClipboardList,
+  minRole: "admin",
+  description:
+    "Build a form — questions, logic, external data sheets — beside the workflow its answers run through.",
+};
+
 const workspaceTrainingAdminItem: NavItem = {
   label: "Admin",
   href: "/admin/workspace/training-admin",
@@ -1862,6 +1874,7 @@ export function Sidebar({
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.equip} label="Process">
               <NavLink item={workspaceFlowChartsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceFormsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Outreach">

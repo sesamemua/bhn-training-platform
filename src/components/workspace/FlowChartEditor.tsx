@@ -33,7 +33,6 @@ import { nodeNumbers } from "@/lib/flowchart/numbering";
 import { DASHED_KINDS, SHAPE_INSET, SHAPE_PAINT, shapePath } from "@/lib/flowchart/shapes";
 import { limitDrag, settleGrowth } from "@/lib/flowchart/collide";
 import { moveBounds, moveFieldInForm } from "@/lib/flowchart/fields";
-import { FlowFormPreview } from "./FlowFormPreview";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowShapePalette } from "./FlowShapePalette";
 import { FlowReviewPanel } from "./FlowReviewPanel";
@@ -105,10 +104,10 @@ function flash(el: HTMLElement | null | undefined) {
 }
 
 /** Rail widths, in px. The chart takes whatever is left. */
-type RailKey = "form" | "options";
+type RailKey = "options";
 type RailWidths = Record<RailKey, number>;
 
-const RAIL_DEFAULTS: RailWidths = { form: 340, options: 320 };
+const RAIL_DEFAULTS: RailWidths = { options: 320 };
 const RAIL_MIN = 200;
 const RAIL_MAX = 620;
 /** The chart never gives up more than this — see onRailDragMove. */
@@ -125,7 +124,6 @@ function readRails(): RailWidths {
         ? Math.min(RAIL_MAX, Math.max(RAIL_MIN, Math.round(n)))
         : fallback;
     return {
-      form: clamp(parsed.form, RAIL_DEFAULTS.form),
       options: clamp(parsed.options, RAIL_DEFAULTS.options),
     };
   } catch {
@@ -300,7 +298,6 @@ export function FlowChartEditor({
    * one out, so "this field's settings" is one click from the field.
    */
   const [selectedField, setSelectedField] = useState<{ nodeId: string; index: number } | null>(null);
-  const [answers, setAnswers] = useState<Answers>({});
   /**
    * The node the pointer is over, on either side of the split. Hovering a
    * box lights its field; hovering a field lights its box. An arrow has no
@@ -313,7 +310,6 @@ export function FlowChartEditor({
   const [msg, setMsg] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLDivElement | null>(null);
-  const formPaneRef = useRef<HTMLElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     id: string; dx: number; dy: number;
@@ -377,8 +373,8 @@ export function FlowChartEditor({
     // it is, there is nothing left to aim at to drag it back.
     const grid = gridRef.current;
     if (grid) {
-      const gaps = 32 * 2;
-      const others = (["form", "options"] as RailKey[])
+      const gaps = 32;
+      const others = (["options"] as RailKey[])
         .filter((k) => k !== d.key)
         .reduce((sum, k) => sum + rails[k], 0);
       const room = grid.clientWidth - gaps - others - CHART_MIN;
@@ -420,34 +416,32 @@ export function FlowChartEditor({
    * Both ends flash afterwards: a pane that scrolls while you are looking
    * at the other column is otherwise a silent change.
    */
-  const alignAndFlash = (id: string, from: "chart" | "form") => {
+  /**
+   * Light up a box on the chart.
+   *
+   * It used to align the chart with the live form column beside it. The
+   * form has its own tab now — a chart is a drawing of a process, and a
+   * form is a thing people fill in; tying the two meant neither could
+   * change without the other.
+   */
+  const alignAndFlash = (id: string) => {
     const canvasPane = paneRef.current;
     const box = canvasPane?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"]`);
-    // A box whose questions are hidden by a branch rule has no row; the
-    // selection still stands, there is just nothing to line it up with.
-    const row = formPaneRef.current?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"]`);
+    if (!canvasPane || !box) return;
 
-    // Whichever column was clicked stays put; the other moves to meet it.
-    const mover = from === "chart" ? row : box;
-    const anchor = from === "chart" ? box : row;
-
-    if (mover && anchor) alignTops(mover, anchor);
-
-    // The form has no horizontal axis, so bringing a box into view
-    // sideways is always the canvas pane's job.
-    if (canvasPane && from === "form") {
-      const node = doc.nodes.find((n) => n.id === id);
-      if (node && canvasPane.scrollWidth > canvasPane.clientWidth) {
-        canvasPane.scrollTo({
-          left: Math.max(0, (node.x + node.w / 2) * scale - canvasPane.clientWidth / 2),
-          behavior: "smooth",
-        });
-      }
+    // Bring it into view on both axes — a wide chart can put the box you
+    // just selected off the side of the pane.
+    const pane = canvasPane.getBoundingClientRect();
+    const r = box.getBoundingClientRect();
+    const dy = r.top - pane.top;
+    const dx = r.left - pane.left;
+    if (dy < 0 || dy + r.height > pane.height) {
+      canvasPane.scrollTo({ top: canvasPane.scrollTop + dy - 24, behavior: "smooth" });
     }
-
+    if (dx < 0 || dx + r.width > pane.width) {
+      canvasPane.scrollTo({ left: canvasPane.scrollLeft + dx - 24, behavior: "smooth" });
+    }
     flash(box);
-    flash(row);
-
   };
   /**
    * Measure the canvas pane after every render, and on window resize.
@@ -1381,7 +1375,7 @@ export function FlowChartEditor({
           // Below the breakpoint this is undefined and the page stacks,
           // which is what the removed `xl:` class used to do.
           gridTemplateColumns: isWide
-            ? `minmax(0,1fr) ${rails.form}px ${rails.options}px`
+            ? `minmax(0,1fr) ${rails.options}px`
             : undefined,
         }}
       >
@@ -1515,7 +1509,7 @@ export function FlowChartEditor({
                 setSelected(n.id);
                 setSelectedEdge(null);
                 if (selectedField?.nodeId !== n.id) setSelectedField(null);
-                alignAndFlash(n.id, "chart");
+                alignAndFlash(n.id);
               }}
               onStartLink={() => startLink(n.id)}
               onText={(text) => patchNode(n.id, { text })}
@@ -1546,31 +1540,6 @@ export function FlowChartEditor({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Sticky: the point of the pane is watching the form change as you
-          edit the chart, which only works if it stays on screen while you
-          scroll a canvas taller than the viewport. */}
-      <div className="relative min-w-0">
-        {/* OUTSIDE the aside on purpose: the aside is `overflow-auto`, which
-            clips anything positioned past its edge — the handle was there,
-            measured 32px wide, and could not be hit with a real pointer. */}
-        <RailHandle railKey="form" onStart={onRailDragStart} label="Resize the live form" />
-        <aside ref={formPaneRef} className="min-w-0 rounded-lg border border-line bg-card p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-auto">
-        <FlowFormPreview
-          doc={doc}
-          answers={answers}
-          onChange={(k, v: AnswerValue) => setAnswers((a) => ({ ...a, [k]: v }))}
-          onFocusNode={(id) => { setSelected(id); setSelectedEdge(null); alignAndFlash(id, "form"); }}
-          hoverNodes={litNodes}
-          onHoverField={(id) => setHoverNodes(id ? [id] : [])}
-          onSelectField={(nodeId, index) => setSelectedField({ nodeId, index })}
-          onMoveField={canEdit ? moveField : undefined}
-          numbers={numbers}
-          selectedField={selectedField}
-          focusNodeId={selected}
-        />
-        </aside>
       </div>
 
       {/* The options behind whatever is selected. Sticky for the same
