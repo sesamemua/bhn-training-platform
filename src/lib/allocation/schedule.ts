@@ -10,8 +10,12 @@
  * the columns line up: 10am on Monday sits at the same height as 10am on
  * Wednesday because both are offset from the same start of day.
  *
- * Times are read in the VIEWER's timezone. A session stored as 15:00Z is
- * an 11am Toronto tour, and 11am is where an organiser expects it.
+ * Times are read in TORONTO, not in the viewer's zone. A session stored
+ * as 15:00Z is an 11am tour and belongs at 11am for everyone looking at
+ * it, because the week happens in Toronto and a coordinator dialling in
+ * from Vancouver is still running a Toronto morning. Reading local
+ * instead put Monday's tours in the Tuesday column from Tokyo, and drew
+ * the shared lunch on top of the afternoon workshops from Vancouver.
  *
  * Pure module: no React, no I/O.
  */
@@ -25,8 +29,21 @@ export interface Timed {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const hhmm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const dayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/** The event's zone. Everything on the grid is measured in it. */
+export const GRID_TZ = "America/Toronto";
+
+const fmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: GRID_TZ, hourCycle: "h23",
+  year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+});
+const partsOf = (d: Date) => {
+  const p = fmt.formatToParts(d);
+  const get = (t: string) => p.find((x) => x.type === t)?.value ?? "00";
+  return { y: get("year"), mo: get("month"), d: get("day"), h: get("hour"), mi: get("minute") };
+};
+const hhmm = (d: Date) => { const p = partsOf(d); return `${p.h}:${p.mi}`; };
+const dayKey = (d: Date) => { const p = partsOf(d); return `${p.y}-${p.mo}-${p.d}`; };
 
 export const toMinutes = (t: string) => {
   const [h, m] = t.split(":").map(Number);
@@ -49,7 +66,7 @@ export interface Grid {
  * out to whole hours — not per day, or Monday's 9am would sit level with
  * Tuesday's 1pm and the grid would lie about the week.
  */
-export function timeGrid(items: Timed[]): Grid {
+export function timeGrid(items: Timed[], alsoSpan: { start: string; end: string }[] = []): Grid {
   const slots: Slot[] = items
     .map((w) => {
       const s = new Date(w.startDateTime);
@@ -61,8 +78,11 @@ export function timeGrid(items: Timed[]): Grid {
 
   if (slots.length === 0) return { startMin: 9 * 60, endMin: 17 * 60, hours: [], days: [] };
 
-  const starts = slots.map((s) => toMinutes(s.start));
-  const ends = slots.map((s) => toMinutes(s.end));
+  // `alsoSpan` widens the bounds without becoming a slot: a shared
+  // break is drawn on the grid but must not be packed into a lane, or
+  // it would shove the sessions it sits behind into a narrower column.
+  const starts = [...slots, ...alsoSpan].map((s) => toMinutes(s.start));
+  const ends = [...slots, ...alsoSpan].map((s) => toMinutes(s.end));
   const startMin = Math.floor(Math.min(...starts) / 60) * 60;
   // At least an hour tall even if every session is a point in time, or
   // the grid collapses and every cell lands on the same line.

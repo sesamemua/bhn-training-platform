@@ -1,12 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { idOf, label, place, timeGrid, titleOf, toMinutes, type Timed } from "../../src/lib/allocation/schedule";
+import { torontoToUtc } from "../../src/lib/training-week/schedule-2026";
 
-/** A workshop at a local wall-clock time, whatever the runner's zone. */
+/**
+ * A workshop at a TORONTO wall-clock time, whatever the runner's zone.
+ *
+ * The grid is measured in Toronto, so a fixture built with `new Date(y,
+ * m, d, h)` — the runner's local zone — would pass on a Toronto laptop
+ * and fail in CI, or worse, hide a real regression on one of them.
+ */
 const at = (id: string, title: string, day: number, sh: number, eh: number): Timed => ({
   id, title,
-  startDateTime: new Date(2026, 9, day, sh, 0).toISOString(),
-  endDateTime: new Date(2026, 9, day, eh, 0).toISOString(),
+  startDateTime: torontoToUtc(`2026-10-${day}`, `${String(sh).padStart(2, "0")}:00`).toISOString(),
+  endDateTime: torontoToUtc(`2026-10-${day}`, `${String(eh).padStart(2, "0")}:00`).toISOString(),
 });
 
 test("the grid spans the earliest start to the latest end, rounded to hours", () => {
@@ -97,4 +104,30 @@ test("minutes parse from the clock strings the grid uses", () => {
   assert.equal(toMinutes("09:00"), 540);
   assert.equal(toMinutes("13:30"), 810);
   assert.equal(label(810), "13:30");
+});
+
+test("an extra span widens the grid without taking a lane", () => {
+  // A shared break is drawn on the grid but is not a session: it must
+  // not push the sessions behind it into a narrower column.
+  const g = timeGrid([at("a", "Afternoon", 26, 13, 16)], [{ start: "12:00", end: "13:00" }]);
+  assert.equal(g.startMin, 12 * 60, "the break pulled the top of the grid up to noon");
+  assert.equal(g.days[0].slots.length, 1);
+  assert.equal(g.days[0].slots[0].lanes, 1, "the break did not claim a lane");
+});
+
+test("an extra span inside the existing bounds changes nothing", () => {
+  const plain = timeGrid([at("a", "All day", 26, 9, 17)]);
+  const withBreak = timeGrid([at("a", "All day", 26, 9, 17)], [{ start: "12:00", end: "13:00" }]);
+  assert.equal(withBreak.startMin, plain.startMin);
+  assert.equal(withBreak.endMin, plain.endMin);
+});
+
+test("the grid is measured in Toronto, not in whoever is looking", () => {
+  // A 15:00Z session is an 11:00 Toronto tour. Read in Vancouver it
+  // would be 08:00 and in Tokyo it would land on the following day —
+  // which is what this used to do.
+  const g = timeGrid([{ id: "a", title: "Tour", startDateTime: "2026-10-26T15:00:00.000Z", endDateTime: "2026-10-26T17:30:00.000Z" }]);
+  assert.equal(g.days[0].day, "2026-10-26");
+  assert.equal(g.days[0].slots[0].start, "11:00");
+  assert.equal(g.days[0].slots[0].end, "13:30");
 });

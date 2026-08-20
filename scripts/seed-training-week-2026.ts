@@ -13,29 +13,18 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { TRAINING_WEEK_FORM } from "../src/lib/formbuilder/training-week";
+import { workshopRows } from "../src/lib/training-week/schedule-2026";
 
 const prisma = new PrismaClient();
 
-/** Oct 26-28 2026 — a Monday, Tuesday and Wednesday. Times are Toronto. */
-const at = (day: 26 | 27 | 28, hour: number, minute = 0) =>
-  new Date(Date.UTC(2026, 9, day, hour + 4, minute)); // EDT is UTC-4
-
-const WORKSHOPS = [
-  { slug: "ccrm-tour-lunch-learn-2026", title: "CCRM tour + Lunch & Learn", kind: "tour",
-    start: at(26, 11), end: at(26, 14), capacity: 20, location: "CCRM, MaRS Discovery District",
-    partner: "CCRM" },
-  { slug: "catalent-tour-lunch-learn-2026", title: "Catalent tour + Lunch & Learn", kind: "tour",
-    start: at(26, 11), end: at(26, 14), capacity: 20, location: "Catalent", partner: "Catalent" },
-  { slug: "cl3-workshop-2026", title: "CL3 workshop", kind: "workshop",
-    start: at(26, 9), end: at(26, 12), capacity: 10,
-    location: "Toronto High Containment Facility", partner: null },
-  { slug: "communication-chameleon-2026", title: "Communication Chameleon", kind: "workshop",
-    start: at(27, 13), end: at(27, 16), capacity: 30, location: "MaRS", partner: null },
-  { slug: "negotiation-skills-2026", title: "Negotiation Skills", kind: "workshop",
-    start: at(27, 13), end: at(27, 16), capacity: 30, location: "MaRS", partner: null },
-  { slug: "innovation-showcase-2026", title: "Innovation showcase", kind: "workshop",
-    start: at(28, 9), end: at(28, 16), capacity: 100, location: "MaRS", partner: null },
-];
+/*
+ * The six sessions, from the one place the week is written down.
+ *
+ * They used to be typed out here as well, and the copy drifted from the
+ * coordinators' plan — the two Monday tours were recorded as running at
+ * the same hour when they in fact run back to back.
+ */
+const WORKSHOPS = workshopRows();
 
 async function main() {
   // ── the form ───────────────────────────────────────────────────────
@@ -106,12 +95,12 @@ async function main() {
 
   let made = 0;
   let updated = 0;
-  for (const [i, w] of WORKSHOPS.entries()) {
+  for (const w of WORKSHOPS) {
     const data = {
-      title: w.title, kind: w.kind, startDateTime: w.start, endDateTime: w.end,
-      capacity: w.capacity, waitlistCapacity: 5, locationName: w.location,
-      partnerOrganization: w.partner, requiresApproval: true, isActive: true,
-      displayOrder: i,
+      title: w.title, kind: w.kind, startDateTime: w.startDateTime, endDateTime: w.endDateTime,
+      capacity: w.capacity, waitlistCapacity: 5, locationName: w.locationName,
+      partnerOrganization: w.partnerOrganization, shortDescription: w.shortDescription,
+      requiresApproval: true, isActive: true, displayOrder: w.displayOrder,
     };
     const found = current.find((c) => c.slug === w.slug);
     if (found) { await prisma.workshop.update({ where: { id: found.id }, data }); updated += 1; }

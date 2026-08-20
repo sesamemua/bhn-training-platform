@@ -2276,6 +2276,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Equip deadlines", href: "/admin/equip/deadlines" },
   },
   {
+    id: "training-week-2026-schedule",
+    title: "The 2026 Training Week schedule is now written down once",
+    body: "The week's real timetable — from the coordinators' planning grid — now lives in **one place**, and the Admin calendar, the registration form and the flow chart all read from it. The corrections that came with it: the two **Monday company tours run back to back** (11:00–13:30 CCRM, then 14:00–16:30 Catalent), so you can do both — the form used to warn that they clashed. **CL3 runs the full day** (09:30–17:00), so it genuinely overlaps both tours. **Negotiation Skills** now ends at 16:30, and the **innovation showcase** is 10:00–14:00 on the Wednesday. Rooms, facilitators and partner orgs are recorded too: Room 850 for Communication Chameleon with Claudia Ferryman of Rainmaker, Glen Whyte for Negotiation Skills.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Open the Admin calendar", href: "/admin/workspace/training-admin" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

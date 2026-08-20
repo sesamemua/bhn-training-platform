@@ -24,6 +24,7 @@ import {
 import type { Audience } from "@/lib/allocation/admin-types";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { idOf, label, place, timeGrid, titleOf } from "@/lib/allocation/schedule";
+import { DAYS, LEARNING_PATHS, SHARED } from "@/lib/training-week/schedule-2026";
 
 export interface AdminBooking {
   id: string;
@@ -293,8 +294,13 @@ function Dashboard({
  * work out from two timestamps.
  */
 function Calendar({ workshops }: { workshops: AdminWorkshop[] }) {
-  const grid = useMemo(() => timeGrid(workshops), [workshops]);
+  // The shared items only widen the grid — they are drawn behind the
+  // sessions rather than beside them, because nobody books a lunch.
+  const grid = useMemo(() => timeGrid(workshops, SHARED), [workshops]);
   const byId = useMemo(() => new Map(workshops.map((w) => [w.id, w])), [workshops]);
+  const themeOf = (day: string) => DAYS.find((d) => d.date === day);
+  const offset = (m: number) => `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%`;
+  const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
   // Tall enough that an hour is a comfortable band, short enough that
   // three days fit on a screen without scrolling.
@@ -332,10 +338,16 @@ function Calendar({ workshops }: { workshops: AdminWorkshop[] }) {
 
           {grid.days.map(({ day, slots }) => (
             <div key={day} className="min-w-0 flex-1">
-              <p className="pb-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-subtle">
+              <p className="text-center text-[11px] font-bold uppercase tracking-wide text-subtle">
                 {new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
                   weekday: "short", day: "numeric", month: "short",
                 })}
+              </p>
+              {/* The programme the day belongs to. It is how the
+                  coordinators talk about the week, and without it the
+                  columns are three anonymous dates. */}
+              <p className="truncate pb-1.5 text-center text-[10px] text-muted" title={themeOf(day)?.theme}>
+                {themeOf(day)?.theme ?? ""}
               </p>
               <div className="relative rounded-lg border border-line bg-elevated/40" style={{ height }}>
                 {/* Hour rules, drawn on every column so the eye can carry
@@ -346,6 +358,23 @@ function Calendar({ workshops }: { workshops: AdminWorkshop[] }) {
                     className="absolute inset-x-0 border-t border-line/60"
                     style={{ top: `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%` }}
                   />
+                ))}
+
+                {/* Everyone-on-the-day items: drawn first, so they sit
+                    behind the sessions and read as background rather
+                    than as something with seats. */}
+                {SHARED.filter((x) => x.day === day).map((x) => (
+                  <div
+                    key={x.slug}
+                    title={`${x.title} · ${x.start}–${x.end}${x.note ? ` · ${x.note}` : ""}`}
+                    className="absolute inset-x-0 overflow-hidden rounded-md border border-dashed border-line-strong bg-elevated px-1.5 py-0.5"
+                    style={{
+                      top: offset(minutes(x.start)),
+                      height: `${((minutes(x.end) - minutes(x.start)) / (grid.endMin - grid.startMin)) * 100}%`,
+                    }}
+                  >
+                    <p className="truncate text-[10px] text-muted">{x.title}</p>
+                  </div>
                 ))}
 
                 {slots.map((sl) => {
@@ -386,9 +415,27 @@ function Calendar({ workshops }: { workshops: AdminWorkshop[] }) {
           ))}
         </div>
       </div>
+      {/* Courses that run alongside the week rather than at an hour on
+          it. No seats and no clash, so they belong under the grid
+          rather than in it — but leaving them out entirely makes the
+          week look emptier than it is. */}
+      {LEARNING_PATHS.length > 0 && (
+        <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-elevated/40">
+          {LEARNING_PATHS.map((lp) => (
+            <li key={lp.title} className="flex flex-wrap items-baseline gap-x-2 px-2.5 py-1.5">
+              <span className="text-[11px] font-semibold text-fg">{lp.title}</span>
+              <span className="font-mono text-[10px] text-subtle">
+                {lp.days.map((d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" })).join(" · ")}
+              </span>
+              {lp.note && <span className="text-[10.5px] text-muted">{lp.note}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="mt-1.5 text-[11px] text-subtle">
         All three days share one scale, so sessions level with each other run
-        at the same time. Amber means the room is full.
+        at the same time. Amber means the room is full. Dashed blocks are for
+        everyone on the day and are not booked.
       </p>
     </section>
   );

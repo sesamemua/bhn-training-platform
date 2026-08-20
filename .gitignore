@@ -73,3 +73,7 @@ prisma/*.db-journal
 /test-results/
 /blob-report/
 /playwright/.cache/
+
+# Database dumps written by the guarded apply/seed scripts.
+# They can contain registrant names and email addresses.
+backups/

@@ -11,6 +11,7 @@
  * affiliations") rather than one box per input. Sixteen inputs as sixteen
  * boxes is a wall; as six groups it reads as a form.
  */
+import { clashPairs, MAX_SESSIONS, SESSION_OPTIONS } from "@/lib/training-week/schedule-2026";
 import type { ChartDoc } from "./types";
 
 const MAIN = 36;   // the spine every step sits on
@@ -161,33 +162,26 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
     text: "Choose your sessions",
     field: { key: "sessions", type: "multi" as const, required: true,
       help: "Pick the ones you want to attend.",
-      options: [
-        "Mon 26 · CCRM tour + Lunch & Learn",
-        "Mon 26 · Catalent tour + Lunch & Learn",
-        "Mon 26 · CL3 workshop",
-        "Tue 27 · Communication Chameleon (1 PM)",
-        "Tue 27 · Negotiation Skills (1 PM)",
-        "Wed 28 · Innovation showcase",
-      ] } };
+      // The same list the live form offers, from the one place the
+      // week is written down. A chart that names sessions the form
+      // does not have is a drawing of a process nobody is running.
+      options: SESSION_OPTIONS } };
 
   // The limits on that pick, as their own box: what the week can hold,
   // and which sessions run against each other. Drawn beside the question
-  // rather than buried in its settings, because "three, and the Tuesday
-  // pair clash" is part of the process a reader needs to see.
+  // rather than buried in its settings, because the cap and the clashes
+  // are part of the process a reader needs to see. Both are computed
+  // from the schedule, so neither can go stale when a time moves.
   const n2r = { id: "n2r", kind: "rule" as const, x: SIDE, y: n2.y, w: W, h: 62,
-    text: "Up to 3 sessions · clashes flagged",
+    text: `Up to ${MAX_SESSIONS} sessions · clashes flagged`,
     limit: {
       field: "sessions",
-      max: 3,
-      clashes: [
-        {
-          label: "Tuesday 1 PM",
-          options: [
-            "Tue 27 · Communication Chameleon (1 PM)",
-            "Tue 27 · Negotiation Skills (1 PM)",
-          ],
-        },
-      ],
+      max: MAX_SESSIONS,
+      // Derived from the times, as PAIRS. Grouping them by day would
+      // misinform: CL3 overlaps both Monday tours, but the tours run
+      // back to back, so a "Monday" group would warn people off a
+      // combination that is perfectly allowed.
+      clashes: clashPairs().map((c) => ({ label: c.label, options: [...c.options] })),
     } };
 
   // The note's 2026 questions, verbatim lists. The definitions live in

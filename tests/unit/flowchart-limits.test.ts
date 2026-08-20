@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { limitState, limitsFor, visibleFields } from "../../src/lib/flowchart/form";
 import { TRAINING_WEEK_FLOW } from "../../src/lib/flowchart/seed";
+import { MAX_SESSIONS, optionLabel, SESSIONS as WEEK } from "../../src/lib/training-week/schedule-2026";
 import type { ChartDoc } from "../../src/lib/flowchart/types";
 
 const SESSIONS = ["A", "B", "C", "D"];
@@ -77,16 +78,31 @@ test("the limit box adds no field to the form", () => {
   assert.deepEqual(keys, ["sessions"]);
 });
 
-test("the seeded Training Week chart caps sessions at 3 and flags the Tuesday pair", () => {
-  const st = limitState(TRAINING_WEEK_FLOW, "sessions", []);
-  assert.equal(st.max, 3);
+const option = (slug: string) => optionLabel(WEEK.find((w) => w.slug === slug)!);
 
-  const tuesday = [
-    "Tue 27 · Communication Chameleon (1 PM)",
-    "Tue 27 · Negotiation Skills (1 PM)",
-  ];
-  const clashed = limitState(TRAINING_WEEK_FLOW, "sessions", tuesday).clashes;
-  assert.equal(clashed.length, 1, "the two Tuesday 1 PM workshops should clash");
+test("the seeded Training Week chart carries the schedule's cap and clashes", () => {
+  const st = limitState(TRAINING_WEEK_FLOW, "sessions", []);
+  assert.equal(st.max, MAX_SESSIONS);
+
+  const tuesday = [option("communication-chameleon-2026"), option("negotiation-skills-2026")];
+  assert.equal(
+    limitState(TRAINING_WEEK_FLOW, "sessions", tuesday).clashes.length, 1,
+    "the two Tuesday afternoon workshops should clash",
+  );
+
+  // The regression this whole change exists to prevent. The two Monday
+  // company tours run back to back — 11:00-13:30 then 14:00-16:30 — so
+  // picking both must produce NO warning. The chart used to say it did.
+  const tours = [option("ccrm-tour-lunch-learn-2026"), option("catalent-tour-lunch-learn-2026")];
+  assert.deepEqual(
+    limitState(TRAINING_WEEK_FLOW, "sessions", tours).clashes, [],
+    "the Monday tours are consecutive, not concurrent",
+  );
+
+  // CL3 runs the whole day, so it does clash with each tour separately.
+  const cl3 = option("cl3-workshop-2026");
+  assert.equal(limitState(TRAINING_WEEK_FLOW, "sessions", [cl3, tours[0]]).clashes.length, 1);
+  assert.equal(limitState(TRAINING_WEEK_FLOW, "sessions", [cl3, tours[1]]).clashes.length, 1);
 
   // Every option named in a clash must actually exist on the question.
   const q = TRAINING_WEEK_FLOW.nodes.find((n) => n.field?.key === "sessions");

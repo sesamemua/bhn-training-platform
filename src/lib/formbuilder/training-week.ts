@@ -12,6 +12,7 @@
  * "contact" widget is not a builder.
  */
 import { INSTITUTIONS } from "@/lib/flowchart/institutions";
+import { MAX_SESSIONS, SESSION_OPTIONS, SESSION_SLOTS } from "@/lib/training-week/schedule-2026";
 import { BuiltFormSchema, type BuiltForm } from "./types";
 
 const OTHER = "Other — not listed";
@@ -28,15 +29,15 @@ const health = [...INSTITUTIONS.filter((i) => i.sector === "health").map((i) => 
  */
 export const CONFIRM_DAYS_BEFORE = 7;
 
-/** The 2026 sessions, the same six the live form offered. */
-export const SESSIONS_2026 = [
-  "Mon 26 Oct · CCRM tour + Lunch & Learn",
-  "Mon 26 Oct · Catalent tour + Lunch & Learn",
-  "Mon 26 Oct · CL3 workshop",
-  "Tue 27 Oct · Communication Chameleon (1 PM)",
-  "Tue 27 Oct · Negotiation Skills (1 PM)",
-  "Wed 28 Oct · Innovation showcase",
-];
+/*
+ * The 2026 sessions, derived rather than typed out again.
+ *
+ * They used to be a second hand-written copy of the coordinators'
+ * planning grid, and it drifted: the Monday tours were recorded as
+ * concurrent when the plan runs them back to back. One list now, in
+ * lib/training-week/schedule-2026.
+ */
+export const SESSIONS_2026 = SESSION_OPTIONS;
 
 /*
  * Parsed through the schema at import rather than asserted as the
@@ -90,25 +91,22 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       /*
        * Drawn as a week, not a list.
        *
-       * Two of the Monday tours and both Tuesday sessions run at the
-       * same hour. In a column of tick-boxes that is invisible, so
-       * people pick both, one gets approved and the other becomes a
-       * disappointment the form could have shown them at the time.
-       * You may still tick both — a second choice is worth expressing —
-       * but the clash is drawn and the consequence is stated.
+       * The week has real overlaps — CL3 runs across both Monday
+       * tours, and the two Tuesday workshops start at the same hour.
+       * In a column of tick-boxes that is invisible, so people pick
+       * both, one gets approved and the other becomes a disappointment
+       * the form could have shown them at the time. You may still tick
+       * both — a second choice is worth expressing — but the clash is
+       * drawn and the consequence is stated.
+       *
+       * The Monday tours are NOT one of those overlaps: they run back
+       * to back, and the form used to claim otherwise.
        */
       id: "f_sessions", key: "sessions", label: "Choose your sessions",
       type: "multi", required: true, options: SESSIONS_2026, showWhen: [],
       approveFromClash: 1,
-      slots: [
-        { option: SESSIONS_2026[0], day: "2026-10-26", start: "11:00", end: "14:00" },
-        { option: SESSIONS_2026[1], day: "2026-10-26", start: "11:00", end: "14:00" },
-        { option: SESSIONS_2026[2], day: "2026-10-26", start: "09:00", end: "12:00" },
-        { option: SESSIONS_2026[3], day: "2026-10-27", start: "13:00", end: "16:00" },
-        { option: SESSIONS_2026[4], day: "2026-10-27", start: "13:00", end: "16:00" },
-        { option: SESSIONS_2026[5], day: "2026-10-28", start: "09:00", end: "16:00" },
-      ],
-      help: "Pick the ones you want to attend — up to 3. Sessions drawn side by side run at the same time: you may choose both, but only one of a clashing pair can be approved.",
+      slots: SESSION_SLOTS,
+      help: `Pick the ones you want to attend — up to ${MAX_SESSIONS}. Sessions drawn side by side in the calendar run at the same time: you may choose both, but only one of a clashing pair can be approved. The two Monday company tours run back to back, so you can do both.`,
     },
     {
       id: "f_pos", key: "primary_position", label: "Primary position",

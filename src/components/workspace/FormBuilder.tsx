@@ -27,7 +27,7 @@ import {
 import {
   missing, optionsFor, problems, visibleFields, walk, type Answers,
 } from "@/lib/formbuilder/logic";
-import { chosenClashes, packWeek } from "@/lib/formbuilder/calendar";
+import { chosenClashes, clashes as overlaps, packWeek, type Placed } from "@/lib/formbuilder/calendar";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { readSheet, saveForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
 
@@ -690,6 +690,32 @@ function Workflow({
  * choice is worth expressing — and the consequence is spelled out
  * underneath rather than enforced by a disabled control.
  */
+/**
+ * Sessions that compete for the same part of a day, transitively.
+ *
+ * Transitive because overlap is not: CL3 meets both Monday tours while
+ * the tours do not meet each other, and drawing that needs all three in
+ * one block with the tours stacked in a single lane. Groups come back
+ * in start order, and so does each group.
+ */
+function groupsOf(slots: Placed[]): Placed[][] {
+  const rest = [...slots].sort((a, b) => a.start.localeCompare(b.start) || a.option.localeCompare(b.option));
+  const out: Placed[][] = [];
+  while (rest.length > 0) {
+    const group = [rest.shift()!];
+    // Keep sweeping: a session added to the group can pull in another
+    // that the first member never touched.
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (let i = rest.length - 1; i >= 0; i--) {
+        if (group.some((g) => overlaps(g, rest[i]))) { group.push(rest.splice(i, 1)[0]); grew = true; }
+      }
+    }
+    out.push(group.sort((a, b) => a.start.localeCompare(b.start)));
+  }
+  return out;
+}
+
 function SessionCalendar({
   field, chosen, onToggle,
 }: { field: FormField; chosen: string[]; onToggle: (option: string) => void }) {
@@ -708,23 +734,35 @@ function SessionCalendar({
           <div key={day} className="min-w-0">
             <p className="pb-1 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{dayName(day)}</p>
             <div className="space-y-1.5">
-              {/* Grouped by start time so two concurrent sessions share a
-                  row and read as alternatives to each other. */}
-              {[...new Set(slots.map((s) => s.start))].sort().map((start) => {
-                const row = slots.filter((s) => s.start === start);
+              {/* Grouped by OVERLAP, not by an identical start time.
+                  Sharing a start is neither necessary nor sufficient:
+                  CL3 runs 09:30–17:00 across both Monday tours without
+                  starting when either does, and grouping on the string
+                  drew the three of them as separate full-width rows
+                  with nothing to suggest they compete.
+
+                  Laid out as `lanes` columns, each a stack — a flat row
+                  cannot express Monday, where the two tours are
+                  consecutive and therefore share one lane. */}
+              {groupsOf(slots).map((group) => {
+                const lanes = Math.max(...group.map((s) => s.lane)) + 1;
                 return (
-                  <div key={start} className="flex gap-1.5">
-                    {row.map((sl) => {
+                  <div key={group[0].option} className="flex gap-1.5">
+                    {Array.from({ length: lanes }, (_, lane) => (
+                      <div key={lane} className="min-w-0 flex-1 space-y-1.5">
+                    {group.filter((s) => s.lane === lane).map((sl) => {
                       const on = chosen.includes(sl.option);
                       const clashes = clashing.some(([a, b]) => a === sl.option || b === sl.option);
+                      // Counted against the ones it ACTUALLY overlaps.
+                      // The group can hold sessions that never meet.
+                      const against = group.filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
                       // Cells are wide, not tall: the label is what has
                       // to be readable, not the duration.
                       return (
                         <button
                           key={sl.option}
                           onClick={() => onToggle(sl.option)}
-                          style={{ flex: `1 1 ${100 / sl.lanes}%` }}
-                          className={`min-w-0 rounded-md border p-2 text-left transition-colors ${
+                          className={`block w-full min-w-0 rounded-md border p-2 text-left transition-colors ${
                             on
                               ? clashes
                                 ? "border-amber-500 bg-amber-500/12"
@@ -739,14 +777,16 @@ function SessionCalendar({
                             {/* The day prefix is already the column. */}
                             {sl.option.replace(/^[^·]+·\s*/, "")}
                           </span>
-                          {row.length > 1 && (
+                          {against > 0 && (
                             <span className="mt-1 block text-[10px] text-subtle">
-                              runs against {row.length - 1} other
+                              runs against {against} other{against > 1 ? "s" : ""}
                             </span>
                           )}
                         </button>
                       );
                     })}
+                      </div>
+                    ))}
                   </div>
                 );
               })}
