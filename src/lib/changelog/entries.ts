@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Last year's workshops removed
+  {
+    title: "Last year's workshops are gone; everything left is the 2026 week",
+    body: "The nine October 2025 workshops — the OBIO bootcamp, the Agilis and CATTI workshops, the BioZone and CL3 morning and afternoon slots, the OmniaBio and Eurofins tours — have been deleted, along with the nine demo bookings that were attached to them. They had been hidden since the 2026 sessions went in; now they are actually gone, and the Admin dashboard counts only the week that is being run: six sessions across the 26th, 27th and 28th of October, 210 seats. A copy of everything removed was written to backups/ first, because deleting a workshop takes its bookings with it and a count is not enough when the thing being destroyed is somebody's registration. The old events seed script, which would have quietly put all nine back the next time anybody ran it, now refuses unless it is forced.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── "Can you still make it?" moves to the confirmation email
   {
     title: "“Can you still make it?” is asked after approval, not while registering",

@@ -1,4 +1,20 @@
 /**
+ * BHN Events module — the ORIGINAL 2025 demo seed. Superseded.
+ *
+ * ⚠️  This builds LAST YEAR'S event. The 2025 workshops it upserts were
+ * deleted deliberately on 2026-08-20; running this without thinking
+ * puts all nine back, along with their demo bookings, and the Admin
+ * dashboard starts reporting a week that is not happening.
+ *
+ * The week being run is 2026. Its workshops and registration form come
+ * from scripts/seed-training-week-2026.ts. This script is kept because
+ * it also seeds the event shell, the symposium agenda, speakers and
+ * sponsors, which nothing else does yet — but it now refuses to run
+ * unless you pass --force and mean it.
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ * Original header:
+ *
  * BHN Events module — idempotent seed for the 2025 Annual Symposium
  * & Training Week.
  *
@@ -618,6 +634,19 @@ const ATTENDEES = [
 
 // ─── Seed ───────────────────────────────────────────────────────
 async function main() {
+  // Refuses by default. A seed that recreates a deleted year is not
+  // idempotent in any sense that helps — it is a time machine, and the
+  // only symptom is last year quietly reappearing in this year's
+  // dashboard.
+  if (!process.argv.includes("--force")) {
+    console.log(
+      "This seeds the 2025 event, whose workshops were deliberately deleted.\n" +
+      "The 2026 week is seeded by scripts/seed-training-week-2026.ts.\n" +
+      "Re-run with --force if you really want 2025 back.",
+    );
+    return;
+  }
+
   console.log("Seeding BHN Events module — 2025 Annual Symposium…");
 
   // 1. The Event itself
