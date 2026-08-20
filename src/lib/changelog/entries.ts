@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Admin opens on a dashboard; the 2026 week replaces last year's
+  {
+    title: "Admin opens on a dashboard, and Training Week is the 2026 sessions",
+    body: "Opening the Admin tab now lands on a Dashboard rather than the decision-model editor — the first question anybody has is how the week is filling, not how to change the policy. It carries three things. A small box summarising the decision model, saying which rule comes first and which second, with a way into the panel that edits it. A table of every session showing seats approved, confirmed, confirmed by the cut-off, waitlisted, and what the room holds, with a total row and a link into capacity. And a calendar laid out by day, which shows what a list hides: that two Monday tours run at the same hour and the two Tuesday sessions collide, flagged on the sessions themselves. The workshops were last year's — nine sessions from October 2025. They have been retired, bookings kept, and replaced with the six 2026 sessions the live form was offering: the CCRM and Catalent tours and the CL3 workshop on Monday the 26th, Communication Chameleon and Negotiation Skills on Tuesday the 27th, and the Innovation showcase on Wednesday the 28th. The Training Week registration form has also been ported out of the flow chart into the Forms builder, all twenty-two questions and the twelve-step workflow, so it can be edited as a form instead of as a diagram.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Forms split away from the chart, and get a builder
   {
     title: "Flow Charts and forms are separate now, and forms have their own builder",

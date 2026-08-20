@@ -27,6 +27,8 @@ export interface AdminBooking {
   id: string;
   status: string;
   bookedAt: string;
+  /** When an admin approved it. Null on rows that never needed it. */
+  approvedAt: string | null;
   waitlistPosition: number | null;
   user: { id: string; name: string | null; email: string; organization: string | null; country: string | null } | null;
 }
@@ -40,9 +42,10 @@ export interface AdminWorkshop {
   bookings: AdminBooking[];
 }
 
-type Tab = "model" | "capacity" | "registrants" | "email";
+type Tab = "dashboard" | "model" | "capacity" | "registrants" | "email";
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
   { id: "model", label: "Decision model" },
   { id: "capacity", label: "Capacity" },
   { id: "registrants", label: "Registrants" },
@@ -70,6 +73,31 @@ const outOfTown = (country: string | null | undefined): boolean | undefined => {
   return country.trim().toLowerCase() !== "canada";
 };
 
+/**
+ * The five numbers for one workshop, in the order the organisers read
+ * them: approved, confirmed, confirmed by the cut-off, waitlisted, and
+ * what the room actually holds.
+ *
+ * `byCutOff` is confirmed AND approved on or before the cut-off, which
+ * is the closest the data supports: the platform records when an ADMIN
+ * approved a booking, not when the registrant themselves confirmed. The
+ * column says what it measures rather than implying the other thing.
+ */
+export const CUT_OFF_DAYS = 7;
+
+export function countsOf(w: AdminWorkshop) {
+  const live = w.bookings.filter((b) => b.status !== "cancelled");
+  const cutOff = new Date(w.startDateTime).getTime() - CUT_OFF_DAYS * 86400_000;
+  const confirmed = live.filter((b) => b.status === "confirmed");
+  return {
+    approved: live.filter((b) => b.approvedAt).length,
+    confirmed: confirmed.length,
+    byCutOff: confirmed.filter((b) => b.approvedAt && new Date(b.approvedAt).getTime() <= cutOff).length,
+    waitlisted: live.filter((b) => b.status === "waitlist").length,
+    capacity: w.capacity,
+  };
+}
+
 const seatsOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "confirmed").length;
 const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "waitlist").length;
 const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending").length;
@@ -79,7 +107,9 @@ export function TrainingAdmin({
 }: {
   eventId: string; eventTitle: string; rules: Rule[]; workshops: AdminWorkshop[];
 }) {
-  const [tab, setTab] = useState<Tab>("model");
+  // Opens on the dashboard: the first question anybody has here is
+  // "how is it going", not "let me change the policy".
+  const [tab, setTab] = useState<Tab>("dashboard");
 
   return (
     <div className="mt-6">
@@ -102,12 +132,213 @@ export function TrainingAdmin({
       </nav>
 
       <div className="mt-5">
+        {tab === "dashboard" && (
+          <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} />
+        )}
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "capacity" && <Capacity eventId={eventId} workshops={workshops} />}
         {tab === "registrants" && <Registrants workshops={workshops} />}
         {tab === "email" && <EmailSection eventId={eventId} workshops={workshops} />}
       </div>
     </div>
+  );
+}
+
+// ── dashboard ────────────────────────────────────────────────────────
+
+/**
+ * What an organiser wants on opening the tab: how the week is filling,
+ * what the policy currently is, and when everything happens.
+ *
+ * Read-only on purpose. Every number here is a door into the panel that
+ * can change it, so the landing page never has to be the place where
+ * something is edited by accident.
+ */
+function Dashboard({
+  rules, workshops, onOpen,
+}: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void }) {
+  const live = workshops.filter((w) => w.isActive);
+  const active = rules.filter((r) => r.isActive);
+  const totals = live.reduce(
+    (acc, w) => {
+      const c = countsOf(w);
+      return {
+        approved: acc.approved + c.approved,
+        confirmed: acc.confirmed + c.confirmed,
+        byCutOff: acc.byCutOff + c.byCutOff,
+        waitlisted: acc.waitlisted + c.waitlisted,
+        capacity: acc.capacity + c.capacity,
+      };
+    },
+    { approved: 0, confirmed: 0, byCutOff: 0, waitlisted: 0, capacity: 0 },
+  );
+
+  return (
+    <div className="space-y-5">
+      {/* The policy, in two lines, with a way in. */}
+      <section className={`${CARD} max-w-2xl`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className={LABEL}>Decision model</p>
+          <button
+            onClick={() => onOpen("model")}
+            className="text-[12px] font-semibold text-brand-400 hover:text-brand-200"
+          >
+            Open the decision model →
+          </button>
+        </div>
+        {active.length === 0 ? (
+          <p className="mt-2 text-[12.5px] text-amber-600">
+            Every rule is switched off — nothing would decide an oversubscribed room.
+          </p>
+        ) : (
+          <>
+            <ol className="mt-2 space-y-1">
+              {active.map((r, i) => (
+                <li key={r.id} className="flex items-baseline gap-2 text-[12.5px]">
+                  <span className="w-10 shrink-0 text-[10.5px] font-bold uppercase tracking-wide text-subtle">
+                    {i === 0 ? "First" : i === 1 ? "Second" : `Then`}
+                  </span>
+                  <span className="text-fg">{r.label}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-2 text-[11.5px] leading-snug text-subtle">
+              When a room is oversubscribed, that order decides who gets a seat.
+              {rules.length > active.length ? ` ${rules.length - active.length} rule switched off.` : ""}
+            </p>
+          </>
+        )}
+      </section>
+
+      {/* Every room, and the five numbers. */}
+      <section>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className={LABEL}>Seats</p>
+          <button
+            onClick={() => onOpen("capacity")}
+            className="text-[12px] font-semibold text-brand-400 hover:text-brand-200"
+          >
+            Change capacity →
+          </button>
+        </div>
+        <div className="mt-2 overflow-x-auto rounded-lg border border-line">
+          <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
+            <thead>
+              <tr className="bg-elevated text-left">
+                <th className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">Workshop</th>
+                {["Approved", "Confirmed", "By cut-off", "Waitlisted", "Capacity"].map((h) => (
+                  <th key={h} className="whitespace-nowrap px-3 py-2 text-right text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {live.map((w) => {
+                const c = countsOf(w);
+                const over = c.confirmed > c.capacity;
+                return (
+                  <tr key={w.id} className="border-t border-line">
+                    <td className="px-3 py-1.5">
+                      <span className="text-fg">{w.title}</span>
+                      <span className="ml-2 text-[11px] text-subtle">
+                        {new Date(w.startDateTime).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.approved}</td>
+                    <td className={`px-3 py-1.5 text-right tabular-nums ${over ? "font-bold text-red-500" : "text-fg"}`}>{c.confirmed}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.byCutOff}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.waitlisted}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{c.capacity}</td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-line bg-elevated/50 font-semibold">
+                <td className="px-3 py-1.5 text-subtle">All {live.length} sessions</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.approved}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-fg">{totals.confirmed}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.byCutOff}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.waitlisted}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{totals.capacity}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-1.5 max-w-prose text-[11px] leading-snug text-subtle">
+          <strong>By cut-off</strong> counts confirmed seats approved at least {CUT_OFF_DAYS} days
+          before the session. It reads when an ADMIN approved the booking — the platform does not yet
+          record the moment a registrant confirms for themselves, so this is the closest the data
+          supports rather than a separate answer.
+        </p>
+      </section>
+
+      <Calendar workshops={live} />
+    </div>
+  );
+}
+
+/**
+ * The week, laid out as days.
+ *
+ * A list sorted by date already tells you the order; a calendar tells
+ * you the SHAPE — that Monday holds three sessions and two of them
+ * collide, which is the thing a list hides.
+ */
+function Calendar({ workshops }: { workshops: AdminWorkshop[] }) {
+  const days = useMemo(() => {
+    const byDay = new Map<string, AdminWorkshop[]>();
+    for (const w of [...workshops].sort((a, b) => a.startDateTime.localeCompare(b.startDateTime))) {
+      const key = new Date(w.startDateTime).toDateString();
+      byDay.set(key, [...(byDay.get(key) ?? []), w]);
+    }
+    return [...byDay.entries()];
+  }, [workshops]);
+
+  const time = (iso: string) =>
+    new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+  return (
+    <section>
+      <p className={LABEL}>Calendar</p>
+      {days.length === 0 ? (
+        <p className="mt-2 text-[12.5px] text-muted">No sessions scheduled.</p>
+      ) : (
+        <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {days.map(([day, list]) => (
+            <div key={day} className={CARD}>
+              <p className="text-[12px] font-bold text-fg">
+                {new Date(day).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {list.map((w) => {
+                  const c = countsOf(w);
+                  // Two sessions starting at the same minute cannot both
+                  // be attended, which is worth saying on the calendar
+                  // rather than leaving to be discovered.
+                  const clash = list.some((o) => o.id !== w.id && o.startDateTime === w.startDateTime);
+                  return (
+                    <li key={w.id} className="rounded-md border border-line bg-elevated px-2 py-1.5">
+                      <p className="text-[12px] font-semibold text-fg">{w.title}</p>
+                      <p className="mt-0.5 text-[11px] text-subtle">
+                        {time(w.startDateTime)}–{time(w.endDateTime)}
+                        {w.locationName ? ` · ${w.locationName}` : ""}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted">
+                        {c.confirmed}/{c.capacity} seats
+                        {c.waitlisted > 0 ? ` · ${c.waitlisted} waiting` : ""}
+                      </p>
+                      {clash && (
+                        <p className="mt-0.5 text-[10.5px] font-semibold text-amber-600">
+                          Runs against another session
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

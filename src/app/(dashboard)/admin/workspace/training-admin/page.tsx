@@ -60,7 +60,7 @@ export default async function TrainingAdminPage() {
         partnerOrganization: true, shortDescription: true,
         bookings: {
           select: {
-            id: true, status: true, bookedAt: true, waitlistPosition: true,
+            id: true, status: true, bookedAt: true, waitlistPosition: true, approvedAt: true,
             user: { select: { id: true, name: true, email: true, organization: true, country: true } },
           },
           orderBy: { bookedAt: "asc" },
@@ -88,6 +88,7 @@ export default async function TrainingAdminPage() {
           bookings: w.bookings.map((b) => ({
             ...b,
             bookedAt: b.bookedAt.toISOString(),
+            approvedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
             user: b.user ?? null,
           })),
         }))}
