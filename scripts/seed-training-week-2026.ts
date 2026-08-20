@@ -42,11 +42,34 @@ async function main() {
   const slug = "training-week-registration-2026";
   const existing = await prisma.eventForm.findUnique({ where: { slug } });
   if (existing) {
-    await prisma.eventForm.update({
-      where: { slug },
-      data: { title: "Training Week 2026 registration", fields: TRAINING_WEEK_FORM as unknown as object },
-    });
-    console.log(`Updated the form (${TRAINING_WEEK_FORM.fields.length} questions, ${TRAINING_WEEK_FORM.steps.length} steps).`);
+    /*
+     * Does NOT overwrite by default, and this is not caution — it is a
+     * bug that already happened. The first version updated
+     * unconditionally, this script was re-run four times while working
+     * on something else, and each run put back every question the
+     * coordinator had deleted through the builder. A seed is for
+     * creating a thing that is not there; once a person has edited it,
+     * the file on disk is no longer the authority.
+     */
+    if (!process.argv.includes("--force")) {
+      console.log(
+        `The form already exists and may carry edits made in the builder.\n` +
+        `Refusing to overwrite it. Re-run with --force to replace it — a copy\n` +
+        `of the current version is written to backups/forms/ first.`,
+      );
+    } else {
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      mkdirSync("backups/forms", { recursive: true });
+      const file = `backups/forms/${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}-${slug}.json`;
+      writeFileSync(file, JSON.stringify(existing, null, 2));
+      console.log(`Backed up the current form to ${file}`);
+
+      await prisma.eventForm.update({
+        where: { slug },
+        data: { title: "Training Week 2026 registration", fields: TRAINING_WEEK_FORM as unknown as object },
+      });
+      console.log(`Replaced the form (${TRAINING_WEEK_FORM.fields.length} questions, ${TRAINING_WEEK_FORM.steps.length} steps).`);
+    }
   } else {
     await prisma.eventForm.create({
       data: {

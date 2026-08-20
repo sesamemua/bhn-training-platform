@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Questions open by default; consent is a radio; the seed stops clobbering
+  {
+    title: "Form questions open by default, consent is a radio, and the seed script stops overwriting your edits",
+    body: "Questions in the builder now arrive expanded. One-open-at-a-time meant clicking into every question to answer something as simple as \"which of these are required\" — twenty clicks on a twenty-question form. Collapsing is the exception now, with Collapse all and Open all at the top for when the page gets long. The consent question is a radio button rather than a checkbox: one deliberate choice that stays chosen. And the seeding script that installs the Training Week form no longer overwrites a form that already exists. It used to update unconditionally, which meant every run put back questions that had been deleted in the builder — the file on disk stopped being the authority the moment a person edited the form. It now refuses, and only replaces on an explicit --force, writing a copy of the current version to backups/forms/ before it does.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Consent becomes one tick-box; the save button follows you
   {
     title: "Photography consent is one box you tick, and Save follows you down the page",

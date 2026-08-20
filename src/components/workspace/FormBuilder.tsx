@@ -182,7 +182,23 @@ export function FormBuilder({
 function FieldList({
   doc, edit, canEdit,
 }: { doc: BuiltForm; edit: (n: (d: BuiltForm) => BuiltForm) => void; canEdit: boolean }) {
-  const [open, setOpen] = useState<string | null>(null);
+  /*
+   * Open by default, and what is tracked is what has been COLLAPSED.
+   *
+   * The other way round — one open at a time — makes you click into
+   * every question to see what it does, which on a twenty-question form
+   * is twenty clicks to answer "which of these is required". Seeing
+   * everything is the normal case; tidying one away is the exception,
+   * so the exception is what carries the state.
+   */
+  const [shut, setShut] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setShut((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const add = () =>
     edit((d) => {
@@ -210,9 +226,21 @@ function FieldList({
 
   return (
     <section>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={LABEL}>Questions</p>
-        {canEdit && <button className={BTN} onClick={add}><Plus size={12} /> Question</button>}
+        <span className="flex items-center gap-2">
+          {doc.fields.length > 1 && (
+            <button
+              className={BTN}
+              onClick={() =>
+                setShut(shut.size === 0 ? new Set(doc.fields.map((f) => f.id)) : new Set())
+              }
+            >
+              {shut.size === 0 ? "Collapse all" : "Open all"}
+            </button>
+          )}
+          {canEdit && <button className={BTN} onClick={add}><Plus size={12} /> Question</button>}
+        </span>
       </div>
 
       <ol className="mt-2 space-y-2">
@@ -236,13 +264,13 @@ function FieldList({
               <span className="flex shrink-0 items-center gap-0.5">
                 <button onClick={() => move(i, -1)} disabled={!canEdit || i === 0} className="rounded p-1 text-subtle hover:bg-elevated hover:text-fg disabled:opacity-25"><ArrowUp size={12} /></button>
                 <button onClick={() => move(i, 1)} disabled={!canEdit || i === doc.fields.length - 1} className="rounded p-1 text-subtle hover:bg-elevated hover:text-fg disabled:opacity-25"><ArrowDown size={12} /></button>
-                <button onClick={() => setOpen(open === f.id ? null : f.id)} className="rounded px-1.5 py-1 text-[11px] font-semibold text-brand-400 hover:bg-elevated">
-                  {open === f.id ? "Close" : "Edit"}
+                <button onClick={() => toggle(f.id)} className="rounded px-1.5 py-1 text-[11px] font-semibold text-brand-400 hover:bg-elevated">
+                  {shut.has(f.id) ? "Open" : "Collapse"}
                 </button>
               </span>
             </div>
 
-            {open === f.id && (
+            {!shut.has(f.id) && (
               <FieldEditor doc={doc} field={f} patch={(p) => patch(f.id, p)} canEdit={canEdit}
                 remove={() => edit((d) => ({ ...d, fields: d.fields.filter((x) => x.id !== f.id) }))} />
             )}
@@ -605,10 +633,15 @@ function Preview({
                 // agreeing to, not a box under a heading.
                 <span className="mt-1 flex items-start gap-2 rounded-md border border-line bg-elevated p-2.5">
                   <input
-                    type="checkbox"
+                    type="radio"
+                    // A radio rather than a checkbox: one deliberate
+                    // choice that stays chosen. Named per field so two
+                    // consent questions on one form never share a group
+                    // and cancel each other out.
+                    name={`consent_${f.key}`}
                     className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--brand-500)]"
                     checked={answers[f.key] === "Yes"}
-                    onChange={(e) => set(f.key, e.target.checked ? "Yes" : undefined)}
+                    onChange={() => set(f.key, "Yes")}
                   />
                   <span className="text-[12px] leading-snug text-fg">{f.label}</span>
                 </span>
