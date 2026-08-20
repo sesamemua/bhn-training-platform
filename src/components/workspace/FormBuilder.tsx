@@ -31,8 +31,16 @@ import { readSheet, saveForm } from "@/app/(dashboard)/admin/workspace/forms/act
 
 const CARD = "rounded-lg border border-line bg-card p-3";
 const LABEL = "text-[10.5px] font-bold uppercase tracking-[0.12em] text-subtle";
+/**
+ * An underline, not a box.
+ *
+ * A bordered input inside a bordered card inside a bordered list is
+ * three rectangles saying the same thing. A rule under the value is
+ * enough to say "you can type here", and the page stops looking like a
+ * spreadsheet of empty cells.
+ */
 const LINE =
-  "mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500";
+  "mt-1 w-full border-0 border-b border-line bg-transparent px-0 py-1.5 text-[13px] text-fg outline-none transition-colors focus-visible:border-brand-500";
 const BTN =
   "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 const PRIMARY =
@@ -243,19 +251,25 @@ function FieldList({
         </span>
       </div>
 
-      <ol className="mt-2 space-y-2">
+      {/* ONE box around the lot, with lines between the questions.
+          A card per question drew twenty-two borders down the page, and
+          twenty-two borders read as twenty-two unrelated things rather
+          than as one list. The rows are also given real room — a
+          question is the unit of work here, and it was sitting in the
+          padding of a chip. */}
+      <ol className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
         {doc.fields.map((f, i) => (
-          <li key={f.id} className={CARD}>
-            <div className="flex items-start gap-2">
-              <span className="mt-1 w-5 shrink-0 text-right font-mono text-[11px] text-subtle">{i + 1}</span>
+          <li key={f.id} className="px-4 py-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 w-6 shrink-0 text-right font-mono text-[12px] text-subtle">{i + 1}</span>
               <div className="min-w-0 flex-1">
                 <input
                   value={f.label}
                   disabled={!canEdit}
                   onChange={(e) => patch(f.id, { label: e.target.value.slice(0, 160) })}
-                  className="w-full border-0 bg-transparent p-0 text-[13.5px] font-semibold text-fg outline-none focus-visible:text-brand-300"
+                  className="w-full border-0 bg-transparent p-0 text-[14px] font-semibold leading-snug text-fg outline-none focus-visible:text-brand-300"
                 />
-                <p className="mt-0.5 font-mono text-[10.5px] text-subtle">
+                <p className="mt-1 font-mono text-[10.5px] text-subtle">
                   {f.key} · {FIELD_TYPE_LABEL[f.type]}
                   {f.required ? " · required" : ""}
                   {f.showWhen.length > 0 ? ` · shown when ${f.showWhen.length} rule${f.showWhen.length === 1 ? "" : "s"} match` : ""}
@@ -277,7 +291,7 @@ function FieldList({
           </li>
         ))}
         {doc.fields.length === 0 && (
-          <li className="rounded-lg border border-dashed border-line p-6 text-center text-[12.5px] text-muted">
+          <li className="p-8 text-center text-[12.5px] text-muted">
             No questions yet. Add one and it appears in the preview on the right.
           </li>
         )}
@@ -298,8 +312,8 @@ function FieldEditor({
   const earlier = doc.fields.slice(0, doc.fields.findIndex((f) => f.id === field.id));
 
   return (
-    <div className="mt-3 border-t border-line pt-3">
-      <div className="grid gap-2 sm:grid-cols-2">
+    <div className="ml-9 mt-4 border-t border-line pt-4">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label><span className={LABEL}>Answer type</span>
           <select className={LINE} value={field.type} disabled={!canEdit}
             onChange={(e) => patch({ type: e.target.value as FormField["type"] })}>
@@ -444,9 +458,9 @@ function Sources({
         </p>
       )}
 
-      <ul className="mt-2 space-y-2">
+      <ul className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card empty:hidden">
         {doc.sources.map((s) => (
-          <li key={s.id} className={CARD}>
+          <li key={s.id} className="px-4 py-4">
             <div className="grid gap-2 sm:grid-cols-2">
               <label><span className={LABEL}>What to call it</span>
                 <input className={LINE} value={s.label} disabled={!canEdit}
@@ -544,9 +558,9 @@ function Workflow({
         Highlighted steps are the ones the preview&rsquo;s answers actually reach.
       </p>
 
-      <ol className="mt-2 space-y-2">
+      <ol className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
         {doc.steps.map((s) => (
-          <li key={s.id} className={`${CARD} ${taken.has(s.id) ? "border-brand-500/70 bg-brand-500/5" : ""}`}>
+          <li key={s.id} className={`px-4 py-3.5 ${taken.has(s.id) ? "bg-brand-500/8" : ""}`}>
             <div className="flex items-start gap-2">
               <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
                 s.kind === "start" ? "bg-emerald-500/12 text-emerald-500"
@@ -588,7 +602,7 @@ function Workflow({
           </li>
         ))}
         {doc.steps.length === 0 && (
-          <li className="rounded-lg border border-dashed border-line p-6 text-center text-[12.5px] text-muted">
+          <li className="p-8 text-center text-[12.5px] text-muted">
             No workflow yet. Add a Start, then Checks that read the answers.
           </li>
         )}
@@ -616,11 +630,11 @@ function Preview({
         here drives both the questions above and the workflow.
       </p>
 
-      <div className={`${CARD} mt-2 space-y-3`}>
+      <div className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
         {shown.map((f) => {
           const opts = optionsFor(doc, f);
           return (
-            <label key={f.id} className="block">
+            <label key={f.id} className="block px-4 py-3.5">
               {f.type !== "consent" && (
                 <span className="text-[12.5px] font-semibold text-fg">
                   {f.label}{f.required && <span className="ml-1 text-brand-400">*</span>}
@@ -631,7 +645,7 @@ function Preview({
                 // The label IS the statement, so it sits beside the box
                 // rather than above it — you tick the sentence you are
                 // agreeing to, not a box under a heading.
-                <span className="mt-1 flex items-start gap-2 rounded-md border border-line bg-elevated p-2.5">
+                <span className="mt-1.5 flex items-start gap-2.5 rounded-lg border border-line bg-elevated p-3">
                   <input
                     type="radio"
                     // A radio rather than a checkbox: one deliberate
@@ -686,7 +700,9 @@ function Preview({
             </label>
           );
         })}
-        {shown.length === 0 && <p className="text-[12.5px] text-muted">Nothing to show yet.</p>}
+        {shown.length === 0 && (
+          <p className="p-8 text-center text-[12.5px] text-muted">Nothing to show yet.</p>
+        )}
       </div>
     </section>
   );

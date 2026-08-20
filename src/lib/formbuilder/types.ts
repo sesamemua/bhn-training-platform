@@ -32,7 +32,7 @@ export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
   choice: "Choose one",
   multi: "Choose several",
   yesno: "Yes / no",
-  consent: "Consent — one box to tick",
+  consent: "Consent — one option to select",
   lookup: "Pick from a data sheet",
 };
 

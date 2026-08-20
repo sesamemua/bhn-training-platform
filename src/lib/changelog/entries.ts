@@ -30,6 +30,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  // ── Fewer boxes, more lines
+  {
+    title: "The form builder uses lines instead of boxes",
+    body: "Every question, every workflow step, every data sheet and every preview field used to sit in its own bordered card — twenty-two borders down a page reads as twenty-two unrelated things rather than as one list. Each of those lists is now a single container with rules between the rows, and the rows themselves have real room: a question is the unit of work here and it was sitting in the padding of a chip. Text inputs are underlined rather than boxed, because a bordered input inside a bordered card inside a bordered list is three rectangles saying the same thing. The consent answer type is also named honestly now — it says one option to select, and it renders as a radio button.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Questions open by default; consent is a radio; the seed stops clobbering
   {
     title: "Form questions open by default, consent is a radio, and the seed script stops overwriting your edits",
