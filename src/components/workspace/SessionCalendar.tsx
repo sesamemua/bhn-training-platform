@@ -57,6 +57,19 @@ export function groupsOf(slots: Placed[]): Placed[][] {
  */
 const HOUR_PX = 62;
 
+/**
+ * "1st", "2nd", "3rd" — not "1".
+ *
+ * A bare numeral on a calendar cell reads as a count, a room number or
+ * a day. An ordinal can only be a position, which is the one thing it
+ * is trying to say.
+ */
+export function ordinal(n: number): string {
+  const t = n % 100;
+  if (t >= 11 && t <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+}
+
 export function SessionCalendar({
   field, chosen, onToggle,
 }: { field: FormField; chosen: string[]; onToggle: (option: string) => void }) {
@@ -154,18 +167,17 @@ export function SessionCalendar({
                         width: `calc(${100 / sl.lanes}% - 2px)`,
                       }}
                     >
-                      <span className="flex items-center gap-1">
-                        {on && (
-                          // The number is the point of the cell once it
-                          // is picked, so it leads rather than sitting
-                          // under the name where the box may be cut off.
-                          <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
-                            {rank + 1}
-                          </span>
-                        )}
-                        <span className="min-w-0 truncate font-mono text-[9.5px] text-subtle">
-                          {sl.start}–{sl.end}
+                      {/* The ranking leads. Once a session is picked,
+                          its position is the thing the reader is
+                          checking — the hours are already the scale it
+                          is drawn against. */}
+                      {on && (
+                        <span className="mb-0.5 inline-flex items-center rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                          {ordinal(rank + 1)} choice
                         </span>
+                      )}
+                      <span className="block truncate font-mono text-[9.5px] text-subtle">
+                        {sl.start}–{sl.end}
                       </span>
                       <span className={`mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
                         {shortLabel(sl.option)}
@@ -188,8 +200,8 @@ export function SessionCalendar({
 
       <p className="mt-1.5 text-[11px] leading-snug text-subtle">
         Height is how long a session runs. Anything drawn side by side is on at the same time.
-        The number on a session is your order of preference — the order you picked them in.
-        Click one again to take it back; the rest close up.
+        The order you click in is your order of preference: first pick, first choice.
+        Click one again to take it back and the rest move up.
       </p>
 
       {unscheduled.length > 0 && (
@@ -215,8 +227,8 @@ function Chip({ label, rank, onClick }: { label: string; rank: number; onClick: 
       }`}
     >
       {on && (
-        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
-          {rank + 1}
+        <span className="inline-flex items-center rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          {ordinal(rank + 1)}
         </span>
       )}
       {label}

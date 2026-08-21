@@ -4394,4 +4394,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Fixed: the page jumped when you started typing, and the ranking is now unmistakable",
+    body: "**The jump.** Typing the first character into a text box \u2014 the trainee email, the postal code \u2014 opened the next question and moved the cursor into it, so the page scrolled away mid-word and you had to come back. A form that unfolds has to know the difference between finishing an answer and starting one: picking a radio is done the moment you pick it, but \u201canswered\u201d for a text box is true after one keystroke. Only one-click answers open the next question now. Everything else waits for **Continue**.\n\nThe same fix stops the cursor being pulled backwards when the thing that opened was a note.\n\n**The ranking is now written out.** A small numeral on a calendar cell reads as a count, a room number or a day. Your picks are labelled **1st choice**, **2nd choice**, **3rd choice**, and a **Your ranking** box under the calendar lists them in order with their times \u2014 which is the thing being asked for, and the thing a coordinator reads off the answer.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { allHold, holds, missing, optionsFor, problems, visibleFields, walk } from "../../src/lib/formbuilder/logic";
+import { allHold, holds, missing, optionsFor, problems, settled, visibleFields, walk } from "../../src/lib/formbuilder/logic";
 import { parseForm, keyFor, type BuiltForm } from "../../src/lib/formbuilder/types";
 import { parseCsv as parseCsvFn } from "../../src/lib/formbuilder/csv";
 import { TRAINING_WEEK_FORM } from "../../src/lib/formbuilder/training-week";
@@ -207,4 +207,40 @@ test("the shipped form asks 'Can you still make it?' only after approval", () =>
   assert.ok(!onForm.includes("confirmed"), "it must not appear while registering");
   // And the workflow still reads it, from the step that sends the email.
   assert.ok(TRAINING_WEEK_FORM.steps.some((s) => s.when.some((c) => c.field === "confirmed")));
+});
+
+/* ── when a form that unfolds should open the next question ──────── */
+
+test("typing one character does NOT count as being done with a text box", () => {
+  // The bug this fixes: "answered" for a text field is true after the
+  // first keystroke, so the form opened the next question and moved the
+  // cursor into it while somebody was still typing their email — the
+  // page jumped and they had to scroll back to finish.
+  for (const type of ["short_text", "long_text", "email", "phone", "number", "date"] as const) {
+    const f = field("thing", { type });
+    assert.equal(settled(f, { thing: "a" }), false, `${type} advanced on one character`);
+    assert.equal(settled(f, { thing: "a@b.example" }), false, `${type} advanced on a full answer`);
+  }
+});
+
+test("picking one option IS being done with it", () => {
+  // One click is the whole answer, so opening the next question is
+  // helping rather than interrupting.
+  for (const type of ["yesno", "choice", "consent", "lookup"] as const) {
+    const f = field("thing", { type, options: ["Yes", "No"] });
+    assert.equal(settled(f, {}), false, `${type} advanced before being answered`);
+    assert.equal(settled(f, { thing: "Yes" }), true, `${type} did not advance when answered`);
+  }
+});
+
+test("choosing several is never done until the person says so", () => {
+  // You may pick up to three sessions. Advancing on the first would
+  // take the calendar off the screen mid-decision.
+  const f = field("sessions", { type: "multi", options: ["a", "b", "c"] });
+  assert.equal(settled(f, { sessions: ["a"] }), false);
+  assert.equal(settled(f, { sessions: ["a", "b", "c"] }), false);
+});
+
+test("a note is passed straight over — there is nothing to answer", () => {
+  assert.equal(settled(field("n", { type: "note" }), {}), true);
 });

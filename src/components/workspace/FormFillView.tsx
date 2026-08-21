@@ -24,9 +24,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Eye, RotateCcw } from "lucide-react";
 import { chosenClashes } from "@/lib/formbuilder/calendar";
 import { linkify } from "@/lib/formbuilder/linkify";
-import { missing, optionsFor, visibleFields, type Answers } from "@/lib/formbuilder/logic";
+import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
-import { SessionCalendar } from "./SessionCalendar";
+import { ordinal, SessionCalendar } from "./SessionCalendar";
 
 /** Above this many options a radio list becomes a page of its own. */
 const RADIO_MAX = 6;
@@ -73,9 +73,13 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
   const deepest = Math.min(reach, shown.length);
   const auto = useMemo(() => {
     let n = deepest;
-    while (n < shown.length && (shown[n - 1]?.type === "note" || (shown[n - 1] && answeredAt(shown[n - 1])))) n += 1;
+    // `settled`, not "answered". A text box counts as answered after
+    // its FIRST keystroke, so this used to open the next question and
+    // move the cursor into it while somebody was halfway through typing
+    // their email — the page jumped and they had to scroll back.
+    while (n < shown.length && shown[n - 1] && settled(shown[n - 1], answers)) n += 1;
     return n;
-  }, [deepest, shown, answers]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deepest, shown, answers]);
 
   /*
    * A HIGH-WATER MARK, so the form never folds back up.
@@ -140,10 +144,16 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
   const first = useRef(true);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
-    const box = listRef.current?.querySelectorAll<HTMLElement>("[data-q]");
-    const last = box?.[box.length - 1];
-    last?.querySelector<HTMLElement>("input, select, textarea, button")?.focus();
-  }, [open]);
+    const opened = shown[open - 1];
+    // Nothing to type in a note, and focusing the question BEFORE it —
+    // which is what taking "the last tagged element" did when the new
+    // one was a note — pulls the cursor backwards into an answer the
+    // person has already given.
+    if (!opened || opened.type === "note") return;
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-q="${CSS.escape(opened.key)}"] input, [data-q="${CSS.escape(opened.key)}"] select, [data-q="${CSS.escape(opened.key)}"] textarea`)
+      ?.focus();
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const reset = () => { setAnswers({}); setTried(false); setDone(false); setReach(1); setHi(1); setAll(false); };
 
   const answered = asked.filter(answeredAt).length;
@@ -335,7 +345,7 @@ function Question({
   }
 
   return (
-    <div data-q className={`px-6 py-5 ${flagged ? "bg-red-500/[0.04]" : ""}`}>
+    <div data-q={f.key} className={`px-6 py-5 ${flagged ? "bg-red-500/[0.04]" : ""}`}>
       {f.type !== "consent" && (
         <label className="block">
           <span className="flex items-baseline gap-2">
@@ -423,21 +433,34 @@ function Question({
             chosen={arr}
             onToggle={(o) => set(f.key, arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o])}
           />
-          {/* The order, spelled out.
-              Badges on a calendar say the rank of each cell; this says
-              the ranking, which is the thing being asked for and the
-              thing a coordinator reads off the answer. */}
-          {arr.length > 1 && (
-            <ol className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
-              {arr.map((o, i) => (
-                <li key={o} className="inline-flex items-center gap-1.5">
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
-                    {i + 1}
-                  </span>
-                  {o.split(" · ").pop()}
-                </li>
-              ))}
-            </ol>
+          {/* The ranking, written out.
+              Badges on the calendar give each cell its position; this
+              gives the ORDER, which is the thing being asked for and
+              the thing a coordinator reads off the answer. Its own box,
+              because on a busy calendar a line of text under it is not
+              where anybody looks to check what they chose. */}
+          {arr.length > 0 && (
+            <div className="mt-3 rounded-lg border-2 border-brand-500/40 bg-brand-500/[0.06] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-500">
+                Your ranking
+              </p>
+              <ol className="mt-1.5 space-y-1">
+                {arr.map((o, i) => (
+                  <li key={o} className="flex items-baseline gap-2 text-[13px] text-fg">
+                    <span className="w-9 shrink-0 text-[11px] font-bold uppercase tracking-wide text-brand-500">
+                      {ordinal(i + 1)}
+                    </span>
+                    <span>{o.split(" · ").pop()}</span>
+                    <span className="font-mono text-[11px] text-subtle">{o.split(" · ")[1]}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-2 text-[11.5px] leading-snug text-muted">
+                {arr.length === 1
+                  ? "Pick another and it becomes your 2nd choice."
+                  : "This is the order we go by when a room is oversubscribed. Click a session again to take it back — the rest move up."}
+              </p>
+            </div>
           )}
           {clashing.length > 0 && (
             <p className="mt-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-2.5 text-[12.5px] leading-relaxed text-amber-600">

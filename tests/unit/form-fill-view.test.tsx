@@ -99,7 +99,7 @@ test("the title shown is the form's own, not a placeholder", () => {
 
 /* ── the session picker is a calendar, not a list ────────────────── */
 
-import { SessionCalendar } from "../../src/components/workspace/SessionCalendar";
+import { ordinal, SessionCalendar } from "../../src/components/workspace/SessionCalendar";
 import { gridFromSlots } from "../../src/lib/allocation/schedule";
 
 const sessions = TRAINING_WEEK_FORM.fields.find((f) => f.key === "sessions")!;
@@ -588,10 +588,11 @@ test("the number on a session is the order it was clicked in", () => {
     const name = option.split(" · ").pop()!.split(" ")[0];
     const cell = html.split("<button").find((t) => t.includes(name));
     assert.ok(cell, `no cell for ${name}`);
-    const m = cell.match(/bg-brand text-\[9px\] font-bold text-white">(\d)</);
+    const m = cell.match(/bg-brand [^"]*">(\d+(?:st|nd|rd|th)) choice</);
     return m ? m[1] : null;
   };
-  clicked.forEach((opt, i) => assert.equal(badgeIn(opt), String(i + 1), `${opt} is not ranked ${i + 1}`));
+  const want = ["1st", "2nd", "3rd"];
+  clicked.forEach((opt, i) => assert.equal(badgeIn(opt), want[i], `${opt} is not the ${want[i]} choice`));
 });
 
 test("a session nobody picked carries no number", () => {
@@ -601,7 +602,23 @@ test("a session nobody picked carries no number", () => {
   );
   const name = SESSIONS_2026[1].split(" · ").pop()!.split(" ")[0];
   const cell = html.split("<button").find((t) => t.includes(name))!;
-  assert.ok(!/bg-brand text-\[9px\]/.test(cell), "an unpicked session is showing a rank");
+  assert.ok(!/choice</.test(cell), "an unpicked session is showing a rank");
+});
+
+test("the ranking is written out as ordinals, not bare numerals", () => {
+  // "1" on a calendar cell reads as a count, a room number or a day.
+  // "1st choice" can only be a position.
+  const doc: BuiltForm = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields.filter((f) => f.key === "sessions").map((f) => ({ ...f, showWhen: [] })),
+  };
+  const html = paint(doc);
+  assert.ok(!html.includes("Your ranking"), "nothing to rank before anything is picked");
+  assert.match(ordinal(1), /^1st$/);
+  assert.match(ordinal(2), /^2nd$/);
+  assert.match(ordinal(3), /^3rd$/);
+  assert.match(ordinal(11), /^11th$/, "eleventh, not eleven-st");
+  assert.match(ordinal(21), /^21st$/);
 });
 
 test("the calendar says what the number means", () => {

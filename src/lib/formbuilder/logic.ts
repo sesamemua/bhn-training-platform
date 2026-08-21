@@ -214,3 +214,22 @@ export function problems(form: BuiltForm): Problem[] {
 }
 
 const indexOfKey = (form: BuiltForm, key: string) => form.fields.findIndex((f) => f.key === key);
+
+/**
+ * Types where ONE CLICK is the whole answer.
+ *
+ * The distinction a form that unfolds cannot do without. Picking a radio
+ * is finished the moment you pick it, so opening the next question is
+ * helpful. Typing is not: "answered" for a text box means "has at least
+ * one character", which is true after the first keystroke — so the form
+ * opened the next question and moved the cursor to it while somebody was
+ * still typing their email address.
+ */
+const ONE_CLICK: ReadonlySet<string> = new Set(["yesno", "choice", "consent", "lookup"]);
+
+/** Has this field been answered in a way that means the person is done with it? */
+export function settled(field: FormField, answers: Answers): boolean {
+  if (field.type === "note") return true;
+  if (!ONE_CLICK.has(field.type)) return false;
+  return asList(answers[field.key]).length > 0;
+}
