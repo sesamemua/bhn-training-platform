@@ -15,8 +15,12 @@ import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseRules, validateRules, type Rule } from "@/lib/allocation/model";
 import {
   isAudience, isId, RULES_KEY,
-  type Audience, type EmailPlan, type TemplateBundle, type WorkshopInput,
+  type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
+import { REGISTRATION_FORM_SLUG } from "@/lib/allocation/symposium-2026";
+import { parseForm } from "@/lib/formbuilder/types";
+import { rankedSessions } from "@/lib/formbuilder/submit";
+import type { Answers } from "@/lib/formbuilder/logic";
 import {
   isEdit, OverrideSchema, parseOverrides, problemsWith, refusesMultiSession, render,
   resolveTemplates, SUPPORT_URL_KEY, templateById, TEMPLATES_KEY, unfilledGlobals,
@@ -597,6 +601,84 @@ export async function saveSupportFormUrl(url: string): Promise<{ ok: boolean; pr
     create: { key: SUPPORT_URL_KEY, value: trimmed },
     update: { value: trimmed },
   });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+// ── form submissions ─────────────────────────────────────────────────
+
+/**
+ * What people have actually sent in.
+ *
+ * Read from EventFormSubmission rather than from WorkshopBooking: a
+ * submission is what somebody said, and a booking is what we did about
+ * it. They are not the same thing, and until a coordinator has
+ * approved anybody there are submissions and no bookings at all —
+ * which is exactly when you most want to see them.
+ */
+export async function loadSubmissions(): Promise<SubmissionRow[]> {
+  await requireAdmin();
+  const form = await prisma.eventForm.findUnique({
+    where: { slug: REGISTRATION_FORM_SLUG },
+    select: { id: true, fields: true },
+  });
+  if (!form) return [];
+
+  const rows = await prisma.eventFormSubmission.findMany({
+    where: { formId: form.id },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+    select: {
+      id: true, data: true, email: true, createdAt: true,
+      user: { select: { name: true, email: true } },
+    },
+  });
+
+  const doc = parseForm(form.fields);
+  return rows.map((r) => {
+    const data = (r.data ?? {}) as Record<string, unknown>;
+    const answers = data as Answers;
+    return {
+      id: r.id,
+      // Submitted timestamp: what first-come-first-served is decided on.
+      at: r.createdAt.toISOString(),
+      isTest: data.__test === true,
+      name: [answers.first_name, answers.last_name].filter(Boolean).join(" ")
+        || (typeof answers.trainee_name === "string" ? answers.trainee_name : "")
+        || r.user?.name
+        || "",
+      email: r.email ?? r.user?.email ?? "",
+      status: typeof answers.bhn_status === "string" ? answers.bhn_status : "",
+      sessions: rankedSessions(doc, answers),
+      answers: Object.fromEntries(
+        doc.fields
+          .filter((f) => f.type !== "note" && answers[f.key] !== undefined)
+          .map((f) => [f.label, Array.isArray(answers[f.key])
+            ? (answers[f.key] as string[]).join(" · ")
+            : String(answers[f.key] ?? "")]),
+      ),
+    };
+  });
+}
+
+/**
+ * Delete a submission.
+ *
+ * Meant for clearing out the rows a coordinator left behind while
+ * testing the form, which is why the UI only offers it on those. It
+ * will delete a real one too — refusing would mean a genuine mistake
+ * could never be removed — so it says which it was in the audit log.
+ */
+export async function deleteSubmission(id: string): Promise<{ ok: boolean }> {
+  const admin = await requireAdmin();
+  const row = await prisma.eventFormSubmission.findUnique({
+    where: { id },
+    select: { data: true, email: true },
+  });
+  if (!row) return { ok: true };
+  const wasTest = ((row.data ?? {}) as Record<string, unknown>).__test === true;
+  await prisma.eventFormSubmission.delete({ where: { id } });
+  await logSend(admin.id, "training_admin.submission_deleted", { id, email: row.email, wasTest });
   revalidatePath(PAGE);
   return { ok: true };
 }

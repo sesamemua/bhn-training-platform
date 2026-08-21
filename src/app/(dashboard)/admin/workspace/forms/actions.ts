@@ -9,9 +9,11 @@
  * what is already there should.
  */
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth";
+import { getSession, requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BuiltFormSchema, parseForm, type BuiltForm, type DataSource } from "@/lib/formbuilder/types";
+import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
+import type { Answers } from "@/lib/formbuilder/logic";
 import { parseCsv } from "@/lib/formbuilder/csv";
 
 const PAGE = "/admin/workspace/forms";
@@ -148,4 +150,56 @@ export async function loadForms() {
     doc: parseForm(r.fields),
     updatedAt: r.updatedAt.toISOString(),
   }));
+}
+
+/* ── submitting a built form ──────────────────────────────────────── */
+
+/**
+ * Record a real submission against a built form.
+ *
+ * Every rule the fill view enforces is checked again here. The
+ * browser's copy is a courtesy to whoever is filling the form in; this
+ * is a public endpoint, and a cap that only exists in a disabled button
+ * is not a cap.
+ *
+ * `test` marks a submission made from the admin preview, so a
+ * coordinator can try the form end to end and then clear what they
+ * left behind without picking their own rows out of real ones by eye.
+ */
+export async function submitBuiltForm(
+  slug: string,
+  answers: Record<string, unknown>,
+  opts?: { test?: boolean },
+): Promise<{ ok: boolean; problems?: string[]; id?: string }> {
+  const form = await prisma.eventForm.findUnique({ where: { slug } });
+  if (!form) return { ok: false, problems: ["That form no longer exists."] };
+  if (!form.active && !opts?.test) {
+    return { ok: false, problems: ["This form is not accepting submissions."] };
+  }
+
+  const doc = parseForm(form.fields);
+  const verdict = checkSubmission(doc, answers as Answers);
+  if (!verdict.ok) return { ok: false, problems: verdict.problems };
+
+  // A test submission is admin-only. Without this anybody could file
+  // rows that a coordinator has been told are safe to delete in bulk.
+  const session = await getSession();
+  const user = session?.user as { id?: string; role?: string } | undefined;
+  if (opts?.test && !["admin", "superadmin", "instructor"].includes(user?.role ?? "")) {
+    return { ok: false, problems: ["Only staff can file a test submission."] };
+  }
+
+  const row = await prisma.eventFormSubmission.create({
+    data: {
+      formId: form.id,
+      data: { ...verdict.clean, ...(opts?.test ? { __test: true } : {}) } as object,
+      email: emailFrom(doc, verdict.clean),
+      userId: user?.id ?? null,
+    },
+    select: { id: true },
+  });
+
+  revalidatePath("/admin/workspace/symposium-2026/registration");
+  revalidatePath("/admin/workspace/training-admin");
+  return { ok: true, id: row.id };
 }

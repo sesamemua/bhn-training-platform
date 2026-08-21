@@ -65,3 +65,20 @@ export interface TemplateBundle {
   /** The travel-and-accommodation form, once somebody has set one. */
   supportFormUrl: string;
 }
+
+/** One row of the registrant sheet, as submitted. */
+export interface SubmissionRow {
+  id: string;
+  /** When it arrived — what first-come-first-served is decided on. */
+  at: string;
+  /** Filed from the admin preview rather than by a registrant. */
+  isTest: boolean;
+  name: string;
+  email: string;
+  /** Their answer to question one, verbatim. */
+  status: string;
+  /** Sessions in the order they ranked them. */
+  sessions: string[];
+  /** Everything else, by question label, for the expanded view. */
+  answers: Record<string, string>;
+}

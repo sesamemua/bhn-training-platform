@@ -102,6 +102,33 @@ async function main() {
    * builder meant it, and a sync that overwrites their words teaches
    * them not to use the builder. Help text is ours and is replaced.
    */
+  /*
+   * The dietary question is REPLACED, not patched.
+   *
+   * It changed shape — a text box became a list with an exclusive "no
+   * requirements" and a follow-up box — and patching help onto a
+   * short_text would leave the live form accepting free text while the
+   * server checked it against options it did not have. Its follow-up
+   * question is inserted with it; one without the other is a rule
+   * waiting on a question nobody is asked.
+   */
+  const dietAt = doc.fields.findIndex((f) => f.key === "dietary");
+  const dietCode = TRAINING_WEEK_FORM.fields.find((f) => f.key === "dietary");
+  const otherCode = TRAINING_WEEK_FORM.fields.find((f) => f.key === "dietary_other");
+  if (dietAt >= 0 && dietCode && otherCode) {
+    const live = doc.fields[dietAt] as Field & { type?: string };
+    if (live.type !== dietCode.type || !(live as { exclusiveOption?: string }).exclusiveOption) {
+      const replacement = JSON.parse(JSON.stringify(dietCode)) as Field;
+      doc.fields.splice(dietAt, 1, replacement);
+      touched.push(`dietary is now a list of ${dietCode.options.length}`);
+    }
+    if (!doc.fields.some((f) => f.key === "dietary_other")) {
+      const at = doc.fields.findIndex((f) => f.key === "dietary");
+      doc.fields.splice(at + 1, 0, JSON.parse(JSON.stringify(otherCode)) as Field);
+      touched.push("added the “tell us about it” follow-up");
+    }
+  }
+
   for (const key of ["sessions", "dietary"]) {
     const live = doc.fields.find((f) => f.key === key);
     const code = TRAINING_WEEK_FORM.fields.find((f) => f.key === key);

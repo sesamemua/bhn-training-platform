@@ -4,7 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FormFillView } from "../../src/components/workspace/FormFillView";
 import {
-  ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT, TRAINING_WEEK_FORM,
+  ACCEPTED, DIET_OTHER, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT, NO_DIET, TRAINING_WEEK_FORM,
 } from "../../src/lib/formbuilder/training-week";
 import { parseForm, type BuiltForm } from "../../src/lib/formbuilder/types";
 import { hasLink } from "../../src/lib/formbuilder/linkify";
@@ -407,11 +407,13 @@ test("the Symposium question offers the three real answers", () => {
   assert.ok(!q.required, "the Symposium is a different event — this is not a condition of anything");
 });
 
-test("dietary requirements can be answered with N/A", () => {
+test("dietary can be answered with “no requirements”, as an option", () => {
   // Blank meant either "none" or "have not got to it", and whoever is
-  // ordering lunch needs the difference.
+  // ordering lunch needs the difference. It was an N/A tick beside a
+  // text box; now the list carries it, first, where a person looks.
   const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "dietary")!;
-  assert.match(q.noneLabel ?? "", /N\/A/);
+  assert.equal(q.options[0], NO_DIET);
+  assert.equal(q.noneLabel, undefined, "the text-box N/A went with the text box");
 });
 
 test("a short list of choices renders as radios, not a dropdown", () => {
@@ -717,4 +719,57 @@ test("a question with no cap refuses nothing", () => {
     React.createElement(SessionCalendar, { field: uncapped, chosen: SESSIONS_2026.slice(0, 5), onToggle: () => {} }),
   );
   assert.ok(!html.includes("disabled"), "an uncapped question is refusing picks");
+});
+
+/* ── dietary: a standard list, plus room for the exception ───────── */
+
+test("dietary is a list people pick from, not a box they type into", () => {
+  // Free text produced sixty spellings of the same eight things, and
+  // somebody had to sort them by hand before anything could be ordered.
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "dietary")!;
+  assert.equal(f.type, "multi");
+  for (const expected of ["Vegetarian", "Vegan", "Halal", "Kosher", "Nut allergy"]) {
+    assert.ok(f.options.includes(expected), `no option for ${expected}`);
+  }
+  assert.ok(f.options.includes(NO_DIET));
+  assert.ok(f.options.includes(DIET_OTHER));
+});
+
+test("no dietary option contains a comma, or the follow-up never appears", () => {
+  // `contains` splits its value on commas exactly as `any of` does.
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "dietary")!;
+  for (const o of f.options) assert.ok(!o.includes(","), `"${o}" has a comma in it`);
+});
+
+test("the free-text box appears only for the person who needs it", () => {
+  // A permanently visible "anything else?" under a list invites
+  // everybody to restate what they have already ticked.
+  const see = (dietary: string[]) =>
+    visibleFields(TRAINING_WEEK_FORM, { bhn_status: ACCEPTED, dietary }).map((f) => f.key);
+  assert.ok(!see([]).includes("dietary_other"));
+  assert.ok(!see(["Vegan"]).includes("dietary_other"));
+  assert.ok(see([DIET_OTHER]).includes("dietary_other"));
+  assert.ok(see(["Vegan", DIET_OTHER]).includes("dietary_other"), "ticked alongside others too");
+});
+
+test("and it is required once it appears — an empty box answers nothing", () => {
+  const gaps = missing(TRAINING_WEEK_FORM, { bhn_status: ACCEPTED, dietary: [DIET_OTHER] });
+  assert.ok(gaps.some((f) => f.key === "dietary_other"));
+});
+
+test("“no requirements” rules the others out", () => {
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "dietary")!;
+  assert.equal(f.exclusiveOption, NO_DIET);
+  // Ticked next to "Vegan" it is not an answer, it is two answers
+  // contradicting each other, and the caterer cannot tell which one to
+  // believe.
+  assert.ok(f.options.indexOf(NO_DIET) === 0, "and it reads first, where a person looks for it");
+});
+
+test("the whole dietary question survives being stored and read back", () => {
+  const back = parseForm(JSON.parse(JSON.stringify(TRAINING_WEEK_FORM)));
+  const f = back.fields.find((x) => x.key === "dietary")!;
+  assert.equal(f.exclusiveOption, NO_DIET);
+  assert.equal(f.options.length, 10);
+  assert.ok(back.fields.some((x) => x.key === "dietary_other"));
 });

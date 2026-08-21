@@ -32,7 +32,7 @@ import { chosenClashes } from "@/lib/formbuilder/calendar";
 import { FormFillView } from "./FormFillView";
 import { SessionCalendar } from "./SessionCalendar";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
-import { readSheet, saveForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
+import { readSheet, saveForm, submitBuiltForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
 
 const CARD = "rounded-lg border border-line bg-card p-3";
 const LABEL = "text-[10.5px] font-bold uppercase tracking-[0.12em] text-subtle";
@@ -54,8 +54,16 @@ const PRIMARY =
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 
 export function FormBuilder({
-  formId, initial, canEdit, title = "Form",
-}: { formId: string; initial: BuiltForm; canEdit: boolean; title?: string }) {
+  formId, initial, canEdit, title = "Form", slug,
+}: {
+  formId: string; initial: BuiltForm; canEdit: boolean; title?: string;
+  /**
+   * When given, Preview's Submit really files a test submission against
+   * this form. Without it Preview stays a look — which is right in the
+   * general builder, where you may be editing a form that is live.
+   */
+  slug?: string;
+}) {
   const [doc, setDoc] = useState<BuiltForm>(initial);
   /*
    * Two views of one document, and the toggle lives HERE rather than a
@@ -176,7 +184,22 @@ export function FormBuilder({
           would throw both away, which is exactly the round trip this
           toggle exists to make cheap. */}
       <div hidden={view !== "fill"}>
-        <FormFillView doc={doc} title={title} />
+        <FormFillView
+          doc={doc}
+          title={title}
+          submit={
+            slug
+              ? async (answers) => {
+                  // The SAVED form is what gets submitted against, not
+                  // the unsaved document on screen — the server reads
+                  // the row. Said out loud rather than silently
+                  // validating against something nobody stored.
+                  const r = await submitBuiltForm(slug, answers as Record<string, unknown>, { test: true });
+                  return { ok: r.ok, problems: r.problems };
+                }
+              : undefined
+          }
+        />
       </div>
 
       <div ref={wrapRef} hidden={view !== "setup"} className="mt-4 flex items-start gap-0">

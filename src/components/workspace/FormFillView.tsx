@@ -34,13 +34,26 @@ const RADIO_MAX = 6;
 const FIELD =
   "mt-2 w-full rounded-lg border border-line bg-elevated px-3 py-2.5 text-[14px] text-fg outline-none transition-colors focus-visible:border-brand-500";
 
-export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) {
+export function FormFillView({
+  doc, title, submit,
+}: {
+  doc: BuiltForm;
+  title: string;
+  /**
+   * Actually file it. Absent means this is a look, not a submission —
+   * the builder's own preview passes nothing.
+   */
+  submit?: (answers: Answers) => Promise<{ ok: boolean; problems?: string[] }>;
+}) {
   const [stage, setStage] = useState<FieldStage>("registration");
   const [answers, setAnswers] = useState<Answers>({});
   // Only after Submit. A form that scolds you about question 14 while
   // you are still on question 2 is a form that is wrong about you.
   const [tried, setTried] = useState(false);
   const [done, setDone] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [refused, setRefused] = useState<string[]>([]);
 
   const shown = useMemo(() => visibleFields(doc, answers, stage), [doc, answers, stage]);
   // Notes are not questions, so they are not counted as any.
@@ -154,7 +167,10 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
       ?.querySelector<HTMLElement>(`[data-q="${CSS.escape(opened.key)}"] input, [data-q="${CSS.escape(opened.key)}"] select, [data-q="${CSS.escape(opened.key)}"] textarea`)
       ?.focus();
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  const reset = () => { setAnswers({}); setTried(false); setDone(false); setReach(1); setHi(1); setAll(false); };
+  const reset = () => {
+    setAnswers({}); setTried(false); setDone(false); setSent(false); setRefused([]);
+    setReach(1); setHi(1); setAll(false);
+  };
 
   const answered = asked.filter(answeredAt).length;
 
@@ -163,7 +179,9 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
       {/* Said once, at the top, where it cannot be missed. */}
       <p className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-600">
         <Eye size={14} className="shrink-0" />
-        This is a preview. Fill it in as much as you like — nothing is sent and nobody is registered.
+        {submit
+          ? "The form as a registrant meets it. Submitting from here files a TEST entry — it appears in Admin → Registrants, marked as a test, and you can delete it there."
+          : "This is a preview. Fill it in as much as you like — nothing is sent and nobody is registered."}
       </p>
 
       {/* Two moments, and the second one is not on this form at all. */}
@@ -211,13 +229,26 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
         </p>
       )}
 
+      {refused.length > 0 && (
+        <div role="alert" className="mt-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3">
+          <p className="flex items-center gap-2 text-[13px] font-semibold text-red-500">
+            <AlertTriangle size={14} /> The server did not accept it
+          </p>
+          <ul className="mt-1.5 space-y-0.5">
+            {refused.map((p) => <li key={p} className="text-[12.5px] text-red-500">{p}</li>)}
+          </ul>
+        </div>
+      )}
+
       {done && !stopped && (
         <div role="status" className="mt-4 rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3">
           <p className="flex items-center gap-2 text-[13px] font-semibold text-emerald-600">
             <Check size={14} /> Complete — every required question has an answer.
           </p>
           <p className="mt-1 text-[12.5px] text-emerald-600">
-            A real submission would go to the coordinator from here. This one went nowhere.
+            {sent
+              ? "Filed. It is in Admin → Registrants, marked as a test — delete it there when you are done."
+              : "A real submission would go to the coordinator from here. This one went nowhere."}
           </p>
         </div>
       )}
@@ -298,10 +329,23 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
       {shown.length > 0 && ended && !stopped && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
-            className="rounded-lg bg-brand px-6 py-3 text-[14px] font-bold text-white transition-all hover:brightness-110"
-            onClick={() => { setTried(true); setDone(gaps.length === 0); }}
+            className="rounded-lg bg-brand px-6 py-3 text-[14px] font-bold text-white transition-all hover:brightness-110 disabled:opacity-50"
+            disabled={sending || sent}
+            onClick={async () => {
+              setTried(true);
+              setRefused([]);
+              if (gaps.length > 0) { setDone(false); return; }
+              if (!submit) { setDone(true); return; }
+              setSending(true);
+              // The server checks the same rules again — this is a
+              // public endpoint, and the disabled buttons above it are
+              // a courtesy, not a guarantee.
+              const r = await submit(answers).catch(() => ({ ok: false, problems: ["Could not reach the server."] }));
+              setSending(false);
+              if (r.ok) { setSent(true); setDone(true); } else setRefused(r.problems ?? ["It was not accepted."]);
+            }}
           >
-            {stage === "registration" ? "Submit registration" : "Send my answer"}
+            {sending ? "Submitting…" : sent ? "Submitted" : stage === "registration" ? "Submit registration" : "Send my answer"}
           </button>
           <button
             className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-semibold text-muted hover:bg-elevated"
@@ -309,7 +353,9 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
           >
             <RotateCcw size={13} /> Start again
           </button>
-          <span className="text-[12px] text-subtle">Checked for real. Sent nowhere.</span>
+          <span className="text-[12px] text-subtle">
+            {submit ? "Checked here and again on the server." : "Checked for real. Sent nowhere."}
+          </span>
         </div>
       )}
     </div>
@@ -341,10 +387,15 @@ function Question({
    */
   const cap = f.maxChoices;
   const atCap = cap !== undefined && arr.length >= cap;
+  const only = f.exclusiveOption;
   const pickMulti = (o: string) => {
     if (arr.includes(o)) { set(f.key, arr.filter((x) => x !== o)); return; }
     if (atCap) return;
-    set(f.key, [...arr, o]);
+    // "No requirements" and "Vegan" together is not an answer, it is
+    // two contradicting each other, and whoever orders the food has no
+    // way to know which one to believe.
+    if (only && o === only) { set(f.key, [only]); return; }
+    set(f.key, [...arr.filter((x) => x !== only), o]);
   };
 
   /*

@@ -169,6 +169,15 @@ export const FieldSchema = z.object({
    */
   maxChoices: z.number().int().min(1).max(50).optional(),
   /**
+   * One option on a "choose several" question that rules the rest out.
+   *
+   * "No requirements" ticked alongside "Vegan" is not an answer, it is
+   * two answers contradicting each other — and the person reading the
+   * catering list has no way to tell which one the caterer should
+   * believe. Picking it clears the others; picking another clears it.
+   */
+  exclusiveOption: z.string().max(120).optional(),
+  /**
    * ALL of these must hold for the field to be shown. An empty list
    * means always — the common case, and the one that should need no
    * ceremony to express.

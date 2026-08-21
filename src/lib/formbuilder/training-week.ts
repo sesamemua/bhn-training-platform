@@ -65,6 +65,14 @@ export const NO_ACCOUNT = "I am new to BioHubNet";
 
 export const BHN_STATUS_OPTIONS = [ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT];
 
+/*
+ * The two dietary answers that other things key off. NO COMMAS: the
+ * `contains` operator splits its value on them, exactly as `any of`
+ * does, so a comma here would silently stop the follow-up appearing.
+ */
+export const NO_DIET = "No dietary requirements";
+export const DIET_OTHER = "Something else — I will describe it";
+
 /** The two answers that mean "carry on and pick your sessions". */
 export const ELIGIBLE_STATUS = [ACCEPTED, EQUIP_APPLIED];
 
@@ -289,18 +297,50 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     },
     {
       /*
-       * Scoped out loud. The Symposium is asked about two questions
-       * earlier, and a bare "dietary requirements" between the two
-       * reads as covering both — so somebody tells us once and turns up
-       * on the Thursday to a lunch that does not know about them.
+       * A list, not a text box.
+       *
+       * "Dietary requirements" as free text produces sixty different
+       * spellings of the same eight things — "veggie", "no meat pls",
+       * "vegitarian" — and somebody has to read all of them and sort
+       * them by hand before anything can be ordered. A list is a
+       * standard answer; the box underneath is for the person whose
+       * needs a list cannot hold, which is a real person and not an
+       * afterthought.
+       *
+       * Scoped out loud, too. The Symposium is asked about two
+       * questions earlier, and a bare "dietary requirements" between
+       * the two reads as covering both — so somebody tells us once and
+       * turns up on the Thursday to a lunch that does not know.
        */
       id: "f_diet", key: "dietary", label: "Dietary requirements for Training Week meals",
-      type: "short_text", required: false, options: [], showWhen: [whenEligible],
-      // Blank is ambiguous — it could mean none, or it could mean you
-      // had not got to it. Whoever is ordering lunch needs the
-      // difference.
-      noneLabel: "N/A — no requirements",
-      help: "Requirements or allergies for the meals during Training Week, 26–28 October — the Lunch & Learns and the Tuesday pizza lunch. This does not cover the Symposium on 29 October: that is a separate registration and asks for its own.",
+      type: "multi", required: false, showWhen: [whenEligible],
+      options: [
+        NO_DIET,
+        "Vegetarian",
+        "Vegan",
+        "Halal",
+        "Kosher",
+        "Gluten-free / coeliac",
+        "Dairy-free / lactose intolerant",
+        "Nut allergy",
+        "Shellfish allergy",
+        DIET_OTHER,
+      ],
+      // Picking it clears the rest, and picking anything else clears it.
+      exclusiveOption: NO_DIET,
+      help: "Tick everything that applies, for the meals during Training Week, 26–28 October — the Lunch & Learns and the Tuesday pizza lunch. This does not cover the Symposium on 29 October: that is a separate registration and asks for its own.",
+    },
+    {
+      /*
+       * The escape hatch, and it only appears for the people who need
+       * it. A permanently visible "anything else?" box under a list
+       * invites everybody to restate what they already ticked.
+       */
+      id: "f_diet_other", key: "dietary_other",
+      label: "Tell us about it",
+      type: "long_text", required: true, options: [],
+      showWhen: [whenEligible, { field: "dietary", op: "contains", value: DIET_OTHER }],
+      help: "What you can and cannot eat, and how serious it is. If it is an allergy, say so plainly — the caterer is told, and severe allergies are handled separately from preferences.",
     },
     {
       /*

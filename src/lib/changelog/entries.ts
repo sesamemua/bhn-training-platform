@@ -4408,4 +4408,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "The Submit button works, and submissions show up in Admin",
+    body: "**Submit files a real entry.** From the Registration Form\u2019s Preview it records a submission marked as a **test**, so the whole path can be tried end to end \u2014 fill it in, submit, see it in Admin, delete it \u2014 without picking your own rows out of real ones by eye.\n\n**Admin \u2192 Registrants now opens with Submitted registrations.** The table under it is BOOKINGS \u2014 seats already given out \u2014 so until somebody is approved it is empty, which is exactly when the work is piling up. A submission is what somebody said; a booking is what we did about it. Each row shows who, when (the timestamp first-come-first-served is decided on), their answer to question one, and their sessions **in the order they ranked them**. Open one for every answer; delete the tests when you are done.\n\n**Every rule is checked again on the server.** The cap of three, options that are actually on the list, required questions, and \u201cno dietary requirements\u201d not being combinable with a requirement. The disabled buttons in the browser are a courtesy to whoever is filling the form in; a server action is a public endpoint.\n\n**Answers to questions somebody never saw are not stored.** Send a full form as somebody new to BioHubNet \u2014 who only ever sees question one \u2014 and only that answer is kept. Storing the rest would put things in the registrant sheet nobody was ever shown.\n\n**Question 7 is a list now.** Vegetarian, vegan, halal, kosher, gluten-free, dairy-free, nut allergy, shellfish allergy \u2014 plus \u201cSomething else \u2014 I will describe it\u201d, which opens a box and is required once ticked. Free text produced sixty spellings of the same eight things for somebody to sort by hand before anything could be ordered. \u201cNo dietary requirements\u201d sits first and clears the rest.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

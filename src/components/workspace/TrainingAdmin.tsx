@@ -18,10 +18,11 @@ import {
   type Applicant, type Rule, type RuleKind,
 } from "@/lib/allocation/model";
 import {
-  createWorkshop, loadEmailTemplates, previewAudience, removeWorkshop, resetEmailTemplate,
-  saveEmailTemplate, saveRules, saveSupportFormUrl, sendToAudience, updateWorkshop,
+  createWorkshop, deleteSubmission, loadEmailTemplates, loadSubmissions, previewAudience,
+  removeWorkshop, resetEmailTemplate, saveEmailTemplate, saveRules, saveSupportFormUrl,
+  sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
-import type { Audience } from "@/lib/allocation/admin-types";
+import type { Audience, SubmissionRow } from "@/lib/allocation/admin-types";
 import {
   BODY_MAX, fieldsUsed, MERGE_FIELDS, needsOneSession, refusesMultiSession, render,
   STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
@@ -915,6 +916,104 @@ function NewWorkshop({ eventId, onDone }: { eventId: string; onDone: () => void 
 
 // ── registrants ──────────────────────────────────────────────────────
 
+/**
+ * What people have sent in, before anybody has done anything about it.
+ *
+ * The table below this one is BOOKINGS — seats we have given out. Until
+ * a coordinator approves somebody there are none, so a registrant sheet
+ * that only reads bookings is empty exactly when the work is piling up.
+ * A submission is what somebody said; a booking is what we did about it.
+ */
+function Submissions() {
+  const [rows, setRows] = useState<SubmissionRow[] | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const reload = () => { start(async () => setRows(await loadSubmissions())); };
+  useEffect(() => { reload(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tests = (rows ?? []).filter((r) => r.isTest).length;
+
+  return (
+    <section className="mb-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className={LABEL}>Submitted registrations</p>
+        <span className="text-[11.5px] text-subtle">
+          {rows === null ? "Loading…" : `${rows.length} in total${tests ? ` · ${tests} test` : ""}`}
+        </span>
+      </div>
+
+      {rows !== null && rows.length === 0 && (
+        <p className="mt-2 rounded-lg border border-line bg-elevated/40 p-3 text-[12.5px] leading-relaxed text-muted">
+          Nothing yet. Open <span className="font-semibold text-fg">2026 Symposium → Registration Form</span>,
+          switch to <span className="font-semibold text-fg">Preview</span> and submit it — the entry lands here,
+          marked as a test, and you can delete it from this table.
+        </p>
+      )}
+
+      {rows !== null && rows.length > 0 && (
+        <ul className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
+          {rows.map((r) => (
+            <li key={r.id}>
+              <button
+                onClick={() => setOpenId(openId === r.id ? null : r.id)}
+                aria-expanded={openId === r.id}
+                className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left hover:bg-elevated/50"
+              >
+                <ChevronDown size={14} className={`mt-0.5 shrink-0 text-subtle transition-transform ${openId === r.id ? "rotate-180" : ""}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-semibold text-fg">{r.name || r.email || "No name given"}</span>
+                    {r.isTest && (
+                      <span className="rounded border border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] text-amber-600">test</span>
+                    )}
+                    <span className="font-mono text-[11px] text-subtle">
+                      {new Date(r.at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11.5px] text-muted">
+                    {r.email}{r.status ? ` · ${r.status}` : ""}
+                  </span>
+                  {r.sessions.length > 0 && (
+                    <span className="mt-1 flex flex-wrap gap-1.5">
+                      {r.sessions.map((sess, i) => (
+                        <span key={sess} className="inline-flex items-center gap-1 rounded border border-line bg-elevated px-1.5 py-0.5 text-[10.5px] text-muted">
+                          <span className="font-bold text-brand-500">{i + 1}</span>
+                          {sess.split(" · ").pop()}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </span>
+              </button>
+
+              {openId === r.id && (
+                <div className="border-t border-line bg-elevated/30 px-3.5 py-3">
+                  <dl className="grid gap-x-4 gap-y-1.5 sm:grid-cols-[minmax(0,220px)_1fr]">
+                    {Object.entries(r.answers).map(([q, a]) => (
+                      <div key={q} className="contents">
+                        <dt className="text-[11.5px] font-semibold text-subtle">{q}</dt>
+                        <dd className="text-[12.5px] text-fg">{a || "—"}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <button
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-semibold text-muted hover:border-red-500/50 hover:text-red-500 disabled:opacity-40"
+                    disabled={pending}
+                    onClick={() => start(async () => { await deleteSubmission(r.id); reload(); })}
+                  >
+                    <Trash2 size={12} /> Delete this {r.isTest ? "test " : ""}submission
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
   const [filter, setFilter] = useState("");
   const rows = useMemo(() => {
@@ -947,6 +1046,8 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
   }, [rows]);
 
   return (
+    <>
+      <Submissions />
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input
@@ -1008,6 +1109,7 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
         />
       </details>
     </div>
+    </>
   );
 }
 
