@@ -425,8 +425,14 @@ test("photography consent is a condition of submitting, not a question", () => {
   // pretending to be a choice, with no No the form would accept.
   assert.ok(!TRAINING_WEEK_FORM.fields.some((f) => f.key === "media_consent"));
   assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /photographed and filmed/i);
-  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /contact the coordinator/i,
-    "somebody who is not comfortable still needs to know who to talk to");
+  // Opting out happens on the day, with the crew who are standing
+  // there — not by writing to the coordinator weeks beforehand, which
+  // makes not wanting to be filmed a piece of admin you have to start.
+  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /photographer or the video crew/i,
+    "somebody who is not comfortable still needs to know who to tell");
+  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /on the day/i);
+  assert.ok(!/contact the coordinator/i.test(TRAINING_WEEK_FORM.submitNote ?? ""),
+    "it no longer sends them off to arrange it in advance");
 });
 
 test("the submit terms survive a round trip through storage", () => {

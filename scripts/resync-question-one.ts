@@ -119,6 +119,15 @@ async function main() {
     touched.push(key);
   }
 
+  // The terms beside Submit are ours too — they are the only record a
+  // registrant sees of what they are agreeing to, so a change to them
+  // must not sit in the code while the live form says something else.
+  const docAny = doc as { submitNote?: string };
+  if (TRAINING_WEEK_FORM.submitNote && docAny.submitNote !== TRAINING_WEEK_FORM.submitNote) {
+    docAny.submitNote = TRAINING_WEEK_FORM.submitNote;
+    touched.push("the terms beside Submit");
+  }
+
   // Nothing may still name an answer that no longer exists.
   const gone = was.filter((old) => !BHN_STATUS_OPTIONS.includes(old));
   const body = JSON.stringify(doc);

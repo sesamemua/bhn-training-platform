@@ -98,11 +98,16 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
    * It was a question with one box you had to tick, which is a checkbox
    * pretending to be a choice: there was no way to answer No that the
    * form would accept. Saying it plainly next to the button is more
-   * honest and one question shorter. Anybody who is not comfortable is
-   * told who to talk to, which the question also did.
+   * honest and one question shorter.
+   *
+   * Opting out happens ON THE DAY, with the crew, not by writing to the
+   * coordinator beforehand. Asking somebody to arrange it in advance
+   * makes not wanting to be filmed a piece of admin they have to
+   * initiate weeks early — most people will not, and will simply be
+   * uncomfortable instead. The photographer is standing right there.
    */
   submitNote:
-    "By submitting this registration you agree to be photographed and filmed at Training Week, and to BioHubNet using those pictures and recordings to promote its programmes. There will be a photographer and a video crew at the sessions. Pictures and footage that include you may appear on the BioHubNet website, on its social media, in newsletters, in reports to funders, and in printed material — they can be seen by anyone and may stay online indefinitely. You are giving this permission free of charge. If you would rather not be filmed, contact the coordinator before you register and they will talk it through with you.",
+    "By submitting this registration you agree to be photographed and filmed at Training Week, and to BioHubNet using those pictures and recordings to promote its programmes. There will be a photographer and a video crew at the sessions. Pictures and footage that include you may appear on the BioHubNet website, on its social media, in newsletters, in reports to funders, and in printed material — they can be seen by anyone and may stay online indefinitely. You are giving this permission free of charge. If you would rather not appear, tell the photographer or the video crew directly on the day \u2014 they are there to be asked, and they will keep you out of shot. You do not need to arrange anything in advance or explain why.",
   fields: [
     {
       id: "f_trainee", key: "bhn_status", label: "Where do you stand with BioHubNet?",
