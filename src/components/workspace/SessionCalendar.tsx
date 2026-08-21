@@ -78,7 +78,7 @@ export function SessionCalendar({
     return (
       <div className="mt-2 flex flex-wrap gap-2">
         {unscheduled.map((o) => (
-          <Chip key={o} label={o} on={chosen.includes(o)} onClick={() => onToggle(o)} />
+          <Chip key={o} label={o} rank={chosen.indexOf(o)} onClick={() => onToggle(o)} />
         ))}
       </div>
     );
@@ -118,7 +118,16 @@ export function SessionCalendar({
                 ))}
 
                 {slots.map((sl) => {
-                  const on = chosen.includes(sl.option);
+                  /*
+                   * RANK, from the order you clicked in.
+                   *
+                   * The question has always been called "choose and
+                   * rank", and the array already kept click order —
+                   * nothing on screen said so, so it read as a plain
+                   * multi-select and the order looked accidental.
+                   */
+                  const rank = chosen.indexOf(sl.option);
+                  const on = rank >= 0;
                   const clashes = clashing.some(([a, b]) => a === sl.option || b === sl.option);
                   const pos = place(sl, grid);
                   const against = slots.filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
@@ -145,8 +154,18 @@ export function SessionCalendar({
                         width: `calc(${100 / sl.lanes}% - 2px)`,
                       }}
                     >
-                      <span className="block truncate font-mono text-[9.5px] text-subtle">
-                        {sl.start}–{sl.end}
+                      <span className="flex items-center gap-1">
+                        {on && (
+                          // The number is the point of the cell once it
+                          // is picked, so it leads rather than sitting
+                          // under the name where the box may be cut off.
+                          <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
+                            {rank + 1}
+                          </span>
+                        )}
+                        <span className="min-w-0 truncate font-mono text-[9.5px] text-subtle">
+                          {sl.start}–{sl.end}
+                        </span>
                       </span>
                       <span className={`mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
                         {shortLabel(sl.option)}
@@ -169,12 +188,14 @@ export function SessionCalendar({
 
       <p className="mt-1.5 text-[11px] leading-snug text-subtle">
         Height is how long a session runs. Anything drawn side by side is on at the same time.
+        The number on a session is your order of preference — the order you picked them in.
+        Click one again to take it back; the rest close up.
       </p>
 
       {unscheduled.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {unscheduled.map((o) => (
-            <Chip key={o} label={o} on={chosen.includes(o)} onClick={() => onToggle(o)} />
+            <Chip key={o} label={o} rank={chosen.indexOf(o)} onClick={() => onToggle(o)} />
           ))}
         </div>
       )}
@@ -183,15 +204,21 @@ export function SessionCalendar({
 }
 
 /** An option with no time on it — nowhere to put it on the grid. */
-function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+function Chip({ label, rank, onClick }: { label: string; rank: number; onClick: () => void }) {
+  const on = rank >= 0;
   return (
     <button
       onClick={onClick}
       aria-pressed={on}
-      className={`rounded-md border px-2.5 py-1.5 text-[12px] transition-colors ${
+      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] transition-colors ${
         on ? "border-brand-500 bg-brand-500/12 font-semibold text-fg" : "border-line text-muted hover:bg-elevated"
       }`}
     >
+      {on && (
+        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
+          {rank + 1}
+        </span>
+      )}
       {label}
     </button>
   );

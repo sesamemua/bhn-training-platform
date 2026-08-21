@@ -4387,4 +4387,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Sessions can be ranked, and the dietary question says which event it is about",
+    body: "**\u201cChoose and rank your sessions\u201d now lets you rank them.** The question has been called that for weeks and only ever let you tick boxes. Your picks are numbered **1, 2, 3** in the order you click them, the numbers show on the calendar cells and again as a list underneath, and the question says what the order is for: it is what we go by when a room is oversubscribed. Clicking a session again takes it back and the rest close up.\n\nThe order was always being recorded \u2014 nothing on screen said so, so it read as a plain multi-select and the order looked accidental.\n\n**The dietary question is now explicitly about Training Week.** It sits two questions after the one asking whether you have registered for the Symposium, so a bare \u201cdietary restrictions\u201d between them reads as covering both \u2014 and somebody tells us once, then turns up on the Thursday to a lunch that does not know about them. It now names the meals it covers (the Lunch & Learns and the Tuesday pizza lunch, 26\u201328 October) and says plainly that the Symposium takes its own.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

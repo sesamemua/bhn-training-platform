@@ -94,6 +94,21 @@ async function main() {
 
   // The notes' wording comes from the code too, so the account language
   // and the address stay in step with the answers they belong to.
+  /*
+   * The sessions and dietary questions travel with them.
+   *
+   * The LABEL is only replaced where the live one is still the wording
+   * this file shipped: a coordinator who renamed a question in the
+   * builder meant it, and a sync that overwrites their words teaches
+   * them not to use the builder. Help text is ours and is replaced.
+   */
+  for (const key of ["sessions", "dietary"]) {
+    const live = doc.fields.find((f) => f.key === key);
+    const code = TRAINING_WEEK_FORM.fields.find((f) => f.key === key);
+    if (!live || !code) continue;
+    if (live.help !== code.help) { live.help = code.help; touched.push(`${key} hint`); }
+  }
+
   for (const key of ["need_programme_note", "need_account_note"]) {
     const live = doc.fields.find((f) => f.key === key);
     const code = TRAINING_WEEK_FORM.fields.find((f) => f.key === key);

@@ -567,3 +567,64 @@ test("the note for somebody who already has an account says the same about EQUIP
   const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === "need_programme_note")!;
   assert.match(n.help ?? "", /EQUIP does not require a BioHubNet training platform account/i);
 });
+
+/* ── ranking the sessions ────────────────────────────────────────── */
+
+import { SESSIONS_2026 } from "../../src/lib/formbuilder/training-week";
+
+test("the number on a session is the order it was clicked in", () => {
+  // The question has always been called "choose and rank". The array
+  // already kept click order; nothing on screen said so, so it read as
+  // a plain multi-select and the order looked accidental.
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  const clicked = [SESSIONS_2026[3], SESSIONS_2026[0], SESSIONS_2026[5]];
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: f, chosen: clicked, onToggle: () => {} }),
+  );
+  // Matched on the first word: "CCRM tour + Lunch & Learn" comes back
+  // from the renderer with the ampersand escaped, so the raw label does
+  // not appear in the markup at all.
+  const badgeIn = (option: string) => {
+    const name = option.split(" · ").pop()!.split(" ")[0];
+    const cell = html.split("<button").find((t) => t.includes(name));
+    assert.ok(cell, `no cell for ${name}`);
+    const m = cell.match(/bg-brand text-\[9px\] font-bold text-white">(\d)</);
+    return m ? m[1] : null;
+  };
+  clicked.forEach((opt, i) => assert.equal(badgeIn(opt), String(i + 1), `${opt} is not ranked ${i + 1}`));
+});
+
+test("a session nobody picked carries no number", () => {
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: f, chosen: [SESSIONS_2026[0]], onToggle: () => {} }),
+  );
+  const name = SESSIONS_2026[1].split(" · ").pop()!.split(" ")[0];
+  const cell = html.split("<button").find((t) => t.includes(name))!;
+  assert.ok(!/bg-brand text-\[9px\]/.test(cell), "an unpicked session is showing a rank");
+});
+
+test("the calendar says what the number means", () => {
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: f, chosen: [], onToggle: () => {} }),
+  );
+  assert.match(html, /order of preference/i);
+});
+
+test("the question says the ranking is what decides an oversubscribed room", () => {
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  assert.match(f.help ?? "", /in order of preference/i);
+  assert.match(f.help ?? "", /oversubscribed/i, "otherwise the order looks decorative");
+});
+
+test("the dietary question says it is Training Week, not the Symposium", () => {
+  // The Symposium is asked about two questions earlier, so a bare
+  // "dietary requirements" between them reads as covering both — and
+  // somebody tells us once, then turns up on the Thursday to a lunch
+  // that does not know about them.
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "dietary")!;
+  assert.match(f.label, /Training Week/i);
+  assert.match(f.help ?? "", /does not cover the Symposium/i);
+  assert.match(f.help ?? "", /separate registration/i);
+});

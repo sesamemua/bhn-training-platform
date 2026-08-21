@@ -209,7 +209,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       type: "multi", required: true, options: SESSIONS_2026, showWhen: [whenEligible],
       approveFromClash: 1,
       slots: SESSION_SLOTS,
-      help: `Pick the ones you want to attend — up to ${MAX_SESSIONS}. Sessions drawn side by side in the calendar run at the same time: you may choose both, but only one of a clashing pair can be approved. The two Monday company tours run back to back, so you can do both.`,
+      help: `Pick the ones you want to attend — up to ${MAX_SESSIONS} — in order of preference. The number on each one is your ranking, taken from the order you clicked, and it is what we go by when a room is oversubscribed. Sessions drawn side by side in the calendar run at the same time: you may choose both, but only one of a clashing pair can be approved. The two Monday company tours run back to back, so you can do both.`,
     },
     {
       /*
@@ -281,13 +281,19 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
         "Medical Affairs", "Business Development", "Other"],
     },
     {
-      id: "f_diet", key: "dietary", label: "Dietary requirements",
+      /*
+       * Scoped out loud. The Symposium is asked about two questions
+       * earlier, and a bare "dietary requirements" between the two
+       * reads as covering both — so somebody tells us once and turns up
+       * on the Thursday to a lunch that does not know about them.
+       */
+      id: "f_diet", key: "dietary", label: "Dietary requirements for Training Week meals",
       type: "short_text", required: false, options: [], showWhen: [whenEligible],
       // Blank is ambiguous — it could mean none, or it could mean you
       // had not got to it. Whoever is ordering lunch needs the
       // difference.
       noneLabel: "N/A — no requirements",
-      help: "Requirements or allergies, or tick N/A.",
+      help: "Requirements or allergies for the meals during Training Week, 26–28 October — the Lunch & Learns and the Tuesday pizza lunch. This does not cover the Symposium on 29 October: that is a separate registration and asks for its own.",
     },
     {
       /*

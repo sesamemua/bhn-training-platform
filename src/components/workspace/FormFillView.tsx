@@ -423,6 +423,22 @@ function Question({
             chosen={arr}
             onToggle={(o) => set(f.key, arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o])}
           />
+          {/* The order, spelled out.
+              Badges on a calendar say the rank of each cell; this says
+              the ranking, which is the thing being asked for and the
+              thing a coordinator reads off the answer. */}
+          {arr.length > 1 && (
+            <ol className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
+              {arr.map((o, i) => (
+                <li key={o} className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
+                    {i + 1}
+                  </span>
+                  {o.split(" · ").pop()}
+                </li>
+              ))}
+            </ol>
+          )}
           {clashing.length > 0 && (
             <p className="mt-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-2.5 text-[12.5px] leading-relaxed text-amber-600">
               {clashing.length === 1 ? "Two of your choices run" : `${clashing.length} pairs of your choices run`}{" "}
