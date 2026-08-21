@@ -68,7 +68,7 @@
     "mammoth": "^1.12.0",
     "next": "16.2.4",
     "next-auth": "^4.24.14",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^9.0.0",
     "otplib": "^12.0.1",
     "prisma": "^6.19.3",
     "qrcode-svg": "^1.1.0",
