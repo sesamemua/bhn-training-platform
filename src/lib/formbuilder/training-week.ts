@@ -48,9 +48,19 @@ export const ACCEPTED = "Yes — accepted into ENGAGE or EXPERIENCE";
  * EQUIP is deliberately different. Applying is the qualification, not
  * winning: Training Week exists to build the people who are trying, and
  * gating it on an award would shut out exactly the applicants it is for.
+ *
+ * Phrased as what DID happen — you submitted one — rather than as "an
+ * award is not required", which answers a question by naming the thing
+ * it is not, and leaves the reader working out whether they qualify.
  */
-export const EQUIP_APPLIED = "Yes — applied to EQUIP (an award is not required)";
-export const HAS_ACCOUNT = "I have a BioHubNet account but I am not in a programme";
+export const EQUIP_APPLIED = "Yes — I have submitted an EQUIP application";
+/*
+ * "Training platform account", not "account" — a reader has several,
+ * and this is the one that matters. Kept under 60 characters because
+ * the flow chart draws these as its own options and its schema DROPS a
+ * longer one, taking the whole question with it.
+ */
+export const HAS_ACCOUNT = "I have a training platform account but no programme";
 export const NO_ACCOUNT = "I am new to BioHubNet";
 
 export const BHN_STATUS_OPTIONS = [ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT];
@@ -97,7 +107,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     {
       id: "f_trainee", key: "bhn_status", label: "Where do you stand with BioHubNet?",
       type: "choice", required: true, options: BHN_STATUS_OPTIONS, showWhen: [],
-      help: "Training Week is for people already in a BioHubNet programme. Having an account is not the same as being in one. If you have applied to EQUIP you count, whether or not the application was funded — applying is the qualification, not winning.",
+      help: "Training Week is for people already in a BioHubNet programme. Having a BioHubNet training platform account is not the same as being in a programme. Submitting an EQUIP application counts, whether or not it was funded — applying is the qualification, not winning.",
     },
     {
       /*
@@ -112,22 +122,27 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       label: "One step first: join a programme.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: HAS_ACCOUNT }],
-      help: "You have an account, which is what ENGAGE and EXPERIENCE need. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever fits — EQUIP does not use the training platform at all, and an application to it counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
+      help: "You already have a BioHubNet training platform account, which is what ENGAGE and EXPERIENCE need. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever fits. EQUIP does not require a BioHubNet training platform account — you apply to it directly, and the application counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
     },
     {
       /*
        * Two routes, and they are not the same length.
        *
        * ENGAGE and EXPERIENCE run ON the training platform, so they need
-       * an account first. EQUIP does not — you apply to it directly.
-       * Telling a would-be EQUIP applicant to go and make a platform
-       * account is sending them to do something nobody needs from them.
+       * an account there first. EQUIP does not — you apply to it
+       * directly. Telling a would-be EQUIP applicant to go and make a
+       * training platform account is sending them to do something
+       * nobody needs from them.
+       *
+       * "Account" on its own was doing too much work: a reader has more
+       * than one, and the one that matters here is the training
+       * platform's. Every mention names it now.
        */
       id: "f_needacct", key: "need_account_note", stopsHere: true,
       label: "Two steps first: an account, then a programme.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: NO_ACCOUNT }],
-      help: "For ENGAGE or EXPERIENCE: create a BioHubNet account, then apply — both run on the training platform, so the account comes first. EQUIP is different and does not need one: you apply to EQUIP directly, and the application counts from the moment you submit it, funded or not. Start at biohubnet.ca, then come back to this form.",
+      help: "For ENGAGE or EXPERIENCE: create a BioHubNet training platform account, then apply to the programme — both run on that platform, so the account comes first. EQUIP does not require a BioHubNet training platform account: you apply to EQUIP directly, and the application counts from the moment you submit it, funded or not. Start at biohubnet.ca, then come back to this form.",
     },
     {
       id: "f_tname", key: "trainee_name", label: "The name we know you by",

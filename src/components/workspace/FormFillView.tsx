@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Eye, RotateCcw } from "lucide-react";
 import { chosenClashes } from "@/lib/formbuilder/calendar";
+import { linkify } from "@/lib/formbuilder/linkify";
 import { missing, optionsFor, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
 import { SessionCalendar } from "./SessionCalendar";
@@ -280,7 +281,7 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
           submitted have no business above that button. */}
       {shown.length > 0 && ended && !stopped && stage === "registration" && doc.submitNote && (
         <p className="mt-5 rounded-xl border border-line bg-elevated/60 p-4 text-[12.5px] leading-relaxed text-muted">
-          {doc.submitNote}
+          <Linked text={doc.submitNote} />
         </p>
       )}
 
@@ -324,7 +325,11 @@ function Question({
     return (
       <div className="bg-elevated/40 px-6 py-4">
         <p className="text-[14px] font-semibold leading-snug text-fg">{f.label}</p>
-        {f.help && <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{f.help}</p>}
+        {f.help && (
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+            <Linked text={f.help} />
+          </p>
+        )}
       </div>
     );
   }
@@ -495,5 +500,37 @@ function NoneOption({
       />
       <span className={`text-[12.5px] ${on ? "font-semibold text-fg" : "text-muted"}`}>{f.noneLabel}</span>
     </label>
+  );
+}
+
+/**
+ * A sentence, with any address in it made clickable.
+ *
+ * A note that tells somebody where to go and then makes them select,
+ * copy and paste it has passed the last step back to them.
+ *
+ * Opened in a new tab with rel="noopener": the form is half filled in,
+ * and navigating away from it to read about a programme would throw
+ * that away.
+ */
+function Linked({ text }: { text: string }) {
+  return (
+    <>
+      {linkify(text).map((piece, i) =>
+        "href" in piece ? (
+          <a
+            key={i}
+            href={piece.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-brand-500 underline underline-offset-2 hover:text-brand-400"
+          >
+            {piece.text}
+          </a>
+        ) : (
+          <span key={i}>{piece.text}</span>
+        ),
+      )}
+    </>
   );
 }

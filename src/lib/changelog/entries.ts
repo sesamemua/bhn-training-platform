@@ -4380,4 +4380,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Question one: clearer answers, and biohubnet.ca is a link",
+    body: "**\u201cYes \u2014 applied to EQUIP (an award is not required)\u201d** now reads **\u201cYes \u2014 I have submitted an EQUIP application\u201d**. The old wording answered by naming the thing it is *not*, leaving the reader to work out whether that meant them.\n\n**Every mention of an account says which account.** A reader has several; the one that matters is the BioHubNet training platform account. The third answer reads \u201cI have a training platform account but no programme\u201d, and \u201cEQUIP is different and does not need one\u201d \u2014 which needed a second read to work out what \u201cone\u201d was \u2014 is now \u201cEQUIP does not require a BioHubNet training platform account\u201d.\n\n**biohubnet.ca is a link.** A note that tells somebody where to go and then makes them select it, copy it and paste it into a new tab has handed the last step back to them. It opens in a new tab, so a half-filled form is not thrown away.\n\nThe linkifier is deliberately narrow \u2014 a full URL or a bare domain, nothing else. A half-implemented markdown parser in a box a coordinator types into ends with a registrant reading raw asterisks.\n\nAn answer is a value a rule matches on, not a label, so the rewording moved every rule with it: five questions, two workflow steps and both notes. The script maps old to new by position and refuses if anything still names an answer that no longer exists.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

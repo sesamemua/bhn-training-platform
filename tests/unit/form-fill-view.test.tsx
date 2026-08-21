@@ -7,6 +7,7 @@ import {
   ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT, TRAINING_WEEK_FORM,
 } from "../../src/lib/formbuilder/training-week";
 import { parseForm, type BuiltForm } from "../../src/lib/formbuilder/types";
+import { hasLink } from "../../src/lib/formbuilder/linkify";
 
 /**
  * The registrant's view, rendered.
@@ -291,7 +292,12 @@ test("no option contains a comma, or every rule testing it breaks", () => {
 test("applying to EQUIP is enough — an award is not required", () => {
   // The point of Training Week is the people who are trying. Gating on
   // an award would shut out exactly the applicants it exists for.
-  assert.match(EQUIP_APPLIED, /award is not required/i);
+  //
+  // Phrased as what DID happen rather than as "an award is not
+  // required", which answers by naming the thing it is not and leaves
+  // the reader working out whether that means them.
+  assert.match(EQUIP_APPLIED, /submitted an EQUIP application/i);
+  assert.ok(!/not required|award/i.test(EQUIP_APPLIED), "it no longer describes itself by a negative");
   assert.deepEqual(seen({ bhn_status: EQUIP_APPLIED }), seen({ bhn_status: ACCEPTED }),
     "an EQUIP applicant sees the same form as an accepted trainee");
 });
@@ -499,6 +505,52 @@ test("every rule that tests question one names an answer it actually offers", ()
   }
 });
 
+test("every mention of an account says WHICH account", () => {
+  // A reader has more than one. The one that matters here is the
+  // training platform's, and "an account" on its own was doing too much
+  // work in a sentence telling somebody what to go and do.
+  const q1 = TRAINING_WEEK_FORM.fields.find((f) => f.key === "bhn_status")!;
+  const notes = ["need_programme_note", "need_account_note"].map(
+    (k) => TRAINING_WEEK_FORM.fields.find((f) => f.key === k)!,
+  );
+  for (const text of [q1.help ?? "", ...notes.map((n) => n.help ?? ""), HAS_ACCOUNT]) {
+    for (const m of text.matchAll(/\baccount\b/g)) {
+      const before = text.slice(Math.max(0, (m.index ?? 0) - 40), m.index);
+      assert.match(before, /training platform|platform/i, `"account" is unqualified in: …${before}account…`);
+    }
+  }
+});
+
+test("EQUIP is described by what it does not require, in plain words", () => {
+  for (const key of ["need_programme_note", "need_account_note"]) {
+    const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === key)!;
+    assert.match(n.help ?? "", /EQUIP does not require a BioHubNet training platform account/i,
+      `${key} still says it vaguely`);
+  }
+});
+
+test("both notes point at an address somebody can click", () => {
+  for (const key of ["need_programme_note", "need_account_note"]) {
+    const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === key)!;
+    assert.ok(hasLink(n.help ?? ""), `${key} names nowhere to go`);
+  }
+});
+
+test("the address in a note is rendered as a link, not as text to copy out", () => {
+  const doc: BuiltForm = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields
+      .filter((f) => f.key === "need_account_note")
+      .map((f) => ({ ...f, showWhen: [] })),
+  };
+  const html = paint(doc);
+  assert.match(html, /<a href="https:\/\/biohubnet\.ca"/);
+  // Opened in a new tab: the form is half filled in, and navigating
+  // away to read about a programme would throw that away.
+  assert.match(html, /target="_blank"/);
+  assert.match(html, /rel="noopener noreferrer"/);
+});
+
 test("somebody new to BioHubNet is told which route needs an account and which does not", () => {
   // ENGAGE and EXPERIENCE run on the training platform. EQUIP does not
   // — sending a would-be EQUIP applicant off to create a platform
@@ -506,11 +558,12 @@ test("somebody new to BioHubNet is told which route needs an account and which d
   const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === "need_account_note")!;
   assert.match(NO_ACCOUNT, /new to BioHubNet/i);
   assert.match(n.help ?? "", /For ENGAGE or EXPERIENCE/i, "the two-step route is named");
-  assert.match(n.help ?? "", /create a BioHubNet account/i, "and it says the account comes first");
-  assert.match(n.help ?? "", /EQUIP is different and does not need one/i, "and the one-step route is not buried");
+  assert.match(n.help ?? "", /create a BioHubNet training platform account/i, "and it says which account comes first");
+  assert.match(n.help ?? "", /EQUIP does not require a BioHubNet training platform account/i,
+    "and the one-step route is named plainly");
 });
 
 test("the note for somebody who already has an account says the same about EQUIP", () => {
   const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === "need_programme_note")!;
-  assert.match(n.help ?? "", /EQUIP does not use the training platform/i);
+  assert.match(n.help ?? "", /EQUIP does not require a BioHubNet training platform account/i);
 });
