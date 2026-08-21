@@ -4331,4 +4331,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Forms have a registrant\u2019s view, not just a builder\u2019s",
+    body: "The builder had a preview, but it was a builder\u2019s preview \u2014 admin-dense, in a 56% pane beside the workflow, captioned \u201c3 of 22 shown \u00b7 4 still needed\u201d. That answers *is my logic working*, which is a different question from *is this a good thing to receive*. You cannot tell whether a form is too long, whether the help text reads as help or as legal cover, or whether the consent question feels like a trap, from a pane showing three of its questions.\n\n**Set up / Preview**, toggled top-right on any form. Preview is full width, one readable column, and behaves for real: conditional questions appear and vanish, the session calendar is the same component the live form uses, clashing sessions warn, and Submit validates every required question \u2014 listing by name the ones still missing.\n\n**It sends nothing**, and says so on the page rather than in a tooltip, because someone will show this to a colleague and a colleague who thinks they registered is worse off than one who never saw it.\n\n**It reads the document as it is right now**, unsaved edits included, so a change can be checked before it reaches anybody. Checking an edit by saving it first is checking it on everybody.\n\nThe setup view stays \u2014 it is the only place questions, logic and the workflow can be changed. Both views stay mounted, so flipping between them never costs you an unsaved edit.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

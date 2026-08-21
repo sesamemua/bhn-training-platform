@@ -2306,6 +2306,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
   },
   {
+    id: "form-preview-view",
+    title: "See the form the way the person filling it in does",
+    body: "Every form now has two views, toggled top-right: **Set up** — the questions, the logic and the workflow — and **Preview**, which is the form as a registrant meets it. Full width, one readable column, real behaviour: conditional questions appear and vanish as they would, the session calendar is the same one the live form uses, clashes warn, and **Submit** validates for real. It sends nothing. Preview reads the document *as it is right now*, unsaved edits included, so you can check a change before it reaches anybody. The setup view is still where everything is changed — the preview is read-only by design.",
+    path: "/admin/workspace/symposium-2026/registration",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

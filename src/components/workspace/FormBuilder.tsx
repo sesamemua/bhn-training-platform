@@ -17,7 +17,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  AlertTriangle, ArrowDown, ArrowUp, Check, Loader2, Plus, RefreshCw, Table2, Trash2,
+  AlertTriangle, ArrowDown, ArrowUp, Check, Eye, Loader2, Plus, RefreshCw, Table2, Trash2,
+  Wrench,
 } from "lucide-react";
 import {
   CONDITION_OPS, FIELD_STAGES, FIELD_STAGE_LABEL, FIELD_TYPES, FIELD_TYPE_LABEL, keyFor,
@@ -27,7 +28,9 @@ import {
 import {
   missing, optionsFor, problems, visibleFields, walk, type Answers,
 } from "@/lib/formbuilder/logic";
-import { chosenClashes, clashes as overlaps, packWeek, type Placed } from "@/lib/formbuilder/calendar";
+import { chosenClashes } from "@/lib/formbuilder/calendar";
+import { FormFillView } from "./FormFillView";
+import { SessionCalendar } from "./SessionCalendar";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { readSheet, saveForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
 
@@ -51,9 +54,16 @@ const PRIMARY =
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 
 export function FormBuilder({
-  formId, initial, canEdit,
-}: { formId: string; initial: BuiltForm; canEdit: boolean }) {
+  formId, initial, canEdit, title = "Form",
+}: { formId: string; initial: BuiltForm; canEdit: boolean; title?: string }) {
   const [doc, setDoc] = useState<BuiltForm>(initial);
+  /*
+   * Two views of one document, and the toggle lives HERE rather than a
+   * level up so that Preview shows the document as it is right now —
+   * including edits that have not been saved. Checking a change by
+   * saving it first is checking it on everybody.
+   */
+  const [view, setView] = useState<"setup" | "fill">("setup");
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -135,14 +145,41 @@ export function FormBuilder({
           {saved && !dirty && <span className="text-[12.5px] text-muted">{saved}</span>}
 
           {found.length > 0 && (
-            <span className="ml-auto inline-flex items-center gap-1.5 text-[12.5px] text-amber-600">
+            <span className="inline-flex items-center gap-1.5 text-[12.5px] text-amber-600">
               <AlertTriangle size={13} /> {found.length} thing{found.length === 1 ? "" : "s"} to fix
             </span>
           )}
+
+          {/* Set up is what the form IS; Preview is what it is LIKE.
+              Both are needed and neither replaces the other — you
+              cannot change a question from the preview, and you cannot
+              tell whether a form is too long from the builder. */}
+          <span className="ml-auto inline-flex rounded-lg border border-line bg-elevated p-0.5">
+            {([["setup", "Set up", Wrench], ["fill", "Preview", Eye]] as const).map(([id, text, Icon]) => (
+              <button
+                key={id}
+                aria-pressed={view === id}
+                onClick={() => setView(id)}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                  view === id ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
+                }`}
+              >
+                <Icon size={13} /> {text}
+              </button>
+            ))}
+          </span>
         </div>
       </div>
 
-      <div ref={wrapRef} className="mt-4 flex items-start gap-0">
+      {/* Kept mounted, not swapped. The builder holds unsaved edits and
+          a half-dragged seam; unmounting it to look at the preview
+          would throw both away, which is exactly the round trip this
+          toggle exists to make cheap. */}
+      <div hidden={view !== "fill"}>
+        <FormFillView doc={doc} title={title} />
+      </div>
+
+      <div ref={wrapRef} hidden={view !== "setup"} className="mt-4 flex items-start gap-0">
         <div style={{ width: `${split}%` }} className="min-w-0 pr-3">
           <FieldList doc={doc} edit={edit} canEdit={canEdit} />
           <Sources doc={doc} edit={edit} canEdit={canEdit} />
@@ -690,138 +727,6 @@ function Workflow({
  * choice is worth expressing — and the consequence is spelled out
  * underneath rather than enforced by a disabled control.
  */
-/**
- * Sessions that compete for the same part of a day, transitively.
- *
- * Transitive because overlap is not: CL3 meets both Monday tours while
- * the tours do not meet each other, and drawing that needs all three in
- * one block with the tours stacked in a single lane. Groups come back
- * in start order, and so does each group.
- */
-function groupsOf(slots: Placed[]): Placed[][] {
-  const rest = [...slots].sort((a, b) => a.start.localeCompare(b.start) || a.option.localeCompare(b.option));
-  const out: Placed[][] = [];
-  while (rest.length > 0) {
-    const group = [rest.shift()!];
-    // Keep sweeping: a session added to the group can pull in another
-    // that the first member never touched.
-    for (let grew = true; grew; ) {
-      grew = false;
-      for (let i = rest.length - 1; i >= 0; i--) {
-        if (group.some((g) => overlaps(g, rest[i]))) { group.push(rest.splice(i, 1)[0]); grew = true; }
-      }
-    }
-    out.push(group.sort((a, b) => a.start.localeCompare(b.start)));
-  }
-  return out;
-}
-
-function SessionCalendar({
-  field, chosen, onToggle,
-}: { field: FormField; chosen: string[]; onToggle: (option: string) => void }) {
-  const week = useMemo(() => packWeek(field.slots), [field.slots]);
-  const clashing = useMemo(() => chosenClashes(field.slots, chosen), [field.slots, chosen]);
-  // Options with no time given still need somewhere to be chosen.
-  const unscheduled = field.options.filter((o) => !field.slots.some((s) => s.option === o));
-
-  const dayName = (d: string) =>
-    new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-
-  return (
-    <div className="mt-2">
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${week.length}, minmax(0,1fr))` }}>
-        {week.map(({ day, slots }) => (
-          <div key={day} className="min-w-0">
-            <p className="pb-1 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{dayName(day)}</p>
-            <div className="space-y-1.5">
-              {/* Grouped by OVERLAP, not by an identical start time.
-                  Sharing a start is neither necessary nor sufficient:
-                  CL3 runs 09:30–17:00 across both Monday tours without
-                  starting when either does, and grouping on the string
-                  drew the three of them as separate full-width rows
-                  with nothing to suggest they compete.
-
-                  Laid out as `lanes` columns, each a stack — a flat row
-                  cannot express Monday, where the two tours are
-                  consecutive and therefore share one lane. */}
-              {groupsOf(slots).map((group) => {
-                const lanes = Math.max(...group.map((s) => s.lane)) + 1;
-                return (
-                  <div key={group[0].option} className="flex gap-1.5">
-                    {Array.from({ length: lanes }, (_, lane) => (
-                      <div key={lane} className="min-w-0 flex-1 space-y-1.5">
-                    {group.filter((s) => s.lane === lane).map((sl) => {
-                      const on = chosen.includes(sl.option);
-                      const clashes = clashing.some(([a, b]) => a === sl.option || b === sl.option);
-                      // Counted against the ones it ACTUALLY overlaps.
-                      // The group can hold sessions that never meet.
-                      const against = group.filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
-                      // Cells are wide, not tall: the label is what has
-                      // to be readable, not the duration.
-                      return (
-                        <button
-                          key={sl.option}
-                          onClick={() => onToggle(sl.option)}
-                          className={`block w-full min-w-0 rounded-md border p-2 text-left transition-colors ${
-                            on
-                              ? clashes
-                                ? "border-amber-500 bg-amber-500/12"
-                                : "border-brand-500 bg-brand-500/12"
-                              : "border-line bg-elevated hover:border-brand-400"
-                          }`}
-                        >
-                          <span className="block text-[11px] font-mono text-subtle">
-                            {sl.start}–{sl.end}
-                          </span>
-                          <span className={`mt-0.5 block text-[11.5px] leading-snug ${on ? "font-semibold text-fg" : "text-muted"}`}>
-                            {/* The day prefix is already the column. */}
-                            {sl.option.replace(/^[^·]+·\s*/, "")}
-                          </span>
-                          {against > 0 && (
-                            <span className="mt-1 block text-[10px] text-subtle">
-                              runs against {against} other{against > 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {unscheduled.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {unscheduled.map((o) => (
-            <button key={o} onClick={() => onToggle(o)}
-              className={`rounded-md border px-2 py-1 text-[11.5px] ${
-                chosen.includes(o) ? "border-brand-500 bg-brand-500/12 text-fg" : "border-line text-muted hover:bg-elevated"
-              }`}>
-              {o}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {clashing.length > 0 && (
-        <p className="mt-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-[11.5px] leading-snug text-amber-600">
-          {clashing.length === 1 ? "Two of your choices run" : `${clashing.length} pairs of your choices run`}{" "}
-          at the same time. You can leave both ticked — it tells us your second
-          preference — but only {field.approveFromClash ?? 1} of a clashing pair
-          can be approved.
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ── the live preview ─────────────────────────────────────────────────
-
 function Preview({
   doc, shown, answers, setAnswers, missingCount, stage, setStage,
 }: {

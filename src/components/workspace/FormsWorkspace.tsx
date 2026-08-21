@@ -80,7 +80,7 @@ export function FormsWorkspace({ forms, only = false }: { forms: FormRow[]; only
       {active ? (
         // Keyed by id: switching forms rebuilds the editor rather than
         // pouring a new document into the old one's state.
-        <FormBuilder key={active.id} formId={active.id} initial={active.doc} canEdit />
+        <FormBuilder key={active.id} formId={active.id} initial={active.doc} title={active.title} canEdit />
       ) : (
         <p className="mt-6 text-[13px] text-muted">
           No forms yet. Create one and it opens here.

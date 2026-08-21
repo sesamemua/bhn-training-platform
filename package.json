@@ -24,6 +24,7 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "deploy:demo": "bash scripts/deploy-demo.sh",
     "test:newsletter": "tsx --test tests/unit/newsletter-schedule.test.ts tests/unit/newsletter-config.test.ts",
+    "test:form": "tsx --test tests/unit/form-fill-view.test.tsx tests/unit/formbuilder-logic.test.ts tests/unit/formbuilder-calendar.test.ts",
     "test:email": "tsx --test tests/unit/email-templates.test.ts",
     "test:schedule": "tsx --test tests/unit/allocation-schedule.test.ts tests/unit/training-week-schedule.test.ts",
     "test:flowchart": "tsx --test tests/unit/flowchart-form.test.ts tests/unit/flowchart-route.test.ts tests/unit/flowchart-institutions.test.ts"
