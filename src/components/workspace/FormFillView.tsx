@@ -39,13 +39,15 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
   const [done, setDone] = useState(false);
 
   const shown = useMemo(() => visibleFields(doc, answers, stage), [doc, answers, stage]);
+  // Notes are not questions, so they are not counted as any.
+  const asked = shown.filter((f) => f.type !== "note");
   const gaps = useMemo(() => missing(doc, answers, stage), [doc, answers, stage]);
   const gapKeys = useMemo(() => new Set(gaps.map((f) => f.key)), [gaps]);
 
   const set = (k: string, v: Answers[string]) => { setAnswers({ ...answers, [k]: v }); setDone(false); };
   const reset = () => { setAnswers({}); setTried(false); setDone(false); };
 
-  const answered = shown.filter((f) => {
+  const answered = asked.filter((f) => {
     const v = answers[f.key];
     return Array.isArray(v) ? v.length > 0 : v !== undefined && v !== "";
   }).length;
@@ -79,9 +81,9 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
       <header className="mt-5">
         <h2 className="text-[26px] font-bold leading-tight tracking-tight text-fg">{title}</h2>
         <p className="mt-1.5 text-[13.5px] text-muted">
-          {shown.length} question{shown.length === 1 ? "" : "s"}
+          {asked.length} question{asked.length === 1 ? "" : "s"}
           {answered > 0 && ` · ${answered} answered`}
-          {shown.filter((f) => f.required).length > 0 && ` · questions marked * are required`}
+          {asked.some((f) => f.required) && ` · questions marked * are required`}
         </p>
       </header>
 
@@ -108,12 +110,12 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
       )}
 
       <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border-2 border-line-strong bg-card">
-        {shown.map((f, i) => (
+        {shown.map((f) => (
           <Question
             key={f.id}
             doc={doc}
             field={f}
-            index={i + 1}
+            index={f.type === "note" ? 0 : asked.indexOf(f) + 1}
             answers={answers}
             set={set}
             flagged={tried && gapKeys.has(f.key)}
@@ -156,6 +158,19 @@ function Question({
   const opts = optionsFor(doc, f);
   const arr = Array.isArray(answers[f.key]) ? (answers[f.key] as string[]) : [];
   const clashing = f.slots.length > 0 ? chosenClashes(f.slots, arr) : [];
+
+  /*
+   * A note is a thing the form SAYS. No number, no asterisk, no input —
+   * numbering it would make somebody look for the box to fill in.
+   */
+  if (f.type === "note") {
+    return (
+      <div className="bg-elevated/40 px-6 py-4">
+        <p className="text-[14px] font-semibold leading-snug text-fg">{f.label}</p>
+        {f.help && <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{f.help}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className={`px-6 py-5 ${flagged ? "bg-red-500/[0.04]" : ""}`}>

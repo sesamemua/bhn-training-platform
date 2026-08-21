@@ -57,6 +57,20 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       help: "A current trainee has been accepted into ENGAGE, EXPERIENCE or EQUIP. Having an account on the BioHubNet training platform is not the same thing — if you registered but were not accepted into a programme, answer No. Current trainees get priority consideration for Training Week places.",
     },
     {
+      /*
+       * A reply to "No", not a footnote under the next question.
+       *
+       * Answering no used to move silently on, which reads as the form
+       * having nothing to say to you — when in fact you can register,
+       * and there is a route to being considered first.
+       */
+      id: "f_notrainee", key: "not_trainee_note",
+      label: "You can still register — and there is a way in.",
+      type: "note", required: false, options: [],
+      showWhen: [{ field: "trainee", op: "is", value: "No" }],
+      help: "Training Week is open to HQP from our 41 partner institutions, so please carry on. Current BioHubNet trainees are considered first, and becoming one is what changes that: to learn about ENGAGE, EXPERIENCE and EQUIP, visit biohubnet.ca.",
+    },
+    {
       id: "f_tname", key: "trainee_name", label: "The name we know you by",
       type: "short_text", required: true, options: [],
       showWhen: [{ field: "trainee", op: "is", value: "Yes" }],
@@ -66,7 +80,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       id: "f_temail", key: "trainee_email", label: "The email registered with BioHubNet",
       type: "email", required: true, options: [],
       showWhen: [{ field: "trainee", op: "is", value: "Yes" }],
-      help: "Your institutional email, or the secondary email registered with us. It is checked against the trainee roster and used for nothing else on this form.",
+      help: "Your institutional email, or the secondary email registered with us. We check it against the BioHubNet trainee list to confirm your status — it is used for nothing else on this form. If we cannot find it, your registration still goes through; it just is not counted as a trainee one.",
     },
     {
       id: "f_prog", key: "bhn_programs", label: "Which programmes are you in?",
@@ -74,10 +88,28 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       showWhen: [{ field: "trainee", op: "is", value: "Yes" }],
     },
     {
-      id: "f_travel", key: "travel_origin", label: "Where would you travel from?",
-      type: "short_text", required: false, options: [],
+      /*
+       * "Where would you travel from?" asked for a fact and left the
+       * registrant to guess what it was for. This asks the question the
+       * decision actually turns on, and says what a Yes might get you.
+       */
+      id: "f_travel2h", key: "travel_over_2h",
+      label: "Is your travel time to Toronto more than 2 hours?",
+      type: "yesno", required: false, options: [],
       showWhen: [{ field: "trainee", op: "is", value: "Yes" }],
-      help: "City or town, if you need travel support. Subject to approval.",
+      help: "Door to door, one way. If it is, you may qualify for travel assistance — we will write to you separately about what is available and what we need from you.",
+    },
+    {
+      // Asked only of the people it is relevant to. Asking everybody
+      // for a postcode to settle a question most of them answered no
+      // to is how a form gets long for no reason.
+      id: "f_postcode", key: "postcode", label: "Your postal code",
+      type: "short_text", required: false, options: [],
+      showWhen: [
+        { field: "trainee", op: "is", value: "Yes" },
+        { field: "travel_over_2h", op: "is", value: "Yes" },
+      ],
+      help: "So we can work out the distance. Nothing else is done with it.",
     },
     { id: "f_first", key: "first_name", label: "First name", type: "short_text", required: true, options: [], showWhen: [] },
     { id: "f_last", key: "last_name", label: "Last name", type: "short_text", required: true, options: [], showWhen: [] },
@@ -159,7 +191,18 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       type: "short_text", required: false, options: [], showWhen: [],
       help: "Requirements or allergies. Blank if none.",
     },
-    { id: "f_news", key: "newsletter_optin", label: "Send me the BioHubNet newsletter", type: "yesno", required: false, options: [], showWhen: [] },
+    {
+      /*
+       * Three answers, because there are three.
+       *
+       * Yes/No made an existing subscriber pick between implying they
+       * want signing up again and implying they do not want it at all.
+       */
+      id: "f_news", key: "newsletter_optin", label: "Send me the BioHubNet newsletter",
+      type: "choice", required: false, showWhen: [],
+      options: ["Yes, sign me up", "No thanks", "I am already subscribed"],
+      help: "Once a month. You can unsubscribe from any issue.",
+    },
     {
       /*
        * One box, and ticking it IS the agreement.

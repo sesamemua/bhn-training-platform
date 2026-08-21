@@ -770,6 +770,14 @@ function Preview({
       <div className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
         {shown.map((f) => {
           const opts = optionsFor(doc, f);
+          if (f.type === "note") {
+            return (
+              <div key={f.id} className="bg-elevated/50 px-4 py-3">
+                <p className="text-[12.5px] font-semibold text-fg">{f.label}</p>
+                {f.help && <p className="mt-0.5 text-[11px] leading-snug text-muted">{f.help}</p>}
+              </div>
+            );
+          }
           return (
             <label key={f.id} className="block px-4 py-3.5">
               {f.type !== "consent" && (

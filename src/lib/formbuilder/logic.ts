@@ -87,7 +87,10 @@ export function missing(
   stage: FieldStage = "registration",
 ): FormField[] {
   return visibleFields(form, answers, stage).filter(
-    (f) => f.required && asList(answers[f.key]).length === 0,
+    // A note asks nothing, so there is nothing it can be missing. Marked
+    // required by accident it would otherwise block the form forever
+    // with no field to type into.
+    (f) => f.type !== "note" && f.required && asList(answers[f.key]).length === 0,
   );
 }
 

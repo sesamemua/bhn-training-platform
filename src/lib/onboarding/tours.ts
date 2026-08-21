@@ -2336,6 +2336,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
   },
   {
+    id: "registration-question-revisions",
+    title: "The registration questions answer back",
+    body: "Four changes to the Training Week form. Answering **No** to the trainee question now shows a note \u2014 you can still register, and biohubnet.ca is where to learn about the programmes \u2014 instead of moving silently on. The **trainee email** says it is checked against the trainee list, and that not being found does not stop the registration. **\u201cWhere would you travel from?\u201d** is now *Is your travel time more than 2 hours?*, which is what the out-of-town rule actually turns on, and the **postal code** is asked only of people who say yes. The **newsletter** question gained *I am already subscribed*. There is also a new **Note** question type in the builder: it says something and asks nothing.",
+    path: "/admin/workspace/symposium-2026/registration",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

@@ -198,3 +198,79 @@ test("two sessions in the same lane never overlap in time", () => {
     }
   }
 });
+
+/* ── the revised questions ───────────────────────────────────────── */
+
+import { visibleFields, missing } from "../../src/lib/formbuilder/logic";
+
+const seen = (answers: Record<string, string>) =>
+  visibleFields(TRAINING_WEEK_FORM, answers).map((f) => f.key);
+
+test("saying No to the trainee question gets a reply, not silence", () => {
+  // Answering no used to move straight on, which reads as the form
+  // having nothing to say to you — when you can in fact register.
+  assert.ok(!seen({}).includes("not_trainee_note"), "the note is not shown before the question is answered");
+  assert.ok(seen({ trainee: "No" }).includes("not_trainee_note"));
+  assert.ok(!seen({ trainee: "Yes" }).includes("not_trainee_note"));
+});
+
+test("the reply says where to go", () => {
+  const note = TRAINING_WEEK_FORM.fields.find((f) => f.key === "not_trainee_note")!;
+  assert.equal(note.type, "note");
+  assert.match(note.help ?? "", /biohubnet\.ca/);
+  assert.match(note.help ?? "", /still register|carry on/i);
+});
+
+test("a note is never something you can fail to answer", () => {
+  // It has no input. Marked required by accident it would block the
+  // form forever with nothing to type into.
+  const withNote = missing(TRAINING_WEEK_FORM, { trainee: "No" });
+  assert.ok(!withNote.some((f) => f.type === "note"));
+});
+
+test("the travel question asks what the decision turns on, and says why", () => {
+  const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "travel_over_2h")!;
+  assert.equal(q.type, "yesno");
+  assert.match(q.label, /more than 2 hours/i);
+  assert.match(q.help ?? "", /travel assistance/i);
+  assert.ok(!TRAINING_WEEK_FORM.fields.some((f) => f.key === "travel_origin"), "the old question is gone");
+});
+
+test("the postal code is asked only of the people it is about", () => {
+  assert.ok(!seen({ trainee: "Yes" }).includes("postcode"), "not before the travel answer");
+  assert.ok(!seen({ trainee: "Yes", travel_over_2h: "No" }).includes("postcode"), "not on a No");
+  assert.ok(seen({ trainee: "Yes", travel_over_2h: "Yes" }).includes("postcode"));
+});
+
+test("the trainee email says what is done with it", () => {
+  const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "trainee_email")!;
+  assert.match(q.help ?? "", /trainee list/i);
+  // And that not being found is not a rejection — the workflow says so,
+  // so the question has to as well.
+  assert.match(q.help ?? "", /still goes through/i);
+});
+
+test("the newsletter offers the answer an existing subscriber would give", () => {
+  const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "newsletter_optin")!;
+  assert.equal(q.type, "choice");
+  assert.equal(q.options.length, 3);
+  assert.ok(q.options.some((o) => /already subscribed/i.test(o)));
+});
+
+test("a note renders as something said, with no input and no number", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(FormFillView, { doc: TRAINING_WEEK_FORM, title: "T" }),
+  );
+  assert.ok(!html.includes("You can still register"), "hidden until the question is answered");
+  // Rendered directly rather than through the form, so the note is
+  // definitely on screen for this assertion.
+  const noteOnly: typeof TRAINING_WEEK_FORM = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields.filter((f) => f.key === "not_trainee_note").map((f) => ({ ...f, showWhen: [] })),
+  };
+  const shown = renderToStaticMarkup(React.createElement(FormFillView, { doc: noteOnly, title: "T" }));
+  assert.match(shown, /You can still register/);
+  assert.ok(!shown.includes("<input"), "a note has nothing to fill in");
+  assert.ok(!shown.includes('title="Required"'), "a note is not required");
+  assert.match(shown, /0 questions/, "and it is not counted as one");
+});

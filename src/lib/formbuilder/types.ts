@@ -19,10 +19,16 @@ import { z } from "zod";
 export const FIELD_TYPES = [
   "short_text", "long_text", "email", "phone", "number", "date",
   "choice", "multi", "yesno", "consent", "lookup",
+  // Collects nothing. A form is a conversation, and a conversation
+  // sometimes has to SAY something — "you can still apply, here is
+  // where" — rather than ask. Putting that in the help text of the next
+  // question makes it a footnote to a question it is not about.
+  "note",
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
 export const FIELD_TYPE_LABEL: Record<FieldType, string> = {
+  note: "Note — says something, asks nothing",
   short_text: "Short text",
   long_text: "Paragraph",
   email: "Email",

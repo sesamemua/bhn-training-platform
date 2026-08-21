@@ -4352,4 +4352,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Four changes to the Training Week registration questions",
+    body: "**Saying \u201cNo\u201d to the trainee question now gets a reply.** It used to move silently on, which reads as the form having nothing to say to you \u2014 when in fact you can register, and there is a route to being considered first. Answering No now shows: you can still register as HQP from one of the 41 partner institutions, and to learn about ENGAGE, EXPERIENCE and EQUIP, visit biohubnet.ca.\n\n**The trainee email says what happens to it.** It is checked against the BioHubNet trainee list to confirm your status \u2014 and, importantly, not being found does not stop the registration; it just is not counted as a trainee one. The workflow already worked that way. The question now says so.\n\n**\u201cWhere would you travel from? POSTAL CODE\u201d is replaced by a question people can answer.** It now asks *Is your travel time to Toronto more than 2 hours?* and says what a Yes might get you \u2014 you may qualify for travel assistance. Only if you answer Yes are you asked for a postal code, which is the one case where it settles anything.\n\n**The newsletter question offers the answer an existing subscriber would actually give.** Yes / No made them choose between implying they wanted signing up again and implying they did not want it at all. It is now Yes, sign me up / No thanks / I am already subscribed.\n\nA new question type came with the first of these: a **Note**, which says something and asks nothing. Putting that text in the help of the next question would have made it a footnote to a question it is not about.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];
