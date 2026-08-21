@@ -4422,4 +4422,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "The registration form has a public URL",
+    body: "**`/apply/training-week-registration-2026`** \u2014 open to anyone with the link, **no sign-in**. That follows from the eligibility rule: an EQUIP applicant qualifies by having submitted an application, and EQUIP does not use the training platform, so requiring an account would shut out exactly the people question one was rewritten to let in.\n\nIt is the **same component** the coordinator previews in Admin, so a preview cannot be a different form from the real one. A closed form says so plainly rather than letting somebody spend ten minutes on questions it will not accept.\n\n**Everything is decided on the server**, because the page is open: the answers must be answers to questions that were actually asked, and nothing else in the payload survives \u2014 including `__test`, the marker that lets a coordinator clear their own rows in bulk. The public path cannot set it at all.\n\n**A throttle**, counted in the database rather than in memory so it survives a serverless function being recycled: three from one address an hour, and a ceiling for the whole form that a changed address does not get past. Both say what to do instead, because somebody who is simply told \u201cno\u201d tries again.\n\nNot indexed by search engines \u2014 a form opens and closes, and a stale result sending somebody to a closed one is worse than no result.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

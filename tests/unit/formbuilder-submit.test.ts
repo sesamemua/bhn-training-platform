@@ -120,3 +120,38 @@ test("the same problem is not said twice", () => {
   const v = check({ sessions: ["nope", "also nope"] });
   assert.equal(new Set(v.problems).size, v.problems.length);
 });
+
+/* ── the form is open to anyone, so nothing in the payload is trusted ── */
+
+test("nothing that is not a question survives into what gets stored", () => {
+  // The public form takes a body from anybody with the link. If a key
+  // that is not a question could ride along, "__test" — the marker that
+  // lets a coordinator clear their own rows in bulk — becomes something
+  // a stranger can set on a real registration.
+  const v = check({
+    __test: true,
+    reviewStatus: "approved",
+    eligibilityApprovedAt: new Date().toISOString(),
+    id: "hijack",
+    userId: "somebody-else",
+  } as Record<string, unknown>);
+  assert.ok(v.ok, v.problems.join(" · "));
+  for (const smuggled of ["__test", "reviewStatus", "eligibilityApprovedAt", "id", "userId"]) {
+    assert.ok(!(smuggled in v.clean), `"${smuggled}" was kept`);
+  }
+  // And what IS kept is only ever question keys.
+  const questions = new Set(TRAINING_WEEK_FORM.fields.map((f) => f.key));
+  for (const key of Object.keys(v.clean)) assert.ok(questions.has(key), `"${key}" is not a question`);
+});
+
+test("an array where a single answer belongs does not become an array", () => {
+  const v = check({ bhn_status: [ACCEPTED, "and something else"] } as Record<string, unknown>);
+  // Either refused or flattened — never stored as a list on a question
+  // that offers one answer.
+  if (v.ok) assert.equal(typeof v.clean.bhn_status, "string");
+});
+
+test("an object where text belongs is stringified, not stored as an object", () => {
+  const v = check({ trainee_name: { evil: true } } as Record<string, unknown>);
+  if ("trainee_name" in v.clean) assert.equal(typeof v.clean.trainee_name, "string");
+});
