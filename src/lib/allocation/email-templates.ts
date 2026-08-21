@@ -153,12 +153,12 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
     id: "received",
     stage: "registration",
     name: "Registration received",
-    when: "As soon as somebody registers. It is the letter that stops them wondering.",
+    when: "Sent automatically the moment somebody submits the registration form. It is the letter that stops them wondering.",
     subject: "We have your registration for {{event}}",
     body:
       `Hello {{first_name}},
 
-You will already have an automatic note saying we have your registration for {{event}}. This one is from a person, and it tells you how long the wait actually is.
+We have your registration for {{event}}. This note is to say so, and to tell you how long the wait actually is.
 
 Places are limited and every registration is reviewed together rather than as it arrives, so it takes us two to three weeks to come back to you. We will write to you either way, whether or not we can offer you a place — you do not need to do anything in the meantime. If you have not heard from us after three weeks, reply to this message and we will chase it.
 

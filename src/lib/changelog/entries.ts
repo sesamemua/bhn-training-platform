@@ -4415,4 +4415,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "A confirmation screen after registering, and the acknowledgement email goes out by itself",
+    body: "**The form ends on a confirmation, not a tick.** Once it is in, the questions are gone \u2014 leaving them on screen under a green tick invites somebody to change an answer they have already submitted and then either send it twice or leave believing they have. The screen says three things in the order people want them: it worked, **we will come back to you within two to three weeks and will write either way**, and what you asked for \u2014 your sessions in the order you ranked them.\n\n**The acknowledgement email sends automatically.** Its wording is the **Registration received** letter from Admin \u2192 Email \u2192 Standing letters \u2014 not a second copy in the code, so changing the turnaround there changes what registrants are actually told.\n\n**It reports what happened rather than swallowing it.** Sent, sent-to-you (a test goes to the person running it, never to the address typed in the form), no mail server configured, failed, no address, no letter, or a merge field it could not fill. A failure says plainly that the registration is still recorded \u2014 somebody told the email failed assumes the whole thing did and registers again. Where nothing went out, the exact letter is shown so a coordinator can read what a registrant would have received.\n\nThe letter used to open by saying you would \u201calready have an automatic note\u201d. True when registration went through the events API; false for this form, which sends this one and nothing else.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

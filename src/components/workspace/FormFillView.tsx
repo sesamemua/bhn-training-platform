@@ -21,9 +21,11 @@
  * have registered is worse off than one who never saw it.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, Eye, RotateCcw } from "lucide-react";
+import { AlertTriangle, Check, Clock, Eye, Mail, RotateCcw } from "lucide-react";
 import { chosenClashes } from "@/lib/formbuilder/calendar";
 import { linkify } from "@/lib/formbuilder/linkify";
+import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
+import { rankedSessions } from "@/lib/formbuilder/submit";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
 import { ordinal, SessionCalendar } from "./SessionCalendar";
@@ -43,7 +45,7 @@ export function FormFillView({
    * Actually file it. Absent means this is a look, not a submission —
    * the builder's own preview passes nothing.
    */
-  submit?: (answers: Answers) => Promise<{ ok: boolean; problems?: string[] }>;
+  submit?: (answers: Answers) => Promise<{ ok: boolean; problems?: string[]; receipt?: Receipt }>;
 }) {
   const [stage, setStage] = useState<FieldStage>("registration");
   const [answers, setAnswers] = useState<Answers>({});
@@ -53,6 +55,7 @@ export function FormFillView({
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [receipt, setReceipt] = useState<Receipt | undefined>();
   const [refused, setRefused] = useState<string[]>([]);
 
   const shown = useMemo(() => visibleFields(doc, answers, stage), [doc, answers, stage]);
@@ -168,11 +171,31 @@ export function FormFillView({
       ?.focus();
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const reset = () => {
-    setAnswers({}); setTried(false); setDone(false); setSent(false); setRefused([]);
+    setAnswers({}); setTried(false); setDone(false); setSent(false); setRefused([]); setReceipt(undefined);
     setReach(1); setHi(1); setAll(false);
   };
 
   const answered = asked.filter(answeredAt).length;
+
+  /*
+   * Once it is in, the form is gone.
+   *
+   * Leaving the questions on screen under a green tick invites somebody
+   * to change an answer that has already been submitted, and then
+   * either submit again or leave believing they have. Registering is
+   * finished; the screen should say so and say what happens next.
+   */
+  if (sent) {
+    return (
+      <Confirmation
+        title={title}
+        answers={answers}
+        doc={doc}
+        receipt={receipt}
+        onAgain={reset}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto mt-5 max-w-[760px] pb-24">
@@ -340,9 +363,10 @@ export function FormFillView({
               // The server checks the same rules again — this is a
               // public endpoint, and the disabled buttons above it are
               // a courtesy, not a guarantee.
-              const r = await submit(answers).catch(() => ({ ok: false, problems: ["Could not reach the server."] }));
+              const r: { ok: boolean; problems?: string[]; receipt?: Receipt } =
+                await submit(answers).catch(() => ({ ok: false, problems: ["Could not reach the server."] }));
               setSending(false);
-              if (r.ok) { setSent(true); setDone(true); } else setRefused(r.problems ?? ["It was not accepted."]);
+              if (r.ok) { setSent(true); setDone(true); setReceipt(r.receipt); } else setRefused(r.problems ?? ["It was not accepted."]);
             }}
           >
             {sending ? "Submitting…" : sent ? "Submitted" : stage === "registration" ? "Submit registration" : "Send my answer"}
@@ -642,5 +666,109 @@ function Linked({ text }: { text: string }) {
         ),
       )}
     </>
+  );
+}
+
+/**
+ * What somebody sees once they have registered.
+ *
+ * Three things, in the order they will want them: it worked, when you
+ * will hear, and what you asked for. The timeline is the one everybody
+ * wants and nobody is told — a form that ends on "thank you" and
+ * nothing else produces a fortnight of people wondering whether it went
+ * through, and then registering again.
+ */
+function Confirmation({
+  title, answers, doc, receipt, onAgain,
+}: {
+  title: string;
+  answers: Answers;
+  doc: BuiltForm;
+  receipt: Receipt | undefined;
+  onAgain: () => void;
+}) {
+  const ranked = rankedSessions(doc, answers);
+  const line = receiptLine(receipt);
+  const shown = receipt && "preview" in receipt ? receipt.preview : null;
+  // Anything other than a plain "sent" is something a coordinator needs
+  // to see, not something to bury under a tick.
+  const wrong = receipt && receipt.state !== "sent" && receipt.state !== "sent-to-you";
+
+  return (
+    <div className="mx-auto mt-5 max-w-[720px] pb-24">
+      <div className="rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/[0.06] p-6">
+        <p className="flex items-center gap-2 text-[20px] font-bold leading-tight text-fg">
+          <Check size={22} className="shrink-0 text-emerald-600" />
+          That is your registration in.
+        </p>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
+          Thank you for registering for {title}. You do not need to do anything else.
+        </p>
+
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-line bg-card p-4">
+          <Clock size={16} className="mt-0.5 shrink-0 text-brand-500" />
+          <p className="text-[13px] leading-relaxed text-fg">
+            <strong>We will come back to you within two to three weeks.</strong> Places are limited
+            and every registration is reviewed together rather than as it arrives, so it takes that
+            long. We will write to you either way — whether or not we can offer you a place. If you
+            have not heard after three weeks, reply to the email and we will chase it.
+          </p>
+        </div>
+
+        {line && (
+          <p
+            className={`mt-3 flex items-start gap-2 text-[12.5px] leading-relaxed ${
+              wrong ? "text-amber-600" : "text-muted"
+            }`}
+          >
+            {wrong ? <AlertTriangle size={14} className="mt-0.5 shrink-0" /> : <Mail size={14} className="mt-0.5 shrink-0" />}
+            {line}
+          </p>
+        )}
+      </div>
+
+      {ranked.length > 0 && (
+        <section className="mt-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">What you asked for</p>
+          <ol className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
+            {ranked.map((o, i) => (
+              <li key={o} className="flex items-baseline gap-3 px-4 py-2.5">
+                <span className="w-9 shrink-0 text-[11px] font-bold uppercase tracking-wide text-brand-500">
+                  {ordinal(i + 1)}
+                </span>
+                <span className="min-w-0 flex-1 text-[13px] text-fg">{o.split(" · ").pop()}</span>
+                <span className="font-mono text-[11px] text-subtle">{o.split(" · ")[1]}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-1.5 text-[11.5px] leading-snug text-subtle">
+            Ranked in the order you chose them. Where a room is oversubscribed, that order is what
+            we go by.
+          </p>
+        </section>
+      )}
+
+      {/* Shown when the letter did not go out, so a coordinator can see
+          exactly what a registrant would have received rather than
+          guessing at it. */}
+      {shown && wrong && (
+        <details className="mt-4 rounded-xl border border-line bg-elevated/40 p-3">
+          <summary className="cursor-pointer text-[12.5px] font-semibold text-fg">
+            The letter that would have gone to {shown.to}
+          </summary>
+          <p className="mt-2 text-[12.5px] font-semibold text-fg">{shown.subject}</p>
+          <pre className="mt-1.5 whitespace-pre-wrap break-words font-sans text-[12.5px] leading-relaxed text-muted">
+            {shown.body}
+          </pre>
+        </details>
+      )}
+
+      <button
+        className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-semibold text-muted hover:bg-elevated"
+        onClick={onAgain}
+      >
+        <RotateCcw size={13} /> Fill it in again
+      </button>
+    </div>
   );
 }

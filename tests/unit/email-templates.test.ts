@@ -331,3 +331,32 @@ test("the whole-event decline and the one-session decline are different letters"
   assert.ok(needsOneSession(all(one)), "the one-session decline names one, so the guard covers it");
   assert.match(one.body, /unaffected/i, "it has to say the other places still stand");
 });
+
+/* ── the letter the form sends by itself ─────────────────────────── */
+
+test("the acknowledgement is sendable with only what a form knows", () => {
+  // It goes out automatically on submit, from a place that has the
+  // answers and nothing else — no reply-by date, no session, no
+  // support link. A field it cannot fill means no letter goes at all.
+  const t = DEFAULT_TEMPLATES.find((x) => x.id === "received")!;
+  const known = { first_name: "Amara", name: "Amara Okonkwo", event: "Training Week 2026", coordinator: "The BioHubNet team" };
+  const subject = render(t.subject, known);
+  const body = render(t.body, known);
+  assert.deepEqual([...subject.missing, ...body.missing], [],
+    "the acknowledgement needs something the submit path cannot give it");
+});
+
+test("it does not refer to a note that nothing sends", () => {
+  // It opened by telling people they would "already have an automatic
+  // note" — true when registration went through the events API, false
+  // for the form, which sends this one and nothing else.
+  const t = DEFAULT_TEMPLATES.find((x) => x.id === "received")!;
+  assert.ok(!/already have an automatic/i.test(t.body));
+  assert.match(t.body, /We have your registration/i);
+});
+
+test("it still states the two-to-three week wait and promises an answer", () => {
+  const t = DEFAULT_TEMPLATES.find((x) => x.id === "received")!;
+  assert.match(t.body, /two to three weeks/i);
+  assert.match(t.body, /either way/i);
+});

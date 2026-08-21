@@ -13,6 +13,11 @@ import { getSession, requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BuiltFormSchema, parseForm, type BuiltForm, type DataSource } from "@/lib/formbuilder/types";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
+import { mailConfigured, sendMail } from "@/lib/mail";
+import {
+  parseOverrides, render, resolveTemplates, TEMPLATES_KEY,
+} from "@/lib/allocation/email-templates";
+import type { Receipt } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
 import { parseCsv } from "@/lib/formbuilder/csv";
 
@@ -170,7 +175,7 @@ export async function submitBuiltForm(
   slug: string,
   answers: Record<string, unknown>,
   opts?: { test?: boolean },
-): Promise<{ ok: boolean; problems?: string[]; id?: string }> {
+): Promise<{ ok: boolean; problems?: string[]; id?: string; receipt?: Receipt }> {
   const form = await prisma.eventForm.findUnique({ where: { slug } });
   if (!form) return { ok: false, problems: ["That form no longer exists."] };
   if (!form.active && !opts?.test) {
@@ -201,5 +206,72 @@ export async function submitBuiltForm(
 
   revalidatePath("/admin/workspace/symposium-2026/registration");
   revalidatePath("/admin/workspace/training-admin");
-  return { ok: true, id: row.id };
+
+  /*
+   * The acknowledgement, AFTER the row exists.
+   *
+   * A registration is not lost because the mail server is having a bad
+   * afternoon. The row is the record; the letter is a courtesy, and it
+   * reports what happened rather than taking the submission down with
+   * it.
+   */
+  const receipt = await acknowledge(doc, verdict.clean, {
+    test: opts?.test === true,
+    adminEmail: (user as { email?: string } | undefined)?.email ?? null,
+  });
+
+  return { ok: true, id: row.id, receipt };
+}
+
+/**
+ * Send the "we have your registration" letter.
+ *
+ * The wording is the `received` template, edited under Admin → Email →
+ * Standing letters — not a second copy living in this file. A
+ * coordinator who changes the turnaround there and finds registrants
+ * still being told the old number would rightly never trust the editor
+ * again.
+ *
+ * A TEST submission is sent to the person running the test, never to
+ * the address typed into the form. Trying the form out must not be able
+ * to write to a stranger.
+ */
+async function acknowledge(
+  doc: BuiltForm,
+  answers: Answers,
+  opts: { test: boolean; adminEmail: string | null },
+): Promise<Receipt> {
+  const to = opts.test ? opts.adminEmail : emailFrom(doc, answers);
+  if (!to) return { state: "no-address" };
+
+  const stored = await prisma.platformSetting
+    .findUnique({ where: { key: TEMPLATES_KEY } })
+    .catch(() => null);
+  const template = resolveTemplates(parseOverrides(stored?.value)).find((t) => t.id === "received");
+  if (!template) return { state: "no-template" };
+
+  const name = String(answers.first_name ?? answers.trainee_name ?? "").trim();
+  const vars = {
+    first_name: name.split(/\s+/)[0] || "there",
+    name: name || "there",
+    event: "BioHubNet Training Week 2026",
+    coordinator: "The BioHubNet team",
+  };
+  const subject = render(template.subject, vars);
+  const body = render(template.body, vars);
+  // A letter with an unfilled placeholder in it is worse than no letter:
+  // it is the platform telling somebody it does not know who they are.
+  if (subject.missing.length > 0 || body.missing.length > 0) {
+    return { state: "unfilled", missing: [...new Set([...subject.missing, ...body.missing])] };
+  }
+
+  const preview = { to, subject: subject.text.replace(/[\r\n]+/g, " ").trim(), body: body.text };
+  if (!mailConfigured()) return { state: "not-configured", preview };
+
+  try {
+    await sendMail({ to, subject: preview.subject, text: preview.body });
+    return { state: opts.test ? "sent-to-you" : "sent", preview };
+  } catch (err) {
+    return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };
+  }
 }
