@@ -2316,6 +2316,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
   },
   {
+    id: "symposium-logo-vote",
+    title: "Vote on the Symposium's logo",
+    body: "**Workspace → 2026 Symposium → Logo Vote** has 60 candidate icons for the Luma registration page. Everyone gets **3 picks** — click a tile to pick it, click again to take it back, and add a one-line why if you want to. Click the image itself to see it large. **Results stay hidden until you have picked something**: seeing the running total first would turn a vote into a popularity report, where you end up voting on what the people before you did. Once you have voted you can see every pick, who made it and why. Open to instructors as well as admins.",
+    path: "/admin/workspace/symposium-2026/logo-vote",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Cast your votes", href: "/admin/workspace/symposium-2026/logo-vote" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

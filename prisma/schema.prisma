@@ -305,6 +305,7 @@ model User {
   // Admin reviews via /admin/theme-proposals; "ship + bounty"
   // optionally issues a tier-3 MerchReward.
   themeVotes             ThemeVote[]
+  logoVotes              LogoVote[]
   themeProposals         ThemeProposal[] @relation("ThemeProposals")
   reviewedThemeProposals ThemeProposal[] @relation("ThemeProposalReviewer")
 
@@ -3206,6 +3207,33 @@ model PollResponse {
 /// A theme can't appear as both favourite AND least-favourite for the
 /// same user; the API enforces that via a delete-the-opposite-side
 /// step inside the upsert transaction.
+/// One person's pick of one 2026 Symposium logo candidate.
+///
+/// A row per (voter, candidate) rather than a list on a voter, for the
+/// same reason ThemeVote does it: several colleagues vote at the same
+/// time, and a JSON column holding everybody's picks is a
+/// read-modify-write race where the last write wins and somebody's
+/// ballot quietly disappears. Here two voters touch two rows.
+model LogoVote {
+  id     String @id @default(cuid())
+  userId String
+  /// Matches an id in src/lib/symposium/logo-options.ts. A String, not
+  /// an FK, because the candidates are files on disk, not rows.
+  optionId String
+  /// Optional one-liner: why this one. Capped in the action, not here.
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// (voter, candidate) is the identity of a pick. Voting for the same
+  /// one twice is not two votes; the cap per voter lives in the action.
+  @@unique([userId, optionId])
+  /// Supports the tally — count votes per candidate.
+  @@index([optionId])
+}
+
 model ThemeVote {
   id        String   @id @default(cuid())
   userId    String

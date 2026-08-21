@@ -4338,4 +4338,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Vote on the 2026 Symposium logo",
+    body: "**Workspace \u2192 2026 Symposium \u2192 Logo Vote** \u2014 60 candidate icons for the Symposium\u2019s Luma registration page, and a way for the team to say which ones to use.\n\n**Three picks each.** One vote across sixty options splits the field into noise; ranking all sixty is a thing nobody will do. Three is enough to say \u201cthese are the good ones\u201d. Click a tile to pick it, click again to take it back, add a one-line *why* if you want to, click the image to see it large.\n\n**Results are hidden until you have voted.** Not secrecy \u2014 anchoring. A running tally shown to somebody who has not decided turns a vote into a popularity report, and the fifth person to arrive would be voting on what the first four did. Once you have spent a pick you see everything: counts, who picked what, and their notes.\n\n**Open to instructors as well as admins.** It is a house opinion, and a poll only three people can answer tells you about three people.\n\nThe 60 originals were 1254px PNGs totalling 85 MB. `scripts/build-logo-options.ts` turns them into a 400px tile and a 1000px detail image each \u2014 4.8 MB for the set, lazy-loaded \u2014 and regenerates the manifest, so adding a candidate is one command.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
 ];

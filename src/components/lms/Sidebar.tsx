@@ -71,7 +71,7 @@ import {
   Clapperboard,
   BookUser,
   Radar,
-  CalendarClock, MessageSquareText} from "lucide-react";
+  CalendarClock, MessageSquareText, Images} from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
 
@@ -396,6 +396,19 @@ const workspaceSymposiumFormItem: NavItem = {
   minRole: "admin",
   description:
     "What people fill in to register for Training Week — questions, logic, the session calendar — beside the workflow their answers run through.",
+};
+
+// WORKSPACE → 2026 Symposium → Logo Vote. Sixty candidate icons for the
+// Luma registration page, three picks each. Open to instructors as well
+// as admins — it is a house opinion, and a poll only three people can
+// answer tells you about three people.
+const workspaceLogoVoteItem: NavItem = {
+  label: "Logo Vote",
+  href: "/admin/workspace/symposium-2026/logo-vote",
+  icon: Images,
+  minRole: "instructor",
+  description:
+    "Vote on the icon for the Symposium's Luma registration page. Three picks each, results hidden until you have voted so nobody is anchored by the running total.",
 };
 
 // WORKSPACE → 2026 Symposium → Admin. Moved out of Process. Flow Charts
@@ -1885,6 +1898,7 @@ export function Sidebar({
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSymposiumFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Marketing">
