@@ -19,7 +19,15 @@ export interface FormRow {
   doc: BuiltForm; updatedAt: string;
 }
 
-export function FormsWorkspace({ forms }: { forms: FormRow[] }) {
+/**
+ * @param only  This page is ABOUT one form, so the chrome for choosing
+ *              between forms, making another and deleting this one is
+ *              hidden. Not disabled — a delete button greyed out on the
+ *              page named after the thing still reads as an offer, and
+ *              deleting the symposium's registration form from the page
+ *              that exists to edit it is not an offer worth making.
+ */
+export function FormsWorkspace({ forms, only = false }: { forms: FormRow[]; only?: boolean }) {
   const [activeId, setActiveId] = useState(forms[0]?.id ?? "");
   const [armed, setArmed] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -27,7 +35,8 @@ export function FormsWorkspace({ forms }: { forms: FormRow[] }) {
 
   return (
     <div className="mt-5">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Hidden wholesale when the page is about one form. */}
+      <div className={only ? "hidden" : "flex flex-wrap items-center gap-2"}>
         <select
           value={active?.id ?? ""}
           onChange={(e) => setActiveId(e.target.value)}

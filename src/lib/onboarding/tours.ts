@@ -2296,6 +2296,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the letters", href: "/admin/workspace/training-admin" },
   },
   {
+    id: "workspace-symposium-2026-group",
+    title: "Everything for the 2026 Symposium is in one group now",
+    body: "**Workspace → 2026 Symposium** holds the three things you need to run it: the **Comms Plan** (moved out of Marketing), the **Registration Form**, and the **Admin Dashboard** (moved out of Process). Running the event used to mean visiting three different subgroups, none of which was about the symposium. The Registration Form has its own page rather than being one of four in the general builder — Process → Forms still has that, along with Flow Charts, for everything else. Nothing is listed twice: a link in two places is two things to keep in step, and one of them is always the stale one.",
+    path: "/admin/workspace/symposium-2026/registration",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

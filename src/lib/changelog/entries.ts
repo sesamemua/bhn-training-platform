@@ -4324,4 +4324,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Workspace has a 2026 Symposium group",
+    body: "Running the symposium meant visiting three subgroups \u2014 Marketing for the comms plan, Process for the registration form and again for seats \u2014 none of which was about the symposium. The menu is now grouped by the thing rather than by the department that owns it.\n\n**Workspace \u2192 2026 Symposium** holds three items:\n  \u2022 **Comms Plan** \u2014 moved out of Marketing, same page and same URL.\n  \u2022 **Registration Form** \u2014 a new page at `/admin/workspace/symposium-2026/registration` showing just that form. Not a deep link into Process \u2192 Forms: that page opens whichever form was edited last, so a menu item pointing at it would land somewhere different depending on what a colleague did that morning.\n  \u2022 **Admin Dashboard** \u2014 moved out of Process, same page and same URL, renamed from \u201cAdmin\u201d.\n\n**Process** keeps the general tools: Flow Charts and the multi-form builder. Nothing appears in both groups \u2014 a link in two places is two things to keep in step and one of them is always stale.\n\nNo URLs changed except the new one, so existing bookmarks and links still work.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

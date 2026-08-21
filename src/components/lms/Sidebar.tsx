@@ -302,11 +302,10 @@ const workspaceVideoItem: NavItem = {
     "Plan promo videos and draft their scripts. Scripts get shareable links for collaborative editing — contributors don't need an account.",
 };
 
-// WORKSPACE → Marketing → 26 Symposium Comms Plan. Opens the 2026 Annual
-// Symposium & Training Week communications plan straight into the editable
-// HTML editor (Gantt timeline, pre/during/post promotion, sponsorship,
-// sample report, task breakdown) — a dedicated tab, not buried in Video
-// Production.
+// WORKSPACE → 2026 Symposium → Comms Plan. Moved out of Marketing: the
+// group is now organised by WHAT it is about rather than by which
+// department does it, because the people running the symposium were
+// visiting three different subgroups to do one job.
 const workspaceSymposiumItem: NavItem = {
   label: "26 Symposium Comms Plan",
   href: "/admin/workspace/marketing/symposium",
@@ -386,13 +385,29 @@ const workspaceFormsItem: NavItem = {
     "Build a form — questions, logic, external data sheets — beside the workflow its answers run through.",
 };
 
+// WORKSPACE → 2026 Symposium → Registration Form. Its own route rather
+// than a deep link into Process → Forms: that page opens whichever form
+// was edited last, and the sidebar decides what is highlighted from the
+// pathname, so a query string would light up two entries at once.
+const workspaceSymposiumFormItem: NavItem = {
+  label: "Registration Form",
+  href: "/admin/workspace/symposium-2026/registration",
+  icon: ClipboardList,
+  minRole: "admin",
+  description:
+    "What people fill in to register for Training Week — questions, logic, the session calendar — beside the workflow their answers run through.",
+};
+
+// WORKSPACE → 2026 Symposium → Admin. Moved out of Process. Flow Charts
+// and the form builder are general tools; this one is only ever about
+// this event — seats, rooms, who is coming and what they are told.
 const workspaceTrainingAdminItem: NavItem = {
-  label: "Admin",
+  label: "Admin Dashboard",
   href: "/admin/workspace/training-admin",
   icon: SlidersHorizontal,
   minRole: "admin",
   description:
-    "Seat allocation rules, workshop capacity, the registrant sheet, and email to the people booked.",
+    "Seats and capacity per workshop, the decision model behind who gets one, the registrant sheet, and the letters that go out at each stage.",
 };
 
 const workspaceFlowChartsItem: NavItem = {
@@ -1038,6 +1053,7 @@ const ADMIN_SUBGROUP_TONES = {
   platform:   { bar: "#0891b2", text: "#155e75" }, // cyan-600 / 800
   security:   { bar: "#f43f5e", text: "#9f1239" }, // rose-500 / 800
   system:     { bar: "#6b7280", text: "#374151" }, // slate-500 / 700
+  symposium:  { bar: "#d946ef", text: "#86198f" }, // fuchsia-500 / 800
 } as const;
 
 type AdminSubgroupTone = (typeof ADMIN_SUBGROUP_TONES)[keyof typeof ADMIN_SUBGROUP_TONES];
@@ -1862,9 +1878,17 @@ export function Sidebar({
             tone="neutral"
             description="Internal team tooling. Marketing → Video Production: plan promo videos and draft their scripts, with shareable links for collaborative editing (no login needed)."
           >
+            {/* Grouped by the THING, not by the department. Running the
+                symposium meant visiting Marketing for the plan and
+                Process for the form and the seats — three subgroups for
+                one job, none of which was about the symposium. */}
+            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
+              <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceSymposiumFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Marketing">
               <NavLink item={workspaceVideoItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSponsorshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceNewsletterItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
@@ -1872,10 +1896,13 @@ export function Sidebar({
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Website">
               <NavLink item={workspaceWebsiteReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
+            {/* The general tools. Admin moved to 2026 Symposium — it is
+                only ever about that event — and is deliberately NOT
+                listed twice: a link in two places is two things to keep
+                in step and one of them is always the stale one. */}
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.equip} label="Process">
               <NavLink item={workspaceFlowChartsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceFormsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Outreach">
               <NavLink item={workspaceOutreachContactsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
