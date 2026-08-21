@@ -14,7 +14,20 @@
 import type { ChartDoc, FieldDef, FlowNode } from "./types";
 import { fieldsOf, orderedFields, reachable } from "./form";
 
-export type ReviewStatus = "met" | "missed" | "attention" | "out-of-scope";
+export type ReviewStatus =
+  | "met"
+  | "missed"
+  | "attention"
+  | "out-of-scope"
+  /**
+   * The request was overtaken by a later decision.
+   *
+   * Not "missed" — nothing is broken and there is nothing to fix. Not
+   * deleted either: a requirement that quietly disappears takes with it
+   * the fact that somebody changed their mind, and the next person to
+   * read the note will file it again. It stays on the list, saying so.
+   */
+  | "superseded";
 
 export interface ReviewItem {
   id: string;
@@ -101,10 +114,20 @@ export const NOTE_REVIEW: ReviewItem[] = [
     check: (doc) => {
       const order = orderedFields(doc);
       const first = order[0];
+      /*
+       * Any question shape will do. The request is that the standing
+       * with BioHubNet is settled FIRST and names the three programmes
+       * — it does not say yes/no, and pinning the widget turned the
+       * four-answer version, which distinguishes three kinds of person
+       * rather than two, into a red row.
+       */
       const f = allFields(doc).find(
-        (x) => x.field.type === "yesno" && (/trainee/i.test(x.field.key) || /trainee/i.test(x.node.text)),
+        (x) =>
+          (x.field.type === "yesno" || x.field.type === "choice") &&
+          (/trainee|bhn_status/i.test(x.field.key) ||
+            /trainee|where do you stand/i.test(x.node.text)),
       );
-      if (!f) return { status: "missed", evidence: "No yes/no trainee question exists." };
+      if (!f) return { status: "missed", evidence: "Nothing asks about programme status." };
       if (!f.field.required)
         return { status: "missed", evidence: `"${f.node.text}" asks it, but it is optional.` };
       if (first?.key !== f.field.key)
@@ -112,9 +135,13 @@ export const NOTE_REVIEW: ReviewItem[] = [
           status: "missed",
           evidence: `It is asked, but "${first?.label ?? "another question"}" comes first.`,
         };
-      const named = ["ENGAGE", "EXPERIENCE", "EQUIP"].filter((p) =>
-        (f.field.help ?? "").includes(p),
-      );
+      // The ANSWERS count as naming them, not only the help. "Yes —
+      // accepted into ENGAGE or EXPERIENCE" is a more visible place to
+      // name a programme than a paragraph under the question, and
+      // reading help alone marked the version that puts them in front
+      // of the reader as the one that had dropped them.
+      const words = `${f.field.help ?? ""} ${(f.field.options ?? []).join(" ")}`;
+      const named = ["ENGAGE", "EXPERIENCE", "EQUIP"].filter((p) => words.includes(p));
       return named.length === 3
         ? {
             status: "met",
@@ -132,10 +159,11 @@ export const NOTE_REVIEW: ReviewItem[] = [
       "Say plainly that having an account on the training platform is NOT the same as being accepted into a programme — someone registered but not approved must apply.",
     source: "Trainee gate · follow-up note",
     check: (doc) => {
-      const help = allFields(doc)
-        .filter((x) => /trainee/i.test(x.field.key))
-        .map((x) => x.field.help ?? "")
-        .join(" ");
+      // Every question's help, not only ones keyed "trainee". The gate
+      // was renamed to bhn_status when it stopped being a yes/no, and a
+      // check that reads the key rather than the words goes red on a
+      // rename that changed nothing it was asking about.
+      const help = allFields(doc).map((x) => x.field.help ?? "").join(" ");
       const notes = doc.nodes.filter((n) => n.kind === "note").map((n) => n.text).join(" ");
       const drawn = /not the same thing|is not the same/i.test(help);
       const applyPath = /appl(y|ication)/i.test(`${help} ${notes}`);
@@ -176,21 +204,23 @@ export const NOTE_REVIEW: ReviewItem[] = [
     request:
       "A non-trainee can apply — reviews take time — and may register meanwhile if they are HQP at one of the 41 member institutions.",
     source: "Trainee gate · follow-up note",
-    check: (doc) => {
-      const notes = doc.nodes.filter((n) => n.kind === "note").map((n) => n.text).join(" ");
-      const timing = /take time|time to review|under review/i.test(notes);
-      const hqp = /41|member institution/i.test(notes);
-      if (timing && hqp)
-        return {
-          status: "met",
-          evidence: "A note beside the gate states both: applications take time, and HQP at the 41 member institutions may register now.",
-        };
-      return {
-        status: "missed",
-        evidence: `${timing ? "" : "Nothing says applications take time to review. "}${hqp ? "" : "Nothing says HQP at the member institutions can register meanwhile."}`,
-      };
-    },
+    /*
+     * SUPERSEDED on 20 August 2026.
+     *
+     * The coordinator replaced the yes/no trainee gate with four
+     * answers and decided that an account with no programme, or no
+     * account, is told how to join one and the form ends there. That is
+     * the opposite of "may register meanwhile", so this can never be
+     * met again — and reporting it as missed would send somebody off to
+     * re-add a rule that was deliberately removed.
+     */
+    check: () => ({
+      status: "superseded" as const,
+      evidence:
+        "Replaced by the four-answer eligibility question: only ENGAGE/EXPERIENCE acceptance or an EQUIP application carries on, and the other two answers are shown how to join a programme instead.",
+    }),
   },
+
   {
     id: "trainee-email-check",
     request:
@@ -273,32 +303,66 @@ export const NOTE_REVIEW: ReviewItem[] = [
     },
   },
   {
-    id: "non-trainee-continues",
+    /*
+     * The half of "non-trainee-continues" that is still live.
+     *
+     * That request bundled two rules: a non-trainee may carry on (since
+     * reversed), and a claimed trainee the roster cannot find must not
+     * be stranded. The second still holds — the roster is a list that
+     * can be out of date, and a stale row is not grounds for turning
+     * somebody away — so it needs a check of its own rather than
+     * disappearing with the rule it was sharing a home with.
+     */
+    id: "roster-not-found-continues",
     request:
-      "The gate only settles WHICH status someone holds — a non-trainee, and a trainee who is not found, both carry on registering.",
-    source: "Trainee gate · follow-up note",
+      "A registrant who says they are a trainee but is not found on the roster carries on regardless — it changes their status, not their registration.",
+    source: "Trainee gate · roster check",
     check: (doc) => {
-      const sessions = doc.nodes.find((n) =>
-        fieldsOf(n).some((f) => f.key === "sessions"),
-      );
-      if (!sessions) return { status: "missed", evidence: "No sessions question to carry on to." };
-      const reachedWhenNo = reachable(doc, { trainee: "No" }).has(sessions.id);
+      // The NOT-FOUND step, not the sheet: the sheet is a data node that
+      // is read, and nothing leads out of it by design. What has to lead
+      // somewhere is the branch a person lands on when the roster does
+      // not have them.
       const notFound = doc.nodes.find((n) => /not on the roster|not found/i.test(n.text));
-      // Reachability, not a direct edge: the spine legitimately passes
-      // through other questions on the way, and testing for one hop
-      // reported a reordering of the form as a dead end.
-      const notFoundContinues = !!notFound && canReach(doc, notFound.id, sessions.id);
-      if (reachedWhenNo && notFoundContinues)
+      if (!notFound) {
         return {
-          status: "met",
-          evidence: "Answering No goes straight to the sessions, and a trainee not found on the roster rejoins the same spine.",
+          status: "missed" as const,
+          evidence: "The chart has no step for a trainee the roster cannot find.",
         };
+      }
+      const onward = doc.edges.filter((e) => e.from === notFound.id);
+      if (onward.length === 0) {
+        return {
+          status: "missed" as const,
+          evidence: `"${notFound.text}" has no arrow out of it, so not being found is a dead end.`,
+        };
+      }
       return {
-        status: "missed",
-        evidence: `${reachedWhenNo ? "" : "Answering No does not reach the sessions. "}${notFoundContinues ? "" : "Not being found on the roster is a dead end."}`,
+        status: "met" as const,
+        evidence: `"${notFound.text}" leads on, so a stale roster row does not turn anybody away.`,
       };
     },
   },
+  {
+    id: "non-trainee-continues",
+    request:
+"The gate only settles WHICH status someone holds — a non-trainee, and a trainee who is not found, both carry on registering.",
+    source: "Trainee gate · follow-up note",
+    /*
+     * SUPERSEDED on 20 August 2026, with trainee-apply-or-register.
+     *
+     * The coordinator decided that an account with no programme, or no
+     * account, is shown how to join one and the form ENDS there. A
+     * non-trainee reaching the sessions is now the thing we do not want,
+     * so a red row here would send somebody to re-add a path that was
+     * deliberately closed.
+     */
+    check: () => ({
+      status: "superseded" as const,
+      evidence:
+        "The form now stops at question one for anyone not in a programme, and the workflow ends at “Declined, with a reason”.",
+    }),
+  },
+
   {
     id: "drop-institution-free-text",
     request:

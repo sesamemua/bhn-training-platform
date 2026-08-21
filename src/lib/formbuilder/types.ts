@@ -123,6 +123,19 @@ export const FieldSchema = z.object({
    * answer, and the difference matters to whoever is ordering lunch.
    */
   noneLabel: z.string().max(40).optional(),
+  /**
+   * On a note: the form ENDS here for whoever sees it.
+   *
+   * A person told to go and join a programme first must not then be
+   * offered a Submit button — a form that says "you are not eligible"
+   * and then "Complete: every required question has an answer" has
+   * told them two different things on one screen.
+   *
+   * A property of the note rather than a rule about which answers are
+   * eligible, so the builder can end a form anywhere without the code
+   * knowing what the form is about.
+   */
+  stopsHere: z.boolean().optional(),
   required: z.boolean().default(false),
   options: z.array(z.string().max(120)).max(200).default([]),
   /** When this question is put to the person. */

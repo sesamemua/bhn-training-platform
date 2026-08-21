@@ -23,13 +23,14 @@ test("the shipped chart answers the note", () => {
     "trainee-gate": "met",
     "trainee-vs-account": "met",
     "trainee-priority": "met",
-    "trainee-apply-or-register": "met",
+    "trainee-apply-or-register": "superseded",
     "trainee-email-check": "met",
     "trainee-name-confirm": "met",
     // Waiting on the sheet itself, which the coordinator will provide.
     "roster-sheet-configured": "attention",
     "trainee-status-backend": "met",
-    "non-trainee-continues": "met",
+    "roster-not-found-continues": "met",
+    "non-trainee-continues": "superseded",
     "drop-institution-free-text": "met",
     "institution-dropdown": "met",
     "one-primary-institution": "met",
@@ -70,10 +71,20 @@ test("the trainee gate must come first, not merely exist", () => {
 });
 
 test("dropping a programme name from the gate is caught", () => {
+  // From the ANSWERS as well as the help: the gate names the three
+  // programmes in its options now, so stripping only the help would
+  // leave EQUIP in front of the reader and the row rightly green.
   const doc = doctored((nodes) =>
     nodes.map((n) =>
       n.id === "nT"
-        ? { ...n, field: { ...n.field!, help: "Accepted into ENGAGE or EXPERIENCE." } }
+        ? {
+            ...n,
+            field: {
+              ...n.field!,
+              help: "Accepted into ENGAGE or EXPERIENCE.",
+              options: (n.field!.options ?? []).map((o) => o.replace(/EQUIP/g, "the third one")),
+            },
+          }
         : n,
     ),
   );
@@ -102,14 +113,16 @@ test("a trainee not found on the roster must not be a dead end", () => {
     ...TRAINING_WEEK_FLOW,
     edges: TRAINING_WEEK_FLOW.edges.filter((e) => e.id !== "eT9"),
   };
-  assert.equal(statusOf(doc, "non-trainee-continues"), "missed");
+  assert.equal(statusOf(doc, "roster-not-found-continues"), "missed");
 });
 
-test("carrying on through another question first is not a dead end", () => {
-  // The not-found step reaches the sessions VIA "About you". An earlier
-  // version of this check tested for a single hop and called that a
-  // dead end, which turned a reordering of the form into a red row.
-  assert.equal(statusOf(TRAINING_WEEK_FLOW, "non-trainee-continues"), "met");
+test("the two requests the coordinator reversed are marked superseded, not missed", () => {
+  // Both encoded "a non-trainee may register meanwhile". That rule was
+  // deliberately closed on 20 August 2026. Reporting them as missed
+  // would send somebody to re-add a path that was removed on purpose;
+  // deleting them would lose the fact that anybody changed their mind.
+  assert.equal(statusOf(TRAINING_WEEK_FLOW, "non-trainee-continues"), "superseded");
+  assert.equal(statusOf(TRAINING_WEEK_FLOW, "trainee-apply-or-register"), "superseded");
 });
 
 test("the trainee confirms a name as well as an email", () => {

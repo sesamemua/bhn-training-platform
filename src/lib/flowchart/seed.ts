@@ -12,6 +12,7 @@
  * boxes is a wall; as six groups it reads as a form.
  */
 import { clashPairs, MAX_SESSIONS, SESSION_OPTIONS } from "@/lib/training-week/schedule-2026";
+import { ACCEPTED, BHN_STATUS_OPTIONS, ELIGIBLE_STATUS } from "@/lib/formbuilder/training-week";
 import type { ChartDoc } from "./types";
 
 const MAIN = 36;   // the spine every step sits on
@@ -91,16 +92,17 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
    * had to reject by hand.
    */
   const nT = { id: "nT", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
-    text: "Are you a current BioHubNet trainee?",
-    field: { key: "trainee", type: "yesno" as const, required: true,
-      help: "A current trainee has been accepted into ENGAGE, EXPERIENCE or EQUIP. Having an account on the BioHubNet training platform is not the same thing — if you registered but were not accepted into a programme, answer No. Current trainees get priority consideration for Training Week places." } };
+    text: "Where do you stand with BioHubNet?",
+    field: { key: "bhn_status", type: "choice" as const, required: true,
+      options: [...BHN_STATUS_OPTIONS],
+      help: "Having an account on the training platform is not the same thing as being in a programme — someone registered but not accepted has to apply first. An EQUIP application counts from the moment it is submitted, funded or not. Current trainees get priority consideration for Training Week places." } };
 
   // The answer for everyone who says No, said where they will read it.
   // Rewritten because it had become FALSE, not merely stale: it told
   // the reader a non-trainee could "register now regardless", which is
   // the rule the four-way status question reverses.
   const nTinfo = { id: "nTinfo", kind: "note" as const, x: SIDE, y: nT.y, w: W, h: 78,
-    text: "Four answers, two outcomes. Accepted into ENGAGE or EXPERIENCE, or having applied to EQUIP — funded or not — carries on. An account with no programme, or no account, is asked to join one first." };
+    text: "Two of the four answers carry on. An account with no programme, or no account, is shown how to apply to ENGAGE, EXPERIENCE or EQUIP at biohubnet.ca — and the form ends there rather than asking for anything else." };
 
   // Yes branch: confirm who they are against the roster, then carry on.
   const nTv = { id: "nTv", kind: "question" as const, x: MAIN, y: at(94), w: W, h: 94,
@@ -312,13 +314,12 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       { id: "e1", from: "n1", to: "nT" },
       // Saying yes means proving it; saying no costs nothing and the
       // registration carries straight on to the sessions.
-      { id: "eT1", from: "nT", to: "nTv", when: { field: "trainee", op: "is", value: "Yes" }, label: "yes" },
-      // The No path runs THROUGH the note, because the note is what
-      // "no" means: apply, or register now as HQP. Reading it is the
-      // step. It also keeps the skip arrow off the spine, where its
-      // label had nowhere to sit that was not on top of a box.
-      { id: "eTn", from: "nT", to: "nTinfo", when: { field: "trainee", op: "is not", value: "Yes" }, label: "no" },
-      { id: "eT2", from: "nTinfo", to: "n3" },
+      { id: "eT1", from: "nT", to: "nTv", when: { field: "bhn_status", op: "any of", value: ELIGIBLE_STATUS.join(",") }, label: "in a programme" },
+      // The other path runs THROUGH the note, because the note is what
+      // that answer means: here is how to join a programme. Reading it
+      // IS the step, and it is now the last one — the form ends there
+      // rather than carrying on to the sessions.
+      { id: "eTn", from: "nT", to: "nTinfo", when: { field: "bhn_status", op: "is not", value: ACCEPTED }, label: "not yet" },
       { id: "eT3", from: "nTv", to: "nTd" },
       { id: "eT4", from: "nTv", to: "nTroster", label: "checked against" },
       { id: "eT5", from: "nTd", to: "nTc", label: "found" },

@@ -53,9 +53,14 @@ test("there is a way to submit, and it is checked for real", () => {
   // Submit only appears once the whole form has been opened — offering
   // it under question one would be offering to submit a blank form. A
   // one-question form is open from the start, so it shows immediately.
+  // An OPTIONAL question, so nothing is outstanding on first paint.
+  // Submit no longer appears while a required question is unanswered —
+  // answering it can still reveal the rest of the form.
   const oneQuestion: BuiltForm = {
     ...TRAINING_WEEK_FORM,
-    fields: TRAINING_WEEK_FORM.fields.filter((f) => f.key === "bhn_status"),
+    fields: TRAINING_WEEK_FORM.fields
+      .filter((f) => f.key === "dietary")
+      .map((f) => ({ ...f, showWhen: [] })),
   };
   const solo = paint(oneQuestion);
   assert.match(solo, /Submit registration/);
@@ -315,10 +320,58 @@ test("both notes point somewhere", () => {
   }
 });
 
-test("everyone still gets to register", () => {
-  // Being told to join a programme is guidance, not a locked door.
-  for (const status of [ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT]) {
+test("the form stops at question one for anyone not in a programme", () => {
+  // The coordinator's call: they are told how to join and the form ends
+  // there. It used to show them the note and then the whole rest of the
+  // form, finishing on "Complete — every required question has an
+  // answer", which is two different things on one screen.
+  for (const status of [HAS_ACCOUNT, NO_ACCOUNT]) {
+    const keys = seen({ bhn_status: status });
+    assert.equal(keys.length, 2, `${status} sees ${keys.join(", ")}`);
+    assert.ok(keys[0] === "bhn_status" && keys[1].endsWith("_note"));
+    assert.ok(!keys.includes("sessions"), "no session picker for somebody who cannot have one");
+  }
+});
+
+test("and carries on in full for anyone who is", () => {
+  for (const status of [ACCEPTED, EQUIP_APPLIED]) {
     assert.ok(seen({ bhn_status: status }).includes("sessions"), `${status} cannot reach the sessions`);
+  }
+});
+
+test("a stopping note offers no Submit and no Continue", () => {
+  // Ending the form and then offering to submit it is the same
+  // contradiction wearing a button.
+  const doc: BuiltForm = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields
+      .filter((f) => f.key === "need_account_note")
+      .map((f) => ({ ...f, showWhen: [] })),
+  };
+  const html = paint(doc);
+  assert.match(html, /Two steps first/);
+  assert.ok(!html.includes("Submit registration"), "nothing to submit");
+  assert.ok(!html.includes(">Continue<"), "nowhere to continue to");
+  assert.ok(!html.includes("photographed and filmed"), "and no terms for a form that is not being submitted");
+  assert.match(html, /carry on from here/, "it says what to do next");
+});
+
+test("both notes are marked as ending the form", () => {
+  for (const key of ["need_programme_note", "need_account_note"]) {
+    assert.equal(TRAINING_WEEK_FORM.fields.find((f) => f.key === key)!.stopsHere, true);
+  }
+});
+
+test("every registration question except the first is behind eligibility", () => {
+  // One missed gate is one question an ineligible person is asked, and
+  // it would look deliberate.
+  const open = new Set(["bhn_status", "need_programme_note", "need_account_note"]);
+  for (const f of TRAINING_WEEK_FORM.fields) {
+    if ((f.stage ?? "registration") !== "registration" || open.has(f.key)) continue;
+    assert.ok(
+      f.showWhen.some((c) => c.field === "bhn_status" && c.op === "any of"),
+      `"${f.key}" is asked of everybody`,
+    );
   }
 });
 
@@ -330,9 +383,11 @@ test("the form opens on question one and nothing else", () => {
   const html = paint(TRAINING_WEEK_FORM);
   assert.match(html, /Where do you stand with BioHubNet\?/);
   assert.ok(!html.includes("Choose your sessions"), "the rest of the form is still folded up");
-  assert.match(html, />Continue</);
+  // Nothing to submit: question one is unanswered, and every other
+  // question is behind the answer to it.
   assert.ok(!html.includes("Submit registration"), "nothing to submit yet");
-  assert.match(html, /Show all \d+/, "and a way out for people who want the whole thing");
+  assert.ok(!html.includes("photographed and filmed"), "and no terms for a form nobody can submit");
+  assert.match(html, /Answer .Where do you stand with BioHubNet\?. to carry on/, "it says what is needed");
 });
 
 /* ── the rest of this round ──────────────────────────────────────── */

@@ -4366,4 +4366,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "The form now stops at question one for anyone not in a programme",
+    body: "Following the four-answer eligibility question: an account with no programme, or no account, is shown how to join one \u2014 and the form ends there. No session picker, no Submit.\n\nIt used to show them the note and then the whole rest of the form, finishing on \u201cComplete \u2014 every required question has an answer\u201d, which is the form telling somebody two different things on one screen. The workflow disagreed with the questions too: it declined them while the questions waved them through.\n\n**A note can now end a form.** It is a property of the note rather than a rule about eligibility, so the builder can end a form anywhere without the code knowing what the form is about.\n\n**Two requests in the review panel are marked Superseded rather than Not met.** Both encoded \u201ca non-trainee may register meanwhile if they are HQP at one of the 41 institutions\u201d, which was deliberately reversed. Reporting them red would send somebody to re-add a path that was closed on purpose; deleting them would lose the fact that anybody changed their mind. The half of one of them that still holds \u2014 a trainee the roster cannot find must not be stranded \u2014 now has a check of its own.\n\nThe flow chart draws the four-answer question too, so the chart and the form finally agree on who gets in.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

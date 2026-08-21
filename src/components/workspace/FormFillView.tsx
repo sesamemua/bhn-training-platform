@@ -96,11 +96,33 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
 
   const open = all ? shown.length : want;
   const visible = shown.slice(0, open);
+
+  /*
+   * A note can END the form.
+   *
+   * Somebody told to go and join a programme is not one Continue away
+   * from a seat, and offering them Submit — then "Complete: every
+   * required question has an answer" — would be the form contradicting
+   * itself on one screen.
+   */
+  const stopped = visible.find((f) => f.stopsHere);
+
   const more = shown.length - open;
   const last = shown[open - 1];
   const waiting = last && last.type !== "note" && last.required && !answeredAt(last);
   const gaps = useMemo(() => missing(doc, answers, stage), [doc, answers, stage]);
   const gapKeys = useMemo(() => new Set(gaps.map((f) => f.key)), [gaps]);
+
+  /*
+   * "Nothing left to open" is not the same as "finished".
+   *
+   * Almost every question now sits behind the answer to the first one,
+   * so before it is answered the whole rest of the form is invisible and
+   * `more` is 0 — which used to put Submit and the photography terms on
+   * screen under a single unanswered question. A required question with
+   * no answer can still be hiding the rest of the form behind it.
+   */
+  const ended = more === 0 && gaps.length === 0;
 
   const set = (k: string, v: Answers[string]) => { setAnswers({ ...answers, [k]: v }); setDone(false); };
 
@@ -171,7 +193,14 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
         </div>
       )}
 
-      {done && (
+      {stopped && (
+        <p className="mt-4 rounded-lg border border-line bg-elevated/60 p-3 text-[12.5px] leading-relaxed text-muted">
+          There is nothing more to fill in for now. Once you are in a programme, come back
+          to this form and it will carry on from here.
+        </p>
+      )}
+
+      {done && !stopped && (
         <div role="status" className="mt-4 rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3">
           <p className="flex items-center gap-2 text-[13px] font-semibold text-emerald-600">
             <Check size={14} /> Complete — every required question has an answer.
@@ -205,7 +234,19 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
           question empty is a decision, and a form that scrolls on by
           itself while you are still reading it is worse than one that
           waits. */}
-      {more > 0 && (
+      {/* Nothing further to open, but something still to answer. Said
+          as a prompt rather than as a Submit button that refuses:
+          a disabled control with no explanation is worse than a
+          sentence naming the question. */}
+      {more === 0 && gaps.length > 0 && !stopped && (
+        <p role="status" className="mt-4 rounded-lg border border-line bg-elevated/60 p-3 text-[12.5px] leading-relaxed text-muted">
+          {gaps.length === 1
+            ? `Answer “${gaps[0].label}” to carry on.`
+            : `${gaps.length} questions still need an answer.`}
+        </p>
+      )}
+
+      {more > 0 && !stopped && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             className="rounded-lg bg-brand px-5 py-2.5 text-[13.5px] font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
@@ -237,13 +278,13 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
       {/* Registration only. The confirmation email asks one question
           weeks later, and the photography terms of a form you already
           submitted have no business above that button. */}
-      {shown.length > 0 && more === 0 && stage === "registration" && doc.submitNote && (
+      {shown.length > 0 && ended && !stopped && stage === "registration" && doc.submitNote && (
         <p className="mt-5 rounded-xl border border-line bg-elevated/60 p-4 text-[12.5px] leading-relaxed text-muted">
           {doc.submitNote}
         </p>
       )}
 
-      {shown.length > 0 && more === 0 && (
+      {shown.length > 0 && ended && !stopped && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             className="rounded-lg bg-brand px-6 py-3 text-[14px] font-bold text-white transition-all hover:brightness-110"

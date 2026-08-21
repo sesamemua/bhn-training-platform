@@ -10,7 +10,7 @@
  * someone moves a box, but a check cannot — it looks again.
  */
 import { useMemo, useState } from "react";
-import { CheckCircle2, ChevronDown, CircleAlert, CircleSlash, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, CircleAlert, CircleSlash, History, XCircle } from "lucide-react";
 import type { ChartDoc } from "@/lib/flowchart/types";
 import { runReview, type ReviewStatus } from "@/lib/flowchart/review";
 
@@ -19,6 +19,10 @@ const BADGE: Record<ReviewStatus, { label: string; cls: string; Icon: typeof Che
   missed: { label: "Not met", cls: "bg-red-500/12 text-red-500", Icon: XCircle },
   attention: { label: "Needs a decision", cls: "bg-amber-500/12 text-amber-500", Icon: CircleAlert },
   "out-of-scope": { label: "Out of scope here", cls: "bg-elevated text-subtle", Icon: CircleSlash },
+  // Neutral, not red. Nothing is broken — somebody changed their mind,
+  // and the row stays so the change is on the record rather than the
+  // request quietly vanishing and being filed again next month.
+  superseded: { label: "Superseded", cls: "bg-elevated text-muted", Icon: History },
 };
 
 export function FlowReviewPanel({ doc }: { doc: ChartDoc }) {

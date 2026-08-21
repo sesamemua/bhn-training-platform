@@ -108,14 +108,14 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        * half is theirs — in the one place the form exists to tell them
        * what to do.
        */
-      id: "f_needprog", key: "need_programme_note",
+      id: "f_needprog", key: "need_programme_note", stopsHere: true,
       label: "One step first: join a programme.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: HAS_ACCOUNT }],
       help: "You have an account, which is the hard part done. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever fits — an EQUIP application counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
     },
     {
-      id: "f_needacct", key: "need_account_note",
+      id: "f_needacct", key: "need_account_note", stopsHere: true,
       label: "Two steps first: an account, then a programme.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: NO_ACCOUNT }],
@@ -159,14 +159,14 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       showWhen: [whenEligible, { field: "travel_over_2h", op: "is", value: "Yes" }],
       help: "So we can work out the distance. Nothing else is done with it.",
     },
-    { id: "f_first", key: "first_name", label: "First name", type: "short_text", required: true, options: [], showWhen: [] },
-    { id: "f_last", key: "last_name", label: "Last name", type: "short_text", required: true, options: [], showWhen: [] },
+    { id: "f_first", key: "first_name", label: "First name", type: "short_text", required: true, options: [], showWhen: [whenEligible] },
+    { id: "f_last", key: "last_name", label: "Last name", type: "short_text", required: true, options: [], showWhen: [whenEligible] },
     {
-      id: "f_email", key: "email", label: "Email", type: "email", required: true, options: [], showWhen: [],
+      id: "f_email", key: "email", label: "Email", type: "email", required: true, options: [], showWhen: [whenEligible],
       help: "How the coordinator will reach you about Training Week.",
     },
-    { id: "f_phone", key: "phone", label: "Phone", type: "phone", required: false, options: [], showWhen: [], help: "Optional." },
-    { id: "f_li", key: "linkedin", label: "LinkedIn", type: "short_text", required: false, options: [], showWhen: [], help: "Optional." },
+    { id: "f_phone", key: "phone", label: "Phone", type: "phone", required: false, options: [], showWhen: [whenEligible], help: "Optional." },
+    { id: "f_li", key: "linkedin", label: "LinkedIn", type: "short_text", required: false, options: [], showWhen: [whenEligible], help: "Optional." },
     {
       /*
        * Drawn as a week, not a list.
@@ -183,7 +183,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        * to back, and the form used to claim otherwise.
        */
       id: "f_sessions", key: "sessions", label: "Choose your sessions",
-      type: "multi", required: true, options: SESSIONS_2026, showWhen: [],
+      type: "multi", required: true, options: SESSIONS_2026, showWhen: [whenEligible],
       approveFromClash: 1,
       slots: SESSION_SLOTS,
       help: `Pick the ones you want to attend — up to ${MAX_SESSIONS}. Sessions drawn side by side in the calendar run at the same time: you may choose both, but only one of a clashing pair can be approved. The two Monday company tours run back to back, so you can do both.`,
@@ -198,7 +198,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        */
       id: "f_symp", key: "symposium_signup",
       label: "Have you signed up for the 2026 Annual Symposium?",
-      type: "choice", required: false, showWhen: [],
+      type: "choice", required: false, showWhen: [whenEligible],
       options: [
         "Yes — already signed up",
         "Not yet — I plan to",
@@ -208,7 +208,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     },
     {
       id: "f_pos", key: "primary_position", label: "Primary position",
-      type: "choice", required: true, showWhen: [],
+      type: "choice", required: true, showWhen: [whenEligible],
       help: "Students pick a student option even if they also work with a company. Industry Professional means a member of a private company, not a student.",
       options: [
         "Undergraduate Student", "Master's Student", "PhD Student", "Postdoctoral Fellow",
@@ -218,7 +218,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     },
     {
       id: "f_org", key: "primary_org", label: "Primary organization of engagement",
-      type: "choice", required: true, showWhen: [],
+      type: "choice", required: true, showWhen: [whenEligible],
       help: "Where you mainly work or study. Academia covers faculty, staff and students.",
       options: [
         "Academic Institution", "Industry / Private Sector", "Startup", "Government",
@@ -227,34 +227,39 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     },
     {
       id: "f_acad", key: "academic", label: "Academic institution",
-      type: "choice", required: false, options: academic, showWhen: [],
+      type: "choice", required: false, options: academic, showWhen: [whenEligible],
       help: "Your university or research institute. Leave blank if none.",
     },
     {
       id: "f_health", key: "health", label: "Hospital or health network",
-      type: "choice", required: false, options: health, showWhen: [],
+      type: "choice", required: false, options: health, showWhen: [whenEligible],
       help: "Leave blank if none.",
     },
     {
       id: "f_company", key: "company", label: "Company, startup or venture",
-      type: "short_text", required: false, options: [], showWhen: [],
+      type: "short_text", required: false, options: [], showWhen: [whenEligible],
       help: "Leave blank if none. No list can cover these, so type it as it should appear in reports.",
     },
     {
       id: "f_orgother", key: "org_other", label: "Name your organization",
       type: "short_text", required: true, options: [],
-      showWhen: [{ field: "primary_org", op: "any of", value: "Government,Non-Profit,Other" }],
+      // Gated explicitly as well as transitively. It can only show once
+      // primary_org is answered, and only eligible people are asked
+      // that — but "safe because of another field's rule" is an
+      // invariant nothing checks, and one missed gate is one question an
+      // ineligible person is asked.
+      showWhen: [whenEligible, { field: "primary_org", op: "any of", value: "Government,Non-Profit,Other" }],
       help: "As it should appear in reports.",
     },
     {
       id: "f_exp", key: "expertise", label: "Your areas of work",
-      type: "multi", required: true, showWhen: [],
+      type: "multi", required: true, showWhen: [whenEligible],
       options: ["R & D", "QA/QC", "Manufacturing", "Clinical Operations", "Regulatory Affairs",
         "Medical Affairs", "Business Development", "Other"],
     },
     {
       id: "f_diet", key: "dietary", label: "Dietary requirements",
-      type: "short_text", required: false, options: [], showWhen: [],
+      type: "short_text", required: false, options: [], showWhen: [whenEligible],
       // Blank is ambiguous — it could mean none, or it could mean you
       // had not got to it. Whoever is ordering lunch needs the
       // difference.
@@ -269,7 +274,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        * want signing up again and implying they do not want it at all.
        */
       id: "f_news", key: "newsletter_optin", label: "Send me the BioHubNet newsletter",
-      type: "choice", required: false, showWhen: [],
+      type: "choice", required: false, showWhen: [whenEligible],
       options: ["Yes, sign me up", "No thanks", "I am already subscribed"],
       help: "Once a month. You can unsubscribe from any issue.",
     },
