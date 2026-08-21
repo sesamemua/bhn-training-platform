@@ -51,7 +51,7 @@ export const ACCEPTED = "Yes — accepted into ENGAGE or EXPERIENCE";
  */
 export const EQUIP_APPLIED = "Yes — applied to EQUIP (an award is not required)";
 export const HAS_ACCOUNT = "I have a BioHubNet account but I am not in a programme";
-export const NO_ACCOUNT = "I do not have a BioHubNet account yet";
+export const NO_ACCOUNT = "I am new to BioHubNet";
 
 export const BHN_STATUS_OPTIONS = [ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT];
 
@@ -112,14 +112,22 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       label: "One step first: join a programme.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: HAS_ACCOUNT }],
-      help: "You have an account, which is the hard part done. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever fits — an EQUIP application counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
+      help: "You have an account, which is what ENGAGE and EXPERIENCE need. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever fits — EQUIP does not use the training platform at all, and an application to it counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
     },
     {
+      /*
+       * Two routes, and they are not the same length.
+       *
+       * ENGAGE and EXPERIENCE run ON the training platform, so they need
+       * an account first. EQUIP does not — you apply to it directly.
+       * Telling a would-be EQUIP applicant to go and make a platform
+       * account is sending them to do something nobody needs from them.
+       */
       id: "f_needacct", key: "need_account_note", stopsHere: true,
       label: "Two steps first: an account, then a programme.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: NO_ACCOUNT }],
-      help: "Create a BioHubNet account, then apply to ENGAGE, EXPERIENCE or EQUIP — Training Week places go to people in one of the three. An EQUIP application counts from the moment you submit it, whether or not it is funded. Start at biohubnet.ca, then come back to this form.",
+      help: "For ENGAGE or EXPERIENCE: create a BioHubNet account, then apply — both run on the training platform, so the account comes first. EQUIP is different and does not need one: you apply to EQUIP directly, and the application counts from the moment you submit it, funded or not. Start at biohubnet.ca, then come back to this form.",
     },
     {
       id: "f_tname", key: "trainee_name", label: "The name we know you by",

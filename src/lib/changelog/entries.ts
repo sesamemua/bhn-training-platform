@@ -4373,4 +4373,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "EQUIP does not need a training-platform account, and the form now says so",
+    body: "The fourth answer to question one reads **\u201cI am new to BioHubNet\u201d** rather than \u201cI do not have a BioHubNet account yet\u201d \u2014 which described a missing account rather than the person, and was only half the story anyway.\n\n**Two routes, and they are not the same length.** ENGAGE and EXPERIENCE run on the training platform, so an account comes first \u2014 two steps. **EQUIP does not use the platform at all**: you apply to it directly, and the application counts from the moment you submit it, funded or not. The note used to tell everybody to go and make an account, which for a would-be EQUIP applicant is sending them to do something nobody needs from them.\n\nThe note for somebody who already has an account says the same thing about EQUIP.\n\nAn option string is the value a rule matches on, not just a label \u2014 so the rename and the rule that fires the note moved in one write, and a test now checks that every rule testing question one names an answer that question actually offers. Renaming an option without repointing its rule leaves the option showing, the note silently absent, and nothing complaining.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

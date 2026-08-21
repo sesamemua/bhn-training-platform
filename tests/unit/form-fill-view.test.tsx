@@ -470,3 +470,47 @@ test("every ending in the workflow is reachable by somebody", () => {
   }
   for (const e of ends) assert.ok(reached.has(e), `nothing reaches "${e}"`);
 });
+
+/* ── the answers are values, not just labels ─────────────────────── */
+
+test("every rule that tests question one names an answer it actually offers", () => {
+  // An option string is the VALUE a rule matches on. Rename the option
+  // without repointing the rule and the option still shows, the note
+  // silently never appears, and nothing complains — problems() checks
+  // that a condition names a live QUESTION, not that its value is one
+  // of that question's answers.
+  const offered = new Set(TRAINING_WEEK_FORM.fields.find((f) => f.key === "bhn_status")!.options);
+  for (const f of TRAINING_WEEK_FORM.fields) {
+    for (const c of f.showWhen) {
+      if (c.field !== "bhn_status") continue;
+      const wanted = (c.value ?? "").split(",");
+      for (const w of wanted) {
+        assert.ok(offered.has(w), `"${f.key}" waits for "${w}", which is not one of the answers`);
+      }
+    }
+  }
+  for (const s of TRAINING_WEEK_FORM.steps) {
+    for (const c of s.when) {
+      if (c.field !== "bhn_status") continue;
+      for (const w of (c.value ?? "").split(",")) {
+        assert.ok(offered.has(w), `step "${s.id}" waits for "${w}", which is not one of the answers`);
+      }
+    }
+  }
+});
+
+test("somebody new to BioHubNet is told which route needs an account and which does not", () => {
+  // ENGAGE and EXPERIENCE run on the training platform. EQUIP does not
+  // — sending a would-be EQUIP applicant off to create a platform
+  // account is sending them to do something nobody needs from them.
+  const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === "need_account_note")!;
+  assert.match(NO_ACCOUNT, /new to BioHubNet/i);
+  assert.match(n.help ?? "", /For ENGAGE or EXPERIENCE/i, "the two-step route is named");
+  assert.match(n.help ?? "", /create a BioHubNet account/i, "and it says the account comes first");
+  assert.match(n.help ?? "", /EQUIP is different and does not need one/i, "and the one-step route is not buried");
+});
+
+test("the note for somebody who already has an account says the same about EQUIP", () => {
+  const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === "need_programme_note")!;
+  assert.match(n.help ?? "", /EQUIP does not use the training platform/i);
+});
