@@ -79,6 +79,16 @@ export function SessionCalendar({
   const unscheduled = field.options.filter((o) => !field.slots.some((s) => s.option === o));
 
   const height = ((grid.endMin - grid.startMin) / 60) * HOUR_PX;
+
+  /*
+   * Full. Drawn, not just silently refused.
+   *
+   * A cell that does nothing when clicked reads as broken. Dimmed and
+   * disabled with a reason on it reads as "you have used your three",
+   * which is the actual situation.
+   */
+  const cap = field.maxChoices;
+  const atCap = cap !== undefined && chosen.length >= cap;
   const dayName = (d: string) =>
     new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 
@@ -91,7 +101,7 @@ export function SessionCalendar({
     return (
       <div className="mt-2 flex flex-wrap gap-2">
         {unscheduled.map((o) => (
-          <Chip key={o} label={o} rank={chosen.indexOf(o)} onClick={() => onToggle(o)} />
+          <Chip key={o} label={o} rank={chosen.indexOf(o)} full={atCap} onClick={() => onToggle(o)} />
         ))}
       </div>
     );
@@ -145,13 +155,21 @@ export function SessionCalendar({
                   const pos = place(sl, grid);
                   const against = slots.filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
                   const minutes = toMinutes(sl.end) - toMinutes(sl.start);
+                  const blocked = !on && atCap;
                   return (
                     <button
                       key={sl.option}
                       onClick={() => onToggle(sl.option)}
                       aria-pressed={on}
-                      title={`${shortLabel(sl.option)} · ${sl.start}–${sl.end}`}
+                      disabled={blocked}
+                      title={
+                        blocked
+                          ? `${cap} is the most you can choose — take one back first`
+                          : `${shortLabel(sl.option)} · ${sl.start}–${sl.end}`
+                      }
                       className={`absolute overflow-hidden rounded-md border px-1.5 py-1 text-left transition-colors ${
+                        blocked ? "cursor-not-allowed opacity-40" : ""
+                      } ${
                         on
                           ? clashes
                             ? "border-amber-500 bg-amber-500/15"
@@ -201,13 +219,17 @@ export function SessionCalendar({
       <p className="mt-1.5 text-[11px] leading-snug text-subtle">
         Height is how long a session runs. Anything drawn side by side is on at the same time.
         The order you click in is your order of preference: first pick, first choice.
-        Click one again to take it back and the rest move up.
+        {cap !== undefined && (
+          atCap
+            ? ` You have chosen all ${cap}. Click one again to take it back.`
+            : ` You can choose up to ${cap} — ${cap - chosen.length} left.`
+        )}
       </p>
 
       {unscheduled.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {unscheduled.map((o) => (
-            <Chip key={o} label={o} rank={chosen.indexOf(o)} onClick={() => onToggle(o)} />
+            <Chip key={o} label={o} rank={chosen.indexOf(o)} full={atCap} onClick={() => onToggle(o)} />
           ))}
         </div>
       )}
@@ -216,13 +238,16 @@ export function SessionCalendar({
 }
 
 /** An option with no time on it — nowhere to put it on the grid. */
-function Chip({ label, rank, onClick }: { label: string; rank: number; onClick: () => void }) {
+function Chip({
+  label, rank, full, onClick,
+}: { label: string; rank: number; full: boolean; onClick: () => void }) {
   const on = rank >= 0;
   return (
     <button
       onClick={onClick}
       aria-pressed={on}
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] transition-colors ${
+      disabled={!on && full}
+      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         on ? "border-brand-500 bg-brand-500/12 font-semibold text-fg" : "border-line text-muted hover:bg-elevated"
       }`}
     >

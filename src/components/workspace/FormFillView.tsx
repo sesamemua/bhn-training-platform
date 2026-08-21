@@ -328,6 +328,26 @@ function Question({
   const none = Boolean(f.noneLabel) && answers[f.key] === f.noneLabel;
 
   /*
+   * The cap, enforced where the clicking happens.
+   *
+   * It used to live only in the help text and in the flow chart's rule
+   * box. The form said "up to 3" and then took all six — which is not a
+   * limit, it is a suggestion nobody was told they had broken, and the
+   * first anybody would have heard of it is a coordinator hand-cutting
+   * somebody's fourth choice.
+   *
+   * Taking one BACK is always allowed, or reaching the cap would lock
+   * the answer in.
+   */
+  const cap = f.maxChoices;
+  const atCap = cap !== undefined && arr.length >= cap;
+  const pickMulti = (o: string) => {
+    if (arr.includes(o)) { set(f.key, arr.filter((x) => x !== o)); return; }
+    if (atCap) return;
+    set(f.key, [...arr, o]);
+  };
+
+  /*
    * A note is a thing the form SAYS. No number, no asterisk, no input —
    * numbering it would make somebody look for the box to fill in.
    */
@@ -428,11 +448,7 @@ function Question({
         </select>
       ) : f.type === "multi" && f.slots.length > 0 ? (
         <>
-          <SessionCalendar
-            field={f}
-            chosen={arr}
-            onToggle={(o) => set(f.key, arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o])}
-          />
+          <SessionCalendar field={f} chosen={arr} onToggle={pickMulti} />
           {/* The ranking, written out.
               Badges on the calendar give each cell its position; this
               gives the ORDER, which is the thing being asked for and
@@ -456,9 +472,11 @@ function Question({
                 ))}
               </ol>
               <p className="mt-2 text-[11.5px] leading-snug text-muted">
-                {arr.length === 1
-                  ? "Pick another and it becomes your 2nd choice."
-                  : "This is the order we go by when a room is oversubscribed. Click a session again to take it back — the rest move up."}
+                {atCap
+                  ? `That is all ${cap}. To change your mind, click one again to take it back.`
+                  : arr.length === 1
+                    ? `Pick another and it becomes your 2nd choice.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`
+                    : `This is the order we go by when a room is oversubscribed.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`}
               </p>
             </div>
           )}
@@ -477,9 +495,11 @@ function Question({
             return (
               <button
                 key={o}
-                onClick={() => set(f.key, on ? arr.filter((x) => x !== o) : [...arr, o])}
+                onClick={() => pickMulti(o)}
                 aria-pressed={on}
-                className={`rounded-lg border px-3 py-1.5 text-[13px] transition-colors ${
+                disabled={!on && atCap}
+                title={!on && atCap ? `${cap} is the most you can choose — take one back first` : undefined}
+                className={`rounded-lg border px-3 py-1.5 text-[13px] transition-colors disabled:opacity-40 ${
                   on ? "border-brand-500 bg-brand-500/12 font-semibold text-fg" : "border-line text-muted hover:bg-elevated"
                 }`}
               >

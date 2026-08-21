@@ -107,6 +107,14 @@ async function main() {
     const code = TRAINING_WEEK_FORM.fields.find((f) => f.key === key);
     if (!live || !code) continue;
     if (live.help !== code.help) { live.help = code.help; touched.push(`${key} hint`); }
+    // The cap is a RULE, not wording: the live form said "up to 3" and
+    // accepted six, because the number only existed in the sentence.
+    const cap = (code as { maxChoices?: number }).maxChoices;
+    const liveCap = (live as { maxChoices?: number }).maxChoices;
+    if (cap !== undefined && liveCap !== cap) {
+      (live as { maxChoices?: number }).maxChoices = cap;
+      touched.push(`${key} capped at ${cap}`);
+    }
   }
 
   for (const key of ["need_programme_note", "need_account_note"]) {

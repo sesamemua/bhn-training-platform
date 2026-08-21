@@ -651,3 +651,70 @@ test("the dietary question says it is Training Week, not the Symposium", () => {
   assert.match(f.help ?? "", /does not cover the Symposium/i);
   assert.match(f.help ?? "", /separate registration/i);
 });
+
+/* ── the cap on how many sessions ────────────────────────────────── */
+
+test("the sessions question carries its cap, not just a sentence about it", () => {
+  // It lived only in the help text and in the flow chart's rule box —
+  // neither of which is the thing a person clicks. The form said "up to
+  // 3" and took all six.
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  assert.equal(f.maxChoices, 3);
+  assert.match(f.help ?? "", /up to 3/);
+});
+
+test("the cap survives being stored and read back", () => {
+  // parseForm validates each field and DROPS what it cannot read. A cap
+  // the schema did not know about would vanish on the next load and the
+  // limit would quietly stop existing again.
+  const back = parseForm(JSON.parse(JSON.stringify(TRAINING_WEEK_FORM)));
+  assert.equal(back.fields.find((f) => f.key === "sessions")!.maxChoices, 3);
+});
+
+test("at the cap, the sessions you did not pick cannot be picked", () => {
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  const three = [SESSIONS_2026[0], SESSIONS_2026[3], SESSIONS_2026[5]];
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: f, chosen: three, onToggle: () => {} }),
+  );
+  const cellFor = (option: string) => {
+    const name = option.split(" · ").pop()!.split(" ")[0];
+    return html.split("<button").find((t) => t.includes(name))!;
+  };
+  // The three chosen stay clickable — taking one back must always work,
+  // or reaching the cap would lock the answer in.
+  for (const picked of three) assert.ok(!/disabled/.test(cellFor(picked)), `${picked} cannot be taken back`);
+  // The rest are refused, and say why.
+  for (const other of [SESSIONS_2026[1], SESSIONS_2026[2], SESSIONS_2026[4]]) {
+    assert.match(cellFor(other), /disabled/, `${other} is still selectable at the cap`);
+    assert.match(cellFor(other), /most you can choose/, `${other} is refused without a reason`);
+  }
+});
+
+test("below the cap nothing is refused, and it says how many are left", () => {
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: f, chosen: [SESSIONS_2026[0]], onToggle: () => {} }),
+  );
+  assert.ok(!html.includes("disabled"), "something is refused before the cap is reached");
+  assert.match(html, /2 left/, "the number remaining is not shown");
+});
+
+test("with nothing chosen it says what the cap is", () => {
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: f, chosen: [], onToggle: () => {} }),
+  );
+  assert.match(html, /up to 3/);
+});
+
+test("a question with no cap refuses nothing", () => {
+  // maxChoices is optional, and a builder form without one must not
+  // suddenly become uncheckable after the first pick.
+  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+  const uncapped = { ...f, maxChoices: undefined };
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: uncapped, chosen: SESSIONS_2026.slice(0, 5), onToggle: () => {} }),
+  );
+  assert.ok(!html.includes("disabled"), "an uncapped question is refusing picks");
+});

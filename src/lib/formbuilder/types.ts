@@ -160,6 +160,15 @@ export const FieldSchema = z.object({
   /** How many of a clashing pair will actually be granted. */
   approveFromClash: z.number().int().min(1).max(10).optional(),
   /**
+   * The most options a "choose several" question will take.
+   *
+   * The cap used to live only in the help text and in the flow chart's
+   * rule box — neither of which is the thing a person clicks. The form
+   * said "up to 3" and then let you pick all six, which is not a limit,
+   * it is a suggestion nobody was told they had broken.
+   */
+  maxChoices: z.number().int().min(1).max(50).optional(),
+  /**
    * ALL of these must hold for the field to be shown. An empty list
    * means always — the common case, and the one that should need no
    * ceremony to express.

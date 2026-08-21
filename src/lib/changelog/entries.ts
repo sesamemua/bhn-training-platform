@@ -4401,4 +4401,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Fixed: the three-session limit was a sentence, not a limit",
+    body: "Question 5 said \u201cup to 3\u201d and then let you pick all six. The cap existed in the help text and in the flow chart\u2019s rule box \u2014 neither of which is the thing a person clicks \u2014 so nothing stopped a fourth, and the first anybody would have heard of it is a coordinator cutting somebody\u2019s choices by hand.\n\nIt is now a property of the question (`maxChoices`), enforced where the clicking happens and stored with the form. At three, the sessions you did not choose are dimmed and say why; the three you did choose stay clickable, because reaching the cap must not lock your answer in. Below three it says how many you have left.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

@@ -213,6 +213,8 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       id: "f_sessions", key: "sessions", label: "Choose your sessions",
       type: "multi", required: true, options: SESSIONS_2026, showWhen: [whenEligible],
       approveFromClash: 1,
+      // Enforced where it is clicked, not only stated in the hint.
+      maxChoices: MAX_SESSIONS,
       slots: SESSION_SLOTS,
       help: `Pick the ones you want to attend — up to ${MAX_SESSIONS} — in order of preference. The number on each one is your ranking, taken from the order you clicked, and it is what we go by when a room is oversubscribed. Sessions drawn side by side in the calendar run at the same time: you may choose both, but only one of a clashing pair can be approved. The two Monday company tours run back to back, so you can do both.`,
     },
