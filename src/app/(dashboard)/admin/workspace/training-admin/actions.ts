@@ -20,6 +20,11 @@ import {
 import { REGISTRATION_FORM_SLUG } from "@/lib/allocation/symposium-2026";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
+import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
+import {
+  describe as describeDecision, isDecision, letterFor, type Decision,
+} from "@/lib/allocation/decisions";
+import type { Receipt } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
 import {
   isEdit, OverrideSchema, parseOverrides, problemsWith, refusesMultiSession, render,
@@ -631,6 +636,15 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
     select: {
       id: true, data: true, email: true, createdAt: true,
       user: { select: { name: true, email: true } },
+      // The seats this registration asked for, which is what a
+      // coordinator actually decides on.
+      bookings: {
+        orderBy: { rank: "asc" },
+        select: {
+          id: true, status: true, rank: true, decisionNote: true, approvedAt: true,
+          workshop: { select: { title: true, capacity: true } },
+        },
+      },
     },
   });
 
@@ -650,6 +664,14 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
       email: r.email ?? r.user?.email ?? "",
       status: typeof answers.bhn_status === "string" ? answers.bhn_status : "",
       sessions: rankedSessions(doc, answers),
+      seats: r.bookings.map((b) => ({
+        id: b.id,
+        workshop: b.workshop.title,
+        rank: b.rank ?? 0,
+        status: b.status,
+        note: b.decisionNote,
+        decidedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
+      })),
       answers: Object.fromEntries(
         doc.fields
           .filter((f) => f.type !== "note" && answers[f.key] !== undefined)
@@ -681,4 +703,106 @@ export async function deleteSubmission(id: string): Promise<{ ok: boolean }> {
   await logSend(admin.id, "training_admin.submission_deleted", { id, email: row.email, wasTest });
   revalidatePath(PAGE);
   return { ok: true };
+}
+
+// ── deciding on a seat ───────────────────────────────────────────────
+
+/**
+ * Approve, waitlist, decline, or take it back.
+ *
+ * REVERSIBLE by design: every decision is a move between four states,
+ * and any move is allowed. Coordinators change their minds — somebody
+ * drops out, a room grows, a mistake is spotted — and a system that
+ * only moves forwards makes the fix a database job.
+ *
+ * A change that lands on a real decision writes to the registrant,
+ * including a reversal: somebody told they had a place and then moved
+ * to the waitlist has to hear it from us rather than notice. Going back
+ * to undecided is silent — "your place is now undecided" is worse than
+ * saying nothing, and the next real decision is the news.
+ *
+ * The letter is sent AFTER the row is written and its outcome reported,
+ * never swallowed. A decision is not lost because the mail server is
+ * having a bad afternoon, and a coordinator who is told it went out
+ * when it did not will not follow up.
+ */
+export async function decideSeat(
+  bookingId: string,
+  to: string,
+  note?: string,
+): Promise<{ ok: boolean; problem?: string; said?: string; receipt?: Receipt }> {
+  const admin = await requireAdmin();
+  if (!isDecision(to)) return { ok: false, problem: "That is not a decision." };
+  if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
+
+  const booking = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true, status: true, rank: true,
+      workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, capacity: true } },
+      user: { select: { name: true, email: true } },
+      submission: { select: { id: true, data: true, email: true } },
+    },
+  });
+  if (!booking) return { ok: false, problem: "That seat no longer exists." };
+
+  const from = isDecision(booking.status) ? booking.status : "pending";
+  const decision = to as Decision;
+
+  await prisma.workshopBooking.update({
+    where: { id: bookingId },
+    data: {
+      status: decision,
+      decisionNote: note?.trim() ? note.trim().slice(0, 500) : null,
+      // Stamped only when a human actually decided. Taking it back to
+      // undecided clears it, or the dashboard would keep counting a
+      // decision nobody is standing behind.
+      approvedAt: decision === "pending" ? null : new Date(),
+      approvedById: decision === "pending" ? null : admin.id ?? null,
+    },
+  });
+
+  await logSend(admin.id, "training_admin.seat_decided", {
+    bookingId, from, to: decision, workshop: booking.workshop.title, note: note ?? null,
+  });
+
+  const said = `${booking.workshop.title}: ${describeDecision(from, decision)}`;
+  revalidatePath(PAGE);
+
+  const templateId = letterFor(from, decision);
+  if (!templateId) return { ok: true, said };
+
+  const answers = ((booking.submission?.data ?? {}) as Record<string, unknown>) as Answers;
+  const to_ = booking.submission?.email ?? booking.user?.email ?? null;
+  const receipt = await sendDecisionLetter(templateId, {
+    to: to_,
+    name: String(answers.first_name ?? answers.trainee_name ?? booking.user?.name ?? "").trim(),
+    session: booking.workshop.title,
+    start: booking.workshop.startDateTime,
+    end: booking.workshop.endDateTime,
+    venue: booking.workshop.locationName,
+    note: note?.trim() || null,
+  });
+  return { ok: true, said, receipt };
+}
+
+/** Decide several seats at once — the whole of one registration. */
+export async function decideRegistration(
+  submissionId: string,
+  to: string,
+  note?: string,
+): Promise<{ ok: boolean; problem?: string; said?: string[] }> {
+  await requireAdmin();
+  if (!isDecision(to)) return { ok: false, problem: "That is not a decision." };
+  const seats = await prisma.workshopBooking.findMany({
+    where: { submissionId },
+    orderBy: { rank: "asc" },
+    select: { id: true },
+  });
+  const said: string[] = [];
+  for (const s of seats) {
+    const r = await decideSeat(s.id, to, note);
+    if (r.said) said.push(r.said);
+  }
+  return { ok: true, said };
 }

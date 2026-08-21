@@ -18,11 +18,14 @@ import {
   type Applicant, type Rule, type RuleKind,
 } from "@/lib/allocation/model";
 import {
-  createWorkshop, deleteSubmission, loadEmailTemplates, loadSubmissions, previewAudience,
+  createWorkshop, decideSeat, deleteSubmission, loadEmailTemplates, loadSubmissions, previewAudience,
   removeWorkshop, resetEmailTemplate, saveEmailTemplate, saveRules, saveSupportFormUrl,
   sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import type { Audience, SubmissionRow } from "@/lib/allocation/admin-types";
+import { DECISION_LABEL, type Decision } from "@/lib/allocation/decisions";
+import { receiptLine } from "@/lib/formbuilder/receipt";
+import { ordinal } from "./SessionCalendar";
 import {
   BODY_MAX, fieldsUsed, MERGE_FIELDS, needsOneSession, refusesMultiSession, render,
   STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
@@ -974,12 +977,16 @@ function Submissions() {
                   <span className="mt-0.5 block truncate text-[11.5px] text-muted">
                     {r.email}{r.status ? ` · ${r.status}` : ""}
                   </span>
-                  {r.sessions.length > 0 && (
+                  {r.seats.length > 0 && (
                     <span className="mt-1 flex flex-wrap gap-1.5">
-                      {r.sessions.map((sess, i) => (
-                        <span key={sess} className="inline-flex items-center gap-1 rounded border border-line bg-elevated px-1.5 py-0.5 text-[10.5px] text-muted">
-                          <span className="font-bold text-brand-500">{i + 1}</span>
-                          {sess.split(" · ").pop()}
+                      {r.seats.map((s) => (
+                        <span
+                          key={s.id}
+                          className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10.5px] ${TONE[s.status] ?? TONE.pending}`}
+                        >
+                          <span className="font-bold">{s.rank}</span>
+                          {s.workshop}
+                          <span className="opacity-70">· {DECISION_LABEL[s.status as Decision] ?? s.status}</span>
                         </span>
                       ))}
                     </span>
@@ -997,6 +1004,20 @@ function Submissions() {
                       </div>
                     ))}
                   </dl>
+                  {r.seats.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className={LABEL}>Decide</p>
+                      {r.seats.map((s) => (
+                        <Seat key={s.id} seat={s} onDone={reload} />
+                      ))}
+                      <p className="text-[11px] leading-snug text-subtle">
+                        Any decision can be changed later. Approving, waitlisting or declining writes
+                        to them — including a change of mind, so nobody has to notice for themselves.
+                        Taking one back to <em>not decided</em> is silent.
+                      </p>
+                    </div>
+                  )}
+
                   <button
                     className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-semibold text-muted hover:border-red-500/50 hover:text-red-500 disabled:opacity-40"
                     disabled={pending}
@@ -1011,6 +1032,78 @@ function Submissions() {
         </ul>
       )}
     </section>
+  );
+}
+
+/** How a decision reads at a glance. */
+const TONE: Record<string, string> = {
+  pending: "border-line bg-elevated text-muted",
+  confirmed: "border-emerald-500/50 bg-emerald-500/10 text-emerald-600",
+  waitlist: "border-amber-500/50 bg-amber-500/10 text-amber-600",
+  cancelled: "border-red-500/40 bg-red-500/[0.08] text-red-500",
+};
+
+/**
+ * One seat, and the four things you can do to it.
+ *
+ * All four are always offered, including the one it is already on —
+ * a decision that can only move forwards makes correcting a mistake a
+ * database job, and coordinators change their minds for good reasons:
+ * somebody drops out, a room grows, a name was misread.
+ */
+function Seat({ seat, onDone }: { seat: SubmissionRow["seats"][number]; onDone: () => void }) {
+  const [note, setNote] = useState(seat.note ?? "");
+  const [said, setSaid] = useState<string | null>(null);
+  const [mail, setMail] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const decide = (to: Decision) =>
+    start(async () => {
+      const r = await decideSeat(seat.id, to, note);
+      setSaid(r.ok ? r.said ?? null : r.problem ?? "Could not record that.");
+      // What happened to the letter, said out loud. A coordinator told
+      // it went out when it did not will never follow up.
+      setMail(r.receipt ? receiptLine(r.receipt) : null);
+      onDone();
+    });
+
+  return (
+    <div className="rounded-lg border border-line bg-card p-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-bold text-brand-500">{ordinal(seat.rank)}</span>
+        <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-fg">{seat.workshop}</span>
+        <span className={`rounded border px-1.5 py-0.5 text-[10.5px] ${TONE[seat.status] ?? TONE.pending}`}>
+          {DECISION_LABEL[seat.status as Decision] ?? seat.status}
+        </span>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {(["confirmed", "waitlist", "cancelled", "pending"] as const).map((d) => (
+          <button
+            key={d}
+            disabled={pending}
+            onClick={() => decide(d)}
+            aria-pressed={seat.status === d}
+            className={`rounded-md border px-2 py-1 text-[11.5px] font-semibold transition-colors disabled:opacity-40 ${
+              seat.status === d ? TONE[d] : "border-line text-muted hover:bg-elevated hover:text-fg"
+            }`}
+          >
+            {d === "pending" ? "Not decided" : DECISION_LABEL[d]}
+          </button>
+        ))}
+      </div>
+
+      <input
+        className={`${LINE} mt-2`}
+        placeholder="A line to add to the letter (optional)"
+        maxLength={500}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
+
+      {said && <p role="status" className="mt-1.5 text-[11.5px] text-fg">{said}</p>}
+      {mail && <p className="mt-0.5 text-[11.5px] text-muted">{mail}</p>}
+    </div>
   );
 }
 

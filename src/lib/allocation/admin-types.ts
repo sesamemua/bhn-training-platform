@@ -79,6 +79,17 @@ export interface SubmissionRow {
   status: string;
   /** Sessions in the order they ranked them. */
   sessions: string[];
+  /** The seats those sessions became, and where each one stands. */
+  seats: {
+    id: string;
+    workshop: string;
+    /** 1 is their first choice. */
+    rank: number;
+    /** pending | confirmed | waitlist | cancelled */
+    status: string;
+    note: string | null;
+    decidedAt: string | null;
+  }[];
   /** Everything else, by question label, for the expanded view. */
   answers: Record<string, string>;
 }

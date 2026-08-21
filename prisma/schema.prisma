@@ -1327,6 +1327,9 @@ model EventFormSubmission {
 
   comments     ApplicationComment[]
   exitFeedback PoolExitFeedback?
+  /// Seats this registration asked for. Only ever set for forms that
+  /// ask about sessions.
+  bookings     WorkshopBooking[]
 
   @@index([formId, createdAt])
   @@index([email])
@@ -2841,7 +2844,13 @@ model Workshop {
 model WorkshopBooking {
   id               String    @id @default(cuid())
   workshopId       String
-  userId           String
+  /// Nullable since Aug 2026: a seat can belong to a registration that
+  /// came in through the PUBLIC form, where the person has no account.
+  /// Exactly one of userId / submissionId is set — enforced in the
+  /// booking helpers rather than by the database, because Postgres
+  /// cannot express "one or the other" as a constraint Prisma will
+  /// model.
+  userId           String?
   /// "pending"   → admin hasn't approved yet; no seat held, not counted
   ///                toward capacity. Default for new bookings whenever
   ///                the parent Workshop has `requiresApproval=true`.
@@ -2859,17 +2868,35 @@ model WorkshopBooking {
   /// or waitlist). Stays null on rows that never required approval.
   approvedAt       DateTime?
   approvedById     String?
+  /// The registration this seat came from, when it came through the
+  /// public form. Cascades: deleting a submission removes the seats it
+  /// asked for, because a booking with no registration behind it is a
+  /// seat nobody can explain.
+  submissionId     String?
+  /// Where this sits in what the registrant asked for: 1 is their first
+  /// choice. Null on seats booked directly rather than through a form.
+  rank             Int?
+  /// Why a seat was declined or released, in the coordinator's words.
+  /// Shown to nobody automatically — it goes into the letter only if
+  /// they put it there.
+  decisionNote     String?
 
-  workshop   Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  approvedBy User?    @relation("WorkshopBookingApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  workshop   Workshop              @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  user       User?                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  submission EventFormSubmission?  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  approvedBy User?                 @relation("WorkshopBookingApprover", fields: [approvedById], references: [id], onDelete: SetNull)
 
   @@unique([workshopId, userId])
+  /// The same guarantee for a registration with no account behind it:
+  /// one seat per workshop per registration.
+  @@unique([workshopId, submissionId])
   /// Supports the MAX_WORKSHOPS_PER_USER = 2 check at booking time
   /// (count this user's non-cancelled bookings).
   @@index([userId, status])
   /// Supports "next waitlist person to promote on this workshop".
   @@index([workshopId, status, waitlistPosition])
+  /// Supports "the seats this registration asked for, in rank order".
+  @@index([submissionId, rank])
 }
 
 /// One slot on the symposium-day agenda. Different from Workshop —

@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { BuiltFormSchema, parseForm, type BuiltForm, type DataSource } from "@/lib/formbuilder/types";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
+import { makeSeats } from "@/lib/formbuilder/seats";
 import type { Receipt } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
 import { parseCsv } from "@/lib/formbuilder/csv";
@@ -200,6 +201,8 @@ export async function submitBuiltForm(
     },
     select: { id: true },
   });
+
+  await makeSeats(doc, verdict.clean, row.id, user?.id ?? null);
 
   revalidatePath("/admin/workspace/symposium-2026/registration");
   revalidatePath("/admin/workspace/training-admin");

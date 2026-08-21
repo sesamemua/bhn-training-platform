@@ -4429,4 +4429,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Approving, waitlisting and declining \u2014 reversible, and every decision writes to them",
+    body: "Registrations arrived and there was nothing to approve: a submission and a booking were two separate systems, so Capacity stayed empty however many people registered.\n\n**A registration now becomes seats.** Each session somebody asked for becomes a pending seat carrying their **rank** \u2014 1 is their first choice \u2014 so Capacity, the decision model and the registrant sheet all read the same rows. Asking for a session is not being given one: they start pending.\n\n**Four decisions, and any move between them is allowed.** Approved, Waitlisted, Declined, Not decided. A system that only moves forwards makes correcting a mistake a database job, and coordinators change their minds for good reasons \u2014 somebody drops out, a room grows, a name was misread.\n\n**Every real decision writes to them, including a change of mind.** Somebody told they had a place and then moved to the waitlist has to hear it from us rather than notice. Taking a decision back to *not decided* is silent \u2014 \u201cyour place is now undecided\u201d is worse than saying nothing, and the next real decision is the news.\n\nThe wording is the standing letters, so rewriting the decline in Admin \u2192 Email changes what actually goes out. You can add a line of your own, which arrives at the end under its own rule so a reader can tell it from the standard wording. What happened to each letter is reported \u2014 sent, no mail server, failed \u2014 never swallowed: a coordinator told it went out when it did not will never follow up.\n\nSeats belong to a **registration**, not only to an account, so somebody who registered through the public form without one can still be given a place. Deleting a registration removes the seats it asked for.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

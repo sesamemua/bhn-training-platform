@@ -56,8 +56,16 @@ async function loadBookingOrErr(
     where: { id: bookingId },
     select: { workshopId: true, userId: true, workshop: { select: { eventId: true } } },
   });
+  /*
+   * booking.userId is nullable since seats can belong to a public
+   * registration with no account. This route is the account-holder
+   * path, so a seat with no user on it is not the one being asked
+   * about — checked explicitly rather than leaning on the comparison,
+   * because `null !== someId` is true for the wrong reason.
+   */
   if (
     !booking ||
+    !booking.userId ||
     booking.userId !== registration.userId ||
     booking.workshop.eventId !== event.id
   ) {

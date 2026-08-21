@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
+import { makeSeats } from "@/lib/formbuilder/seats";
 import { since, tooMany } from "@/lib/formbuilder/throttle";
 import type { Receipt } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
@@ -59,6 +60,9 @@ export async function submitPublicForm(
     select: { id: true },
   });
 
+  // The seats they asked for, pending a decision. Asking for a session
+  // is not being given one.
+  await makeSeats(doc, verdict.clean, row.id, null);
   revalidatePath("/admin/workspace/training-admin");
 
   const receipt = await sendAcknowledgement(doc, verdict.clean, { to: email });
