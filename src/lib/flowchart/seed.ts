@@ -96,8 +96,11 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       help: "A current trainee has been accepted into ENGAGE, EXPERIENCE or EQUIP. Having an account on the BioHubNet training platform is not the same thing — if you registered but were not accepted into a programme, answer No. Current trainees get priority consideration for Training Week places." } };
 
   // The answer for everyone who says No, said where they will read it.
+  // Rewritten because it had become FALSE, not merely stale: it told
+  // the reader a non-trainee could "register now regardless", which is
+  // the rule the four-way status question reverses.
   const nTinfo = { id: "nTinfo", kind: "note" as const, x: SIDE, y: nT.y, w: W, h: 78,
-    text: "Note: not a trainee? You can apply to a programme — applications take time to review — and register now regardless, as long as you are HQP at one of the 41 member institutions." };
+    text: "Four answers, two outcomes. Accepted into ENGAGE or EXPERIENCE, or having applied to EQUIP — funded or not — carries on. An account with no programme, or no account, is asked to join one first." };
 
   // Yes branch: confirm who they are against the roster, then carry on.
   const nTv = { id: "nTv", kind: "question" as const, x: MAIN, y: at(94), w: W, h: 94,

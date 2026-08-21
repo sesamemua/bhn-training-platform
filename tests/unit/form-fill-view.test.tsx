@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FormFillView } from "../../src/components/workspace/FormFillView";
-import { TRAINING_WEEK_FORM } from "../../src/lib/formbuilder/training-week";
-import type { BuiltForm } from "../../src/lib/formbuilder/types";
+import {
+  ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT, TRAINING_WEEK_FORM,
+} from "../../src/lib/formbuilder/training-week";
+import { parseForm, type BuiltForm } from "../../src/lib/formbuilder/types";
 
 /**
  * The registrant's view, rendered.
@@ -26,7 +28,7 @@ test("it says, on the page, that nothing is submitted", () => {
 });
 
 test("the form opens with the question it is supposed to open with", () => {
-  assert.match(html, /Are you a current BioHubNet trainee\?/);
+  assert.match(html, /Where do you stand with BioHubNet\?/);
 });
 
 test("questions behind an answer are not shown before that answer", () => {
@@ -43,18 +45,22 @@ test("the confirmation question is not on the registration form at all", () => {
   assert.ok(!html.includes("Can you still make it?"));
 });
 
-test("the consent question is rendered as its own statement", () => {
-  assert.match(html, /I agree to be photographed/);
-  assert.match(html, /type="radio"/);
-});
-
 test("required questions are marked", () => {
   assert.match(html, /title="Required"/);
 });
 
 test("there is a way to submit, and it is checked for real", () => {
-  assert.match(html, /Submit registration/);
-  assert.match(html, /Checked for real\. Sent nowhere\./);
+  // Submit only appears once the whole form has been opened — offering
+  // it under question one would be offering to submit a blank form. A
+  // one-question form is open from the start, so it shows immediately.
+  const oneQuestion: BuiltForm = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields.filter((f) => f.key === "bhn_status"),
+  };
+  const solo = paint(oneQuestion);
+  assert.match(solo, /Submit registration/);
+  assert.match(solo, /Checked for real\. Sent nowhere\./);
+  assert.ok(!solo.includes(">Continue<"), "nothing left to continue to");
 });
 
 test("the second stage is offered, because this form has one", () => {
@@ -74,15 +80,11 @@ test("an empty form says so rather than rendering a bare page", () => {
   assert.match(paint(empty), /No questions in this part of the form yet/);
 });
 
-test("every question a registrant can see at first paint is numbered", () => {
-  const shown = TRAINING_WEEK_FORM.fields.filter(
-    (f) => (f.stage ?? "registration") === "registration" && f.showWhen.length === 0,
-  );
-  assert.ok(shown.length > 10, "sanity: the form is not nearly empty");
-  const numbers = html.match(/font-mono text-\[11px\] text-subtle">\d+</g) ?? [];
-  // Consent carries its statement instead of a numbered heading.
-  const numbered = shown.filter((f) => f.type !== "consent").length;
-  assert.equal(numbers.length, numbered);
+test("the one question on screen is numbered 1", () => {
+  // The numbers count QUESTIONS, so they have to keep counting the same
+  // way as the form unfolds — a note appearing must not shift them.
+  const numbers = html.match(/font-mono text-\[11px\] text-subtle">(\d+)</g) ?? [];
+  assert.deepEqual(numbers.map((m) => m.match(/>(\d+)</)![1]), ["1"]);
 });
 
 test("the title shown is the form's own, not a placeholder", () => {
@@ -201,30 +203,15 @@ test("two sessions in the same lane never overlap in time", () => {
 
 /* ── the revised questions ───────────────────────────────────────── */
 
-import { visibleFields, missing } from "../../src/lib/formbuilder/logic";
+import { visibleFields, missing, walk } from "../../src/lib/formbuilder/logic";
 
 const seen = (answers: Record<string, string>) =>
   visibleFields(TRAINING_WEEK_FORM, answers).map((f) => f.key);
 
-test("saying No to the trainee question gets a reply, not silence", () => {
-  // Answering no used to move straight on, which reads as the form
-  // having nothing to say to you — when you can in fact register.
-  assert.ok(!seen({}).includes("not_trainee_note"), "the note is not shown before the question is answered");
-  assert.ok(seen({ trainee: "No" }).includes("not_trainee_note"));
-  assert.ok(!seen({ trainee: "Yes" }).includes("not_trainee_note"));
-});
-
-test("the reply says where to go", () => {
-  const note = TRAINING_WEEK_FORM.fields.find((f) => f.key === "not_trainee_note")!;
-  assert.equal(note.type, "note");
-  assert.match(note.help ?? "", /biohubnet\.ca/);
-  assert.match(note.help ?? "", /still register|carry on/i);
-});
-
 test("a note is never something you can fail to answer", () => {
   // It has no input. Marked required by accident it would block the
   // form forever with nothing to type into.
-  const withNote = missing(TRAINING_WEEK_FORM, { trainee: "No" });
+  const withNote = missing(TRAINING_WEEK_FORM, { bhn_status: NO_ACCOUNT });
   assert.ok(!withNote.some((f) => f.type === "note"));
 });
 
@@ -237,9 +224,9 @@ test("the travel question asks what the decision turns on, and says why", () => 
 });
 
 test("the postal code is asked only of the people it is about", () => {
-  assert.ok(!seen({ trainee: "Yes" }).includes("postcode"), "not before the travel answer");
-  assert.ok(!seen({ trainee: "Yes", travel_over_2h: "No" }).includes("postcode"), "not on a No");
-  assert.ok(seen({ trainee: "Yes", travel_over_2h: "Yes" }).includes("postcode"));
+  assert.ok(!seen({ bhn_status: ACCEPTED }).includes("postcode"), "not before the travel answer");
+  assert.ok(!seen({ bhn_status: ACCEPTED, travel_over_2h: "No" }).includes("postcode"), "not on a No");
+  assert.ok(seen({ bhn_status: ACCEPTED, travel_over_2h: "Yes" }).includes("postcode"));
 });
 
 test("the trainee email says what is done with it", () => {
@@ -261,16 +248,170 @@ test("a note renders as something said, with no input and no number", () => {
   const html = renderToStaticMarkup(
     React.createElement(FormFillView, { doc: TRAINING_WEEK_FORM, title: "T" }),
   );
-  assert.ok(!html.includes("You can still register"), "hidden until the question is answered");
+  assert.ok(!html.includes("Two steps first"), "hidden until the question is answered");
   // Rendered directly rather than through the form, so the note is
   // definitely on screen for this assertion.
   const noteOnly: typeof TRAINING_WEEK_FORM = {
     ...TRAINING_WEEK_FORM,
-    fields: TRAINING_WEEK_FORM.fields.filter((f) => f.key === "not_trainee_note").map((f) => ({ ...f, showWhen: [] })),
+    submitNote: undefined,
+    fields: TRAINING_WEEK_FORM.fields.filter((f) => f.key === "need_account_note").map((f) => ({ ...f, showWhen: [] })),
   };
   const shown = renderToStaticMarkup(React.createElement(FormFillView, { doc: noteOnly, title: "T" }));
-  assert.match(shown, /You can still register/);
+  assert.match(shown, /Two steps first/);
   assert.ok(!shown.includes("<input"), "a note has nothing to fill in");
   assert.ok(!shown.includes('title="Required"'), "a note is not required");
   assert.match(shown, /0 questions/, "and it is not counted as one");
+});
+
+/* ── where you stand with BioHubNet ──────────────────────────────── */
+
+test("question one has an answer for each of the four people who ask it", () => {
+  const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "bhn_status")!;
+  assert.equal(q.type, "choice");
+  assert.equal(q.options.length, 4);
+  // Yes/no had an accepted trainee, somebody with an account and no
+  // programme, and somebody who had never heard of us all answering the
+  // same thing and being told the same thing.
+  assert.ok(q.required, "the rest of the form depends on it");
+});
+
+test("no option contains a comma, or every rule testing it breaks", () => {
+  // `any of` splits its value on commas. A comma inside an option makes
+  // the rule test for two halves of a sentence, neither of which is an
+  // answer, and the questions behind it silently never show.
+  const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "bhn_status")!;
+  for (const o of q.options) assert.ok(!o.includes(","), `"${o}" has a comma in it`);
+});
+
+test("applying to EQUIP is enough — an award is not required", () => {
+  // The point of Training Week is the people who are trying. Gating on
+  // an award would shut out exactly the applicants it exists for.
+  assert.match(EQUIP_APPLIED, /award is not required/i);
+  assert.deepEqual(seen({ bhn_status: EQUIP_APPLIED }), seen({ bhn_status: ACCEPTED }),
+    "an EQUIP applicant sees the same form as an accepted trainee");
+});
+
+test("the two answers with a step to take get different instructions", () => {
+  const withAccount = seen({ bhn_status: HAS_ACCOUNT });
+  const without = seen({ bhn_status: NO_ACCOUNT });
+  assert.ok(withAccount.includes("need_programme_note"));
+  assert.ok(without.includes("need_account_note"));
+  assert.ok(!withAccount.includes("need_account_note"), "somebody with an account is not told to make one");
+  assert.ok(!without.includes("need_programme_note"));
+});
+
+test("neither note is shown to somebody who is already in", () => {
+  for (const status of [ACCEPTED, EQUIP_APPLIED]) {
+    const keys = seen({ bhn_status: status });
+    assert.ok(!keys.includes("need_programme_note") && !keys.includes("need_account_note"));
+  }
+});
+
+test("both notes point somewhere", () => {
+  for (const key of ["need_programme_note", "need_account_note"]) {
+    const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === key)!;
+    assert.match(n.help ?? "", /biohubnet\.ca/);
+    assert.match(n.help ?? "", /EQUIP/, "the EQUIP route is the one most people do not know about");
+  }
+});
+
+test("everyone still gets to register", () => {
+  // Being told to join a programme is guidance, not a locked door.
+  for (const status of [ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT]) {
+    assert.ok(seen({ bhn_status: status }).includes("sessions"), `${status} cannot reach the sessions`);
+  }
+});
+
+/* ── one question at a time ──────────────────────────────────────── */
+
+test("the form opens on question one and nothing else", () => {
+  // Sixteen questions on arrival is a wall, and the first one decides
+  // whether the other fifteen are even yours to answer.
+  const html = paint(TRAINING_WEEK_FORM);
+  assert.match(html, /Where do you stand with BioHubNet\?/);
+  assert.ok(!html.includes("Choose your sessions"), "the rest of the form is still folded up");
+  assert.match(html, />Continue</);
+  assert.ok(!html.includes("Submit registration"), "nothing to submit yet");
+  assert.match(html, /Show all \d+/, "and a way out for people who want the whole thing");
+});
+
+/* ── the rest of this round ──────────────────────────────────────── */
+
+test("the Symposium question offers the three real answers", () => {
+  const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "symposium_signup")!;
+  assert.equal(q.options.length, 3);
+  assert.ok(q.options.some((o) => /already/i.test(o)));
+  assert.ok(q.options.some((o) => /plan to/i.test(o)));
+  assert.ok(q.options.some((o) => /not attending/i.test(o)));
+  assert.ok(!q.required, "the Symposium is a different event — this is not a condition of anything");
+});
+
+test("dietary requirements can be answered with N/A", () => {
+  // Blank meant either "none" or "have not got to it", and whoever is
+  // ordering lunch needs the difference.
+  const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "dietary")!;
+  assert.match(q.noneLabel ?? "", /N\/A/);
+});
+
+test("a short list of choices renders as radios, not a dropdown", () => {
+  const html = paint(TRAINING_WEEK_FORM);
+  assert.match(html, /name="fill_bhn_status"/, "question one is radio buttons");
+  assert.ok(!html.includes("<select"), "nothing on the opening screen is a dropdown");
+});
+
+test("photography consent is a condition of submitting, not a question", () => {
+  // It was a question with one box you had to tick — a checkbox
+  // pretending to be a choice, with no No the form would accept.
+  assert.ok(!TRAINING_WEEK_FORM.fields.some((f) => f.key === "media_consent"));
+  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /photographed and filmed/i);
+  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /contact the coordinator/i,
+    "somebody who is not comfortable still needs to know who to talk to");
+});
+
+test("the submit terms survive a round trip through storage", () => {
+  // Added to the schema, saved happily, and silently gone on the next
+  // read — because parseForm rebuilds the document key by key.
+  const back = parseForm(JSON.parse(JSON.stringify(TRAINING_WEEK_FORM)));
+  assert.equal(back.submitNote, TRAINING_WEEK_FORM.submitNote);
+});
+
+test("the workflow does not test a question nobody is asked", () => {
+  // A step reading media_consent could never pass once the question was
+  // gone, and a workflow that can never reach its own end is worse than
+  // one that is wrong out loud.
+  const keys = new Set(TRAINING_WEEK_FORM.fields.map((f) => f.key));
+  for (const s of TRAINING_WEEK_FORM.steps) {
+    for (const c of s.when) assert.ok(keys.has(c.field), `${s.id} tests "${c.field}", which nobody is asked`);
+  }
+});
+
+test("the workflow actually reaches a different end for each status", () => {
+  // The check that decides this once tested "the question was
+  // answered", which is true of all four options — so "Declined, with a
+  // reason" was an end nothing could reach, and problems() cannot see
+  // that: it checks a condition names a live key, not that a branch is
+  // reachable.
+  // `confirmed` is answered too: without it the eligible path stops at
+  // "seat released", which is a real ending but not the one this test
+  // is about.
+  const endFor = (status: string) => {
+    const path = walk(TRAINING_WEEK_FORM, { bhn_status: status, sessions: ["x"], confirmed: "Yes" });
+    return path[path.length - 1].step.id;
+  };
+  assert.equal(endFor(ACCEPTED), "w_attends");
+  assert.equal(endFor(EQUIP_APPLIED), "w_attends");
+  assert.equal(endFor(HAS_ACCOUNT), "w_declined");
+  assert.equal(endFor(NO_ACCOUNT), "w_declined");
+});
+
+test("every ending in the workflow is reachable by somebody", () => {
+  const ends = TRAINING_WEEK_FORM.steps.filter((s) => s.kind === "end").map((s) => s.id);
+  const reached = new Set<string>();
+  for (const status of [ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT]) {
+    for (const confirmed of ["Yes", "No"]) {
+      const path = walk(TRAINING_WEEK_FORM, { bhn_status: status, sessions: ["x"], confirmed });
+      reached.add(path[path.length - 1].step.id);
+    }
+  }
+  for (const e of ends) assert.ok(reached.has(e), `nothing reaches "${e}"`);
 });

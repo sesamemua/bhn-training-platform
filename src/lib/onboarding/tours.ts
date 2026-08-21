@@ -2346,6 +2346,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
   },
   {
+    id: "workspace.registration.eligibility",
+    title: "Question one asks where someone stands",
+    body: "The registration form now opens on **one question and nothing else**: where do you stand with BioHubNet. Four answers instead of yes/no \u2014 accepted into ENGAGE or EXPERIENCE, applied to EQUIP (**an award is not required**), an account but no programme, or no account. The last two get **different** instructions, because one person needs to apply and the other needs an account first. Answering opens the next question; Continue moves past one you are leaving blank; Show all opens the lot. Photography consent is no longer a question \u2014 it is the terms beside Submit.",
+    path: "/admin/workspace/symposium-2026/registration",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

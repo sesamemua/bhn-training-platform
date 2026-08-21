@@ -20,12 +20,15 @@
  * admin will show this to a colleague, and a colleague who thinks they
  * have registered is worse off than one who never saw it.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Eye, RotateCcw } from "lucide-react";
 import { chosenClashes } from "@/lib/formbuilder/calendar";
 import { missing, optionsFor, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
 import { SessionCalendar } from "./SessionCalendar";
+
+/** Above this many options a radio list becomes a page of its own. */
+const RADIO_MAX = 6;
 
 const FIELD =
   "mt-2 w-full rounded-lg border border-line bg-elevated px-3 py-2.5 text-[14px] text-fg outline-none transition-colors focus-visible:border-brand-500";
@@ -41,16 +44,86 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
   const shown = useMemo(() => visibleFields(doc, answers, stage), [doc, answers, stage]);
   // Notes are not questions, so they are not counted as any.
   const asked = shown.filter((f) => f.type !== "note");
+
+  /*
+   * ONE QUESTION AT A TIME, until you have been through it once.
+   *
+   * Sixteen questions on arrival is a wall, and the first one is the
+   * one that decides whether the other fifteen are even yours to
+   * answer — somebody who has to go and join a programme should find
+   * that out before scrolling past a session picker they cannot use.
+   *
+   * `reach` is how far down the form has opened. Answering the deepest
+   * open question opens the next; Continue does the same for a
+   * question you are leaving blank. Everything already answered stays
+   * on screen, so this is a form unfolding, not a wizard that hides
+   * what you said.
+   */
+  const [reach, setReach] = useState(1);
+  const [all, setAll] = useState(false);
+
+  const answeredAt = (f: FormField) => {
+    const v = answers[f.key];
+    return Array.isArray(v) ? v.length > 0 : v !== undefined && v !== "";
+  };
+
+  // A note is something the form says, so it never waits for a click —
+  // it opens along with whatever comes after it.
+  const deepest = Math.min(reach, shown.length);
+  const auto = useMemo(() => {
+    let n = deepest;
+    while (n < shown.length && (shown[n - 1]?.type === "note" || (shown[n - 1] && answeredAt(shown[n - 1])))) n += 1;
+    return n;
+  }, [deepest, shown, answers]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+   * A HIGH-WATER MARK, so the form never folds back up.
+   *
+   * `auto` is recomputed from scratch every render, so it falls the
+   * moment an edit makes an earlier question unanswered or reveals a new
+   * one — going back to change your organisation on a finished form used
+   * to hide three answered questions and the Submit button with them.
+   * What has been opened stays open.
+   *
+   * Adjusted DURING render rather than in an effect: an effect paints
+   * the collapsed state for a frame first, which is the flicker rather
+   * than the fix. Clamped to shown.length because a branch can remove
+   * questions, and a mark past the end would strand Submit off-screen.
+   */
+  const [hi, setHi] = useState(1);
+  const want = Math.min(Math.max(hi, auto), Math.max(shown.length, 1));
+  if (want !== hi) setHi(want);
+
+  const open = all ? shown.length : want;
+  const visible = shown.slice(0, open);
+  const more = shown.length - open;
+  const last = shown[open - 1];
+  const waiting = last && last.type !== "note" && last.required && !answeredAt(last);
   const gaps = useMemo(() => missing(doc, answers, stage), [doc, answers, stage]);
   const gapKeys = useMemo(() => new Set(gaps.map((f) => f.key)), [gaps]);
 
   const set = (k: string, v: Answers[string]) => { setAnswers({ ...answers, [k]: v }); setDone(false); };
-  const reset = () => { setAnswers({}); setTried(false); setDone(false); };
 
-  const answered = asked.filter((f) => {
-    const v = answers[f.key];
-    return Array.isArray(v) ? v.length > 0 : v !== undefined && v !== "";
-  }).length;
+  /*
+   * Focus follows the question that just opened.
+   *
+   * Continue disables itself the instant it reveals a required question,
+   * so the element under the user's finger vanishes and focus drops to
+   * the body — three times in one pass through the eligible branch.
+   * Moving focus onto the new field fixes that and gives a screen reader
+   * something to announce.
+   */
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const box = listRef.current?.querySelectorAll<HTMLElement>("[data-q]");
+    const last = box?.[box.length - 1];
+    last?.querySelector<HTMLElement>("input, select, textarea, button")?.focus();
+  }, [open]);
+  const reset = () => { setAnswers({}); setTried(false); setDone(false); setReach(1); setHi(1); setAll(false); };
+
+  const answered = asked.filter(answeredAt).length;
 
   return (
     <div className="mx-auto mt-5 max-w-[760px] pb-24">
@@ -66,7 +139,7 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
           {FIELD_STAGES.map((st) => (
             <button
               key={st}
-              onClick={() => { setStage(st); setTried(false); setDone(false); }}
+              onClick={() => { setStage(st); setTried(false); setDone(false); setReach(1); setHi(1); setAll(false); }}
               aria-pressed={stage === st}
               className={`rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
                 stage === st ? "border-brand-500 bg-brand-500/12 text-fg" : "border-line text-muted hover:bg-elevated"
@@ -109,8 +182,8 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
         </div>
       )}
 
-      <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border-2 border-line-strong bg-card">
-        {shown.map((f) => (
+      <div ref={listRef} className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border-2 border-line-strong bg-card">
+        {visible.map((f) => (
           <Question
             key={f.id}
             doc={doc}
@@ -128,8 +201,50 @@ export function FormFillView({ doc, title }: { doc: BuiltForm; title: string }) 
         )}
       </div>
 
-      {shown.length > 0 && (
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+      {/* Continue rather than an auto-advance for a blank one: leaving a
+          question empty is a decision, and a form that scrolls on by
+          itself while you are still reading it is worse than one that
+          waits. */}
+      {more > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            className="rounded-lg bg-brand px-5 py-2.5 text-[13.5px] font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
+            disabled={waiting}
+            aria-describedby="continue-hint"
+            onClick={() => setReach(open + 1)}
+          >
+            Continue
+          </button>
+          <span id="continue-hint" className="text-[12px] text-subtle">
+            {waiting
+              ? "Answer this one to carry on."
+              : `${more} more question${more === 1 ? "" : "s"} after this`}
+          </span>
+          {/* For the person who wants to see what they are in for
+              before they start — a progress bar is a promise, and some
+              people would rather read the contract. */}
+          <button className="ml-auto text-[12px] underline text-muted hover:text-fg" onClick={() => setAll(true)}>
+            Show all {shown.length}
+          </button>
+        </div>
+      )}
+
+      {/* Terms carried by the button, not asked as a question.
+          "Do you agree to be photographed?" invites a No the form then
+          has to refuse — a worse conversation than saying up front that
+          agreeing is part of registering. Directly above the button, so
+          it is read at the moment it applies. */}
+      {/* Registration only. The confirmation email asks one question
+          weeks later, and the photography terms of a form you already
+          submitted have no business above that button. */}
+      {shown.length > 0 && more === 0 && stage === "registration" && doc.submitNote && (
+        <p className="mt-5 rounded-xl border border-line bg-elevated/60 p-4 text-[12.5px] leading-relaxed text-muted">
+          {doc.submitNote}
+        </p>
+      )}
+
+      {shown.length > 0 && more === 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             className="rounded-lg bg-brand px-6 py-3 text-[14px] font-bold text-white transition-all hover:brightness-110"
             onClick={() => { setTried(true); setDone(gaps.length === 0); }}
@@ -158,6 +273,7 @@ function Question({
   const opts = optionsFor(doc, f);
   const arr = Array.isArray(answers[f.key]) ? (answers[f.key] as string[]) : [];
   const clashing = f.slots.length > 0 ? chosenClashes(f.slots, arr) : [];
+  const none = Boolean(f.noneLabel) && answers[f.key] === f.noneLabel;
 
   /*
    * A note is a thing the form SAYS. No number, no asterisk, no input —
@@ -173,7 +289,7 @@ function Question({
   }
 
   return (
-    <div className={`px-6 py-5 ${flagged ? "bg-red-500/[0.04]" : ""}`}>
+    <div data-q className={`px-6 py-5 ${flagged ? "bg-red-500/[0.04]" : ""}`}>
       {f.type !== "consent" && (
         <label className="block">
           <span className="flex items-baseline gap-2">
@@ -220,6 +336,35 @@ function Question({
             </button>
           ))}
         </div>
+      ) : (f.type === "choice" || f.type === "lookup") && opts.length > 0 && opts.length <= RADIO_MAX ? (
+        /*
+         * Radios, not a dropdown.
+         *
+         * A short list in a <select> hides every answer but one behind a
+         * click — you cannot compare four options you cannot see, and on
+         * a phone it opens a wheel. Above RADIO_MAX it flips back: the
+         * 41-institution list as radio buttons would be a page of its
+         * own.
+         */
+        <div className="mt-2.5 space-y-2">
+          {opts.map((o) => (
+            <label
+              key={o}
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                answers[f.key] === o ? "border-brand-500 bg-brand-500/10" : "border-line bg-elevated hover:border-brand-400"
+              }`}
+            >
+              <input
+                type="radio"
+                name={`fill_${f.key}`}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--brand-500)]"
+                checked={answers[f.key] === o}
+                onChange={() => set(f.key, o)}
+              />
+              <span className={`text-[13.5px] leading-snug ${answers[f.key] === o ? "font-semibold text-fg" : "text-muted"}`}>{o}</span>
+            </label>
+          ))}
+        </div>
       ) : f.type === "choice" || f.type === "lookup" ? (
         <select className={FIELD} value={String(answers[f.key] ?? "")} onChange={(e) => set(f.key, e.target.value)}>
           <option value="">Choose…</option>
@@ -259,15 +404,55 @@ function Question({
           })}
         </div>
       ) : f.type === "long_text" ? (
-        <textarea rows={4} className={FIELD} value={String(answers[f.key] ?? "")} onChange={(e) => set(f.key, e.target.value)} />
+        <>
+          <textarea
+            rows={4}
+            className={FIELD}
+            disabled={none}
+            value={none ? "" : String(answers[f.key] ?? "")}
+            onChange={(e) => set(f.key, e.target.value)}
+          />
+          <NoneOption field={f} answers={answers} set={set} />
+        </>
       ) : (
+        <>
         <input
-          className={FIELD}
-          type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "email" ? "email" : f.type === "phone" ? "tel" : "text"}
-          value={String(answers[f.key] ?? "")}
-          onChange={(e) => set(f.key, e.target.value)}
-        />
+            className={FIELD}
+            disabled={none}
+            type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "email" ? "email" : f.type === "phone" ? "tel" : "text"}
+            value={none ? "" : String(answers[f.key] ?? "")}
+            onChange={(e) => set(f.key, e.target.value)}
+          />
+          <NoneOption field={f} answers={answers} set={set} />
+        </>
       )}
     </div>
+  );
+}
+
+/**
+ * "Not applicable", as an answer rather than as a blank.
+ *
+ * Ticking it fills the field with the label, so the difference between
+ * "none" and "have not got to it yet" survives into the spreadsheet.
+ * Ticking it again clears it, because a one-way control is a trap.
+ */
+function NoneOption({
+  field: f, answers, set,
+}: { field: FormField; answers: Answers; set: (k: string, v: Answers[string]) => void }) {
+  if (!f.noneLabel) return null;
+  const on = answers[f.key] === f.noneLabel;
+  return (
+    <label className="mt-2 inline-flex cursor-pointer items-center gap-2">
+      <input
+        type="radio"
+        name={`fill_none_${f.key}`}
+        checked={on}
+        className="h-4 w-4 accent-[var(--brand-500)]"
+        onChange={() => set(f.key, on ? "" : f.noneLabel!)}
+        onClick={() => { if (on) set(f.key, ""); }}
+      />
+      <span className={`text-[12.5px] ${on ? "font-semibold text-fg" : "text-muted"}`}>{f.noneLabel}</span>
+    </label>
   );
 }

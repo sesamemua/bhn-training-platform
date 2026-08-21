@@ -4359,4 +4359,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Question one now knows the difference between three kinds of people",
+    body: "It was a yes/no, and three different people were answering No — somebody accepted into a programme who did not think of themselves as a \u201ctrainee\u201d, somebody with an account but no programme, and somebody who had never heard of us. All three got the same reply.\n\n**Four answers now:** accepted into ENGAGE or EXPERIENCE; applied to EQUIP; an account but no programme; no account. **An EQUIP application counts whether or not it was funded** \u2014 applying is the qualification, not winning. The two answers with a step to take get different instructions, because the step is not the same step: one person needs to apply, the other needs an account first.\n\n**The form opens on question one and nothing else.** Sixteen questions on arrival is a wall, and the first one decides whether the rest are even yours to answer. Answering opens the next; Continue handles one you are leaving blank; \u201cShow all\u201d is there for anyone who wants the whole thing up front.\n\n**Also:** a question about whether you have signed up for the Symposium, which is a separate registration. **N/A** as an actual answer on dietary requirements and accessibility \u2014 blank used to mean either \u201cnone\u201d or \u201cnot filled in yet\u201d, and whoever orders lunch needs the difference. Short lists of choices render as **radio buttons** rather than a dropdown, so you can see the options without opening anything.\n\n**Photography consent is no longer a question.** It was a single box you had to tick \u2014 a checkbox pretending to be a choice, with no No the form would accept. It is now stated plainly beside the Submit button: by submitting, you agree. Anyone not comfortable is still told to contact the coordinator first.\n\nThe live form was updated in place by a guarded script, which backed it up first and re-pointed every rule that tested the old question.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

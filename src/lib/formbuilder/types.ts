@@ -115,6 +115,14 @@ export const FieldSchema = z.object({
    * too low.
    */
   help: z.string().max(1000).optional(),
+  /**
+   * A one-click "nothing to declare" beside a text box.
+   *
+   * "Dietary requirements" left blank is ambiguous — it could mean none,
+   * or it could mean you had not got to it yet. An explicit N/A is an
+   * answer, and the difference matters to whoever is ordering lunch.
+   */
+  noneLabel: z.string().max(40).optional(),
   required: z.boolean().default(false),
   options: z.array(z.string().max(120)).max(200).default([]),
   /** When this question is put to the person. */
@@ -172,7 +180,20 @@ export const StepSchema = z.object({
 });
 export type WorkflowStep = z.infer<typeof StepSchema>;
 
+/** The cap on the submit terms, in one place — schema, editor, reader. */
+export const SUBMIT_NOTE_MAX = 2000;
+
 export const BuiltFormSchema = z.object({
+  /**
+   * Terms carried by the act of submitting, shown beside the button.
+   *
+   * Some conditions are not questions. Asking "do you agree to be
+   * photographed?" invites a No the form then has to refuse, which is a
+   * worse conversation than saying up front that agreeing is part of
+   * registering — and a question you cannot answer No to is a checkbox
+   * pretending to be a choice.
+   */
+  submitNote: z.string().max(SUBMIT_NOTE_MAX).optional(),
   version: z.literal(1).default(1),
   fields: z.array(FieldSchema).max(200).default([]),
   sources: z.array(DataSourceSchema).max(20).default([]),
@@ -212,7 +233,18 @@ export function parseForm(raw: unknown): BuiltForm {
         return r.success ? [r.data] : [];
       })
     : [];
-  return { version: 1, fields, sources, steps };
+  /*
+   * Rebuilt key by key, so anything added to BuiltFormSchema has to be
+   * added HERE too or it is silently lost on the next read. That is not
+   * hypothetical: submitNote was added to the schema, saved happily, and
+   * vanished on load until this line existed. The round-trip test in
+   * tests/unit/form-fill-view.test.tsx exists to catch the next one.
+   */
+  const submitNote = typeof shallow.submitNote === "string"
+    ? shallow.submitNote.slice(0, SUBMIT_NOTE_MAX)
+    : undefined;
+
+  return { version: 1, fields, sources, steps, ...(submitNote ? { submitNote } : {}) };
 }
 
 function safeJson(raw: string): unknown {

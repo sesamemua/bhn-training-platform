@@ -167,9 +167,12 @@ test("every question in the shipped Training Week form survives being parsed", (
   assert.equal(parsed.fields.length, TRAINING_WEEK_FORM.fields.length,
     "a question was dropped by validation");
   assert.equal(parsed.steps.length, TRAINING_WEEK_FORM.steps.length);
-  const consent = parsed.fields.find((f) => f.key === "media_consent")!;
-  assert.equal(consent.type, "consent", "one box to tick, not a yes/no pair");
-  assert.equal(consent.required, true, "ticking it is required to register");
+  // Photography consent is no longer a question — it is the terms
+  // beside Submit — and it travels on a different key of the document,
+  // which parseForm rebuilds by hand. Same lethal failure, new carrier.
+  assert.equal(parsed.submitNote, TRAINING_WEEK_FORM.submitNote,
+    "the submit terms were dropped by validation");
+  assert.ok((TRAINING_WEEK_FORM.submitNote ?? "").length < 2000, "under the cap parseForm truncates at");
 });
 
 test("a confirmation question is not on the registration form", () => {

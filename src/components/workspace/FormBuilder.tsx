@@ -21,7 +21,7 @@ import {
   Wrench,
 } from "lucide-react";
 import {
-  CONDITION_OPS, FIELD_STAGES, FIELD_STAGE_LABEL, FIELD_TYPES, FIELD_TYPE_LABEL, keyFor,
+  CONDITION_OPS, FIELD_STAGES, FIELD_STAGE_LABEL, FIELD_TYPES, FIELD_TYPE_LABEL, keyFor, SUBMIT_NOTE_MAX,
   type BuiltForm, type Condition, type DataSource, type FieldStage, type FormField,
   type StepKind, type WorkflowStep,
 } from "@/lib/formbuilder/types";
@@ -182,6 +182,7 @@ export function FormBuilder({
       <div ref={wrapRef} hidden={view !== "setup"} className="mt-4 flex items-start gap-0">
         <div style={{ width: `${split}%` }} className="min-w-0 pr-3">
           <FieldList doc={doc} edit={edit} canEdit={canEdit} />
+          <SubmitNote doc={doc} edit={edit} canEdit={canEdit} />
           <Sources doc={doc} edit={edit} canEdit={canEdit} />
         </div>
 
@@ -858,6 +859,43 @@ function Preview({
           <p className="p-8 text-center text-[12.5px] text-muted">Nothing to show yet.</p>
         )}
       </div>
+    </section>
+  );
+}
+
+/**
+ * The terms somebody accepts by pressing Submit.
+ *
+ * Its own box rather than a question at the end of the list, because it
+ * is not a question — there is no answer to give and no way to say no
+ * except by not registering.
+ */
+function SubmitNote({
+  doc, edit, canEdit,
+}: { doc: BuiltForm; edit: (f: (d: BuiltForm) => BuiltForm) => void; canEdit: boolean }) {
+  return (
+    <section className="mt-5">
+      <p className={LABEL}>By submitting, they agree to…</p>
+      <p className="mt-1 text-[11.5px] leading-snug text-subtle">
+        Shown next to the Submit button. Leave it empty and nothing is shown.
+      </p>
+      {/* Capped where it is typed, like the help editor.
+          Over the limit saveForm refuses the WHOLE document with a
+          message that names no field, and parseForm truncates on read —
+          so the terms of a media release would go out with the last
+          sentence missing and nothing would have said so. */}
+      <textarea
+        rows={4}
+        disabled={!canEdit}
+        maxLength={SUBMIT_NOTE_MAX}
+        className={`${LINE} font-mono text-[12px] leading-relaxed`}
+        placeholder="By submitting this registration you agree to…"
+        value={doc.submitNote ?? ""}
+        onChange={(e) => edit((d) => ({ ...d, submitNote: e.target.value.slice(0, SUBMIT_NOTE_MAX) }))}
+      />
+      <p className="mt-1 text-right font-mono text-[10.5px] text-subtle">
+        {(doc.submitNote ?? "").length} / {SUBMIT_NOTE_MAX}
+      </p>
     </section>
   );
 }
