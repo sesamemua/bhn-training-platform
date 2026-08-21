@@ -2326,6 +2326,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Cast your votes", href: "/admin/workspace/symposium-2026/logo-vote" },
   },
   {
+    id: "sessions-drawn-to-scale",
+    title: "Sessions are drawn to scale",
+    body: "In the registration form, **Choose your sessions** is a real calendar: hours down the side, a column per day, and every session as tall as it is long. The all-day CL3 workshop fills the Monday column; the two company tours are a third of it each and sit one above the other because they run back to back. Sessions drawn **side by side** are on at the same time \u2014 you can still pick both, but only one of a clashing pair gets approved. Same drawing as the Admin dashboard calendar, so the two never disagree.",
+    path: "/admin/workspace/symposium-2026/registration",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.20",
+    cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

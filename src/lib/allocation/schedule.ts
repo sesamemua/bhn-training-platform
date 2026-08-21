@@ -76,6 +76,20 @@ export function timeGrid(items: Timed[], alsoSpan: { start: string; end: string 
     })
     .filter((s): s is Slot => s !== null);
 
+  return gridFromSlots(slots, alsoSpan);
+}
+
+/**
+ * The same grid, from slots that are ALREADY wall-clock.
+ *
+ * The form's session question stores its times as day + "11:00" +
+ * "13:30" rather than as instants, so it has nothing to convert. Both
+ * halves land here, which is the point: the calendar an organiser reads
+ * on the Admin dashboard and the one a registrant picks from are the
+ * same drawing of the same week, and a difference between them would be
+ * a difference nobody could explain.
+ */
+export function gridFromSlots(slots: Slot[], alsoSpan: { start: string; end: string }[] = []): Grid {
   if (slots.length === 0) return { startMin: 9 * 60, endMin: 17 * 60, hours: [], days: [] };
 
   // `alsoSpan` widens the bounds without becoming a slot: a shared

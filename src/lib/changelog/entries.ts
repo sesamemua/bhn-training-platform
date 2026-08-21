@@ -4345,4 +4345,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: STAFF,
     daysAgo: 0,
   },
+  {
+    title: "Choosing a session is now a calendar, not a list",
+    body: "Question 2 of the Training Week registration \u2014 \u201cChoose your sessions\u201d \u2014 drew every session as an equal-height card grouped into rows. That is a list wearing a calendar\u2019s clothes. The CL3 workshop runs 09:30\u201317:00 and the CCRM tour runs 11:00\u201313:30, three times shorter, and nothing on screen said so.\n\n**The vertical axis is time.** A session\u2019s box starts where it starts and is as tall as it is long. CL3 now fills the Monday column; the two tours are a third of it each, one at 11:00 and one at 14:00. Picking a session is a decision about your day, and a picture that flattens duration hides the part of the decision that matters.\n\nHours run down the left, one column per day, and sessions that genuinely clash sit side by side while consecutive ones share a column \u2014 so the two Monday tours read as \u201cyou could do both\u201d, which is what the plan says.\n\nIt is the same `gridFromSlots` the Admin dashboard calendar uses. An organiser\u2019s view of the week and a registrant\u2019s view of it being different drawings would be a difference nobody could explain.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];
