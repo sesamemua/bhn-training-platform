@@ -15,6 +15,10 @@
  * The ORGANIZER + ATTENDEE properties make this a proper invitation
  * rather than a one-sided event — Apple Mail and Outlook will offer
  * Accept / Decline buttons.
+ *
+ * `cancel` emits the withdrawal form: same UID, METHOD:CANCEL, a higher
+ * SEQUENCE. That is what removes an entry from somebody's calendar
+ * rather than leaving a second one beside it.
  */
 
 export interface IcsEventInput {
@@ -38,6 +42,18 @@ export interface IcsEventInput {
   attendeeName?: string;
   /** Increment when the event details change (RFC 5545 SEQUENCE). */
   sequence?: number;
+  /**
+   * Withdraw a calendar entry that was already sent.
+   *
+   * A seat can be approved and later declined — a coordinator changing
+   * their mind is a designed part of the process — and without this the
+   * session sits in somebody's calendar for ever, so they turn up.
+   *
+   * A cancellation is the SAME UID with METHOD:CANCEL and a higher
+   * SEQUENCE; that is what tells a calendar to remove the entry rather
+   * than add a second one.
+   */
+  cancel?: boolean;
 }
 
 const CRLF = "\r\n";
@@ -97,7 +113,7 @@ export function buildIcs(input: IcsEventInput): string {
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//BioHubNet//Events//EN",
-    "METHOD:REQUEST",
+    input.cancel ? "METHOD:CANCEL" : "METHOD:REQUEST",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${input.uid}`,
@@ -125,7 +141,7 @@ export function buildIcs(input: IcsEventInput): string {
   }
   lines.push(
     `SEQUENCE:${input.sequence ?? 0}`,
-    "STATUS:CONFIRMED",
+    input.cancel ? "STATUS:CANCELLED" : "STATUS:CONFIRMED",
     "TRANSP:OPAQUE",
     "END:VEVENT",
     "END:VCALENDAR",

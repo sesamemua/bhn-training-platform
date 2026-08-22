@@ -4443,4 +4443,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "An approval email now carries the session as a calendar file",
+    body: "Approve a seat and the letter goes out with a **.ics attachment** \u2014 one click to add the session to Apple Calendar, Google Calendar or Outlook, with the venue and a note that we will ask nearer the time whether they can still make it.\n\n**And a reversal takes it back out.** If a seat that was approved is later waitlisted or declined, the letter carries a **cancellation** for the same entry, so the session is removed from their calendar rather than sitting there until they turn up to a room with no place for them. It is the same calendar entry throughout \u2014 keyed to the seat \u2014 so a change updates one entry instead of leaving a trail of them.\n\nA waitlist carries no calendar file: it is not a date to put in a diary.\n\nBuilt on the .ics writer the event pages already use, extended with the withdrawal form rather than given a second implementation.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

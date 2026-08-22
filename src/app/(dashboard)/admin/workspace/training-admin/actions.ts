@@ -738,7 +738,7 @@ export async function decideSeat(
   const booking = await prisma.workshopBooking.findUnique({
     where: { id: bookingId },
     select: {
-      id: true, status: true, rank: true,
+      id: true, status: true, rank: true, bookedAt: true,
       workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, capacity: true } },
       user: { select: { name: true, email: true } },
       submission: { select: { id: true, data: true, email: true } },
@@ -774,6 +774,20 @@ export async function decideSeat(
 
   const answers = ((booking.submission?.data ?? {}) as Record<string, unknown>) as Answers;
   const to_ = booking.submission?.email ?? booking.user?.email ?? null;
+  /*
+   * The calendar entry follows the SEAT, not the letter.
+   *
+   * An approval carries one to add. A seat that WAS approved and no
+   * longer is carries the withdrawal — same entry, removed — because
+   * otherwise the session stays in their calendar for ever and they
+   * turn up to a room with no place for them. Nothing else carries one:
+   * a waitlist is not a date to put in a diary.
+   */
+  const calendar =
+    decision === "confirmed" ? "add" as const
+    : from === "confirmed" ? "remove" as const
+    : undefined;
+
   const receipt = await sendDecisionLetter(templateId, {
     to: to_,
     name: String(answers.first_name ?? answers.trainee_name ?? booking.user?.name ?? "").trim(),
@@ -782,6 +796,10 @@ export async function decideSeat(
     end: booking.workshop.endDateTime,
     venue: booking.workshop.locationName,
     note: note?.trim() || null,
+    bookingId: booking.id,
+    bookedAt: booking.bookedAt,
+    decidedAt: new Date(),
+    calendar,
   });
   return { ok: true, said, receipt };
 }
