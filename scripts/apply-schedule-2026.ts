@@ -27,7 +27,7 @@ import { fieldsOf } from "../src/lib/flowchart/form";
 import type { FlowNode } from "../src/lib/flowchart/types";
 import { TRAINING_WEEK_FORM } from "../src/lib/formbuilder/training-week";
 import {
-  clashPairs, EVENT_END, MAX_SESSIONS, optionLabel, SESSION_OPTIONS, SESSION_SLOTS,
+  clashPairs, EVENT_END, optionLabel, SESSION_OPTIONS, SESSION_SLOTS,
   SESSIONS, sessionInOption, workshopRows, WEEK_START,
 } from "../src/lib/training-week/schedule-2026";
 
@@ -273,19 +273,20 @@ async function charts() {
     const limit = (rule?.limit ?? {}) as { max?: number; clashes?: unknown };
     const same =
       canon(field.options) === canon(SESSION_OPTIONS) &&
-      (!rule || (canon(limit.clashes) === canon(nextClashes) && limit.max === MAX_SESSIONS));
+      // No cap any more, so the rule box is right when it has none.
+      (!rule || (canon(limit.clashes) === canon(nextClashes) && limit.max === undefined));
     if (same) continue;
 
     backup("flowcharts", `before-schedule-2026-${c.slug}`, c);
-    const capMoved = rule && limit.max !== MAX_SESSIONS;
+    const capMoved = rule && limit.max !== undefined;
     note(`chart ${c.slug}: session options refreshed${
       rule ? `, ${nextClashes.length} clashes rewritten` : " (no rule box found)"
-    }${capMoved ? `, cap ${limit.max ?? "—"} → ${MAX_SESSIONS}` : ""}`);
+    }${capMoved ? `, the cap of ${limit.max} removed` : ""}`);
     if (FORCE) {
       field.options = SESSION_OPTIONS;
       if (rule) {
-        rule.limit = { field: "sessions", max: MAX_SESSIONS, clashes: nextClashes };
-        rule.text = `Up to ${MAX_SESSIONS} sessions · clashes flagged`;
+        rule.limit = { field: "sessions", clashes: nextClashes };
+        rule.text = "As many as you like · clashes flagged";
       }
       await prisma.flowChart.update({ where: { id: c.id }, data: { data: doc as object } });
     }

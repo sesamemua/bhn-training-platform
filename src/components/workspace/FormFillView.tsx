@@ -555,12 +555,32 @@ function Question({
               </p>
             </div>
           )}
+          {/* With no cap on how many may be chosen, this is the ONLY
+              thing standing between somebody and a day they cannot
+              physically attend. It names the pairs rather than counting
+              them: "2 pairs clash" leaves the reader to work out which,
+              on a calendar they have just been scrolling. */}
           {clashing.length > 0 && (
-            <p className="mt-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-2.5 text-[12.5px] leading-relaxed text-amber-600">
-              {clashing.length === 1 ? "Two of your choices run" : `${clashing.length} pairs of your choices run`}{" "}
-              at the same time. You can leave both ticked — it tells us your second preference —
-              but only {f.approveFromClash ?? 1} of a clashing pair can be approved.
-            </p>
+            <div role="status" className="mt-2 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-3">
+              <p className="flex items-center gap-2 text-[12.5px] font-semibold text-amber-600">
+                <AlertTriangle size={14} className="shrink-0" />
+                {clashing.length === 1
+                  ? "Two of your choices are on at the same time"
+                  : `${clashing.length} pairs of your choices are on at the same time`}
+              </p>
+              <ul className="mt-1.5 space-y-0.5">
+                {clashing.map(([a, b]) => (
+                  <li key={`${a}|${b}`} className="text-[12px] leading-snug text-amber-600">
+                    {a.split(" · ").pop()} <span className="opacity-70">and</span> {b.split(" · ").pop()}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-amber-600">
+                You can leave both chosen — it tells us you would take either — but only{" "}
+                {f.approveFromClash ?? 1} of a clashing pair can be approved, so you will not be
+                given both.
+              </p>
+            </div>
           )}
         </>
       ) : f.type === "multi" ? (

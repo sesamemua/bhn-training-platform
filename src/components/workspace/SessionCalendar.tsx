@@ -224,6 +224,7 @@ export function SessionCalendar({
             ? ` You have chosen all ${cap}. Click one again to take it back.`
             : ` You can choose up to ${cap} — ${cap - chosen.length} left.`
         )}
+        {cap === undefined && " Choose as many as you like."}
       </p>
 
       {unscheduled.length > 0 && (

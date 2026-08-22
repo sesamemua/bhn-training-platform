@@ -11,7 +11,7 @@
  * affiliations") rather than one box per input. Sixteen inputs as sixteen
  * boxes is a wall; as six groups it reads as a form.
  */
-import { clashPairs, MAX_SESSIONS, SESSION_OPTIONS } from "@/lib/training-week/schedule-2026";
+import { clashPairs, SESSION_OPTIONS } from "@/lib/training-week/schedule-2026";
 import { ACCEPTED, BHN_STATUS_OPTIONS, ELIGIBLE_STATUS } from "@/lib/formbuilder/training-week";
 import type { ChartDoc } from "./types";
 
@@ -178,10 +178,12 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
   // are part of the process a reader needs to see. Both are computed
   // from the schedule, so neither can go stale when a time moves.
   const n2r = { id: "n2r", kind: "rule" as const, x: SIDE, y: n2.y, w: W, h: 62,
-    text: `Up to ${MAX_SESSIONS} sessions · clashes flagged`,
+    text: "As many as you like · clashes flagged",
     limit: {
       field: "sessions",
-      max: MAX_SESSIONS,
+      // No `max`. The constraint was never a count: two sessions at the
+      // same hour is a problem however few you picked, and six that do
+      // not overlap is not a problem at all.
       // Derived from the times, as PAIRS. Grouping them by day would
       // misinform: CL3 overlaps both Monday tours, but the tours run
       // back to back, so a "Monday" group would warn people off a

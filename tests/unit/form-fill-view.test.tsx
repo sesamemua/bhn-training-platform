@@ -8,6 +8,8 @@ import {
 } from "../../src/lib/formbuilder/training-week";
 import { parseForm, type BuiltForm } from "../../src/lib/formbuilder/types";
 import { hasLink } from "../../src/lib/formbuilder/linkify";
+import { chosenClashes } from "../../src/lib/formbuilder/calendar";
+import { checkSubmission } from "../../src/lib/formbuilder/submit";
 
 /**
  * The registrant's view, rendered.
@@ -654,71 +656,94 @@ test("the dietary question says it is Training Week, not the Symposium", () => {
   assert.match(f.help ?? "", /separate registration/i);
 });
 
-/* ── the cap on how many sessions ────────────────────────────────── */
+/* ── no cap, but the clash warning does the work instead ─────────── */
 
-test("the sessions question carries its cap, not just a sentence about it", () => {
-  // It lived only in the help text and in the flow chart's rule box —
-  // neither of which is the thing a person clicks. The form said "up to
-  // 3" and took all six.
-  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
-  assert.equal(f.maxChoices, 3);
-  assert.match(f.help ?? "", /up to 3/);
+const sessionsField = () => TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
+/** The same question with a cap put back, to test the machinery. */
+const capped = (n: number) => ({ ...sessionsField(), maxChoices: n });
+
+test("nothing caps how many sessions may be chosen", () => {
+  // One, or all of them. The real constraint was never a count: two
+  // sessions at the same hour is a problem however few you picked, and
+  // six that do not overlap is not a problem at all.
+  assert.equal(sessionsField().maxChoices, undefined);
+  assert.match(sessionsField().help ?? "", /as many as you want/i);
 });
 
-test("the cap survives being stored and read back", () => {
-  // parseForm validates each field and DROPS what it cannot read. A cap
-  // the schema did not know about would vanish on the next load and the
-  // limit would quietly stop existing again.
-  const back = parseForm(JSON.parse(JSON.stringify(TRAINING_WEEK_FORM)));
-  assert.equal(back.fields.find((f) => f.key === "sessions")!.maxChoices, 3);
-});
-
-test("at the cap, the sessions you did not pick cannot be picked", () => {
-  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
-  const three = [SESSIONS_2026[0], SESSIONS_2026[3], SESSIONS_2026[5]];
+test("all six can be chosen, and none is refused", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SessionCalendar, { field: f, chosen: three, onToggle: () => {} }),
+    React.createElement(SessionCalendar, { field: sessionsField(), chosen: SESSIONS_2026, onToggle: () => {} }),
   );
-  const cellFor = (option: string) => {
-    const name = option.split(" · ").pop()!.split(" ")[0];
-    return html.split("<button").find((t) => t.includes(name))!;
+  assert.ok(!html.includes("disabled"), "something is being refused");
+  const badges = [...html.matchAll(/>(\d+(?:st|nd|rd|th)) choice</g)].map((m) => m[1]);
+  assert.equal(badges.length, 6, "every pick should still be ranked");
+});
+
+test("the calendar says there is no limit rather than saying nothing", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, { field: sessionsField(), chosen: [], onToggle: () => {} }),
+  );
+  assert.match(html, /Choose as many as you like/i);
+});
+
+test("choosing sessions that overlap still warns, and NAMES them", () => {
+  // With no cap this is the only thing between somebody and a day they
+  // cannot physically attend. "2 pairs clash" leaves the reader to work
+  // out which, on a calendar they have just been scrolling.
+  const doc: BuiltForm = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields
+      .filter((f) => f.key === "sessions")
+      .map((f) => ({ ...f, showWhen: [] })),
   };
-  // The three chosen stay clickable — taking one back must always work,
-  // or reaching the cap would lock the answer in.
-  for (const picked of three) assert.ok(!/disabled/.test(cellFor(picked)), `${picked} cannot be taken back`);
-  // The rest are refused, and say why.
-  for (const other of [SESSIONS_2026[1], SESSIONS_2026[2], SESSIONS_2026[4]]) {
-    assert.match(cellFor(other), /disabled/, `${other} is still selectable at the cap`);
-    assert.match(cellFor(other), /most you can choose/, `${other} is refused without a reason`);
-  }
+  // Rendered through the real component, with the Tuesday pair chosen.
+  const html = renderToStaticMarkup(
+    React.createElement(SessionCalendar, {
+      field: sessionsField(),
+      chosen: [SESSIONS_2026[3], SESSIONS_2026[4]],
+      onToggle: () => {},
+    }),
+  );
+  // The calendar draws them side by side; the sentence under it says so.
+  assert.match(html, /on at the same time/i);
+  assert.ok(paint(doc).length > 0);
 });
 
-test("below the cap nothing is refused, and it says how many are left", () => {
-  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
-  const html = renderToStaticMarkup(
-    React.createElement(SessionCalendar, { field: f, chosen: [SESSIONS_2026[0]], onToggle: () => {} }),
-  );
-  assert.ok(!html.includes("disabled"), "something is refused before the cap is reached");
-  assert.match(html, /2 left/, "the number remaining is not shown");
+test("the clash rule itself is unchanged — the pairs are still the real overlaps", () => {
+  const both = chosenClashes(sessionsField().slots, [SESSIONS_2026[3], SESSIONS_2026[4]]);
+  assert.equal(both.length, 1, "the two Tuesday sessions clash");
+  const tours = chosenClashes(sessionsField().slots, [SESSIONS_2026[0], SESSIONS_2026[1]]);
+  assert.deepEqual(tours, [], "the Monday tours run back to back");
+  const all = chosenClashes(sessionsField().slots, SESSIONS_2026);
+  assert.equal(all.length, 3, "CL3 against both tours, and the Tuesday pair");
 });
 
-test("with nothing chosen it says what the cap is", () => {
-  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
-  const html = renderToStaticMarkup(
-    React.createElement(SessionCalendar, { field: f, chosen: [], onToggle: () => {} }),
-  );
-  assert.match(html, /up to 3/);
+test("only one of a clashing pair can be approved, and the question says so", () => {
+  assert.equal(sessionsField().approveFromClash, 1);
+  assert.match(sessionsField().help ?? "", /only one of a clashing pair/i);
 });
 
-test("a question with no cap refuses nothing", () => {
-  // maxChoices is optional, and a builder form without one must not
-  // suddenly become uncheckable after the first pick.
-  const f = TRAINING_WEEK_FORM.fields.find((x) => x.key === "sessions")!;
-  const uncapped = { ...f, maxChoices: undefined };
+/* ── the cap machinery still exists for forms that want one ──────── */
+
+test("a question WITH a cap still refuses past it", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SessionCalendar, { field: uncapped, chosen: SESSIONS_2026.slice(0, 5), onToggle: () => {} }),
+    React.createElement(SessionCalendar, {
+      field: capped(2), chosen: [SESSIONS_2026[0], SESSIONS_2026[3]], onToggle: () => {},
+    }),
   );
-  assert.ok(!html.includes("disabled"), "an uncapped question is refusing picks");
+  assert.match(html, /most you can choose/, "a capped question stopped refusing");
+});
+
+test("a capped question is still refused on the server", () => {
+  const doc: BuiltForm = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields.map((f) => (f.key === "sessions" ? capped(2) : f)),
+  };
+  const v = checkSubmission(doc, {
+    bhn_status: ACCEPTED, sessions: SESSIONS_2026.slice(0, 3),
+  } as never);
+  assert.ok(!v.ok);
+  assert.ok(v.problems.some((p) => /at most 2/.test(p)));
 });
 
 /* ── dietary: a standard list, plus room for the exception ───────── */

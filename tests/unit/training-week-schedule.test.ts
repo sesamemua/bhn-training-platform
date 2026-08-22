@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  clashPairs, DAYS, displayVenue, MAX_OPTION_CHARS, MAX_SESSIONS, optionLabel,
+  clashPairs, DAYS, displayVenue, MAX_OPTION_CHARS, optionLabel,
   PHYSICALLY_POSSIBLE, SESSION_OPTIONS, SESSION_SLOTS, SESSIONS, sessionForOption,
   SHARED, torontoToUtc, workshopRows, WEEK_END, WEEK_START,
 } from "../../src/lib/training-week/schedule-2026";
@@ -87,8 +87,12 @@ test("every clash is a genuine overlap, and every overlap is listed", () => {
   assert.equal(listed.size, real);
 });
 
-test("the registration cap is a policy number the week can actually honour", () => {
-  assert.equal(MAX_SESSIONS, 3);
+test("nothing caps how many sessions may be chosen", () => {
+  // The cap was removed on purpose: people may pick one or all of them.
+  // What replaces it is the clash warning, because the real constraint
+  // was never a count.
+  const sessions = TRAINING_WEEK_FORM.fields.find((f) => f.key === "sessions")!;
+  assert.equal(sessions.maxChoices, undefined, "a cap has come back");
   // Pinned, not just compared. Left as an inequality it passes against
   // a broken count — corrupt the greedy into counting everything and
   // it reads 6, which is still >= 3.
@@ -96,7 +100,9 @@ test("the registration cap is a policy number the week can actually honour", () 
     PHYSICALLY_POSSIBLE, 4,
     "both Monday tours back to back, one of the Tuesday pair, the Wednesday showcase",
   );
-  assert.ok(MAX_SESSIONS <= PHYSICALLY_POSSIBLE);
+  // And the week's real ceiling is still worth knowing, even though
+  // nothing is refused.
+  assert.ok(PHYSICALLY_POSSIBLE > 0);
 });
 
 test("no session ends before it starts, and none is a single instant", () => {
@@ -167,9 +173,9 @@ test("the rule box the chart draws is a valid node", () => {
   // otherwise only show up as a chart that will not open.
   const node = NodeSchema.safeParse({
     id: "n2r", x: 366, y: 100, w: 220, h: 62, kind: "rule",
-    text: `Up to ${MAX_SESSIONS} sessions · clashes flagged`,
+    text: "As many as you like · clashes flagged",
     limit: {
-      field: "sessions", max: MAX_SESSIONS,
+      field: "sessions",
       clashes: clashPairs().map((c) => ({ label: c.label, options: [...c.options] })),
     },
   });

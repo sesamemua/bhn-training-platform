@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { limitState, limitsFor, visibleFields } from "../../src/lib/flowchart/form";
 import { TRAINING_WEEK_FLOW } from "../../src/lib/flowchart/seed";
-import { MAX_SESSIONS, optionLabel, SESSIONS as WEEK } from "../../src/lib/training-week/schedule-2026";
+import { optionLabel, SESSIONS as WEEK } from "../../src/lib/training-week/schedule-2026";
 import type { ChartDoc } from "../../src/lib/flowchart/types";
 
 const SESSIONS = ["A", "B", "C", "D"];
@@ -80,9 +80,11 @@ test("the limit box adds no field to the form", () => {
 
 const option = (slug: string) => optionLabel(WEEK.find((w) => w.slug === slug)!);
 
-test("the seeded Training Week chart carries the schedule's cap and clashes", () => {
+test("the seeded Training Week chart carries the schedule's clashes, and no cap", () => {
   const st = limitState(TRAINING_WEEK_FLOW, "sessions", []);
-  assert.equal(st.max, MAX_SESSIONS);
+  // No cap: people may choose one session or all of them. The rule box
+  // is now only about clashes. limitState reports "no cap" as null.
+  assert.equal(st.max, null);
 
   const tuesday = [option("communication-chameleon-2026"), option("negotiation-skills-2026")];
   assert.equal(

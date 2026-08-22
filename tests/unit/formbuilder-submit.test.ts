@@ -30,12 +30,25 @@ test("a complete registration is accepted", () => {
 
 /* ── the rules the browser also enforces, enforced again ─────────── */
 
-test("more sessions than the cap is refused", () => {
-  // The disabled buttons in the calendar are a courtesy to whoever is
-  // filling the form in. This is a public endpoint.
-  const v = check({ sessions: SESSIONS_2026.slice(0, 4) });
+test("every session may be chosen — there is no cap to exceed", () => {
+  // The cap was removed on purpose: one, or all of them. The clash
+  // warning is what replaced it, because the real constraint was never
+  // a count.
+  const v = check({ sessions: [...SESSIONS_2026] });
+  assert.ok(v.ok, v.problems.join(" · "));
+  assert.equal((v.clean.sessions as string[]).length, SESSIONS_2026.length);
+});
+
+test("but a cap is still enforced on a question that has one", () => {
+  // maxChoices is a real feature other forms may want, and the browser
+  // is not what enforces it.
+  const withCap = {
+    ...TRAINING_WEEK_FORM,
+    fields: TRAINING_WEEK_FORM.fields.map((f) => (f.key === "sessions" ? { ...f, maxChoices: 2 } : f)),
+  };
+  const v = checkSubmission(withCap, { ...complete, sessions: SESSIONS_2026.slice(0, 3) } as never);
   assert.ok(!v.ok);
-  assert.ok(v.problems.some((p) => /at most 3/.test(p)));
+  assert.ok(v.problems.some((p) => /at most 2/.test(p)));
 });
 
 test("a session that is not on the list is refused, not quietly kept", () => {

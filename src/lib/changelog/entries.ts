@@ -4436,4 +4436,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "No limit on how many sessions you can choose \u2014 the clash warning does the work instead",
+    body: "The three-session cap is gone. Pick one, pick all six.\n\nThe real constraint was never a count: two sessions at the same hour is a problem however few you chose, and six that do not overlap is not a problem at all. So the warning is what carries it now, and it says more than it did \u2014 it **names the pairs** rather than counting them, because \u201c2 pairs clash\u201d leaves you to work out which, on a calendar you have just been scrolling.\n\nEverything else stands: sessions still rank in the order you click them, only one of a clashing pair can be approved, and the two Monday tours still read as \u201cyou can do both\u201d because they run back to back.\n\nThe cap machinery itself stays \u2014 another form can still set one, and it is still enforced on the server rather than only in a disabled button.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

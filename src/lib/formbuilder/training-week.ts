@@ -12,7 +12,7 @@
  * "contact" widget is not a builder.
  */
 import { INSTITUTIONS } from "@/lib/flowchart/institutions";
-import { MAX_SESSIONS, SESSION_OPTIONS, SESSION_SLOTS } from "@/lib/training-week/schedule-2026";
+import { SESSION_OPTIONS, SESSION_SLOTS } from "@/lib/training-week/schedule-2026";
 import { BuiltFormSchema, type BuiltForm } from "./types";
 
 const OTHER = "Other — not listed";
@@ -221,10 +221,8 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       id: "f_sessions", key: "sessions", label: "Choose your sessions",
       type: "multi", required: true, options: SESSIONS_2026, showWhen: [whenEligible],
       approveFromClash: 1,
-      // Enforced where it is clicked, not only stated in the hint.
-      maxChoices: MAX_SESSIONS,
       slots: SESSION_SLOTS,
-      help: `Pick the ones you want to attend — up to ${MAX_SESSIONS} — in order of preference. The number on each one is your ranking, taken from the order you clicked, and it is what we go by when a room is oversubscribed. Sessions drawn side by side in the calendar run at the same time: you may choose both, but only one of a clashing pair can be approved. The two Monday company tours run back to back, so you can do both.`,
+      help: "Pick as many as you want — one, or all of them — in order of preference. The number on each is your ranking, taken from the order you clicked, and it is what we go by when a room is oversubscribed. Sessions drawn side by side in the calendar are on at the SAME TIME: you can still choose both, and it is worth doing if you would take either, but only one of a clashing pair can be approved. The two Monday company tours run back to back, so you can do both.",
     },
     {
       /*

@@ -334,23 +334,26 @@ export function clashPairs(): { label: string; options: [string, string] }[] {
   return out;
 }
 
-/**
- * How many sessions one person may register for.
+/*
+ * There is NO CAP on how many sessions somebody may choose.
  *
- * A POLICY number and deliberately not a derived one. The week can
- * physically fit PHYSICALLY_POSSIBLE (see below), but three has been
- * the cap since the process was first drawn and nothing in the
- * coordinators' planning grid changes it — so moving a session's time
- * must not quietly hand everyone an extra seat.
+ * There was one — three — and it has been removed deliberately: people
+ * may pick one, or all of them. What replaces it is not a smaller
+ * number but a WARNING, because the real constraint was never a count.
+ * Two sessions running at the same hour is a problem however few you
+ * picked, and six that do not overlap is not a problem at all.
+ *
+ * PHYSICALLY_POSSIBLE stays: it is what the week can actually hold once
+ * clashes are respected, which is worth knowing even when nothing is
+ * refused.
  */
-export const MAX_SESSIONS = 3;
 
 /**
- * The most anyone could attend if the cap were lifted, clashes respected.
+ * The most anyone could attend, clashes respected.
  *
- * Kept so a test can assert MAX_SESSIONS never exceeds it: a cap of
- * four on a week that can only fit three is a promise the form cannot
- * keep.
+ * Not a limit on what may be CHOSEN — nothing is refused — but the
+ * honest answer to "how many of these could I actually be at", which
+ * the clash warning is a per-pair version of.
  */
 export const PHYSICALLY_POSSIBLE = (() => {
   const byDay = new Map<string, Session[]>();
