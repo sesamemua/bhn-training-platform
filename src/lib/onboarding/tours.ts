@@ -2356,6 +2356,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
   },
   {
+    id: "workspace.symposium.speakers",
+    title: "Speakers live under 2026 Symposium now",
+    body: "**Workspace → 2026 Symposium → Speakers.** Send invited speakers one link and they fill in their own **headshot** (with a drag-to-frame crop), a **250-character bio** with an AI shortener, their **LinkedIn**, and **what their session will offer** — no account needed. Everything they submit lands here for you to check before it goes on the website. The same page is still reachable the old way, through Administration → Events, and both show the same speakers.",
+    path: "/admin/workspace/symposium-2026/speakers",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.22",
+    cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

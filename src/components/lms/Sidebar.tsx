@@ -411,6 +411,19 @@ const workspaceLogoVoteItem: NavItem = {
     "Vote on the icon for the Symposium's Luma registration page. Three picks each, results hidden until you have voted so nobody is anchored by the running total.",
 };
 
+// WORKSPACE → 2026 Symposium → Speakers. The same manager as
+// Administration → Events → … → Speakers, on the group that owns the
+// work: speaker details being filed under the events module is true and
+// not something anybody should have to remember.
+const workspaceSpeakersItem: NavItem = {
+  label: "Speakers",
+  href: "/admin/workspace/symposium-2026/speakers",
+  icon: Mic,
+  minRole: "admin",
+  description:
+    "Send invited speakers one link and they fill in their own headshot, bio, LinkedIn and what their session offers — no account needed. Review what comes back before it goes on the website.",
+};
+
 // WORKSPACE → 2026 Symposium → Admin. Moved out of Process. Flow Charts
 // and the form builder are general tools; this one is only ever about
 // this event — seats, rooms, who is coming and what they are told.
@@ -1899,6 +1912,7 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSymposiumFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Marketing">

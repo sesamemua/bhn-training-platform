@@ -4464,4 +4464,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Speakers moved under the 2026 Symposium group",
+    body: "**Workspace \u2192 2026 Symposium \u2192 Speakers.** Collecting speaker headshots, bios and session pitches was filed under Administration \u2192 Events \u2192 pick the event \u2192 Speakers \u2014 true to how the platform is built, and not something anybody running the symposium should have to remember.\n\nIt is the **same manager and the same speakers**, and the old path still works. Its own route rather than a link across, for the reason the Registration Form has one: the sidebar decides what to highlight from the pathname, so a link to `/admin/events/\u2026` would light up the Events entry in Administration instead of this one.\n\nThe group now reads: Comms Plan \u00b7 Registration Form \u00b7 Logo Vote \u00b7 **Speakers** \u00b7 Admin Dashboard \u2014 the things you gather, then the thing you run it with.\n\nThe event slug it points at is a constant now rather than typed into the nav item. It has already been renamed once, and a hard-coded copy in the sidebar would have been a dead link nobody noticed until they clicked it.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];
