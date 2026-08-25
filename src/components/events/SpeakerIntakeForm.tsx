@@ -59,12 +59,22 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
+    /*
+     * The form element, captured BEFORE anything is awaited.
+     *
+     * React clears currentTarget once the handler yields, so reading it
+     * after `await crop.toBlob()` gave null — and `new FormData(null)`
+     * throws "parameter 1 is not of type 'HTMLFormElement'", which
+     * names the symptom and says nothing about the await that caused
+     * it. Every answer on the form was lost to it.
+     */
+    const form = e.currentTarget;
     setBusy(true);
     setError(null);
     try {
       const blob = await crop.toBlob();
       if (!blob) throw new Error("Please add a headshot.");
-      const fd = new FormData(e.currentTarget);
+      const fd = new FormData(form);
       // The cropped square, not the original — what they framed is what
       // is stored, so the circle on the website always fits.
       fd.set("photo", new File([blob], "headshot.png", { type: "image/png" }));

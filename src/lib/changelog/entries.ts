@@ -4485,4 +4485,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Fixed: submitting the speaker form failed with a FormData error",
+    body: "Filling in the speaker intake and pressing submit threw **\u201cFailed to construct \u2018FormData\u2019: parameter 1 is not of type \u2018HTMLFormElement\u2019\u201d**, and everything typed was lost.\n\nThe handler read `e.currentTarget` **after** awaiting the headshot crop. React clears that property once a handler yields, so by the time the form element was needed it was `null` \u2014 and the message names the symptom while saying nothing about the `await` that caused it. The form is captured before anything is awaited now.\n\nVerified by actually submitting one: a speaker row landed with the bio, session pitch, topics, LinkedIn, email and the cropped headshot uploaded to storage, and the test row was removed afterwards.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];
