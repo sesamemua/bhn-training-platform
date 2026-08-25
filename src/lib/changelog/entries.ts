@@ -4450,4 +4450,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Merch: the tote is now the Quetico cotton & jute fashion tote",
+    body: "The Boulevard foldable ripstop tote is replaced by the **Quetico 10 oz Cotton &amp; Jute Fashion Tote** (Business Edge, ESYKI-SLXCX), with the supplier\u2019s own break pricing read off the listing: **$7.45 at 75, $6.62 at 250, $6.07 at 500, $5.52 at 1,000**.\n\nAt the 300-unit basis it lands at **$2,126** all in, against $5,610 for the ripstop \u2014 the tote stops being the line that costs more than the other three combined and becomes the cheapest of the four. 40% recycled cotton, 40% rPET, 20% jute, so the sustainability line is the product rather than a claim on a card beside it.\n\nTwo things to confirm with Business Edge before budgeting, both noted on the card: the listing shows a $65.00 full-colour-transfer setup **and** a separate \u201cSetup Charge: $75.00\u201d without saying which method the second belongs to, and it is US-sourced so exchange, brokerage and duty land on top.\n\n**Also fixed: the merch tests had been red since the shortlist was cut from 25 items to 4.** They asserted the old catalogue \u2014 25 items, a 275 basis, a disclaimer saying \u201cestimate\u201d that was deliberately rewritten once the figures became real break pricing, and a spend formula the code had replaced. They now test properties rather than contents, so the next shortlist change does not turn them red for the one edit they exist to allow.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

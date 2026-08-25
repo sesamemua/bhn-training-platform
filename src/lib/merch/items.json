@@ -29,46 +29,42 @@
  },
  "items": [
   {
-   "id": "boulevard-foldable-ripstop-tote",
-   "name": "Boulevard foldable ripstop tote",
+   "id": "quetico-cotton-jute-fashion-tote",
+   "name": "Quetico 10 oz cotton & jute fashion tote",
    "tier": 3,
    "tierKey": "qualified-lead",
    "category": "Carry",
-   "pocketFlat": true,
+   "pocketFlat": false,
    "priceBreaks": [
     {
-     "minQty": 50,
-     "unitCad": 17.95
+     "minQty": 75,
+     "unitCad": 7.45
     },
     {
      "minQty": 250,
-     "unitCad": 16.4
+     "unitCad": 6.62
     },
     {
      "minQty": 500,
-     "unitCad": 15.75
+     "unitCad": 6.07
     },
     {
      "minQty": 1000,
-     "unitCad": 15.18
-    },
-    {
-     "minQty": 2000,
-     "unitCad": 14.6
+     "unitCad": 5.52
     }
    ],
-   "decorationSetupCad": 78.75,
+   "decorationSetupCad": 65.0,
    "estUnitCostCad": {
-    "low": 14.6,
-    "high": 17.95
+    "low": 5.52,
+    "high": 7.45
    },
-   "supplierProductName": "Boulevard Foldable Ripstop Tote with Cinch Cord Handles",
-   "supplierItemCode": "FTBLE-TLLTD",
-   "productUrl": "https://products.thebiznessedge.com/p/FTBLE-TLLTD/boulevard-foldable-ripstop-tote-with-cinch-cord-handles",
-   "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=69400&P=308883813&PX=400",
-   "whyItWorks": "The one item on this list someone carries out of the venue in front of everyone else. Ripstop folds down to nothing and clips shut with its own elastic band, so it lives in a bag until it is needed rather than being binned at the hotel.",
-   "decoration": "Screen print as standard. Full-colour heat transfer is +$2.10 a unit if the logo needs the gradient; a second colour or location adds $78.75 setup plus $0.63 a unit.",
-   "watchOut": "By far the most expensive line here — at 300 units it is more than the other three combined. Grey is the only colour, and it is a US-sourced good, so exchange and duty land on top."
+   "supplierProductName": "Quetico 10 oz Cotton & Jute Fashion Tote",
+   "supplierItemCode": "ESYKI-SLXCX",
+   "productUrl": "https://products.thebiznessedge.com/p/ESYKI-SLXCX/quetico-10-oz-cotton--jute-fashion-tote",
+   "imageUrl": "https://products.thebiznessedge.com/ws/ws.dll/QPic?SN=67658&P=748434527&PX=400",
+   "whyItWorks": "The one item on this list someone carries out of the venue in front of everyone else, and it costs less than half what the ripstop tote did. 40% recycled cotton, 40% rPET and 20% jute, so the sustainability line is the product rather than a claim printed on a card beside it. Jute gussets give it a base so it stands up on a table instead of slumping, and the cotton front and back are a flat surface for the logo. 9.25\" W x 11.75\" H x 4.5\" D.",
+   "decoration": "Full-colour transfer up to 64 square inches: $65.00 setup, then $1.45 a unit. A repeat order of the same artwork drops the setup to $30.00; an ink change is $35.00.",
+   "watchOut": "Two colourways only — heathered grey/brown and natural/brown. The listing shows a $65.00 full-colour-transfer setup AND a separate \"Setup Charge: $75.00\" without saying which method the second belongs to, so confirm with Business Edge before you budget it. US-sourced, so exchange, brokerage and duty land on top, and the smallest break is 75 rather than 50."
   },
   {
    "id": "pop-up-phone-holder",
