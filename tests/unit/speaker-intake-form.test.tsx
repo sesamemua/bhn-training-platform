@@ -125,3 +125,26 @@ test("the button is not offered until there is a name to look up", () => {
   assert.match(html, /aria-disabled="true"[^>]*>|<span[^>]*aria-disabled/);
   assert.ok(!/href="https:\/\/duckduckgo/.test(html), "no name is entered on a fresh form");
 });
+
+/* ─── The limit the form tells people about ──────────────────────── */
+
+test("the form states the limit in words, not characters", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E" } as never),
+  );
+  assert.match(html, /Up to 250 words/, "the hint should name the word limit");
+  assert.match(html, /0 \/ 250 words/, "the counter should count words");
+  assert.doesNotMatch(html, /250 characters/, "no character limit should survive anywhere in the form");
+});
+
+test("shortening is not offered to a bio that is inside the limit", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E" } as never),
+  );
+  // An empty bio is inside the limit, so the button starts disabled —
+  // it exists for the speaker who pastes a faculty page, not for
+  // everyone who fills the form in.
+  assert.match(html, /Shorten for me/);
+  const btn = html.slice(0, html.indexOf("Shorten for me"));
+  assert.ok(btn.lastIndexOf("disabled") > btn.lastIndexOf("<button"), "the button should start disabled");
+});

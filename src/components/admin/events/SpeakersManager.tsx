@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, ExternalLink, Loader2, Pencil, Trash2, UserCheck } from "lucide-react";
+import { BIO_MAX_WORDS, countWords } from "@/lib/events/bio";
 
 export interface SpeakerRow {
   id: string;
@@ -175,13 +176,24 @@ export function SpeakersManager({
                       className={INPUT}
                     />
                   </div>
-                  <textarea
-                    value={editing.bio ?? ""}
-                    onChange={(e) => setEditing({ ...editing, bio: e.target.value })}
-                    rows={5}
-                    placeholder="Bio"
-                    className={INPUT}
-                  />
+                  <div>
+                    <textarea
+                      value={editing.bio ?? ""}
+                      onChange={(e) => setEditing({ ...editing, bio: e.target.value })}
+                      rows={12}
+                      placeholder="Bio"
+                      className={INPUT}
+                    />
+                    {/* The save route rejects over-long bios. Without this
+                        counter that arrives as a bare 400 after the click. */}
+                    <p
+                      className={`mt-1 text-[11px] font-medium ${
+                        countWords(editing.bio ?? "") > BIO_MAX_WORDS ? "text-red-600" : "text-fg-subtle"
+                      }`}
+                    >
+                      {countWords(editing.bio ?? "")} / {BIO_MAX_WORDS} words
+                    </p>
+                  </div>
                   <input
                     value={editing.topics.join(", ")}
                     onChange={(e) =>
@@ -235,7 +247,28 @@ export function SpeakersManager({
                         ))}
                       </div>
                     )}
-                    {s.bio && <p className="mt-1.5 text-[12px] leading-relaxed text-muted">{s.bio}</p>}
+                    {/* Bios run to 250 words now, so the list shows the
+                        opening and opens on demand — a roster of ten
+                        speakers is a roster, not an essay collection. */}
+                    {s.bio && (
+                      <details className="group mt-1.5">
+                        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                          <span className="block whitespace-pre-line text-[12px] leading-relaxed text-muted line-clamp-3 group-open:line-clamp-none">
+                            {s.bio}
+                          </span>
+                          {countWords(s.bio) > 40 && (
+                            <>
+                              <span className="mt-1 block text-[10.5px] font-semibold text-brand-600 group-open:hidden">
+                                Read all {countWords(s.bio)} words
+                              </span>
+                              <span className="mt-1 hidden text-[10.5px] font-semibold text-brand-600 group-open:block">
+                                Show less
+                              </span>
+                            </>
+                          )}
+                        </summary>
+                      </details>
+                    )}
                     {s.sessionPitch && (
                       <p className="mt-1.5 rounded-md bg-elevated/60 px-2 py-1.5 text-[11.5px] leading-relaxed text-fg-subtle">
                         <span className="font-semibold text-fg">Session: </span>{s.sessionPitch}

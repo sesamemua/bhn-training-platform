@@ -7,8 +7,10 @@
  *
  * Three things earn their complexity here. The headshot is cropped in a
  * ring so nobody submits a photo with their head cut off. The bio has a
- * hard 250-character limit with an AI shortener that proposes, never
- * replaces — the speaker reads and approves before it goes in the field.
+ * hard 250-WORD limit — counted in words, not characters — with an AI
+ * shortener that proposes, never replaces: the speaker reads and
+ * approves before anything goes in the field, and at this limit the
+ * usual answer is "it already fits".
  * LinkedIn is a lookup, not a guess: we cannot read LinkedIn profiles, so
  * the button opens a search for their own name and they paste the result.
  * See findMineUrl for why it is not LinkedIn's own search.
@@ -16,7 +18,7 @@
 import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Search, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
-import { BIO_LIMIT } from "@/lib/events/bio";
+import { BIO_MAX_WORDS, BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
 
 
 
@@ -60,7 +62,12 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
   const [shortenNote, setShortenNote] = useState<string | null>(null);
 
   const onCrop = useCallback((s: CropState) => setCrop(s), []);
-  const over = bio.length > BIO_LIMIT;
+  // Counted in words, which is what the limit is in. Recomputed on every
+  // keystroke: the string is at most a couple of thousand characters and
+  // a split is cheaper than the render it sits inside.
+  const bioWords = countWords(bio);
+  const over = bioWords > BIO_MAX_WORDS;
+  const tooThin = bioWords < BIO_MIN_WORDS;
 
   async function shorten() {
     if (shortening) return;
@@ -75,13 +82,18 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         body: JSON.stringify({ bio }),
       });
       const j = (await res.json().catch(() => ({}))) as {
-        ok?: boolean; bio?: string; error?: string; alreadyFits?: boolean;
+        ok?: boolean; bio?: string; error?: string; alreadyFits?: boolean; words?: number;
       };
       if (!res.ok || !j.ok || !j.bio) throw new Error(j.error ?? "Couldn't shorten it.");
       // Nothing to propose when it already fits — say so rather than
       // handing back the same words as though they were an improvement.
-      if (j.alreadyFits) setShortenNote(`This already fits (${j.bio.length} of ${BIO_LIMIT}) — no need to shorten it.`);
-      else setSuggestion(j.bio);
+      // The button above will not normally let this happen; the server
+      // is the authority on the count, so this handles it saying so.
+      if (j.alreadyFits) {
+        setShortenNote(`This already fits (${j.words ?? countWords(j.bio)} of ${BIO_MAX_WORDS} words) — no need to shorten it.`);
+      } else {
+        setSuggestion(j.bio);
+      }
     } catch (e) {
       setShortenError((e as Error).message);
     } finally {
@@ -177,26 +189,40 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         // click on the button to the textarea.
         group
         labelFor="speaker-bio"
-        hint={`${BIO_LIMIT} characters max — this prints beside your photo.`}
+        hint={`Up to ${BIO_MAX_WORDS} words. Write it in the third person — this is what gets printed and read out.`}
       >
         <textarea
           id="speaker-bio"
           name="bio"
           required
-          rows={5}
+          rows={12}
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           className={INPUT}
         />
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className={`text-[11.5px] font-medium ${over ? "text-rose-600" : "text-slate-500"}`}>
-            {bio.length} / {BIO_LIMIT}
+            {bioWords} / {BIO_MAX_WORDS} words
           </span>
           <button
             type="button"
             onClick={shorten}
-            disabled={shortening || bio.trim().length < 30}
-            title={bio.trim().length < 30 ? "Write a little more first" : `Suggest a version inside ${BIO_LIMIT} characters`}
+            /*
+             * Only offered when the bio actually runs over.
+             *
+             * At 250 characters every bio was several times the limit and
+             * this button always did real work. At 250 words most bios
+             * already fit, so leaving it enabled buys a network round trip
+             * and a spinner to be told nothing needed doing.
+             */
+            disabled={shortening || tooThin || !over}
+            title={
+              tooThin
+                ? "Write a little more first"
+                : !over
+                  ? `Only needed above ${BIO_MAX_WORDS} words — you are inside the limit`
+                  : `Suggest a version inside ${BIO_MAX_WORDS} words`
+            }
             className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
           >
             {shortening ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
@@ -204,7 +230,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
           </button>
           {over && (
             <span className="text-[11.5px] text-rose-600">
-              Too long — shorten it before submitting.
+              {bioWords - BIO_MAX_WORDS} words over — shorten it before submitting.
             </span>
           )}
         </div>
@@ -228,11 +254,11 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
             <textarea
               value={suggestion}
               onChange={(e) => setSuggestion(e.target.value)}
-              rows={4}
-              className="mt-1.5 w-full rounded-md border border-brand-200 bg-white px-2.5 py-2 text-[13px] text-slate-900 outline-none focus:border-brand-500"
+              rows={10}
+              className="mt-1.5 w-full rounded-md border border-brand-200 bg-white px-2.5 py-2 text-[13px] leading-relaxed text-slate-900 outline-none focus:border-brand-500"
             />
             <div className="mt-1.5 flex items-center gap-2">
-              <span className="text-[11.5px] text-slate-500">{suggestion.length} / {BIO_LIMIT}</span>
+              <span className="text-[11.5px] text-slate-500">{countWords(suggestion)} / {BIO_MAX_WORDS} words</span>
               <button
                 type="button"
                 onClick={() => { setBio(suggestion); setSuggestion(null); }}

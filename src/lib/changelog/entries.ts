@@ -22,13 +22,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Speaker bio limit: words, not characters
+  {
+    title: "Speaker bios are counted in words now — 250 of them",
+    body: "The bio box on the speaker submission link was limited to 250 characters. That is about forty words: enough for a caption, not for a biography, and speakers were losing an employer or a degree to it every time. The limit is now 250 WORDS, counted the way a person counting them would — \"state-of-the-art\" is one word, so is \"Ph.D.\" The counter under the box reads `184 / 250 words` and turns red with how many words over you are. \"Shorten for me\" now only acts when a bio genuinely runs over: paste four hundred words of a faculty page and it trims to the limit and stops on a complete sentence; paste something that already fits and it says so rather than rewriting words that were fine. The same rule applies when an admin edits a bio here, so the admin form can no longer refuse a bio the speaker's own form just accepted. Bios already submitted are untouched, and in the speaker list a long bio shows its first three lines with Read all N words to open it.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Speaker form: bio shortener, and Find mine
   {
     title: "Speaker form: the bio shortener uses the space, and Find mine finds people",
     body: "Two fixes on the speaker submission form. \"Shorten for me\" was cutting bios to about half the room it had — asked for \"250 characters or fewer\" and nothing else, it kept answering 110 and throwing away an employer, a degree or a country. It now aims at a range rather than a ceiling, checks its own answer and asks again when it has over-cut, and if the bio already fits it says so instead of rewriting words that were fine. When a suggestion still has to be trimmed to fit, it is trimmed to the end of a word and never left dangling on \"at University of\". And \"Find mine\", which looks up a speaker's LinkedIn, was sending everyone to a login wall — LinkedIn's own search requires an account. It now searches the public web for the profile instead, which works signed out.",
     kind: "fix",
     visibleTo: STAFF,
-    daysAgo: 0,
+    daysAgo: 1,
   },
   // ── Flow charts: the chart reads what you type and offers a shape
   {
@@ -36,7 +44,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     body: "Thirteen shapes are only useful if you remember what they mean, so the chart now reads along as you type a box's label and offers the one that fits — under the Label field, with the reason in plain words. Type \"Wait for the confirmation cut-off\" into a plain step and it says this reads like a wait, because time passes here and nobody is doing anything; one click takes it, or Keep leaves the box as it is and stays quiet. It only speaks when the wording points somewhere clearly, and says nothing when it does not — a suggester that guesses is worse than none, because it costs you a decision every time it appears. Checked against the real Training Week chart: it agrees with the author on every box it has an opinion about, and stays silent on the rest. It also never offers to restyle a question that already has form fields, since changing that shape would drop them.",
     kind: "feature",
     visibleTo: STAFF,
-    daysAgo: 1,
+    daysAgo: 2,
   },
   // ── Last year's workshops removed
   {

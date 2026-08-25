@@ -85,7 +85,19 @@ export default async function EventLandingPage(
           },
         },
       },
-      speakers: { orderBy: { displayOrder: "asc" } },
+      // Only what SpeakerCard draws. Bios run to 250 words now, and
+      // pulling every column also pulled the speaker's email address
+      // into a page that never shows it.
+      speakers: {
+        orderBy: { displayOrder: "asc" },
+        select: {
+          id: true,
+          fullName: true,
+          title: true,
+          organization: true,
+          photoUrl: true,
+        },
+      },
       sponsors: { orderBy: { displayOrder: "asc" } },
     },
   });
@@ -953,7 +965,14 @@ function KindBadge({ kind }: { kind: string }) {
 
 /* ─── Speaker card ───────────────────────────────────────────────── */
 
-type SpeakerRow = Awaited<ReturnType<typeof prisma.speaker.findMany>>[number];
+/* Exactly the columns the card draws — see the select on the event query. */
+type SpeakerRow = {
+  id: string;
+  fullName: string;
+  title: string | null;
+  organization: string | null;
+  photoUrl: string | null;
+};
 
 function SpeakerCard({ speaker }: { speaker: SpeakerRow }) {
   const initials = speaker.fullName

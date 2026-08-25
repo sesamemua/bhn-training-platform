@@ -12,6 +12,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteR2ObjectByUrl } from "@/lib/r2";
+import { BIO_MAX_WORDS, BIO_MAX_CHARS, countWords } from "@/lib/events/bio";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,19 @@ const PatchSchema = z.discriminatedUnion("action", [
     fullName: z.string().trim().min(2).max(120).optional(),
     title: z.string().trim().max(160).nullable().optional(),
     organization: z.string().trim().max(160).nullable().optional(),
-    bio: z.string().trim().max(2500).nullable().optional(),
+    // Words, not characters — the same rule the speaker's own form
+    // enforces. A 2500-character cap would have refused a bio the
+    // public form had just accepted.
+    bio: z
+      .string()
+      .trim()
+      // Length first, so the refine never splits a huge string.
+      .max(BIO_MAX_CHARS)
+      .refine((v) => countWords(v) <= BIO_MAX_WORDS, {
+        message: `Keep the bio to ${BIO_MAX_WORDS} words or fewer.`,
+      })
+      .nullable()
+      .optional(),
     topics: z.array(z.string().trim().max(80)).max(12).optional(),
     displayOrder: z.number().int().min(0).max(999).optional(),
   }),

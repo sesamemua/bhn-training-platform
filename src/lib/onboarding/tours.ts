@@ -2358,11 +2358,21 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.symposium.speakers",
     title: "Speakers live under 2026 Symposium now",
-    body: "**Workspace → 2026 Symposium → Speakers.** Send invited speakers one link and they fill in their own **headshot** (with a drag-to-frame crop), a **250-character bio** with an AI shortener, their **LinkedIn**, and **what their session will offer** — no account needed. Everything they submit lands here for you to check before it goes on the website. The same page is still reachable the old way, through Administration → Events, and both show the same speakers.",
+    body: "**Workspace → 2026 Symposium → Speakers.** Send invited speakers one link and they fill in their own **headshot** (with a drag-to-frame crop), a **250-word bio** with an AI shortener, their **LinkedIn**, and **what their session will offer** — no account needed. Everything they submit lands here for you to check before it goes on the website. The same page is still reachable the old way, through Administration → Events, and both show the same speakers.",
     path: "/admin/workspace/symposium-2026/speakers",
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.08.22",
+    cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
+  },
+  {
+    id: "workspace.speakers.bio-words",
+    title: "Speaker bios are 250 words, not 250 characters",
+    body: "The bio box on the speaker link was counting **characters** — 250 of them, which is about forty words, or two sentences. It now counts **words**, up to 250, which is a real biography: career, credentials, what they work on. The counter under the box says `184 / 250 words`, and **Shorten for me** only offers to do anything when a bio actually runs over — paste a faculty page and it trims to the limit, paste something that already fits and it tells you so instead of rewriting it. Bios already submitted are untouched. In this list a long bio shows its first three lines with **Read all N words** to open it, so a roster of ten speakers still reads as a roster.",
+    path: "/admin/workspace/symposium-2026/speakers",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.25",
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {

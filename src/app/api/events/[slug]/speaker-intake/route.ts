@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor, normaliseLinkedin } from "@/lib/showcase/validation";
-import { BIO_LIMIT } from "@/lib/events/bio";
+import { BIO_MAX_WORDS, BIO_MIN_WORDS, BIO_MAX_CHARS, countWords } from "@/lib/events/bio";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -76,10 +76,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     return NextResponse.json({ error: "Organisation is a little long — keep it under 160 characters." }, { status: 400 });
   }
   // Hard-capped at the same limit the form counts down to, so a pasted
-  // bio cannot slip past the counter.
-  if (bio.length < 20 || bio.length > BIO_LIMIT) {
+  // bio cannot slip past the counter. Counted in words, like the counter.
+  // Cheap length check first — countWords allocates, and this is public.
+  if (bio.length > BIO_MAX_CHARS) {
+    return NextResponse.json({ error: "That bio is far too long." }, { status: 413 });
+  }
+  const bioWords = countWords(bio);
+  if (bioWords < BIO_MIN_WORDS || bioWords > BIO_MAX_WORDS) {
     return NextResponse.json(
-      { error: `A short bio, please — between 20 and ${BIO_LIMIT} characters. Yours is ${bio.length}.` },
+      { error: `A bio, please — between ${BIO_MIN_WORDS} and ${BIO_MAX_WORDS} words. Yours is ${bioWords}.` },
       { status: 400 },
     );
   }

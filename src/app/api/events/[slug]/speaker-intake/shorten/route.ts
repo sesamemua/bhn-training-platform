@@ -2,9 +2,13 @@
  * POST /api/events/[slug]/speaker-intake/shorten
  *
  * Public, and deliberately narrow: takes the bio a speaker just typed and
- * returns a version inside the 250-character limit. It never saves
- * anything — the speaker reads the suggestion, edits it if they want, and
- * only their approved text is submitted.
+ * returns a version inside the 250-WORD limit. It never saves anything —
+ * the speaker reads the suggestion, edits it if they want, and only their
+ * approved text is submitted.
+ *
+ * At a 250-word limit most bios already fit, so the common answer here is
+ * "nothing to do" rather than a rewrite. That is the point: this exists
+ * for the speaker who pastes four hundred words of a faculty page.
  *
  * Gated on the event's intake being open, so this is not a free
  * text-rewriting endpoint for anyone who finds the URL.
@@ -13,11 +17,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { callStructured } from "@/lib/ai/reliability";
-import { BIO_LIMIT, BIO_TARGET_MIN, tidyBio } from "@/lib/events/bio";
+import {
+  BIO_MAX_WORDS,
+  BIO_MIN_WORDS,
+  BIO_TARGET_MIN_WORDS,
+  BIO_INPUT_MAX_WORDS,
+  BIO_INPUT_MAX_CHARS,
+  countWords,
+  tidyBio,
+} from "@/lib/events/bio";
 import type { ChatMessage } from "@/lib/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const Out = z.object({ bio: z.string() });
 
@@ -33,11 +45,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const body = (await req.json().catch(() => ({}))) as { bio?: string };
   const bio = String(body.bio ?? "").trim();
-  if (bio.length < 30) {
+
+  // Length before word count: splitting on whitespace allocates, and
+  // this endpoint is public.
+  if (bio.length > BIO_INPUT_MAX_CHARS) {
+    return NextResponse.json({ error: "That's longer than I can work with." }, { status: 413 });
+  }
+
+  const have = countWords(bio);
+
+  if (have < BIO_MIN_WORDS) {
     return NextResponse.json({ error: "Write a little more first, then I can shorten it." }, { status: 400 });
   }
-  if (bio.length > 4000) {
-    return NextResponse.json({ error: "That's longer than I can work with — trim it a little first." }, { status: 400 });
+  if (have > BIO_INPUT_MAX_WORDS) {
+    return NextResponse.json(
+      { error: `That's ${have} words — longer than I can work with. Trim it to roughly a page first.` },
+      { status: 400 },
+    );
   }
 
   /*
@@ -45,29 +69,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
    *
    * Rewriting a bio that is inside the limit is not shortening, it is
    * editing somebody's own words for no reason — and it was the shortest
-   * path to the complaint that this makes things "way too short", since
-   * a 200-character bio came back at 120.
+   * path to the complaint that this makes things "way too short".
    */
-  if (bio.length <= BIO_LIMIT) {
-    return NextResponse.json({ ok: true, bio, length: bio.length, alreadyFits: true });
+  if (have <= BIO_MAX_WORDS) {
+    return NextResponse.json({ ok: true, bio, words: have, alreadyFits: true });
   }
 
   const SYSTEM: ChatMessage = {
     role: "system",
     content: [
-      `You shorten a conference speaker's own biography so that it fits a ${BIO_LIMIT}-character limit.`,
+      `You shorten a conference speaker's own biography so that it fits a ${BIO_MAX_WORDS}-WORD limit.`,
       'Reply as JSON: { "bio": "..." }',
       "",
       "LENGTH — read this twice:",
-      `- Aim for ${BIO_TARGET_MIN}-${BIO_LIMIT} characters, including spaces. That is the target, not a maximum to stay well under.`,
-      `- Never exceed ${BIO_LIMIT}.`,
-      `- Coming back with 120 characters when the original had more to say is a FAILURE, not a job well done. The limit is a shelf to fill.`,
-      `- Cut only as much as it takes to fit. If the original is 300 characters, the answer is about ${BIO_LIMIT} — not 150.`,
+      `- The unit is WORDS, not characters or sentences.`,
+      `- Aim for ${BIO_TARGET_MIN_WORDS}-${BIO_MAX_WORDS} words. That is the target, not a maximum to stay well under.`,
+      `- Never exceed ${BIO_MAX_WORDS} words.`,
+      `- Coming back with 80 words when the original had more to say is a FAILURE, not a job well done. The limit is a shelf to fill.`,
+      `- Cut only as much as it takes to fit. If the original is ${BIO_MAX_WORDS + 40} words, the answer is about ${BIO_MAX_WORDS} — not half of it.`,
       "",
       "CONTENT:",
       "- Keep it in the third person and keep the speaker's own facts: role, employer, field, notable credentials.",
       "- NEVER invent a title, employer, award, degree or number that is not in the original.",
       "- When something must go, drop the least load-bearing detail first — but only once you are over the limit.",
+      "- Keep the paragraph structure of the original where it survives the cut.",
       "- Plain prose. No markdown, no bullet points, no quotation marks around the whole thing.",
     ].join("\n"),
   };
@@ -80,7 +105,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
         { role: "user" as const, content: bio },
       ],
       Out,
-      { userId: null, feature: "speaker.bio.shorten", maxTokens: 400, temperature: 0.2 },
+      {
+        userId: null,
+        feature: "speaker.bio.shorten",
+        // 250 words is roughly 340 tokens of prose; the JSON wrapper and
+        // any escaped punctuation ride on top. 400 was sized for the old
+        // character limit and would have truncated every answer here.
+        maxTokens: 1200,
+        temperature: 0.2,
+      },
     );
 
   let r = await ask();
@@ -97,20 +130,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
    * a second failure means the source really was that thin, and two
    * more seconds of spinner is worse than a short suggestion the
    * speaker can edit.
+   *
+   * The floor is flat. An earlier version capped it at 80% of the
+   * original, on the theory that a 260-word bio should not be pushed
+   * back up to 200 — but this branch only runs when the original is
+   * already over 250 words, so 80% of it is always above 200 and the
+   * cap could never bind. A guard that cannot fire is worse than none:
+   * it reads as protection.
    */
-  const tooShort = (t: string) => t.trim().length < BIO_TARGET_MIN && bio.length > BIO_LIMIT;
-  if (tooShort(r.data.bio)) {
+  const got = countWords(r.data.bio);
+  if (got < BIO_TARGET_MIN_WORDS) {
     const retry = await ask(
-      `Your previous answer was ${r.data.bio.trim().length} characters. That is too short — ` +
-      `the target is ${BIO_TARGET_MIN}-${BIO_LIMIT}. Put back detail from the original that you cut ` +
-      `unnecessarily, and get as close to ${BIO_LIMIT} as the facts allow without going over.`,
+      `Your previous answer was ${got} words. That is too short — the target is ` +
+      `${BIO_TARGET_MIN_WORDS}-${BIO_MAX_WORDS} words. Put back detail from the original that you cut ` +
+      `unnecessarily, and get as close to ${BIO_MAX_WORDS} words as the facts allow without going over.`,
     );
     // Keep the longer of the two: the retry is an improvement or it is
     // not, and there is no third opinion worth waiting for.
-    if (retry.ok && retry.data.bio.trim().length > r.data.bio.trim().length) r = retry;
+    if (retry.ok && countWords(retry.data.bio) > got) r = retry;
   }
 
   const out = tidyBio(r.data.bio);
-  return NextResponse.json({ ok: true, bio: out, length: out.length, alreadyFits: false });
+  return NextResponse.json({ ok: true, bio: out, words: countWords(out), alreadyFits: false });
 }
-
