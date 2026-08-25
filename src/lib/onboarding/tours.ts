@@ -2366,6 +2366,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.insights.speakers",
+    title: "Industry Insights speakers have a link too",
+    body: "**Workspace → Industry Insights → Speakers.** The event on 24 September has twelve invited hiring professionals across three hours. Send them `/events/2026-industry-insights/speaker` and they fill in their own **headshot**, **bio**, **LinkedIn** and **what their session will cover** — no account needed. What comes back appears here for you to check before it goes on the website. The event is a **draft**, so the speaker link works while the event stays off the public listing beside the biohubnet.ca page already advertising it.",
+    path: "/admin/events/2026-industry-insights/speakers",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.22",
+    cta: { label: "Open Industry Insights speakers", href: "/admin/events/2026-industry-insights/speakers" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

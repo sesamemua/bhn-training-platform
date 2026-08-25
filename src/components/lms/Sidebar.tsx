@@ -424,6 +424,19 @@ const workspaceSpeakersItem: NavItem = {
     "Send invited speakers one link and they fill in their own headshot, bio, LinkedIn and what their session offers — no account needed. Review what comes back before it goes on the website.",
 };
 
+// WORKSPACE → Industry Insights. A different event on a different day,
+// so its own subgroup rather than a fifth item under 2026 Symposium —
+// filing it there would be the same mistake as speakers living under
+// Events, one level down.
+const workspaceInsightsSpeakersItem: NavItem = {
+  label: "Speakers",
+  href: "/admin/events/2026-industry-insights/speakers",
+  icon: Mic,
+  minRole: "admin",
+  description:
+    "Industry Insights, 24 September. Hand the invited hiring professionals one link and they fill in their own headshot, bio, LinkedIn and what their session will cover — no account needed.",
+};
+
 // WORKSPACE → 2026 Symposium → Admin. Moved out of Process. Flow Charts
 // and the form builder are general tools; this one is only ever about
 // this event — seats, rooms, who is coming and what they are told.
@@ -1914,6 +1927,9 @@ export function Sidebar({
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            </AdminSubgroup>
+            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Industry Insights">
+              <NavLink item={workspaceInsightsSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Marketing">
               <NavLink item={workspaceVideoItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
