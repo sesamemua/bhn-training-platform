@@ -157,13 +157,12 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           className={INPUT}
-          placeholder="Dr Priya Iyer"
         />
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Title / role">
-          <input name="title" maxLength={160} className={INPUT} placeholder="VP, Process Development" />
+          <input name="title" maxLength={160} className={INPUT} />
         </Field>
         <Field label="Company / institution">
           <input
@@ -172,7 +171,6 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
             value={organization}
             onChange={(e) => setOrganization(e.target.value)}
             className={INPUT}
-            placeholder="Sanofi Canada"
           />
         </Field>
       </div>
