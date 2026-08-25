@@ -30,6 +30,36 @@ const nextConfig: NextConfig = {
   //   geolocation stay fully disabled; microphone is allowed on our OWN
   //   origin (self) for the Mock Interview voice answers, while still blocked
   //   for any third-party iframe.
+  /*
+   * The 2026 event's slug used to say 2025.
+   *
+   * It was renamed because the number is in every public URL for it —
+   * the landing page, registration, the attendee dashboard, the .ics
+   * feed, and the speaker-intake link that goes out to invited
+   * speakers. The old URL keeps working: links already sent, the
+   * onboarding tour, and biohubnet.ca's own link into the platform
+   * must not break because we tidied a number.
+   *
+   * NOT permanent. A 308 is cached by browsers effectively for ever,
+   * and an event slug is the kind of thing somebody may want to put
+   * back. A temporary redirect costs nothing here — the pages are not
+   * competing for search ranking — and stays reversible.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/events/2025-annual-symposium",
+        destination: "/events/2026-annual-symposium",
+        permanent: false,
+      },
+      {
+        source: "/events/2025-annual-symposium/:path*",
+        destination: "/events/2026-annual-symposium/:path*",
+        permanent: false,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {

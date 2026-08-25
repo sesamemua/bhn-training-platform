@@ -2528,7 +2528,8 @@ model LaunchChecklistState {
 /// type name carries the `Bhn` prefix.
 model BhnEvent {
   id                   String    @id @default(cuid())
-  /// URL-safe identifier, e.g. "2025-annual-symposium".
+  /// URL-safe identifier, e.g. "2026-annual-symposium". Renaming one is
+  /// safe — add a redirect in next.config so links already sent survive.
   slug                 String    @unique
   /// When true the public speaker-intake form at /events/<slug>/speaker
   /// accepts submissions. Off by default so the link cannot be guessed

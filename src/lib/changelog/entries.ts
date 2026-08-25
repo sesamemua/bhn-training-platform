@@ -4457,4 +4457,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "The event\u2019s public URL says 2026 now, and the old one still works",
+    body: "The 2026 Symposium\u2019s slug still said **2025**, and that number is in every public URL for it \u2014 the landing page, registration, the attendee dashboard, the calendar feed, and the speaker-intake link that goes out to invited speakers. Sending somebody a link with last year in it is a small thing that undermines everything around it.\n\n  \u2022 `/events/2026-annual-symposium`\n  \u2022 `/events/2026-annual-symposium/register`\n  \u2022 `/events/2026-annual-symposium/speaker`\n  \u2022 `/events/2026-annual-symposium/me` and `/calendar.ics`\n\n**Every old link still works.** `/events/2025-annual-symposium/\u2026` redirects to the new one, so anything already sent, the onboarding tour, and biohubnet.ca\u2019s own link into the platform keep working. It is a temporary redirect on purpose: a permanent one is cached by browsers effectively for ever, and an event slug is the kind of thing somebody may want to put back.\n\nThe event\u2019s internal id is unchanged. Every workshop, registration and speaker row points at it, and renaming a primary key so it reads nicely is how you break a database for cosmetics \u2014 nobody outside that table sees it.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

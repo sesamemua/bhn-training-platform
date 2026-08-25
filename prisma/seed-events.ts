@@ -19,7 +19,7 @@
  * & Training Week.
  *
  * Reproduces the public event structure as a working demo:
- *   • 1 BhnEvent (2025-annual-symposium, Oct 27–30, status published)
+ *   • 1 BhnEvent (2026-annual-symposium, Oct 27–30, status published)
  *   • 9 Workshop rows (multi-slot workshops split: CL3 morning + PM,
  *     BioZone morning + PM are separate rows by design)
  *   • 15 SymposiumSession rows (Oct 30 agenda, two parallel breakouts
@@ -48,7 +48,13 @@ const prisma = new PrismaClient();
 
 // ─── Stable IDs ─────────────────────────────────────────────────
 const EVENT_ID = "evt-2025-annual-symposium";
-const EVENT_SLUG = "2025-annual-symposium";
+/*
+ * The slug is this year's. The ID is NOT — every workshop,
+ * registration and speaker row points at it, and renaming a primary
+ * key to make it read nicely is how you break a database for
+ * cosmetics. Nobody outside this table sees it.
+ */
+const EVENT_SLUG = "2026-annual-symposium";
 const wsId = (slug: string) => `ws-${slug}`;
 const ssId = (slug: string) => `ss-${slug}`;
 const spkId = (slug: string) => `spk-${slug}`;
@@ -792,7 +798,7 @@ async function main() {
   // 8. Demo WorkshopBookings — exercise every status the new flow
   //    supports: confirmed, waitlist, and the new pending-approval
   //    state. The latter gives the admin a row to click "Approve" on
-  //    from /admin/events/2025-annual-symposium/registrations/[rid].
+  //    from /admin/events/2026-annual-symposium/registrations/[rid].
   const seedNow = new Date();
   await prisma.workshopBooking.upsert({
     where: { workshopId_userId: { workshopId: wsId("obio-bootcamp"), userId: attendeeUsers[0].id } },
