@@ -2376,6 +2376,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.speakers.linkedin-helper",
+    title: "The LinkedIn helper stopped hitting bot checks",
+    body: "Speakers reported the **Find mine** button landing them on a bot challenge. It opened a web search scoped to LinkedIn profiles — which works until the search engine decides the person is a robot. Every engine can do that, so it no longer uses one. The button is now **Open mine** and goes to `linkedin.com/in/me`, LinkedIn's own shortcut to your own profile — the app opens there on a phone, and there is no bot check on a first-party link. The field also takes whatever a speaker arrives with now: a bare handle, the app's share link with its tracking parameters, a regional address, or a URL pasted mid-sentence — and it says what it read as they type. If somebody asks you where to find their profile URL, **Open mine → copy the address bar** is the whole answer.",
+    path: "/admin/workspace/symposium-2026/speakers",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.25",
+    cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
+  },
+  {
     id: "workspace.insights.speakers",
     title: "Industry Insights speakers have a link too",
     body: "**Workspace → Industry Insights → Speakers.** The event on 24 September has twelve invited hiring professionals across three hours. Send them `/events/2026-industry-insights/speaker` and they fill in their own **headshot**, **bio**, **LinkedIn** and **what their session will cover** — no account needed. What comes back appears here for you to check before it goes on the website. The event is a **draft**, so the speaker link works while the event stays off the public listing beside the biohubnet.ca page already advertising it.",

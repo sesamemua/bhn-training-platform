@@ -22,13 +22,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── LinkedIn helper: off the search engines entirely
+  {
+    title: "The LinkedIn helper no longer goes through a search engine",
+    body: "Reported: the Find mine button kept landing speakers on a bot check. It opened a web search scoped to LinkedIn profiles, which works — right up until the search engine decides the person is a robot and shows a challenge instead. Every search engine can do that and none of them will stop, so the fix is not a different engine. The button is now **Open mine** and goes to `linkedin.com/in/me`, LinkedIn's own shortcut: signed in, it lands on your profile, and on a phone it opens the LinkedIn app there. First-party, so there is no bot check to fail, and it works on a blank form — the search it replaced needed a name typed in before it could look anybody up. The field itself is the real safety net and now takes whatever you arrive with: a bare handle, `@handle`, a regional address like `ca.linkedin.com`, the mobile app's share link with its tracking parameters, LinkedIn's mobile-web `mwlite` address, or a URL pasted in the middle of a sentence. As you type it says what it read — `Reads as linkedin.com/in/yourname` — so nobody has to submit the form to find out whether it took. It also stopped accepting `notlinkedin.com`, which the old host check allowed because it only looked at how the domain ended, and it no longer swallows the full stop at the end of a pasted sentence into the handle — `\"…/in/jane-doe.\"` reads as `jane-doe`, while a real dotted handle like `jane.doe` is left alone.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Speaker bio limit: words, not characters
   {
     title: "Speaker bios are counted in words now — 250 of them",
     body: "The bio box on the speaker submission link was limited to 250 characters. That is about forty words: enough for a caption, not for a biography, and speakers were losing an employer or a degree to it every time. The limit is now 250 WORDS, counted the way a person counting them would — \"state-of-the-art\" is one word, so is \"Ph.D.\" The counter under the box reads `184 / 250 words` and turns red with how many words over you are. \"Shorten for me\" now only acts when a bio genuinely runs over: paste four hundred words of a faculty page and it trims to the limit and stops on a complete sentence; paste something that already fits and it says so rather than rewriting words that were fine. The same rule applies when an admin edits a bio here, so the admin form can no longer refuse a bio the speaker's own form just accepted. Bios already submitted are untouched, and in the speaker list a long bio shows its first three lines with Read all N words to open it.",
     kind: "improvement",
     visibleTo: STAFF,
-    daysAgo: 0,
+    daysAgo: 1,
   },
   // ── Speaker form: bio shortener, and Find mine
   {

@@ -80,50 +80,133 @@ test("the headshot field still says what to do with it", () => {
   assert.match(html, /Drag to frame it inside the circle/);
 });
 
-/* ── "Find mine" ─────────────────────────────────────────────────── */
+/* ── The LinkedIn helper ─────────────────────────────────────────── */
 
-import { findMineUrl } from "../../src/components/events/SpeakerIntakeForm";
+import { MY_LINKEDIN_URL } from "../../src/components/events/SpeakerIntakeForm";
+import { normaliseLinkedin } from "../../src/lib/showcase/validation";
 
-test("the lookup does not send people to a page that needs an account", () => {
-  // linkedin.com/search redirects a signed-out visitor to "LinkedIn
-  // Login, Sign in". An invited speaker opening the form from an email
-  // on a work laptop is exactly the person who is not signed in.
-  const url = findMineUrl("Jeffrey Seres", "Eurofins");
-  assert.ok(!url.includes("linkedin.com/search"), "back on the endpoint that needs a login");
-  assert.match(url, /^https:\/\//);
+test("the helper does not go through a search engine", () => {
+  // A site-scoped web search worked, right up until the search engine
+  // decided the person was a bot and showed a challenge instead. Every
+  // engine can do that, so the fix is not a different engine.
+  assert.ok(!/duckduckgo|google\.com\/search|bing\.com/.test(MY_LINKEDIN_URL));
+  assert.ok(!/duckduckgo|google\.com\/search|bing\.com/.test(html), "no search engine in the rendered form");
 });
 
-test("it searches for profile pages, not for the whole web", () => {
-  const url = decodeURIComponent(findMineUrl("Jeffrey Seres", "Eurofins"));
-  assert.match(url, /site:linkedin\.com\/in/);
+test("it points at LinkedIn's own shortcut to your profile", () => {
+  assert.equal(MY_LINKEDIN_URL, "https://www.linkedin.com/in/me/");
+  assert.ok(!MY_LINKEDIN_URL.includes("/search"), "linkedin.com/search is the login wall");
 });
 
-test("the name is quoted and the organisation is not", () => {
-  // Quoting both is an exact match on two strings at once and returns
-  // nothing — verified against a real speaker, whose LinkedIn headline
-  // does not contain their employer's name.
-  const q = decodeURIComponent(findMineUrl("Jeffrey Seres", "Eurofins"));
-  assert.ok(q.includes('"Jeffrey Seres"'), "the name should be an exact match");
-  assert.ok(!q.includes('"Eurofins"'), "the organisation should not be");
+test("the helper is offered on a blank form", () => {
+  // The search it replaced needed a name before it could look anybody
+  // up, so on a fresh form it was a dead grey button.
+  assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/me\/"/);
+  assert.doesNotMatch(html, /aria-disabled="true"[^>]*>\s*<svg[^>]*>\s*<\/svg>\s*Open mine/);
 });
 
-test("no organisation still gives a usable search", () => {
-  const q = decodeURIComponent(findMineUrl("Ab Khulbe", ""));
-  assert.ok(q.includes('"Ab Khulbe"'));
-  assert.ok(!q.includes('""'), "an empty organisation should not become an empty exact match");
+/* ── What the field will accept ──────────────────────────────────── */
+
+test("a bare handle is enough", () => {
+  assert.equal(normaliseLinkedin("jeffreyseres"), "https://www.linkedin.com/in/jeffreyseres/");
+  assert.equal(normaliseLinkedin("@jeffreyseres"), "https://www.linkedin.com/in/jeffreyseres/");
 });
 
-test("a name with quotes or spaces does not break the query", () => {
-  const url = findMineUrl('  Sagar   Lahiri  ', "Spectral Medical");
-  assert.ok(!/\s/.test(url), "the URL must be encoded, not raw");
-  assert.match(decodeURIComponent(url), /"Sagar   Lahiri"/);
+test("regional subdomains are the same person", () => {
+  assert.equal(
+    normaliseLinkedin("https://ca.linkedin.com/in/jeffreyseres"),
+    "https://www.linkedin.com/in/jeffreyseres/",
+  );
 });
 
-test("the button is not offered until there is a name to look up", () => {
-  // It used to be a link with a tooltip saying "Enter your name first"
-  // that opened anyway, searching for nothing.
-  assert.match(html, /aria-disabled="true"[^>]*>|<span[^>]*aria-disabled/);
-  assert.ok(!/href="https:\/\/duckduckgo/.test(html), "no name is entered on a fresh form");
+test("the mobile app's share link works", () => {
+  assert.equal(
+    normaliseLinkedin("https://www.linkedin.com/in/jeffreyseres?utm_source=share&utm_medium=member_ios"),
+    "https://www.linkedin.com/in/jeffreyseres/",
+  );
+  assert.equal(
+    normaliseLinkedin("https://www.linkedin.com/mwlite/in/jeffreyseres"),
+    "https://www.linkedin.com/in/jeffreyseres/",
+  );
+});
+
+test("a URL pasted inside a sentence is still found", () => {
+  assert.equal(
+    normaliseLinkedin("Here you go: https://www.linkedin.com/in/jeffreyseres/ — thanks!"),
+    "https://www.linkedin.com/in/jeffreyseres/",
+  );
+});
+
+test("a non-Latin handle survives", () => {
+  const out = normaliseLinkedin("https://www.linkedin.com/in/andré");
+  assert.equal(out, `https://www.linkedin.com/in/${encodeURIComponent("andré")}/`);
+});
+
+test("somebody else's domain is not LinkedIn", () => {
+  // endsWith("linkedin.com") also matches notlinkedin.com, which is a
+  // domain anybody can buy.
+  assert.equal(normaliseLinkedin("https://notlinkedin.com/in/jeffreyseres"), null);
+  assert.equal(normaliseLinkedin("https://linkedin.com.evil.example/in/x"), null);
+});
+
+test("a non-profile LinkedIn page is refused", () => {
+  assert.equal(normaliseLinkedin("https://www.linkedin.com/company/eurofins"), null);
+  assert.equal(normaliseLinkedin("https://www.linkedin.com/feed/"), null);
+});
+
+test("a sentence's own full stop is not part of the handle", () => {
+  // The URL finder stops at whitespace, so the full stop ending the
+  // sentence gets swallowed — and "." is legal in a slug (jane.doe), so
+  // it survives into the stored URL as /in/jane-doe./ and 404s. The
+  // green "Reads as" line would show it as a dot that looks like the
+  // sentence's own punctuation, hiding the error.
+  assert.equal(
+    normaliseLinkedin("Here's my profile: https://www.linkedin.com/in/jane-doe."),
+    "https://www.linkedin.com/in/jane-doe/",
+  );
+  assert.equal(
+    normaliseLinkedin("(https://www.linkedin.com/in/jane-doe)"),
+    "https://www.linkedin.com/in/jane-doe/",
+  );
+  assert.equal(
+    normaliseLinkedin("see https://www.linkedin.com/in/jane-doe..."),
+    "https://www.linkedin.com/in/jane-doe/",
+  );
+  // ...but a dot that is genuinely in the handle stays.
+  assert.equal(
+    normaliseLinkedin("https://www.linkedin.com/in/jane.doe"),
+    "https://www.linkedin.com/in/jane.doe/",
+  );
+});
+
+test("finding the URL in text is linear, not quadratic", () => {
+  // The host part must be [^\\s/]*, not \\S*. Unbounded \\S* before a
+  // literal makes every "http://" a fresh start position that scans to
+  // the end and backtracks: 200 KB took 3.9 s on a public endpoint, on
+  // a single-threaded runtime.
+  const big = "http://".repeat(30_000); // ~200 KB
+  const t0 = process.hrtime.bigint();
+  normaliseLinkedin(big);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.ok(ms < 100, `took ${ms.toFixed(0)}ms — the finder has gone quadratic again`);
+});
+
+test("a handle of pure punctuation is not a profile", () => {
+  // ".." passes a character class that allows dots and becomes
+  // linkedin.com/in/../ — a URL resolving to LinkedIn's front page,
+  // stored as though it were somebody's profile.
+  assert.equal(normaliseLinkedin(".."), null);
+  assert.equal(normaliseLinkedin("..."), null);
+  assert.equal(normaliseLinkedin("---"), null);
+  assert.equal(normaliseLinkedin("_._"), null);
+  // ...but a real handle containing dots is still fine.
+  assert.equal(normaliseLinkedin("jane.doe"), "https://www.linkedin.com/in/jane.doe/");
+});
+
+test("empty and nonsense give null, not a broken URL", () => {
+  assert.equal(normaliseLinkedin(""), null);
+  assert.equal(normaliseLinkedin("   "), null);
+  assert.equal(normaliseLinkedin("https://example.com/in/foo"), null);
 });
 
 /* ─── The limit the form tells people about ──────────────────────── */

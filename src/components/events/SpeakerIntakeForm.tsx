@@ -11,40 +11,43 @@
  * shortener that proposes, never replaces: the speaker reads and
  * approves before anything goes in the field, and at this limit the
  * usual answer is "it already fits".
- * LinkedIn is a lookup, not a guess: we cannot read LinkedIn profiles, so
- * the button opens a search for their own name and they paste the result.
- * See findMineUrl for why it is not LinkedIn's own search.
+ * LinkedIn asks for a URL most people do not know by heart, so the field
+ * takes any spelling of it and says what it read, and the button beside
+ * it opens their own profile on LinkedIn to copy from. See
+ * MY_LINKEDIN_URL for why it is not a web search.
  */
 import { useCallback, useState } from "react";
-import { CheckCircle2, Loader2, Search, Sparkles, X } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
 import { BIO_MAX_WORDS, BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
+import { normaliseLinkedin } from "@/lib/showcase/validation";
 
 
 
 /**
- * Where "Find mine" sends somebody looking for their own profile.
+ * Where "Open my LinkedIn" sends somebody who does not know their own
+ * profile URL.
  *
- * NOT linkedin.com/search. That endpoint requires being signed in, and
- * an invited speaker opening it from an email on a work laptop lands on
- * a login wall instead of a search — which is what "the find me
- * function doesn't work" turned out to mean. Checked: logged out, it
- * redirects to "LinkedIn Login, Sign in".
+ * This is LinkedIn's own shortcut: signed in, /in/me/ redirects to your
+ * profile, and on a phone it opens the LinkedIn app there. First-party,
+ * so there is no bot check to fail.
  *
- * A site-scoped web search works signed out and lands on the profile
- * URL itself, which is the thing they have to paste back.
+ * It replaced a site-scoped web search, which replaced
+ * linkedin.com/search (a login wall). The search worked, right up until
+ * the search engine decided the person was a robot and showed them a
+ * challenge instead — reported as "always, like, there's a feature that
+ * blocking bots". Every search engine can do that and none of them will
+ * stop, so the fix is not a different engine. It is not depending on
+ * one: the speaker is already signed in to LinkedIn on the device they
+ * are holding.
  *
- * The NAME is quoted and the organisation is not. Quoting both is an
- * exact match on two strings at once and returns nothing — a person
- * whose LinkedIn headline says "CDMO | Cell & Gene Therapy" rather than
- * their employer's name disappears from their own search.
+ * The field is the real safety net — normaliseLinkedin takes a bare
+ * handle, a share link with tracking parameters, a regional subdomain
+ * or a URL pasted inside a sentence — so somebody who never presses
+ * this button loses nothing.
  */
-export function findMineUrl(name: string, organization: string): string {
-  const q = [`site:linkedin.com/in`, `"${name.trim()}"`, organization.trim()]
-    .filter(Boolean)
-    .join(" ");
-  return `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
-}
+export const MY_LINKEDIN_URL = "https://www.linkedin.com/in/me/";
+
 
 export function SpeakerIntakeForm({ slug }: { slug: string }) {
   const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
@@ -60,6 +63,8 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [shortenError, setShortenError] = useState<string | null>(null);
   const [shortenNote, setShortenNote] = useState<string | null>(null);
+  const [linkedin, setLinkedin] = useState("");
+  const normalised = normaliseLinkedin(linkedin);
 
   const onCrop = useCallback((s: CropState) => setCrop(s), []);
   // Counted in words, which is what the limit is in. Recomputed on every
@@ -273,44 +278,51 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         label="LinkedIn profile"
         group
         labelFor="speaker-linkedin"
-        hint="Paste the URL, or just your handle."
+        hint="Paste the URL or just your handle — any form of it works."
       >
         <div className="flex gap-2">
           <input
             id="speaker-linkedin"
             name="linkedin"
             maxLength={200}
+            value={linkedin}
+            onChange={(e) => setLinkedin(e.target.value)}
             className={INPUT}
             placeholder="linkedin.com/in/yourname"
           />
           {/*
-            A DISABLED BUTTON, not a link with a tooltip claiming to be
-            disabled. It used to say "Enter your name first" and open
-            anyway, searching for nothing.
+            Always available: it needs nothing from this form, unlike the
+            search it replaced, which needed a name before it could look
+            anybody up.
           */}
-          {name.trim() ? (
-            <a
-              href={findMineUrl(name, organization)}
-              target="_blank"
-              rel="noreferrer"
-              title={`Look up ${name.trim()} and copy the profile link`}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[12.5px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700"
-            >
-              <Search size={13} /> Find mine
-            </a>
-          ) : (
-            <span
-              aria-disabled="true"
-              title="Enter your name first"
-              className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[12.5px] font-semibold text-slate-400"
-            >
-              <Search size={13} /> Find mine
-            </span>
-          )}
+          <a
+            href={MY_LINKEDIN_URL}
+            target="_blank"
+            rel="noreferrer"
+            title="Opens your own LinkedIn profile"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[12.5px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700"
+          >
+            <ExternalLink size={13} /> Open mine
+          </a>
         </div>
-        {name.trim() && (
+        {/*
+          Say whether it was understood, rather than making them submit
+          the form to find out. Silence while the field is empty.
+        */}
+        {linkedin.trim() ? (
+          normalised ? (
+            <p className="mt-1.5 text-[11.5px] text-emerald-700">
+              Reads as <span className="font-semibold">{normalised.replace(/^https:\/\/www\./, "").replace(/\/$/, "")}</span>
+            </p>
+          ) : (
+            <p className="mt-1.5 text-[11.5px] text-amber-700">
+              Can&rsquo;t read that as a LinkedIn profile yet — the handle from your profile
+              address is enough on its own.
+            </p>
+          )
+        ) : (
           <p className="mt-1.5 text-[11.5px] text-slate-500">
-            Opens a search for your profile. Copy the address of your page and paste it above.
+            Open mine takes you to your own profile — copy the address and paste it above.
           </p>
         )}
       </Field>

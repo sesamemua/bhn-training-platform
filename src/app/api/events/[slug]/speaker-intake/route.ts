@@ -93,6 +93,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   }
 
   // Accepts a full URL or a bare handle; stored canonical or not at all.
+  // Length before parsing, like every other field on this route and
+  // like both sibling callers of normaliseLinkedin. It reads a URL out
+  // of surrounding text, which means scanning, and this endpoint is
+  // public and unauthenticated.
+  if (linkedinRaw.length > 200) {
+    return NextResponse.json({ error: "That LinkedIn link is too long." }, { status: 400 });
+  }
   const linkedinUrl = linkedinRaw ? normaliseLinkedin(linkedinRaw) : null;
   if (linkedinRaw && !linkedinUrl) {
     return NextResponse.json(
