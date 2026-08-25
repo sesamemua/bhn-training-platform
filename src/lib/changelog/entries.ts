@@ -4478,4 +4478,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Fixed: dragging your headshot opened the file picker",
+    body: "On the speaker intake, dragging the photo to frame it inside the circle re-opened the \u201cchoose a file\u201d dialog every time \u2014 so you could never actually move your own face.\n\nThe cause was one line of HTML. A `&lt;label&gt;` activates its **first** control on any click anywhere inside it. That is right when it wraps one input and wrong when it wraps several, and the headshot field held three: the file input, the canvas you drag, and the zoom slider. A drag ends in a click, the label caught it, and forwarded it to the file input.\n\nThe field is a plain group now, and the same defect turned up a second time in **Speaker biography**, where the label wrapped both the textarea and the \u201cshorten it\u201d button \u2014 clicking the button was stealing focus into the textarea. Fixed the same way, with the caption pointing at the textarea by id so it keeps its accessible name.\n\nA test renders the form and asserts no label wraps more than one control, so it cannot come back quietly.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

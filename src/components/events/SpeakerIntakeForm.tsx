@@ -122,16 +122,22 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         </Field>
       </div>
 
-      <Field label="Headshot" required hint="Drag to frame it inside the circle.">
+      <Field label="Headshot" required group hint="Drag to frame it inside the circle.">
         <HeadshotCropper onChange={onCrop} />
       </Field>
 
       <Field
         label="Speaker biography"
         required
+        // Same reason as the headshot: this field holds the textarea AND
+        // the shorten-it button, and a label wrapping both forwards a
+        // click on the button to the textarea.
+        group
+        labelFor="speaker-bio"
         hint={`${BIO_LIMIT} characters max — this prints beside your photo.`}
       >
         <textarea
+          id="speaker-bio"
           name="bio"
           required
           rows={5}
@@ -244,25 +250,60 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
 const INPUT =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[14px] text-slate-900 outline-none transition focus:border-brand-500";
 
+/**
+ * One labelled question.
+ *
+ * `group` is not cosmetic. A <label> activates its FIRST labelable
+ * descendant on any click inside it — which is right when it wraps one
+ * input, and wrong when it wraps several. The headshot field holds a
+ * file input, a canvas you drag to frame the photo, and a zoom slider:
+ * wrapped in one label, dragging the photo ended in a click that the
+ * label forwarded to the file input, and the picker opened every time
+ * somebody tried to move their own face.
+ *
+ * A group renders a <div> and its caption as text. Nothing is lost —
+ * the controls inside carry their own labels — and the HTML stops
+ * claiming that one label describes three controls.
+ */
 function Field({
   label,
   hint,
   required,
+  group,
+  labelFor,
   children,
 }: {
   label: string;
   hint?: string;
   required?: boolean;
+  /** The children are more than one control. See above. */
+  group?: boolean;
+  /**
+   * In a group, the id of the ONE control the caption names.
+   *
+   * A <label for> points at a single control, so clicking the caption
+   * still focuses it while a click on a sibling button does nothing to
+   * it — which is the behaviour a wrapping label was approximating and
+   * getting wrong. Without this a grouped field's control has no
+   * accessible name at all, which is a worse bug than the one being
+   * fixed.
+   */
+  labelFor?: string;
   children: React.ReactNode;
 }) {
+  const Wrapper = group ? "div" : "label";
+  const Caption = group ? (labelFor ? "label" : "div") : "span";
   return (
-    <label className="block">
-      <span className="text-[12.5px] font-semibold text-slate-800">
+    <Wrapper className="block">
+      <Caption
+        {...(group && labelFor ? { htmlFor: labelFor } : {})}
+        className="text-[12.5px] font-semibold text-slate-800"
+      >
         {label}
         {required && <span className="ml-0.5 text-rose-600">*</span>}
-      </span>
-      {hint && <span className="ml-2 text-[11.5px] text-slate-500">{hint}</span>}
+        {hint && <span className="ml-2 font-normal text-[11.5px] text-slate-500">{hint}</span>}
+      </Caption>
       <div className="mt-1.5">{children}</div>
-    </label>
+    </Wrapper>
   );
 }
