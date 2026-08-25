@@ -11,12 +11,38 @@
  * replaces — the speaker reads and approves before it goes in the field.
  * LinkedIn is a lookup, not a guess: we cannot read LinkedIn profiles, so
  * the button opens a search for their own name and they paste the result.
+ * See findMineUrl for why it is not LinkedIn's own search.
  */
 import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Search, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
+import { BIO_LIMIT } from "@/lib/events/bio";
 
-const BIO_LIMIT = 250;
+
+
+/**
+ * Where "Find mine" sends somebody looking for their own profile.
+ *
+ * NOT linkedin.com/search. That endpoint requires being signed in, and
+ * an invited speaker opening it from an email on a work laptop lands on
+ * a login wall instead of a search — which is what "the find me
+ * function doesn't work" turned out to mean. Checked: logged out, it
+ * redirects to "LinkedIn Login, Sign in".
+ *
+ * A site-scoped web search works signed out and lands on the profile
+ * URL itself, which is the thing they have to paste back.
+ *
+ * The NAME is quoted and the organisation is not. Quoting both is an
+ * exact match on two strings at once and returns nothing — a person
+ * whose LinkedIn headline says "CDMO | Cell & Gene Therapy" rather than
+ * their employer's name disappears from their own search.
+ */
+export function findMineUrl(name: string, organization: string): string {
+  const q = [`site:linkedin.com/in`, `"${name.trim()}"`, organization.trim()]
+    .filter(Boolean)
+    .join(" ");
+  return `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
+}
 
 export function SpeakerIntakeForm({ slug }: { slug: string }) {
   const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
@@ -31,6 +57,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
   const [shortening, setShortening] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [shortenError, setShortenError] = useState<string | null>(null);
+  const [shortenNote, setShortenNote] = useState<string | null>(null);
 
   const onCrop = useCallback((s: CropState) => setCrop(s), []);
   const over = bio.length > BIO_LIMIT;
@@ -39,6 +66,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
     if (shortening) return;
     setShortening(true);
     setShortenError(null);
+    setShortenNote(null);
     setSuggestion(null);
     try {
       const res = await fetch(`/api/events/${slug}/speaker-intake/shorten`, {
@@ -46,9 +74,14 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bio }),
       });
-      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; bio?: string; error?: string };
+      const j = (await res.json().catch(() => ({}))) as {
+        ok?: boolean; bio?: string; error?: string; alreadyFits?: boolean;
+      };
       if (!res.ok || !j.ok || !j.bio) throw new Error(j.error ?? "Couldn't shorten it.");
-      setSuggestion(j.bio);
+      // Nothing to propose when it already fits — say so rather than
+      // handing back the same words as though they were an improvement.
+      if (j.alreadyFits) setShortenNote(`This already fits (${j.bio.length} of ${BIO_LIMIT}) — no need to shorten it.`);
+      else setSuggestion(j.bio);
     } catch (e) {
       setShortenError((e as Error).message);
     } finally {
@@ -163,7 +196,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
             type="button"
             onClick={shorten}
             disabled={shortening || bio.trim().length < 30}
-            title={bio.trim().length < 30 ? "Write a little more first" : "Suggest a shorter version"}
+            title={bio.trim().length < 30 ? "Write a little more first" : `Suggest a version inside ${BIO_LIMIT} characters`}
             className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
           >
             {shortening ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
@@ -177,6 +210,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         </div>
 
         {shortenError && <p className="mt-1.5 text-[12px] text-rose-600">{shortenError}</p>}
+        {shortenNote && <p className="mt-1.5 text-[12px] text-slate-600">{shortenNote}</p>}
 
         {suggestion && (
           <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/60 p-3">
@@ -211,19 +245,50 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         )}
       </Field>
 
-      <Field label="LinkedIn profile" hint="Paste the URL, or just your handle.">
+      <Field
+        label="LinkedIn profile"
+        group
+        labelFor="speaker-linkedin"
+        hint="Paste the URL, or just your handle."
+      >
         <div className="flex gap-2">
-          <input name="linkedin" maxLength={200} className={INPUT} placeholder="linkedin.com/in/yourname" />
-          <a
-            href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent([name, organization].filter(Boolean).join(" "))}`}
-            target="_blank"
-            rel="noreferrer"
-            title={name ? `Search LinkedIn for ${name}` : "Enter your name first"}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[12.5px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700"
-          >
-            <Search size={13} /> Find mine
-          </a>
+          <input
+            id="speaker-linkedin"
+            name="linkedin"
+            maxLength={200}
+            className={INPUT}
+            placeholder="linkedin.com/in/yourname"
+          />
+          {/*
+            A DISABLED BUTTON, not a link with a tooltip claiming to be
+            disabled. It used to say "Enter your name first" and open
+            anyway, searching for nothing.
+          */}
+          {name.trim() ? (
+            <a
+              href={findMineUrl(name, organization)}
+              target="_blank"
+              rel="noreferrer"
+              title={`Look up ${name.trim()} and copy the profile link`}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[12.5px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700"
+            >
+              <Search size={13} /> Find mine
+            </a>
+          ) : (
+            <span
+              aria-disabled="true"
+              title="Enter your name first"
+              className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[12.5px] font-semibold text-slate-400"
+            >
+              <Search size={13} /> Find mine
+            </span>
+          )}
         </div>
+        {name.trim() && (
+          <p className="mt-1.5 text-[11.5px] text-slate-500">
+            Opens a search for your profile. Copy the address of your page and paste it above.
+          </p>
+        )}
       </Field>
 
       <Field

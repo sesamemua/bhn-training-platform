@@ -79,3 +79,49 @@ test("the headshot field still says what to do with it", () => {
   assert.match(html, /Headshot/);
   assert.match(html, /Drag to frame it inside the circle/);
 });
+
+/* ── "Find mine" ─────────────────────────────────────────────────── */
+
+import { findMineUrl } from "../../src/components/events/SpeakerIntakeForm";
+
+test("the lookup does not send people to a page that needs an account", () => {
+  // linkedin.com/search redirects a signed-out visitor to "LinkedIn
+  // Login, Sign in". An invited speaker opening the form from an email
+  // on a work laptop is exactly the person who is not signed in.
+  const url = findMineUrl("Jeffrey Seres", "Eurofins");
+  assert.ok(!url.includes("linkedin.com/search"), "back on the endpoint that needs a login");
+  assert.match(url, /^https:\/\//);
+});
+
+test("it searches for profile pages, not for the whole web", () => {
+  const url = decodeURIComponent(findMineUrl("Jeffrey Seres", "Eurofins"));
+  assert.match(url, /site:linkedin\.com\/in/);
+});
+
+test("the name is quoted and the organisation is not", () => {
+  // Quoting both is an exact match on two strings at once and returns
+  // nothing — verified against a real speaker, whose LinkedIn headline
+  // does not contain their employer's name.
+  const q = decodeURIComponent(findMineUrl("Jeffrey Seres", "Eurofins"));
+  assert.ok(q.includes('"Jeffrey Seres"'), "the name should be an exact match");
+  assert.ok(!q.includes('"Eurofins"'), "the organisation should not be");
+});
+
+test("no organisation still gives a usable search", () => {
+  const q = decodeURIComponent(findMineUrl("Ab Khulbe", ""));
+  assert.ok(q.includes('"Ab Khulbe"'));
+  assert.ok(!q.includes('""'), "an empty organisation should not become an empty exact match");
+});
+
+test("a name with quotes or spaces does not break the query", () => {
+  const url = findMineUrl('  Sagar   Lahiri  ', "Spectral Medical");
+  assert.ok(!/\s/.test(url), "the URL must be encoded, not raw");
+  assert.match(decodeURIComponent(url), /"Sagar   Lahiri"/);
+});
+
+test("the button is not offered until there is a name to look up", () => {
+  // It used to be a link with a tooltip saying "Enter your name first"
+  // that opened anyway, searching for nothing.
+  assert.match(html, /aria-disabled="true"[^>]*>|<span[^>]*aria-disabled/);
+  assert.ok(!/href="https:\/\/duckduckgo/.test(html), "no name is entered on a fresh form");
+});

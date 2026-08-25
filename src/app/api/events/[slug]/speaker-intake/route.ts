@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor, normaliseLinkedin } from "@/lib/showcase/validation";
-import { BIO_LIMIT } from "./shorten/route";
+import { BIO_LIMIT } from "@/lib/events/bio";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
