@@ -4471,4 +4471,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Industry Insights has its own registration form",
+    body: "**`/apply/industry-insights-2026`** \u2014 a separate form for *Inside the Hiring Process: Meet the Decision Makers*, Thursday 24 September 2026, 1:00\u20134:00 PM ET, online. Open to anyone with the link, no sign-in, same as Training Week.\n\n**Built to the shape of the event rather than copied from Training Week.** Three hours, four company conversations in each, twenty people to a conversation \u2014 so the sessions are **three separate questions**, one per hour, rather than one multi-select on a calendar. Four companies running at the same time as a multi-select could only *warn* about a double booking; as three single choices it cannot happen.\n\nEvery hour offers **\u201cI cannot make this hour\u201d**: somebody free for one hour of three should be able to register for that hour rather than be pushed into picking something they will not attend, which is a seat somebody else could have used.\n\n**The eligibility gate is an institution, not a yes/no.** \u201cAre you at a partner institution?\u201d invites a yes from somebody who has not checked, and the list gets checked by hand anyway. Pick yours from the 41; pick \u201cnot on the list\u201d and the form says so and stops, with somewhere to go.\n\n**The eight unannounced companies say they are unannounced.** The page says three times that the line-up is tentative, so they read \u201cCompany 3 \u2014 to be announced\u201d rather than being given plausible placeholder names. Somebody choosing one should know they are choosing an hour, not a company.\n\nAnd the most useful box is the optional one: **what would you most like to ask?** Forty of the sixty minutes is live Q&amp;A, and a question sent ahead is one the speaker can come prepared for.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];
