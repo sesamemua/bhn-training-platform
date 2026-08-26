@@ -21,6 +21,11 @@ import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor, normaliseLinkedin } from "@/lib/showcase/validation";
 import { BIO_MAX_WORDS, BIO_MIN_WORDS, BIO_MAX_CHARS, countWords } from "@/lib/events/bio";
+import { sendMail, mailConfigured } from "@/lib/mail";
+import {
+  speakerSubmissionEmail,
+  SPEAKER_SUBMISSION_RECIPIENTS,
+} from "@/lib/notify/speaker-submission";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -174,6 +179,35 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     console.error("[speaker-intake] DB insert failed:", err);
     await deleteR2ObjectByUrl(photoKey).catch(() => {});
     return NextResponse.json({ error: "Couldn't save your details. Try again." }, { status: 500 });
+  }
+
+  /*
+   * A copy to the coordinators, after the row is safely saved.
+   *
+   * Deliberately outside the try/catch above and unable to fail the
+   * request: the speaker has already given us everything, and telling
+   * them "couldn't save your details" because our mail server was
+   * having a moment would make them do it all again for nothing. A
+   * missed copy costs somebody opening the admin page; a false failure
+   * costs the submission.
+   */
+  if (mailConfigured()) {
+    const mail = speakerSubmissionEmail({
+      eventTitle: event.title,
+      slug,
+      fullName: name,
+      title: title || null,
+      organization: organization || null,
+      bio: bio || null,
+      linkedinUrl,
+      sessionPitch: sessionPitch || null,
+      photoUrl: r2PublicUrl(photoKey),
+    });
+    const [to, ...cc] = SPEAKER_SUBMISSION_RECIPIENTS;
+    // A real cc, not a second send — each of them should be able to see
+    // the other already has it, so neither chases the same speaker twice.
+    await sendMail({ to, cc: [...cc], subject: mail.subject, text: mail.text, html: mail.html })
+      .catch((err) => console.error("[speaker-intake] submission copy failed:", err));
   }
 
   return NextResponse.json({ ok: true });

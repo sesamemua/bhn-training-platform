@@ -60,7 +60,7 @@ const COLOR = {
 };
 
 const FONT_STACK =
-  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 
 function kindMeta(kind: ReminderKind, title: string) {
   switch (kind) {

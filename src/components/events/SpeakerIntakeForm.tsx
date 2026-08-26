@@ -192,7 +192,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         // click on the button to the textarea.
         group
         labelFor="speaker-bio"
-        hint={`Up to ${BIO_MAX_WORDS} words. Write it in the third person — this is what gets printed and read out.`}
+        hint={`Up to ${BIO_MAX_WORDS} words.`}
       >
         <textarea
           id="speaker-bio"
@@ -278,7 +278,6 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         label="LinkedIn profile"
         group
         labelFor="speaker-linkedin"
-        hint="Paste the URL or just your handle — any form of it works."
       >
         <div className="flex gap-2">
           <input
@@ -328,19 +327,11 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
       </Field>
 
       <Field
-        label="What will your session offer?"
-        hint="A brief description of the advice or insights you plan to share — or who would benefit most from attending."
+        label="A brief description of the advice you plan to share"
       >
         <textarea name="sessionPitch" rows={4} maxLength={600} className={INPUT} />
       </Field>
 
-      <Field label="Topics you can speak to" hint="Separate with commas.">
-        <input name="topics" className={INPUT} placeholder="Cell therapy manufacturing, Regulatory strategy, Scale-up" />
-      </Field>
-
-      <Field label="Your email" hint="Only used if we need to check something. Not published.">
-        <input name="email" type="email" className={INPUT} placeholder="you@example.com" />
-      </Field>
 
       {error && (
         <p className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p>

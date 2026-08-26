@@ -44,7 +44,7 @@ function htmlBody(opts: {
   contactEmail: string;
 }): string {
   const FONT_STACK =
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
   return `<!doctype html>
 <html lang="en">
 <head>

@@ -306,6 +306,8 @@ model User {
   // optionally issues a tier-3 MerchReward.
   themeVotes             ThemeVote[]
   logoVotes              LogoVote[]
+  notifyContactsAdded    NotifyContact[] @relation("NotifyContactAddedBy")
+  notifyLogs             NotifyLog[]     @relation("NotifyLogSender")
   themeProposals         ThemeProposal[] @relation("ThemeProposals")
   reviewedThemeProposals ThemeProposal[] @relation("ThemeProposalReviewer")
 
@@ -6058,4 +6060,66 @@ model PageComment {
 
   @@index([reviewId, createdAt])
   @@index([parentId])
+}
+
+/// An address the platform can notify about an admin feature.
+///
+/// Staff accounts are already reachable — this table is for the people
+/// who are NOT on the platform: a programme coordinator at a partner
+/// institution, a comms lead, somebody's assistant. Kept as a table
+/// rather than typed in every time, because the same six people get
+/// told about everything and retyping them is how one gets missed.
+model NotifyContact {
+  id String @id @default(cuid())
+
+  /// What to call them in the greeting. "Hi Jane," reads as a message;
+  /// "Hi," reads as a broadcast, which is what this is trying not to be.
+  name String
+
+  /// Stored as typed. Uniqueness is checked case-insensitively in the
+  /// route, since nobody means a different person by a different case.
+  email String @unique
+
+  /// Free text — "Programme coordinator, UHN". Shown beside the name so
+  /// somebody picking recipients can tell two Janes apart.
+  role String?
+
+  /// Who added them, for the same reason any address book records it:
+  /// so the person who knows why they are on the list can be asked.
+  addedById String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addedBy User? @relation("NotifyContactAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@index([name])
+}
+
+/// One row per notification actually handed to the mail server.
+///
+/// Two jobs. It answers "did anybody already tell Amara about this?",
+/// which is the question somebody asks a week later. And it is what a
+/// rate limit can count: this route sends email, and a counter held in
+/// memory does not survive a serverless function being recycled
+/// between requests.
+model NotifyLog {
+  id String @id @default(cuid())
+
+  /// An id from src/lib/notify/features.ts. A String, not an FK — the
+  /// features are entries in a file, not rows.
+  featureId String
+
+  /// Whatever the feature needed to build its links, usually a slug.
+  context String?
+
+  /// Stored as sent. Lowercased separately for counting.
+  recipient String
+
+  senderId String?
+  createdAt DateTime @default(now())
+
+  sender User? @relation("NotifyLogSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([senderId, createdAt])
+  @@index([featureId, createdAt])
 }

@@ -20,7 +20,6 @@ import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
-import { speakerFormUrl, speakerAdminUrl } from "@/lib/events/speaker-link-email";
 
 export const dynamic = "force-dynamic";
 
@@ -68,8 +67,6 @@ export default async function SymposiumSpeakersPage() {
           slug={EVENT_SLUG}
           intakeOpen={event.speakerIntakeOpen}
           initialSpeakers={rows}
-          formUrl={speakerFormUrl(EVENT_SLUG)}
-          adminUrl={speakerAdminUrl(EVENT_SLUG)}
         />
       </div>
     </>

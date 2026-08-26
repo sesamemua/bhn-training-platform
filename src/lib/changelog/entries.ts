@@ -22,13 +22,29 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Speaker form trimmed + a copy on submit
+  {
+    title: "Speaker form is shorter, and you get a copy the moment somebody submits",
+    body: "**Four fields fewer to read.** *Topics you can speak to* and *Your email* are gone from the speaker form. *What will your session offer?* is now **A brief description of the advice you plan to share**, which says the same thing in the question rather than in a hint underneath it, so the hint went too. The LinkedIn and biography hints lost their explanatory tails for the same reason — the field labels already carry it. **A copy now arrives by email** at yes.lee@utoronto.ca and Ruilin.yuan@utoronto.ca the moment a speaker finishes: name, title, organisation, biography, LinkedIn, what they plan to share, and the headshot, all in the body so it reads on a phone without signing in, plus a button to the admin page. It is sent after the submission is safely saved and cannot fail it — a mail server having a moment must never make a speaker fill the form in twice. **One consequence worth knowing:** with the email field gone the platform no longer collects a way to contact a speaker back, so the copy is the record of who submitted what.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  // ── Tell a colleague, platform-wide
+  {
+    title: "Tell a colleague is now a platform feature, not a speakers one",
+    body: "The \"tell a colleague\" panel that lived on the Speakers page is now shared plumbing any admin page can use. **What you can do:** open the panel, tick people, send. Each person gets **their own email, addressed to them by first name** — \"Hi Amara,\" — with one short paragraph saying what the thing is and the links they need, then a sign-off. Replies come to you. It is a message from a colleague, not a bulletin. **The saved list.** You can now **add and remove addresses** from a list that persists: name, email, and an optional role so you can tell two Janes apart. People not on the platform belong here — a coordinator at a partner institution, a comms lead. Platform staff appear automatically underneath, and anyone in both lists is shown once. There is still a box for a one-off address you do not want to save. **What it says** comes from a register of features rather than from the page, so the wording and links cannot drift from what is actually sent — and you can see exactly what will go out before you press Send. Only Speakers uses it today. Adding it to another page is one entry in that register, so ask and it is quick. **Also fixed:** the font on outgoing emails. A quote mark inside the font list was closing the style attribute early, so **the registration confirmation, the event reminder and the event broadcast were all rendering in the browser's serif default** instead of the intended typeface.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Tell a colleague, and a bigger crop circle
   {
     title: "Tell a colleague about the speaker link — and a bigger headshot circle",
     body: "**Speakers → Tell a colleague.** Pick staff from a searchable list, type in anyone else who is not on the platform, add a line of your own, and send. Each person gets their own email carrying the two links that matter: the **public speaker form** to hand to invited speakers, and **this admin page** where what they send lands. Both links are shown on screen before you press Send, so you can read the email rather than discover it in your sent folder. Replies come back to you, not to the shared mailbox. One send per person rather than one email with everybody in the To: line — a colleague forwarding this to a speaker should not be forwarding the rest of the team's addresses with it. If the form happens to be closed, the email says so rather than letting somebody hand out a link that rejects everything. Separately: the **headshot crop circle on the speaker form is now much bigger** — 340px instead of 240. It is the one control where somebody is judging their own face, and at the old size you could not tell whether the crop was right until it was already on the website.",
     kind: "feature",
     visibleTo: STAFF,
-    daysAgo: 0,
+    daysAgo: 1,
   },
   // ── LinkedIn helper: off the search engines entirely
   {

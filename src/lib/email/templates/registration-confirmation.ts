@@ -77,7 +77,7 @@ const COLOR = {
 };
 
 const FONT_STACK =
-  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 
 // Status copy + colour tokens that drive the banner + subject line.
 function statusMeta(input: RegistrationConfirmationInput) {
