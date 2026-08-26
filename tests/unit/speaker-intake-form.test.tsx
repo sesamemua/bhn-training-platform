@@ -17,7 +17,11 @@ import { SpeakerIntakeForm } from "../../src/components/events/SpeakerIntakeForm
  * Rendered as markup and parsed, because the defect is in the SHAPE of
  * the HTML rather than in any behaviour a unit test could call.
  */
-const html = renderToStaticMarkup(React.createElement(SpeakerIntakeForm, { slug: "2026-industry-insights" }));
+const html = renderToStaticMarkup(React.createElement(SpeakerIntakeForm, {
+  slug: "2026-industry-insights",
+  bioMaxWords: 250,
+  pitchMaxWords: 120,
+}));
 
 /** Every <label>…</label> in the output, crudely but adequately. */
 function labels(markup: string): string[] {
@@ -206,7 +210,7 @@ test("empty and nonsense give null, not a broken URL", () => {
 
 test("the form states the limit in words, not characters", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E" } as never),
+    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E", bioMaxWords: 250, pitchMaxWords: 120 } as never),
   );
   assert.match(html, /Up to 250 words/, "the hint should name the word limit");
   assert.match(html, /0 \/ 250 words/, "the counter should count words");
@@ -215,7 +219,7 @@ test("the form states the limit in words, not characters", () => {
 
 test("shortening is not offered to a bio that is inside the limit", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E" } as never),
+    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E", bioMaxWords: 250, pitchMaxWords: 120 } as never),
   );
   // An empty bio is inside the limit, so the button starts disabled —
   // it exists for the speaker who pastes a faculty page, not for
@@ -223,4 +227,21 @@ test("shortening is not offered to a bio that is inside the limit", () => {
   assert.match(html, /Shorten for me/);
   const btn = html.slice(0, html.indexOf("Shorten for me"));
   assert.ok(btn.lastIndexOf("disabled") > btn.lastIndexOf("<button"), "the button should start disabled");
+});
+
+/* ── The limit is the event's, not a constant ────────────────────── */
+
+test("the form shows whatever limit it was given, not a baked-in 250", () => {
+  // An admin can move this per event. A default compiled into the
+  // client would silently disagree with the rule the server enforces.
+  const custom = renderToStaticMarkup(
+    React.createElement(SpeakerIntakeForm, {
+      slug: "e", bioMaxWords: 80, pitchMaxWords: 40,
+    } as never),
+  );
+  assert.match(custom, /Up to 80 words/);
+  assert.match(custom, /0 \/ 80 words/);
+  assert.match(custom, /0 \/ 40 words/);
+  assert.doesNotMatch(custom, /250 words/);
+  assert.doesNotMatch(custom, /120 words/);
 });

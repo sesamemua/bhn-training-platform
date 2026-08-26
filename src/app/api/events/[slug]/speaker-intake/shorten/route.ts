@@ -18,22 +18,18 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { callStructured } from "@/lib/ai/reliability";
 import {
-  BIO_MAX_WORDS,
   BIO_MIN_WORDS,
-  BIO_TARGET_MIN_WORDS,
   BIO_INPUT_MAX_WORDS,
   BIO_INPUT_MAX_CHARS,
   countWords,
-  tidyBio,
+  tidyToWords,
 } from "@/lib/events/bio";
 import {
   PITCH_INPUT_MAX_CHARS,
   PITCH_INPUT_MAX_WORDS,
-  PITCH_MAX_WORDS,
-  PITCH_TARGET_MIN_WORDS,
-  tidyPitch,
 } from "@/lib/events/pitch";
 import type { ChatMessage } from "@/lib/ai";
+import { speakerLimits, targetMinFor } from "@/lib/events/limits";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -44,7 +40,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const { slug } = await ctx.params;
   const event = await prisma.bhnEvent.findUnique({
     where: { slug },
-    select: { speakerIntakeOpen: true },
+    select: {
+      speakerIntakeOpen: true,
+      speakerBioMaxWords: true,
+      speakerPitchMaxWords: true,
+    },
   });
   if (!event?.speakerIntakeOpen) {
     return NextResponse.json({ error: "Not accepting submissions." }, { status: 403 });
@@ -55,8 +55,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   // Which box is being shortened. Defaults to the bio so an older client
   // that predates the session pitch keeps working unchanged.
   const isPitch = body.field === "pitch";
-  const MAX_WORDS = isPitch ? PITCH_MAX_WORDS : BIO_MAX_WORDS;
-  const TARGET_MIN = isPitch ? PITCH_TARGET_MIN_WORDS : BIO_TARGET_MIN_WORDS;
+  // The event's own limits, not the platform defaults. The target floor
+  // scales with them: it exists to stop the model over-cutting, and a
+  // fixed 200 against a limit an admin moved to 80 would demand padding.
+  const limits = speakerLimits(event);
+  const MAX_WORDS = isPitch ? limits.pitch : limits.bio;
+  const TARGET_MIN = targetMinFor(MAX_WORDS);
   const INPUT_MAX_WORDS = isPitch ? PITCH_INPUT_MAX_WORDS : BIO_INPUT_MAX_WORDS;
   const INPUT_MAX_CHARS = isPitch ? PITCH_INPUT_MAX_CHARS : BIO_INPUT_MAX_CHARS;
   const noun = isPitch ? "session description" : "biography";
@@ -174,6 +178,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     if (retry.ok && countWords(retry.data.bio) > got) r = retry;
   }
 
-  const out = isPitch ? tidyPitch(r.data.bio) : tidyBio(r.data.bio);
+  const out = tidyToWords(r.data.bio, MAX_WORDS);
   return NextResponse.json({ ok: true, bio: out, words: countWords(out), alreadyFits: false });
 }

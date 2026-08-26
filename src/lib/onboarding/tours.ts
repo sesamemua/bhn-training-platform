@@ -2406,6 +2406,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.speakers.word-limits",
+    title: "The word limits are yours to set",
+    body: "**Speakers → Word limits**, under the intake link. One box for the **biography**, one for the **session description**. Type a number, press Save, and the speaker form counts down to that — along with the red *N words over* warning, what **Shorten for me** aims at, and the rule the server enforces when somebody submits. It is set **per event**, so a two-hour panel and a full-day symposium can ask for different lengths. **Leave a box empty to follow the platform default** (250 and 120); that is how you get back to the shipped value. Anything from 20 to 1000 words is allowed, and a number outside that is moved to the nearest one that works rather than refused — the box shows you what was actually saved.",
+    path: "/admin/workspace/symposium-2026/speakers",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.26",
+    cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
+  },
+  {
     id: "workspace.insights.speakers",
     title: "Industry Insights speakers have a link too",
     body: "**Workspace → Industry Insights → Speakers.** The event on 24 September has twelve invited hiring professionals across three hours. Send them `/events/2026-industry-insights/speaker` and they fill in their own **headshot**, **bio**, **LinkedIn** and **what their session will cover** — no account needed. What comes back appears here for you to check before it goes on the website. The event is a **draft**, so the speaker link works while the event stays off the public listing beside the biohubnet.ca page already advertising it.",

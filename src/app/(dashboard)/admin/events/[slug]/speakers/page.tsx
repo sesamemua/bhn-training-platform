@@ -9,6 +9,7 @@ import { requireRole, deniedRedirect } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
+import { speakerLimits } from "@/lib/events/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,13 @@ export default async function EventSpeakersPage({
 
   const event = await prisma.bhnEvent.findUnique({
     where: { slug },
-    select: { id: true, title: true, speakerIntakeOpen: true },
+    select: {
+      id: true,
+      title: true,
+      speakerIntakeOpen: true,
+      speakerBioMaxWords: true,
+      speakerPitchMaxWords: true,
+    },
   });
   if (!event) notFound();
 
@@ -64,6 +71,11 @@ export default async function EventSpeakersPage({
           slug={slug}
           intakeOpen={event.speakerIntakeOpen}
           initialSpeakers={rows}
+          limits={speakerLimits(event)}
+          storedLimits={{
+            bio: event.speakerBioMaxWords,
+            pitch: event.speakerPitchMaxWords,
+          }}
         />
       </div>
     </div>

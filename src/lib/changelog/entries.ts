@@ -22,13 +22,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Word limits are an admin setting now
+  {
+    title: "You can set the speaker form's word limits yourself, per event",
+    body: "**Speakers → Word limits.** Two boxes: one for the biography, one for the session description. Type a number, press Save, and the form counts down to that instead of the 250 and 120 it shipped with. It applies everywhere at once — the counter under the box, the red *N words over* warning, what \"Shorten for me\" aims at, the rule the server enforces on submit, and the counter in the inline editor on this page. **Per event**, because a two-hour panel and a full-day symposium do not want the same biography. **Leave a box empty to follow the platform default** — that is a different state from any number you could type, and it is how you get back to the shipped value. Anything between 20 and 1000 words is allowed; a number outside that is moved to the nearest one that works rather than refused, and the box updates to show what was actually saved. A limit of nothing would make the form impossible to submit, and an error about a bound you cannot see is a worse answer than the nearest legal number. Events nobody touches keep behaving exactly as they do today.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Speaker form trimmed + a copy on submit
   {
     title: "Speaker form is shorter, and you get a copy the moment somebody submits",
     body: "**Four fields fewer to read.** *Topics you can speak to* and *Your email* are gone from the speaker form. *What will your session offer?* is now **A brief description of the advice you plan to share**, which says the same thing in the question rather than in a hint underneath it, so the hint went too. The LinkedIn and biography hints lost their explanatory tails for the same reason — the field labels already carry it. **A copy now arrives by email** at yes.lee@utoronto.ca and Ruilin.yuan@utoronto.ca the moment a speaker finishes: name, title, organisation, biography, LinkedIn, what they plan to share, and the headshot, all in the body so it reads on a phone without signing in, plus a button to the admin page. It is sent after the submission is safely saved and cannot fail it — a mail server having a moment must never make a speaker fill the form in twice. **One consequence worth knowing:** with the email field gone the platform no longer collects a way to contact a speaker back, so the copy is the record of who submitted what.",
     kind: "improvement",
     visibleTo: STAFF,
-    daysAgo: 0,
+    daysAgo: 1,
   },
   // ── Tell a colleague, platform-wide
   {

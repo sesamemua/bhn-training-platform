@@ -20,8 +20,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor, normaliseLinkedin } from "@/lib/showcase/validation";
-import { BIO_MAX_WORDS, BIO_MIN_WORDS, BIO_MAX_CHARS, countWords } from "@/lib/events/bio";
-import { PITCH_MAX_CHARS, PITCH_MAX_WORDS } from "@/lib/events/pitch";
+import { BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
+import { speakerLimits, maxCharsFor } from "@/lib/events/limits";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import {
   speakerSubmissionEmail,
@@ -41,9 +41,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const event = await prisma.bhnEvent.findUnique({
     where: { slug },
-    select: { id: true, title: true, speakerIntakeOpen: true },
+    select: {
+      id: true,
+      title: true,
+      speakerIntakeOpen: true,
+      speakerBioMaxWords: true,
+      speakerPitchMaxWords: true,
+    },
   });
   if (!event) return NextResponse.json({ error: "Unknown event." }, { status: 404 });
+  // Resolved once, from the event, and used by every check below.
+  const limits = speakerLimits(event);
+
   if (!event.speakerIntakeOpen) {
     return NextResponse.json(
       { error: "This event isn't collecting speaker details right now." },
@@ -92,26 +101,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   // Hard-capped at the same limit the form counts down to, so a pasted
   // bio cannot slip past the counter. Counted in words, like the counter.
   // Cheap length check first — countWords allocates, and this is public.
-  if (bio.length > BIO_MAX_CHARS) {
+  if (bio.length > maxCharsFor(limits.bio)) {
     return NextResponse.json({ error: "That bio is far too long." }, { status: 413 });
   }
   const bioWords = countWords(bio);
-  if (bioWords < BIO_MIN_WORDS || bioWords > BIO_MAX_WORDS) {
+  if (bioWords < BIO_MIN_WORDS || bioWords > limits.bio) {
     return NextResponse.json(
-      { error: `A bio, please — between ${BIO_MIN_WORDS} and ${BIO_MAX_WORDS} words. Yours is ${bioWords}.` },
+      { error: `A bio, please — between ${BIO_MIN_WORDS} and ${limits.bio} words. Yours is ${bioWords}.` },
       { status: 400 },
     );
   }
   // Character backstop first — countWords splits on whitespace, and this
   // endpoint is public. Then the real rule, in the same unit the form
   // counts down in.
-  if (sessionPitch.length > PITCH_MAX_CHARS) {
+  if (sessionPitch.length > maxCharsFor(limits.pitch)) {
     return NextResponse.json({ error: "That's longer than I can work with." }, { status: 413 });
   }
   const pitchWords = countWords(sessionPitch);
-  if (pitchWords > PITCH_MAX_WORDS) {
+  if (pitchWords > limits.pitch) {
     return NextResponse.json(
-      { error: `Keep the session description to ${PITCH_MAX_WORDS} words — yours is ${pitchWords}.` },
+      { error: `Keep the session description to ${limits.pitch} words — yours is ${pitchWords}.` },
       { status: 400 },
     );
   }

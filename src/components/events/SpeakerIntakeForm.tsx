@@ -18,11 +18,22 @@
 import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
-import { BIO_MAX_WORDS, BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
-import { PITCH_MAX_WORDS } from "@/lib/events/pitch";
+import { BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
 import { normaliseLinkedin } from "@/lib/showcase/validation";
 
-export function SpeakerIntakeForm({ slug }: { slug: string }) {
+export function SpeakerIntakeForm({
+  slug,
+  bioMaxWords,
+  pitchMaxWords,
+}: {
+  slug: string;
+  /* Resolved on the server from the event, so the counter on screen and
+     the rule the submit route enforces are the same number. A default
+     baked into the client would silently disagree the moment an admin
+     changed it. */
+  bioMaxWords: number;
+  pitchMaxWords: number;
+}) {
   const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
   const [name, setName] = useState("");
   const [organization, setOrganization] = useState("");
@@ -45,13 +56,13 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
   // a split is cheaper than the render it sits inside.
   const [pitch, setPitch] = useState("");
   const pitchWords = countWords(pitch);
-  const pitchOver = pitchWords > PITCH_MAX_WORDS;
+  const pitchOver = pitchWords > pitchMaxWords;
   const [pitchShortening, setPitchShortening] = useState(false);
   const [pitchSuggestion, setPitchSuggestion] = useState<string | null>(null);
   const [pitchNote, setPitchNote] = useState<string | null>(null);
 
   const bioWords = countWords(bio);
-  const over = bioWords > BIO_MAX_WORDS;
+  const over = bioWords > bioMaxWords;
   const tooThin = bioWords < BIO_MIN_WORDS;
 
   async function shortenPitch() {
@@ -70,7 +81,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
       };
       if (!res.ok || !j.ok || !j.bio) throw new Error(j.error ?? "Couldn't shorten it.");
       if (j.alreadyFits) {
-        setPitchNote(`This already fits (${j.words ?? countWords(j.bio)} of ${PITCH_MAX_WORDS} words) — no need to shorten it.`);
+        setPitchNote(`This already fits (${j.words ?? countWords(j.bio)} of ${pitchMaxWords} words) — no need to shorten it.`);
       } else {
         setPitchSuggestion(j.bio);
       }
@@ -102,7 +113,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
       // The button above will not normally let this happen; the server
       // is the authority on the count, so this handles it saying so.
       if (j.alreadyFits) {
-        setShortenNote(`This already fits (${j.words ?? countWords(j.bio)} of ${BIO_MAX_WORDS} words) — no need to shorten it.`);
+        setShortenNote(`This already fits (${j.words ?? countWords(j.bio)} of ${bioMaxWords} words) — no need to shorten it.`);
       } else {
         setSuggestion(j.bio);
       }
@@ -200,7 +211,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         // click on the button to the textarea.
         group
         labelFor="speaker-bio"
-        hint={`Up to ${BIO_MAX_WORDS} words.`}
+        hint={`Up to ${bioMaxWords} words.`}
       >
         <textarea
           id="speaker-bio"
@@ -213,7 +224,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         />
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className={`text-[11.5px] font-medium ${over ? "text-rose-600" : "text-slate-500"}`}>
-            {bioWords} / {BIO_MAX_WORDS} words
+            {bioWords} / {bioMaxWords} words
           </span>
           <button
             type="button"
@@ -231,8 +242,8 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
               tooThin
                 ? "Write a little more first"
                 : !over
-                  ? `Only needed above ${BIO_MAX_WORDS} words — you are inside the limit`
-                  : `Suggest a version inside ${BIO_MAX_WORDS} words`
+                  ? `Only needed above ${bioMaxWords} words — you are inside the limit`
+                  : `Suggest a version inside ${bioMaxWords} words`
             }
             className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
           >
@@ -241,7 +252,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
           </button>
           {over && (
             <span className="text-[11.5px] text-rose-600">
-              {bioWords - BIO_MAX_WORDS} words over — shorten it before submitting.
+              {bioWords - bioMaxWords} words over — shorten it before submitting.
             </span>
           )}
         </div>
@@ -269,7 +280,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
               className="mt-1.5 w-full rounded-md border border-brand-200 bg-white px-2.5 py-2 text-[13px] leading-relaxed text-slate-900 outline-none focus:border-brand-500"
             />
             <div className="mt-1.5 flex items-center gap-2">
-              <span className="text-[11.5px] text-slate-500">{countWords(suggestion)} / {BIO_MAX_WORDS} words</span>
+              <span className="text-[11.5px] text-slate-500">{countWords(suggestion)} / {bioMaxWords} words</span>
               <button
                 type="button"
                 onClick={() => { setBio(suggestion); setSuggestion(null); }}
@@ -316,7 +327,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
 
       <Field
         label="A brief description of the advice you plan to share"
-        hint={`Or who would benefit most from attending. Up to ${PITCH_MAX_WORDS} words.`}
+        hint={`Or who would benefit most from attending. Up to ${pitchMaxWords} words.`}
         group
         labelFor="speaker-pitch"
       >
@@ -330,7 +341,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         />
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className={`text-[11.5px] font-medium ${pitchOver ? "text-rose-600" : "text-slate-500"}`}>
-            {pitchWords} / {PITCH_MAX_WORDS} words
+            {pitchWords} / {pitchMaxWords} words
           </span>
           <button
             type="button"
@@ -338,8 +349,8 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
             disabled={pitchShortening || !pitchOver}
             title={
               pitchOver
-                ? `Suggest a version inside ${PITCH_MAX_WORDS} words`
-                : `Only needed above ${PITCH_MAX_WORDS} words — you are inside the limit`
+                ? `Suggest a version inside ${pitchMaxWords} words`
+                : `Only needed above ${pitchMaxWords} words — you are inside the limit`
             }
             className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
           >
@@ -348,7 +359,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
           </button>
           {pitchOver && (
             <span className="text-[11.5px] text-rose-600">
-              {pitchWords - PITCH_MAX_WORDS} words over — shorten it before submitting.
+              {pitchWords - pitchMaxWords} words over — shorten it before submitting.
             </span>
           )}
         </div>
@@ -375,7 +386,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
               className="mt-1.5 w-full rounded-md border border-brand-200 bg-white px-2.5 py-2 text-[13px] leading-relaxed text-slate-900 outline-none focus:border-brand-500"
             />
             <div className="mt-1.5 flex items-center gap-2">
-              <span className="text-[11.5px] text-slate-500">{countWords(pitchSuggestion)} / {PITCH_MAX_WORDS} words</span>
+              <span className="text-[11.5px] text-slate-500">{countWords(pitchSuggestion)} / {pitchMaxWords} words</span>
               <button
                 type="button"
                 onClick={() => { setPitch(pitchSuggestion); setPitchSuggestion(null); }}

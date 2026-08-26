@@ -20,6 +20,7 @@ import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
+import { speakerLimits } from "@/lib/events/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,13 @@ export default async function SymposiumSpeakersPage() {
 
   const event = await prisma.bhnEvent.findUnique({
     where: { slug: EVENT_SLUG },
-    select: { id: true, title: true, speakerIntakeOpen: true },
+    select: {
+      id: true,
+      title: true,
+      speakerIntakeOpen: true,
+      speakerBioMaxWords: true,
+      speakerPitchMaxWords: true,
+    },
   });
   if (!event) notFound();
 
@@ -67,6 +74,11 @@ export default async function SymposiumSpeakersPage() {
           slug={EVENT_SLUG}
           intakeOpen={event.speakerIntakeOpen}
           initialSpeakers={rows}
+          limits={speakerLimits(event)}
+          storedLimits={{
+            bio: event.speakerBioMaxWords,
+            pitch: event.speakerPitchMaxWords,
+          }}
         />
       </div>
     </>

@@ -2538,6 +2538,17 @@ model BhnEvent {
   /// into an open door before invitations go out — same shape as
   /// ShowcaseGroup.active.
   speakerIntakeOpen    Boolean   @default(false)
+
+  /// Word limits for the speaker intake form, per event.
+  ///
+  /// Null means "use the platform default" (BIO_MAX_WORDS /
+  /// PITCH_MAX_WORDS). Stored per event rather than globally because a
+  /// two-hour panel and a full-day symposium do not want the same
+  /// biography, and the admin page an organiser is already on is the
+  /// event's own. Clamped in src/lib/events/limits.ts — a limit of 0
+  /// would make the form impossible to submit.
+  speakerBioMaxWords   Int?
+  speakerPitchMaxWords Int?
   title                String
   /// Short marketing line shown on the landing-page hero.
   tagline              String?

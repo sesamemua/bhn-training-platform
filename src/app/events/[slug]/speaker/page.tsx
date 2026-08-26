@@ -8,6 +8,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SpeakerIntakeForm } from "@/components/events/SpeakerIntakeForm";
+import { speakerLimits } from "@/lib/events/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,17 @@ export default async function SpeakerIntakePage({
   const { slug } = await params;
   const event = await prisma.bhnEvent.findUnique({
     where: { slug },
-    select: { title: true, tagline: true, speakerIntakeOpen: true },
+    select: {
+      title: true,
+      tagline: true,
+      speakerIntakeOpen: true,
+      speakerBioMaxWords: true,
+      speakerPitchMaxWords: true,
+    },
   });
   if (!event) notFound();
+
+  const limits = speakerLimits(event);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-brand-50/60 to-white px-4 py-12">
@@ -38,7 +47,11 @@ export default async function SpeakerIntakePage({
 
         {event.speakerIntakeOpen ? (
           <div className="mt-7">
-            <SpeakerIntakeForm slug={slug} />
+            <SpeakerIntakeForm
+              slug={slug}
+              bioMaxWords={limits.bio}
+              pitchMaxWords={limits.pitch}
+            />
           </div>
         ) : (
           <p className="mt-7 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13.5px] text-amber-900">
