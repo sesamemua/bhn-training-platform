@@ -2386,6 +2386,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.speakers.tell-a-colleague",
+    title: "Tell a colleague, without copying links by hand",
+    body: "**Speakers → Tell a colleague.** Pick staff from a searchable list, add anyone who is not on the platform by typing their address, write a line of your own, and send. Each person gets their own email carrying both links: the **public speaker form** they can forward to an invited speaker, and **the admin page** where submissions land. You see both links on screen before you press Send, and replies come back to you rather than the shared mailbox. Sent one at a time, so a colleague forwarding it onward is not also forwarding the team's address list. If the intake happens to be closed, the email says so — better than a colleague handing out a link that rejects everybody.",
+    path: "/admin/workspace/symposium-2026/speakers",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.25",
+    cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
+  },
+  {
     id: "workspace.insights.speakers",
     title: "Industry Insights speakers have a link too",
     body: "**Workspace → Industry Insights → Speakers.** The event on 24 September has twelve invited hiring professionals across three hours. Send them `/events/2026-industry-insights/speaker` and they fill in their own **headshot**, **bio**, **LinkedIn** and **what their session will cover** — no account needed. What comes back appears here for you to check before it goes on the website. The event is a **draft**, so the speaker link works while the event stays off the public listing beside the biohubnet.ca page already advertising it.",

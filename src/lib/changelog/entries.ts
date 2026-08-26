@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Tell a colleague, and a bigger crop circle
+  {
+    title: "Tell a colleague about the speaker link — and a bigger headshot circle",
+    body: "**Speakers → Tell a colleague.** Pick staff from a searchable list, type in anyone else who is not on the platform, add a line of your own, and send. Each person gets their own email carrying the two links that matter: the **public speaker form** to hand to invited speakers, and **this admin page** where what they send lands. Both links are shown on screen before you press Send, so you can read the email rather than discover it in your sent folder. Replies come back to you, not to the shared mailbox. One send per person rather than one email with everybody in the To: line — a colleague forwarding this to a speaker should not be forwarding the rest of the team's addresses with it. If the form happens to be closed, the email says so rather than letting somebody hand out a link that rejects everything. Separately: the **headshot crop circle on the speaker form is now much bigger** — 340px instead of 240. It is the one control where somebody is judging their own face, and at the old size you could not tell whether the crop was right until it was already on the website.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── LinkedIn helper: off the search engines entirely
   {
     title: "The LinkedIn helper no longer goes through a search engine",

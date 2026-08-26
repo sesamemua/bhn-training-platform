@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, ExternalLink, Loader2, Pencil, Trash2, UserCheck } from "lucide-react";
 import { BIO_MAX_WORDS, countWords } from "@/lib/events/bio";
+import { NotifyColleagues } from "./NotifyColleagues";
 
 export interface SpeakerRow {
   id: string;
@@ -30,10 +31,17 @@ export function SpeakersManager({
   slug,
   intakeOpen,
   initialSpeakers,
+  formUrl,
+  adminUrl,
 }: {
   slug: string;
   intakeOpen: boolean;
   initialSpeakers: SpeakerRow[];
+  /* Both resolved on the server, so what the panel shows is exactly
+     what the email carries — a preview computed a second way is a
+     preview that can be wrong. */
+  formUrl: string;
+  adminUrl: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(intakeOpen);
@@ -144,6 +152,9 @@ export function SpeakersManager({
             submissions are rejected.
           </p>
         )}
+        <div className="mt-3 border-t border-line pt-3">
+          <NotifyColleagues slug={slug} formUrl={formUrl} adminUrl={adminUrl} />
+        </div>
       </section>
 
       {/* Roster */}

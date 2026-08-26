@@ -9,6 +9,7 @@ import { requireRole, deniedRedirect } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
+import { speakerFormUrl, speakerAdminUrl } from "@/lib/events/speaker-link-email";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,13 @@ export default async function EventSpeakersPage({
         >
           <ArrowLeft size={14} /> Back to event
         </Link>
-        <SpeakersManager slug={slug} intakeOpen={event.speakerIntakeOpen} initialSpeakers={rows} />
+        <SpeakersManager
+          slug={slug}
+          intakeOpen={event.speakerIntakeOpen}
+          initialSpeakers={rows}
+          formUrl={speakerFormUrl(slug)}
+          adminUrl={speakerAdminUrl(slug)}
+        />
       </div>
     </div>
   );

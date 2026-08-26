@@ -12,7 +12,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload, ZoomIn } from "lucide-react";
 
-const BOX = 240;   // on-screen crop circle
+/*
+ * The on-screen crop circle. 340, not the 240 it was: this is the one
+ * control on the form where a speaker is judging their own face, and at
+ * 240 you cannot see whether the crop is right until it is on the
+ * website.
+ *
+ * It is also the canvas's drawing buffer. The element is allowed to
+ * shrink below this on a narrow phone (w-full max-w), so the drag
+ * handler scales pointer movement by the ratio between the two — a
+ * canvas displayed smaller than its buffer moves further per pixel of
+ * finger travel, and without the scale the image slides out from under
+ * the touch.
+ */
+const BOX = 340;   // on-screen crop circle
 const OUT = 600;   // uploaded square, big enough for print-ish use
 
 export interface CropState {
@@ -26,7 +39,7 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
-  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const drag = useRef<{ x: number; y: number; px: number; py: number; k: number } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Load the chosen file and frame it so the whole image is visible to
@@ -103,16 +116,26 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
             ref={canvasRef}
             width={BOX}
             height={BOX}
-            className="cursor-move touch-none rounded-full ring-2 ring-white shadow-md"
+            className="h-auto w-full max-w-[340px] cursor-move touch-none rounded-full ring-2 ring-white shadow-md"
             onPointerDown={(e) => {
               (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-              drag.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y };
+              const r = e.currentTarget.getBoundingClientRect();
+              drag.current = {
+                x: e.clientX,
+                y: e.clientY,
+                px: pos.x,
+                py: pos.y,
+                // Buffer pixels per CSS pixel. 1 on a wide screen, more
+                // once the circle has been shrunk to fit a phone.
+                k: r.width > 0 ? BOX / r.width : 1,
+              };
             }}
             onPointerMove={(e) => {
               if (!drag.current) return;
+              const { k } = drag.current;
               setPos({
-                x: drag.current.px + (e.clientX - drag.current.x),
-                y: drag.current.py + (e.clientY - drag.current.y),
+                x: drag.current.px + (e.clientX - drag.current.x) * k,
+                y: drag.current.py + (e.clientY - drag.current.y) * k,
               });
             }}
             onPointerUp={(e) => {
@@ -124,7 +147,7 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
           <p className="text-[11.5px] text-slate-500">
             Drag to move · check the top of your head isn’t cut off
           </p>
-          <label className="flex w-full max-w-[240px] items-center gap-2">
+          <label className="flex w-full max-w-[340px] items-center gap-2">
             <ZoomIn size={14} className="shrink-0 text-slate-400" />
             <input
               type="range"

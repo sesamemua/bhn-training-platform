@@ -20,6 +20,7 @@ import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
+import { speakerFormUrl, speakerAdminUrl } from "@/lib/events/speaker-link-email";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,13 @@ export default async function SymposiumSpeakersPage() {
         description="Send invited speakers one link and they fill in their own headshot, title, organisation, bio, LinkedIn and what their session offers — no account needed. Everything they submit appears here for you to check before it goes on the website."
       />
       <div className="mx-auto max-w-3xl space-y-6 pb-12">
-        <SpeakersManager slug={EVENT_SLUG} intakeOpen={event.speakerIntakeOpen} initialSpeakers={rows} />
+        <SpeakersManager
+          slug={EVENT_SLUG}
+          intakeOpen={event.speakerIntakeOpen}
+          initialSpeakers={rows}
+          formUrl={speakerFormUrl(EVENT_SLUG)}
+          adminUrl={speakerAdminUrl(EVENT_SLUG)}
+        />
       </div>
     </>
   );
