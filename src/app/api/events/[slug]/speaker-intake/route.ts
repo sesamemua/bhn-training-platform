@@ -21,6 +21,7 @@ import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor, normaliseLinkedin } from "@/lib/showcase/validation";
 import { BIO_MAX_WORDS, BIO_MIN_WORDS, BIO_MAX_CHARS, countWords } from "@/lib/events/bio";
+import { PITCH_MAX_CHARS, PITCH_MAX_WORDS } from "@/lib/events/pitch";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import {
   speakerSubmissionEmail,
@@ -101,8 +102,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       { status: 400 },
     );
   }
-  if (sessionPitch.length > 600) {
-    return NextResponse.json({ error: "Keep the session description under 600 characters." }, { status: 400 });
+  // Character backstop first — countWords splits on whitespace, and this
+  // endpoint is public. Then the real rule, in the same unit the form
+  // counts down in.
+  if (sessionPitch.length > PITCH_MAX_CHARS) {
+    return NextResponse.json({ error: "That's longer than I can work with." }, { status: 413 });
+  }
+  const pitchWords = countWords(sessionPitch);
+  if (pitchWords > PITCH_MAX_WORDS) {
+    return NextResponse.json(
+      { error: `Keep the session description to ${PITCH_MAX_WORDS} words — yours is ${pitchWords}.` },
+      { status: 400 },
+    );
   }
 
   // Accepts a full URL or a bare handle; stored canonical or not at all.

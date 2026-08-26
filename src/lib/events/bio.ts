@@ -103,8 +103,16 @@ const DANGLING = new Set([
  * two hundred and fifty it is most bios.
  */
 export function tidyBio(raw: string): string {
+  return tidyToWords(raw, BIO_MAX_WORDS);
+}
+
+/**
+ * The same tidy pass against any word limit, so a second field does not
+ * get a second, subtly different copy of the dangling-word logic.
+ */
+export function tidyToWords(raw: string, maxWords: number): string {
   const cleaned = raw.trim().replace(/^["“]|["”]$/g, "").trim();
-  if (countWords(cleaned) <= BIO_MAX_WORDS) return cleaned;
+  if (countWords(cleaned) <= maxWords) return cleaned;
 
   // Find the character offset just past the last word we may keep, so
   // every space, newline and blank line between the kept words survives
@@ -114,7 +122,7 @@ export function tidyBio(raw: string): string {
   for (const m of cleaned.matchAll(/\S+/g)) {
     if (!/[\p{L}\p{N}]/u.test(m[0])) continue;
     counted += 1;
-    if (counted === BIO_MAX_WORDS) {
+    if (counted === maxWords) {
       cut = m.index + m[0].length;
       break;
     }

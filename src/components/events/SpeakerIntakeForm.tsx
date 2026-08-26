@@ -19,6 +19,7 @@ import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
 import { BIO_MAX_WORDS, BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
+import { PITCH_MAX_WORDS } from "@/lib/events/pitch";
 import { normaliseLinkedin } from "@/lib/showcase/validation";
 
 export function SpeakerIntakeForm({ slug }: { slug: string }) {
@@ -42,9 +43,43 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
   // Counted in words, which is what the limit is in. Recomputed on every
   // keystroke: the string is at most a couple of thousand characters and
   // a split is cheaper than the render it sits inside.
+  const [pitch, setPitch] = useState("");
+  const pitchWords = countWords(pitch);
+  const pitchOver = pitchWords > PITCH_MAX_WORDS;
+  const [pitchShortening, setPitchShortening] = useState(false);
+  const [pitchSuggestion, setPitchSuggestion] = useState<string | null>(null);
+  const [pitchNote, setPitchNote] = useState<string | null>(null);
+
   const bioWords = countWords(bio);
   const over = bioWords > BIO_MAX_WORDS;
   const tooThin = bioWords < BIO_MIN_WORDS;
+
+  async function shortenPitch() {
+    if (pitchShortening) return;
+    setPitchShortening(true);
+    setPitchNote(null);
+    setPitchSuggestion(null);
+    try {
+      const res = await fetch(`/api/events/${slug}/speaker-intake/shorten`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio: pitch, field: "pitch" }),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        ok?: boolean; bio?: string; error?: string; alreadyFits?: boolean; words?: number;
+      };
+      if (!res.ok || !j.ok || !j.bio) throw new Error(j.error ?? "Couldn't shorten it.");
+      if (j.alreadyFits) {
+        setPitchNote(`This already fits (${j.words ?? countWords(j.bio)} of ${PITCH_MAX_WORDS} words) — no need to shorten it.`);
+      } else {
+        setPitchSuggestion(j.bio);
+      }
+    } catch (e) {
+      setPitchNote((e as Error).message);
+    } finally {
+      setPitchShortening(false);
+    }
+  }
 
   async function shorten() {
     if (shortening) return;
@@ -281,8 +316,76 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
 
       <Field
         label="A brief description of the advice you plan to share"
+        hint={`Or who would benefit most from attending. Up to ${PITCH_MAX_WORDS} words.`}
+        group
+        labelFor="speaker-pitch"
       >
-        <textarea name="sessionPitch" rows={4} maxLength={600} className={INPUT} />
+        <textarea
+          id="speaker-pitch"
+          name="sessionPitch"
+          rows={5}
+          value={pitch}
+          onChange={(e) => setPitch(e.target.value)}
+          className={INPUT}
+        />
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <span className={`text-[11.5px] font-medium ${pitchOver ? "text-rose-600" : "text-slate-500"}`}>
+            {pitchWords} / {PITCH_MAX_WORDS} words
+          </span>
+          <button
+            type="button"
+            onClick={shortenPitch}
+            disabled={pitchShortening || !pitchOver}
+            title={
+              pitchOver
+                ? `Suggest a version inside ${PITCH_MAX_WORDS} words`
+                : `Only needed above ${PITCH_MAX_WORDS} words — you are inside the limit`
+            }
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
+          >
+            {pitchShortening ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            Shorten for me
+          </button>
+          {pitchOver && (
+            <span className="text-[11.5px] text-rose-600">
+              {pitchWords - PITCH_MAX_WORDS} words over — shorten it before submitting.
+            </span>
+          )}
+        </div>
+
+        {pitchNote && <p className="mt-1.5 text-[12px] text-slate-600">{pitchNote}</p>}
+
+        {pitchSuggestion && (
+          <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/60 p-3">
+            <p className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-brand-800">
+              <Sparkles size={11} /> Suggested — edit it, then use it
+              <button
+                type="button"
+                onClick={() => setPitchSuggestion(null)}
+                className="ml-auto text-brand-700 hover:text-brand-900"
+                aria-label="Dismiss suggestion"
+              >
+                <X size={12} />
+              </button>
+            </p>
+            <textarea
+              value={pitchSuggestion}
+              onChange={(e) => setPitchSuggestion(e.target.value)}
+              rows={6}
+              className="mt-1.5 w-full rounded-md border border-brand-200 bg-white px-2.5 py-2 text-[13px] leading-relaxed text-slate-900 outline-none focus:border-brand-500"
+            />
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className="text-[11.5px] text-slate-500">{countWords(pitchSuggestion)} / {PITCH_MAX_WORDS} words</span>
+              <button
+                type="button"
+                onClick={() => { setPitch(pitchSuggestion); setPitchSuggestion(null); }}
+                className="ml-auto rounded-md bg-brand-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-brand-700"
+              >
+                Use this
+              </button>
+            </div>
+          </div>
+        )}
       </Field>
 
       {error && (
@@ -291,7 +394,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
 
       <button
         type="submit"
-        disabled={busy || over || !crop.file}
+        disabled={busy || over || pitchOver || !crop.file}
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-[15px] font-bold text-white transition hover:bg-brand-700 disabled:opacity-50"
       >
         {busy && <Loader2 size={16} className="animate-spin" />}
