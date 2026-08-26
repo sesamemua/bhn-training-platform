@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
 import { NewsletterReviewClient } from "@/components/workspace/NewsletterReviewClient";
+import { PastedHtmlReview } from "@/components/workspace/PastedHtmlReview";
 import { renderIssue } from "@/lib/newsletter/render";
 import {
   EMPTY_LAYOUT,
@@ -118,6 +119,7 @@ export default async function NewsletterReviewPage() {
           approverName: config.approver.name,
         }}
       />
+      <PastedHtmlReview />
     </div>
   );
 }
