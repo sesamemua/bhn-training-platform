@@ -74,6 +74,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   if (name.length < 2 || name.length > 120) {
     return NextResponse.json({ error: "Please give your full name." }, { status: 400 });
   }
+  // Mandatory as of the organisers' request: a speaker card with no role
+  // or employer reads as unfinished on the programme page.
+  if (title.length < 2) {
+    return NextResponse.json({ error: "Please give your title or role." }, { status: 400 });
+  }
+  if (organization.length < 2) {
+    return NextResponse.json({ error: "Please give your company." }, { status: 400 });
+  }
   if (title.length > 160) {
     return NextResponse.json({ error: "Title is a little long — keep it under 160 characters." }, { status: 400 });
   }

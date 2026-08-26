@@ -14,40 +14,12 @@
  * LinkedIn asks for a URL most people do not know by heart, so the field
  * takes any spelling of it and says what it read, and the button beside
  * it opens their own profile on LinkedIn to copy from. See
- * MY_LINKEDIN_URL for why it is not a web search.
  */
 import { useCallback, useState } from "react";
-import { CheckCircle2, ExternalLink, Loader2, Sparkles, X } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
 import { BIO_MAX_WORDS, BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
 import { normaliseLinkedin } from "@/lib/showcase/validation";
-
-
-
-/**
- * Where "Open my LinkedIn" sends somebody who does not know their own
- * profile URL.
- *
- * This is LinkedIn's own shortcut: signed in, /in/me/ redirects to your
- * profile, and on a phone it opens the LinkedIn app there. First-party,
- * so there is no bot check to fail.
- *
- * It replaced a site-scoped web search, which replaced
- * linkedin.com/search (a login wall). The search worked, right up until
- * the search engine decided the person was a robot and showed them a
- * challenge instead — reported as "always, like, there's a feature that
- * blocking bots". Every search engine can do that and none of them will
- * stop, so the fix is not a different engine. It is not depending on
- * one: the speaker is already signed in to LinkedIn on the device they
- * are holding.
- *
- * The field is the real safety net — normaliseLinkedin takes a bare
- * handle, a share link with tracking parameters, a regional subdomain
- * or a URL pasted inside a sentence — so somebody who never presses
- * this button loses nothing.
- */
-export const MY_LINKEDIN_URL = "https://www.linkedin.com/in/me/";
-
 
 export function SpeakerIntakeForm({ slug }: { slug: string }) {
   const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
@@ -166,12 +138,13 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Title / role">
-          <input name="title" maxLength={160} className={INPUT} />
+        <Field label="Title / role" required>
+          <input name="title" required maxLength={160} className={INPUT} />
         </Field>
-        <Field label="Company / institution">
+        <Field label="Company" required>
           <input
             name="organization"
+            required
             maxLength={160}
             value={organization}
             onChange={(e) => setOrganization(e.target.value)}
@@ -279,31 +252,15 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
         group
         labelFor="speaker-linkedin"
       >
-        <div className="flex gap-2">
-          <input
-            id="speaker-linkedin"
-            name="linkedin"
-            maxLength={200}
-            value={linkedin}
-            onChange={(e) => setLinkedin(e.target.value)}
-            className={INPUT}
-            placeholder="linkedin.com/in/yourname"
-          />
-          {/*
-            Always available: it needs nothing from this form, unlike the
-            search it replaced, which needed a name before it could look
-            anybody up.
-          */}
-          <a
-            href={MY_LINKEDIN_URL}
-            target="_blank"
-            rel="noreferrer"
-            title="Opens your own LinkedIn profile"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-[12.5px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700"
-          >
-            <ExternalLink size={13} /> Open mine
-          </a>
-        </div>
+        <input
+          id="speaker-linkedin"
+          name="linkedin"
+          maxLength={200}
+          value={linkedin}
+          onChange={(e) => setLinkedin(e.target.value)}
+          className={INPUT}
+          placeholder="linkedin.com/in/yourname"
+        />
         {/*
           Say whether it was understood, rather than making them submit
           the form to find out. Silence while the field is empty.
@@ -319,11 +276,7 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
               address is enough on its own.
             </p>
           )
-        ) : (
-          <p className="mt-1.5 text-[11.5px] text-slate-500">
-            Open mine takes you to your own profile — copy the address and paste it above.
-          </p>
-        )}
+        ) : null}
       </Field>
 
       <Field
@@ -331,7 +284,6 @@ export function SpeakerIntakeForm({ slug }: { slug: string }) {
       >
         <textarea name="sessionPitch" rows={4} maxLength={600} className={INPUT} />
       </Field>
-
 
       {error && (
         <p className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p>

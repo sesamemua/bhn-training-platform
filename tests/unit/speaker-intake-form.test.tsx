@@ -80,29 +80,22 @@ test("the headshot field still says what to do with it", () => {
   assert.match(html, /Drag to frame it inside the circle/);
 });
 
-/* ── The LinkedIn helper ─────────────────────────────────────────── */
+/* ── The LinkedIn field ──────────────────────────────────────────── */
 
-import { MY_LINKEDIN_URL } from "../../src/components/events/SpeakerIntakeForm";
 import { normaliseLinkedin } from "../../src/lib/showcase/validation";
 
-test("the helper does not go through a search engine", () => {
-  // A site-scoped web search worked, right up until the search engine
-  // decided the person was a bot and showed a challenge instead. Every
-  // engine can do that, so the fix is not a different engine.
-  assert.ok(!/duckduckgo|google\.com\/search|bing\.com/.test(MY_LINKEDIN_URL));
+test("no button offers to open a profile for them", () => {
+  // The "Open mine" shortcut was removed at the organisers' request. The
+  // field alone has to carry it now, which the normaliser below does.
+  assert.doesNotMatch(html, /Open mine/);
+  assert.doesNotMatch(html, /linkedin\.com\/in\/me\//);
+  assert.doesNotMatch(html, /takes you to your own profile/);
+});
+
+test("still nothing routed through a search engine", () => {
+  // The shortcut this replaced went through a web search, which showed
+  // people a bot challenge. Nothing should reintroduce one.
   assert.ok(!/duckduckgo|google\.com\/search|bing\.com/.test(html), "no search engine in the rendered form");
-});
-
-test("it points at LinkedIn's own shortcut to your profile", () => {
-  assert.equal(MY_LINKEDIN_URL, "https://www.linkedin.com/in/me/");
-  assert.ok(!MY_LINKEDIN_URL.includes("/search"), "linkedin.com/search is the login wall");
-});
-
-test("the helper is offered on a blank form", () => {
-  // The search it replaced needed a name before it could look anybody
-  // up, so on a fresh form it was a dead grey button.
-  assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/me\/"/);
-  assert.doesNotMatch(html, /aria-disabled="true"[^>]*>\s*<svg[^>]*>\s*<\/svg>\s*Open mine/);
 });
 
 /* ── What the field will accept ──────────────────────────────────── */
