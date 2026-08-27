@@ -308,6 +308,8 @@ model User {
   logoVotes              LogoVote[]
   notifyContactsAdded    NotifyContact[] @relation("NotifyContactAddedBy")
   notifyLogs             NotifyLog[]     @relation("NotifyLogSender")
+  eligibilityAdded       EligibilityEntry[]  @relation("EligibilityAddedBy")
+  eligibilityImports     EligibilityImport[] @relation("EligibilityImportBy")
   themeProposals         ThemeProposal[] @relation("ThemeProposals")
   reviewedThemeProposals ThemeProposal[] @relation("ThemeProposalReviewer")
 
@@ -6133,4 +6135,84 @@ model NotifyLog {
 
   @@index([senderId, createdAt])
   @@index([featureId, createdAt])
+}
+
+/// One person on one eligibility list.
+///
+/// Training Week registration blocks anybody whose email is not here,
+/// so a missing row is a real applicant turned away. Rows are imported
+/// from the programme lists (a Google Sheet for ENGAGE/EXPERIENCE, two
+/// SharePoint workbooks for EQUIP) and may also be added by hand — with
+/// a hard block, a manual override is the only escape hatch when the
+/// list and reality disagree.
+model EligibilityEntry {
+  id String @id @default(cuid())
+
+  /// Normalised by emailKey() in src/lib/eligibility/email-key.ts.
+  /// Matching compares this and only this, with plain equality — never
+  /// a case-insensitive filter, which on Postgres compiles to ILIKE and
+  /// would let an underscore in an address act as a wildcard.
+  emailKey String
+
+  /// As it appeared in the source, so an admin can see what was read.
+  email String
+
+  name String?
+
+  /// Which programme this row makes them eligible for: an id from
+  /// src/lib/eligibility/sources.ts.
+  sourceId String
+
+  /// Whatever the source's status column said. Free text on purpose —
+  /// nobody on this side controls those spreadsheets' headers.
+  note String?
+
+  /// The import that created it. Null when an admin added them by hand.
+  importId  String?
+  addedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addedBy User?              @relation("EligibilityAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+  import  EligibilityImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+
+  /// One row per person per list. Re-importing a list replaces its own
+  /// rows and leaves the other lists alone.
+  @@unique([emailKey, sourceId])
+  @@index([emailKey])
+  @@index([sourceId])
+}
+
+/// One run of one list being loaded, whatever loaded it.
+///
+/// This is what answers "why was this person refused a week ago" — the
+/// roster only shows who is on it now, and the answer is usually that
+/// the list was three days stale when they tried.
+model EligibilityImport {
+  id String @id @default(cuid())
+
+  sourceId String
+
+  /// How it arrived: "upload" | "google" | "graph".
+  method String
+
+  /// The file an admin uploaded, when that is how it arrived.
+  filename String?
+
+  /// Rows read, rows that produced an entry, rows with no usable email.
+  rowsRead     Int @default(0)
+  rowsAccepted Int @default(0)
+  rowsSkipped  Int @default(0)
+
+  /// Set when something went wrong; null on a clean run.
+  error String?
+
+  byId      String?
+  createdAt DateTime @default(now())
+
+  by      User?              @relation("EligibilityImportBy", fields: [byId], references: [id], onDelete: SetNull)
+  entries EligibilityEntry[]
+
+  @@index([sourceId, createdAt])
 }
