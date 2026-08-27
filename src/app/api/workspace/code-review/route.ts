@@ -16,14 +16,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { makeAnchor, locate, splitLines, type Anchor } from "@/lib/codereview/anchor";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /** A Mailchimp export is large; this is not a file store. */
 export const MAX_CODE_CHARS = 1_000_000;
-export const MAX_LINES = 20_000;
 const MAX_TITLE = 160;
 const MAX_BODY = 4_000;
 
@@ -42,25 +40,9 @@ const DENIED = () =>
 
 const NOTE_SELECT = {
   id: true, round: true, body: true, status: true,
-  anchorText: true, anchorLine: true, anchorBefore: true, anchorAfter: true, anchorState: true,
+  anchorQuote: true, anchorLabel: true, cssPath: true, anchorState: true,
   authorName: true, createdAt: true, updatedAt: true,
 } as const;
-
-const anchorOf = (n: {
-  anchorLine: number; anchorText: string; anchorBefore: string | null; anchorAfter: string | null;
-}): Anchor => ({
-  line: n.anchorLine,
-  lineText: n.anchorText,
-  // NULL in the database means "there was nothing there", which the
-  // matcher treats as a value. undefined is how it spells that.
-  before: n.anchorBefore ?? undefined,
-  after: n.anchorAfter ?? undefined,
-});
-
-/** Where every note sits in the code as it stands now. */
-function withPositions(code: string, notes: { anchorLine: number; anchorText: string; anchorBefore: string | null; anchorAfter: string | null }[]) {
-  return notes.map((n) => locate(anchorOf(n), code));
-}
 
 export async function GET(req: NextRequest) {
   const me = await staff();
@@ -85,16 +67,7 @@ export async function GET(req: NextRequest) {
     include: { notes: { select: NOTE_SELECT, orderBy: { createdAt: "asc" } } },
   });
   if (!review) return NextResponse.json({ error: "No such review." }, { status: 404 });
-
-  const located = withPositions(review.code, review.notes);
-  return NextResponse.json({
-    ok: true,
-    review: {
-      ...review,
-      lines: splitLines(review.code).length,
-      notes: review.notes.map((n, i) => ({ ...n, located: located[i] })),
-    },
-  });
+  return NextResponse.json({ ok: true, review });
 }
 
 export async function POST(req: NextRequest) {
@@ -110,10 +83,6 @@ export async function POST(req: NextRequest) {
   if (code.length > MAX_CODE_CHARS) {
     return NextResponse.json({ error: "That paste is larger than this can hold." }, { status: 413 });
   }
-  if (splitLines(code).length > MAX_LINES) {
-    return NextResponse.json({ error: `More than ${MAX_LINES} lines — too long to review here.` }, { status: 413 });
-  }
-
   const review = await prisma.codeReview.create({
     data: { title, kind, code, createdById: me.id ?? null },
     select: { id: true },
@@ -121,7 +90,15 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: review.id });
 }
 
-/** Replace the code — a new round. Notes are kept and re-anchored. */
+/**
+ * Replace the code — a new round.
+ *
+ * Notes are kept as they are. Whether each one still has an element to
+ * point at is decided in the browser, against the rendered document,
+ * because that is the only place the markup actually exists as a tree.
+ * Marking them here would mean parsing HTML on the server to answer a
+ * question the frame can answer for free.
+ */
 export async function PUT(req: NextRequest) {
   const me = await staff();
   if (!me) return DENIED();
@@ -131,39 +108,15 @@ export async function PUT(req: NextRequest) {
   const code = String(body.code ?? "");
   if (!id) return NextResponse.json({ error: "Which review?" }, { status: 400 });
   if (!code.trim()) return NextResponse.json({ error: "Paste something first." }, { status: 400 });
-  if (code.length > MAX_CODE_CHARS || splitLines(code).length > MAX_LINES) {
+  if (code.length > MAX_CODE_CHARS) {
     return NextResponse.json({ error: "That paste is too large." }, { status: 413 });
   }
 
-  const existing = await prisma.codeReview.findUnique({
-    where: { id },
-    include: { notes: { select: { id: true, anchorLine: true, anchorText: true, anchorBefore: true, anchorAfter: true } } },
-  });
+  const existing = await prisma.codeReview.findUnique({ where: { id }, select: { round: true } });
   if (!existing) return NextResponse.json({ error: "No such review." }, { status: 404 });
 
-  /*
-   * Every note is re-anchored against the new paste and its recorded
-   * line MOVES with it. A note whose line is gone is marked orphaned
-   * and kept — deleting somebody's note is not this endpoint's
-   * decision, and pinning it to a line that happens to be nearby is
-   * worse than admitting it is lost.
-   */
-  const round = existing.round + 1;
-  await prisma.$transaction([
-    prisma.codeReview.update({ where: { id }, data: { code, round } }),
-    ...existing.notes.map((n) => {
-      const found = locate(anchorOf(n), code);
-      return prisma.codeReviewNote.update({
-        where: { id: n.id },
-        data: {
-          anchorState: found.kind,
-          ...(found.line !== null ? { anchorLine: found.line } : {}),
-        },
-      });
-    }),
-  ]);
-
-  return NextResponse.json({ ok: true, round });
+  await prisma.codeReview.update({ where: { id }, data: { code, round: existing.round + 1 } });
+  return NextResponse.json({ ok: true, round: existing.round + 1 });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -175,24 +128,26 @@ export async function PATCH(req: NextRequest) {
 
   if (action === "addNote") {
     const reviewId = String(body.reviewId ?? "");
-    const line = Number(body.line);
     const text = String(body.body ?? "").trim().slice(0, MAX_BODY);
     if (!text) return NextResponse.json({ error: "Write the note first." }, { status: 400 });
 
     const review = await prisma.codeReview.findUnique({
       where: { id: reviewId },
-      select: { code: true, round: true },
+      select: { round: true },
     });
     if (!review) return NextResponse.json({ error: "No such review." }, { status: 404 });
 
-    const anchor = makeAnchor(review.code, line);
-    if (!anchor) return NextResponse.json({ error: "That line is not in this paste." }, { status: 400 });
+    const cut = (v: unknown, n: number) => {
+      const s2 = String(v ?? "").trim();
+      return s2 ? s2.slice(0, n) : null;
+    };
 
     const note = await prisma.codeReviewNote.create({
       data: {
         reviewId, round: review.round, body: text,
-        anchorText: anchor.lineText, anchorLine: anchor.line,
-        anchorBefore: anchor.before ?? null, anchorAfter: anchor.after ?? null,
+        anchorQuote: cut(body.anchorQuote, 300),
+        anchorLabel: cut(body.anchorLabel, 80),
+        cssPath: cut(body.cssPath, 500),
         authorId: me.id ?? null,
         authorName: me.name ?? me.email ?? "Someone",
       },

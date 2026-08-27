@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Code2, MessageSquareText, PenLine } from "lucide-react";
+import { CalendarDays, MessageSquareText, PenLine } from "lucide-react";
 
 const BASE = "/admin/workspace/marketing/newsletter";
 
@@ -15,7 +15,6 @@ const TABS = [
   { key: "compose", label: "Compose", href: BASE, icon: PenLine },
   { key: "calendar", label: "Calendar", href: `${BASE}/calendar`, icon: CalendarDays },
   { key: "review", label: "Review", href: `${BASE}/review`, icon: MessageSquareText },
-  { key: "code", label: "Code", href: `${BASE}/code`, icon: Code2 },
 ] as const;
 
 export function NewsletterNav() {

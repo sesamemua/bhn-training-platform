@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
 import { NewsletterReviewClient } from "@/components/workspace/NewsletterReviewClient";
-import { PastedHtmlReview } from "@/components/workspace/PastedHtmlReview";
+import { PastedNewsletterReview } from "@/components/workspace/PastedNewsletterReview";
 import { renderIssue } from "@/lib/newsletter/render";
 import {
   EMPTY_LAYOUT,
@@ -30,6 +30,28 @@ export const dynamic = "force-dynamic";
 export default async function NewsletterReviewPage() {
   const session = await requireRole("instructor").catch(() => null);
   if (!session) redirect(await deniedRedirect("/admin/workspace/marketing/newsletter/review"));
+
+  // The most recently touched paste, so the section reopens on what
+  // somebody was last reviewing rather than an empty box.
+  const pastedRow = await prisma.codeReview.findFirst({
+    where: { status: "open" },
+    orderBy: { updatedAt: "desc" },
+    include: { notes: { orderBy: { createdAt: "asc" } } },
+  });
+  const pastedReview = pastedRow
+    ? {
+        id: pastedRow.id,
+        title: pastedRow.title,
+        code: pastedRow.code,
+        round: pastedRow.round,
+        status: pastedRow.status,
+        notes: pastedRow.notes.map((n) => ({
+          id: n.id, body: n.body, status: n.status,
+          anchorQuote: n.anchorQuote, anchorLabel: n.anchorLabel,
+          cssPath: n.cssPath, anchorState: n.anchorState, authorName: n.authorName,
+        })),
+      }
+    : null;
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
   const [resolved, config] = await Promise.all([
@@ -54,7 +76,8 @@ export default async function NewsletterReviewPage() {
   );
 
   if (!issue) {
-    return (
+  
+  return (
       <div className="space-y-6">
         {hero}
         <NewsletterNav />
@@ -119,7 +142,12 @@ export default async function NewsletterReviewPage() {
           approverName: config.approver.name,
         }}
       />
-      <PastedHtmlReview />
+      {/* The second review surface: the HTML that comes back OUT of
+          Mailchimp, rendered and commentable in its own right. It
+          replaced a read-only preview that could not be commented on —
+          allow-same-origin without allow-scripts turned out to give a
+          click layer without letting the paste execute. */}
+      <PastedNewsletterReview initial={pastedReview} />
     </div>
   );
 }

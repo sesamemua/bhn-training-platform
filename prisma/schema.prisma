@@ -6259,13 +6259,13 @@ model CodeReview {
   @@index([status, updatedAt])
 }
 
-/// One note, pinned to a line.
+/// One note, pinned to an element in the rendered paste.
 ///
-/// Anchored the way src/lib/eligibility has taught this codebase to
-/// anchor: the line's TEXT is the primary locator and the line NUMBER
-/// is a hint, because a second paste moves every number. The
-/// neighbours are what tell three hundred identical `</td>` lines
-/// apart. See src/lib/codereview/anchor.ts.
+/// Anchored the way NewsletterComment and PageComment already are:
+/// the element's own TEXT is the primary locator, because it survives
+/// the markup being regenerated, and the structural path is only a
+/// fallback. Same idea as those two, deliberately — a third convention
+/// for the same job would be a third thing to keep in step.
 model CodeReviewNote {
   id       String @id @default(cuid())
   reviewId String
@@ -6274,18 +6274,15 @@ model CodeReviewNote {
   round Int @default(1)
 
   // ── Anchor, most reliable first ──
-  /// The line's own text when the note was written. The primary locator.
-  anchorText String
-  /// Where it was then. A hint and a tie-breaker, never the answer.
-  anchorLine Int
-  /// Nearest non-blank lines above and below. NULL means there was
-  /// nothing there — the edge of the document — which is a fact, not a
-  /// missing value, and the matcher treats it as one.
-  anchorBefore String?
-  anchorAfter  String?
-  /// exact | moved | ambiguous | loose | orphaned — what the last
-  /// re-locate concluded. "ambiguous" is a guess and says so.
-  anchorState String @default("exact")
+  /// Verbatim text of the element that was clicked.
+  anchorQuote String?
+  /// Human label for it — a tag name, or a data-nl-part when the paste
+  /// still carries the ones this app rendered.
+  anchorLabel String?
+  /// Structural fallback, relative to the frame body.
+  cssPath String?
+  /// found | orphaned — set when a later paste cannot re-locate it.
+  anchorState String @default("found")
 
   body   String
   /// open | resolved
