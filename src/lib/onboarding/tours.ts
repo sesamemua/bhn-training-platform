@@ -2416,6 +2416,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.newsletter.code-review",
+    title: "Review pasted code, line by line",
+    body: "**Newsletter → Code**, a fourth tab. Paste HTML, JSON or anything else, click a line number and leave a note on it. Paste a newer version later and **the notes follow their lines** — they are found again by the line's own text, not its number, and when a file is full of identical `</td>` lines the neighbours above and below decide which is which. A note whose line has been deleted is listed separately and kept, never re-pinned to whatever happens to be nearby. The paste is shown as text and never run, so a campaign export straight out of Mailchimp is safe to put here. These notes are kept apart from the newsletter's editorial comments on purpose — those are counted above the Approve button, and a remark about a paste should not make anyone hesitate to send.",
+    path: "/admin/workspace/marketing/newsletter/code",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.27",
+    cta: { label: "Open the Code tab", href: "/admin/workspace/marketing/newsletter/code" },
+  },
+  {
     id: "workspace.newsletter.own-ai",
     title: "Lay the newsletter out in your own tool",
     body: "**Newsletter → Use my own AI**, beside *Lay out with AI*. **Copy the prompt** gives you every raw submission in the issue with the layout schema and the rules attached — paste it into whichever tool you prefer. Paste the reply into the box underneath and it applies to the issue. It copes with how a chat window actually answers: fences, chatter either side, a bare array. And it never drops anybody — if the reply skips a piece, that piece keeps the layout it had and is named back to you, rather than vanishing from the issue.",

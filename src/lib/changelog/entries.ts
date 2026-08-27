@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Newsletter → Code: review a paste, line by line
+  {
+    title: "A Code tab for reviewing pasted HTML, line by line",
+    body: "**Newsletter → Code.** Paste HTML, JSON or anything else, click a line number, leave a note. Resolve them, delete them, and paste a newer version when somebody has made the fixes. **The paste is shown as text and never run**, which is what lets notes pin to it at all — the Review tab has to sandbox anything pasted precisely because it *renders* it, and nothing can reach inside a sandboxed frame to attach a click layer. There is no syntax colouring, deliberately: every way of adding it would mean handing the pasted string to the browser as markup. **Notes survive the next paste.** They are found again by the text of the line they were written on, not by its number — numbers move the moment anybody adds a line. When several lines are identical, which in a Mailchimp export means every `</td>` in the file, the lines above and below decide which is which. A note whose line was edited slightly is still found and says so; one whose line has gone is **listed separately and kept**, never quietly re-pinned to whatever is nearest. **Its own notes, on purpose:** these do not go in with the newsletter's editorial comments, because those are counted into the \"N notes are still open\" line above the Approve button — a remark about a Mailchimp paste should never make somebody hesitate to send the issue.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 1,
+  },
   // ── A link straight into an EQUIP application
   {
     title: "A link you can put on the website that goes straight into a VentureConnect application",

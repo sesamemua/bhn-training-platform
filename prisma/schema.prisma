@@ -310,6 +310,8 @@ model User {
   notifyLogs             NotifyLog[]     @relation("NotifyLogSender")
   eligibilityAdded       EligibilityEntry[]  @relation("EligibilityAddedBy")
   eligibilityImports     EligibilityImport[] @relation("EligibilityImportBy")
+  codeReviews            CodeReview[]        @relation("CodeReviewBy")
+  codeReviewNotes        CodeReviewNote[]    @relation("CodeReviewNoteBy")
   themeProposals         ThemeProposal[] @relation("ThemeProposals")
   reviewedThemeProposals ThemeProposal[] @relation("ThemeProposalReviewer")
 
@@ -6215,4 +6217,88 @@ model EligibilityImport {
   entries EligibilityEntry[]
 
   @@index([sourceId, createdAt])
+}
+
+/// A block of pasted code somebody wants notes on.
+///
+/// Its own pair of models rather than NewsletterComment, following the
+/// PageReview / PageComment precedent above. NewsletterComment.issueId
+/// is required and every paste note would carry pieceId: null — and the
+/// review client counts EVERY open comment into the "N notes are still
+/// open" line printed above the Approve button. A remark about a
+/// Mailchimp paste would make an approver hesitate over sending the
+/// issue, in the one place designed to make them stop and think.
+model CodeReview {
+  id String @id @default(cuid())
+
+  /// What this is, in the reviewer's words. "September issue, out of
+  /// Mailchimp".
+  title String
+
+  /// html | json | text — how to show it, not what to trust it with.
+  /// It is never executed either way.
+  kind String @default("html")
+
+  /// The paste itself. Text, always — this is the thing being read.
+  code String
+
+  /// Bumped whenever the code is replaced, so a note records which
+  /// version it was written against.
+  round Int @default(1)
+
+  /// open | closed
+  status String @default("open")
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?            @relation("CodeReviewBy", fields: [createdById], references: [id], onDelete: SetNull)
+  notes     CodeReviewNote[]
+
+  @@index([status, updatedAt])
+}
+
+/// One note, pinned to a line.
+///
+/// Anchored the way src/lib/eligibility has taught this codebase to
+/// anchor: the line's TEXT is the primary locator and the line NUMBER
+/// is a hint, because a second paste moves every number. The
+/// neighbours are what tell three hundred identical `</td>` lines
+/// apart. See src/lib/codereview/anchor.ts.
+model CodeReviewNote {
+  id       String @id @default(cuid())
+  reviewId String
+
+  /// Round the note was written against.
+  round Int @default(1)
+
+  // ── Anchor, most reliable first ──
+  /// The line's own text when the note was written. The primary locator.
+  anchorText String
+  /// Where it was then. A hint and a tie-breaker, never the answer.
+  anchorLine Int
+  /// Nearest non-blank lines above and below. NULL means there was
+  /// nothing there — the edge of the document — which is a fact, not a
+  /// missing value, and the matcher treats it as one.
+  anchorBefore String?
+  anchorAfter  String?
+  /// exact | moved | ambiguous | loose | orphaned — what the last
+  /// re-locate concluded. "ambiguous" is a guess and says so.
+  anchorState String @default("exact")
+
+  body   String
+  /// open | resolved
+  status String @default("open")
+
+  authorId   String?
+  authorName String  @default("Someone")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  review CodeReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author User?      @relation("CodeReviewNoteBy", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([reviewId, status])
 }
