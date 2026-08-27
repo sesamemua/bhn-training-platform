@@ -56,6 +56,17 @@ jobs:
     name: "TruffleHog secret scan"
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # PULL REQUESTS ONLY, which is what this job was always for — the
+    # header above says it "catches them in the PR before they're
+    # public", with GitHub Secret Scanning covering post-merge.
+    #
+    # It was configured base=default_branch, head=HEAD. On a push to
+    # main those are the SAME commit, so there is no diff range and the
+    # action errors out. Every push run has failed on that since the
+    # workflow landed — not on a finding, on an empty range. Which means
+    # the job was contributing nothing but noise on push, while the PR
+    # runs (base != head) were passing and doing the real work.
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
