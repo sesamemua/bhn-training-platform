@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Newsletter: lay it out in your own tool
+  {
+    title: "Newsletter: take the issue out to your own AI and paste the result back",
+    body: "**Newsletter → Use my own AI.** *Lay out with AI* still runs the platform's own pass; this is for when you would rather do it in your own tool. **Copy the prompt** hands you the whole thing — every raw submission in the issue, grouped by section, with the exact layout schema and the rules — ready to paste into a chat window. Then paste the reply into the box underneath and it goes straight into the issue and the review preview. It takes the reply as it arrives: code fences, a *\"Sure, happy to help!\"* on top, commentary underneath, a bare array instead of the object it was asked for. **Nothing is ever silently dropped.** If the reply covers nine pieces out of ten, the nine are applied and the tenth is named — it keeps the layout it already had rather than disappearing from the issue. One malformed entry does not throw away the good ones, and a problem is reported against the submission's opening words so you know whose it was. A piece laid out this way is marked the same way the in-app generator marks one, so pressing *Lay out with AI* afterwards will not quietly overwrite your work.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 1,
+  },
   // ── Word limits are an admin setting now
   {
     title: "You can set the speaker form's word limits yourself, per event",

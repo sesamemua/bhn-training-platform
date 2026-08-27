@@ -22,6 +22,7 @@ import { normalisePiece } from "@/lib/newsletter/ai";
 import { renderIssue } from "@/lib/newsletter/render";
 import { SECTIONS, isSection } from "@/lib/newsletter/types";
 import type { Section, PieceLayout } from "@/lib/newsletter/types";
+import { buildAiBrief, parseAiReturn } from "@/lib/newsletter/handoff";
 
 export const dynamic = "force-dynamic";
 
@@ -144,6 +145,85 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   // ── normalise + render ───────────────────────────────────────
+  /*
+   * The hand-off out. Same raw submissions the in-app generator reads,
+   * wrapped in a prompt an editor can paste into their own chat window.
+   * Read-only — instructor, like the rest of the reading side.
+   */
+  if (action === "aiBrief") {
+    const session = await requireRole("instructor").catch(() => null);
+    if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const issue = await prisma.newsletterIssue.findUnique({
+      where: { id },
+      include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
+    });
+    if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
+
+    const pieces = issue.pieces
+      .filter((p) => p.status !== "excluded" && isSection(p.section))
+      .map((p) => ({
+        id: p.id,
+        section: p.section as Section,
+        rawBody: p.rawBody,
+        sourceUrl: p.sourceUrl,
+        authorName: p.authorName,
+      }));
+    if (pieces.length === 0) {
+      return NextResponse.json({ error: "Nothing to send out yet — add a piece first." }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, brief: buildAiBrief(pieces, issue.dateline), count: pieces.length });
+  }
+
+  /*
+   * The hand-off back. Applies whatever validated, names whatever did
+   * not, and NEVER drops a piece silently — a submission that the reply
+   * forgot about keeps the layout it already had.
+   */
+  if (action === "aiApply") {
+    const session = await requireRole("admin").catch(() => null);
+    if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const text = typeof body?.text === "string" ? body.text : "";
+    if (text.length > 500_000) {
+      return NextResponse.json({ error: "That paste is far too long." }, { status: 413 });
+    }
+
+    const issue = await prisma.newsletterIssue.findUnique({
+      where: { id },
+      include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
+    });
+    if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
+
+    const pieces = issue.pieces
+      .filter((p) => p.status !== "excluded" && isSection(p.section))
+      .map((p) => ({ id: p.id, section: p.section as Section, rawBody: p.rawBody }));
+
+    const report = parseAiReturn(text, pieces);
+    if (!report.ok) {
+      return NextResponse.json({ error: report.problems[0] ?? "Nothing usable in that paste.", report }, { status: 400 });
+    }
+
+    const rawById = new Map(issue.pieces.map((p) => [p.id, p.rawBody]));
+    await prisma.$transaction(
+      report.applied.map((a) =>
+        prisma.newsletterPiece.update({
+          where: { id: a.id },
+          // _src is stamped the way the in-app generator stamps it, so
+          // "unchanged since last run" stays true of a hand-laid piece
+          // and Generate does not quietly overwrite this work.
+          data: {
+            layout: { ...a.layout, _src: rawById.get(a.id) ?? "" } as object,
+            status: "normalised",
+          },
+        }),
+      ),
+    );
+
+    const fresh = await loadIssue(id);
+    return NextResponse.json({ ok: true, issue: fresh, report });
+  }
+
   if (action === "generate") {
     const session = await requireRole("admin").catch(() => null);
     if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

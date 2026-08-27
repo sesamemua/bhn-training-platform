@@ -2416,6 +2416,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.newsletter.own-ai",
+    title: "Lay the newsletter out in your own tool",
+    body: "**Newsletter → Use my own AI**, beside *Lay out with AI*. **Copy the prompt** gives you every raw submission in the issue with the layout schema and the rules attached — paste it into whichever tool you prefer. Paste the reply into the box underneath and it applies to the issue. It copes with how a chat window actually answers: fences, chatter either side, a bare array. And it never drops anybody — if the reply skips a piece, that piece keeps the layout it had and is named back to you, rather than vanishing from the issue.",
+    path: "/admin/workspace/marketing/newsletter",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.26",
+    cta: { label: "Open the Newsletter", href: "/admin/workspace/marketing/newsletter" },
+  },
+  {
     id: "workspace.insights.speakers",
     title: "Industry Insights speakers have a link too",
     body: "**Workspace → Industry Insights → Speakers.** The event on 24 September has twelve invited hiring professionals across three hours. Send them `/events/2026-industry-insights/speaker` and they fill in their own **headshot**, **bio**, **LinkedIn** and **what their session will cover** — no account needed. What comes back appears here for you to check before it goes on the website. The event is a **draft**, so the speaker link works while the event stays off the public listing beside the biohubnet.ca page already advertising it.",

@@ -11,6 +11,7 @@
 import { useState } from "react";
 import {
   Loader2, Plus, Sparkles, Trash2, ArrowUp, ArrowDown, Copy, Check, Pencil,
+  ClipboardPaste, X,
   Link2, Mail,
 } from "lucide-react";
 import { SECTIONS, SECTION_THEME } from "@/lib/newsletter/types";
@@ -64,6 +65,54 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
   async function generate() {
     const j = await post({ action: "generate" }, "gen");
     if (j?.html) setIssue((c) => ({ ...c, renderedHtml: j.html as string }));
+  }
+
+  /*
+   * The hand-off. "Lay out with AI" uses the platform's model; this is
+   * for an editor who would rather do that pass in their own tool —
+   * copy the raw submissions out as a prompt, paste the answer back.
+   */
+  const [handoff, setHandoff] = useState(false);
+  const [briefCopied, setBriefCopied] = useState(false);
+  const [paste, setPaste] = useState("");
+  const [report, setReport] = useState<{
+    applied: { id: string }[];
+    missing: { id: string; section: string }[];
+    unknown: string[];
+    problems: string[];
+  } | null>(null);
+
+  async function copyBrief() {
+    setError(null);
+    const j = await post({ action: "aiBrief" }, "brief");
+    if (!j?.brief) return;
+    try {
+      await navigator.clipboard.writeText(j.brief as string);
+      setBriefCopied(true);
+      setTimeout(() => setBriefCopied(false), 2000);
+    } catch {
+      setError("Couldn't reach the clipboard — the brief is below, select and copy it.");
+    }
+  }
+
+  async function applyPaste() {
+    if (!paste.trim()) return;
+    setError(null);
+    setReport(null);
+    const r = await fetch(`/api/workspace/newsletter/${issue.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "aiApply", text: paste }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setError(j?.error ?? "That didn't work.");
+      if (j?.report) setReport(j.report);
+      return;
+    }
+    if (j.issue) setIssue(j.issue as Issue);
+    setReport(j.report ?? null);
+    setPaste("");
   }
 
   async function copyHtml() {
@@ -232,6 +281,14 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                   {busy === "gen" ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                   {busy === "gen" ? "Laying out…" : "Lay out with AI"}
                 </button>
+                <button
+                  onClick={() => setHandoff((v) => !v)}
+                  disabled={issue.pieces.length === 0}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-60"
+                >
+                  <ClipboardPaste size={14} />
+                  Use my own AI
+                </button>
                 {issue.renderedHtml && (
                   <button
                     onClick={copyHtml}
@@ -242,6 +299,88 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                   </button>
                 )}
               </div>
+            )}
+
+            {canEdit && handoff && (
+              <section className="mt-4 rounded-xl border border-line bg-elevated/40 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-fg">Lay it out somewhere else</h3>
+                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+                      Copy the submissions as a prompt, run them through whichever tool you
+                      prefer, and paste the answer back. Anything the reply leaves out keeps
+                      the layout it already has.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setHandoff(false)}
+                    aria-label="Close"
+                    className="shrink-0 text-muted hover:text-fg"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={copyBrief}
+                    disabled={busy === "brief"}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white font-bold text-[12.5px] hover:bg-brand-700 disabled:opacity-60"
+                  >
+                    {busy === "brief" ? <Loader2 size={13} className="animate-spin" />
+                      : briefCopied ? <Check size={13} /> : <Copy size={13} />}
+                    {busy === "brief" ? "Building…" : briefCopied ? "Copied — paste it into your tool" : "1 · Copy the prompt"}
+                  </button>
+                </div>
+
+                <label className="mt-3 block">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
+                    2 · Paste what came back
+                  </span>
+                  <textarea
+                    value={paste}
+                    onChange={(e) => setPaste(e.target.value)}
+                    rows={5}
+                    placeholder="Paste the whole reply — fences, chatter and all."
+                    className="mt-1.5 w-full rounded-lg border border-line bg-card px-3 py-2 font-mono text-[12px] leading-relaxed text-fg outline-none focus:border-brand-500"
+                  />
+                </label>
+
+                <button
+                  onClick={applyPaste}
+                  disabled={!paste.trim()}
+                  className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card ring-1 ring-inset ring-line text-fg font-bold text-[12.5px] hover:bg-elevated disabled:opacity-50"
+                >
+                  <ClipboardPaste size={13} /> Apply to the issue
+                </button>
+
+                {report && (
+                  <div className="mt-3 space-y-1 text-[12px]">
+                    {report.applied.length > 0 && (
+                      <p className="text-emerald-700">
+                        Applied to {report.applied.length}{" "}
+                        {report.applied.length === 1 ? "piece" : "pieces"}.
+                      </p>
+                    )}
+                    {report.missing.length > 0 && (
+                      <p className="text-amber-700">
+                        {report.missing.length} not mentioned in the reply — left as{" "}
+                        {report.missing.length === 1 ? "it was" : "they were"} (
+                        {report.missing.map((m) => m.section).join(", ")}).
+                      </p>
+                    )}
+                    {report.unknown.length > 0 && (
+                      <p className="text-amber-700">
+                        {report.unknown.length} id{report.unknown.length === 1 ? "" : "s"} in the
+                        reply {report.unknown.length === 1 ? "is" : "are"} not in this issue.
+                      </p>
+                    )}
+                    {report.problems.map((pr, i) => (
+                      <p key={i} className="text-red-600">{pr}</p>
+                    ))}
+                  </div>
+                )}
+              </section>
             )}
           </section>
 
