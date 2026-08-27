@@ -6,7 +6,7 @@ import { createPageReviewViewerToken } from "@/lib/page-review/viewer";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = await requireRole("instructor").catch(() => null);
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -30,7 +30,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     userId: user.id,
     name: user.name || user.email || "Team member",
   });
-  const target = new URL(review.url);
+  /* A pasted review's url is a path on this site — the route that
+     serves the paste with the overlay on it — so it is resolved
+     against this request's origin. A live review's url is absolute and
+     the base is ignored. */
+  const target = new URL(review.url, new URL(req.url).origin);
   const fragment = new URLSearchParams();
   fragment.set(PAGE_REVIEW_HASH_KEY, review.shareToken);
   fragment.set(PAGE_REVIEW_VIEWER_KEY, viewerToken);

@@ -2416,6 +2416,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.website-review.paste",
+    title: "Start a website review from pasted code",
+    body: "**Workspace → Website review.** The new-review form has two modes now: **A web page**, as before, or **Pasted code**. Paste the markup — the newsletter out of Mailchimp, a block from anywhere — name it, press Start review, and it behaves like any other review: the same overlay, click anything to pin a comment, the same share link for colleagues without an account, the same rounds. It just does not have to be published on the internet first. The paste is served as a page so the overlay has something to sit on; its scripts are stripped and it runs with an opaque origin, so it cannot reach this site's cookies or pages.",
+    path: "/admin/workspace/website-review",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.28",
+    cta: { label: "Open Website review", href: "/admin/workspace/website-review" },
+  },
+  {
     id: "workspace.newsletter.pasted-review",
     title: "Review the version that comes back out of Mailchimp",
     body: "**Newsletter → Review**, below the issue. Paste the HTML from Mailchimp, press **Render it for review**, and it shows exactly as it will send. Then **Leave a note**, click any part of it, and the comment pins there — the same way the issue above is reviewed. **Show me where** scrolls back to it and flashes it. Nothing in the paste runs: the frame keeps its origin so notes can pin to elements, with script execution switched off, so a `<script>`, an `onerror` and a `javascript:` link are all inert. These notes are deliberately separate from the issue's own — those are counted above the Approve button, and a remark about a paste should not make anyone hesitate to send.",

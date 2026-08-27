@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Website review: start one from a paste
+  {
+    title: "Website review can start from pasted code, not just a live page",
+    body: "**Workspace → Website review.** The form now has two modes: **A web page** as before, or **Pasted code**. Paste the markup — the newsletter as it comes back out of Mailchimp, a block from anywhere — give it a name, and press Start review. From there it is an ordinary review: it opens with the same overlay, you click any part of it and leave a comment pinned there, the same share link works for colleagues without an account, and the same rounds and resolve buttons apply. Nothing about reviewing changed; it just no longer has to be published on the internet first. **How it is served safely:** the paste becomes a page on this site, so the overlay has something to sit on. Scripts in the paste are stripped, and the page is sent with a header that gives it an **opaque origin** — so even if something got through, it has no access to this site's cookies, storage or pages. The overlay itself still works because it signs in with the review's own token rather than your session.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Newsletter → Code: review a paste, line by line
   {
     title: "Review the newsletter that comes back out of Mailchimp, the same way you review the one in here",

@@ -6002,8 +6002,16 @@ model NewsletterComment {
 /// so comments can be attributed to the revision they informed.
 model PageReview {
   id           String    @id @default(cuid())
-  /// Full URL under review.
+  /// Full URL under review. For a pasted review this is a stand-in
+  /// pointing at the page that serves the paste, so everything that
+  /// already reads `url` keeps working.
   url          String
+  /// url | paste — where the thing under review came from.
+  kind         String    @default("url")
+  /// The markup itself, when this review is of a paste rather than a
+  /// live page. Distinct from snapshotHtml below, which is a "before"
+  /// captured FROM a live page: this one IS the page.
+  pastedHtml   String?
   /// Human label — "ENGAGE · Regulatory Affairs".
   title        String
   /// open | exported | closed
