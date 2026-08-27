@@ -70,6 +70,20 @@ function validateVentureConnect(f: VentureConnectFormData): string[] {
     errors.push("Funding Request Justification needs at least 30 characters");
   }
 
+  /*
+   * Event
+   *
+   * The paper form's own heading is "Event Information (Please Submit
+   * One Event Only)", and the whole application is a request to attend
+   * ONE named thing. Without these, an application could be submitted
+   * with a budget and a justification and nothing saying what it is
+   * for — which is not a form a reviewer can decide.
+   */
+  if (!f.eventCategory)         errors.push("Event: pick a category");
+  if (!f.eventName?.trim())     errors.push("Event: Event Name is required");
+  if (!f.eventLocation?.trim()) errors.push("Event: Location is required");
+  if (!f.eventDates?.trim())    errors.push("Event: Dates are required");
+
   // Budget
   const total = sumVcBudget(f);
   if (total <= 0) errors.push("At least one budget line item must be set");
