@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── A link straight into an EQUIP application
+  {
+    title: "A link you can put on the website that goes straight into a VentureConnect application",
+    body: "**`/equip-apply/venture-connect`** — and **`/equip-apply/venture-lift`** — are public URLs safe to put on biohubnet.ca, in an email, or on a slide. They skip the question that only existed to work out which stream somebody wanted, because the link already said. **The reason it needed a new URL:** everything under the signed-in area sends a logged-out visitor to a bare login page, which then drops them on the dashboard — so a link straight to the application form lost the stream, and the whole point of the link, for exactly the people it was written for. This route carries the destination through sign-in instead. `connect`, `ventureconnect` and `venture-connect` all work, in any capitalisation, so nobody has to get the spelling exactly right when they add the button; a URL that is not a stream at all goes to the EQUIP overview rather than a 404. Once through, the wizard is two questions — who you are and where you are affiliated — and then the form. Both are still asked because the application needs them, and the institution is what decides whether VentureLift can fund you.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── All 41 partner institutions, and the streams differ
   {
     title: "All 41 partner institutions in the EQUIP picker — and VentureLift says when it cannot fund you",

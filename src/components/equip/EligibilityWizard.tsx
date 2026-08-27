@@ -105,6 +105,18 @@ export function EligibilityWizard({
     !isEligibleForStream(institution, "venture_lift");
   const blockedName = streamBlocked ? findInstitution(institution)?.name : null;
 
+  /*
+   * The stage question exists ONLY to choose a stream. When the stream
+   * arrived in the URL — the "apply for VentureConnect" link on
+   * biohubnet.ca — asking it again is asking somebody to answer a
+   * question whose answer we are then going to ignore, and it stands
+   * between an external visitor and the form they clicked through for.
+   *
+   * Applicant type and institution stay. They are not stream-picking
+   * questions: the application needs both, and the institution is what
+   * the VentureLift eligibility notice is judged on.
+   */
+  const lastStep = presetStream ? 1 : 2;
   const canContinue =
     step === 0 ? applicantType !== null :
     step === 1 ? institution !== null && (institution !== "other" || institutionOther.trim().length > 0) :
@@ -142,7 +154,14 @@ export function EligibilityWizard({
 
   return (
     <div className="rounded-2xl border border-line bg-card p-5 surface-shadow space-y-5">
-      <Progress step={step} total={3} />
+      <Progress step={step} total={lastStep + 1} />
+
+      {presetStream && step === 0 && (
+        <p className="rounded-lg bg-elevated/60 px-3 py-2 text-[11.5px] text-muted">
+          You&apos;re applying for <span className="font-bold text-fg">{STREAM_META[presetStream].name}</span>.
+          Two quick questions and the form opens.
+        </p>
+      )}
 
       {step === 0 && (
         <Step
@@ -265,7 +284,7 @@ export function EligibilityWizard({
         </Step>
       )}
 
-      {streamBlocked && step === 2 && (
+      {streamBlocked && step === lastStep && (
         <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p className="text-xs font-bold text-amber-900">
             VentureLift isn&apos;t open to {blockedName} yet
@@ -312,7 +331,7 @@ export function EligibilityWizard({
         >
           Back
         </button>
-        {step < 2 ? (
+        {step < lastStep ? (
           <button
             type="button"
             disabled={!canContinue}
