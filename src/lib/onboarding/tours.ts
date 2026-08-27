@@ -2456,6 +2456,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Newsletter", href: "/admin/workspace/marketing/newsletter" },
   },
   {
+    id: "equip.public-application-link",
+    title: "A VentureConnect link for people with no account",
+    body: "**`/apply/venture-connect`** is public. Someone gives a name and an email and goes straight into the application — no sign-up, and no question about which grant, because the link says. They get a private link back to their own draft so they can finish it later; that link is the only way in, so tell them to keep it. It is the same form and the same validator as the signed-in one, and the applications **land in this same queue**, marked as coming from a guest. Approve, reject and the $5,000 cap all work on them exactly as they do on everyone else's. The one gap: a public applicant cannot upload attachments yet, so ask for the pitch deck by email.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.28",
+    cta: { label: "Open EQUIP", href: "/admin/equip" },
+  },
+  {
     id: "equip.connect-form-aug2026",
     title: "The VentureConnect form matches the August 2026 PDF",
     body: "Checked field by field against the current form. **Event Information** was missing entirely and is now there — Category, Event Name, Location and Dates, under the paper form's own rule of **one event per application**. Picking *Customer Demo* or *Training/Workshop* now surfaces that category's condition straight away (the customer must be non-academic; equivalent training must not be available locally) rather than leaving it in the guidelines. **Supporting Documentation** is now the checklist the PDF prints instead of a sentence of prose, so an applicant can see what they still owe. Everything else already matched — eligibility, three applications, the $5,000 cap, roles, IP rows, budget lines and signature. Saved applications are unaffected.",

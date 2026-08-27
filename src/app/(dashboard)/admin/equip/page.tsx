@@ -20,6 +20,7 @@ import {
   type EquipStatus, type EquipStream,
 } from "@/lib/equip/types";
 import { institutionLabel } from "@/lib/equip/institutions";
+import { applicantOf } from "@/lib/equip/applicant";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,11 @@ export default async function AdminEquipPage({
     decidedAt: Date | null;
     fundedAt: Date | null;
     updatedAt: Date;
-    user: { id: string; name: string | null; email: string };
+    /* Null for a public application — nobody signed in to file it.
+       Read it through applicantOf() rather than here. */
+    user: { id: string; name: string | null; email: string } | null;
+    applicantName?: string | null;
+    applicantEmail?: string | null;
     reviewer: { id: string; name: string | null } | null;
   };
   let apps: QueueRow[] = [];
@@ -90,6 +95,7 @@ export default async function AdminEquipPage({
           submittedAt: true, decidedAt: true, fundedAt: true,
           updatedAt: true,
           user: { select: { id: true, name: true, email: true } },
+          applicantName: true, applicantEmail: true,
           reviewer: { select: { id: true, name: true } },
         },
       }),
@@ -228,8 +234,8 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                   return (
                     <tr key={a.id} className="border-t border-line">
                       <td className="px-3 py-2">
-                        <p className="text-fg font-semibold">{a.user.name ?? "—"}</p>
-                        <p className="text-[10px] text-subtle">{a.user.email}</p>
+                        <p className="text-fg font-semibold">{applicantOf(a).name}</p>
+                        <p className="text-[10px] text-subtle">{applicantOf(a).email}</p>
                       </td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1.5 text-xs text-fg">

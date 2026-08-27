@@ -24,6 +24,7 @@ import {
   type VentureLiftReviewerScores, type EquipDocument,
 } from "@/lib/equip/types";
 import { institutionLabel } from "@/lib/equip/institutions";
+import { applicantOf } from "@/lib/equip/applicant";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +82,7 @@ export default async function AdminEquipReviewPage({
           page; sidebar handles cross-page navigation. */}
       <DSPageHeader
         eyebrow={`${stream.name} · ${status.label.toLowerCase()}`}
-        title={`Review: ${app.user.name ?? app.user.email}`}
+        title={`Review: ${applicantOf(app).name}`}
         description={
           <>
             Submitted {app.submittedAt ? new Date(app.submittedAt).toLocaleString() : "—"}.
@@ -149,9 +150,9 @@ export default async function AdminEquipReviewPage({
 
       <DSSection eyebrow="Applicant" title="Who's applying" icon={<UserIcon size={14} className="text-brand-600" />}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ApplicantField icon={UserIcon} label="Name" value={app.user.name ?? "—"} />
-          <ApplicantField icon={Mail}     label="Email" value={app.user.email} />
-          <ApplicantField icon={Briefcase} label="Title / role" value={app.user.jobTitle ?? "—"} />
+          <ApplicantField icon={UserIcon} label="Name" value={applicantOf(app).name ?? "—"} />
+          <ApplicantField icon={Mail}     label="Email" value={applicantOf(app).email} />
+          <ApplicantField icon={Briefcase} label="Title / role" value={(app.user?.jobTitle ?? null) ?? "—"} />
           <ApplicantField icon={MapPin}   label="Institution" value={institutionLabel(app.institution, app.institutionOther)} />
         </div>
         <p className="text-[11px] text-subtle mt-3">

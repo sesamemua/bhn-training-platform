@@ -31,6 +31,7 @@ import {
 import { templateMilestones } from "@/lib/equip/milestones";
 import { buildEquipStatusEmail } from "@/lib/equip/emails";
 import { sendMail, mailConfigured } from "@/lib/mail";
+import { applicantOf } from "@/lib/equip/applicant";
 
 export const runtime = "nodejs";
 
@@ -247,9 +248,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Notify the applicant of the decision. Best-effort: a mail failure must
   // never roll back or 500 a recorded decision. (under_review/approved/
   // rejected/funded + the two VL pre-screen outcomes each map to a template.)
-  if (mailConfigured() && updated.user?.email) {
+  const notify = applicantOf(updated);
+  if (mailConfigured() && notify.email) {
     const email = await buildEquipStatusEmail(target, {
-      applicantName: updated.user.name,
+      applicantName: notify.name,
       stream: app.stream as EquipStream,
       stage: app.applicationStage as ApplicationStage,
       requestedAmount: app.requestedAmount,
@@ -259,7 +261,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     });
     if (email) {
       try {
-        await sendMail({ to: updated.user.email, subject: email.subject, text: email.text, html: email.html });
+        await sendMail({ to: notify.email, subject: email.subject, text: email.text, html: email.html });
       } catch (err) {
         console.error("[equip] decision email failed", { id, target, err });
       }

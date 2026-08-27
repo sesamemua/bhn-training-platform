@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { AI_CONFIGURED, chat } from "@/lib/ai";
+import { applicantOf } from "@/lib/equip/applicant";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -77,7 +78,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   // Condense the application body to plaintext for the AI prompt.
   const lines: string[] = [
     `Stream: ${app.stream}`,
-    `Applicant: ${app.user.name ?? app.user.email} (${app.user.organization ?? "no org listed"})`,
+    `Applicant: ${applicantOf(app).name} (${app.user?.organization ?? "no org listed"})`,
     `Applicant type: ${app.applicantType ?? "—"}`,
     `Institution: ${app.institution ?? app.institutionOther ?? "—"}`,
     `Requested: ${app.requestedAmount ? `$${app.requestedAmount.toLocaleString()}` : "—"}`,

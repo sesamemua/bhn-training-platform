@@ -100,7 +100,7 @@ export default async function EquipApplicationDraftPage({
   const wizardInstitution = institutionLabel(app.institution, app.institutionOther);
   const resolvedOrganization =
     (wizardInstitution && wizardInstitution !== "—" ? wizardInstitution : null)
-    ?? app.user.organization
+    ?? (app.user?.organization ?? null)
     ?? null;
   const role = ((session.user as { role?: string }).role ?? "trainee");
   const isAdmin = role === "admin" || role === "superadmin";
@@ -121,10 +121,10 @@ export default async function EquipApplicationDraftPage({
           initial={(app.formData as VentureConnectFormData) ?? {}}
           initialDocuments={(app.documents as unknown as EquipDocument[]) ?? []}
           profile={{
-            name: app.user.name ?? "",
-            email: app.user.email,
+            name: (app.user?.name ?? "") ?? "",
+            email: (app.user?.email ?? ""),
             organization: resolvedOrganization,
-            jobTitle: app.user.jobTitle ?? null,
+            jobTitle: (app.user?.jobTitle ?? null) ?? null,
           }}
           isAdmin={isAdmin}
         />
@@ -134,10 +134,10 @@ export default async function EquipApplicationDraftPage({
           initial={(app.formData as VentureLiftFullData) ?? {}}
           initialDocuments={(app.documents as unknown as EquipDocument[]) ?? []}
           profile={{
-            name: app.user.name ?? "",
-            email: app.user.email,
+            name: (app.user?.name ?? "") ?? "",
+            email: (app.user?.email ?? ""),
             organization: resolvedOrganization,
-            jobTitle: app.user.jobTitle ?? null,
+            jobTitle: (app.user?.jobTitle ?? null) ?? null,
           }}
           isAdmin={isAdmin}
         />
@@ -147,10 +147,10 @@ export default async function EquipApplicationDraftPage({
           initial={(app.formData as VentureLiftFormData) ?? {}}
           initialDocuments={(app.documents as unknown as EquipDocument[]) ?? []}
           profile={{
-            name: app.user.name ?? "",
-            email: app.user.email,
+            name: (app.user?.name ?? "") ?? "",
+            email: (app.user?.email ?? ""),
             organization: resolvedOrganization,
-            jobTitle: app.user.jobTitle ?? null,
+            jobTitle: (app.user?.jobTitle ?? null) ?? null,
           }}
           isAdmin={isAdmin}
         />

@@ -3753,7 +3753,19 @@ model AssistPreferences {
 
 model EquipApplication {
   id                     String    @id @default(cuid())
-  userId                 String
+  /// Null for an application that arrived on the public VentureConnect
+  /// link, where there is no account. Everything else about the row is
+  /// the same, deliberately: a public application lands in the same
+  /// queue an admin already reviews rather than a second one nobody
+  /// remembers to check.
+  userId                 String?
+  /// Who to write to when there is no account. Ignored when userId is
+  /// set — the account is then the source of truth for both.
+  applicantName          String?
+  applicantEmail         String?
+  /// Lets somebody return to a public draft, and lets us send them a
+  /// link to it. Unguessable; the only key to that application.
+  publicToken            String?   @unique
   /// "venture_connect" | "venture_lift"
   stream                 String
   /// Pipeline status — extended set:
@@ -3818,7 +3830,7 @@ model EquipApplication {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  user     User                      @relation("EquipApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  user     User?                     @relation("EquipApplicant", fields: [userId], references: [id], onDelete: Cascade)
   reviewer User?                     @relation("EquipReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
   messages EquipApplicationMessage[]
 

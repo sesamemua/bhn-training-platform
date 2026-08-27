@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Public VentureConnect application, no account
+  {
+    title: "A VentureConnect application link that needs no BioHubNet account",
+    body: "**`/apply/venture-connect`** — a link safe to put on biohubnet.ca, in an email or on a slide. An applicant gives a name and an email and goes **straight into the form**. No sign-up, and no triage: the stream question exists to route between two grants, and a link that already says VentureConnect has answered it. They get a private link back to their own application, so they can leave it half-finished and return — worth saying out loud when you send it, because that link is the only way in and anyone holding it can read and edit the application. **It is the same form and the same rules.** The questions are the component the signed-in flow uses, and both now submit through one shared validator, so a public application cannot skip a check an account-holder has to pass. **It lands in the same queue.** Applications with no account appear in the EQUIP admin list beside everyone else's, marked as coming from a guest, and approve, reject and the $5,000 cumulative cap all work on them unchanged — nobody has a second list to remember to check. Attachments are the one thing a public application cannot do yet; the pitch deck has to be emailed for now.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── VentureConnect form brought up to the August 2026 PDF
   {
     title: "VentureConnect application matches the August 2026 form",

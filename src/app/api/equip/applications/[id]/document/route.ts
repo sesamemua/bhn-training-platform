@@ -53,7 +53,7 @@ async function loadOwnedOrAdmin(id: string, session: Awaited<ReturnType<typeof g
   if (!app) return null;
   if (!isAdmin && app.userId !== userId) return null;
   return {
-    app: { id: app.id, userId: app.userId, status: app.status, documents: (app.documents as unknown as EquipDocument[]) ?? [] },
+    app: { id: app.id, userId: app.userId ?? "", status: app.status, documents: (app.documents as unknown as EquipDocument[]) ?? [] },
     isAdmin,
   };
 }

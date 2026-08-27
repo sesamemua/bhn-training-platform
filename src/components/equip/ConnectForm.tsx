@@ -46,6 +46,17 @@ interface Props {
    *  alongside the form body, so we mount the same document tray
    *  LiftForm uses with its Stage-1 kinds. */
   initialDocuments: EquipDocument[];
+  /**
+   * Where this form saves and submits.
+   *
+   * Defaults to the signed-in route. The public VentureConnect link
+   * points it at the token route instead, so one form serves both ways
+   * in — an applicant filling in the public one is answering exactly
+   * the same questions, checked by exactly the same validator.
+   */
+  endpointBase?: string;
+  /** Hidden when there is no account to attach files to a session. */
+  allowDocuments?: boolean;
   /** Pulled from the User row to pre-fill applicant identity
    *  fields. The applicant can still edit each one — pre-fill is
    *  a convenience, not a constraint. */
@@ -106,7 +117,15 @@ function budgetTotal(f: VentureConnectFormData): number {
     + (f.budgetRegistration ?? 0);
 }
 
-export function ConnectForm({ applicationId, initial, initialDocuments, profile, isAdmin = false }: Props) {
+export function ConnectForm({
+  applicationId,
+  initial,
+  initialDocuments,
+  profile,
+  isAdmin = false,
+  endpointBase = "/api/equip/applications",
+  allowDocuments = true,
+}: Props) {
   const router = useRouter();
   const [form, setForm] = useState<VentureConnectFormData>(() => ({
     // Pre-fill identity fields from profile so the user doesn't
@@ -130,7 +149,7 @@ export function ConnectForm({ applicationId, initial, initialDocuments, profile,
     saveTimer.current = setTimeout(() => {
       startSaving(async () => {
         try {
-          await fetch(`/api/equip/applications/${applicationId}`, {
+          await fetch(`${endpointBase}/${applicationId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ formData: form }),
@@ -159,7 +178,7 @@ export function ConnectForm({ applicationId, initial, initialDocuments, profile,
     setError(null);
     setValidation([]);
     try {
-      const res = await fetch(`/api/equip/applications/${applicationId}/submit`, { method: "POST" });
+      const res = await fetch(`${endpointBase}/${applicationId}${endpointBase.includes("/public/") ? "" : "/submit"}`, { method: "POST" });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         const data = j as { error?: string; details?: string[] };
@@ -435,11 +454,13 @@ export function ConnectForm({ applicationId, initial, initialDocuments, profile,
           Required" guidance + the pitch-deck callout in section
           2. Same trays LiftForm uses; reviewers can request more
           in-platform after submit. */}
-      <LiftDocumentTray
-        applicationId={applicationId}
-        documents={documents}
-        onChange={setDocuments}
-      />
+      {allowDocuments && (
+        <LiftDocumentTray
+          applicationId={applicationId}
+          documents={documents}
+          onChange={setDocuments}
+        />
+      )}
 
       {/* ── 6. Signature (attestation) ─────────────────────── */}
       <Section title="Signature">

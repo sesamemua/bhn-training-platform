@@ -41,6 +41,7 @@ import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { DSSection } from "@/components/design-system/DSSection";
 import { DSStatGrid, DSStat } from "@/components/design-system/DSStatGrid";
 import { STATUS_META, STREAM_META, type EquipStatus, type EquipStream } from "@/lib/equip/types";
+import { applicantOf } from "@/lib/equip/applicant";
 
 export const dynamic = "force-dynamic";
 
@@ -311,7 +312,7 @@ export default async function EquipOverviewPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-fg truncate">
-                            {a.user.name ?? a.user.email}
+                            {applicantOf(a).name}
                             <span className="text-muted font-normal"> · {stream.name}</span>
                           </p>
                           <p className="text-[11px] text-subtle font-mono">
