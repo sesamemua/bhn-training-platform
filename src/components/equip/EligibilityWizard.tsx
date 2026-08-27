@@ -2,7 +2,7 @@
 /**
  * Three-step eligibility wizard. Captures:
  *   1. Applicant type (grad / postdoc / RA / founder)
- *   2. Affiliated institution (curated 14 + Other)
+ *   2. Affiliated institution (all 41 BHN partners + Other)
  *   3. Commercialization stage (exploring / building / unsure)
  *
  * Then POSTs to /api/equip/applications which either creates a new
@@ -24,7 +24,7 @@ import {
   type CommercializationStage,
   type EquipStream,
 } from "@/lib/equip/types";
-import { INSTITUTIONS } from "@/lib/equip/institutions";
+import { INSTITUTIONS, isEligibleForStream, findInstitution } from "@/lib/equip/institutions";
 
 // Roles match the EQUIP VentureConnect application form PDF
 // (Master's Student / PhD Student / Postdoctoral Fellow / Research
@@ -87,6 +87,23 @@ export function EligibilityWizard({
   const stageStream = stage ? STAGE_OPTIONS.find((s) => s.id === stage)?.stream ?? null : null;
   const recommended = stage ? recommendStream(stage) : null;
   const effectiveStream = presetStream ?? pickedStream ?? recommended;
+
+  /*
+   * VentureConnect is open to all 41 partner institutions; VentureLift
+   * only to the 14 "current"-tier ones. The institution is chosen two
+   * steps BEFORE the stream, so this is the first moment the pair can
+   * be judged — and saying nothing would walk somebody from, say,
+   * McMaster all the way into a $25,000 form they cannot be funded for.
+   *
+   * Six of the ineligible institutions are in Ontario, so this can
+   * never be phrased as an out-of-province rule.
+   */
+  const streamBlocked =
+    effectiveStream === "venture_lift" &&
+    institution !== null &&
+    institution !== "other" &&
+    !isEligibleForStream(institution, "venture_lift");
+  const blockedName = streamBlocked ? findInstitution(institution)?.name : null;
 
   const canContinue =
     step === 0 ? applicantType !== null :
@@ -246,6 +263,26 @@ export function EligibilityWizard({
             </div>
           )}
         </Step>
+      )}
+
+      {streamBlocked && step === 2 && (
+        <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+          <p className="text-xs font-bold text-amber-900">
+            VentureLift isn&apos;t open to {blockedName} yet
+          </p>
+          <p className="text-[11px] text-amber-800 leading-snug mt-1">
+            VentureLift runs at 14 partner institutions through March 2028.
+            VentureConnect &mdash; up to $5,000 &mdash; is open to all 41 BioHubNet
+            partners, including yours, until January 2027.
+          </p>
+          <button
+            type="button"
+            onClick={() => setPickedStream("venture_connect")}
+            className="mt-2 text-[11px] font-bold px-3 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+          >
+            Switch to VentureConnect
+          </button>
+        </div>
       )}
 
       {effectiveStream && step === 2 && stage !== "unsure" && (

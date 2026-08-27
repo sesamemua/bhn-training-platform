@@ -2426,6 +2426,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Newsletter", href: "/admin/workspace/marketing/newsletter" },
   },
   {
+    id: "equip.all-41-institutions",
+    title: "All 41 partner institutions, and the streams reach different ones",
+    body: "The EQUIP institution picker held **14** and served both grants. **VentureConnect** is open to all **41** BioHubNet partners across Canada until January 2027; **VentureLift** runs at **14** Ontario partners through March 2028 — so the 14 were VentureLift's roster standing in for VentureConnect's. Anyone from the other 27 had to pick *Other*. All 41 are in now. The wizard also warns on the stream step when somebody's institution is not on the VentureLift roster, and offers a one-click switch to VentureConnect — before that, they could reach a $25,000 form they were never eligible for. **If you ever edit the list:** Ontario is not the fourteen — Ontario has twenty partners and six are not VentureLift participants.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.27",
+    cta: { label: "Open EQUIP", href: "/admin/equip" },
+  },
+  {
     id: "workspace.insights.speakers",
     title: "Industry Insights speakers have a link too",
     body: "**Workspace → Industry Insights → Speakers.** The event on 24 September has twelve invited hiring professionals across three hours. Send them `/events/2026-industry-insights/speaker` and they fill in their own **headshot**, **bio**, **LinkedIn** and **what their session will cover** — no account needed. What comes back appears here for you to check before it goes on the website. The event is a **draft**, so the speaker link works while the event stays off the public listing beside the biohubnet.ca page already advertising it.",

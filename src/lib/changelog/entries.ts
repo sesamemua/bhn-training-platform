@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── All 41 partner institutions, and the streams differ
+  {
+    title: "All 41 partner institutions in the EQUIP picker — and VentureLift says when it cannot fund you",
+    body: "The institution list held **14** and served both grants. But the two EQUIP streams do not reach the same places: **VentureConnect** is open to all **41** BioHubNet partner institutions across Canada until January 2027, while **VentureLift** runs at **14** participating Ontario partners through March 2028. The 14 were VentureLift's roster standing in for VentureConnect's 41 — so an applicant from any of the other 27 could not find themselves in the picker at all and had to fall back to *Other*. All 41 are now there, in the EQUIP wizard and on the sign-up form. **And the wizard now says so before you start writing.** Institution is chosen two steps before stream, so if you pick one of the 27 and the wizard routes you to VentureLift, a notice appears on the stream step — before the \"we'll route you to VentureLift\" summary, not after it — naming your institution, explaining that VentureConnect is open to it, and offering a one-click switch. Without it somebody walks from the picker all the way into a $25,000 form they cannot be funded for. **Worth knowing if you ever edit the list:** Ontario is *not* the fourteen. Ontario has twenty partner institutions and six of them are not VentureLift participants, so this can never be phrased as an out-of-province rule. There is a test that fails if anyone tries.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Newsletter: lay it out in your own tool
   {
     title: "Newsletter: take the issue out to your own AI and paste the result back",
