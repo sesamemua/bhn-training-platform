@@ -135,7 +135,25 @@ export interface VentureConnectFormData {
    *  X from Y VC firm…), eligible activities, key outcomes. */
   fundingJustification?: string;
 
+  // ── Event Information ────────────────────────────────────
+  /**
+   * "Please Submit One Event Only" — the August 2026 form's own
+   * heading. One category, not several: an application funds one
+   * event, and the cap is per company across three applications.
+   */
+  eventCategory?: EventCategory;
+  eventName?: string;
+  eventLocation?: string;
+  /** Free text: the form prints a single "Dates" line, and a range
+   *  written the way the event advertises it is more useful to a
+   *  reviewer than two date pickers that disagree with the website. */
+  eventDates?: string;
+
   // ── Budget & Supporting Documentation ────────────────────
+  /** Which of the named attachments are enclosed. The form is a
+   *  checklist on paper; keeping it one here means an applicant can
+   *  see what is still missing rather than guessing from the tray. */
+  supportingDocs?: SupportingDocKey[];
   /** Each line item from the PDF table. Values in CAD. */
   budgetAirfare?: number;
   budgetTrainFare?: number;
@@ -151,6 +169,28 @@ export interface VentureConnectFormData {
   signaturePrintedName?: string;
   signatureDate?: string;             // ISO yyyy-mm-dd
 }
+
+/** The four boxes under "Category" on the August 2026 form. */
+export const EVENT_CATEGORIES = [
+  { id: "conference", label: "Industry / Investor Conference" },
+  { id: "pitch", label: "Pitch Competition" },
+  { id: "workshop", label: "Entrepreneurship Training / Workshop" },
+  { id: "customer_demo", label: "Customer Demo" },
+] as const;
+export type EventCategory = (typeof EVENT_CATEGORIES)[number]["id"];
+
+/** The checklist printed under "Supporting Documentation". */
+export const SUPPORTING_DOCS = [
+  { id: "pitch_deck", label: "Business pitch deck" },
+  { id: "registration", label: "Event registration information" },
+  { id: "cost_estimates", label: "Travel & accommodation cost estimates" },
+  { id: "investor_invites", label: "Investor meeting invitations or confirmations" },
+  { id: "customer_confirmations", label: "Customer meeting confirmations" },
+  { id: "pitch_acceptance", label: "Pitch competition acceptance" },
+  { id: "workshop_agenda", label: "Training / workshop agenda" },
+  { id: "other", label: "Other supporting documentation" },
+] as const;
+export type SupportingDocKey = (typeof SUPPORTING_DOCS)[number]["id"];
 
 // ── VentureLift pre-screening form (v3 PDF) ────────────────────
 

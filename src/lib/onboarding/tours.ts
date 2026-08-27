@@ -2456,6 +2456,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the Newsletter", href: "/admin/workspace/marketing/newsletter" },
   },
   {
+    id: "equip.connect-form-aug2026",
+    title: "The VentureConnect form matches the August 2026 PDF",
+    body: "Checked field by field against the current form. **Event Information** was missing entirely and is now there — Category, Event Name, Location and Dates, under the paper form's own rule of **one event per application**. Picking *Customer Demo* or *Training/Workshop* now surfaces that category's condition straight away (the customer must be non-academic; equivalent training must not be available locally) rather than leaving it in the guidelines. **Supporting Documentation** is now the checklist the PDF prints instead of a sentence of prose, so an applicant can see what they still owe. Everything else already matched — eligibility, three applications, the $5,000 cap, roles, IP rows, budget lines and signature. Saved applications are unaffected.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.28",
+    cta: { label: "Open EQUIP", href: "/admin/equip" },
+  },
+  {
     id: "equip.all-41-institutions",
     title: "All 41 partner institutions, and the streams reach different ones",
     body: "The EQUIP institution picker held **14** and served both grants. **VentureConnect** is open to all **41** BioHubNet partners across Canada until January 2027; **VentureLift** runs at **14** Ontario partners through March 2028 — so the 14 were VentureLift's roster standing in for VentureConnect's. Anyone from the other 27 had to pick *Other*. All 41 are in now. The wizard also warns on the stream step when somebody's institution is not on the VentureLift roster, and offers a one-click switch to VentureConnect — before that, they could reach a $25,000 form they were never eligible for. **If you ever edit the list:** Ontario is not the fourteen — Ontario has twenty partners and six are not VentureLift participants.",

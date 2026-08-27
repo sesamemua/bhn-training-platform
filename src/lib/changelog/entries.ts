@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── VentureConnect form brought up to the August 2026 PDF
+  {
+    title: "VentureConnect application matches the August 2026 form",
+    body: "Checked against `EQUIP_VentureConnect_AppForm_August2026.pdf` field by field. Two sections of the paper form had no equivalent in the platform. **Event Information** is now there — *Category* (Industry/Investor Conference, Pitch Competition, Entrepreneurship Training/Workshop, Customer Demo), *Event Name*, *Location* and *Dates* — under the paper form's own rule that an application covers **one event only**. Dates are free text on purpose: the form prints one line, and a range written the way the event advertises it tells a reviewer more than two date pickers that disagree with the event's website. Two of the categories carry conditions in the PDF that applicants were previously left to find in the guidelines, so they now appear the moment the category is chosen: a **customer demo** is eligible only when the customer is non-academic, and a **training or workshop** needs the justification to show equivalent training is not available locally. **Supporting Documentation** was a sentence of prose and is now the checklist the paper form prints — pitch deck, event registration, travel and accommodation estimates, investor invitations, customer confirmations, pitch acceptance, workshop agenda, other — so it is possible to see what is still missing rather than infer it from what is in the attachment tray. Everything else already matched: the eligibility rules, three applications per company, the $5,000 cumulative cap, the role options, the IP status rows with their dates, the budget lines and the signature block. No change to saved applications — these fields live in the form's existing JSON.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Share links finally work without an account
   {
     title: "Share a review with anyone — they no longer need a platform account",

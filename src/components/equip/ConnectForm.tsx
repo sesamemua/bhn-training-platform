@@ -27,6 +27,10 @@ import {
   STREAM_BUDGETS,
   NO_AI_DISCLAIMER,
   type VentureConnectFormData,
+  EVENT_CATEGORIES,
+  SUPPORTING_DOCS,
+  type EventCategory,
+  type SupportingDocKey,
   type IpStatusBlock,
   type ApplicantRole,
   type EquipDocument,
@@ -320,6 +324,57 @@ export function ConnectForm({ applicationId, initial, initialDocuments, profile,
         />
       </Section>
 
+      {/* ── 5. Event Information ───────────────────────────── */}
+      <Section
+        title="Event Information"
+        hint="One event per application. To attend a second, submit another application — each company may send up to three."
+      >
+        <Field label="Category" required>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {EVENT_CATEGORIES.map((opt) => (
+              <RoleCheckbox
+                key={opt.id}
+                checked={form.eventCategory === opt.id}
+                label={opt.label}
+                onChange={() => set("eventCategory", opt.id as EventCategory)}
+              />
+            ))}
+          </div>
+        </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <Field label="Event Name" required>
+            <input value={form.eventName ?? ""} onChange={(e) => set("eventName", e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Location" required>
+            <input value={form.eventLocation ?? ""} onChange={(e) => set("eventLocation", e.target.value)} className={inputCls} />
+          </Field>
+        </div>
+        <Field
+          label="Dates"
+          hint="As the event advertises them — a range is fine."
+          required
+        >
+          <input
+            value={form.eventDates ?? ""}
+            onChange={(e) => set("eventDates", e.target.value)}
+            placeholder="e.g. 14–16 October 2026"
+            className={inputCls}
+          />
+        </Field>
+        {form.eventCategory === "customer_demo" && (
+          <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] leading-snug text-amber-900">
+            Customer demonstrations are eligible only when the customer is
+            non-academic.
+          </p>
+        )}
+        {form.eventCategory === "workshop" && (
+          <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] leading-snug text-amber-900">
+            For training and workshops, the justification below has to show that
+            equivalent training is not available locally.
+          </p>
+        )}
+      </Section>
+
       {/* ── 5. Budget & Supporting Documentation ───────────── */}
       <Section title="Budget & Supporting Documentation">
         <div className="flex items-baseline justify-between">
@@ -341,12 +396,39 @@ export function ConnectForm({ applicationId, initial, initialDocuments, profile,
             <AlertCircle size={11} /> Total exceeds the ${CAP.toLocaleString()} cap. Trim a line to submit.
           </p>
         )}
-        <p className="text-[11px] text-subtle mt-3 leading-snug">
-          Supporting documents to attach below: conference registration
-          info, cost estimates for travel and accommodation, workshop or
-          pitch-competition details, and any other documentation supporting
-          your funding request.
-        </p>
+        {/* The paper form prints this as a checklist, so it is one here
+            too: an applicant can see what is still missing instead of
+            inferring it from what is in the tray. Ticking a box is a
+            statement of intent — the file itself goes in the tray below. */}
+        <div className="mt-4">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-subtle">
+            Supporting documentation
+          </p>
+          <p className="text-[11px] text-muted leading-snug mt-0.5">
+            Tick what you are enclosing, then attach the files below.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+            {SUPPORTING_DOCS.map((doc) => {
+              const on = (form.supportingDocs ?? []).includes(doc.id);
+              return (
+                <RoleCheckbox
+                  key={doc.id}
+                  checked={on}
+                  label={doc.label}
+                  onChange={() => {
+                    const current = form.supportingDocs ?? [];
+                    set(
+                      "supportingDocs",
+                      (on
+                        ? current.filter((d) => d !== doc.id)
+                        : [...current, doc.id]) as SupportingDocKey[],
+                    );
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
       </Section>
 
       {/* Document tray — matches the PDF's "Supporting Documents
