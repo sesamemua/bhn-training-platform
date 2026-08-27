@@ -49,11 +49,18 @@ export function overlaySource(endpoint: string, title: string): string {
 
   var script = document.currentScript;
   var credential = script && script.dataset ? (script.dataset.viewer || "") : "";
+  // Somebody who arrived on a share link has no credential in the tag.
+  // They can earn one by giving a name — see joinAsGuest below. Kept in
+  // sessionStorage so a reload does not ask again in the same sitting.
+  try {
+    if (!credential) credential = sessionStorage.getItem("bhn-review-viewer:" + endpointKey()) || "";
+  } catch (e) { /* storage can be blocked; joining still works. */ }
   var endpoint = ${JSON.stringify(endpoint)};
   var initialTitle = ${JSON.stringify(title)};
   var state = {
     review: { title: initialTitle, round: 1, status: "open" },
     viewer: null,
+    joining: false,
     comments: [],
     selected: null,
     draft: "",
@@ -744,7 +751,34 @@ export function overlaySource(endpoint: string, title: string): string {
     if (state.loading) {
       body.appendChild(make("div", "bhn-notice", "Loading team comments..."));
     } else if (!credential || !state.viewer) {
-      body.appendChild(make("div", "bhn-notice", "Open this review from the training platform to join with your account."));
+      /*
+       * This used to be a dead end — "open this from the training
+       * platform" — which made the share link useless to anybody
+       * without an account, the exact people it exists for. Now it
+       * asks for a name and lets them in.
+       */
+      var join = make("div", "bhn-notice");
+      join.appendChild(make("div", "", "Add your name to comment on this page. No account needed."));
+      var nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.placeholder = "Your name";
+      nameInput.maxLength = 80;
+      nameInput.setAttribute("class", "bhn-input");
+      nameInput.style.cssText = "width:100%;margin-top:8px;padding:6px 8px;border:1px solid rgba(0,0,0,.2);border-radius:6px;font:inherit;";
+      var go = make("button", "bhn-btn", state.joining ? "Joining..." : "Start reviewing");
+      go.style.cssText = "margin-top:8px;";
+      go.disabled = !!state.joining;
+      function submit() {
+        var v = (nameInput.value || "").trim();
+        if (v.length < 2) { state.error = "Give a name so the team knows whose comments these are."; render(); return; }
+        joinAsGuest(v);
+      }
+      go.addEventListener("click", submit);
+      nameInput.addEventListener("keydown", function(e){ if (e.key === "Enter") submit(); });
+      join.appendChild(nameInput);
+      join.appendChild(go);
+      body.appendChild(join);
+      setTimeout(function(){ try { nameInput.focus(); } catch (e) {} }, 0);
     } else {
       renderComposer(body);
       var list = make("div", "bhn-list");
@@ -774,10 +808,38 @@ export function overlaySource(endpoint: string, title: string): string {
     return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt, comment.editedByName].join(":"); }).join("|");
   }
 
+  function endpointKey() {
+    // The review's own share token, which is the last path segment of
+    // the endpoint. Keeps one page's pass from unlocking another.
+    var parts = String(endpoint).split("/");
+    return parts[parts.length - 1] || "review";
+  }
+
+  async function joinAsGuest(name) {
+    state.joining = true; state.error = ""; render();
+    try {
+      var response = await fetch(endpoint + "/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name })
+      });
+      var data = await response.json().catch(function(){ return {}; });
+      if (!response.ok || !data.ok) throw new Error(data.error || "Could not join this review.");
+      credential = data.viewer;
+      try { sessionStorage.setItem("bhn-review-viewer:" + endpointKey(), credential); } catch (e) {}
+      state.joining = false;
+      await loadComments();
+    } catch (err) {
+      state.joining = false;
+      state.error = err && err.message ? err.message : "Could not join this review.";
+      render();
+    }
+  }
+
   async function loadComments(silent) {
     if (!credential) {
+      // Not an error any more — the panel offers a way in.
       state.loading = false;
-      state.error = "Open this review from the training platform to identify your account.";
       render();
       return;
     }

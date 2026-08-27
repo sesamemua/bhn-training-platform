@@ -2416,6 +2416,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
   {
+    id: "workspace.website-review.guests",
+    title: "Share a review with anyone, account or not",
+    body: "A review's share link now works for people **without a platform account** — which is what it was always described as doing, but nothing issued the pass, so the panel used to tell them to sign in instead. Send the link, they type their name, press **Start reviewing**, and they can pin comments on the page like anybody else. Their notes show as coming from a guest rather than an account, so it stays clear who said what. The link opens that one review and nothing else, and clearing it cuts off access.",
+    path: "/admin/workspace/website-review",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.08.28",
+    cta: { label: "Open Website review", href: "/admin/workspace/website-review" },
+  },
+  {
     id: "workspace.website-review.paste",
     title: "Start a website review from pasted code",
     body: "**Workspace → Website review.** The new-review form has two modes now: **A web page**, as before, or **Pasted code**. Paste the markup — the newsletter out of Mailchimp, a block from anywhere — name it, press Start review, and it behaves like any other review: the same overlay, click anything to pin a comment, the same share link for colleagues without an account, the same rounds. It just does not have to be published on the internet first. The paste is served as a page so the overlay has something to sit on; its scripts are stripped and it runs with an opaque origin, so it cannot reach this site's cookies or pages.",

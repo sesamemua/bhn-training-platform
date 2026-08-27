@@ -229,7 +229,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
       ...anchors,
       authorUserId: viewer.userId,
       authorName: viewer.name,
-      authorKind: "user",
+      // From the signed token, never from the request body: whoever
+      // holds a share link must not be able to file comments as though
+      // they were a platform account.
+      authorKind: viewer.kind,
       body: data.body,
     },
     select: COMMENT_SELECT,

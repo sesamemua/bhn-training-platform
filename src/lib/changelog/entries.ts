@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Share links finally work without an account
+  {
+    title: "Share a review with anyone — they no longer need a platform account",
+    body: "Reported: you had to sign in to the platform to put anything in. That was true, and it should not have been. A review's share link was always meant to let colleagues comment **without an account** — it is what the link is for — but nothing in the app ever issued the pass that would let them, so the panel's only answer to somebody arriving on a link was *\"open this review from the training platform to join with your account\"*. A dead end, for exactly the people the link exists for. Now the panel asks for a name and lets them straight in. They type it once, press **Start reviewing**, and can pin comments on the page like anybody else; the name is remembered for the rest of the sitting. Their comments are recorded as coming from a guest rather than an account, so it is always clear in the thread who was who — the database already had that distinction and nothing was using it. **This applies to every review**, whether it is a live page or a paste. Anyone still needs the link, it only ever opens the one review, and clearing the link cuts off access.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Website review: start one from a paste
   {
     title: "Website review can start from pasted code, not just a live page",
