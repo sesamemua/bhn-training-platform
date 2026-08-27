@@ -237,12 +237,39 @@ test("the postal code is asked only of the people it is about", () => {
   assert.ok(seen({ bhn_status: ACCEPTED, travel_over_2h: "Yes" }).includes("postcode"));
 });
 
-test("the trainee email says what is done with it", () => {
+test("the trainee email says what is done with it, and what happens if it is not found", () => {
   const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "trainee_email")!;
-  assert.match(q.help ?? "", /trainee list/i);
-  // And that not being found is not a rejection — the workflow says so,
-  // so the question has to as well.
-  assert.match(q.help ?? "", /still goes through/i);
+  const help = q.help ?? "";
+  assert.match(help, /programme lists/i, "it should say what it is checked against");
+  assert.match(help, /nothing else on this form/i, "it should say what else the address is used for");
+
+  /*
+   * The important half. A non-match now ENDS the form, so this text
+   * must not promise otherwise — it used to read "your registration
+   * still goes through", which was true when the check only enriched
+   * a submission and became a lie the day it started blocking.
+   *
+   * Asserted as an absence as well as a presence, because the failure
+   * mode is somebody restoring the reassuring sentence without
+   * touching the code that refuses people.
+   */
+  assert.match(help, /stops here|cannot register|has to add you/i, "it must say the form stops");
+  assert.doesNotMatch(help, /still goes through|goes through anyway/i,
+    "this promises the opposite of what the form now does");
+});
+
+test("the flowchart's roster step can actually reach the declined end", () => {
+  // It used to be an `action` with no `otherwise`, so the chart drew a
+  // check the process could never fail. A chart that disagrees with the
+  // form is worse than no chart.
+  const step = (TRAINING_WEEK_FORM.steps ?? []).find((x) => x.id === "w_roster")!;
+  assert.ok(step, "the roster step is missing from the flowchart");
+  assert.equal(step.kind, "check");
+  assert.equal(step.otherwise, "w_declined");
+  assert.match(step.note ?? "", /stops the registration/i);
+  // And it has to say what happens before any list is loaded, because
+  // that is the state it is in today.
+  assert.match(step.note ?? "", /no list has been imported|passes everybody/i);
 });
 
 test("the newsletter offers the answer an existing subscriber would give", () => {

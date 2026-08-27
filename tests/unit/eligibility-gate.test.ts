@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { eligibilityGate, STALE_AFTER_HOURS } from "../../src/lib/eligibility/gate";
 import { ELIGIBILITY_SOURCES, eligibilitySource } from "../../src/lib/eligibility/sources";
+import { BLOCKED_MESSAGE } from "../../src/lib/eligibility/messages";
 
 const NOW = new Date("2026-09-01T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3600_000);
@@ -74,4 +75,22 @@ test("every source says where it lives and what it makes you eligible for", () =
 test("between them the sources cover ENGAGE, EXPERIENCE and EQUIP", () => {
   const all = new Set(ELIGIBILITY_SOURCES.flatMap((s) => s.programmes));
   for (const p of ["ENGAGE", "EXPERIENCE", "EQUIP"]) assert.ok(all.has(p), `${p} has no list`);
+});
+
+/* ── What the registrant is told ─────────────────────────────────── */
+
+test("the refusal never names which list they are missing from", () => {
+  // Naming it would turn the form into a way to find out who applied
+  // to EQUIP by typing addresses at it.
+  const msg = BLOCKED_MESSAGE.toLowerCase();
+  for (const leak of ["engage", "experience", "equip", "venture", "sharepoint", "google", "sheet"]) {
+    assert.ok(!msg.includes(leak), `the refusal mentions ${leak}`);
+  }
+});
+
+test("the refusal tells them what to do about it", () => {
+  // A dead end with no next step is how a real applicant gives up.
+  assert.match(BLOCKED_MESSAGE, /coordinator/i);
+  assert.match(BLOCKED_MESSAGE, /different email|just been accepted/i);
+  assert.match(BLOCKED_MESSAGE, /nothing you have typed here is lost/i);
 });

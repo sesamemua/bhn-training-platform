@@ -18,6 +18,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
+import { checkEligibility, BLOCKED_MESSAGE } from "@/lib/eligibility/check";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
 import { makeSeats } from "@/lib/formbuilder/seats";
 import { since, tooMany } from "@/lib/formbuilder/throttle";
@@ -47,13 +48,45 @@ export async function submitPublicForm(
   const stop = tooMany({ byEmail, total });
   if (stop) return { ok: false, problems: [stop] };
 
+  /*
+   * The eligibility check, on the server, because the form's own copy
+   * of it is a courtesy and this action is a public endpoint.
+   *
+   * Matched on the address registered with the programme, which is a
+   * different question from the address they want us to write to —
+   * emailFrom prefers `email` and would never fall through to it.
+   */
+  const registered = typeof verdict.clean.trainee_email === "string"
+    ? verdict.clean.trainee_email
+    : null;
+  const eligibility = registered ? await checkEligibility(registered) : null;
+  if (eligibility?.blocked) {
+    return { ok: false, problems: [BLOCKED_MESSAGE] };
+  }
+
   const row = await prisma.eventFormSubmission.create({
     data: {
       formId: form.id,
       // No __test marker is set here, and nothing in the payload can
       // add one: only the fields the form asks about survive
       // checkSubmission, and __test is not a question.
-      data: verdict.clean as object,
+      /*
+       * The verdict is written here, server-side, next to the answers.
+       * A reserved key rather than a column: it answers "why was she
+       * refused last Tuesday" without a migration, and nothing in the
+       * payload can forge it — only fields the form asks about survive
+       * checkSubmission, and these are not questions.
+       */
+      data: {
+        ...(verdict.clean as object),
+        ...(eligibility
+          ? {
+              __eligibility: eligibility.matched ? "matched" : "not_matched",
+              __eligibilityAt: new Date().toISOString(),
+              __eligibilitySources: eligibility.sourceIds,
+            }
+          : {}),
+      } as object,
       email,
       userId: null,
     },

@@ -167,7 +167,14 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       id: "f_temail", key: "trainee_email", label: "The email registered with BioHubNet",
       type: "email", required: true, options: [],
       showWhen: [whenEligible],
-      help: "Your institutional email, or the secondary email registered with us. We check it against the BioHubNet trainee list to confirm your status — it is used for nothing else on this form. If we cannot find it, your registration still goes through; it just is not counted as a trainee one.",
+      /*
+       * Rewritten when the check became a block. The sentence this
+       * replaced promised the opposite — "if we cannot find it, your
+       * registration still goes through" — and leaving it there while
+       * a non-match ends the form would have made the form lie to the
+       * person reading it.
+       */
+      help: "Your institutional email, or the secondary email registered with us. We check it against the programme lists to confirm your place — it is used for nothing else on this form. It has to be the address your programme has on file: if we cannot find it, the form stops here and a coordinator has to add you.",
     },
     {
       id: "f_prog", key: "bhn_programs", label: "Which programmes are you in?",
@@ -375,8 +382,12 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       when: [whenEligible],
       next: "w_roster", otherwise: "w_full",
     },
-    { id: "w_roster", kind: "action", label: "Checked against the trainee roster", when: [], next: "w_full",
-      note: "A match sets the confirmed-trainee status. Not being found does not stop the registration." },
+    {
+      id: "w_roster", kind: "check", label: "On a programme list?",
+      when: [],
+      next: "w_full", otherwise: "w_declined",
+      note: "Matched by email against the ENGAGE/EXPERIENCE and EQUIP lists. Not being found stops the registration — a coordinator adds the person to the list and they come back. While no list has been imported this step passes everybody, because a roster nobody loaded must not refuse everybody.",
+    },
     {
       id: "w_full", kind: "check", label: "Any chosen session full?",
       when: [{ field: "sessions", op: "answered" }],
