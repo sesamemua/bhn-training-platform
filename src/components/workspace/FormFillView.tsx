@@ -12,13 +12,16 @@
  * a trap, from a pane that is showing you three of its questions.
  *
  * So: full width, one readable column, the real logic underneath.
- * Conditional questions appear and vanish as they would, the session
- * calendar is the same component the live form uses, and Submit
- * validates for real — it just does not send.
+ * Conditional questions appear and vanish as they would, and the
+ * session calendar is the same component in all three modes:
  *
- * NOTHING IS SUBMITTED. Said in the page, not only in a tooltip: an
- * admin will show this to a colleague, and a colleague who thinks they
- * have registered is worse off than one who never saw it.
+ *   preview — validates locally and sends nothing
+ *   test    — files an admin-only row marked __test
+ *   live    — files a genuine public registration
+ *
+ * The mode is explicit rather than inferred from the presence of a
+ * submit function. Both the test and live forms submit, but telling a
+ * real registrant that their entry is only a test is a serious lie.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Clock, Eye, Mail, RotateCcw } from "lucide-react";
@@ -37,13 +40,16 @@ const FIELD =
   "mt-2 w-full rounded-lg border border-line bg-elevated px-3 py-2.5 text-[14px] text-fg outline-none transition-colors focus-visible:border-brand-500";
 
 export function FormFillView({
-  doc, title, submit,
+  doc, title, submit, mode = "preview", liveHref,
 }: {
   doc: BuiltForm;
   title: string;
+  mode?: "preview" | "test" | "live";
+  /** The public registration page, offered from the staff test view. */
+  liveHref?: string;
   /**
-   * Actually file it. Absent means this is a look, not a submission —
-   * the builder's own preview passes nothing.
+   * Actually file it. Absent in preview mode; test and live modes pass
+   * different server actions with different trust boundaries.
    */
   submit?: (answers: Answers) => Promise<{ ok: boolean; problems?: string[]; receipt?: Receipt }>;
 }) {
@@ -192,6 +198,7 @@ export function FormFillView({
         answers={answers}
         doc={doc}
         receipt={receipt}
+        mode={mode}
         onAgain={reset}
       />
     );
@@ -199,13 +206,29 @@ export function FormFillView({
 
   return (
     <div className="mx-auto mt-5 max-w-[760px] pb-24">
-      {/* Said once, at the top, where it cannot be missed. */}
-      <p className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-600">
-        <Eye size={14} className="shrink-0" />
-        {submit
-          ? "The form as a registrant meets it. Submitting from here files a TEST entry — it appears in Admin → Registrants, marked as a test, and you can delete it there."
-          : "This is a preview. Fill it in as much as you like — nothing is sent and nobody is registered."}
-      </p>
+      {/* Live registrants need the form, not implementation notes. The
+          other two modes state their limits once, at the top, where a
+          colleague cannot mistake a test for a registration. */}
+      {mode !== "live" && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-600">
+          <Eye size={14} className="shrink-0" />
+          <span>
+            {mode === "test"
+              ? "Staff preview. Submitting here files a TEST entry in Admin → Registrants. It does not register a real attendee."
+              : "This is a preview. Fill it in as much as you like — nothing is sent and nobody is registered."}
+          </span>
+          {mode === "test" && liveHref && (
+            <a
+              href={liveHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto shrink-0 font-bold underline underline-offset-2 hover:text-amber-700"
+            >
+              Open live form
+            </a>
+          )}
+        </p>
+      )}
 
       {/* Two moments, and the second one is not on this form at all. */}
       {doc.fields.some((f) => f.stage === "confirmation") && (
@@ -269,9 +292,11 @@ export function FormFillView({
             <Check size={14} /> Complete — every required question has an answer.
           </p>
           <p className="mt-1 text-[12.5px] text-emerald-600">
-            {sent
-              ? "Filed. It is in Admin → Registrants, marked as a test — delete it there when you are done."
-              : "A real submission would go to the coordinator from here. This one went nowhere."}
+            {mode === "test"
+              ? "A test submission would be marked clearly in Admin → Registrants."
+              : mode === "live"
+                ? "The registration will now appear in Admin → Registrants."
+                : "A real submission would go to the coordinator from here. This one went nowhere."}
           </p>
         </div>
       )}
@@ -369,7 +394,13 @@ export function FormFillView({
               if (r.ok) { setSent(true); setDone(true); setReceipt(r.receipt); } else setRefused(r.problems ?? ["It was not accepted."]);
             }}
           >
-            {sending ? "Submitting…" : sent ? "Submitted" : stage === "registration" ? "Submit registration" : "Send my answer"}
+            {sending
+              ? "Submitting…"
+              : sent
+                ? "Submitted"
+                : stage === "registration"
+                  ? mode === "test" ? "Submit test registration" : "Submit registration"
+                  : mode === "test" ? "Submit test answer" : "Send my answer"}
           </button>
           <button
             className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-semibold text-muted hover:bg-elevated"
@@ -378,7 +409,11 @@ export function FormFillView({
             <RotateCcw size={13} /> Start again
           </button>
           <span className="text-[12px] text-subtle">
-            {submit ? "Checked here and again on the server." : "Checked for real. Sent nowhere."}
+            {mode === "test"
+              ? "Creates a test record only."
+              : mode === "live"
+                ? "Checked here and again on the server."
+                : "Checked for real. Sent nowhere."}
           </span>
         </div>
       )}
@@ -699,12 +734,13 @@ function Linked({ text }: { text: string }) {
  * through, and then registering again.
  */
 function Confirmation({
-  title, answers, doc, receipt, onAgain,
+  title, answers, doc, receipt, mode, onAgain,
 }: {
   title: string;
   answers: Answers;
   doc: BuiltForm;
   receipt: Receipt | undefined;
+  mode: "preview" | "test" | "live";
   onAgain: () => void;
 }) {
   const ranked = rankedSessions(doc, answers);
@@ -713,27 +749,32 @@ function Confirmation({
   // Anything other than a plain "sent" is something a coordinator needs
   // to see, not something to bury under a tick.
   const wrong = receipt && receipt.state !== "sent" && receipt.state !== "sent-to-you";
+  const test = mode === "test";
 
   return (
     <div className="mx-auto mt-5 max-w-[720px] pb-24">
       <div className="rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/[0.06] p-6">
         <p className="flex items-center gap-2 text-[20px] font-bold leading-tight text-fg">
           <Check size={22} className="shrink-0 text-emerald-600" />
-          That is your registration in.
+          {test ? "Test registration filed." : "That is your registration in."}
         </p>
         <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
-          Thank you for registering for {title}. You do not need to do anything else.
+          {test
+            ? "This did not register a real attendee. The row is marked as a test in Admin → Registrants and can be deleted there."
+            : `Thank you for registering for ${title}. You do not need to do anything else.`}
         </p>
 
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-line bg-card p-4">
-          <Clock size={16} className="mt-0.5 shrink-0 text-brand-500" />
-          <p className="text-[13px] leading-relaxed text-fg">
-            <strong>We will come back to you within two to three weeks.</strong> Places are limited
-            and every registration is reviewed together rather than as it arrives, so it takes that
-            long. We will write to you either way — whether or not we can offer you a place. If you
-            have not heard after three weeks, reply to the email and we will chase it.
-          </p>
-        </div>
+        {!test && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-line bg-card p-4">
+            <Clock size={16} className="mt-0.5 shrink-0 text-brand-500" />
+            <p className="text-[13px] leading-relaxed text-fg">
+              <strong>We will come back to you within two to three weeks.</strong> Places are limited
+              and every registration is reviewed together rather than as it arrives, so it takes that
+              long. We will write to you either way — whether or not we can offer you a place. If you
+              have not heard after three weeks, reply to the email and we will chase it.
+            </p>
+          </div>
+        )}
 
         {line && (
           <p
@@ -787,7 +828,7 @@ function Confirmation({
         className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-semibold text-muted hover:bg-elevated"
         onClick={onAgain}
       >
-        <RotateCcw size={13} /> Fill it in again
+        <RotateCcw size={13} /> {test ? "Run another test" : "Fill it in again"}
       </button>
     </div>
   );

@@ -16,6 +16,7 @@ export function PublicForm({ slug, title, doc }: { slug: string; title: string; 
     <FormFillView
       doc={doc}
       title={title}
+      mode="live"
       submit={async (answers) => submitPublicForm(slug, answers as Record<string, unknown>)}
     />
   );

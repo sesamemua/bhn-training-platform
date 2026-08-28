@@ -17,8 +17,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  AlertTriangle, ArrowDown, ArrowUp, Check, Eye, Loader2, Plus, RefreshCw, Table2, Trash2,
-  Wrench,
+  AlertTriangle, ArrowDown, ArrowUp, Check, ExternalLink, Eye, Link2, Loader2, Plus, RefreshCw,
+  Table2, Trash2, Wrench,
 } from "lucide-react";
 import {
   CONDITION_OPS, FIELD_STAGES, FIELD_STAGE_LABEL, FIELD_TYPES, FIELD_TYPE_LABEL, keyFor, SUBMIT_NOTE_MAX,
@@ -74,12 +74,14 @@ export function FormBuilder({
   const [view, setView] = useState<"setup" | "fill">("setup");
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
   const [answers, setAnswers] = useState<Answers>({});
   // Which of the two moments the preview is showing. The registration
   // form is the one people meet first, so it is what opens.
   const [stage, setStage] = useState<FieldStage>("registration");
   const [split, setSplit] = useState(56); // percent given to the left pane
+  const liveHref = slug ? `/apply/${encodeURIComponent(slug)}` : undefined;
 
   const edit = useCallback((next: (d: BuiltForm) => BuiltForm) => {
     setDoc((d) => next(d));
@@ -158,24 +160,57 @@ export function FormBuilder({
             </span>
           )}
 
-          {/* Set up is what the form IS; Preview is what it is LIKE.
-              Both are needed and neither replaces the other — you
-              cannot change a question from the preview, and you cannot
-              tell whether a form is too long from the builder. */}
-          <span className="ml-auto inline-flex rounded-lg border border-line bg-elevated p-0.5">
-            {([["setup", "Set up", Wrench], ["fill", "Preview", Eye]] as const).map(([id, text, Icon]) => (
-              <button
-                key={id}
-                aria-pressed={view === id}
-                onClick={() => setView(id)}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                  view === id ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
-                }`}
-              >
-                <Icon size={13} /> {text}
-              </button>
-            ))}
-          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {/* The public route is the thing to share. Keeping these
+                controls beside Preview makes the distinction concrete:
+                Preview creates test rows; the live form accepts people. */}
+            {liveHref && (
+              <>
+                <a
+                  href={liveHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={BTN}
+                >
+                  <ExternalLink size={13} /> Open live form
+                </a>
+                <button
+                  type="button"
+                  className={BTN}
+                  onClick={async () => {
+                    const url = new URL(liveHref, window.location.origin).toString();
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      setCopied(true);
+                    } catch {
+                      window.prompt("Copy registration link:", url);
+                    }
+                  }}
+                >
+                  <Link2 size={13} /> {copied ? "Link copied" : "Copy link"}
+                </button>
+              </>
+            )}
+
+            {/* Set up is what the form IS; Preview is what it is LIKE.
+                Both are needed and neither replaces the other — you
+                cannot change a question from the preview, and you cannot
+                tell whether a form is too long from the builder. */}
+            <span className="inline-flex rounded-lg border border-line bg-elevated p-0.5">
+              {([["setup", "Set up", Wrench], ["fill", "Preview", Eye]] as const).map(([id, text, Icon]) => (
+                <button
+                  key={id}
+                  aria-pressed={view === id}
+                  onClick={() => setView(id)}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                    view === id ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  <Icon size={13} /> {text}
+                </button>
+              ))}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -187,6 +222,8 @@ export function FormBuilder({
         <FormFillView
           doc={doc}
           title={title}
+          mode={slug ? "test" : "preview"}
+          liveHref={liveHref}
           submit={
             slug
               ? async (answers) => {

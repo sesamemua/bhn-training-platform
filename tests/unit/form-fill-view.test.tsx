@@ -30,6 +30,37 @@ test("it says, on the page, that nothing is submitted", () => {
   assert.match(html, /nothing is sent and nobody is registered/);
 });
 
+test("the staff test mode says it is a test and points to the live form", () => {
+  const testView = renderToStaticMarkup(
+    React.createElement(FormFillView, {
+      doc: TRAINING_WEEK_FORM,
+      title: "Training Week 2026 registration",
+      mode: "test",
+      liveHref: "/apply/training-week-registration-2026",
+      submit: async () => ({ ok: true }),
+    }),
+  );
+
+  assert.match(testView, /Staff preview/);
+  assert.match(testView, /files a TEST entry/);
+  assert.match(testView, /does not register a real attendee/);
+  assert.match(testView, /href="\/apply\/training-week-registration-2026"/);
+  assert.match(testView, /Open live form/);
+});
+
+test("the live mode never labels a genuine registration as a test", () => {
+  const liveView = renderToStaticMarkup(
+    React.createElement(FormFillView, {
+      doc: TRAINING_WEEK_FORM,
+      title: "Training Week 2026 registration",
+      mode: "live",
+      submit: async () => ({ ok: true }),
+    }),
+  );
+
+  assert.doesNotMatch(liveView, /TEST entry|nothing is sent|nobody is registered|Staff preview/);
+});
+
 test("the form opens with the question it is supposed to open with", () => {
   assert.match(html, /Where do you stand with BioHubNet\?/);
 });
