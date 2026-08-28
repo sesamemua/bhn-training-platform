@@ -134,6 +134,36 @@ test("a URL pasted inside a sentence is still found", () => {
   );
 });
 
+test("a handle with an emoji in it — people really do this", () => {
+  /*
+   * Reported from a real profile:
+   *   linkedin.com/in/%F0%9F%87%A8%F0%9F%87%A6irsa-wiginton-174b2170
+   * which decodes to a Canadian flag followed by the name. A regional
+   * indicator is \p{S}, a Symbol — neither a letter nor a number — so
+   * an allow-list of [\p{L}\p{N}\-._] refused a real person's profile.
+   */
+  const flag = "\u{1F1E8}\u{1F1E6}";
+  const expected = `https://www.linkedin.com/in/${encodeURIComponent(flag + "irsa-wiginton-174b2170")}/`;
+  assert.equal(
+    normaliseLinkedin("https://www.linkedin.com/in/%F0%9F%87%A8%F0%9F%87%A6irsa-wiginton-174b2170/"),
+    expected,
+    "the percent-encoded form, exactly as it is copied from the address bar",
+  );
+  assert.equal(
+    normaliseLinkedin(`https://www.linkedin.com/in/${flag}irsa-wiginton-174b2170/`),
+    expected,
+    "and the same handle pasted with the emoji intact",
+  );
+});
+
+test("loosening for emoji did not let structure through", () => {
+  // The rule became "reject what cannot be in a path segment" rather
+  // than an allow-list, so these are the things that must still fail.
+  for (const bad of ["a/b", "a?b", "a#b", "a@b", "a\\b", "jane doe", "a"]) {
+    assert.equal(normaliseLinkedin(bad), null, `${JSON.stringify(bad)} should not be a handle`);
+  }
+});
+
 test("a non-Latin handle survives", () => {
   const out = normaliseLinkedin("https://www.linkedin.com/in/andré");
   assert.equal(out, `https://www.linkedin.com/in/${encodeURIComponent("andré")}/`);

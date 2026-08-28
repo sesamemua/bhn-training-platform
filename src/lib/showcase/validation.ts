@@ -81,11 +81,26 @@ function canonical(slug: string): string | null {
   } catch {
     decoded = slug; // malformed percent-escape; take it literally
   }
-  if (!/^[\p{L}\p{N}\-._]{2,100}$/u.test(decoded)) return null;
-  // At least one letter or digit. Without this, ".." passes the class
-  // above and becomes linkedin.com/in/../ — a URL that resolves to
-  // LinkedIn's front page and is stored as if it were somebody's
-  // profile. Real handles are not made of punctuation.
-  if (!/[\p{L}\p{N}]/u.test(decoded)) return null;
+  /*
+   * Reject what cannot be in a path segment, rather than allow-listing
+   * the characters a handle may contain.
+   *
+   * The allow-list version was [\p{L}\p{N}\-._], which passed accented
+   * and CJK names but refused a real profile whose handle begins with a
+   * Canadian flag: a regional indicator is \p{S}, a Symbol, and neither
+   * a letter nor a number. People put emoji in these. Whatever survives
+   * here is encodeURIComponent'd below, so an unusual character is a
+   * spelling question, not a safety one.
+   */
+  if (decoded.length < 2 || decoded.length > 100) return null;
+  if (/[\s/?#@\\]/.test(decoded)) return null;
+  if (/[\u0000-\u001f\u007f]/.test(decoded)) return null;
+  /*
+   * At least one character with actual content. Without this, ".."
+   * passes and becomes linkedin.com/in/../ — a URL that resolves to
+   * LinkedIn's front page and is stored as if it were somebody's
+   * profile. Symbols count, which is what lets the flag through.
+   */
+  if (!/[\p{L}\p{N}\p{S}]/u.test(decoded)) return null;
   return `https://www.linkedin.com/in/${encodeURIComponent(decoded)}/`;
 }

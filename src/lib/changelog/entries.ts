@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── LinkedIn handles with emoji in them
+  {
+    title: "The speaker form accepts LinkedIn addresses with emoji in the handle",
+    body: "Reported from a real profile: `linkedin.com/in/%F0%9F%87%A8%F0%9F%87%A6irsa-wiginton-174b2170`, which is a **Canadian flag** followed by the person's name. The form refused it. The rule was an allow-list of letters, digits, dots, dashes and underscores — so accented names and Chinese characters passed, but a flag did not, because a regional indicator is technically a *symbol* rather than a letter. People put emoji in their handles, and the form was telling one of them their own profile was not a profile. It now works the other way round: reject only what cannot be in a web address — a space, a slash, a question mark, an @ — and accept the rest, since the address is re-encoded before it is stored either way. Both spellings work: the percent-encoded one you get from copying the address bar, and the one with the emoji intact. What still gets refused is unchanged — a handle of pure punctuation, a company page, another site's address pretending to be LinkedIn.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Public VentureConnect application, no account
   {
     title: "A VentureConnect application link that needs no BioHubNet account",
