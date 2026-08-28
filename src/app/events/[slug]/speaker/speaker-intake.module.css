@@ -1,0 +1,28 @@
+.daylight {
+  color-scheme: light;
+
+  /* This public form must look the same for invitees regardless of the
+   * dashboard theme saved in their browser or their OS colour scheme. */
+  --speaker-page-tint: color-mix(in srgb, var(--brand-50) 60%, white);
+  --speaker-control-bg: #ffffff;
+  --speaker-control-line: #cbd5e1;
+  --speaker-control-ink: #0f172a;
+  --speaker-copy: #475569;
+  --speaker-subtle: #64748b;
+  --speaker-disabled-bg: #f1f5f9;
+  --speaker-disabled-line: #64748b;
+  --speaker-disabled-ink: #334155;
+  --speaker-primary-disabled: #475569;
+  --speaker-danger: #e11d48;
+  --speaker-danger-strong: #be123c;
+  --speaker-danger-bg: #fff1f2;
+  --speaker-danger-line: #fda4af;
+  --speaker-success: #059669;
+  --speaker-success-strong: #064e3b;
+  --speaker-success-copy: #065f46;
+  --speaker-success-bg: #ecfdf5;
+  --speaker-success-line: #6ee7b7;
+  --speaker-warning-bg: #fffbeb;
+  --speaker-warning-line: #fcd34d;
+  --speaker-warning-ink: #78350f;
+}

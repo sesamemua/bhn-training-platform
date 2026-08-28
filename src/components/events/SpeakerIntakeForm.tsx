@@ -115,10 +115,10 @@ export function SpeakerIntakeForm({
 
   if (done) {
     return (
-      <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-6 text-center">
-        <CheckCircle2 className="mx-auto text-emerald-600" size={26} />
-        <p className="mt-2 text-[15px] font-semibold text-emerald-900">Thank you — we have everything.</p>
-        <p className="mt-1 text-[13px] text-emerald-800">
+      <div className="rounded-xl border border-[var(--speaker-success-line)] bg-[var(--speaker-success-bg)] px-5 py-6 text-center">
+        <CheckCircle2 className="mx-auto text-[var(--speaker-success)]" size={26} />
+        <p className="mt-2 text-[15px] font-semibold text-[var(--speaker-success-strong)]">Thank you — we have everything.</p>
+        <p className="mt-1 text-[13px] text-[var(--speaker-success-copy)]">
           Your details go to the organisers for the event website. They’ll be in
           touch if anything needs checking.
         </p>
@@ -179,7 +179,7 @@ export function SpeakerIntakeForm({
           className={INPUT}
         />
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <span className={`text-[11.5px] font-medium ${over ? "text-rose-600" : "text-slate-500"}`}>
+          <span className={`text-[11.5px] font-medium ${over ? "text-[var(--speaker-danger)]" : "text-[var(--speaker-subtle)]"}`}>
             {bioWords} / {bioMaxWords} words
           </span>
           <button
@@ -201,29 +201,29 @@ export function SpeakerIntakeForm({
                   ? `Only needed above ${bioMaxWords} words — you are inside the limit`
                   : `Suggest a version inside ${bioMaxWords} words`
             }
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:border-slate-500 disabled:bg-slate-100 disabled:text-slate-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-2.5 py-1 text-[12px] font-semibold text-[var(--speaker-disabled-ink)] transition hover:border-[var(--brand-400)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:border-[var(--speaker-disabled-line)] disabled:bg-[var(--speaker-disabled-bg)] disabled:text-[var(--speaker-disabled-ink)]"
           >
             {shortening ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
             Shorten for me
           </button>
           {over && (
-            <span className="text-[11.5px] text-rose-600">
+            <span className="text-[11.5px] text-[var(--speaker-danger)]">
               {bioWords - bioMaxWords} words over — shorten it before submitting.
             </span>
           )}
         </div>
 
-        {shortenError && <p className="mt-1.5 text-[12px] text-rose-600">{shortenError}</p>}
-        {shortenNote && <p className="mt-1.5 text-[12px] text-slate-600">{shortenNote}</p>}
+        {shortenError && <p className="mt-1.5 text-[12px] text-[var(--speaker-danger)]">{shortenError}</p>}
+        {shortenNote && <p className="mt-1.5 text-[12px] text-[var(--speaker-copy)]">{shortenNote}</p>}
 
         {suggestion && (
-          <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/60 p-3">
-            <p className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-brand-800">
+          <div className="mt-2 rounded-lg border border-[var(--brand-200)] bg-[var(--speaker-page-tint)] p-3">
+            <p className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--brand-800)]">
               <Sparkles size={11} /> Suggested — edit it, then use it
               <button
                 type="button"
                 onClick={() => setSuggestion(null)}
-                className="ml-auto text-brand-700 hover:text-brand-900"
+                className="ml-auto text-[var(--brand-700)] hover:text-[var(--brand-900)]"
                 aria-label="Dismiss suggestion"
               >
                 <X size={12} />
@@ -233,14 +233,14 @@ export function SpeakerIntakeForm({
               value={suggestion}
               onChange={(e) => setSuggestion(e.target.value)}
               rows={10}
-              className="mt-1.5 w-full rounded-md border border-brand-200 bg-white px-2.5 py-2 text-[13px] leading-relaxed text-slate-900 outline-none focus:border-brand-500"
+              className="mt-1.5 w-full rounded-md border border-[var(--brand-200)] bg-[var(--speaker-control-bg)] px-2.5 py-2 text-[13px] leading-relaxed text-[var(--speaker-control-ink)] outline-none focus:border-[var(--brand-500)]"
             />
             <div className="mt-1.5 flex items-center gap-2">
-              <span className="text-[11.5px] text-slate-500">{countWords(suggestion)} / {bioMaxWords} words</span>
+              <span className="text-[11.5px] text-[var(--speaker-subtle)]">{countWords(suggestion)} / {bioMaxWords} words</span>
               <button
                 type="button"
                 onClick={() => { setBio(suggestion); setSuggestion(null); }}
-                className="ml-auto rounded-md bg-brand-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-brand-700"
+                className="ml-auto rounded-md bg-[var(--brand-600)] px-3 py-1 text-[12px] font-bold text-white hover:bg-[var(--brand-700)]"
               >
                 Use this
               </button>
@@ -250,13 +250,13 @@ export function SpeakerIntakeForm({
       </Field>
 
       {error && (
-        <p className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p>
+        <p className="rounded-lg border border-[var(--speaker-danger-line)] bg-[var(--speaker-danger-bg)] px-3 py-2 text-[13px] text-[var(--speaker-danger-strong)]">{error}</p>
       )}
 
       <button
         type="submit"
         disabled={busy || over || !crop.file}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-[15px] font-bold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-white"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--brand-600)] px-5 py-3 text-[15px] font-bold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:bg-[var(--speaker-primary-disabled)] disabled:text-white"
       >
         {busy && <Loader2 size={16} className="animate-spin" />}
         Send my details
@@ -266,7 +266,7 @@ export function SpeakerIntakeForm({
 }
 
 const INPUT =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-[14px] text-slate-900 outline-none transition focus:border-brand-500";
+  "w-full rounded-lg border border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-3 py-2 text-[14px] text-[var(--speaker-control-ink)] outline-none transition focus:border-[var(--brand-500)]";
 
 /**
  * One labelled question.
@@ -315,11 +315,11 @@ function Field({
     <Wrapper className="block">
       <Caption
         {...(group && labelFor ? { htmlFor: labelFor } : {})}
-        className="text-[12.5px] font-semibold text-slate-800"
+        className="text-[12.5px] font-semibold text-[var(--speaker-control-ink)]"
       >
         {label}
-        {required && <span className="ml-0.5 text-rose-600">*</span>}
-        {hint && <span className="ml-2 font-normal text-[11.5px] text-slate-500">{hint}</span>}
+        {required && <span className="ml-0.5 text-[var(--speaker-danger)]">*</span>}
+        {hint && <span className="ml-2 font-normal text-[11.5px] text-[var(--speaker-subtle)]">{hint}</span>}
       </Caption>
       <div className="mt-1.5">{children}</div>
     </Wrapper>

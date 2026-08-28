@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SpeakerIntakeForm } from "@/components/events/SpeakerIntakeForm";
 import { speakerLimits } from "@/lib/events/limits";
+import styles from "./speaker-intake.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +34,16 @@ export default async function SpeakerIntakePage({
   const limits = speakerLimits(event);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-brand-50/60 to-white px-4 py-12">
+    <main
+      data-theme="light"
+      className={`${styles.daylight} min-h-screen bg-gradient-to-b from-[var(--speaker-page-tint)] to-white px-4 py-12`}
+    >
       <div className="mx-auto max-w-xl">
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-700">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--brand-700)]">
           {event.title}
         </p>
-        <h1 className="mt-1.5 text-2xl font-bold text-slate-900">Speaker details</h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-slate-600">
+        <h1 className="mt-1.5 text-2xl font-bold text-[var(--speaker-control-ink)]">Speaker details</h1>
+        <p className="mt-2 text-[14px] leading-relaxed text-[var(--speaker-copy)]">
           Thanks for joining us. What you enter here is what appears beside your
           name on the event website — so use the headshot and wording you would
           like published.
@@ -53,7 +57,7 @@ export default async function SpeakerIntakePage({
             />
           </div>
         ) : (
-          <p className="mt-7 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-[13.5px] text-amber-900">
+          <p className="mt-7 rounded-xl border border-[var(--speaker-warning-line)] bg-[var(--speaker-warning-bg)] px-4 py-3 text-[13.5px] text-[var(--speaker-warning-ink)]">
             We aren’t collecting speaker details for this event at the moment. If
             you were asked to fill this in, please reply to the invitation and
             we’ll reopen it.

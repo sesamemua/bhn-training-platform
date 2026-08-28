@@ -268,14 +268,14 @@ test("disabled actions keep readable colors instead of fading the whole control"
   }
   assert.ok(
     buttons.some((classes) =>
-      classes.includes("disabled:bg-slate-100") &&
-      classes.includes("disabled:text-slate-700"),
+      classes.includes("disabled:bg-[var(--speaker-disabled-bg)]") &&
+      classes.includes("disabled:text-[var(--speaker-disabled-ink)]"),
     ),
     "the secondary action should keep dark text on a light disabled surface",
   );
   assert.ok(
     buttons.some((classes) =>
-      classes.includes("disabled:bg-slate-600") &&
+      classes.includes("disabled:bg-[var(--speaker-primary-disabled)]") &&
       classes.includes("disabled:text-white"),
     ),
     "the primary action should keep white text on a dark disabled surface",

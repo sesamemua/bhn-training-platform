@@ -96,13 +96,13 @@ export default async function EventsLayout({ children }: { children: React.React
 
   // Anonymous branch — marketing chrome.
   return (
-    <div className="min-h-screen bg-page flex flex-col">
+    <div data-theme="light" className="min-h-screen bg-page flex flex-col">
       <header className="border-b border-line bg-card">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <LogoMark size={28} />
             <span className="font-bold text-fg text-sm">
-              BHN <span className="text-brand-600 font-semibold">Events</span>
+              BHN <span className="text-[var(--brand-600)] font-semibold">Events</span>
             </span>
           </Link>
           <Link
