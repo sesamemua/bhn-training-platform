@@ -32,6 +32,9 @@ import { templateMilestones } from "@/lib/equip/milestones";
 import { buildEquipStatusEmail } from "@/lib/equip/emails";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import { applicantOf } from "@/lib/equip/applicant";
+import { priorApprovalsWhere } from "@/lib/equip/cap";
+import { canDelete } from "@/lib/equip/delete";
+import { purgeApplication } from "@/lib/equip/purge";
 
 export const runtime = "nodejs";
 
@@ -73,12 +76,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (app.stream === "venture_connect") {
     const cap = STREAM_BUDGETS.venture_connect;
     const prior = await prisma.equipApplication.findMany({
-      where: {
-        userId: app.userId,
-        stream: "venture_connect",
-        id: { not: id },
-        status: { in: ["approved", "funded"] },
-      },
+      where: priorApprovalsWhere(app),
       select: { id: true, status: true, approvedAmount: true, decidedAt: true },
     });
     const previouslyApproved = prior.reduce<number>((s, p) => s + (p.approvedAmount ?? 0), 0);
@@ -118,7 +116,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const app = await prisma.equipApplication.findUnique({
     where: { id },
     select: {
-      id: true, userId: true, status: true, requestedAmount: true,
+      id: true, userId: true, applicantEmail: true, status: true, requestedAmount: true,
       stream: true, applicationStage: true, documents: true, milestones: true,
     },
   });
@@ -148,12 +146,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Per-applicant cumulative VC cap enforcement.
   if (target === "approved" && app.stream === "venture_connect" && typeof approvedAmount === "number") {
     const prior = await prisma.equipApplication.aggregate({
-      where: {
-        userId: app.userId,
-        stream: "venture_connect",
-        id: { not: app.id },
-        status: { in: ["approved", "funded"] },
-      },
+      where: priorApprovalsWhere(app),
       _sum: { approvedAmount: true },
     });
     const previouslyApproved = prior._sum.approvedAmount ?? 0;
@@ -269,4 +262,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   return NextResponse.json({ ok: true, application: updated });
+}
+
+/**
+ * DELETE /api/admin/equip/applications/[id]?confirm=1
+ *
+ * An admin removing an application entirely, and the files attached to
+ * it. The confirm flag is required only where it changes something
+ * beyond this row: deleting an APPROVED application returns its amount
+ * to the applicant's $5,000 allowance, because that cap is a live sum
+ * over surviving rows rather than a stored total. canDelete decides;
+ * this just carries out the answer.
+ */
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Same gate the other verbs on this route use.
+  const access = await requireCommitteeOrAdmin(["equip_review"], ["equip_grant_reviewer"]).catch(() => null);
+  if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { id } = await params;
+  const app = await prisma.equipApplication.findUnique({
+    where: { id },
+    select: { id: true, status: true, approvedAmount: true, applicantEmail: true, userId: true },
+  });
+  if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const confirmed = new URL(req.url).searchParams.get("confirm") === "1";
+  const verdict = canDelete(app, "admin", confirmed);
+  if (!verdict.allowed) {
+    return NextResponse.json(
+      { error: verdict.reason, needsConfirm: verdict.needsConfirm, affectsCap: verdict.affectsCap },
+      { status: 409 },
+    );
+  }
+
+  const { files } = await purgeApplication(id);
+  return NextResponse.json({ ok: true, files, affectsCap: verdict.affectsCap });
 }

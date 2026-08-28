@@ -16,6 +16,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { isEditable, type EquipStatus } from "@/lib/equip/types";
+import { canDelete } from "@/lib/equip/delete";
+import { purgeApplication } from "@/lib/equip/purge";
 
 export const runtime = "nodejs";
 
@@ -92,4 +94,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     },
   });
   return NextResponse.json({ ok: true, application: updated });
+}
+
+/**
+ * An applicant deleting their own application.
+ *
+ * Drafts only. Once it has been submitted it is in somebody's queue,
+ * and vanishing from a queue without a word is not a withdrawal — see
+ * canDelete for the wording they get instead.
+ */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await getSession();
+  const userId = (session?.user as { id?: string })?.id;
+  if (!session || !userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const app = await loadOwned(id, userId);
+  if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const verdict = canDelete(app, "owner", false);
+  if (!verdict.allowed) {
+    return NextResponse.json({ error: verdict.reason }, { status: 409 });
+  }
+
+  const { files } = await purgeApplication(id);
+  return NextResponse.json({ ok: true, files });
 }

@@ -12,6 +12,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateVentureConnect } from "@/lib/equip/submit-validation";
+import { canDelete } from "@/lib/equip/delete";
+import { purgeApplication } from "@/lib/equip/purge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,5 +88,25 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
     where: { id: app.id },
     data: { status: "submitted", submittedAt: new Date() },
   });
+  return NextResponse.json({ ok: true });
+}
+
+/**
+ * A public applicant deleting their own draft.
+ *
+ * Same rule as an account holder's: drafts only. The token is the
+ * authorisation, as it is for everything else on this route.
+ */
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+  const { token } = await ctx.params;
+  const app = await load(token);
+  if (!app) return NextResponse.json({ error: "This link is no longer active." }, { status: 404 });
+
+  const verdict = canDelete({ status: app.status, approvedAmount: null }, "owner", false);
+  if (!verdict.allowed) {
+    return NextResponse.json({ error: verdict.reason }, { status: 409 });
+  }
+
+  await purgeApplication(app.id);
   return NextResponse.json({ ok: true });
 }

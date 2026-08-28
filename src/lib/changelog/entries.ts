@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Deleting EQUIP applications
+  {
+    title: "Applicants and admins can delete EQUIP applications",
+    body: "**An applicant can delete their own draft** — on the platform, or through a public VentureConnect link. Once it has been submitted they cannot: it is in the EQUIP team's queue, and vanishing from a queue without a word is not a withdrawal, so the message points them at the team instead. **An admin can delete anything**, and the files attached to an application go with it rather than being left in storage with nothing pointing at them. **One case asks first.** Deleting an *approved* application hands its money back — the $5,000 per-company limit is worked out by adding up the applications that still exist, so removing one approved for $2,400 quietly gives that applicant $2,400 more to spend. That is refused until you confirm, and the message says the amount and what it will do. Drafts, submissions still under review, and rejections delete without ceremony. **Fixed while here:** that $5,000 sum was being worked out in two separate places, and both had the same fault for applications with no account — they added up *every* public applicant's approvals rather than that one person's. It is one function now, and it groups public applicants by the address they applied with.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── LinkedIn: optional, and taken as typed
   {
     title: "The speaker form takes the LinkedIn address as typed, and no longer insists on one",
