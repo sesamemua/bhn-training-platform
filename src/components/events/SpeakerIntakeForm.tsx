@@ -19,7 +19,6 @@ import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
 import { BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
-import { normaliseLinkedin } from "@/lib/showcase/validation";
 
 export function SpeakerIntakeForm({
   slug,
@@ -48,7 +47,6 @@ export function SpeakerIntakeForm({
   const [shortenError, setShortenError] = useState<string | null>(null);
   const [shortenNote, setShortenNote] = useState<string | null>(null);
   const [linkedin, setLinkedin] = useState("");
-  const normalised = normaliseLinkedin(linkedin);
 
   const onCrop = useCallback((s: CropState) => setCrop(s), []);
   // Counted in words, which is what the limit is in. Recomputed on every
@@ -295,6 +293,7 @@ export function SpeakerIntakeForm({
 
       <Field
         label="LinkedIn profile"
+        hint="Optional. Paste it however it appears — we don't check it."
         group
         labelFor="speaker-linkedin"
       >
@@ -307,22 +306,6 @@ export function SpeakerIntakeForm({
           className={INPUT}
           placeholder="linkedin.com/in/yourname"
         />
-        {/*
-          Say whether it was understood, rather than making them submit
-          the form to find out. Silence while the field is empty.
-        */}
-        {linkedin.trim() ? (
-          normalised ? (
-            <p className="mt-1.5 text-[11.5px] text-emerald-700">
-              Reads as <span className="font-semibold">{normalised.replace(/^https:\/\/www\./, "").replace(/\/$/, "")}</span>
-            </p>
-          ) : (
-            <p className="mt-1.5 text-[11.5px] text-amber-700">
-              Can&rsquo;t read that as a LinkedIn profile yet — the handle from your profile
-              address is enough on its own.
-            </p>
-          )
-        ) : null}
       </Field>
 
       <Field

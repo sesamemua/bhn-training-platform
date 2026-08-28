@@ -275,3 +275,18 @@ test("the form shows whatever limit it was given, not a baked-in 250", () => {
   assert.doesNotMatch(custom, /250 words/);
   assert.doesNotMatch(custom, /120 words/);
 });
+
+/* ── The LinkedIn field is not checked ───────────────────────────── */
+
+test("the form says the LinkedIn field is optional and unchecked", () => {
+  assert.match(html, /Optional\. Paste it however it appears/);
+  assert.doesNotMatch(html, /Reads as/, "the live verdict was removed with the checking");
+  assert.doesNotMatch(html, /Can.{0,6}t read that as a LinkedIn profile/);
+});
+
+test("the LinkedIn input is not marked required", () => {
+  const i = html.indexOf('name="linkedin"');
+  assert.ok(i > 0, "the field should exist");
+  const tag = html.slice(html.lastIndexOf("<input", i), html.indexOf(">", i) + 1);
+  assert.ok(!/\brequired\b/.test(tag), "LinkedIn must not be required");
+});

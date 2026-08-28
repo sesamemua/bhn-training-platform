@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
-import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor, normaliseLinkedin } from "@/lib/showcase/validation";
+import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor } from "@/lib/showcase/validation";
 import { BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
 import { speakerLimits, maxCharsFor } from "@/lib/events/limits";
 import { sendMail, mailConfigured } from "@/lib/mail";
@@ -127,19 +127,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   // Accepts a full URL or a bare handle; stored canonical or not at all.
   // Length before parsing, like every other field on this route and
-  // like both sibling callers of normaliseLinkedin. It reads a URL out
-  // of surrounding text, which means scanning, and this endpoint is
-  // public and unauthenticated.
+  // like the sibling callers. The value is not parsed here any more,
+  // but an unbounded field on a public endpoint is still a field
+  // somebody can post a megabyte into.
   if (linkedinRaw.length > 200) {
     return NextResponse.json({ error: "That LinkedIn link is too long." }, { status: 400 });
   }
-  const linkedinUrl = linkedinRaw ? normaliseLinkedin(linkedinRaw) : null;
-  if (linkedinRaw && !linkedinUrl) {
-    return NextResponse.json(
-      { error: "That LinkedIn link doesn't look right — paste the full profile URL, or just your handle." },
-      { status: 400 },
-    );
-  }
+  /*
+   * Stored as typed. Optional, and not checked.
+   *
+   * It used to be normalised and refused when it could not be parsed,
+   * which kept meeting real profiles the parser had not been taught
+   * about — a handle beginning with a Canadian flag was the last one.
+   * Every round of that spent a speaker's goodwill to protect a field
+   * nobody computes on: it is read by a human and pasted onto a
+   * website. A wrong link is a wrong link whether or not we parsed it,
+   * and an admin can fix it in the roster in seconds.
+   */
+  const linkedinUrl = linkedinRaw || null;
   if (email && !isEmail(email)) {
     return NextResponse.json({ error: "That email address doesn't look right." }, { status: 400 });
   }

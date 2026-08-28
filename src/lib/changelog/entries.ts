@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── LinkedIn: optional, and taken as typed
+  {
+    title: "The speaker form takes the LinkedIn address as typed, and no longer insists on one",
+    body: "**Optional**, and **not checked**. Paste it however it appears, or leave it blank. It used to be parsed into a canonical profile URL and refused when the parser could not read it — which kept meeting real profiles nobody had taught it about, the last being a handle beginning with a Canadian flag. Every round of that spent a speaker's goodwill to protect a field nothing computes on: it is read by a person and pasted onto a website. A wrong link is a wrong link whether or not we parsed it, and it takes an admin seconds to correct in the roster. The field now says both things out loud, so nobody wonders whether they have got it in the right shape. The showcase forms are untouched and still tidy theirs, since those feed a directory that displays them.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── LinkedIn handles with emoji in them
   {
     title: "The speaker form accepts LinkedIn addresses with emoji in the handle",
