@@ -53,15 +53,15 @@ export const ACCEPTED = "Yes — accepted into ENGAGE or EXPERIENCE";
  * award is not required", which answers a question by naming the thing
  * it is not, and leaves the reader working out whether they qualify.
  */
-export const EQUIP_APPLIED = "Yes — I have submitted an EQUIP application";
+export const EQUIP_APPLIED = "Yes — I have previously submitted an EQUIP application";
 /*
  * "Training platform account", not "account" — a reader has several,
  * and this is the one that matters. Kept under 60 characters because
  * the flow chart draws these as its own options and its schema DROPS a
  * longer one, taking the whole question with it.
  */
-export const HAS_ACCOUNT = "I have a training platform account but no programme";
-export const NO_ACCOUNT = "I am new to BioHubNet";
+export const HAS_ACCOUNT = "I have a training platform account but no program";
+export const NO_ACCOUNT = "I have no training platform account or BioHubNet program";
 
 export const BHN_STATUS_OPTIONS = [ACCEPTED, EQUIP_APPLIED, HAS_ACCOUNT, NO_ACCOUNT];
 
@@ -115,12 +115,12 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
    * uncomfortable instead. The photographer is standing right there.
    */
   submitNote:
-    "By submitting this registration you agree to be photographed and filmed at Training Week, and to BioHubNet using those pictures and recordings to promote its programmes. There will be a photographer and a video crew at the sessions. Pictures and footage that include you may appear on the BioHubNet website, on its social media, in newsletters, in reports to funders, and in printed material — they can be seen by anyone and may stay online indefinitely. You are giving this permission free of charge. If you would rather not appear, tell the photographer or the video crew directly on the day \u2014 they are there to be asked, and they will keep you out of shot. You do not need to arrange anything in advance or explain why.",
+    "I understand and consent to BioHubNet capturing my photographs and/or videos and using them for promotional purposes during or throughout the Annual Symposium",
   fields: [
     {
       id: "f_trainee", key: "bhn_status", label: "Where do you stand with BioHubNet?",
       type: "choice", required: true, options: BHN_STATUS_OPTIONS, showWhen: [],
-      help: "Training Week is for people already in a BioHubNet programme. Having a BioHubNet training platform account is not the same as being in a programme. Submitting an EQUIP application counts, whether or not it was funded — applying is the qualification, not winning.",
+      help: "Training Week is for people already in a BioHubNet program. Having a BioHubNet training platform account is not the same as being in a program. Submitting an EQUIP application counts, whether or not it was funded — applying is the qualification, not winning.",
     },
     {
       /*
@@ -132,10 +132,10 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        * what to do.
        */
       id: "f_needprog", key: "need_programme_note", stopsHere: true,
-      label: "One step first: join a programme.",
+      label: "One step first: join a program.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: HAS_ACCOUNT }],
-      help: "You already have a BioHubNet training platform account, which is what ENGAGE and EXPERIENCE need. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever fits. EQUIP does not require a BioHubNet training platform account — you apply to it directly, and the application counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
+      help: "You already have a BioHubNet training platform account, which is what ENGAGE and EXPERIENCE need. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever program fits. EQUIP does not require a BioHubNet training platform account — you apply to it directly, and the application counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
     },
     {
       /*
@@ -152,10 +152,10 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        * platform's. Every mention names it now.
        */
       id: "f_needacct", key: "need_account_note", stopsHere: true,
-      label: "Two steps first: an account, then a programme.",
+      label: "Create an account, then apply to either ENGAGE or EXPERIENCE.",
       type: "note", required: false, options: [],
       showWhen: [{ field: "bhn_status", op: "is", value: NO_ACCOUNT }],
-      help: "For ENGAGE or EXPERIENCE: create a BioHubNet training platform account, then apply to the programme — both run on that platform, so the account comes first. EQUIP does not require a BioHubNet training platform account: you apply to EQUIP directly, and the application counts from the moment you submit it, funded or not. Start at biohubnet.ca, then come back to this form.",
+      help: "Create a BioHubNet training platform account, then apply to either ENGAGE or EXPERIENCE. Both programs run on the training platform, so the account comes first. Start at biohubnet.ca, then return to this form once you have applied.",
     },
     {
       id: "f_tname", key: "trainee_name", label: "The name we know you by",
@@ -174,10 +174,10 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        * a non-match ends the form would have made the form lie to the
        * person reading it.
        */
-      help: "Your institutional email, or the secondary email registered with us. We check it against the programme lists to confirm your place — it is used for nothing else on this form. It has to be the address your programme has on file: if we cannot find it, the form stops here and a coordinator has to add you.",
+      help: "Your institutional email, or the secondary email registered with us. We check it against the program lists to confirm your place — it is used for nothing else on this form. It has to be the address your program has on file: if we cannot find it, the form stops here and a coordinator has to add you.",
     },
     {
-      id: "f_prog", key: "bhn_programs", label: "Which programmes are you in?",
+      id: "f_prog", key: "bhn_programs", label: "Which programs are you in?",
       type: "multi", required: false, options: ["ENGAGE", "EXPERIENCE", "EQUIP"],
       showWhen: [whenEligible],
     },
@@ -197,10 +197,10 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       // Asked only of the people it is relevant to. Asking everybody
       // for a postcode to settle a question most of them answered no
       // to is how a form gets long for no reason.
-      id: "f_postcode", key: "postcode", label: "Your postal code",
+      id: "f_postcode", key: "postcode", label: "First 3 characters of your postal code",
       type: "short_text", required: false, options: [],
       showWhen: [whenEligible, { field: "travel_over_2h", op: "is", value: "Yes" }],
-      help: "So we can work out the distance. Nothing else is done with it.",
+      help: "Enter only the first 3 characters, for example M5V. We use them only to estimate travel distance.",
     },
     { id: "f_first", key: "first_name", label: "First name", type: "short_text", required: true, options: [], showWhen: [whenEligible] },
     { id: "f_last", key: "last_name", label: "Last name", type: "short_text", required: true, options: [], showWhen: [whenEligible] },
@@ -349,6 +349,16 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     },
     {
       /*
+       * This key predates the canonical form and is deliberately kept.
+       * Existing submissions store their accessibility answer under
+       * `question`; renaming it would hide those answers from Admin.
+       */
+      id: "f_4uugo8n", key: "question", label: "Accessibility requirements",
+      type: "short_text", required: false, options: [], showWhen: [whenEligible],
+      noneLabel: "N/A — none",
+    },
+    {
+      /*
        * Three answers, because there are three.
        *
        * Yes/No made an existing subscriber pick between implying they
@@ -357,7 +367,6 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       id: "f_news", key: "newsletter_optin", label: "Send me the BioHubNet newsletter",
       type: "choice", required: false, showWhen: [whenEligible],
       options: ["Yes, sign me up", "No thanks", "I am already subscribed"],
-      help: "Once a month. You can unsubscribe from any issue.",
     },
     {
       /*
@@ -378,12 +387,12 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
   steps: [
     { id: "w_start", kind: "start", label: "Registration opens", when: [], next: "w_trainee" },
     {
-      id: "w_trainee", kind: "check", label: "In a programme, or applied to EQUIP?",
+      id: "w_trainee", kind: "check", label: "In a program, or applied to EQUIP?",
       when: [whenEligible],
       next: "w_roster", otherwise: "w_full",
     },
     {
-      id: "w_roster", kind: "check", label: "On a programme list?",
+      id: "w_roster", kind: "check", label: "On a program list?",
       when: [],
       next: "w_full", otherwise: "w_declined",
       note: "Matched by email against the ENGAGE/EXPERIENCE and EQUIP lists. Not being found stops the registration — a coordinator adds the person to the list and they come back. While no list has been imported this step passes everybody, because a roster nobody loaded must not refuse everybody.",
@@ -404,7 +413,7 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
        * unfailable and "Declined, with a reason" an end nothing could
        * reach: a chart drawing a decision the process never takes.
        */
-      id: "w_eligible", kind: "check", label: "In a programme?",
+      id: "w_eligible", kind: "check", label: "In a program?",
       when: [whenEligible],
       next: "w_seat", otherwise: "w_declined",
     },

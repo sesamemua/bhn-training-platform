@@ -68,7 +68,7 @@ test("the form opens with the question it is supposed to open with", () => {
 test("questions behind an answer are not shown before that answer", () => {
   // The trainee follow-ups are gated on trainee = Yes. If they paint,
   // every registrant sees them and the logic is decoration.
-  for (const hidden of ["The name we know you by", "The email registered with BioHubNet", "Which programmes are you in?"]) {
+  for (const hidden of ["The name we know you by", "The email registered with BioHubNet", "Which programs are you in?"]) {
     assert.ok(!html.includes(hidden), `"${hidden}" is showing before it should`);
   }
 });
@@ -268,10 +268,23 @@ test("the postal code is asked only of the people it is about", () => {
   assert.ok(seen({ bhn_status: ACCEPTED, travel_over_2h: "Yes" }).includes("postcode"));
 });
 
+test("the postal code question asks for and limits entry to the first three characters", () => {
+  const postcode = TRAINING_WEEK_FORM.fields.find((f) => f.key === "postcode")!;
+  assert.match(postcode.label, /first 3 characters/i);
+  assert.match(postcode.help ?? "", /M5V/);
+
+  const oneQuestion: BuiltForm = {
+    ...TRAINING_WEEK_FORM,
+    submitNote: undefined,
+    fields: [{ ...postcode, showWhen: [] }],
+  };
+  assert.match(paint(oneQuestion), /maxLength="3"/i);
+});
+
 test("the trainee email says what is done with it, and what happens if it is not found", () => {
   const q = TRAINING_WEEK_FORM.fields.find((f) => f.key === "trainee_email")!;
   const help = q.help ?? "";
-  assert.match(help, /programme lists/i, "it should say what it is checked against");
+  assert.match(help, /program lists/i, "it should say what it is checked against");
   assert.match(help, /nothing else on this form/i, "it should say what else the address is used for");
 
   /*
@@ -308,13 +321,14 @@ test("the newsletter offers the answer an existing subscriber would give", () =>
   assert.equal(q.type, "choice");
   assert.equal(q.options.length, 3);
   assert.ok(q.options.some((o) => /already subscribed/i.test(o)));
+  assert.equal(q.help, undefined, "the monthly-frequency sentence was removed");
 });
 
 test("a note renders as something said, with no input and no number", () => {
   const html = renderToStaticMarkup(
     React.createElement(FormFillView, { doc: TRAINING_WEEK_FORM, title: "T" }),
   );
-  assert.ok(!html.includes("Two steps first"), "hidden until the question is answered");
+  assert.ok(!html.includes("Create an account"), "hidden until the question is answered");
   // Rendered directly rather than through the form, so the note is
   // definitely on screen for this assertion.
   const noteOnly: typeof TRAINING_WEEK_FORM = {
@@ -323,7 +337,7 @@ test("a note renders as something said, with no input and no number", () => {
     fields: TRAINING_WEEK_FORM.fields.filter((f) => f.key === "need_account_note").map((f) => ({ ...f, showWhen: [] })),
   };
   const shown = renderToStaticMarkup(React.createElement(FormFillView, { doc: noteOnly, title: "T" }));
-  assert.match(shown, /Two steps first/);
+  assert.match(shown, /Create an account, then apply to either ENGAGE or EXPERIENCE/);
   assert.ok(!shown.includes("<input"), "a note has nothing to fill in");
   assert.ok(!shown.includes('title="Required"'), "a note is not required");
   assert.match(shown, /0 questions/, "and it is not counted as one");
@@ -357,6 +371,7 @@ test("applying to EQUIP is enough — an award is not required", () => {
   // required", which answers by naming the thing it is not and leaves
   // the reader working out whether that means them.
   assert.match(EQUIP_APPLIED, /submitted an EQUIP application/i);
+  assert.match(EQUIP_APPLIED, /previously submitted/i);
   assert.ok(!/not required|award/i.test(EQUIP_APPLIED), "it no longer describes itself by a negative");
   assert.deepEqual(seen({ bhn_status: EQUIP_APPLIED }), seen({ bhn_status: ACCEPTED }),
     "an EQUIP applicant sees the same form as an accepted trainee");
@@ -382,7 +397,6 @@ test("both notes point somewhere", () => {
   for (const key of ["need_programme_note", "need_account_note"]) {
     const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === key)!;
     assert.match(n.help ?? "", /biohubnet\.ca/);
-    assert.match(n.help ?? "", /EQUIP/, "the EQUIP route is the one most people do not know about");
   }
 });
 
@@ -415,10 +429,10 @@ test("a stopping note offers no Submit and no Continue", () => {
       .map((f) => ({ ...f, showWhen: [] })),
   };
   const html = paint(doc);
-  assert.match(html, /Two steps first/);
+  assert.match(html, /Create an account, then apply to either ENGAGE or EXPERIENCE/);
   assert.ok(!html.includes("Submit registration"), "nothing to submit");
   assert.ok(!html.includes(">Continue<"), "nowhere to continue to");
-  assert.ok(!html.includes("photographed and filmed"), "and no terms for a form that is not being submitted");
+  assert.ok(!html.includes("I understand and consent"), "and no terms for a form that is not being submitted");
   assert.match(html, /carry on from here/, "it says what to do next");
 });
 
@@ -452,7 +466,7 @@ test("the form opens on question one and nothing else", () => {
   // Nothing to submit: question one is unanswered, and every other
   // question is behind the answer to it.
   assert.ok(!html.includes("Submit registration"), "nothing to submit yet");
-  assert.ok(!html.includes("photographed and filmed"), "and no terms for a form nobody can submit");
+  assert.ok(!html.includes("I understand and consent"), "and no terms for a form nobody can submit");
   assert.match(html, /Answer .Where do you stand with BioHubNet\?. to carry on/, "it says what is needed");
 });
 
@@ -482,19 +496,35 @@ test("a short list of choices renders as radios, not a dropdown", () => {
   assert.ok(!html.includes("<select"), "nothing on the opening screen is a dropdown");
 });
 
-test("photography consent is a condition of submitting, not a question", () => {
+test("photo and video consent uses the requested Annual Symposium statement", () => {
   // It was a question with one box you had to tick — a checkbox
   // pretending to be a choice, with no No the form would accept.
   assert.ok(!TRAINING_WEEK_FORM.fields.some((f) => f.key === "media_consent"));
-  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /photographed and filmed/i);
-  // Opting out happens on the day, with the crew who are standing
-  // there — not by writing to the coordinator weeks beforehand, which
-  // makes not wanting to be filmed a piece of admin you have to start.
-  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /photographer or the video crew/i,
-    "somebody who is not comfortable still needs to know who to tell");
-  assert.match(TRAINING_WEEK_FORM.submitNote ?? "", /on the day/i);
-  assert.ok(!/contact the coordinator/i.test(TRAINING_WEEK_FORM.submitNote ?? ""),
-    "it no longer sends them off to arrange it in advance");
+  assert.equal(
+    TRAINING_WEEK_FORM.submitNote,
+    "I understand and consent to BioHubNet capturing my photographs and/or videos and using them for promotional purposes during or throughout the Annual Symposium",
+  );
+});
+
+test("accessibility sits with dietary and before the newsletter", () => {
+  const keys = TRAINING_WEEK_FORM.fields.map((field) => field.key);
+  const dietary = keys.indexOf("dietary");
+  const dietaryOther = keys.indexOf("dietary_other");
+  const accessibility = keys.indexOf("question");
+  const newsletter = keys.indexOf("newsletter_optin");
+  assert.equal(dietaryOther, dietary + 1);
+  assert.equal(accessibility, dietaryOther + 1);
+  assert.equal(newsletter, accessibility + 1);
+  assert.equal(TRAINING_WEEK_FORM.fields[accessibility].label, "Accessibility requirements");
+});
+
+test("visible form copy uses program rather than programme", () => {
+  const copy = [
+    ...TRAINING_WEEK_FORM.fields.flatMap((field) => [field.label, field.help, ...field.options]),
+    ...TRAINING_WEEK_FORM.steps.flatMap((step) => [step.label, step.note]),
+    TRAINING_WEEK_FORM.submitNote,
+  ].filter((value): value is string => typeof value === "string");
+  assert.doesNotMatch(copy.join("\n"), /\bprogrammes?\b/i);
 });
 
 test("the submit terms survive a round trip through storage", () => {
@@ -589,12 +619,9 @@ test("every mention of an account says WHICH account", () => {
   }
 });
 
-test("EQUIP is described by what it does not require, in plain words", () => {
-  for (const key of ["need_programme_note", "need_account_note"]) {
-    const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === key)!;
-    assert.match(n.help ?? "", /EQUIP does not require a BioHubNet training platform account/i,
-      `${key} still says it vaguely`);
-  }
+test("the existing-account route still explains the direct EQUIP option", () => {
+  const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === "need_programme_note")!;
+  assert.match(n.help ?? "", /EQUIP does not require a BioHubNet training platform account/i);
 });
 
 test("both notes point at an address somebody can click", () => {
@@ -619,16 +646,13 @@ test("the address in a note is rendered as a link, not as text to copy out", () 
   assert.match(html, /rel="noopener noreferrer"/);
 });
 
-test("somebody new to BioHubNet is told which route needs an account and which does not", () => {
-  // ENGAGE and EXPERIENCE run on the training platform. EQUIP does not
-  // — sending a would-be EQUIP applicant off to create a platform
-  // account is sending them to do something nobody needs from them.
+test("somebody with no account or program gets the requested two-step route", () => {
   const n = TRAINING_WEEK_FORM.fields.find((f) => f.key === "need_account_note")!;
-  assert.match(NO_ACCOUNT, /new to BioHubNet/i);
-  assert.match(n.help ?? "", /For ENGAGE or EXPERIENCE/i, "the two-step route is named");
+  assert.match(NO_ACCOUNT, /no training platform account/i);
+  assert.match(NO_ACCOUNT, /BioHubNet program/i);
   assert.match(n.help ?? "", /create a BioHubNet training platform account/i, "and it says which account comes first");
-  assert.match(n.help ?? "", /EQUIP does not require a BioHubNet training platform account/i,
-    "and the one-step route is named plainly");
+  assert.match(n.help ?? "", /apply to either ENGAGE or EXPERIENCE/i, "the second step is named");
+  assert.doesNotMatch(n.help ?? "", /EQUIP/i, "this route is specifically ENGAGE or EXPERIENCE");
 });
 
 test("the note for somebody who already has an account says the same about EQUIP", () => {

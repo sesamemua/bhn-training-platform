@@ -655,6 +655,8 @@ function Question({
             className={FIELD}
             disabled={none}
             type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "email" ? "email" : f.type === "phone" ? "tel" : "text"}
+            maxLength={f.key === "postcode" ? 3 : undefined}
+            autoCapitalize={f.key === "postcode" ? "characters" : undefined}
             value={none ? "" : String(answers[f.key] ?? "")}
             onChange={(e) => set(f.key, e.target.value)}
           />
