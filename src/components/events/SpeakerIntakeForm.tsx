@@ -5,15 +5,12 @@
  * senior invitees using it once, often on a phone, so every field is
  * visible at once with no wizard and no account.
  *
- * Three things earn their complexity here. The headshot is cropped in a
+ * Two things earn their complexity here. The headshot is cropped in a
  * ring so nobody submits a photo with their head cut off. The bio has a
  * hard 250-WORD limit — counted in words, not characters — with an AI
  * shortener that proposes, never replaces: the speaker reads and
  * approves before anything goes in the field, and at this limit the
  * usual answer is "it already fits".
- * LinkedIn asks for a URL most people do not know by heart, so the field
- * takes any spelling of it and says what it read, and the button beside
- * it opens their own profile on LinkedIn to copy from. See
  */
 import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
@@ -23,7 +20,6 @@ import { BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
 export function SpeakerIntakeForm({
   slug,
   bioMaxWords,
-  pitchMaxWords,
 }: {
   slug: string;
   /* Resolved on the server from the event, so the counter on screen and
@@ -31,7 +27,6 @@ export function SpeakerIntakeForm({
      baked into the client would silently disagree the moment an admin
      changed it. */
   bioMaxWords: number;
-  pitchMaxWords: number;
 }) {
   const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
   const [name, setName] = useState("");
@@ -46,49 +41,12 @@ export function SpeakerIntakeForm({
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [shortenError, setShortenError] = useState<string | null>(null);
   const [shortenNote, setShortenNote] = useState<string | null>(null);
-  const [linkedin, setLinkedin] = useState("");
 
   const onCrop = useCallback((s: CropState) => setCrop(s), []);
-  // Counted in words, which is what the limit is in. Recomputed on every
-  // keystroke: the string is at most a couple of thousand characters and
-  // a split is cheaper than the render it sits inside.
-  const [pitch, setPitch] = useState("");
-  const pitchWords = countWords(pitch);
-  const pitchOver = pitchWords > pitchMaxWords;
-  const [pitchShortening, setPitchShortening] = useState(false);
-  const [pitchSuggestion, setPitchSuggestion] = useState<string | null>(null);
-  const [pitchNote, setPitchNote] = useState<string | null>(null);
 
   const bioWords = countWords(bio);
   const over = bioWords > bioMaxWords;
   const tooThin = bioWords < BIO_MIN_WORDS;
-
-  async function shortenPitch() {
-    if (pitchShortening) return;
-    setPitchShortening(true);
-    setPitchNote(null);
-    setPitchSuggestion(null);
-    try {
-      const res = await fetch(`/api/events/${slug}/speaker-intake/shorten`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bio: pitch, field: "pitch" }),
-      });
-      const j = (await res.json().catch(() => ({}))) as {
-        ok?: boolean; bio?: string; error?: string; alreadyFits?: boolean; words?: number;
-      };
-      if (!res.ok || !j.ok || !j.bio) throw new Error(j.error ?? "Couldn't shorten it.");
-      if (j.alreadyFits) {
-        setPitchNote(`This already fits (${j.words ?? countWords(j.bio)} of ${pitchMaxWords} words) — no need to shorten it.`);
-      } else {
-        setPitchSuggestion(j.bio);
-      }
-    } catch (e) {
-      setPitchNote((e as Error).message);
-    } finally {
-      setPitchShortening(false);
-    }
-  }
 
   async function shorten() {
     if (shortening) return;
@@ -291,104 +249,13 @@ export function SpeakerIntakeForm({
         )}
       </Field>
 
-      <Field
-        label="LinkedIn profile"
-        hint="Optional. Paste it however it appears — we don't check it."
-        group
-        labelFor="speaker-linkedin"
-      >
-        <input
-          id="speaker-linkedin"
-          name="linkedin"
-          maxLength={200}
-          value={linkedin}
-          onChange={(e) => setLinkedin(e.target.value)}
-          className={INPUT}
-          placeholder="linkedin.com/in/yourname"
-        />
-      </Field>
-
-      <Field
-        label="A brief description of the advice you plan to share"
-        hint={`Or who would benefit most from attending. Up to ${pitchMaxWords} words.`}
-        group
-        labelFor="speaker-pitch"
-      >
-        <textarea
-          id="speaker-pitch"
-          name="sessionPitch"
-          rows={5}
-          value={pitch}
-          onChange={(e) => setPitch(e.target.value)}
-          className={INPUT}
-        />
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <span className={`text-[11.5px] font-medium ${pitchOver ? "text-rose-600" : "text-slate-500"}`}>
-            {pitchWords} / {pitchMaxWords} words
-          </span>
-          <button
-            type="button"
-            onClick={shortenPitch}
-            disabled={pitchShortening || !pitchOver}
-            title={
-              pitchOver
-                ? `Suggest a version inside ${pitchMaxWords} words`
-                : `Only needed above ${pitchMaxWords} words — you are inside the limit`
-            }
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
-          >
-            {pitchShortening ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-            Shorten for me
-          </button>
-          {pitchOver && (
-            <span className="text-[11.5px] text-rose-600">
-              {pitchWords - pitchMaxWords} words over — shorten it before submitting.
-            </span>
-          )}
-        </div>
-
-        {pitchNote && <p className="mt-1.5 text-[12px] text-slate-600">{pitchNote}</p>}
-
-        {pitchSuggestion && (
-          <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/60 p-3">
-            <p className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-brand-800">
-              <Sparkles size={11} /> Suggested — edit it, then use it
-              <button
-                type="button"
-                onClick={() => setPitchSuggestion(null)}
-                className="ml-auto text-brand-700 hover:text-brand-900"
-                aria-label="Dismiss suggestion"
-              >
-                <X size={12} />
-              </button>
-            </p>
-            <textarea
-              value={pitchSuggestion}
-              onChange={(e) => setPitchSuggestion(e.target.value)}
-              rows={6}
-              className="mt-1.5 w-full rounded-md border border-brand-200 bg-white px-2.5 py-2 text-[13px] leading-relaxed text-slate-900 outline-none focus:border-brand-500"
-            />
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className="text-[11.5px] text-slate-500">{countWords(pitchSuggestion)} / {pitchMaxWords} words</span>
-              <button
-                type="button"
-                onClick={() => { setPitch(pitchSuggestion); setPitchSuggestion(null); }}
-                className="ml-auto rounded-md bg-brand-600 px-3 py-1 text-[12px] font-bold text-white hover:bg-brand-700"
-              >
-                Use this
-              </button>
-            </div>
-          </div>
-        )}
-      </Field>
-
       {error && (
         <p className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p>
       )}
 
       <button
         type="submit"
-        disabled={busy || over || pitchOver || !crop.file}
+        disabled={busy || over || !crop.file}
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-[15px] font-bold text-white transition hover:bg-brand-700 disabled:opacity-50"
       >
         {busy && <Loader2 size={16} className="animate-spin" />}

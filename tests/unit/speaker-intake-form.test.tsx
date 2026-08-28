@@ -20,7 +20,6 @@ import { SpeakerIntakeForm } from "../../src/components/events/SpeakerIntakeForm
 const html = renderToStaticMarkup(React.createElement(SpeakerIntakeForm, {
   slug: "2026-industry-insights",
   bioMaxWords: 250,
-  pitchMaxWords: 120,
 }));
 
 /** Every <label>…</label> in the output, crudely but adequately. */
@@ -65,7 +64,7 @@ test("every control a person types into has an accessible name", () => {
   const ids = new Set([...html.matchAll(/<label[^>]*for="([^"]+)"/g)].map((m) => m[1]));
   const controls = [...html.matchAll(/<(input|select|textarea)\b([^>]*)>/g)]
     .filter((m) => !/type="(hidden|file|range|submit)"/.test(m[2]));
-  assert.ok(controls.length > 5, "sanity: the form has fields");
+  assert.ok(controls.length >= 4, "sanity: the remaining text-entry fields are present");
   for (const [, , attrs] of controls) {
     const id = attrs.match(/id="([^"]+)"/)?.[1];
     const named = (id && ids.has(id)) || /aria-label=/.test(attrs);
@@ -240,7 +239,7 @@ test("empty and nonsense give null, not a broken URL", () => {
 
 test("the form states the limit in words, not characters", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E", bioMaxWords: 250, pitchMaxWords: 120 } as never),
+    React.createElement(SpeakerIntakeForm, { slug: "e", bioMaxWords: 250 }),
   );
   assert.match(html, /Up to 250 words/, "the hint should name the word limit");
   assert.match(html, /0 \/ 250 words/, "the counter should count words");
@@ -249,7 +248,7 @@ test("the form states the limit in words, not characters", () => {
 
 test("shortening is not offered to a bio that is inside the limit", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SpeakerIntakeForm, { slug: "e", eventTitle: "E", bioMaxWords: 250, pitchMaxWords: 120 } as never),
+    React.createElement(SpeakerIntakeForm, { slug: "e", bioMaxWords: 250 }),
   );
   // An empty bio is inside the limit, so the button starts disabled —
   // it exists for the speaker who pastes a faculty page, not for
@@ -266,27 +265,19 @@ test("the form shows whatever limit it was given, not a baked-in 250", () => {
   // client would silently disagree with the rule the server enforces.
   const custom = renderToStaticMarkup(
     React.createElement(SpeakerIntakeForm, {
-      slug: "e", bioMaxWords: 80, pitchMaxWords: 40,
-    } as never),
+      slug: "e", bioMaxWords: 80,
+    }),
   );
   assert.match(custom, /Up to 80 words/);
   assert.match(custom, /0 \/ 80 words/);
-  assert.match(custom, /0 \/ 40 words/);
   assert.doesNotMatch(custom, /250 words/);
-  assert.doesNotMatch(custom, /120 words/);
 });
 
-/* ── The LinkedIn field is not checked ───────────────────────────── */
-
-test("the form says the LinkedIn field is optional and unchecked", () => {
-  assert.match(html, /Optional\. Paste it however it appears/);
-  assert.doesNotMatch(html, /Reads as/, "the live verdict was removed with the checking");
-  assert.doesNotMatch(html, /Can.{0,6}t read that as a LinkedIn profile/);
-});
-
-test("the LinkedIn input is not marked required", () => {
-  const i = html.indexOf('name="linkedin"');
-  assert.ok(i > 0, "the field should exist");
-  const tag = html.slice(html.lastIndexOf("<input", i), html.indexOf(">", i) + 1);
-  assert.ok(!/\brequired\b/.test(tag), "LinkedIn must not be required");
+test("the public form hides LinkedIn and session-advice fields", () => {
+  assert.doesNotMatch(html, /LinkedIn profile/);
+  assert.doesNotMatch(html, /name="linkedin"/);
+  assert.doesNotMatch(html, /A brief description of the advice you plan to share/);
+  assert.doesNotMatch(html, /who would benefit most from attending/);
+  assert.doesNotMatch(html, /name="sessionPitch"/);
+  assert.doesNotMatch(html, /0 \/ 120 words/);
 });

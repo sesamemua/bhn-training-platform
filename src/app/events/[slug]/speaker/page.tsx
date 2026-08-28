@@ -50,7 +50,6 @@ export default async function SpeakerIntakePage({
             <SpeakerIntakeForm
               slug={slug}
               bioMaxWords={limits.bio}
-              pitchMaxWords={limits.pitch}
             />
           </div>
         ) : (
