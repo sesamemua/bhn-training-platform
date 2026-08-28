@@ -258,6 +258,30 @@ test("shortening is not offered to a bio that is inside the limit", () => {
   assert.ok(btn.lastIndexOf("disabled") > btn.lastIndexOf("<button"), "the button should start disabled");
 });
 
+test("disabled actions keep readable colors instead of fading the whole control", () => {
+  const buttons = [...html.matchAll(/<button\b[^>]*class="([^"]*)"[^>]*>/g)]
+    .map((match) => match[1])
+    .filter((classes) => classes.includes("disabled:"));
+  assert.ok(buttons.length >= 2, "sanity: both form actions have disabled styles");
+  for (const classes of buttons) {
+    assert.doesNotMatch(classes, /disabled:opacity-/, "opacity washes out text and borders");
+  }
+  assert.ok(
+    buttons.some((classes) =>
+      classes.includes("disabled:bg-slate-100") &&
+      classes.includes("disabled:text-slate-700"),
+    ),
+    "the secondary action should keep dark text on a light disabled surface",
+  );
+  assert.ok(
+    buttons.some((classes) =>
+      classes.includes("disabled:bg-slate-600") &&
+      classes.includes("disabled:text-white"),
+    ),
+    "the primary action should keep white text on a dark disabled surface",
+  );
+});
+
 /* ── The limit is the event's, not a constant ────────────────────── */
 
 test("the form shows whatever limit it was given, not a baked-in 250", () => {

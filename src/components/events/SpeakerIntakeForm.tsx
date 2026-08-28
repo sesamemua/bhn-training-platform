@@ -201,7 +201,7 @@ export function SpeakerIntakeForm({
                   ? `Only needed above ${bioMaxWords} words — you are inside the limit`
                   : `Suggest a version inside ${bioMaxWords} words`
             }
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:border-slate-500 disabled:bg-slate-100 disabled:text-slate-700"
           >
             {shortening ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
             Shorten for me
@@ -256,7 +256,7 @@ export function SpeakerIntakeForm({
       <button
         type="submit"
         disabled={busy || over || !crop.file}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-[15px] font-bold text-white transition hover:bg-brand-700 disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-[15px] font-bold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-white"
       >
         {busy && <Loader2 size={16} className="animate-spin" />}
         Send my details
