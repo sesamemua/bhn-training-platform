@@ -12,15 +12,20 @@ interface VentureConnectReceiptInput {
   formData: VentureConnectFormData;
 }
 
-interface ReceiptRow {
+export interface ReceiptRow {
   label: string;
   value: string;
 }
 
-interface ReceiptSection {
+export interface ReceiptSection {
   heading: string;
   rows: ReceiptRow[];
 }
+
+export const VENTURE_CONNECT_SUBMISSION_BCC = [
+  "info@biohubnet.ca",
+  "engage@biohubnet.ca",
+] as const;
 
 const ROLE_LABELS: Record<ApplicantRole, string> = {
   master_student: "Master's Student",
@@ -107,7 +112,7 @@ function selectedSupportingDocuments(formData: VentureConnectFormData): string {
   return selected.length ? selected.join("\n") : "None selected";
 }
 
-function receiptSections(formData: VentureConnectFormData): ReceiptSection[] {
+export function receiptSections(formData: VentureConnectFormData): ReceiptSection[] {
   return [
     {
       heading: "Applicant information",
@@ -196,7 +201,7 @@ function renderText(input: VentureConnectReceiptInput, sections: ReceiptSection[
     `Submitted: ${formatSubmittedAt(input.submittedAt)}`,
     "",
     ...details,
-    "Uploaded files are stored with your application and are not included in this email.",
+    "Your complete application packet is attached as one PDF. It includes your submitted answers and every uploaded supporting file.",
     "",
     "The EQUIP team will contact you after reviewing the current funding cycle.",
     "Questions? Contact equip@biohubnet.ca.",
@@ -237,7 +242,7 @@ function renderHtml(input: VentureConnectReceiptInput, sections: ReceiptSection[
             <strong>Submitted:</strong> ${escapeHtml(formatSubmittedAt(input.submittedAt))}
           </td></tr>
           ${sectionHtml}
-          <tr><td style="padding:18px 0 0;font-size:12.5px;line-height:1.6;color:#64748b;">Uploaded files are stored with your application and are not included in this email.</td></tr>
+          <tr><td style="padding:18px 0 0;font-size:12.5px;line-height:1.6;color:#64748b;">Your complete application packet is attached as one PDF. It includes your submitted answers and every uploaded supporting file.</td></tr>
           <tr><td style="padding:16px 0 0;font-size:14px;line-height:1.65;color:#334155;">The EQUIP team will contact you after reviewing the current funding cycle.</td></tr>
         </table>
       </td></tr>

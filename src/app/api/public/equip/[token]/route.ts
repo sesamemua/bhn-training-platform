@@ -12,7 +12,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateVentureConnect } from "@/lib/equip/submit-validation";
-import { buildVentureConnectSubmissionReceipt } from "@/lib/equip/venture-connect-receipt";
+import {
+  buildVentureConnectSubmissionReceipt,
+  VENTURE_CONNECT_SUBMISSION_BCC,
+} from "@/lib/equip/venture-connect-receipt";
+import { buildVentureConnectApplicationPacket } from "@/lib/equip/venture-connect-packet";
 import { canDelete } from "@/lib/equip/delete";
 import { purgeApplication } from "@/lib/equip/purge";
 import { mailConfigured, sendMail } from "@/lib/mail";
@@ -20,6 +24,7 @@ import type { EquipDocument, VentureConnectFormData } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 /** A submitted application is no longer the applicant's to change. */
 const EDITABLE = new Set(["draft"]);
@@ -111,11 +116,23 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
       formData,
     });
     try {
+      const packet = await buildVentureConnectApplicationPacket({
+        applicationId: app.id,
+        submittedAt,
+        formData,
+        documents: (app.documents as unknown as EquipDocument[]) ?? [],
+      });
       await sendMail({
         to: recipient,
+        bcc: [...VENTURE_CONNECT_SUBMISSION_BCC],
         subject: email.subject,
         text: email.text,
         html: email.html,
+        attachments: [{
+          filename: packet.filename,
+          content: packet.content,
+          contentType: packet.contentType,
+        }],
       });
     } catch (err) {
       console.error("[equip] public VentureConnect receipt failed", { id: app.id, err });

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildVentureConnectSubmissionReceipt } from "../../src/lib/equip/venture-connect-receipt";
+import {
+  buildVentureConnectSubmissionReceipt,
+  VENTURE_CONNECT_SUBMISSION_BCC,
+} from "../../src/lib/equip/venture-connect-receipt";
 import type { VentureConnectFormData } from "../../src/lib/equip/types";
 
 const formData: VentureConnectFormData = {
@@ -69,7 +72,7 @@ test("the receipt includes the complete submitted form and calculated total", ()
   }
 });
 
-test("uploaded files and their metadata cannot enter the receipt", () => {
+test("uploaded file metadata cannot leak into the applicant-facing email body", () => {
   const data = {
     ...formData,
     documents: [{ name: "secret-pitch-deck.pdf", url: "https://files.example/secret" }],
@@ -79,7 +82,20 @@ test("uploaded files and their metadata cannot enter the receipt", () => {
   assert.ok(!email.html.includes("secret-pitch-deck.pdf"));
   assert.ok(!email.text.includes("https://files.example/secret"));
   assert.ok(!email.html.includes("https://files.example/secret"));
-  assert.match(email.text, /Uploaded files.*not included/i);
+  assert.match(email.text, /complete application packet is attached as one PDF/i);
+  assert.match(email.html, /complete application packet is attached as one PDF/i);
+});
+
+test("submission copies stay hidden from the applicant", () => {
+  assert.deepEqual(VENTURE_CONNECT_SUBMISSION_BCC, [
+    "info@biohubnet.ca",
+    "engage@biohubnet.ca",
+  ]);
+  const email = receipt();
+  for (const address of VENTURE_CONNECT_SUBMISSION_BCC) {
+    assert.ok(!email.text.includes(address));
+    assert.ok(!email.html.includes(address));
+  }
 });
 
 test("applicant-entered text is escaped in HTML", () => {

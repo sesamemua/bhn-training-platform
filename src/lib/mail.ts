@@ -38,6 +38,12 @@ export interface MailAttachment {
   contentType?: string;
 }
 
+export function normaliseMailRecipients(value?: string | string[]): string[] {
+  return (Array.isArray(value) ? value : value ? [value] : [])
+    .map((address) => address.trim())
+    .filter(Boolean);
+}
+
 export async function sendMail(opts: {
   to: string;
   /** Visible copy recipients. A real cc, not a second send: the people
@@ -46,6 +52,9 @@ export async function sendMail(opts: {
    *  list; empty entries are dropped so callers can pass an optional
    *  address without branching. */
   cc?: string | string[];
+  /** Hidden copy recipients. Kept separate from cc so applicants never
+   *  see internal archive or programme inboxes in their receipt. */
+  bcc?: string | string[];
   subject: string;
   text: string;
   html?: string;
@@ -60,13 +69,13 @@ export async function sendMail(opts: {
   replyTo?: string;
 }) {
   const t = transporter();
-  const cc = (Array.isArray(opts.cc) ? opts.cc : opts.cc ? [opts.cc] : [])
-    .map((a) => a.trim())
-    .filter(Boolean);
+  const cc = normaliseMailRecipients(opts.cc);
+  const bcc = normaliseMailRecipients(opts.bcc);
   await t.sendMail({
     from: FROM,
     to: opts.to,
     cc: cc.length ? cc : undefined,
+    bcc: bcc.length ? bcc : undefined,
     replyTo: opts.replyTo,
     subject: opts.subject,
     text: opts.text,
