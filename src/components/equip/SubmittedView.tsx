@@ -139,16 +139,16 @@ function SubmissionLine({ k, v, block }: { k: string; v: string | number | null 
   if (v === null || v === undefined || v === "") return null;
   if (block) {
     return (
-      <div>
+      <div className="min-w-0">
         <p className="text-[10px] uppercase tracking-wider font-bold text-subtle mb-1">{k}</p>
-        <p className="text-sm text-fg leading-relaxed">{v}</p>
+        <p className="min-w-0 max-w-full whitespace-pre-wrap text-sm text-fg leading-relaxed [overflow-wrap:anywhere]">{v}</p>
       </div>
     );
   }
   return (
-    <div className="flex items-baseline gap-2">
+    <div className="flex min-w-0 items-start gap-2">
       <span className="text-[10px] uppercase tracking-wider font-bold text-subtle shrink-0 min-w-[100px]">{k}</span>
-      <span className="text-sm text-fg">{v}</span>
+      <span className="min-w-0 flex-1 whitespace-pre-wrap text-sm text-fg [overflow-wrap:anywhere]">{v}</span>
     </div>
   );
 }
