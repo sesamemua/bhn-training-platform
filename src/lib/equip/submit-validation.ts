@@ -17,6 +17,7 @@ const VC_BUDGET_KEYS: (keyof VentureConnectFormData)[] = [
   "budgetAccommodation",
   "budgetRegistration",
 ];
+const FOUR_DIGIT_ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 
 export function sumVcBudget(f: VentureConnectFormData): number {
@@ -59,6 +60,18 @@ export function validateVentureConnect(f: VentureConnectFormData): string[] {
   if (!f.eventLocation?.trim()) errors.push("Event: Location is required");
   if (!f.eventDates?.trim())    errors.push("Event: Dates are required");
 
+  const optionalDates = [
+    ["Invention disclosure date", f.ip?.inventionDisclosureDate],
+    ["Provisional patent date", f.ip?.provisionalPatentDate],
+    ["Full patent date", f.ip?.fullPatentDate],
+    ["Licensed technology date", f.ip?.licensedTechnologyDate],
+  ] as const;
+  for (const [label, value] of optionalDates) {
+    if (value && !FOUR_DIGIT_ISO_DATE.test(value)) {
+      errors.push(`${label} must use a four-digit year (YYYY-MM-DD)`);
+    }
+  }
+
   // Budget
   const total = sumVcBudget(f);
   if (total <= 0) errors.push("At least one budget line item must be set");
@@ -69,7 +82,11 @@ export function validateVentureConnect(f: VentureConnectFormData): string[] {
   // Signature attestation
   if (f.acknowledged !== true) errors.push("Signature: please tick the acknowledgement checkbox");
   if (!f.signaturePrintedName?.trim()) errors.push("Signature: Print Name is required");
-  if (!f.signatureDate?.trim())        errors.push("Signature: Date is required");
+  if (!f.signatureDate?.trim()) {
+    errors.push("Signature: Date is required");
+  } else if (!FOUR_DIGIT_ISO_DATE.test(f.signatureDate)) {
+    errors.push("Signature: Date must use a four-digit year (YYYY-MM-DD)");
+  }
 
   return errors;
 }

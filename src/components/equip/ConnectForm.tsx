@@ -35,6 +35,7 @@ import {
   type ApplicantRole,
   type EquipDocument,
 } from "@/lib/equip/types";
+import { institutionsForStream } from "@/lib/equip/institutions";
 import { LiftDocumentTray } from "./LiftDocumentTray";
 
 interface Props {
@@ -55,7 +56,7 @@ interface Props {
    * the same questions, checked by exactly the same validator.
    */
   endpointBase?: string;
-  /** Hidden when there is no account to attach files to a session. */
+  /** Lets a host flow hide attachments when uploads are unavailable. */
   allowDocuments?: boolean;
   /** Pulled from the User row to pre-fill applicant identity
    *  fields. The applicant can still edit each one — pre-fill is
@@ -101,6 +102,11 @@ const SAMPLE_VC: VentureConnectFormData = {
 };
 
 const CAP = STREAM_BUDGETS.venture_connect;
+const VENTURE_CONNECT_INSTITUTIONS = [...institutionsForStream("venture_connect")]
+  .sort((a, b) => a.name.localeCompare(b.name));
+const VENTURE_CONNECT_INSTITUTION_NAMES = new Set(
+  VENTURE_CONNECT_INSTITUTIONS.map((institution) => institution.name),
+);
 
 const ROLE_OPTIONS: { id: ApplicantRole; label: string }[] = [
   { id: "master_student",     label: "Master's Student" },
@@ -265,7 +271,10 @@ export function ConnectForm({
             <input type="email" value={form.institutionEmail ?? ""} onChange={(e) => set("institutionEmail", e.target.value)} className={inputCls} />
           </Field>
           <Field label="Institution / Affiliation" required>
-            <input value={form.institutionAffiliation ?? ""} onChange={(e) => set("institutionAffiliation", e.target.value)} className={inputCls} />
+            <VentureConnectInstitutionSelect
+              value={form.institutionAffiliation ?? ""}
+              onChange={(value) => set("institutionAffiliation", value)}
+            />
           </Field>
           <Field label="Department / Program" required>
             <input value={form.departmentProgram ?? ""} onChange={(e) => set("departmentProgram", e.target.value)} className={inputCls} />
@@ -370,13 +379,12 @@ export function ConnectForm({
         </div>
         <Field
           label="Dates"
-          hint="As the event advertises them — a range is fine."
+          hint="As the event advertises them — a range is fine. Example: 14–16 October 2026."
           required
         >
           <input
             value={form.eventDates ?? ""}
             onChange={(e) => set("eventDates", e.target.value)}
-            placeholder="e.g. 14–16 October 2026"
             className={inputCls}
           />
         </Field>
@@ -459,6 +467,10 @@ export function ConnectForm({
           applicationId={applicationId}
           documents={documents}
           onChange={setDocuments}
+          endpointBase={endpointBase}
+          blurb={endpointBase.includes("/public/")
+            ? "Attach the supporting files listed above. Use a slot again to add another file of the same type."
+            : undefined}
         />
       )}
 
@@ -483,7 +495,10 @@ export function ConnectForm({
             <input value={form.signaturePrintedName ?? ""} onChange={(e) => set("signaturePrintedName", e.target.value)} className={inputCls} />
           </Field>
           <Field label="Date" required>
-            <input type="date" value={form.signatureDate ?? ""} onChange={(e) => set("signatureDate", e.target.value)} className={inputCls} />
+            <FourDigitDateInput
+              value={form.signatureDate ?? ""}
+              onChange={(value) => set("signatureDate", value)}
+            />
           </Field>
         </div>
       </Section>
@@ -519,6 +534,73 @@ export function ConnectForm({
 const inputCls =
   "w-full bg-card-solid border border-line rounded-lg px-3 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500";
 const textareaCls = inputCls + " font-sans";
+
+/** Native date controls accept extended years in some browsers. Keep
+ * persisted EQUIP dates in the four-digit form reviewers expect. */
+export function normalizeFourDigitDate(value: string): string {
+  const extended = value.match(/^(\d{4})\d+(-\d{2}-\d{2})$/);
+  return extended ? `${extended[1]}${extended[2]}` : value;
+}
+
+export function FourDigitDateInput({
+  value,
+  onChange,
+  disabled = false,
+  className = inputCls,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <input
+      type="date"
+      min="1000-01-01"
+      max="9999-12-31"
+      value={value}
+      onInput={(event) => {
+        const normalized = normalizeFourDigitDate(event.currentTarget.value);
+        if (normalized !== event.currentTarget.value) {
+          event.currentTarget.value = normalized;
+          onChange(normalized);
+        }
+      }}
+      onChange={(event) => onChange(normalizeFourDigitDate(event.target.value))}
+      disabled={disabled}
+      className={className}
+    />
+  );
+}
+
+export function VentureConnectInstitutionSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const unlistedValue = value.trim() && !VENTURE_CONNECT_INSTITUTION_NAMES.has(value)
+    ? value
+    : null;
+
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={inputCls}
+      aria-label="Institution / Affiliation"
+    >
+      <option value="">Select your institution</option>
+      {unlistedValue && <option value={unlistedValue}>{unlistedValue}</option>}
+      {VENTURE_CONNECT_INSTITUTIONS.map((institution) => (
+        <option key={institution.slug} value={institution.name}>
+          {institution.name}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -627,10 +709,9 @@ function IpRow({
         />
         <span className="text-xs font-bold text-fg">{label}</span>
       </label>
-      <input
-        type="date"
+      <FourDigitDateInput
         value={date ?? ""}
-        onChange={(e) => onDate(e.target.value)}
+        onChange={onDate}
         disabled={!checked}
         className={inputCls + " w-44 disabled:opacity-40"}
       />
@@ -682,6 +763,8 @@ function SaveIndicator({ saving, savedAt }: { saving: boolean; savedAt: string |
     );
   }
   if (savedAt) {
+    // This is a display-only relative timestamp; it does not affect form state.
+    // eslint-disable-next-line react-hooks/purity
     const seconds = Math.max(0, Math.round((Date.now() - new Date(savedAt).getTime()) / 1000));
     return (
       <span className="text-[11px] text-emerald-700 inline-flex items-center gap-1.5">

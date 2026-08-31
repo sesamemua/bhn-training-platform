@@ -51,12 +51,24 @@ interface Props {
   title?: string;
   /** Override sub-copy. */
   blurb?: string;
+  /** Base route for upload and delete requests. Public applications
+   *  use their token route; signed-in applications keep the default. */
+  endpointBase?: string;
 }
 
-export function LiftDocumentTray({ applicationId, documents, onChange, kinds, title, blurb }: Props) {
+export function LiftDocumentTray({
+  applicationId,
+  documents,
+  onChange,
+  kinds,
+  title,
+  blurb,
+  endpointBase = "/api/equip/applications",
+}: Props) {
   const KINDS = kinds ?? STAGE_1_KINDS;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const documentEndpoint = `${endpointBase}/${encodeURIComponent(applicationId)}/document`;
 
   async function upload(file: File, kind: EquipDocument["kind"]) {
     setBusy(kind);
@@ -65,7 +77,7 @@ export function LiftDocumentTray({ applicationId, documents, onChange, kinds, ti
       const fd = new FormData();
       fd.append("file", file);
       fd.append("kind", kind);
-      const res = await fetch(`/api/equip/applications/${applicationId}/document`, {
+      const res = await fetch(documentEndpoint, {
         method: "POST",
         body: fd,
       });
@@ -86,7 +98,7 @@ export function LiftDocumentTray({ applicationId, documents, onChange, kinds, ti
     setBusy("delete-" + key);
     setError(null);
     try {
-      const res = await fetch(`/api/equip/applications/${applicationId}/document?key=${encodeURIComponent(key)}`, {
+      const res = await fetch(`${documentEndpoint}?key=${encodeURIComponent(key)}`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -163,17 +175,53 @@ function KindSlot({
   onUpload: (file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
   const Icon = kind.icon;
+
+  function receive(file: File | undefined) {
+    if (!file || busy) return;
+    onUpload(file);
+  }
+
   return (
-    <label className="rounded-xl border border-dashed border-line hover:border-brand-300 bg-elevated/30 hover:bg-elevated/60 p-3 transition-colors cursor-pointer block">
+    <label
+      onDragEnter={(event) => {
+        event.preventDefault();
+        if (!busy) setDragActive(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (!busy) setDragActive(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setDragActive(false);
+        }
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragActive(false);
+        receive(event.dataTransfer.files?.[0]);
+      }}
+      aria-busy={busy}
+      className={
+        "rounded-xl border border-dashed p-3 transition-colors block " +
+        (busy
+          ? "cursor-wait opacity-70 border-line bg-elevated/30"
+          : dragActive
+            ? "cursor-copy border-brand-500 bg-brand-50/40 ring-2 ring-brand-500/20"
+            : "cursor-pointer border-line bg-elevated/30 hover:border-brand-300 hover:bg-elevated/60")
+      }
+    >
       <input
         ref={inputRef}
         type="file"
         accept={kind.accept}
+        disabled={busy}
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) onUpload(f);
+          receive(f);
           if (inputRef.current) inputRef.current.value = "";
         }}
       />
@@ -184,6 +232,9 @@ function KindSlot({
         <span className="min-w-0 flex-1">
           <span className="block text-xs font-bold text-fg">{kind.label}</span>
           <span className="block text-[10px] text-muted">{kind.hint}</span>
+          <span className="block text-[10px] font-semibold text-brand-700 mt-0.5">
+            {dragActive ? "Drop to attach" : "Drag and drop or click to browse"}
+          </span>
         </span>
         <Upload size={11} className="text-muted shrink-0 mt-1" />
       </div>

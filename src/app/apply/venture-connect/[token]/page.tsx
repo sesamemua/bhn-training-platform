@@ -13,7 +13,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { ConnectForm } from "@/components/equip/ConnectForm";
-import type { VentureConnectFormData } from "@/lib/equip/types";
+import type { EquipDocument, VentureConnectFormData } from "@/lib/equip/types";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -32,7 +32,7 @@ export default async function PublicVentureConnectFormPage({
   const app = await prisma.equipApplication.findUnique({
     where: { publicToken: token },
     select: {
-      id: true, status: true, formData: true, submittedAt: true,
+      id: true, status: true, formData: true, documents: true, submittedAt: true,
       applicantName: true, applicantEmail: true,
     },
   });
@@ -59,19 +59,11 @@ export default async function PublicVentureConnectFormPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
-        <p className="text-[12.5px] leading-relaxed text-amber-900">
-          <strong>Keep this page&rsquo;s link.</strong> It is the only way back into your
-          application — anyone with it can see and edit what you have written, so treat it
-          the way you would a password.
-        </p>
-      </div>
       <ConnectForm
         applicationId={token}
         initial={(app.formData ?? {}) as VentureConnectFormData}
-        initialDocuments={[]}
+        initialDocuments={(app.documents as unknown as EquipDocument[]) ?? []}
         endpointBase="/api/public/equip"
-        allowDocuments={false}
         profile={{
           name: app.applicantName ?? "",
           email: app.applicantEmail ?? "",
