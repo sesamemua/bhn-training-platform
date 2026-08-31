@@ -154,7 +154,7 @@ export function SpeakerIntakeForm({
         </Field>
       </div>
 
-      <Field label="Session title" hint="Optional. As it should appear on the event program.">
+      <Field label="Session title" hint="If applicable. As it should appear on the event program.">
         <input name="sessionTitle" maxLength={200} className={INPUT} />
       </Field>
 

@@ -91,6 +91,8 @@ test("the session title question appears immediately before the headshot", () =>
   assert.ok(headshot > sessionTitle, "the headshot question should follow the session title");
   assert.ok(input, "the session title should render as an input");
   assert.match(input, /maxLength="200"/);
+  assert.match(html, /If applicable\. As it should appear on the event program\./);
+  assert.doesNotMatch(html, /Optional\. As it should appear on the event program\./);
 });
 
 /* ── The LinkedIn field ──────────────────────────────────────────── */
