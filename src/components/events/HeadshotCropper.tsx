@@ -10,7 +10,7 @@
  * is exactly what gets uploaded, rendered to a square canvas on submit.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, ZoomIn } from "lucide-react";
+import { RefreshCw, Trash2, Upload, ZoomIn } from "lucide-react";
 
 /*
  * The on-screen crop circle. 340, not the 240 it was: this is the one
@@ -41,6 +41,7 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; px: number; py: number; k: number } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load the chosen file and frame it so the whole image is visible to
   // begin with — the starting point should never already be a bad crop.
@@ -48,9 +49,18 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
     if (!file) return;
     const url = URL.createObjectURL(file);
     const i = new Image();
-    i.onload = () => { setImg(i); setZoom(1); setPos({ x: 0, y: 0 }); };
+    let active = true;
+    i.onload = () => {
+      if (!active) return;
+      setImg(i);
+      setZoom(1);
+      setPos({ x: 0, y: 0 });
+    };
     i.src = url;
-    return () => URL.revokeObjectURL(url);
+    return () => {
+      active = false;
+      URL.revokeObjectURL(url);
+    };
   }, [file]);
 
   /** Scale at zoom=1: the image just covers the circle. */
@@ -95,24 +105,52 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
 
   useEffect(() => { onChange({ file, toBlob }); }, [file, toBlob, onChange]);
 
+  const removePhoto = useCallback(() => {
+    setFile(null);
+    setImg(null);
+    setZoom(1);
+    setPos({ x: 0, y: 0 });
+    drag.current = null;
+    if (inputRef.current) inputRef.current.value = "";
+  }, []);
+
   return (
     <div className="space-y-3">
-      <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-3 py-3 transition hover:border-[var(--brand-400)]">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--speaker-disabled-bg)] text-[var(--speaker-subtle)]">
-          <Upload size={16} />
-        </span>
-        <span className="text-[13px] text-[var(--speaker-copy)]">{file ? file.name : "Choose a photo…"}</span>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => {
-            const nextFile = e.target.files?.[0] ?? null;
-            setFile(nextFile);
-            if (!nextFile) setImg(null);
-          }}
-        />
-      </label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-3 py-3 transition hover:border-[var(--brand-400)]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--speaker-disabled-bg)] text-[var(--speaker-subtle)]">
+            {file ? <RefreshCw size={16} /> : <Upload size={16} />}
+          </span>
+          <span className="min-w-0 flex-1 text-[13px] text-[var(--speaker-copy)]">
+            <span className="block font-semibold">{file ? "Replace photo" : "Choose a photo…"}</span>
+            {file && <span className="mt-0.5 block truncate text-[11.5px] text-[var(--speaker-subtle)]">{file.name}</span>}
+          </span>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onClick={(e) => { e.currentTarget.value = ""; }}
+            onChange={(e) => {
+              const nextFile = e.target.files?.[0];
+              if (!nextFile) return;
+              setImg(null);
+              setFile(nextFile);
+            }}
+          />
+        </label>
+
+        {file && (
+          <button
+            type="button"
+            onClick={removePhoto}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--speaker-danger-line)] bg-[var(--speaker-danger-bg)] px-3 py-2 text-[12.5px] font-semibold text-[var(--speaker-danger-strong)] transition hover:border-[var(--speaker-danger)]"
+          >
+            <Trash2 size={15} />
+            Remove photo
+          </button>
+        )}
+      </div>
 
       {img && (
         <div className="flex flex-col items-center gap-3 rounded-lg bg-[var(--speaker-control-bg)] p-4">
