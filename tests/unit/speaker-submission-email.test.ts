@@ -22,6 +22,7 @@ const full = () =>
     organization: "Eurofins Scientific",
     bio: "Amara leads regulatory affairs at Eurofins.",
     linkedinUrl: "https://www.linkedin.com/in/amara/",
+    sessionTitle: "Regulatory Strategy for Biomanufacturing Ventures",
     sessionPitch: "How to sequence filings so a financing round survives.",
     photoUrl: "https://cdn.example.com/headshots/amara.png",
   });
@@ -47,6 +48,7 @@ test("every answer reaches both parts of the email", () => {
     "Eurofins Scientific",
     "Amara leads regulatory affairs at Eurofins.",
     "https://www.linkedin.com/in/amara/",
+    "Regulatory Strategy for Biomanufacturing Ventures",
     "How to sequence filings so a financing round survives.",
   ]) {
     assert.ok(m.text.includes(v), `${v} missing from the text part`);
@@ -70,7 +72,7 @@ test("a missing answer shows as missing, not as a gap", () => {
   const m = speakerSubmissionEmail({
     eventTitle: "E", slug: "s", fullName: "Jane Doe",
     title: null, organization: null, bio: null,
-    linkedinUrl: null, sessionPitch: null, photoUrl: null,
+    linkedinUrl: null, sessionTitle: null, sessionPitch: null, photoUrl: null,
   });
   // Six labelled rows, and the blanks are visibly blank.
   assert.ok(m.text.includes("TITLE / ROLE\n—"));
@@ -87,7 +89,7 @@ test("nothing a speaker types can inject markup", () => {
     title: '"><b>x</b>',
     organization: null,
     bio: "<img src=x onerror=alert(1)>",
-    linkedinUrl: null, sessionPitch: null, photoUrl: null,
+    linkedinUrl: null, sessionTitle: null, sessionPitch: null, photoUrl: null,
   });
   assert.ok(!m.html.includes("<script>"));
   assert.ok(!m.html.includes("<b>x</b>"));
@@ -100,7 +102,7 @@ test("a bio with line breaks keeps them", () => {
     eventTitle: "E", slug: "s", fullName: "Jane Doe",
     title: null, organization: null,
     bio: "First paragraph.\n\nSecond paragraph.",
-    linkedinUrl: null, sessionPitch: null, photoUrl: null,
+    linkedinUrl: null, sessionTitle: null, sessionPitch: null, photoUrl: null,
   });
   assert.ok(m.html.includes("white-space:pre-wrap"), "paragraphs would collapse without it");
   assert.ok(m.text.includes("First paragraph.\n\nSecond paragraph."));

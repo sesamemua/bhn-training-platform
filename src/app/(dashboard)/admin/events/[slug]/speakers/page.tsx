@@ -46,6 +46,7 @@ export default async function EventSpeakersPage({
     bio: s.bio,
     topics: s.topics,
     linkedinUrl: s.linkedinUrl,
+    sessionTitle: s.sessionTitle,
     sessionPitch: s.sessionPitch,
     photoUrl: s.photoUrl,
     contactEmail: s.contactEmail,
@@ -58,7 +59,7 @@ export default async function EventSpeakersPage({
       <PageHero
         eyebrow={<><Mic size={11} /> Admin · {event.title}</>}
         title="Speakers & panellists"
-        description="Send invited speakers one link and they fill in their own headshot, title, organisation, bio and topics — no account needed. Everything they submit appears here for you to check before it goes on the website."
+        description="Send invited speakers one link and they fill in their own headshot, title, organisation, session title and bio — no account needed. Everything they submit appears here for you to check before it goes on the website."
       />
       <div className="mx-auto max-w-3xl space-y-6 px-4 pb-12 sm:px-6">
         <Link

@@ -35,6 +35,7 @@ const PatchSchema = z.discriminatedUnion("action", [
     fullName: z.string().trim().min(2).max(120).optional(),
     title: z.string().trim().max(160).nullable().optional(),
     organization: z.string().trim().max(160).nullable().optional(),
+    sessionTitle: z.string().trim().max(200).nullable().optional(),
     // Bounded here only by the cheap character backstop; the word rule
     // depends on the event's own limit, so it is enforced in the handler
     // where the event has been loaded.

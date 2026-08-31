@@ -83,6 +83,16 @@ test("the headshot field still says what to do with it", () => {
   assert.match(html, /Drag to frame it inside the circle/);
 });
 
+test("the session title question appears immediately before the headshot", () => {
+  const sessionTitle = html.indexOf('name="sessionTitle"');
+  const headshot = html.indexOf("Headshot");
+  const input = html.match(/<input\b(?=[^>]*name="sessionTitle")[^>]*>/)?.[0];
+  assert.ok(sessionTitle > -1, "the session title input should be present");
+  assert.ok(headshot > sessionTitle, "the headshot question should follow the session title");
+  assert.ok(input, "the session title should render as an input");
+  assert.match(input, /maxLength="200"/);
+});
+
 /* ── The LinkedIn field ──────────────────────────────────────────── */
 
 import { normaliseLinkedin } from "../../src/lib/showcase/validation";

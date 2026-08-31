@@ -3,7 +3,7 @@
  *
  * PUBLIC (no auth) — a guest speaker or panellist submits their own
  * details for the event website: headshot, name, title, organisation,
- * bio, topics.
+ * session title, bio, topics.
  *
  * Modelled on /api/showcase/submit, which solves the same problem for
  * graduates: a person outside the platform needs to hand us a photo and
@@ -13,8 +13,8 @@
  * group, and every row lands as a draft for an admin to place on the
  * programme.
  *
- * Body: multipart/form-data — name, title, organization, bio, topics
- * (comma separated), email, photo (image/*, <5MB).
+ * Body: multipart/form-data — name, title, organization, sessionTitle,
+ * bio, topics (comma separated), email, photo (image/*, <5MB).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const name = String(form.get("name") ?? "").trim();
   const title = String(form.get("title") ?? "").trim();
   const organization = String(form.get("organization") ?? "").trim();
+  const sessionTitle = String(form.get("sessionTitle") ?? "").trim();
   const bio = String(form.get("bio") ?? "").trim();
   const email = String(form.get("email") ?? "").trim();
   const linkedinRaw = String(form.get("linkedin") ?? "").trim();
@@ -97,6 +98,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   }
   if (organization.length > 160) {
     return NextResponse.json({ error: "Organisation is a little long — keep it under 160 characters." }, { status: 400 });
+  }
+  if (sessionTitle.length > 200) {
+    return NextResponse.json({ error: "Session title is a little long — keep it under 200 characters." }, { status: 400 });
   }
   // Hard-capped at the same limit the form counts down to, so a pasted
   // bio cannot slip past the counter. Counted in words, like the counter.
@@ -204,6 +208,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
         bio: bio || null,
         topics,
         linkedinUrl,
+        sessionTitle: sessionTitle || null,
         sessionPitch: sessionPitch || null,
         contactEmail: email || null,
         photoUrl: r2PublicUrl(photoKey),
@@ -236,6 +241,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       organization: organization || null,
       bio: bio || null,
       linkedinUrl,
+      sessionTitle: sessionTitle || null,
       sessionPitch: sessionPitch || null,
       photoUrl: r2PublicUrl(photoKey),
     });

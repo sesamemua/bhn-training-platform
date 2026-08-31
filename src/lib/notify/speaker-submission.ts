@@ -35,6 +35,7 @@ export interface SpeakerSubmission {
   organization: string | null;
   bio: string | null;
   linkedinUrl: string | null;
+  sessionTitle: string | null;
   sessionPitch: string | null;
   photoUrl: string | null;
 }
@@ -59,6 +60,7 @@ export function speakerSubmissionEmail(s: SpeakerSubmission): SubmissionMail {
     ["Title / role", or(s.title)],
     ["Company / institution", or(s.organization)],
     ["LinkedIn", or(s.linkedinUrl)],
+    ["Session title", or(s.sessionTitle)],
     ["Biography", or(s.bio)],
     ["Advice they plan to share", or(s.sessionPitch)],
   ];

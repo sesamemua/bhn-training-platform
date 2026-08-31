@@ -24,6 +24,7 @@ export interface SpeakerRow {
   bio: string | null;
   topics: string[];
   linkedinUrl: string | null;
+  sessionTitle: string | null;
   sessionPitch: string | null;
   photoUrl: string | null;
   contactEmail: string | null;
@@ -123,6 +124,7 @@ export function SpeakersManager({
           fullName: s.fullName,
           title: s.title,
           organization: s.organization,
+          sessionTitle: s.sessionTitle?.trim() || null,
           bio: s.bio,
           topics: s.topics,
         }),
@@ -292,6 +294,13 @@ export function SpeakersManager({
                       className={INPUT}
                     />
                   </div>
+                  <input
+                    value={editing.sessionTitle ?? ""}
+                    onChange={(e) => setEditing({ ...editing, sessionTitle: e.target.value })}
+                    maxLength={200}
+                    placeholder="Session title"
+                    className={INPUT}
+                  />
                   <div>
                     <textarea
                       value={editing.bio ?? ""}
@@ -354,6 +363,11 @@ export function SpeakersManager({
                     <p className="text-[12.5px] text-muted">
                       {[s.title, s.organization].filter(Boolean).join(" · ") || "—"}
                     </p>
+                    {s.sessionTitle && (
+                      <p className="mt-1 break-words text-[12px] font-medium text-fg">
+                        <span className="text-fg-subtle">Session title: </span>{s.sessionTitle}
+                      </p>
+                    )}
                     {s.topics.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {s.topics.map((t) => (

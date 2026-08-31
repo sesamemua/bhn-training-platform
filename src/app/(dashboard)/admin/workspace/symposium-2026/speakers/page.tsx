@@ -54,6 +54,7 @@ export default async function SymposiumSpeakersPage() {
     bio: s.bio,
     topics: s.topics,
     linkedinUrl: s.linkedinUrl,
+    sessionTitle: s.sessionTitle,
     sessionPitch: s.sessionPitch,
     photoUrl: s.photoUrl,
     contactEmail: s.contactEmail,
@@ -67,7 +68,7 @@ export default async function SymposiumSpeakersPage() {
       <PageHero
         eyebrow={<><Mic size={11} /> Workspace · 2026 Symposium</>}
         title="Speakers & panellists"
-        description="Send invited speakers one link and they fill in their own headshot, title, organisation, bio, LinkedIn and what their session offers — no account needed. Everything they submit appears here for you to check before it goes on the website."
+        description="Send invited speakers one link and they fill in their own headshot, title, organisation, session title and bio — no account needed. Everything they submit appears here for you to check before it goes on the website."
       />
       <div className="mx-auto max-w-3xl space-y-6 pb-12">
         <SpeakersManager

@@ -2979,6 +2979,9 @@ model Speaker {
   /// Canonical https://www.linkedin.com/in/<slug>/ URL. Normalised on
   /// the way in from whatever the speaker pasted.
   linkedinUrl  String?
+  /// Public-facing title for the speaker's session, supplied through
+  /// the intake form and shown to coordinators for programme planning.
+  sessionTitle String?
   /// "A brief description of the advice or insights you plan to share, or
   /// who would benefit most from attending" — the speaker's own framing
   /// of their session, used on the programme page.

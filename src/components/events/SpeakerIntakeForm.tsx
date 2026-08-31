@@ -154,6 +154,10 @@ export function SpeakerIntakeForm({
         </Field>
       </div>
 
+      <Field label="Session title" hint="Optional. As it should appear on the event program.">
+        <input name="sessionTitle" maxLength={200} className={INPUT} />
+      </Field>
+
       <Field label="Headshot" required group hint="Drag to frame it inside the circle.">
         <HeadshotCropper onChange={onCrop} />
       </Field>
