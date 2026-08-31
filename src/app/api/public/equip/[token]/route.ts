@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { validateVentureConnect } from "@/lib/equip/submit-validation";
 import { canDelete } from "@/lib/equip/delete";
 import { purgeApplication } from "@/lib/equip/purge";
+import type { EquipDocument, VentureConnectFormData } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,7 +80,10 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
    * A public application that skipped a check the other one enforces
    * would be a second standard nobody agreed to.
    */
-  const errors = validateVentureConnect(app.formData as Record<string, unknown>);
+  const errors = validateVentureConnect(
+    app.formData as VentureConnectFormData,
+    (app.documents as unknown as EquipDocument[]) ?? [],
+  );
   if (errors.length > 0) {
     return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
   }

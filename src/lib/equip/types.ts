@@ -117,13 +117,17 @@ export interface VentureConnectFormData {
   institutionAffiliation?: string;
   departmentProgram?: string;
   currentRole?: ApplicantRole;
+  /** Expected or completed graduation date. */
+  graduationDate?: string;              // ISO yyyy-mm-dd
   institutionEmail?: string;
 
   // ── Company Information ──────────────────────────────────
   companyName?: string;
   companyWebsite?: string;
+  hasBiomanufacturingOrHumanHealthApplication?: boolean;
   /** Briefly describe your venture or innovation — overview of
-   *  technology / product / service and current development stage. */
+   *  technology / product / service and current development stage.
+   *  Maximum 500 words. */
   ventureDescription?: string;
 
   // ── Intellectual Property (IP) Status ────────────────────

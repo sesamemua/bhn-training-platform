@@ -18,7 +18,7 @@ import { MessageThread } from "@/components/equip/MessageThread";
 import { MilestoneTracker } from "@/components/equip/MilestoneTracker";
 import { STREAM_BUDGETS, type EquipMilestone } from "@/lib/equip/types";
 import {
-  STREAM_META, STATUS_META,
+  STREAM_META, STATUS_META, SUPPORTING_DOCS,
   type EquipStatus, type EquipStream, type ApplicationStage,
   type VentureConnectFormData, type VentureLiftFormData, type VentureLiftFullData,
   type VentureLiftReviewerScores, type EquipDocument,
@@ -75,6 +75,16 @@ export default async function AdminEquipReviewPage({
   const stream = STREAM_META[app.stream as EquipStream];
   const status = STATUS_META[app.status as EquipStatus];
   const formData = (app.formData as VentureConnectFormData) ?? {};
+  const documents = (app.documents as unknown as EquipDocument[]) ?? [];
+  const vcIpRows = [
+    ["Invention disclosure", formData.ip?.inventionDisclosureChecked, formData.ip?.inventionDisclosureDate],
+    ["Provisional patent", formData.ip?.provisionalPatentChecked, formData.ip?.provisionalPatentDate],
+    ["Full patent", formData.ip?.fullPatentChecked, formData.ip?.fullPatentDate],
+    ["Licensed technology", formData.ip?.licensedTechnologyChecked, formData.ip?.licensedTechnologyDate],
+  ].filter(([, checked]) => checked === true) as Array<[string, boolean, string | undefined]>;
+  const vcSupportingDocs = SUPPORTING_DOCS.filter((item) =>
+    formData.supportingDocs?.includes(item.id),
+  );
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -100,7 +110,7 @@ export default async function AdminEquipReviewPage({
         requestedAmount={app.requestedAmount}
         approvedAmount={app.approvedAmount}
         remainingCap={vcHistory?.remaining ?? null}
-        hasIpAppendix={((app.documents as unknown as EquipDocument[]) ?? []).some((d) => d.kind === "ip_doc")}
+        hasIpAppendix={documents.some((d) => d.kind === "ip_doc")}
         existingScores={app.reviewerScores as VentureLiftReviewerScores | null}
       />
 
@@ -152,8 +162,8 @@ export default async function AdminEquipReviewPage({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ApplicantField icon={UserIcon} label="Name" value={applicantOf(app).name ?? "—"} />
           <ApplicantField icon={Mail}     label="Email" value={applicantOf(app).email} />
-          <ApplicantField icon={Briefcase} label="Title / role" value={(app.user?.jobTitle ?? null) ?? "—"} />
-          <ApplicantField icon={MapPin}   label="Institution" value={institutionLabel(app.institution, app.institutionOther)} />
+          <ApplicantField icon={Briefcase} label="Title / role" value={(app.user?.jobTitle ?? formData.currentRole) ?? "—"} />
+          <ApplicantField icon={MapPin} label="Institution" value={formData.institutionAffiliation ?? institutionLabel(app.institution, app.institutionOther)} />
         </div>
         <p className="text-[11px] text-subtle mt-3">
           Applicant type: <span className="font-bold text-fg">{app.applicantType ?? "—"}</span> ·
@@ -163,13 +173,24 @@ export default async function AdminEquipReviewPage({
 
       {app.stream === "venture_connect" && (
         <DSSection eyebrow="Submission body" title="The application" icon={<FileText size={14} className="text-brand-600" />}>
-          <Field label="Company">{formData.companyName ?? "—"}</Field>
+          <Field label="Graduation date">{formData.graduationDate ?? "—"}</Field>
+          <Field label="Company name or project title">{formData.companyName ?? "—"}</Field>
           {formData.companyWebsite && (
             <Field label="Website">
               <a href={formData.companyWebsite} target="_blank" rel="noreferrer" className="text-brand-700 underline">{formData.companyWebsite}</a>
             </Field>
           )}
+          <Field label="Biomanufacturing / human health application">
+            {typeof formData.hasBiomanufacturingOrHumanHealthApplication === "boolean"
+              ? (formData.hasBiomanufacturingOrHumanHealthApplication ? "Yes" : "No")
+              : "—"}
+          </Field>
           <FieldBlock label="Venture description">{formData.ventureDescription ?? "—"}</FieldBlock>
+          <Field label="Intellectual property status">
+            {vcIpRows.length > 0
+              ? vcIpRows.map(([label, , date]) => `${label}: ${date ?? "date missing"}`).join(" · ")
+              : "—"}
+          </Field>
           <FieldBlock label="Funding request justification">{formData.fundingJustification ?? "—"}</FieldBlock>
           <div className="rounded-xl border border-line bg-elevated/40 p-3 mt-3">
             <p className="text-[10px] uppercase tracking-wider font-bold text-subtle mb-2">Budget breakdown</p>
@@ -184,6 +205,32 @@ export default async function AdminEquipReviewPage({
               Total: ${((formData.budgetAirfare ?? 0) + (formData.budgetTrainFare ?? 0) + (formData.budgetRideshareTaxi ?? 0) + (formData.budgetAccommodation ?? 0) + (formData.budgetRegistration ?? 0)).toLocaleString()} CAD
             </p>
           </div>
+          <div className="rounded-xl border border-line bg-elevated/40 p-3 mt-3">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-subtle mb-2">Supporting documentation</p>
+            <p className="text-xs text-fg">
+              {vcSupportingDocs.length > 0
+                ? vcSupportingDocs.map((item) => item.label).join(" · ")
+                : "No supporting-document categories selected."}
+            </p>
+            {documents.length > 0 ? (
+              <ul className="mt-2 space-y-1 text-xs">
+                {documents.map((document) => (
+                  <li key={document.key}>
+                    <a
+                      href={`/api/equip/applications/${app.id}/document?key=${encodeURIComponent(document.key)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-brand-700 underline"
+                    >
+                      {document.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs font-semibold text-rose-700">No files attached.</p>
+            )}
+          </div>
         </DSSection>
       )}
 
@@ -194,7 +241,7 @@ export default async function AdminEquipReviewPage({
       {app.stream === "venture_lift" && (app.applicationStage as ApplicationStage) === "full_app" && (
         <VlStage2Panel
           data={app.formData as unknown as VentureLiftFullData}
-          documents={(app.documents as unknown as EquipDocument[]) ?? []}
+          documents={documents}
           fullAppSubmittedAt={app.fullAppSubmittedAt}
         />
       )}

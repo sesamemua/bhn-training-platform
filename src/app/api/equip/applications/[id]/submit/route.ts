@@ -211,7 +211,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   let total = 0;
 
   if (app.stream === "venture_connect") {
-    errors = validateVentureConnect(formData as VentureConnectFormData);
+    errors = validateVentureConnect(formData as VentureConnectFormData, docs);
     total = sumVcBudget(formData as VentureConnectFormData);
   } else if (app.stream === "venture_lift" && isVlFullSubmit) {
     // VL Stage 2 — full application validation.

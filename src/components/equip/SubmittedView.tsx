@@ -87,8 +87,15 @@ export function SubmittedView({ application }: Props) {
           <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">Your submission</p>
           <SubmissionLine k="Applicant"  v={(application.formData as VentureConnectFormData).fullName} />
           <SubmissionLine k="Institution" v={(application.formData as VentureConnectFormData).institutionAffiliation} />
-          <SubmissionLine k="Company"     v={(application.formData as VentureConnectFormData).companyName} />
+          <SubmissionLine k="Graduation date" v={(application.formData as VentureConnectFormData).graduationDate} />
+          <SubmissionLine k="Company / project" v={(application.formData as VentureConnectFormData).companyName} />
           <SubmissionLine k="Website"     v={(application.formData as VentureConnectFormData).companyWebsite} />
+          <SubmissionLine
+            k="Biomanufacturing / human health"
+            v={typeof (application.formData as VentureConnectFormData).hasBiomanufacturingOrHumanHealthApplication === "boolean"
+              ? ((application.formData as VentureConnectFormData).hasBiomanufacturingOrHumanHealthApplication ? "Yes" : "No")
+              : undefined}
+          />
           <SubmissionLine k="Venture"     v={(application.formData as VentureConnectFormData).ventureDescription} block />
           <SubmissionLine k="Funding justification" v={(application.formData as VentureConnectFormData).fundingJustification} block />
           {application.requestedAmount !== null && (

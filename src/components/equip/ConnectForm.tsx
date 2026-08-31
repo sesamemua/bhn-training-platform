@@ -26,6 +26,7 @@ import { Loader2, Check, AlertCircle, Beaker, Send, AlertTriangle, FlaskConical,
 import {
   STREAM_BUDGETS,
   NO_AI_DISCLAIMER,
+  wordCount,
   type VentureConnectFormData,
   EVENT_CATEGORIES,
   SUPPORTING_DOCS,
@@ -80,9 +81,11 @@ const SAMPLE_VC: VentureConnectFormData = {
   institutionAffiliation: "University of Toronto",
   departmentProgram: "Donnelly Centre for Cellular and Biomolecular Research",
   currentRole: "phd_student",
+  graduationDate: new Date().toISOString().slice(0, 10),
   institutionEmail: "alex.chen@example.test",
   companyName: "PuriBio Inc.",
   companyWebsite: "https://example-bio.test",
+  hasBiomanufacturingOrHumanHealthApplication: true,
   ventureDescription:
     "Sample test data. We're developing a cell-free protein purification platform that reduces downstream processing time by ~40%. Current stage: working prototype validated on three model proteins; planning a paid pilot with one biotech partner next quarter.",
   ip: {
@@ -96,12 +99,14 @@ const SAMPLE_VC: VentureConnectFormData = {
   budgetRideshareTaxi: 150,
   budgetAccommodation: 1500,
   budgetRegistration: 1500,
+  supportingDocs: ["pitch_deck"],
   acknowledged: true,
   signaturePrintedName: "Alex Chen (test)",
   signatureDate: new Date().toISOString().slice(0, 10),
 };
 
 const CAP = STREAM_BUDGETS.venture_connect;
+const VENTURE_DESCRIPTION_MAX_WORDS = 500;
 const VENTURE_CONNECT_INSTITUTIONS = [...institutionsForStream("venture_connect")]
   .sort((a, b) => a.name.localeCompare(b.name));
 const VENTURE_CONNECT_INSTITUTION_NAMES = new Set(
@@ -292,12 +297,20 @@ export function ConnectForm({
             ))}
           </div>
         </Field>
+        <div className="max-w-sm">
+          <Field label="Graduation Date" required>
+            <FourDigitDateInput
+              value={form.graduationDate ?? ""}
+              onChange={(value) => set("graduationDate", value)}
+            />
+          </Field>
+        </div>
       </Section>
 
       {/* ── 2. Company Information ─────────────────────────── */}
       <Section title="Company Information">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Company Name" required>
+          <Field label="Company Name or Project Title" required>
             <input value={form.companyName ?? ""} onChange={(e) => set("companyName", e.target.value)} className={inputCls} />
           </Field>
           <Field label="Website">
@@ -311,29 +324,42 @@ export function ConnectForm({
           </Field>
         </div>
         <Field
+          label="Does your company have a biomanufacturing or human health application?"
+          required
+        >
+          <BinaryChoice
+            value={form.hasBiomanufacturingOrHumanHealthApplication}
+            onChange={(value) => set("hasBiomanufacturingOrHumanHealthApplication", value)}
+          />
+        </Field>
+        <Field
           label="Briefly describe your venture or innovation"
-          hint="Overview of your technology, product, or service and its current development stage. If your company doesn't have publicly available information, attach a business pitch deck below to support your application."
+          hint="Overview of your technology, product, or service and its current development stage. If your company doesn't have publicly available information, attach a business pitch deck below to support your application. Maximum 500 words."
           required
         >
           <textarea
             rows={5}
             value={form.ventureDescription ?? ""}
-            onChange={(e) => set("ventureDescription", e.target.value)}
+            onChange={(e) => set("ventureDescription", capWords(e.target.value, VENTURE_DESCRIPTION_MAX_WORDS))}
             className={textareaCls}
           />
+          <p className="text-[10px] text-subtle text-right tabular-nums">
+            {wordCount(form.ventureDescription)} / {VENTURE_DESCRIPTION_MAX_WORDS} words
+          </p>
         </Field>
       </Section>
 
       {/* ── 3. Intellectual Property Status ────────────────── */}
       <Section
         title="Intellectual Property (IP) Status"
-        hint="Check any milestones the company has achieved and add the date for each."
+        hint="Select at least one milestone and provide its date. Every selected milestone needs a date."
+        required
       >
         <IpStatusFields ip={form.ip} setIp={setIp} />
       </Section>
 
       {/* ── 4. Funding Request Justification ───────────────── */}
-      <Section title="Funding Request Justification">
+      <Section title="Funding Request Justification" required>
         <div className="text-[11px] text-muted leading-snug space-y-1 mb-2">
           <p>Provide a concise summary of your funding request. Cover:</p>
           <ul className="list-disc pl-5 space-y-0.5">
@@ -403,7 +429,7 @@ export function ConnectForm({
       </Section>
 
       {/* ── 5. Budget & Supporting Documentation ───────────── */}
-      <Section title="Budget & Supporting Documentation">
+      <Section title="Budget & Supporting Documentation" required>
         <div className="flex items-baseline justify-between">
           <p className="text-[11px] text-muted">Total amount requested (up to ${CAP.toLocaleString()} CAD):</p>
           <span className={"text-base font-bold tabular-nums " + (overCap ? "text-rose-700" : "text-fg")}>
@@ -429,10 +455,10 @@ export function ConnectForm({
             statement of intent — the file itself goes in the tray below. */}
         <div className="mt-4">
           <p className="text-[11px] font-bold uppercase tracking-wide text-subtle">
-            Supporting documentation
+            Supporting documentation<span className="text-rose-600 ml-0.5">*</span>
           </p>
           <p className="text-[11px] text-muted leading-snug mt-0.5">
-            Tick what you are enclosing, then attach the files below.
+            Select at least one item, then attach at least one file below.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             {SUPPORTING_DOCS.map((doc) => {
@@ -468,6 +494,7 @@ export function ConnectForm({
           documents={documents}
           onChange={setDocuments}
           endpointBase={endpointBase}
+          title="Attachments - at least 1 required"
           blurb={endpointBase.includes("/public/")
             ? "Attach the supporting files listed above. Use a slot again to add another file of the same type."
             : undefined}
@@ -542,6 +569,11 @@ export function normalizeFourDigitDate(value: string): string {
   return extended ? `${extended[1]}${extended[2]}` : value;
 }
 
+export function capWords(value: string, maxWords: number): string {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  return words.length <= maxWords ? value : words.slice(0, maxWords).join(" ");
+}
+
 export function FourDigitDateInput({
   value,
   onChange,
@@ -602,11 +634,55 @@ export function VentureConnectInstitutionSelect({
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function BinaryChoice({
+  value,
+  onChange,
+}: {
+  value: boolean | undefined;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg border border-line bg-card-solid p-1" role="group" aria-label="Choose yes or no">
+      {[
+        { label: "Yes", choice: true },
+        { label: "No", choice: false },
+      ].map((option) => (
+        <button
+          key={option.label}
+          type="button"
+          aria-pressed={value === option.choice}
+          onClick={() => onChange(option.choice)}
+          className={
+            "min-w-20 rounded-md px-4 py-2 text-xs font-bold transition-colors " +
+            (value === option.choice
+              ? "bg-brand-600 text-white"
+              : "text-muted hover:bg-elevated hover:text-fg")
+          }
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  hint,
+  required = false,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-2xl border border-line bg-card p-4 sm:p-5 space-y-3 surface-shadow">
       <header>
-        <h2 className="text-sm font-bold text-fg">{title}</h2>
+        <h2 className="text-sm font-bold text-fg">
+          {title}{required && <span className="text-rose-600 ml-0.5">*</span>}
+        </h2>
         {hint && <p className="text-[11px] text-muted mt-0.5">{hint}</p>}
       </header>
       {children}

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+  capWords,
   FourDigitDateInput,
   VentureConnectInstitutionSelect,
   normalizeFourDigitDate,
@@ -10,7 +11,16 @@ import {
 import { LiftDocumentTray } from "../../src/components/equip/LiftDocumentTray";
 import { INSTITUTIONS } from "../../src/lib/equip/institutions";
 import { validateVentureConnect } from "../../src/lib/equip/submit-validation";
-import type { VentureConnectFormData } from "../../src/lib/equip/types";
+import type { EquipDocument, VentureConnectFormData } from "../../src/lib/equip/types";
+
+const attachedDocument: EquipDocument = {
+  key: "equip/test/pitch-deck.pdf",
+  name: "pitch-deck.pdf",
+  size: 1024,
+  contentType: "application/pdf",
+  kind: "pitch_deck",
+  uploadedAt: "2026-08-31T12:00:00.000Z",
+};
 
 test("VentureConnect institution dropdown includes all 41 partners", () => {
   const html = renderToStaticMarkup(
@@ -39,10 +49,52 @@ test("server validation rejects an extended year", () => {
     institutionAffiliation: "University of Toronto",
     departmentProgram: "Biochemistry",
     currentRole: "phd_student",
+    graduationDate: "2027-06-30",
     institutionEmail: "alex@example.com",
     companyName: "Example Bio",
+    hasBiomanufacturingOrHumanHealthApplication: true,
     ventureDescription: "A sufficiently detailed venture description for validation.",
+    ip: {
+      provisionalPatentChecked: true,
+      provisionalPatentDate: "2026-08-31",
+    },
     fundingJustification: "A sufficiently detailed funding justification for validation.",
+    eventCategory: "conference",
+    eventName: "Life Sciences Summit",
+    eventLocation: "Toronto",
+    eventDates: "14-16 October 2026",
+    budgetRegistration: 500,
+    supportingDocs: ["pitch_deck"],
+    acknowledged: true,
+    signaturePrintedName: "Alex Chen",
+    signatureDate: "2026-08-31",
+  };
+  assert.deepEqual(validateVentureConnect(valid, [attachedDocument]), []);
+  assert.match(
+    validateVentureConnect(
+      { ...valid, signatureDate: "123456-08-31" },
+      [attachedDocument],
+    ).join(" "),
+    /four-digit year/,
+  );
+});
+
+test("venture description input is capped at 500 words", () => {
+  const overLimit = Array.from({ length: 501 }, (_, index) => `word${index}`).join(" ");
+  const capped = capWords(overLimit, 500);
+  assert.equal(capped.split(/\s+/).length, 500);
+  assert.equal(capped.endsWith("word499"), true);
+});
+
+test("server validation requires the new VentureConnect fields and documents", () => {
+  const incomplete: VentureConnectFormData = {
+    fullName: "Alex Chen",
+    institutionAffiliation: "University of Toronto",
+    departmentProgram: "Biochemistry",
+    currentRole: "phd_student",
+    institutionEmail: "alex@example.com",
+    companyName: "Example Bio",
+    ventureDescription: Array.from({ length: 501 }, () => "venture").join(" "),
     eventCategory: "conference",
     eventName: "Life Sciences Summit",
     eventLocation: "Toronto",
@@ -52,11 +104,25 @@ test("server validation rejects an extended year", () => {
     signaturePrintedName: "Alex Chen",
     signatureDate: "2026-08-31",
   };
-  assert.deepEqual(validateVentureConnect(valid), []);
-  assert.match(
-    validateVentureConnect({ ...valid, signatureDate: "123456-08-31" }).join(" "),
-    /four-digit year/,
-  );
+
+  const errors = validateVentureConnect(incomplete, []).join("\n");
+  assert.match(errors, /Graduation Date is required/);
+  assert.match(errors, /biomanufacturing \/ human health/);
+  assert.match(errors, /500-word limit/);
+  assert.match(errors, /Funding Request Justification is required/);
+  assert.match(errors, /select at least one status/);
+  assert.match(errors, /select at least one item/);
+  assert.match(errors, /attach at least one file/);
+});
+
+test("each selected intellectual property status requires a date", () => {
+  const errors = validateVentureConnect(
+    {
+      ip: { fullPatentChecked: true },
+    },
+    [attachedDocument],
+  ).join("\n");
+  assert.match(errors, /Full patent date is required/);
 });
 
 test("attachment slots visibly support drag and drop", () => {
