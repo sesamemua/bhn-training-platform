@@ -12,8 +12,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateVentureConnect } from "@/lib/equip/submit-validation";
+import { buildVentureConnectSubmissionReceipt } from "@/lib/equip/venture-connect-receipt";
 import { canDelete } from "@/lib/equip/delete";
 import { purgeApplication } from "@/lib/equip/purge";
+import { mailConfigured, sendMail } from "@/lib/mail";
 import type { EquipDocument, VentureConnectFormData } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
@@ -21,6 +23,7 @@ export const dynamic = "force-dynamic";
 
 /** A submitted application is no longer the applicant's to change. */
 const EDITABLE = new Set(["draft"]);
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 async function load(token: string) {
   if (!token || token.length < 20) return null;
@@ -88,10 +91,37 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
     return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
   }
 
+  const submittedAt = new Date();
   await prisma.equipApplication.update({
     where: { id: app.id },
-    data: { status: "submitted", submittedAt: new Date() },
+    data: { status: "submitted", submittedAt },
   });
+
+  // Confirmation is best-effort. The application is already safely
+  // submitted before email is attempted, so an SMTP issue cannot lose it.
+  const formData = app.formData as VentureConnectFormData;
+  const institutionEmail = formData.institutionEmail?.trim() ?? "";
+  const recipient = EMAIL.test(institutionEmail)
+    ? institutionEmail
+    : app.applicantEmail?.trim();
+  if (recipient && mailConfigured()) {
+    const email = buildVentureConnectSubmissionReceipt({
+      applicationId: app.id,
+      submittedAt,
+      formData,
+    });
+    try {
+      await sendMail({
+        to: recipient,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
+      });
+    } catch (err) {
+      console.error("[equip] public VentureConnect receipt failed", { id: app.id, err });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
 

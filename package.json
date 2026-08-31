@@ -24,7 +24,7 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "deploy:demo": "bash scripts/deploy-demo.sh",
     "test:newsletter": "tsx --test tests/unit/newsletter-handoff.test.ts tests/unit/newsletter-schedule.test.ts tests/unit/newsletter-config.test.ts",
-    "test:equip": "tsx --test tests/unit/equip-delete.test.ts tests/unit/equip-institutions.test.ts tests/unit/equip-apply-entry.test.ts tests/unit/equip-connect-form.test.tsx tests/unit/equip-public-document-upload.test.ts",
+    "test:equip": "tsx --test tests/unit/equip-delete.test.ts tests/unit/equip-institutions.test.ts tests/unit/equip-apply-entry.test.ts tests/unit/equip-connect-form.test.tsx tests/unit/equip-public-document-upload.test.ts tests/unit/equip-venture-connect-receipt.test.ts",
     "test:eligibility": "tsx --test tests/unit/eligibility-email-key.test.ts tests/unit/eligibility-gate.test.ts",
     "test:speaker": "tsx --test tests/unit/speaker-limits.test.ts tests/unit/speaker-intake-form.test.tsx tests/unit/bio-shorten.test.ts tests/unit/notify.test.ts tests/unit/speaker-submission-email.test.ts",
     "test:insights": "tsx --test tests/unit/industry-insights.test.ts",
