@@ -26,13 +26,6 @@ export const BIO_MAX_WORDS = 250;
 export const BIO_TARGET_MIN_WORDS = 200;
 
 /**
- * Anti-garbage floor on submit, in words. Deliberately permissive —
- * "Jane Doe leads regulatory affairs at Eurofins" is a real, if terse,
- * biography and must not be refused.
- */
-export const BIO_MIN_WORDS = 5;
-
-/**
  * The most text the shortener will accept as input, in words. Past
  * this it is not a biography, and asking a model to compress it costs
  * more than it returns.
@@ -42,7 +35,7 @@ export const BIO_INPUT_MAX_WORDS = 1500;
 /**
  * A cheap character backstop, checked BEFORE any word counting.
  *
- * countWords splits on whitespace, which allocates an array
+ * countWords tokenizes the input, which allocates an array
  * proportional to the input. On a public endpoint that is a lever:
  * a few megabytes of spaces costs nothing to send and a great deal to
  * split. A string length check costs nothing and runs first.
@@ -61,7 +54,9 @@ export const BIO_INPUT_MAX_CHARS = BIO_INPUT_MAX_WORDS * 40;
  * "Ph.D." one word — the same answer Word and Google Docs give, and
  * the same answer the speaker gets if they paste their bio somewhere
  * to check. Tokens with no letter or digit in them (a lone em dash, a
- * bullet) are not words and are not counted.
+ * bullet) are not words and are not counted. Invisible separators that
+ * arrive when text is pasted from a PDF or rich-text editor are treated
+ * as spaces, so a visual line cannot collapse into one giant word.
  */
 export function countWords(text: string): number {
   return words(text).length;
@@ -71,6 +66,7 @@ export function countWords(text: string): number {
 function words(text: string): string[] {
   return text
     .trim()
+    .replace(/[\u200B\u2060\uFEFF]/g, " ")
     .split(/\s+/)
     .filter((w) => /[\p{L}\p{N}]/u.test(w));
 }

@@ -18,7 +18,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { callStructured } from "@/lib/ai/reliability";
 import {
-  BIO_MIN_WORDS,
   BIO_INPUT_MAX_WORDS,
   BIO_INPUT_MAX_CHARS,
   countWords,
@@ -65,7 +64,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const INPUT_MAX_CHARS = isPitch ? PITCH_INPUT_MAX_CHARS : BIO_INPUT_MAX_CHARS;
   const noun = isPitch ? "session description" : "biography";
 
-  // Length before word count: splitting on whitespace allocates, and
+  // Length before word count: tokenizing allocates, and
   // this endpoint is public.
   if (bio.length > INPUT_MAX_CHARS) {
     return NextResponse.json({ error: "That's longer than I can work with." }, { status: 413 });
@@ -73,8 +72,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const have = countWords(bio);
 
-  if (have < BIO_MIN_WORDS) {
-    return NextResponse.json({ error: "Write a little more first, then I can shorten it." }, { status: 400 });
+  if (have === 0) {
+    return NextResponse.json({ error: `Write a ${noun} first, then I can shorten it.` }, { status: 400 });
   }
   if (have > INPUT_MAX_WORDS) {
     return NextResponse.json(

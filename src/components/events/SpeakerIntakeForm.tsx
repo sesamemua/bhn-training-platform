@@ -15,7 +15,7 @@
 import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
-import { BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
+import { countWords } from "@/lib/events/bio";
 
 export function SpeakerIntakeForm({
   slug,
@@ -46,7 +46,6 @@ export function SpeakerIntakeForm({
 
   const bioWords = countWords(bio);
   const over = bioWords > bioMaxWords;
-  const tooThin = bioWords < BIO_MIN_WORDS;
 
   async function shorten() {
     if (shortening) return;
@@ -193,13 +192,11 @@ export function SpeakerIntakeForm({
              * already fit, so leaving it enabled buys a network round trip
              * and a spinner to be told nothing needed doing.
              */
-            disabled={shortening || tooThin || !over}
+            disabled={shortening || !over}
             title={
-              tooThin
-                ? "Write a little more first"
-                : !over
-                  ? `Only needed above ${bioMaxWords} words — you are inside the limit`
-                  : `Suggest a version inside ${bioMaxWords} words`
+              !over
+                ? `Only needed above ${bioMaxWords} words — you are inside the limit`
+                : `Suggest a version inside ${bioMaxWords} words`
             }
             className="inline-flex items-center gap-1.5 rounded-md border border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-2.5 py-1 text-[12px] font-semibold text-[var(--speaker-disabled-ink)] transition hover:border-[var(--brand-400)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:border-[var(--speaker-disabled-line)] disabled:bg-[var(--speaker-disabled-bg)] disabled:text-[var(--speaker-disabled-ink)]"
           >

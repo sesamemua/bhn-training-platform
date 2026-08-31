@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   BIO_MAX_WORDS,
-  BIO_MIN_WORDS,
   BIO_TARGET_MIN_WORDS,
   BIO_INPUT_MAX_WORDS,
   countWords,
@@ -27,6 +26,11 @@ test("counts whitespace-delimited words", () => {
 
 test("collapses runs of whitespace and newlines", () => {
   assert.equal(countWords("  Jane   Doe\n\nleads\tregulatory affairs  "), 5);
+});
+
+test("pasted invisible separators do not turn each line into one word", () => {
+  const pasted = "Jane\u200BDoe\u200Bleads\nregulatory\u2060affairs";
+  assert.equal(countWords(pasted), 5);
 });
 
 test("a hyphenated compound is one word, as it is in Word", () => {
@@ -87,7 +91,7 @@ test("keeps a real prose bio readable when it has to cut", () => {
 });
 
 test("the bounds are ordered and sane", () => {
-  assert.ok(BIO_MIN_WORDS < BIO_TARGET_MIN_WORDS);
+  assert.ok(BIO_TARGET_MIN_WORDS > 0);
   assert.ok(BIO_TARGET_MIN_WORDS < BIO_MAX_WORDS);
   assert.ok(BIO_MAX_WORDS < BIO_INPUT_MAX_WORDS);
   // The floor exists to stop over-compression; a floor below half the

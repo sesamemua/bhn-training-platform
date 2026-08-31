@@ -44,9 +44,8 @@ export default async function SpeakerIntakePage({
         </p>
         <h1 className="mt-1.5 text-2xl font-bold text-[var(--speaker-control-ink)]">Speaker details</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-[var(--speaker-copy)]">
-          Thanks for joining us. What you enter here is what appears beside your
-          name on the event website — so use the headshot and wording you would
-          like published.
+          Thank you for joining us! Please provide the bio and headshot you would
+          like published on the official symposium website.
         </p>
 
         {event.speakerIntakeOpen ? (

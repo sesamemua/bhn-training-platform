@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor } from "@/lib/showcase/validation";
-import { BIO_MIN_WORDS, countWords } from "@/lib/events/bio";
+import { countWords } from "@/lib/events/bio";
 import { speakerLimits, maxCharsFor } from "@/lib/events/limits";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import {
@@ -105,13 +105,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     return NextResponse.json({ error: "That bio is far too long." }, { status: 413 });
   }
   const bioWords = countWords(bio);
-  if (bioWords < BIO_MIN_WORDS || bioWords > limits.bio) {
+  if (bioWords === 0) {
+    return NextResponse.json({ error: "Please give a speaker biography." }, { status: 400 });
+  }
+  if (bioWords > limits.bio) {
     return NextResponse.json(
-      { error: `A bio, please — between ${BIO_MIN_WORDS} and ${limits.bio} words. Yours is ${bioWords}.` },
+      { error: `Keep the bio to ${limits.bio} words or fewer — yours is ${bioWords}.` },
       { status: 400 },
     );
   }
-  // Character backstop first — countWords splits on whitespace, and this
+  // Character backstop first — countWords tokenizes the input, and this
   // endpoint is public. Then the real rule, in the same unit the form
   // counts down in.
   if (sessionPitch.length > maxCharsFor(limits.pitch)) {
