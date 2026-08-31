@@ -37,16 +37,12 @@ import {
   type EquipDocument,
 } from "@/lib/equip/types";
 import { institutionsForStream } from "@/lib/equip/institutions";
-import { LiftDocumentTray } from "./LiftDocumentTray";
+import { LiftDocumentTray, VENTURE_CONNECT_KINDS } from "./LiftDocumentTray";
 
 interface Props {
   applicationId: string;
   initial: VentureConnectFormData;
-  /** Existing attachments on the draft. The VentureConnect PDF
-   *  asks applicants to attach a pitch deck + supporting docs
-   *  (conference registration, cost estimates, workshop details)
-   *  alongside the form body, so we mount the same document tray
-   *  LiftForm uses with its Stage-1 kinds. */
+  /** Existing supporting documents on the draft. */
   initialDocuments: EquipDocument[];
   /**
    * Where this form saves and submits.
@@ -481,25 +477,22 @@ export function ConnectForm({
               );
             })}
           </div>
+          {allowDocuments && (
+            <div className="mt-4 border-t border-line pt-4">
+              <LiftDocumentTray
+                applicationId={applicationId}
+                documents={documents}
+                onChange={setDocuments}
+                endpointBase={endpointBase}
+                kinds={VENTURE_CONNECT_KINDS}
+                title="Upload supporting files"
+                blurb="Drag and drop a file below or click to browse. Add more files by using the drop zone again."
+                embedded
+              />
+            </div>
+          )}
         </div>
       </Section>
-
-      {/* Document tray — matches the PDF's "Supporting Documents
-          Required" guidance + the pitch-deck callout in section
-          2. Same trays LiftForm uses; reviewers can request more
-          in-platform after submit. */}
-      {allowDocuments && (
-        <LiftDocumentTray
-          applicationId={applicationId}
-          documents={documents}
-          onChange={setDocuments}
-          endpointBase={endpointBase}
-          title="Attachments - at least 1 required"
-          blurb={endpointBase.includes("/public/")
-            ? "Attach the supporting files listed above. Use a slot again to add another file of the same type."
-            : undefined}
-        />
-      )}
 
       {/* ── 6. Signature (attestation) ─────────────────────── */}
       <Section title="Signature">

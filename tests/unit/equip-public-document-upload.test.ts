@@ -22,6 +22,8 @@ test("public EQUIP uploads accept the intended document formats", () => {
   assert.equal(upload({ kind: "prototype_photo", name: "prototype.png", contentType: "image/png" }), null);
   assert.equal(upload({ kind: "letter", name: "letter.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), null);
   assert.equal(upload({ kind: "video_pitch", name: "pitch.mp4", contentType: "video/mp4" }), null);
+  assert.equal(upload({ kind: "other", name: "travel-budget.xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), null);
+  assert.equal(upload({ kind: "other", name: "event-confirmation.png", contentType: "image/png" }), null);
 });
 
 test("public EQUIP uploads reject mismatched and oversized files", () => {

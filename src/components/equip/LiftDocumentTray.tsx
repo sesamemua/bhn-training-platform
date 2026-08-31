@@ -1,16 +1,5 @@
 "use client";
-/**
- * Drag-and-drop attachment tray for VentureLift drafts.
- *
- * Four optional kinds:
- *   • Pitch deck         (PDF)
- *   • Prototype photos   (JPG/PNG)
- *   • Recommendation     (PDF/DOC)
- *   • Video pitch        (MP4)
- *
- * All optional. Reviewer can request more in-platform if anything's
- * missing — we don't gate submit on attachments.
- */
+/** Shared drag-and-drop attachment tray for EQUIP application forms. */
 import { useRef, useState } from "react";
 import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, FilmIcon, Mail, FileCheck2, FileSignature } from "lucide-react";
 import type { EquipDocument } from "@/lib/equip/types";
@@ -29,6 +18,19 @@ const STAGE_1_KINDS: KindMeta[] = [
   { id: "prototype_photo", label: "Prototype photo",    hint: "JPG / PNG, multiple OK",     accept: "image/jpeg,image/png,.jpg,.jpeg,.png", icon: ImageIcon },
   { id: "letter",          label: "Recommendation",     hint: "PDF / DOC",                  accept: ".pdf,application/pdf,.doc,.docx", icon: Mail },
   { id: "video_pitch",     label: "Video pitch",        hint: "MP4, up to 25 MB",          accept: "video/mp4,.mp4", icon: FilmIcon },
+];
+
+/** VentureConnect asks for supporting evidence rather than four
+ *  stage-specific media categories. One repeatable slot keeps that
+ *  requirement aligned with the paper form and its checklist. */
+export const VENTURE_CONNECT_KINDS: KindMeta[] = [
+  {
+    id: "other",
+    label: "Supporting file",
+    hint: "PDF, Word, Excel, JPG or PNG, up to 25 MB",
+    accept: ".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png,.jpg,.jpeg,.png",
+    icon: FileCheck2,
+  },
 ];
 
 /** Stage-2 appendix kinds — matches the VentureLift full
@@ -54,6 +56,9 @@ interface Props {
   /** Base route for upload and delete requests. Public applications
    *  use their token route; signed-in applications keep the default. */
   endpointBase?: string;
+  /** Remove the outer card treatment when the tray belongs inside
+   *  a larger form section. */
+  embedded?: boolean;
 }
 
 export function LiftDocumentTray({
@@ -64,6 +69,7 @@ export function LiftDocumentTray({
   title,
   blurb,
   endpointBase = "/api/equip/applications",
+  embedded = false,
 }: Props) {
   const KINDS = kinds ?? STAGE_1_KINDS;
   const [busy, setBusy] = useState<string | null>(null);
@@ -114,7 +120,7 @@ export function LiftDocumentTray({
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-card p-4 space-y-3 surface-shadow">
+    <section className={embedded ? "space-y-3" : "rounded-2xl border border-line bg-card p-4 space-y-3 surface-shadow"}>
       <header className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-fg">{title ?? "Attachments"}</h3>
         {!kinds && (

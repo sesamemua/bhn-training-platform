@@ -25,6 +25,18 @@ export const PUBLIC_EQUIP_DOCUMENT_RULES = {
     extensions: ["mp4"],
     contentTypes: ["video/mp4"],
   },
+  other: {
+    extensions: ["pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png"],
+    contentTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "image/jpeg",
+      "image/png",
+    ],
+  },
 } as const;
 
 export type PublicEquipDocumentKind = keyof typeof PUBLIC_EQUIP_DOCUMENT_RULES;

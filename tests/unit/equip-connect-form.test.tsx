@@ -8,7 +8,10 @@ import {
   VentureConnectInstitutionSelect,
   normalizeFourDigitDate,
 } from "../../src/components/equip/ConnectForm";
-import { LiftDocumentTray } from "../../src/components/equip/LiftDocumentTray";
+import {
+  LiftDocumentTray,
+  VENTURE_CONNECT_KINDS,
+} from "../../src/components/equip/LiftDocumentTray";
 import { INSTITUTIONS } from "../../src/lib/equip/institutions";
 import { validateVentureConnect } from "../../src/lib/equip/submit-validation";
 import type { EquipDocument, VentureConnectFormData } from "../../src/lib/equip/types";
@@ -135,4 +138,22 @@ test("attachment slots visibly support drag and drop", () => {
     }),
   );
   assert.equal((html.match(/Drag and drop or click to browse/g) ?? []).length, 4);
+});
+
+test("VentureConnect has one clear supporting-document drop zone", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(LiftDocumentTray, {
+      applicationId: "draft-token",
+      documents: [],
+      onChange: () => {},
+      endpointBase: "/api/public/equip",
+      kinds: VENTURE_CONNECT_KINDS,
+      title: "Upload supporting files",
+      embedded: true,
+    }),
+  );
+  assert.equal((html.match(/Drag and drop or click to browse/g) ?? []).length, 1);
+  assert.match(html, /Upload supporting files/);
+  assert.match(html, /PDF, Word, Excel, JPG or PNG/);
+  assert.doesNotMatch(html, /Prototype photo|Video pitch|Recommendation/);
 });
