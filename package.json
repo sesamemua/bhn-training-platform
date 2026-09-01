@@ -20,6 +20,7 @@
     "test:outreach": "tsx --test tests/unit/outreach-send.test.ts",
     "vercel": "bash scripts/vercel.sh",
     "test:merch": "tsx --test tests/unit/merch.test.ts",
+    "test:merch:public": "tsx --test tests/unit/merch-public.test.ts",
     "test:demo": "tsx --test tests/unit/demo-mode.test.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "deploy:demo": "bash scripts/deploy-demo.sh",

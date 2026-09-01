@@ -12,71 +12,19 @@
  * the repo, so a card always shows the listing's current photo. If they ever
  * block that, ProductImage falls back to the product name.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Search, ExternalLink, Check, Copy, Sparkles, AlertTriangle, PackageCheck, X,
 } from "lucide-react";
 import {
-  MERCH, allCategories, orderedTiers, unitPriceAt, nextBreak, itemCostAt, type MerchItem,
+  MERCH, allCategories, orderedTiers, unitPriceAt, nextBreak, itemCostAt,
 } from "@/lib/merch/types";
 import {
   EMPTY_FILTERS, buildQuoteEmail, estimateSpend, filterItems, formatCad,
   type MerchFilters,
 } from "@/lib/merch/filter";
 import { cn } from "@/lib/utils";
-
-/**
- * Supplier photo. Eager, never lazy: in a panel layout the lazy heuristic
- * misfires and images only appear once something forces a paint (a hover,
- * a scroll), which reads as broken. On failure it swaps to the supplier's
- * product name rather than leaving a broken-image icon.
- */
-function ProductImage({ item }: { item: MerchItem }) {
-  const [failed, setFailed] = useState(false);
-
-  /**
-   * onError alone is not enough. The image starts loading while the server
-   * HTML is parsed, which is before React hydrates and attaches the handler —
-   * so an image that fails early (the hotlink block this is guarding against
-   * fails immediately) fires its error event into nothing and would sit there
-   * as a broken icon forever. Checking naturalWidth as the node attaches
-   * catches exactly that case; onError covers everything after.
-   */
-  const check = useCallback((node: HTMLImageElement | null) => {
-    if (node && node.complete && node.naturalWidth === 0) setFailed(true);
-  }, []);
-
-  if (failed) {
-    return (
-      <div className="flex h-40 items-center justify-center rounded-t-2xl bg-elevated px-4 text-center">
-        <span className="text-[11px] font-medium leading-snug text-muted">
-          {item.supplierProductName}
-        </span>
-      </div>
-    );
-  }
-  return (
-    /* Plain <img>, not next/image: the supplier host isn't in next.config
-       remotePatterns, and next/image lazy-loads by default — the exact
-       failure this needs to avoid.
-
-       referrerPolicy="no-referrer" because these are hotlinked from Business
-       Edge by design. Hotlink protection keys off the Referer header, so
-       sending none is more likely to be served than announcing that a
-       different domain is embedding their photo. */
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      ref={check}
-      src={item.imageUrl}
-      alt={item.supplierProductName}
-      loading="eager"
-      decoding="sync"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      className="h-40 w-full rounded-t-2xl bg-white object-contain p-3"
-    />
-  );
-}
+import { ProductImage } from "@/components/merch/ProductImage";
 
 export function MerchBoard() {
   const [filters, setFilters] = useState<MerchFilters>(EMPTY_FILTERS);
@@ -281,7 +229,12 @@ export function MerchBoard() {
                           isPicked ? "border-brand-400 ring-2 ring-brand-500/25" : "border-line",
                         )}
                       >
-                        <ProductImage item={item} />
+                        <ProductImage
+                src={item.imageUrl}
+                alt={item.supplierProductName}
+                className="h-40 w-full rounded-t-2xl bg-white object-contain p-3"
+                fallbackClassName="h-40 rounded-t-2xl"
+              />
 
                         <div className="flex flex-1 flex-col p-4">
                           <div className="flex items-start gap-2">

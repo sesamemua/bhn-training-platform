@@ -282,6 +282,17 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the calendar", href: "/admin/workspace/marketing/newsletter/calendar" },
     since: "2026.09.17a",
   },
+  // ─── The public merch shortlist
+  {
+    id: "merch.public",
+    title: "Show the merch shortlist to someone without an account",
+    body: "There is now a link you can send outside the platform: /merch. Names, photos, a plain description and the supplier's listing \u2014 and nothing about cost. No break pricing, no setup charges, no estimated range, and not the tier each item is meant for, which is our own read on how far a visitor has got in a conversation. The link sits at the top of Workspace \u2192 Marketing \u2192 Merch. For quantities or a real number, keep sending the internal board.",
+    path: "/admin/workspace/merch",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the public list", href: "/merch" },
+    since: "2026.09.18a",
+  },
   // ─── Workspace · Marketing → Merch
   {
     id: "workspace.merch",

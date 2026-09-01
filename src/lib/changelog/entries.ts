@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Public merch shortlist
+  {
+    title: "The merch shortlist can be shown to someone without an account",
+    body: "**`/merch` is open \u2014 no sign-in.** Send it to a partner, a colleague or the supplier. It shows each item's name, photo, category, a plain description of what the thing is, and a link to the supplier's own listing. **What it does not show is the whole point.** The internal board carries what BHN pays: published break pricing, decoration setup charges, an estimated unit-cost range, the supplier's item code \u2014 and the tier each item is meant for, which is BHN's own ranking of how much of a conversation a visitor has had before they are handed something. None of that leaves the building. The existing `whyItWorks` write-ups stayed inside too: they are written for whoever is spending the money, and the first one opens by comparing the tote's price against an item already rejected. Each item now carries a second, plainer description written for the person receiving it, and that is what the public page prints. **It is a whitelist, not a redaction list** \u2014 the page names the fields it may show, so a field added to the catalogue next month is invisible there until somebody decides otherwise. A test asserts that direction rather than checking a list of forbidden words. **Fixed on the way past:** the supplier is serving a corrupt photo for the B-Safe key tool (nine stray bytes before the JPEG's start marker, which every browser refuses). The internal board already degraded to the product name; the public page would have shown a broken-image icon. That fallback is one shared component now instead of two.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Deleting EQUIP applications
   {
     title: "Applicants and admins can delete EQUIP applications",
