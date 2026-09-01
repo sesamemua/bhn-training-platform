@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowUpRight, ArrowDownRight, Minus, Plus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import {
   AV_LINES, AV_DOCS, AV_DELTAS, AV_TERM_CHANGES, AV_GROUP_LABELS, AV_SOURCE_FOLDER,
-  amountOn, lineDelta, newIn2026, unquotedIn2025,
+  amountOn, lineDelta,
   type AvGroup, type AvLine,
 } from "@/lib/symposium/av";
 import { cn } from "@/lib/utils";
@@ -36,30 +36,16 @@ export function AvComparison() {
 
   return (
     <div className="space-y-6">
-      {/* ── The three headline numbers. Quote-vs-actual first: comparing
-             2026 against last year's QUOTE gives 47%, which is true and
-             misleading, because that quote is not what was paid. */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Headline
-          label="2026 quote vs 2025 actual"
-          value={cad(AV_DELTAS.quoteVsActual.amount, 2)}
-          sub={`${pct(AV_DELTAS.quoteVsActual.pct)} · ${cad(AV_DOCS.i2025.total)} → ${cad(AV_DOCS.q2026.total)}`}
-          tone="up"
-          hint="The fair comparison — this year's quote against what last year really cost."
-        />
+      {/* ── One headline: how far last year drifted after its quote was
+             signed. Kept because it is the fact that makes the rest of the
+             page readable — the 2025 column is not what 2025 cost. */}
+      <div className="sm:max-w-sm">
         <Headline
           label="2025 quote vs 2025 actual"
           value={cad(AV_DELTAS.overrun2025.amount, 2)}
-          sub={`${pct(AV_DELTAS.overrun2025.pct)} over quote`}
+          sub={`${pct(AV_DELTAS.overrun2025.pct)} over quote · ${cad(AV_DOCS.q2025.total)} → ${cad(AV_DOCS.i2025.total)}`}
           tone="warn"
-          hint="How far last year drifted after the quote was signed. The best guide to how far this one will."
-        />
-        <Headline
-          label="If 2026 drifts the same way"
-          value={cad(AV_DELTAS.projected2026, 0)}
-          sub={`${cad(AV_DOCS.q2026.total)} quoted + ${pct(AV_DELTAS.overrun2025.pct)}`}
-          tone="warn"
-          hint="Not a forecast — the 2026 quote scaled by last year's overrun. Budget headroom, not a number to plan on."
+          hint="How far last year drifted after the quote was signed."
         />
       </div>
 
@@ -98,41 +84,6 @@ export function AvComparison() {
           </div>
         ))}
       </div>
-
-      {/* ── What was never quoted last year. This is the finding that
-             makes the 2026 quote easier to read: five lines appeared only
-             on the invoice, and three of them are now quoted up front. */}
-      <Callout
-        icon={<AlertTriangle size={14} />}
-        tone="amber"
-        title={`${unquotedIn2025().length} lines were billed in 2025 but never quoted`}
-      >
-        <p>
-          {unquotedIn2025().map((l) => l.label).join(", ")} — {cad(unquotedIn2025().reduce((n, l) => n + amountOn(l, "i2025"), 0))} of
-          equipment that appeared on the invoice and on no estimate, plus 4 hours of
-          labour over the 20 quoted. Together that is the {cad(AV_DELTAS.overrun2025.amount)} overrun.
-        </p>
-        <p className="mt-1.5">
-          Three of them — the ATEM switcher, the encoder kit and the Aputure lights — are
-          quoted up front this year. That is the quote getting more honest, not the price
-          getting worse, and it is part of why the 2026 figure looks steep.
-        </p>
-      </Callout>
-
-      <Callout
-        icon={<Plus size={14} />}
-        tone="accent"
-        title={`${newIn2026().length} things on the 2026 quote appear on neither 2025 document`}
-      >
-        <ul className="mt-1 space-y-1">
-          {newIn2026().map((l) => (
-            <li key={l.key} className="flex gap-2">
-              <span className="tabular-nums font-semibold text-fg">{cad(amountOn(l, "q2026"), 0)}</span>
-              <span><strong className="text-fg">{l.label}</strong> — {l.note}</span>
-            </li>
-          ))}
-        </ul>
-      </Callout>
 
       {/* ── The line-by-line table */}
       <div className="rounded-2xl border border-line bg-card">
@@ -300,25 +251,6 @@ function Headline({
       </p>
       <p className="mt-0.5 text-[11px] tabular-nums text-muted">{sub}</p>
       <p className="mt-1.5 text-[11px] leading-relaxed text-subtle">{hint}</p>
-    </div>
-  );
-}
-
-function Callout({
-  icon, tone, title, children,
-}: { icon: React.ReactNode; tone: "amber" | "accent"; title: string; children: React.ReactNode }) {
-  return (
-    <div className={cn(
-      "rounded-xl border p-3.5",
-      tone === "amber" ? "border-amber-500/30 bg-amber-500/[0.06]" : "border-accent/30 bg-accent/[0.05]",
-    )}>
-      <p className={cn(
-        "flex items-center gap-1.5 text-[12.5px] font-bold",
-        tone === "amber" ? "text-amber-600" : "text-accent",
-      )}>
-        {icon}{title}
-      </p>
-      <div className="mt-1.5 max-w-prose text-[11.5px] leading-relaxed text-muted">{children}</div>
     </div>
   );
 }

@@ -33,7 +33,7 @@ export default async function SymposiumAvPage() {
       <PageHero
         eyebrow="Workspace · 2026 Symposium"
         title="AV"
-        description={`Livecast's 2026 quote against last year's quote and last year's final invoice. The 2026 quote is ${cad(AV_DELTAS.quoteVsActual.amount)} above what the 2025 Symposium actually cost — and 2025 itself came in ${cad(AV_DELTAS.overrun2025.amount)} above its own quote, which is the number to keep in mind when reading this one.`}
+        description={`Livecast's 2026 quote against last year's quote and last year's final invoice, line by line. The invoice is in there because 2025 was billed ${cad(AV_DELTAS.overrun2025.amount)} above its own quote — the 2025 estimate is not what the 2025 Symposium cost.`}
         icon={<Speaker />}
       />
       <AvComparison />
