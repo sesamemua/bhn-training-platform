@@ -286,7 +286,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "symposium.av",
     title: "The AV quote, next to what last year really cost",
-    body: "Workspace \u2192 2026 Symposium \u2192 AV puts Livecast's 2026 quote beside the 2025 quote AND the 2025 final invoice. The invoice is the point: last year was billed $818.68 over its own estimate, so this year is up 31% on what was actually paid \u2014 not the 47% you get comparing quote to quote. Read the bottom section first \u2014 the overtime rate, the cancellation window and a deposit clause that contradicts the payment policy are all new.",
+    body: "Workspace \u2192 2026 Symposium \u2192 AV puts Livecast's 2026 quote beside the 2025 quote AND the 2025 final invoice. Two things it gets right that a plain comparison would not. The invoice is in there because last year was billed $818.68 over its own estimate, so the 2025 quote column is not what 2025 cost. And the table is priced *after discount*: the printed line amounts are up 41.6%, but Livecast is taking a deeper cut this year (27.5% against 21.8%), so what BHN actually pays is up 31.2%. Toggle to List for the raw figures. Read the bottom section first \u2014 the overtime rate, the cancellation window and a deposit clause that contradicts the payment policy are all new.",
     path: "/admin/workspace/symposium-2026/av",
     placement: "center",
     roles: ["admin", "superadmin"],

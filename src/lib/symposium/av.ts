@@ -435,6 +435,14 @@ export const AV_DELTAS = {
   },
   /** If 2026 drifts by the same proportion 2025 did. */
   projected2026: AV_DOCS.q2026.total * (AV_DOCS.i2025.total / AV_DOCS.q2025.total),
+
+  /**
+   * The reason the table offers both views. Reading the line items alone
+   * says the AV bill is up 41.6%; what BHN actually pays is up 31.2%,
+   * because Livecast is taking a deeper discount this year.
+   */
+  listRise: (AV_DOCS.q2026.gross - AV_DOCS.i2025.gross) / AV_DOCS.i2025.gross,
+  payableRise: (AV_DOCS.q2026.subtotal - AV_DOCS.i2025.subtotal) / AV_DOCS.i2025.subtotal,
 };
 
 /** Everything on the 2026 quote that is not on either 2025 document. */
@@ -455,6 +463,49 @@ export function amountOn(line: AvLine, doc: AvDoc["key"]): number {
 /** 2026 minus 2025-actual for one line. */
 export function lineDelta(line: AvLine): number {
   return amountOn(line, "q2026") - amountOn(line, "i2025");
+}
+
+// ── Discounts ──────────────────────────────────────────────────────────
+//
+// The line items on all three documents are LIST amounts. Every document
+// then takes a lump off the bottom, and the size of that lump is not the
+// same year to year — it deepens from 12.7% to 21.8% to 27.5%. Comparing
+// line to line therefore overstates the rise: the 2026 list is 41.6%
+// above the 2025 list, but what BHN actually pays is 31.2% above what it
+// actually paid.
+//
+// So the table can show either. "List" is what each document prints
+// against each item; "after discount" spreads that document's discount
+// across its lines in proportion to their size.
+//
+// The apportionment is an estimate and the page says so. Two of the
+// discounts are plainly item-specific — a "50% off" of exactly $180 on
+// both 2025 documents, and a "100% item discount" of $810 on the invoice
+// — so the vendor did not reduce every line by the same percentage.
+// Spreading it evenly is the fairest thing that can be done without
+// knowing which lines those applied to. Document totals stay exact; only
+// the per-line net figures are indicative.
+
+/** Total discount on a document, as a positive number. */
+export function discountOf(doc: AvDoc): number {
+  return -doc.discounts.reduce((n, d) => n + d.amount, 0);
+}
+
+/** Discount as a share of the document's list total. */
+export function discountRate(doc: AvDoc): number {
+  return discountOf(doc) / doc.gross;
+}
+
+/** One line's share of a document's cost after that document's discount. */
+export function netOn(line: AvLine, key: AvDoc["key"]): number {
+  const gross = amountOn(line, key);
+  if (gross === 0) return 0;
+  return Math.round(gross * (1 - discountRate(AV_DOCS[key])) * 100) / 100;
+}
+
+/** 2026 minus 2025-actual for one line, after each document's discount. */
+export function netDelta(line: AvLine): number {
+  return Math.round((netOn(line, "q2026") - netOn(line, "i2025")) * 100) / 100;
 }
 
 export const AV_GROUP_LABELS: Record<AvGroup, string> = {

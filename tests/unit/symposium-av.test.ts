@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   AV_LINES, AV_DOCS, AV_DELTAS, amountOn, newIn2026, unquotedIn2025,
+  discountRate, netOn, netDelta, lineDelta,
 } from "../../src/lib/symposium/av";
 
 /**
@@ -108,4 +109,59 @@ test("every line appears on at least one document", () => {
 test("no duplicate line keys", () => {
   const keys = AV_LINES.map((l) => l.key);
   assert.equal(new Set(keys).size, keys.length);
+});
+
+/**
+ * The discount is not decoration. It deepens across the three documents
+ * — 12.7%, 21.8%, 27.5% — so a line-by-line comparison of list amounts
+ * overstates the increase by ten percentage points. These tests keep the
+ * two views honest and keep the apportionment from drifting away from
+ * the documents' own stated subtotals.
+ */
+
+test("the discount deepens across the three documents", () => {
+  const rates = [AV_DOCS.q2025, AV_DOCS.i2025, AV_DOCS.q2026].map(discountRate);
+  assert.ok(rates[0] < rates[1] && rates[1] < rates[2], `not increasing: ${rates}`);
+  assert.equal(Math.round(rates[0] * 1000) / 10, 12.7);
+  assert.equal(Math.round(rates[1] * 1000) / 10, 21.8);
+  assert.equal(Math.round(rates[2] * 1000) / 10, 27.5);
+});
+
+test("THE POINT: list amounts rise faster than what is actually payable", () => {
+  // Reading the table's list column alone says +41.6%. The bill is +31.2%.
+  // A ten-point gap, entirely explained by the deeper discount.
+  assert.equal(Math.round(AV_DELTAS.listRise * 1000) / 10, 41.6);
+  assert.equal(Math.round(AV_DELTAS.payableRise * 1000) / 10, 31.2);
+  assert.ok(AV_DELTAS.listRise - AV_DELTAS.payableRise > 0.1);
+});
+
+for (const doc of [AV_DOCS.q2025, AV_DOCS.i2025, AV_DOCS.q2026]) {
+  test(`${doc.title}: apportioned lines add back up to the stated subtotal`, () => {
+    /*
+     * The per-line net figures are an apportionment, so they carry
+     * rounding. What must hold is that they still sum to the number the
+     * document itself states — otherwise the table's totals row would
+     * disagree with the document card directly above it.
+     */
+    const summed = AV_LINES.reduce((n, l) => n + netOn(l, doc.key), 0);
+    assert.ok(
+      Math.abs(summed - doc.subtotal) < 0.5,
+      `${doc.ref}: apportioned ${summed.toFixed(2)} vs stated ${doc.subtotal}`,
+    );
+  });
+}
+
+test("a line absent from a document nets to zero, not to a discount", () => {
+  const streaming = AV_LINES.find((l) => l.key === "hybrid-package")!;
+  assert.equal(netOn(streaming, "i2025"), 0);
+  assert.ok(netOn(streaming, "q2026") > 0);
+});
+
+test("the net view narrows the gap on lines that only got dearer on paper", () => {
+  // The wireless mics went $420 → $450 on the list: +$30. After each
+  // document's own discount they are near flat, which is the kind of
+  // thing the list-only view was getting wrong.
+  const mics = AV_LINES.find((l) => l.key === "wireless-mics")!;
+  assert.equal(lineDelta(mics), 30);
+  assert.ok(Math.abs(netDelta(mics)) < Math.abs(lineDelta(mics)));
 });
