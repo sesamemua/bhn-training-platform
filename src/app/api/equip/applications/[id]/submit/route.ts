@@ -34,6 +34,13 @@ import { nextOpenDeadline } from "@/lib/equip/deadlines";
 import { buildEquipSubmissionEmail } from "@/lib/equip/emails";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import { validateVentureConnect, sumVcBudget } from "@/lib/equip/submit-validation";
+import { trackServer } from "@/lib/analytics";
+import {
+  campaignAttributionFromFormData,
+  hasCampaignAttribution,
+  sanitizeCampaignAttribution,
+} from "@/lib/campaign/attribution";
+import { CAMPAIGN_EVENT_NAMES } from "@/lib/campaign/events";
 
 export const runtime = "nodejs";
 
@@ -164,7 +171,7 @@ function sumVlFullBudget(f: VentureLiftFullData): number {
   return (f.budgetLines ?? []).reduce<number>((s, r) => s + (r.amount ?? 0), 0);
 }
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
   const userId = (session?.user as { id?: string })?.id;
@@ -183,6 +190,15 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (!app || app.userId !== userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const submitBody = (await req.json().catch(() => ({}))) as {
+    campaignAttribution?: unknown;
+  };
+  const submittedAttribution = sanitizeCampaignAttribution(submitBody.campaignAttribution);
+  const storedAttribution = campaignAttributionFromFormData(app.formData);
+  const attribution = hasCampaignAttribution(submittedAttribution)
+    ? submittedAttribution
+    : storedAttribution;
 
   const status = app.status as EquipStatus;
   const stage  = app.applicationStage as ApplicationStage;
@@ -283,6 +299,21 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       requestedAmount: true,
     },
   });
+
+  if (app.stream === "venture_connect") {
+    await trackServer({
+      userId,
+      role,
+      name: CAMPAIGN_EVENT_NAMES.ventureConnectApplicationSubmitted,
+      path: "/equip/apply/[id]",
+      props: {
+        program: "venture_connect",
+        applicationId: app.id,
+        publicApplication: false,
+        attribution,
+      },
+    });
+  }
 
   // Confirmation email to the applicant. Best-effort — never block submit.
   if (mailConfigured()) {

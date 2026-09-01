@@ -5,6 +5,7 @@ import { Upload, X, FileText, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
+import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
 
 const MAX_FILES = 5;
 const MAX_SIZE_MB = 10;
@@ -54,6 +55,7 @@ export function CreditApplicationForm({ defaultName = "" }: { defaultName?: stri
       fd.append("country", country);
       fd.append("phone", phone);
       fd.append("useCase", useCase.trim());
+      fd.append("campaignAttribution", JSON.stringify(getCampaignAttribution()));
       for (const f of files) fd.append("documents", f);
 
       const res = await fetch("/api/credits/applications", { method: "POST", body: fd });

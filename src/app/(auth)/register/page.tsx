@@ -10,6 +10,12 @@ import {
 import { Logo } from "@/components/ui/Logo";
 import { LOCALES } from "@/lib/i18n/dictionaries";
 import { INSTITUTIONS } from "@/lib/equip/institutions";
+import {
+  appendCampaignAttribution,
+  campaignAuthUrl,
+  safeInternalPath,
+} from "@/lib/campaign/attribution";
+import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
 
 // Cloudflare Turnstile site key (public). When unset, no CAPTCHA is
 // rendered and the server skips verification — this keeps preview /
@@ -58,7 +64,7 @@ export default function RegisterPage() {
     passwordConfirm: "",
     jobTitle: "",
     locale: defaultLocale(),
-    // Institution capture — one of the 14 BHN-partner slugs from
+    // Institution capture — one of the 41 BHN-partner slugs from
     // lib/equip/institutions.ts, plus an "other" branch. Stored
     // into User.organization on the server so Equip applications
     // (and any other form that pre-fills from user.organization)
@@ -131,6 +137,10 @@ export default function RegisterPage() {
       setError("Please complete the bot check."); return;
     }
 
+    const submitAttribution = getCampaignAttribution();
+    const callbackUrl = safeInternalPath(
+      new URLSearchParams(window.location.search).get("callbackUrl"),
+    );
     setStage("creating");
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -145,6 +155,7 @@ export default function RegisterPage() {
         institution: form.institution || undefined,
         institutionOther: form.institutionOther || undefined,
         turnstileToken,
+        campaignAttribution: submitAttribution,
       }),
     });
 
@@ -171,12 +182,16 @@ export default function RegisterPage() {
     });
     if (!r?.ok) {
       // Fall back to the explicit login page if auto sign-in fails for any reason.
-      router.push(`/login?registered=1&email=${encodeURIComponent(form.email)}`);
+      const fallbackLogin = appendCampaignAttribution(
+        `/login?registered=1&email=${encodeURIComponent(form.email)}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
+        submitAttribution,
+      );
+      router.push(fallbackLogin);
       return;
     }
 
     setStage("redirecting");
-    router.push("/dashboard");
+    router.push(callbackUrl);
     router.refresh();
   }
 
@@ -378,7 +393,7 @@ export default function RegisterPage() {
                 />
               )}
               <p className="text-[10px] text-subtle mt-1">
-                One of the 14 BHN partner institutions, or pick &quot;Other&quot; for a free-text entry. Used to pre-fill funding-application forms automatically.
+                Choose from the current 41-institution BioHubNet network, or pick &quot;Other&quot; for a free-text entry. Used to pre-fill funding-application forms automatically.
               </p>
             </div>
 
@@ -479,7 +494,17 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-muted mt-6">
             Already have an account?{" "}
-            <Link href="/login" className="text-brand-600 hover:text-brand-700 hover:underline font-medium">
+            <Link
+              href="/login"
+              onClick={(event) => {
+                event.preventDefault();
+                const callbackUrl = safeInternalPath(
+                  new URLSearchParams(window.location.search).get("callbackUrl"),
+                );
+                router.push(campaignAuthUrl("login", callbackUrl, getCampaignAttribution()));
+              }}
+              className="text-brand-600 hover:text-brand-700 hover:underline font-medium"
+            >
               Sign in
             </Link>
           </p>

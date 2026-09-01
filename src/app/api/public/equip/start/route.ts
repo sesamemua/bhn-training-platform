@@ -10,6 +10,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import {
+  sanitizeCampaignAttribution,
+  withCampaignAttribution,
+} from "@/lib/campaign/attribution";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,10 +39,12 @@ export async function POST(req: NextRequest) {
     name?: unknown;
     email?: unknown;
     stream?: unknown;
+    campaignAttribution?: unknown;
   };
   const name = String(body.name ?? "").trim().slice(0, 160);
   const email = String(body.email ?? "").trim().slice(0, 200);
   const requestedStream = body.stream === undefined ? "venture_connect" : String(body.stream);
+  const attribution = sanitizeCampaignAttribution(body.campaignAttribution);
 
   if (!PUBLIC_STREAMS.has(requestedStream as PublicEquipStream)) {
     return NextResponse.json({ error: "That application type is not available." }, { status: 400 });
@@ -86,7 +92,10 @@ export async function POST(req: NextRequest) {
       applicationStage: "full_app",
       // Pre-fill what we already know, so the first two fields of the
       // form are not asked twice.
-      formData: { fullName: name, institutionEmail: email },
+      formData: withCampaignAttribution(
+        { fullName: name, institutionEmail: email },
+        attribution,
+      ),
     },
     select: { id: true },
   });

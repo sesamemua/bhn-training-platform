@@ -12,6 +12,11 @@ import { DeepSeaStars } from "@/components/branding/DeepSeaStars";
 import { LoginFloaters } from "@/components/branding/LoginFloaters";
 import { ThemeCycler } from "@/components/ui/ThemePicker";
 import { LoginAmbientMenu } from "@/components/branding/LoginAmbientMenu";
+import {
+  campaignAttributionFromSearchParams,
+  campaignAuthUrl,
+  safeInternalPath,
+} from "@/lib/campaign/attribution";
 
 const REMEMBER_KEY = "bhn-remember-email";
 
@@ -36,7 +41,9 @@ function LoginPageInner() {
   // Only same-site absolute paths are honoured — a full URL, or the
   // protocol-relative "//evil.com", would turn this into an open redirect.
   const rawCallback = params.get("callbackUrl") ?? "";
-  const callbackUrl = /^\/(?!\/)/.test(rawCallback) ? rawCallback : "/dashboard";
+  const callbackUrl = safeInternalPath(rawCallback);
+  const campaignAttribution = campaignAttributionFromSearchParams(params);
+  const registerHref = campaignAuthUrl("register", callbackUrl, campaignAttribution);
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -344,7 +351,7 @@ function LoginPageInner() {
                 the CTA wrapper). */}
             <div className="mt-auto pt-8">
               <Link
-                href="/register"
+                href={registerHref}
                 className="group relative w-full inline-flex items-center justify-center gap-3 text-white font-bold tracking-tight py-3.5 text-base overflow-hidden transition-transform hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                 style={{
                   backgroundImage:

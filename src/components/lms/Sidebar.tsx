@@ -71,6 +71,7 @@ import {
   Clapperboard,
   BookUser,
   Radar,
+  Search,
   CalendarClock, MessageSquareText, Images, Speaker} from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
@@ -306,8 +307,8 @@ const adminOverview: NavItem = {
   description: "Administration home — quick stats and shortcuts into every admin queue.",
 };
 
-// WORKSPACE — internal team tooling, its own top-level section. First item:
-// Marketing → Video Production (plan promo videos + draft their scripts).
+// WORKSPACE — internal team tooling, its own top-level section. Marketing
+// keeps campaign planning and production work together.
 const workspaceVideoItem: NavItem = {
   label: "Video Production",
   href: "/admin/workspace/marketing/video",
@@ -315,6 +316,15 @@ const workspaceVideoItem: NavItem = {
   minRole: "admin",
   description:
     "Plan promo videos and draft their scripts. Scripts get shareable links for collaborative editing — contributors don't need an account.",
+};
+
+const workspaceGoogleAdsItem: NavItem = {
+  label: "Google Ads",
+  href: "/admin/workspace/marketing/google-ads",
+  icon: Search,
+  minRole: "admin",
+  description:
+    "Plan the English Search pilot across ENGAGE, EXPERIENCE and VentureConnect. Review campaign structure, conversion tracking, attribution and the approvals still required before launch.",
 };
 
 // WORKSPACE → 2026 Symposium → Comms Plan. Moved out of Marketing: the
@@ -1952,7 +1962,7 @@ export function Sidebar({
           <SectionGroup
             title="WORKSPACE"
             tone="neutral"
-            description="Internal team tooling. Marketing → Video Production: plan promo videos and draft their scripts, with shareable links for collaborative editing (no login needed)."
+            description="Internal team tooling for campaigns, content, events, website review and operational planning."
           >
             {/* Grouped by the THING, not by the department. Running the
                 symposium meant visiting Marketing for the plan and
@@ -1970,6 +1980,7 @@ export function Sidebar({
               <NavLink item={workspaceInsightsSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Marketing">
+              <NavLink item={workspaceGoogleAdsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceVideoItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSponsorshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceNewsletterItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

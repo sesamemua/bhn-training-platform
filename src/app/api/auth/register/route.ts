@@ -7,6 +7,7 @@ import { issueAndSendEmailVerification } from "@/lib/security/email-verify";
 import { checkPassword } from "@/lib/security/password-policy";
 import { subscribeMember, mailchimpEnabled } from "@/lib/mailchimp/client";
 import { findInstitution } from "@/lib/equip/institutions";
+import { sanitizeCampaignAttribution } from "@/lib/campaign/attribution";
 
 /**
  * Newsletter intent at signup. Tri-state:
@@ -43,7 +44,19 @@ const VALID_JOB_TITLES = [
 ] as const;
 
 export async function POST(req: NextRequest) {
-  const { name, email, password, newsletter, jobTitle, locale, institution, institutionOther, turnstileToken } = await req.json();
+  const {
+    name,
+    email,
+    password,
+    newsletter,
+    jobTitle,
+    locale,
+    institution,
+    institutionOther,
+    turnstileToken,
+    campaignAttribution,
+  } = await req.json();
+  const attribution = sanitizeCampaignAttribution(campaignAttribution);
 
   // ── Validation ──────────────────────────────────────────────────
   const cleanName = typeof name === "string" ? name.trim() : "";
@@ -98,7 +111,7 @@ export async function POST(req: NextRequest) {
 
   // Institution capture at registration. Two paths:
   //   • The caller posts a known BHN-partner slug (one of the
-  //     14 from lib/equip/institutions.ts) — we resolve to the
+  //     41 from lib/equip/institutions.ts) — we resolve to the
   //     official full name and store as User.organization.
   //   • The caller picks "Other" and posts `institutionOther`
   //     as free text — we store that verbatim.
@@ -203,6 +216,7 @@ export async function POST(req: NextRequest) {
       emailVerificationSent,
       captchaEnabled: TURNSTILE_ENABLED,
       mailchimpStatus: mailchimpFinalStatus,
+      attribution,
     },
   });
 

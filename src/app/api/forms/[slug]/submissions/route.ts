@@ -7,6 +7,9 @@ import {
   isFieldVisible,
 } from "@/lib/forms/types";
 import { isR2PublicUrl } from "@/lib/r2";
+import { trackServer } from "@/lib/analytics";
+import { sanitizeCampaignAttribution } from "@/lib/campaign/attribution";
+import { CAMPAIGN_EVENT_NAMES } from "@/lib/campaign/events";
 
 export const runtime = "nodejs";
 
@@ -27,8 +30,10 @@ export async function POST(
 
   const body = (await req.json().catch(() => ({}))) as {
     data?: Record<string, string | string[]>;
+    campaignAttribution?: unknown;
   };
   const incoming = body.data ?? {};
+  const attribution = sanitizeCampaignAttribution(body.campaignAttribution);
 
   // Validate against schema. Strings get trimmed, choice values must be
   // in their option list, multicheckbox/file values must be string[].
@@ -115,6 +120,20 @@ export async function POST(
       email: userEmail,
     },
   });
+
+  if (form.slug === "talent-application") {
+    await trackServer({
+      userId,
+      role: (session.user as { role?: string }).role ?? "trainee",
+      name: CAMPAIGN_EVENT_NAMES.experienceApplicationSubmitted,
+      path: "/forms/talent-application",
+      props: {
+        program: "experience",
+        submissionId: sub.id,
+        attribution,
+      },
+    });
+  }
 
   // For the talent-application form, extract skills from the long-form
   // pitch + status into the trainee's UserSkill profile (Phase 3).

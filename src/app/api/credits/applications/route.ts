@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, R2_PUBLIC_URL } from "@/lib/r2";
+import { trackServer } from "@/lib/analytics";
+import { parseCampaignAttribution } from "@/lib/campaign/attribution";
+import { CAMPAIGN_EVENT_NAMES } from "@/lib/campaign/events";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -54,6 +57,7 @@ export async function POST(req: NextRequest) {
   const country = String(form.get("country") ?? "").trim() || null;
   const phone = String(form.get("phone") ?? "").trim() || null;
   const useCase = String(form.get("useCase") ?? "").trim();
+  const attribution = parseCampaignAttribution(form.get("campaignAttribution"));
   if (!fullName) return NextResponse.json({ error: "Full name is required." }, { status: 400 });
   if (useCase.length < 30) {
     return NextResponse.json(
@@ -102,6 +106,18 @@ export async function POST(req: NextRequest) {
       status: "pending",
       fullName, organization, title, country, phone, useCase,
       documents: docs,
+    },
+  });
+
+  await trackServer({
+    userId,
+    role: (session.user as { role?: string }).role ?? "trainee",
+    name: CAMPAIGN_EVENT_NAMES.engageApplicationSubmitted,
+    path: "/credits/apply",
+    props: {
+      program: "engage",
+      applicationId: app.id,
+      attribution,
     },
   });
 

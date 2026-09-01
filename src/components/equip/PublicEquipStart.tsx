@@ -11,6 +11,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import type { EquipStream } from "@/lib/equip/types";
+import { appendCampaignAttribution } from "@/lib/campaign/attribution";
+import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
 
 interface Props {
   stream?: Extract<EquipStream, "venture_connect" | "innovation_fellowship">;
@@ -31,14 +33,15 @@ export function PublicEquipStart({
     setBusy(true);
     setError(null);
     try {
+      const campaignAttribution = getCampaignAttribution();
       const r = await fetch("/api/public/equip/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, stream }),
+        body: JSON.stringify({ name, email, stream, campaignAttribution }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) { setError(j?.error ?? "Couldn't start the application."); return; }
-      router.push(`${destination}/${j.token}`);
+      router.push(appendCampaignAttribution(`${destination}/${j.token}`, campaignAttribution));
     } catch {
       setError("Couldn't reach the server. Try again in a moment.");
     } finally {

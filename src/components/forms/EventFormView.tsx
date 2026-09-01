@@ -23,6 +23,7 @@ import {
   isFileField,
   isFieldVisible,
 } from "@/lib/forms/types";
+import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
 
 interface Props {
   slug: string;
@@ -205,7 +206,10 @@ export function EventFormView({
       const res = await fetch(`/api/forms/${slug}/submissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: values }),
+        body: JSON.stringify({
+          data: values,
+          campaignAttribution: getCampaignAttribution(),
+        }),
       });
       const j = (await res.json().catch(() => ({}))) as {
         error?: string; ok?: boolean;

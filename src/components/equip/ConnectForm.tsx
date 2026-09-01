@@ -37,6 +37,7 @@ import {
   type EquipDocument,
 } from "@/lib/equip/types";
 import { institutionsForStream } from "@/lib/equip/institutions";
+import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
 import { LiftDocumentTray, VENTURE_CONNECT_KINDS } from "./LiftDocumentTray";
 
 interface Props {
@@ -185,14 +186,20 @@ export function ConnectForm({
     setError(null);
     setValidation([]);
     try {
-      const res = await fetch(`${endpointBase}/${applicationId}${endpointBase.includes("/public/") ? "" : "/submit"}`, { method: "POST" });
+      const isPublic = endpointBase.includes("/public/");
+      const res = await fetch(`${endpointBase}/${applicationId}${isPublic ? "" : "/submit"}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignAttribution: getCampaignAttribution() }),
+      });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         const data = j as { error?: string; details?: string[] };
         if (data.details?.length) setValidation(data.details);
         throw new Error(data.error ?? "Could not submit");
       }
-      router.push("/equip/my-applications");
+      if (isPublic) router.refresh();
+      else router.push("/equip/my-applications");
     } catch (err) {
       setError((err as Error).message);
     } finally {

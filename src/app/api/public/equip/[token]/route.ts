@@ -26,6 +26,14 @@ import { buildInnovationFellowshipApplicationPacket } from "@/lib/equip/innovati
 import { canDelete } from "@/lib/equip/delete";
 import { purgeApplication } from "@/lib/equip/purge";
 import { mailConfigured, sendMail } from "@/lib/mail";
+import { trackServer } from "@/lib/analytics";
+import {
+  campaignAttributionFromFormData,
+  hasCampaignAttribution,
+  sanitizeCampaignAttribution,
+  withCampaignAttribution,
+} from "@/lib/campaign/attribution";
+import { CAMPAIGN_EVENT_NAMES } from "@/lib/campaign/events";
 import {
   innovationFellowshipRequestedAmount,
   type EquipDocument,
@@ -79,7 +87,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
     return NextResponse.json({ error: "That is more than the form can hold." }, { status: 413 });
   }
 
-  const formData = body.formData as Record<string, unknown>;
+  const incomingFormData = body.formData as Record<string, unknown>;
+  const incomingAttribution = campaignAttributionFromFormData(incomingFormData);
+  const storedAttribution = campaignAttributionFromFormData(app.formData);
+  const formData = withCampaignAttribution(
+    incomingFormData,
+    hasCampaignAttribution(incomingAttribution) ? incomingAttribution : storedAttribution,
+  );
   const applicantName = typeof formData.fullName === "string"
     ? formData.fullName.trim().slice(0, 160)
     : "";
@@ -106,7 +120,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
   return NextResponse.json({ ok: true, savedAt: new Date().toISOString() });
 }
 
-export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params;
   const app = await load(token);
   if (!app) return NextResponse.json({ error: "This link is no longer active." }, { status: 404 });
@@ -133,6 +147,15 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
     return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
   }
 
+  const submitBody = (await req.json().catch(() => ({}))) as {
+    campaignAttribution?: unknown;
+  };
+  const submittedAttribution = sanitizeCampaignAttribution(submitBody.campaignAttribution);
+  const storedAttribution = campaignAttributionFromFormData(app.formData);
+  const attribution = hasCampaignAttribution(submittedAttribution)
+    ? submittedAttribution
+    : storedAttribution;
+
   const submittedAt = new Date();
   const fellowshipData = isInnovationFellowship
     ? app.formData as InnovationFellowshipFormData
@@ -147,6 +170,19 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
         : {}),
     },
   });
+
+  if (isVentureConnect) {
+    await trackServer({
+      name: CAMPAIGN_EVENT_NAMES.ventureConnectApplicationSubmitted,
+      path: "/apply/venture-connect/[token]",
+      props: {
+        program: "venture_connect",
+        applicationId: app.id,
+        publicApplication: true,
+        attribution,
+      },
+    });
+  }
 
   // Confirmation is best-effort. The application is already safely
   // submitted before email is attempted, so an SMTP issue cannot lose it.
