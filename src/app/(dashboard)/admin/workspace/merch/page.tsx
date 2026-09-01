@@ -28,9 +28,10 @@ export default async function WorkspaceMerchPage() {
         title="Merch"
         description={`Trade-show giveaway shortlist — ${MERCH.items.length} items matched to real products in ${MERCH.meta.supplier}'s catalogue, grouped by how much of a conversation the visitor has had. Filter, pick a set, and copy a quote request straight to the supplier.`}
       />
-      {/* The way an admin finds the shareable link. Without this the public
-          page exists but nobody knows the URL, which is the same as it not
-          existing. */}
+      {/* The way an admin finds the shareable link — and, just as
+          importantly, the reminder that everything on this page is already
+          public. Whoever edits items.json should know that before they
+          write the next watch-out. */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card px-3.5 py-2.5 text-[12.5px]">
         <Share2 size={13} className="shrink-0 text-subtle" aria-hidden />
         <span className="text-muted">
@@ -40,7 +41,7 @@ export default async function WorkspaceMerchPage() {
           /merch
         </Link>
         <span className="text-subtle">
-          — names, photos and supplier links only. No pricing, no tiers.
+          — the same board, open to anyone. Pricing and notes included.
         </span>
       </div>
 

@@ -64,14 +64,10 @@ export interface MerchItem {
    */
   imageUrl: string;
   /** Prose, rendered as authored. Do not rewrite.
-   *  INTERNAL — written for whoever is buying: it compares prices against
-   *  items already rejected and talks about logo exposure. Never publish it.
-   *  The public page shows `publicBlurb` instead. */
+   *  Written for whoever is buying — it compares prices against items
+   *  already rejected and talks about logo exposure. This is published:
+   *  /merch is open. Write it knowing that. */
   whyItWorks: string;
-  /** The same item described for the person receiving it — what it is and
-   *  what it does, no cost and no mention of why BHN chose it. This is the
-   *  only prose that reaches the public page. */
-  publicBlurb: string;
   decoration: string;
   watchOut: string;
 }

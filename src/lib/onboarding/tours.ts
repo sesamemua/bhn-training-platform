@@ -285,12 +285,12 @@ export const TOUR_STEPS: TourStep[] = [
   // ─── The public merch shortlist
   {
     id: "merch.public",
-    title: "Show the merch shortlist to someone without an account",
-    body: "There is now a link you can send outside the platform: /merch. Names, photos, a plain description and the supplier's listing \u2014 and nothing about cost. No break pricing, no setup charges, no estimated range, and not the tier each item is meant for, which is our own read on how far a visitor has got in a conversation. The link sits at the top of Workspace \u2192 Marketing \u2192 Merch. For quantities or a real number, keep sending the internal board.",
+    title: "The merch board is public",
+    body: "/merch is the same board without the sign-in \u2014 filters, tiers, pricing, notes and all. Send it to a partner or straight to the supplier; the link is at the top of Workspace \u2192 Marketing \u2192 Merch. Worth knowing before you edit the catalogue: whatever goes into items.json is published when it is committed, watch-outs included.",
     path: "/admin/workspace/merch",
     placement: "center",
     roles: ["admin", "superadmin"],
-    cta: { label: "Open the public list", href: "/merch" },
+    cta: { label: "Open the public board", href: "/merch" },
     since: "2026.09.18a",
   },
   // ─── Workspace · Marketing → Merch
