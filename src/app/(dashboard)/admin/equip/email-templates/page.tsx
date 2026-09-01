@@ -17,11 +17,11 @@ import {
   renderEquipEmail,
   sampleEquipCtx,
 } from "@/lib/equip/emails";
-import { STREAM_META, type EquipStream } from "@/lib/equip/types";
+import { STREAM_META } from "@/lib/equip/types";
 
 export const dynamic = "force-dynamic";
 
-const STREAMS: EquipStream[] = ["venture_connect", "venture_lift"];
+const STREAMS = ["venture_connect", "venture_lift"] as const;
 
 export default async function EquipEmailTemplatesPage() {
   const session = await requireCommitteeOrAdmin(["equip_review"], ["equip_grant_reviewer"]).catch(() => null);

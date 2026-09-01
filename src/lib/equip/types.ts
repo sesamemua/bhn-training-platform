@@ -11,7 +11,7 @@
  * agree on field names without an enum migration.
  */
 
-export type EquipStream = "venture_connect" | "venture_lift";
+export type EquipStream = "venture_connect" | "venture_lift" | "innovation_fellowship";
 
 /** Stage of the application:
  *   pre_screen — VL Stage-1 (the short pre-screening form). VC
@@ -52,8 +52,9 @@ export type CommercializationStage = "exploring" | "building" | "unsure";
  *  VentureLift pre-screening references up to $25,000 CAD for the
  *  full application that follows a successful pre-screen. */
 export const STREAM_BUDGETS: Record<EquipStream, number> = {
-  venture_connect: 5_000,
-  venture_lift:    25_000,
+  venture_connect:       5_000,
+  venture_lift:         25_000,
+  innovation_fellowship: 30_000,
 };
 
 /** Stream metadata for picker copy + admin labels. */
@@ -74,6 +75,12 @@ export const STREAM_META: Record<EquipStream, {
     blurb: "Two-stage application for up to $25,000 CAD. Stage 1 is a short pre-screening form; passing it unlocks the full Stage-2 application (Innovation, Market Potential, Project Plan, Commercialization Potential and Impact).",
     cadence: "Quarterly funding cycle",
     bestFor: "Pre-seed / seed-stage company with a provisional patent, prototype, and a commercialization roadmap.",
+  },
+  innovation_fellowship: {
+    name: "Innovation Fellowship",
+    blurb: "Six-month trainee entrepreneur fellowships for master's, PhD, and postdoctoral founders, plus innovation internships with accelerators or innovation organizations.",
+    cadence: "Application window",
+    bestFor: "Trainees advancing a venture through a focused six-month fellowship or entrepreneurship internship.",
   },
 };
 
@@ -195,6 +202,132 @@ export const SUPPORTING_DOCS = [
   { id: "other", label: "Other supporting documentation" },
 ] as const;
 export type SupportingDocKey = (typeof SUPPORTING_DOCS)[number]["id"];
+
+// ── Innovation Fellowship application (Aug 2026 PDF) ──────────
+
+export const INNOVATION_FELLOWSHIP_OPPORTUNITIES = [
+  {
+    id: "trainee_fellowship_grad",
+    label: "Trainee Entrepreneur Fellowship - Master's / PhD",
+    shortLabel: "Master's / PhD Fellowship",
+    amount: 20_333,
+    description: "$20,333 CAD for six months",
+  },
+  {
+    id: "trainee_fellowship_postdoc",
+    label: "Trainee Entrepreneur Fellowship - Postdoctoral Fellow",
+    shortLabel: "Postdoctoral Fellowship",
+    amount: 30_000,
+    description: "$30,000 CAD for six months",
+  },
+  {
+    id: "innovation_internship",
+    label: "Innovation Internship",
+    shortLabel: "Innovation Internship",
+    amount: null,
+    description: "Stipend support for an entrepreneurship-focused internship with an accelerator or innovation organization",
+  },
+] as const;
+
+export type InnovationFellowshipOpportunity =
+  (typeof INNOVATION_FELLOWSHIP_OPPORTUNITIES)[number]["id"];
+
+export function innovationFellowshipRoleMatchesOpportunity(
+  opportunity: InnovationFellowshipOpportunity | undefined,
+  role: ApplicantRole | undefined,
+): boolean {
+  if (!opportunity || !role || opportunity === "innovation_internship") return true;
+  if (opportunity === "trainee_fellowship_postdoc") return role === "postdoc";
+  return role === "master_student" || role === "phd_student";
+}
+
+export const INNOVATION_FELLOWSHIP_IP_STATUSES = [
+  { id: "no_ip", label: "No IP" },
+  { id: "under_development", label: "IP under development" },
+  { id: "provisional_filed", label: "Provisional patent filed" },
+  { id: "patent_application_filed", label: "Patent application filed" },
+  { id: "issued_patent", label: "Issued patent" },
+  { id: "other", label: "Other" },
+] as const;
+
+export type InnovationFellowshipIpStatus =
+  (typeof INNOVATION_FELLOWSHIP_IP_STATUSES)[number]["id"];
+
+export interface InnovationFellowshipFundingRow {
+  id: string;
+  source?: string;
+  amount?: number;
+  date?: string;
+  purpose?: string;
+}
+
+export interface InnovationFellowshipMilestone {
+  id: string;
+  expectedOutcome?: string;
+  targetDate?: string;
+}
+
+/** Shape stored under EquipApplication.formData when
+ *  stream = "innovation_fellowship". It follows the August 2026
+ *  Innovation Fellowship PDF and keeps fellowship-only and
+ *  internship-only answers in separate conditional sections. */
+export interface InnovationFellowshipFormData {
+  // Opportunity
+  opportunity?: InnovationFellowshipOpportunity;
+
+  // 1. Applicant Information
+  fullName?: string;
+  institutionEmail?: string;
+  institutionAffiliation?: string;
+  departmentProgram?: string;
+  supervisorName?: string;
+  supervisorEmail?: string;
+  currentRole?: ApplicantRole;
+  graduationDate?: string;
+  ventureRole?: string;
+  ventureTimeCommitment?: string;
+  receivesOtherSupport?: boolean;
+  otherSupportDetails?: string;
+
+  // 2. Venture / Innovation Information
+  ventureName?: string;
+  companyWebsite?: string;
+  ipStatuses?: InnovationFellowshipIpStatus[];
+  ipOther?: string;
+  innovationDescription?: string;
+  ventureStage?: string;
+  commercializationRoadmap?: string;
+  marketOpportunity?: string;
+  receivedPreviousFunding?: boolean;
+  previousFunding?: InnovationFellowshipFundingRow[];
+
+  // 3A. Trainee Entrepreneur Fellowship
+  fellowshipPlan?: string;
+  fellowshipMilestones?: InnovationFellowshipMilestone[];
+  fellowshipCommercialization?: string;
+
+  // 3B. Innovation Internship
+  internshipHostOrganization?: string;
+  internshipStartDate?: string;
+  internshipEndDate?: string;
+  internshipProgramName?: string;
+  internshipImportance?: string;
+  internshipApplication?: string;
+
+  // 4. Applicant and supervisor attestations. The program-manager
+  // signature remains an internal BioHubNet review step.
+  acknowledged?: boolean;
+  applicantSignatureName?: string;
+  applicantSignatureDate?: string;
+  supervisorSignatureName?: string;
+  supervisorSignatureDate?: string;
+}
+
+export function innovationFellowshipRequestedAmount(
+  opportunity: InnovationFellowshipOpportunity | undefined,
+): number | null {
+  return INNOVATION_FELLOWSHIP_OPPORTUNITIES.find((item) => item.id === opportunity)?.amount ?? null;
+}
 
 // ── VentureLift pre-screening form (v3 PDF) ────────────────────
 

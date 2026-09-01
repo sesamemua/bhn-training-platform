@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Name, email, and into the form.
+ * Name, email, and into a public EQUIP form.
  *
  * The two fields exist because the application has to be addressable:
  * there is no account, so the link returned here is the only way back
@@ -10,8 +10,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
+import type { EquipStream } from "@/lib/equip/types";
 
-export function PublicEquipStart() {
+interface Props {
+  stream?: Extract<EquipStream, "venture_connect" | "innovation_fellowship">;
+  destination?: string;
+}
+
+export function PublicEquipStart({
+  stream = "venture_connect",
+  destination = "/apply/venture-connect",
+}: Props = {}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -25,11 +34,11 @@ export function PublicEquipStart() {
       const r = await fetch("/api/public/equip/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, email, stream }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) { setError(j?.error ?? "Couldn't start the application."); return; }
-      router.push(`/apply/venture-connect/${j.token}`);
+      router.push(`${destination}/${j.token}`);
     } catch {
       setError("Couldn't reach the server. Try again in a moment.");
     } finally {
@@ -71,8 +80,8 @@ export function PublicEquipStart() {
         </label>
       </div>
       <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
-        We use the address only to send you a link back to this application and to reply
-        about it.
+        We use the address to identify your application, send your submission receipt,
+        and reply about it.
       </p>
       {error && <p className="mt-2 text-[12.5px] text-rose-700">{error}</p>}
       <button

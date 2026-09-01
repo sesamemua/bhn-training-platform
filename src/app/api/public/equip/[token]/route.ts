@@ -12,15 +12,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateVentureConnect } from "@/lib/equip/submit-validation";
+import { validateInnovationFellowship } from "@/lib/equip/innovation-fellowship-validation";
 import {
   buildVentureConnectSubmissionReceipt,
   VENTURE_CONNECT_SUBMISSION_BCC,
 } from "@/lib/equip/venture-connect-receipt";
 import { buildVentureConnectApplicationPacket } from "@/lib/equip/venture-connect-packet";
+import {
+  buildInnovationFellowshipSubmissionReceipt,
+  INNOVATION_FELLOWSHIP_SUBMISSION_BCC,
+} from "@/lib/equip/innovation-fellowship-receipt";
+import { buildInnovationFellowshipApplicationPacket } from "@/lib/equip/innovation-fellowship-packet";
 import { canDelete } from "@/lib/equip/delete";
 import { purgeApplication } from "@/lib/equip/purge";
 import { mailConfigured, sendMail } from "@/lib/mail";
-import type { EquipDocument, VentureConnectFormData } from "@/lib/equip/types";
+import {
+  innovationFellowshipRequestedAmount,
+  type EquipDocument,
+  type InnovationFellowshipFormData,
+  type VentureConnectFormData,
+} from "@/lib/equip/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,9 +79,29 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
     return NextResponse.json({ error: "That is more than the form can hold." }, { status: 413 });
   }
 
+  const formData = body.formData as Record<string, unknown>;
+  const applicantName = typeof formData.fullName === "string"
+    ? formData.fullName.trim().slice(0, 160)
+    : "";
+  const applicantEmail = typeof formData.institutionEmail === "string"
+    ? formData.institutionEmail.trim().slice(0, 200)
+    : "";
+  const institution = typeof formData.institutionAffiliation === "string"
+    ? formData.institutionAffiliation.trim().slice(0, 240)
+    : "";
+  const applicantType = typeof formData.currentRole === "string"
+    ? formData.currentRole.slice(0, 80)
+    : "";
+
   await prisma.equipApplication.update({
     where: { id: app.id },
-    data: { formData: body.formData as object },
+    data: {
+      formData: formData as object,
+      ...(applicantName ? { applicantName } : {}),
+      ...(EMAIL.test(applicantEmail) ? { applicantEmail } : {}),
+      ...(institution ? { institution: "other", institutionOther: institution } : {}),
+      ...(applicantType ? { applicantType } : {}),
+    },
   });
   return NextResponse.json({ ok: true, savedAt: new Date().toISOString() });
 }
@@ -88,43 +119,73 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
    * A public application that skipped a check the other one enforces
    * would be a second standard nobody agreed to.
    */
-  const errors = validateVentureConnect(
-    app.formData as VentureConnectFormData,
-    (app.documents as unknown as EquipDocument[]) ?? [],
-  );
+  const documents = (app.documents as unknown as EquipDocument[]) ?? [];
+  const isVentureConnect = app.stream === "venture_connect";
+  const isInnovationFellowship = app.stream === "innovation_fellowship";
+  if (!isVentureConnect && !isInnovationFellowship) {
+    return NextResponse.json({ error: "This application type cannot be submitted here." }, { status: 400 });
+  }
+
+  const errors = isVentureConnect
+    ? validateVentureConnect(app.formData as VentureConnectFormData, documents)
+    : validateInnovationFellowship(app.formData as InnovationFellowshipFormData);
   if (errors.length > 0) {
     return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
   }
 
   const submittedAt = new Date();
+  const fellowshipData = isInnovationFellowship
+    ? app.formData as InnovationFellowshipFormData
+    : null;
   await prisma.equipApplication.update({
     where: { id: app.id },
-    data: { status: "submitted", submittedAt },
+    data: {
+      status: "submitted",
+      submittedAt,
+      ...(fellowshipData
+        ? { requestedAmount: innovationFellowshipRequestedAmount(fellowshipData.opportunity) }
+        : {}),
+    },
   });
 
   // Confirmation is best-effort. The application is already safely
   // submitted before email is attempted, so an SMTP issue cannot lose it.
-  const formData = app.formData as VentureConnectFormData;
+  const formData = app.formData as VentureConnectFormData | InnovationFellowshipFormData;
   const institutionEmail = formData.institutionEmail?.trim() ?? "";
   const recipient = EMAIL.test(institutionEmail)
     ? institutionEmail
     : app.applicantEmail?.trim();
   if (recipient && mailConfigured()) {
-    const email = buildVentureConnectSubmissionReceipt({
-      applicationId: app.id,
-      submittedAt,
-      formData,
-    });
     try {
-      const packet = await buildVentureConnectApplicationPacket({
-        applicationId: app.id,
-        submittedAt,
-        formData,
-        documents: (app.documents as unknown as EquipDocument[]) ?? [],
-      });
+      const email = isVentureConnect
+        ? buildVentureConnectSubmissionReceipt({
+            applicationId: app.id,
+            submittedAt,
+            formData: formData as VentureConnectFormData,
+          })
+        : buildInnovationFellowshipSubmissionReceipt({
+            applicationId: app.id,
+            submittedAt,
+            formData: formData as InnovationFellowshipFormData,
+          });
+      const packet = isVentureConnect
+        ? await buildVentureConnectApplicationPacket({
+            applicationId: app.id,
+            submittedAt,
+            formData: formData as VentureConnectFormData,
+            documents,
+          })
+        : await buildInnovationFellowshipApplicationPacket({
+            applicationId: app.id,
+            submittedAt,
+            formData: formData as InnovationFellowshipFormData,
+            documents,
+          });
       await sendMail({
         to: recipient,
-        bcc: [...VENTURE_CONNECT_SUBMISSION_BCC],
+        bcc: isVentureConnect
+          ? [...VENTURE_CONNECT_SUBMISSION_BCC]
+          : [...INNOVATION_FELLOWSHIP_SUBMISSION_BCC],
         subject: email.subject,
         text: email.text,
         html: email.html,
@@ -135,7 +196,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ token: st
         }],
       });
     } catch (err) {
-      console.error("[equip] public VentureConnect receipt failed", { id: app.id, err });
+      console.error("[equip] public application receipt failed", { id: app.id, stream: app.stream, err });
     }
   }
 

@@ -10,7 +10,7 @@ import {
   type RGB,
 } from "pdf-lib";
 import { R2_BUCKET, r2 } from "@/lib/r2";
-import { receiptSections } from "./venture-connect-receipt";
+import { receiptSections, type ReceiptSection } from "./venture-connect-receipt";
 import type { EquipDocument, VentureConnectFormData } from "./types";
 
 const PAGE_WIDTH = 612;
@@ -30,11 +30,24 @@ export interface VentureConnectPacketInput {
   documents: EquipDocument[];
 }
 
-export interface VentureConnectPacket {
+export interface EquipApplicationPacket {
   filename: string;
   content: Buffer;
   contentType: "application/pdf";
   includedFiles: string[];
+}
+
+export type VentureConnectPacket = EquipApplicationPacket;
+
+export interface EquipApplicationPacketInput {
+  applicationId: string;
+  submittedAt: Date;
+  applicantName: string | undefined;
+  title: string;
+  subject: string;
+  filenamePrefix: string;
+  sections: ReceiptSection[];
+  documents: EquipDocument[];
 }
 
 export type EquipDocumentLoader = (document: EquipDocument) => Promise<Uint8Array>;
@@ -305,28 +318,28 @@ async function embedOriginal(
   });
 }
 
-export async function buildVentureConnectApplicationPacket(
-  input: VentureConnectPacketInput,
+export async function buildEquipApplicationPacket(
+  input: EquipApplicationPacketInput,
   loadDocument: EquipDocumentLoader = loadR2Document,
-): Promise<VentureConnectPacket> {
+): Promise<EquipApplicationPacket> {
   const document = await PDFDocument.create();
   const regular = await document.embedFont(StandardFonts.Helvetica);
   const bold = await document.embedFont(StandardFonts.HelveticaBold);
-  document.setTitle(`VentureConnect application - ${input.formData.fullName || input.applicationId}`);
+  document.setTitle(`${input.title} - ${input.applicantName || input.applicationId}`);
   document.setAuthor("BioHubNet EQUIP");
-  document.setSubject("Submitted VentureConnect application and supporting files");
+  document.setSubject(input.subject);
   document.setCreator("BioHubNet Training Platform");
   document.setProducer("BioHubNet Training Platform");
   document.setCreationDate(input.submittedAt);
   document.setModificationDate(input.submittedAt);
 
   const writer = new PacketWriter(document, regular, bold);
-  writer.title("VentureConnect application");
-  writer.row("Applicant", input.formData.fullName?.trim() || "Not provided");
+  writer.title(input.title);
+  writer.row("Applicant", input.applicantName?.trim() || "Not provided");
   writer.row("Application reference", input.applicationId);
   writer.row("Submitted", formatSubmittedAt(input.submittedAt));
 
-  for (const section of receiptSections(input.formData)) {
+  for (const section of input.sections) {
     writer.section(section.heading);
     for (const row of section.rows) writer.row(row.label, row.value);
   }
@@ -382,12 +395,28 @@ export async function buildVentureConnectApplicationPacket(
   }
 
   const bytes = await document.save({ useObjectStreams: true });
-  const applicant = safeFilename(input.formData.fullName || "Applicant", "Applicant");
+  const applicant = safeFilename(input.applicantName || "Applicant", "Applicant");
   const reference = safeFilename(input.applicationId.slice(-12), "application");
   return {
-    filename: `VentureConnect-${applicant}-${reference}.pdf`,
+    filename: `${safeFilename(input.filenamePrefix, "EQUIP")}-${applicant}-${reference}.pdf`,
     content: Buffer.from(bytes),
     contentType: "application/pdf",
     includedFiles: input.documents.map((attachment) => attachment.name),
   };
+}
+
+export async function buildVentureConnectApplicationPacket(
+  input: VentureConnectPacketInput,
+  loadDocument: EquipDocumentLoader = loadR2Document,
+): Promise<VentureConnectPacket> {
+  return buildEquipApplicationPacket({
+    applicationId: input.applicationId,
+    submittedAt: input.submittedAt,
+    applicantName: input.formData.fullName,
+    title: "VentureConnect application",
+    subject: "Submitted VentureConnect application and supporting files",
+    filenamePrefix: "VentureConnect",
+    sections: receiptSections(input.formData),
+    documents: input.documents,
+  }, loadDocument);
 }

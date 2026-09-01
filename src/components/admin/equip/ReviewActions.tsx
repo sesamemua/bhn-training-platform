@@ -14,7 +14,8 @@
  *     gate: Appendix 3 (IP supporting document) must be attached
  *           or the approve button is disabled with an explainer.
  *
- *   VC + submitted/under_review               → single-stage VC
+ *   VC / Innovation Fellowship + submitted/under_review
+ *                                             → single-stage review
  *     buttons: Claim → Approve (with amount) / Not selected
  *
  *   approved (any stream/stage)               → Mark funded
@@ -59,8 +60,8 @@ type Mode =
   | "approve_stage1"   // VL Stage-1 advance
   | "reject_stage1"    // VL Stage-1 reject
   | "approve_stage2"   // VL Stage-2 approve (full rubric)
-  | "approve_vc"       // VC approve with amount
-  | "reject"           // VL Stage-2 / VC reject
+  | "approve_vc"       // single-stage approve with amount
+  | "reject"           // VL Stage-2 / single-stage reject
   | "fund";            // mark funded
 
 const CRITERIA: Array<{ key: keyof VentureLiftReviewerScores; label: string; hint: string }> = [
@@ -93,6 +94,8 @@ export function ReviewActions({
   const isVlStage1 = stream === "venture_lift" && stage === "pre_screen";
   const isVlStage2 = stream === "venture_lift" && stage === "full_app";
   const isVc       = stream === "venture_connect";
+  const isInnovationFellowship = stream === "innovation_fellowship";
+  const isSingleStage = isVc || isInnovationFellowship;
 
   // Compute available actions from the state-machine axes.
   const canClaim   = currentStatus === "submitted";
@@ -141,6 +144,7 @@ export function ReviewActions({
         {isVlStage1 && <span className="text-emerald-700">· VL Stage 1 (pre-screening)</span>}
         {isVlStage2 && <span className="text-emerald-700">· VL Stage 2 (full application)</span>}
         {isVc       && <span className="text-brand-700">· VC</span>}
+        {isInnovationFellowship && <span className="text-brand-700">· Innovation Fellowship</span>}
       </p>
 
       {/* Idle button row */}
@@ -196,7 +200,7 @@ export function ReviewActions({
             </>
           )}
 
-          {canDecide && isVc && (
+          {canDecide && isSingleStage && (
             <>
               <button
                 type="button"
@@ -367,7 +371,7 @@ export function ReviewActions({
         </div>
       )}
 
-      {/* VC approve (single-stage) */}
+      {/* Single-stage VC / Innovation Fellowship approval */}
       {mode === "approve_vc" && (
         <div className="space-y-3">
           <label className="block">
@@ -383,6 +387,11 @@ export function ReviewActions({
             {typeof remainingCap === "number" && amount > remainingCap && (
               <span className="text-[11px] text-rose-700 inline-flex items-center gap-1.5 mt-1">
                 <AlertCircle size={11} /> Exceeds the applicant&apos;s remaining ${remainingCap.toLocaleString()} cap. Server will reject.
+              </span>
+            )}
+            {isInnovationFellowship && (
+              <span className="mt-1 block text-[10px] text-subtle">
+                The selected opportunity sets the requested stipend amount. Adjust only when the approved support differs.
               </span>
             )}
           </label>
@@ -406,7 +415,7 @@ export function ReviewActions({
         </div>
       )}
 
-      {/* Generic reject for VC + VL Stage-2 */}
+      {/* Generic reject for single-stage streams + VL Stage-2 */}
       {mode === "reject" && (
         <div className="space-y-3">
           <label className="block">

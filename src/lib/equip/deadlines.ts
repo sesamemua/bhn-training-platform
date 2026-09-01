@@ -64,7 +64,7 @@ export const nextOpenDeadline = cache(async (stream: EquipStream): Promise<Deadl
   return rows[0] ?? null;
 });
 
-/** Both streams' next open deadlines in one fetch. Useful for the
+/** Every stream's next open deadline in one fetch. Useful for the
  *  /equip landing page. */
 export const nextOpenDeadlines = cache(async (): Promise<Record<EquipStream, DeadlineRow | null>> => {
   const now = new Date();
@@ -76,8 +76,9 @@ export const nextOpenDeadlines = cache(async (): Promise<Record<EquipStream, Dea
     orderBy: { deadlineAt: "asc" },
   });
   const byStream: Record<string, DeadlineRow | null> = {
-    venture_connect: null,
-    venture_lift:    null,
+    venture_connect:       null,
+    venture_lift:          null,
+    innovation_fellowship: null,
   };
   for (const row of rows) {
     if (byStream[row.stream] == null) byStream[row.stream] = row;

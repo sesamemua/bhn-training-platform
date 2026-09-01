@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ArrowLeft, FileText, User as UserIcon, MapPin, Briefcase, Mail } from "lucide-react";
+import { ArrowLeft, FileText, User as UserIcon, MapPin, Briefcase, Mail, Lightbulb } from "lucide-react";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
@@ -21,8 +21,10 @@ import {
   STREAM_META, STATUS_META, SUPPORTING_DOCS,
   type EquipStatus, type EquipStream, type ApplicationStage,
   type VentureConnectFormData, type VentureLiftFormData, type VentureLiftFullData,
+  type InnovationFellowshipFormData,
   type VentureLiftReviewerScores, type EquipDocument,
 } from "@/lib/equip/types";
+import { innovationFellowshipReceiptSections } from "@/lib/equip/innovation-fellowship-receipt";
 import { institutionLabel } from "@/lib/equip/institutions";
 import { applicantOf } from "@/lib/equip/applicant";
 
@@ -234,6 +236,14 @@ export default async function AdminEquipReviewPage({
         </DSSection>
       )}
 
+      {app.stream === "innovation_fellowship" && (
+        <InnovationFellowshipPanel
+          data={app.formData as InnovationFellowshipFormData}
+          documents={documents}
+          applicationId={app.id}
+        />
+      )}
+
       {app.stream === "venture_lift" && (
         <VlStage1Panel data={app.formData as VentureLiftFormData} preScreenNote={app.preScreenReviewerNote} preScreenDecidedAt={app.preScreenDecidedAt} />
       )}
@@ -319,6 +329,71 @@ function BudgetLine({ label, amount }: { label: string; amount: number | undefin
       <span className="text-muted">{label}</span>
       <span className="font-mono tabular-nums text-fg">${amount.toLocaleString()}</span>
     </li>
+  );
+}
+
+function InnovationFellowshipPanel({
+  data,
+  documents,
+  applicationId,
+}: {
+  data: InnovationFellowshipFormData;
+  documents: EquipDocument[];
+  applicationId: string;
+}) {
+  const sections = innovationFellowshipReceiptSections(data);
+  return (
+    <>
+      {sections.map((section) => (
+        <DSSection
+          key={section.heading}
+          eyebrow="Innovation Fellowship"
+          title={section.heading}
+          icon={<Lightbulb size={14} className="text-brand-700" />}
+        >
+          <dl className="divide-y divide-line">
+            {section.rows.map((row) => (
+              <div key={row.label} className="grid gap-1 py-2.5 sm:grid-cols-[190px_1fr] sm:gap-4">
+                <dt className="text-[10px] font-bold uppercase tracking-wider text-subtle">
+                  {row.label}
+                </dt>
+                <dd className="min-w-0 whitespace-pre-wrap break-words text-sm leading-relaxed text-fg">
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </DSSection>
+      ))}
+
+      <DSSection
+        eyebrow="Innovation Fellowship"
+        title="Supporting files"
+        icon={<FileText size={14} className="text-brand-700" />}
+      >
+        {documents.length > 0 ? (
+          <ul className="space-y-2 text-sm">
+            {documents.map((document) => (
+              <li key={document.key} className="flex items-center justify-between gap-3 border-b border-line pb-2 last:border-0 last:pb-0">
+                <a
+                  href={`/api/equip/applications/${applicationId}/document?key=${encodeURIComponent(document.key)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 break-words font-semibold text-brand-700 underline"
+                >
+                  {document.name}
+                </a>
+                <span className="shrink-0 text-[10px] tabular-nums text-subtle">
+                  {Math.max(1, Math.round(document.size / 1024)).toLocaleString()} KB
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">No optional supporting files were attached.</p>
+        )}
+      </DSSection>
+    </>
   );
 }
 

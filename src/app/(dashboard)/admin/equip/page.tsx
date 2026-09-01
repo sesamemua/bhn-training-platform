@@ -10,7 +10,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
-import { ArrowLeft, ArrowRight, AlertTriangle, Rocket, Beaker, Mail } from "lucide-react";
+import { ArrowLeft, ArrowRight, AlertTriangle, Rocket, Beaker, Mail, Lightbulb } from "lucide-react";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { DSSection } from "@/components/design-system/DSSection";
 import { DSStatGrid, DSStat } from "@/components/design-system/DSStatGrid";
@@ -131,7 +131,7 @@ export default async function AdminEquipPage({
         title="Equip review queue"
         description={
           <>
-            VentureConnect (≤$5K, monthly) + VentureLift (≤$25K, quarterly). Click a row to review, leave a note, and decide.
+            VentureConnect, VentureLift, and Innovation Fellowship submissions. Click a row to review, leave a note, and decide.
             {" "}For the program-management dashboard (apps in flight, stalled-app alerts, per-stream funnel),{" "}
             <Link href="/admin/equip/overview" className="text-amber-200 font-bold underline decoration-amber-200/60 underline-offset-2 hover:text-amber-100 transition-colors">open the Equip overview →</Link>
           </>
@@ -239,7 +239,11 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                       </td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1.5 text-xs text-fg">
-                          {a.stream === "venture_lift" ? <Rocket size={11} /> : <Beaker size={11} />}
+                          {a.stream === "venture_lift"
+                            ? <Rocket size={11} />
+                            : a.stream === "innovation_fellowship"
+                              ? <Lightbulb size={11} />
+                              : <Beaker size={11} />}
                           {stream.name}
                         </span>
                       </td>

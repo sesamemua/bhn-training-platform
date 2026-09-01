@@ -330,8 +330,16 @@ const MILESTONE_COMMON: EditableFields = {
 };
 
 export const TEMPLATE_DEFAULTS: DefaultsMap = {
-  submission: { venture_connect: SUBMISSION_COMMON, venture_lift: SUBMISSION_COMMON },
-  under_review: { venture_connect: UNDER_REVIEW_COMMON, venture_lift: UNDER_REVIEW_COMMON },
+  submission: {
+    venture_connect: SUBMISSION_COMMON,
+    venture_lift: SUBMISSION_COMMON,
+    innovation_fellowship: SUBMISSION_COMMON,
+  },
+  under_review: {
+    venture_connect: UNDER_REVIEW_COMMON,
+    venture_lift: UNDER_REVIEW_COMMON,
+    innovation_fellowship: UNDER_REVIEW_COMMON,
+  },
   pre_screen_passed: {
     venture_lift: {
       subject: "Your VentureLift pre-screening passed — Stage 2 is open",
@@ -357,7 +365,11 @@ export const TEMPLATE_DEFAULTS: DefaultsMap = {
       ctaLabel: "Explore EQUIP streams",
     },
   },
-  approved: { venture_connect: APPROVED_COMMON, venture_lift: APPROVED_COMMON },
+  approved: {
+    venture_connect: APPROVED_COMMON,
+    venture_lift: APPROVED_COMMON,
+    innovation_fellowship: APPROVED_COMMON,
+  },
   not_selected: {
     venture_connect: {
       subject: "Update on your {{streamName}} application",
@@ -379,10 +391,32 @@ export const TEMPLATE_DEFAULTS: DefaultsMap = {
       ],
       ctaLabel: "Explore EQUIP streams",
     },
+    innovation_fellowship: {
+      subject: "Update on your {{streamName}} application",
+      heading: "Update on your application",
+      paras: [
+        "Hi {{firstName}},",
+        "Thank you for applying to **{{streamName}}**. After careful review, your application wasn't selected for support this round.",
+        "Decisions are competitive and weighed against the program criteria and available funding. You are welcome to apply again in a future application window.",
+      ],
+      ctaLabel: "Explore EQUIP streams",
+    },
   },
-  funded: { venture_connect: FUNDED_COMMON, venture_lift: FUNDED_COMMON },
-  deadline: { venture_connect: DEADLINE_COMMON, venture_lift: DEADLINE_COMMON },
-  milestone: { venture_connect: MILESTONE_COMMON, venture_lift: MILESTONE_COMMON },
+  funded: {
+    venture_connect: FUNDED_COMMON,
+    venture_lift: FUNDED_COMMON,
+    innovation_fellowship: FUNDED_COMMON,
+  },
+  deadline: {
+    venture_connect: DEADLINE_COMMON,
+    venture_lift: DEADLINE_COMMON,
+    innovation_fellowship: DEADLINE_COMMON,
+  },
+  milestone: {
+    venture_connect: MILESTONE_COMMON,
+    venture_lift: MILESTONE_COMMON,
+    innovation_fellowship: MILESTONE_COMMON,
+  },
 };
 
 /** Which note (if any) each template appends, and where its CTA points. */

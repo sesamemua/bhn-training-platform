@@ -32,11 +32,11 @@ export default async function PublicVentureConnectFormPage({
   const app = await prisma.equipApplication.findUnique({
     where: { publicToken: token },
     select: {
-      id: true, status: true, formData: true, documents: true, submittedAt: true,
+      id: true, stream: true, status: true, formData: true, documents: true, submittedAt: true,
       applicantName: true, applicantEmail: true,
     },
   });
-  if (!app) notFound();
+  if (!app || app.stream !== "venture_connect") notFound();
 
   if (app.status !== "draft") {
     return (
