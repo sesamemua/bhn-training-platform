@@ -239,6 +239,21 @@ const equipItems: (NavItem & { labelKey: string })[] = [
     description: "Status of every EQUIP application you've submitted — draft, submitted, under review, approved, funded. Click any row for the full submission body and reviewer notes." },
 ];
 
+const innovationFellowshipItem: NavItem = {
+  label: "Innovation Fellowship",
+  href: "/apply/innovation-fellowship",
+  icon: Award,
+  description: "Start an EQUIP Innovation Fellowship application using the online form.",
+};
+
+const equipAdminDashboardItem: NavItem = {
+  label: "Admin dashboard",
+  href: "/admin/equip",
+  icon: LayoutDashboard,
+  minRole: "superadmin",
+  description: "Open the EQUIP review dashboard to manage submitted applications and decisions.",
+};
+
 // EMPLOYER PORTAL — visible only when role === "employer".
 //
 // Overview is the brand-stage home (/employer) — wavy aurora cover
@@ -1790,6 +1805,10 @@ export function Sidebar({
                 title: "VentureLift — up to $25,000",
                 body: "Accelerator participation, IP filings, prototype builds, commercialization roadmap. Quarterly cycle.",
               },
+              {
+                title: "Innovation Fellowship",
+                body: "Apply through the dedicated online workflow and submit the required supporting documents.",
+              },
             ]}
           >
             {/* Admin+ always see the EQUIP learner section regardless of
@@ -1807,6 +1826,10 @@ export function Sidebar({
               const labeled = { ...item, label: t(item.labelKey) };
               return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
             })}
+            <NavLink item={innovationFellowshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            {effectiveRole === "superadmin" && (
+              <NavLink item={equipAdminDashboardItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            )}
           </SectionGroup>
         )}
 
