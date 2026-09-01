@@ -365,12 +365,6 @@ export interface AvTermChange {
 
 export const AV_TERM_CHANGES: AvTermChange[] = [
   {
-    label: "Crew accommodation",
-    y2025: "Not mentioned on either document.",
-    y2026: "“Client to provide hotel rooms for crew.”",
-    impact: "cost",
-  },
-  {
     label: "Setup day",
     y2025: "Setup and strike on the event day — 3 techs × 3 hours setup, × 2 strike.",
     y2026: "“Setup the day before.”",

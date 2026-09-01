@@ -183,8 +183,8 @@ export function AvComparison() {
         <div className="border-b border-line px-4 py-3">
           <h2 className="text-[13px] font-bold text-fg">Everything that changed that is not a price</h2>
           <p className="mt-0.5 text-[11px] text-muted">
-            Read this before the table above. Two of these commit BHN to spending that is not
-            in the quote at all, and one is a contradiction on the face of the document.
+            Read this before the table above. One of these commits BHN to spending that is
+            not in the quote at all, and one is a contradiction on the face of the document.
           </p>
         </div>
         <ul className="divide-y divide-line">

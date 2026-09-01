@@ -286,7 +286,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "symposium.av",
     title: "The AV quote, next to what last year really cost",
-    body: "Workspace \u2192 2026 Symposium \u2192 AV puts Livecast's 2026 quote beside the 2025 quote AND the 2025 final invoice. The invoice is the point: last year was billed $818.68 over its own estimate, so this year is up 31% on what was actually paid \u2014 not the 47% you get comparing quote to quote. Read the bottom section first. Two of the 2026 terms commit BHN to spending that is not in the quote at all.",
+    body: "Workspace \u2192 2026 Symposium \u2192 AV puts Livecast's 2026 quote beside the 2025 quote AND the 2025 final invoice. The invoice is the point: last year was billed $818.68 over its own estimate, so this year is up 31% on what was actually paid \u2014 not the 47% you get comparing quote to quote. Read the bottom section first \u2014 the overtime rate, the cancellation window and a deposit clause that contradicts the payment policy are all new.",
     path: "/admin/workspace/symposium-2026/av",
     placement: "center",
     roles: ["admin", "superadmin"],
