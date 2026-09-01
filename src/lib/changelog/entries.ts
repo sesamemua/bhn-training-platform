@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Symposium AV comparison
+  {
+    title: "Workspace \u2192 2026 Symposium \u2192 AV: this year's quote against last year's, and against what last year actually cost",
+    body: "**Three Livecast documents side by side** \u2014 the 2025 quote, the 2025 final invoice, and the 2026 quote \u2014 line by line, with the difference on every row. **The invoice is in there for a reason.** Against last year's *quote*, the 2026 number is up 47%. Against what the 2025 Symposium *actually cost*, it is up 31% \u2014 $2,323.86 on $7,444.44. The first figure is true and misleading, because 2025 was billed $818.68 over its own estimate: five lines were charged that had never been quoted (the ATEM switcher, encoder kit, Aputure lights, power bars and A/C cables, $1,200 together) and show labour ran 24 hours against 20. Three of those five are quoted up front this year, which is part of why 2026 looks steep \u2014 the quote got more honest, not only more expensive. **What is genuinely new:** a $1,000 hybrid-streaming package, two Sony FS7 cameras at $900, a 43\u2033 TV for a speaker timer, riser decks and a converter. **What got cheaper:** the four-speaker PA, quoted at $265 against the $330 that was billed last year, and power bars are now free. **The projectors are the biggest equipment jump** \u2014 EPSON laser units at $975 each against the NEC's $650, +$650 in total, with an unexplained $1,300 in an adjacent column worth querying. **A separate section covers what changed that is not a price**, which is where the real exposure is: 2026 asks BHN to provide hotel rooms for the crew and to set up the day before (neither is in the quote), the venue is still listed as \u201cNone\u201d, overtime is now $170/hour per technician past 10 hours with show labour booked at exactly 10, the cancellation window has widened from 48 hours to three weeks, and the deposit terms contradict the payment policy on the face of the same document. Every figure is reconciled against each document's own stated subtotal, discount and total by a test, so a mistyped line fails the build rather than showing a confident wrong number.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Public merch board
   {
     title: "The merch board is open — no account needed",

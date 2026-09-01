@@ -282,6 +282,17 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the calendar", href: "/admin/workspace/marketing/newsletter/calendar" },
     since: "2026.09.17a",
   },
+  // ─── Workspace · 2026 Symposium → AV
+  {
+    id: "symposium.av",
+    title: "The AV quote, next to what last year really cost",
+    body: "Workspace \u2192 2026 Symposium \u2192 AV puts Livecast's 2026 quote beside the 2025 quote AND the 2025 final invoice. The invoice is the point: last year was billed $818.68 over its own estimate, so this year is up 31% on what was actually paid \u2014 not the 47% you get comparing quote to quote. Read the bottom section first. Two of the 2026 terms commit BHN to spending that is not in the quote at all.",
+    path: "/admin/workspace/symposium-2026/av",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open AV", href: "/admin/workspace/symposium-2026/av" },
+    since: "2026.09.18b",
+  },
   // ─── The public merch shortlist
   {
     id: "merch.public",

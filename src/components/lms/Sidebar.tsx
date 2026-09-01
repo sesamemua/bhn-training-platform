@@ -71,7 +71,7 @@ import {
   Clapperboard,
   BookUser,
   Radar,
-  CalendarClock, MessageSquareText, Images} from "lucide-react";
+  CalendarClock, MessageSquareText, Images, Speaker} from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
 
@@ -437,6 +437,20 @@ const workspaceSpeakersItem: NavItem = {
   minRole: "admin",
   description:
     "Send invited speakers one link and they fill in their own headshot, bio, LinkedIn and what their session offers — no account needed. Review what comes back before it goes on the website.",
+};
+
+// WORKSPACE → 2026 Symposium → AV. Three Livecast documents compared:
+// last year's quote, last year's actual invoice, and this year's quote.
+// The invoice is in there because 2025 was billed 12% above its own
+// quote — comparing 2026 against last year's estimate alone would say
+// the price rose 47% when the honest figure is 31%.
+const workspaceAvItem: NavItem = {
+  label: "AV",
+  href: "/admin/workspace/symposium-2026/av",
+  icon: Speaker,
+  minRole: "admin",
+  description:
+    "Livecast's 2026 quote against last year's quote and last year's final invoice — line by line, plus the terms that changed and the two that commit BHN to spending not in the quote.",
 };
 
 // WORKSPACE → Industry Insights. A different event on a different day,
@@ -1949,6 +1963,7 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceAvItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Industry Insights">
