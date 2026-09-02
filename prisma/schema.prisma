@@ -3788,6 +3788,17 @@ model EquipApplication {
   applicationStage       String    @default("pre_screen")
   requestedAmount        Float?
   approvedAmount         Float?
+  /// What was actually spent and claimed, once receipts are in. Null
+  /// means not reconciled yet — deliberately NOT defaulted to
+  /// approvedAmount, because "we have not checked" and "they spent
+  /// exactly what we granted" are different facts and a variance report
+  /// that conflates them is worse than no report.
+  actualAmount           Float?
+  /// When the actual figure was recorded.
+  actualAt               DateTime?
+  /// Why the actual differs — cancelled flight, cheaper hotel, partial
+  /// claim. The number alone never explains itself.
+  actualNote             String?
   /// "grad" | "postdoc" | "research_associate" | "founder"
   applicantType          String?
   /// Slug from the curated 14-institution list (see

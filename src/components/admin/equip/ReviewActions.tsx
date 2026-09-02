@@ -46,6 +46,13 @@ interface Props {
   /** VC only — remaining cumulative cap for this applicant.
    *  Null on VL or when no cap applies. */
   remainingCap?: number | null;
+  /** VC only — how many of the three funded-application slots are left.
+   *  Zero blocks approval at ANY amount, which the dollar cap alone
+   *  cannot express. Null on VL or when no cap applies. */
+  slotsLeft?: number | null;
+  /** VC only — what was actually spent, once receipts are in. */
+  actualAmount?: number | null;
+  actualNote?: string | null;
   /** VL Stage-2 only — whether Appendix 3 (IP supporting docs)
    *  has been attached. Eligibility gate per the Reviewer
    *  Guide. */
@@ -75,7 +82,8 @@ const CRITERIA: Array<{ key: keyof VentureLiftReviewerScores; label: string; hin
 
 export function ReviewActions({
   applicationId, stream, stage, currentStatus,
-  requestedAmount, approvedAmount, remainingCap,
+  requestedAmount, approvedAmount, remainingCap, slotsLeft,
+  actualAmount, actualNote,
   hasIpAppendix, existingScores,
 }: Props) {
   const router = useRouter();
@@ -88,8 +96,15 @@ export function ReviewActions({
   });
   const [scores, setScores] = useState<VentureLiftReviewerScores>(existingScores ?? {});
   const [disbursement, setDisbursement] = useState("");
+  const [actual, setActual] = useState<string>(actualAmount != null ? String(actualAmount) : "");
+  const [actualWhy, setActualWhy] = useState(actualNote ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /* Slots are a harder stop than dollars: at three funded applications
+     no amount is approvable, so the button goes away rather than
+     offering a decision the server will refuse. */
+  const outOfSlots = stream === "venture_connect" && slotsLeft === 0;
 
   const isVlStage1 = stream === "venture_lift" && stage === "pre_screen";
   const isVlStage2 = stream === "venture_lift" && stage === "full_app";
@@ -105,6 +120,33 @@ export function ReviewActions({
     currentStatus === "rejected" ||
     currentStatus === "funded" ||
     currentStatus === "pre_screen_rejected";
+
+  /** Save a reconciliation figure without touching the status. */
+  async function saveActual() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/equip/applications/${applicationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Empty clears it back to unreconciled rather than writing 0,
+          // which would claim the grant was spent entirely.
+          actualAmount: actual.trim() === "" ? null : Number(actual),
+          actualNote: actualWhy,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j as { error?: string }).error ?? "Could not save");
+      }
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function act(target: EquipStatus, payload: Record<string, unknown> = {}) {
     setBusy(true);
@@ -200,12 +242,30 @@ export function ReviewActions({
             </>
           )}
 
+          {outOfSlots && (
+            <p className="w-full text-[11.5px] leading-relaxed text-amber-700">
+              <strong>Approval is closed for this applicant.</strong> All three funded
+              VentureConnect applications are used. The remaining dollar headroom does not
+              matter — the limit is on the number of awards, and lifting it is a programme
+              decision, not a reviewer one.
+            </p>
+          )}
+
           {canDecide && isSingleStage && (
             <>
               <button
                 type="button"
                 onClick={() => setMode("approve_vc")}
-                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-xl"
+                disabled={outOfSlots}
+                title={outOfSlots
+                  ? "This applicant has used all three funded VentureConnect applications."
+                  : undefined}
+                className={
+                  "inline-flex items-center gap-1.5 text-white text-sm font-bold px-4 py-2 rounded-xl " +
+                  (outOfSlots
+                    ? "bg-line text-subtle cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700")
+                }
               >
                 <Check size={13} /> Approve
               </button>
@@ -412,6 +472,71 @@ export function ReviewActions({
             onCancel={() => setMode("idle")}
             busy={busy}
           />
+        </div>
+      )}
+
+      {/*
+        Reconciliation. Deliberately available AFTER the decision — an
+        actual figure arrives with receipts, weeks after approval and
+        usually once the application is already `funded`. Gating it
+        behind the decision panel would mean it could never be entered.
+      */}
+      {stream === "venture_connect" && (currentStatus === "approved" || currentStatus === "funded") && (
+        <div className="mt-3 space-y-2 rounded-xl border border-line bg-elevated/30 p-3">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">
+            Actual amount claimed
+          </p>
+          <p className="text-[11px] leading-relaxed text-muted">
+            What was really spent, once receipts are in. Leave blank until you know — a blank
+            reads as &ldquo;not reconciled&rdquo;, and entering the approved figure to tidy it up
+            would tell the variance report the grant was spent to the dollar.
+            {approvedAmount != null && (
+              <> Approved: <strong className="text-fg">${approvedAmount.toLocaleString()}</strong>.</>
+            )}
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-subtle">Actual (CAD)</span>
+              <input
+                type="number" min={0} step="0.01" value={actual}
+                onChange={(e) => setActual(e.target.value)}
+                placeholder="—"
+                className="mt-1 w-36 rounded-lg border border-line bg-card-solid px-3 py-2 text-sm tabular-nums"
+              />
+            </label>
+            <label className="block min-w-[14rem] flex-1">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-subtle">
+                Why it differs (optional)
+              </span>
+              <input
+                type="text" value={actualWhy}
+                onChange={(e) => setActualWhy(e.target.value)}
+                placeholder="Cancelled flight, cheaper hotel, partial claim…"
+                className="mt-1 w-full rounded-lg border border-line bg-card-solid px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={saveActual}
+              className="rounded-xl bg-accent px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              Save actual
+            </button>
+          </div>
+          {approvedAmount != null && actual.trim() !== "" && Number.isFinite(Number(actual)) && (
+            <p className="text-[11.5px] tabular-nums text-muted">
+              Difference:{" "}
+              <strong className={Number(actual) - approvedAmount < 0 ? "text-emerald-600" : "text-amber-600"}>
+                {Number(actual) - approvedAmount < 0 ? "−" : "+"}$
+                {Math.abs(Number(actual) - approvedAmount).toLocaleString()}
+              </strong>{" "}
+              against approved
+              {approvedAmount !== 0 && (
+                <> · {Math.round((Number(actual) / approvedAmount) * 100)}% utilised</>
+              )}
+            </p>
+          )}
         </div>
       )}
 

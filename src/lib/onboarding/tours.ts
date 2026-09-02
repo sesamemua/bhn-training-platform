@@ -282,6 +282,17 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the calendar", href: "/admin/workspace/marketing/newsletter/calendar" },
     since: "2026.09.17a",
   },
+  // ─── Admin · EQUIP → VentureConnect caps
+  {
+    id: "equip.vc-caps",
+    title: "Both VentureConnect limits, and what was really spent",
+    body: "Opening a VentureConnect application now shows the applicant's whole position: how much of the $5,000 is committed, how many of the three funded applications are gone, and every award they hold \u2014 requested, approved, and the actual amount once receipts are in. The three-application limit is enforced for the first time; at three awards, approval is refused at any amount. After approval you can enter what was actually claimed, and the panel shows two separate gaps: what the committee trimmed, and what came back unspent. Worth knowing: both limits are worded to applicants as per company but enforced per person, so check the company name before approving.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open EQUIP", href: "/admin/equip" },
+    since: "2026.09.18c",
+  },
   // ─── Workspace · 2026 Symposium → AV
   {
     id: "symposium.av",

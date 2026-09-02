@@ -19,6 +19,7 @@
     "test:e2e:report": "playwright show-report",
     "test:outreach": "tsx --test tests/unit/outreach-send.test.ts",
     "vercel": "bash scripts/vercel.sh",
+    "test:equip-cap": "tsx --test tests/unit/equip-cap.test.ts",
     "test:merch": "tsx --test tests/unit/merch.test.ts",
     "test:symposium-av": "tsx --test tests/unit/symposium-av.test.ts",
     "test:demo": "tsx --test tests/unit/demo-mode.test.ts",

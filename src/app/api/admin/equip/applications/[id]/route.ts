@@ -21,7 +21,7 @@ import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import {
   isTerminal,
-  STREAM_BUDGETS,
+
   type EquipStatus,
   type EquipStream,
   type ApplicationStage,
@@ -32,7 +32,9 @@ import { templateMilestones } from "@/lib/equip/milestones";
 import { buildEquipStatusEmail } from "@/lib/equip/emails";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import { applicantOf } from "@/lib/equip/applicant";
-import { priorApprovalsWhere } from "@/lib/equip/cap";
+import {
+  priorApprovalsWhere, capStateFrom, checkApproval, varianceOf, totalVariance,
+} from "@/lib/equip/cap";
 import { canDelete } from "@/lib/equip/delete";
 import { purgeApplication } from "@/lib/equip/purge";
 
@@ -67,29 +69,29 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // applicant (User) since most cases are one trainee = one
   // company; admins handle multi-trainee company cases manually
   // by reading the companyName field on each app.
-  let fundingHistory: {
-    cap: number;
-    previouslyApproved: number;
-    remaining: number;
-    countedApplications: { id: string; status: string; amount: number; decidedAt: Date | null }[];
+  /*
+   * Everything the reviewer needs to decide, in one shape: both caps,
+   * what has been approved, what was actually spent where that is known,
+   * and the per-application trail behind it.
+   */
+  let fundingHistory: ReturnType<typeof capStateFrom> & {
+    variance: ReturnType<typeof totalVariance>;
+    thisApplication: ReturnType<typeof varianceOf>;
   } | null = null;
+
   if (app.stream === "venture_connect") {
-    const cap = STREAM_BUDGETS.venture_connect;
     const prior = await prisma.equipApplication.findMany({
       where: priorApprovalsWhere(app),
-      select: { id: true, status: true, approvedAmount: true, decidedAt: true },
+      select: {
+        id: true, status: true, requestedAmount: true, approvedAmount: true,
+        actualAmount: true, decidedAt: true,
+      },
+      orderBy: { decidedAt: "asc" },
     });
-    const previouslyApproved = prior.reduce<number>((s, p) => s + (p.approvedAmount ?? 0), 0);
     fundingHistory = {
-      cap,
-      previouslyApproved,
-      remaining: Math.max(0, cap - previouslyApproved),
-      countedApplications: prior.map((p) => ({
-        id: p.id,
-        status: p.status,
-        amount: p.approvedAmount ?? 0,
-        decidedAt: p.decidedAt,
-      })),
+      ...capStateFrom(prior),
+      variance: totalVariance(prior),
+      thisApplication: varianceOf(app),
     };
   }
 
@@ -107,9 +109,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const reviewerNote = (body.reviewerNote as string | undefined)?.slice(0, 4000);
   const approvedAmount = typeof body.approvedAmount === "number" ? body.approvedAmount : undefined;
   const disbursementNote = (body.disbursementNote as string | undefined)?.slice(0, 2000);
+  /* Reconciliation. `null` is meaningful and distinct from absent: it
+     clears a figure entered by mistake, where absent means "not part of
+     this request". */
+  const actualAmount =
+    body.actualAmount === null ? null
+    : typeof body.actualAmount === "number" ? body.actualAmount
+    : undefined;
+  const actualNote = (body.actualNote as string | undefined)?.slice(0, 2000);
   const reviewerScores = body.reviewerScores as VentureLiftReviewerScores | undefined;
 
-  if (!target || !TARGET_STATUSES.has(target)) {
+  /*
+   * Reconciliation is not a state transition.
+   *
+   * An actual figure arrives with receipts, weeks after the decision and
+   * usually on an application that is already `approved` or `funded`.
+   * Re-sending its own status to carry the number would hit the
+   * "Already decided" guard below and 409 — so a PATCH with no status
+   * and a reconciliation field is a distinct, valid request.
+   */
+  const reconcileOnly =
+    !target && (actualAmount !== undefined || actualNote !== undefined);
+
+  if (!reconcileOnly && (!target || !TARGET_STATUSES.has(target))) {
     return NextResponse.json({ error: "Invalid target status" }, { status: 400 });
   }
 
@@ -117,10 +139,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     where: { id },
     select: {
       id: true, userId: true, applicantEmail: true, status: true, requestedAmount: true,
+      approvedAmount: true, actualAmount: true,
       stream: true, applicationStage: true, documents: true, milestones: true,
     },
   });
   if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Reconciliation-only: write the figure and stop. No status change, no
+  // state machine, no cap re-check — the money was already committed
+  // when it was approved, and recording what was spent cannot exceed it.
+  if (reconcileOnly) {
+    const patch: Record<string, unknown> = { reviewerId };
+    if (actualAmount !== undefined) {
+      patch.actualAmount = actualAmount;
+      patch.actualAt = actualAmount === null ? null : new Date();
+    }
+    if (actualNote !== undefined) patch.actualNote = actualNote || null;
+    const updated = await prisma.equipApplication.update({ where: { id }, data: patch });
+    return NextResponse.json({ application: updated });
+  }
+
+  // Past the reconciliation branch a status is required, and saying so
+  // here is what lets the rest of the handler treat it as defined.
+  if (!target) {
+    return NextResponse.json({ error: "Invalid target status" }, { status: 400 });
+  }
 
   // VL Stage-2 eligibility gate. Approving a VentureLift full
   // application requires Appendix 3 (IP supporting documents) —
@@ -143,22 +186,44 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
-  // Per-applicant cumulative VC cap enforcement.
-  if (target === "approved" && app.stream === "venture_connect" && typeof approvedAmount === "number") {
-    const prior = await prisma.equipApplication.aggregate({
+  /*
+   * Both VentureConnect caps, server-side.
+   *
+   * The dollar cap was already here; the application-count cap was not,
+   * so an applicant could be approved a fourth and a fifth time for
+   * small amounts and never trip anything. Both are checked in one place
+   * now, and the slot check reports first — telling somebody at three
+   * awards that "$3,500 remains" is a near-miss that is simply false.
+   *
+   * This runs even when no approvedAmount is supplied. The old guard was
+   * conditioned on `typeof approvedAmount === "number"`, which meant an
+   * approval sent without an amount skipped the cap entirely.
+   */
+  /*
+   * The amount that will actually be written, which is not always the
+   * one that was sent. Approving without an explicit figure falls back
+   * to requestedAmount below, so checking the cap against the SENT
+   * value let an approval through at 0 and then wrote the full request.
+   * An applicant with $500 of headroom could be approved for $2,000 by
+   * a reviewer who simply did not touch the amount field.
+   *
+   * The rule has to be evaluated on the same number the write uses.
+   */
+  const effectiveApproval =
+    typeof approvedAmount === "number" && approvedAmount > 0
+      ? approvedAmount
+      : (app.requestedAmount ?? 0);
+
+  if (target === "approved" && app.stream === "venture_connect") {
+    const prior = await prisma.equipApplication.findMany({
       where: priorApprovalsWhere(app),
-      _sum: { approvedAmount: true },
+      select: {
+        id: true, status: true, requestedAmount: true, approvedAmount: true,
+        actualAmount: true, decidedAt: true,
+      },
     });
-    const previouslyApproved = prior._sum.approvedAmount ?? 0;
-    const remaining = STREAM_BUDGETS.venture_connect - previouslyApproved;
-    if (approvedAmount > remaining) {
-      return NextResponse.json(
-        {
-          error: `Approval would exceed the per-applicant $${STREAM_BUDGETS.venture_connect.toLocaleString()} cap. Applicant has $${previouslyApproved.toLocaleString()} previously approved on VentureConnect — only $${remaining.toLocaleString()} remains.`,
-        },
-        { status: 400 },
-      );
-    }
+    const block = checkApproval(capStateFrom(prior), effectiveApproval);
+    if (block) return NextResponse.json({ error: block.message }, { status: 400 });
   }
 
   // State-machine guard. Once terminal (approved/rejected/funded),
@@ -173,6 +238,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Build the patch.
   const now = new Date();
   const data: Record<string, unknown> = { status: target, reviewerId };
+
+  /*
+   * Reconciliation is independent of the status change: an actual figure
+   * arrives when receipts do, which is usually well after the decision
+   * and often on an application that is already `funded`. Handled before
+   * the status branches so it applies to whichever leg is being run.
+   */
+  if (actualAmount !== undefined) {
+    data.actualAmount = actualAmount;
+    data.actualAt = actualAmount === null ? null : now;
+  }
+  if (actualNote !== undefined) data.actualNote = actualNote || null;
 
   if (target === "under_review") {
     // Soft claim — record reviewer, no decision yet.

@@ -5,9 +5,8 @@
  * actions (claim / approve / reject / fund) live in the client
  * ReviewActions component below.
  */
-import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
-import { ArrowLeft, FileText, User as UserIcon, MapPin, Briefcase, Mail, Lightbulb } from "lucide-react";
+import { FileText, User as UserIcon, MapPin, Briefcase, Mail, Lightbulb } from "lucide-react";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
@@ -16,7 +15,7 @@ import { ReviewActions } from "@/components/admin/equip/ReviewActions";
 import { TriageSummary } from "@/components/admin/equip/TriageSummary";
 import { MessageThread } from "@/components/equip/MessageThread";
 import { MilestoneTracker } from "@/components/equip/MilestoneTracker";
-import { STREAM_BUDGETS, type EquipMilestone } from "@/lib/equip/types";
+import { type EquipMilestone } from "@/lib/equip/types";
 import {
   STREAM_META, STATUS_META, SUPPORTING_DOCS,
   type EquipStatus, type EquipStream, type ApplicationStage,
@@ -27,6 +26,8 @@ import {
 import { innovationFellowshipReceiptSections } from "@/lib/equip/innovation-fellowship-receipt";
 import { institutionLabel } from "@/lib/equip/institutions";
 import { applicantOf } from "@/lib/equip/applicant";
+import { priorApprovalsWhere, capStateFrom, totalVariance } from "@/lib/equip/cap";
+import { FundingLedger } from "@/components/admin/equip/FundingLedger";
 
 export const dynamic = "force-dynamic";
 
@@ -49,29 +50,31 @@ export default async function AdminEquipReviewPage({
   });
   if (!app) notFound();
 
-  // Funding history (VentureConnect only) — per the PDF, each
-  // applicant/company tops out at $5,000 CAD cumulative across
-  // their applications. Aggregate prior approved + funded apps
-  // so the reviewer can see how much room is left BEFORE making
-  // a call.
-  let vcHistory: { previouslyApproved: number; remaining: number; prior: { id: string; status: string; amount: number; decidedAt: Date | null }[] } | null = null;
+  /*
+   * The applicant's whole VentureConnect position, so the reviewer can
+   * see both limits BEFORE making a call.
+   *
+   * This used to be a fourth hand-written copy of the cap query, and it
+   * carried the bug the shared one exists to prevent: it matched on
+   * `userId: app.userId` with no branch for public applicants, so on an
+   * application with no account it matched every OTHER account-less
+   * application — the whole programme's public spend, charged to one
+   * stranger. It is now the same function the API enforces with, which
+   * is the only way this page and the server can agree.
+   */
+  let vcState: ReturnType<typeof capStateFrom> | null = null;
+  let vcTotal: ReturnType<typeof totalVariance> | null = null;
   if (app.stream === "venture_connect") {
     const prior = await prisma.equipApplication.findMany({
-      where: {
-        userId: app.userId,
-        stream: "venture_connect",
-        id: { not: app.id },
-        status: { in: ["approved", "funded"] },
+      where: priorApprovalsWhere(app),
+      orderBy: { decidedAt: "asc" },
+      select: {
+        id: true, status: true, requestedAmount: true, approvedAmount: true,
+        actualAmount: true, decidedAt: true,
       },
-      orderBy: { decidedAt: "desc" },
-      select: { id: true, status: true, approvedAmount: true, decidedAt: true },
     });
-    const previouslyApproved = prior.reduce<number>((s, p) => s + (p.approvedAmount ?? 0), 0);
-    vcHistory = {
-      previouslyApproved,
-      remaining: Math.max(0, STREAM_BUDGETS.venture_connect - previouslyApproved),
-      prior: prior.map((p) => ({ id: p.id, status: p.status, amount: p.approvedAmount ?? 0, decidedAt: p.decidedAt })),
-    };
+    vcState = capStateFrom(prior);
+    vcTotal = totalVariance([...prior, app]);
   }
 
   const stream = STREAM_META[app.stream as EquipStream];
@@ -111,51 +114,16 @@ export default async function AdminEquipReviewPage({
         currentStatus={app.status as EquipStatus}
         requestedAmount={app.requestedAmount}
         approvedAmount={app.approvedAmount}
-        remainingCap={vcHistory?.remaining ?? null}
+        remainingCap={vcState?.dollarsLeft ?? null}
+        slotsLeft={vcState?.slotsLeft ?? null}
+        actualAmount={app.actualAmount}
+        actualNote={app.actualNote}
         hasIpAppendix={documents.some((d) => d.kind === "ip_doc")}
         existingScores={app.reviewerScores as VentureLiftReviewerScores | null}
       />
 
-      {vcHistory && (
-        <section className="rounded-2xl border border-line bg-card p-4 surface-shadow">
-          <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-subtle">
-            VentureConnect funding history · this applicant
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-            <div className="rounded-xl bg-elevated/40 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">Previously approved</p>
-              <p className="text-lg font-bold text-fg tabular-nums">${vcHistory.previouslyApproved.toLocaleString()}</p>
-            </div>
-            <div className="rounded-xl bg-elevated/40 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">Per-applicant cap</p>
-              <p className="text-lg font-bold text-fg tabular-nums">${STREAM_BUDGETS.venture_connect.toLocaleString()}</p>
-            </div>
-            <div className={"rounded-xl px-3 py-2 " + (vcHistory.remaining > 0 ? "bg-emerald-50/60 ring-1 ring-emerald-200" : "bg-rose-50/60 ring-1 ring-rose-200")}>
-              <p className={"text-[10px] uppercase tracking-wider font-bold " + (vcHistory.remaining > 0 ? "text-emerald-700" : "text-rose-700")}>Remaining cap</p>
-              <p className={"text-lg font-bold tabular-nums " + (vcHistory.remaining > 0 ? "text-emerald-900" : "text-rose-900")}>
-                ${vcHistory.remaining.toLocaleString()}
-              </p>
-            </div>
-          </div>
-          {vcHistory.prior.length > 0 && (
-            <ul className="mt-3 space-y-1.5 text-xs">
-              {vcHistory.prior.map((p) => (
-                <li key={p.id} className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-elevated/30">
-                  <span className="font-mono text-[10px] text-subtle">{p.decidedAt ? p.decidedAt.toISOString().slice(0, 10) : "—"}</span>
-                  <span className="text-fg flex-1 truncate">{p.status}</span>
-                  <span className="font-mono tabular-nums text-fg">${p.amount.toLocaleString()}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-[10px] text-subtle mt-3 leading-snug">
-            Per the EQUIP VentureConnect PDF, each company maxes out at
-            ${STREAM_BUDGETS.venture_connect.toLocaleString()} CAD across up to three applications. We approximate
-            &quot;company&quot; by the applicant&apos;s account here; if multiple trainees from the
-            same company apply, double-check by comparing the {`{company name}`} field on each open application.
-            Approvals that would exceed the cap are blocked server-side.
-          </p>
-        </section>
+      {vcState && vcTotal && (
+        <FundingLedger state={vcState} total={vcTotal} current={app} currentId={app.id} />
       )}
 
       {app.status !== "draft" && <TriageSummary applicationId={app.id} />}
