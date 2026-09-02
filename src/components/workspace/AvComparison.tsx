@@ -24,11 +24,29 @@ const GROUP_ORDER: AvGroup[] = ["streaming", "audio", "video", "lighting", "stag
 export function AvComparison() {
   const [only, setOnly] = useState<"all" | "changed" | "new">("all");
   const [basis, setBasis] = useState<"charged" | "list">("charged");
-  /* Which row's source documents are on screen. Hover sets it, focus sets
-     it too — a table you can only read with a mouse is a table half the
-     office cannot read. */
-  const [open, setOpen] = useState<{ key: string; label: string; top: number } | null>(null);
+  /* Which row's source documents are on screen. Hover and focus both set
+     it — a table you can only read with a mouse is a table half the
+     office cannot read — and a click pins it so you can actually work
+     with the panel instead of losing it the moment you move the mouse.
+
+     It starts on the projectors because that is the row where the two
+     documents disagree most interestingly, and because a dock that opens
+     empty reads as broken. */
+  const [open, setOpen] = useState<{ key: string; label: string }>(
+    { key: "projectors", label: "Projectors ×2" },
+  );
+  const [pinned, setPinned] = useState(false);
+  const [sheet, setSheet] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
+
+  const peek = (key: string, label: string) => {
+    if (!pinned) setOpen({ key, label });
+  };
+  const pick = (key: string, label: string) => {
+    setOpen({ key, label });
+    setPinned(true);
+    setSheet(true);
+  };
 
   const grouped = useMemo(() => {
     const delta = basis === "charged" ? chargedDelta : lineDelta;
@@ -149,7 +167,13 @@ export function AvComparison() {
       </div>
 
       {/* ── The line-by-line table */}
-      <div ref={wrap} className="relative rounded-2xl border border-line bg-card" onMouseLeave={() => setOpen(null)}>
+      {/* ── Table and sources as columns, not an overlay.
+             The old panel floated over the table it was explaining, was
+             hidden below 1280px, and carried pointer-events-none so its
+             own scroll area could not be scrolled. A dock costs a column
+             of width and gives all three back. */}
+      <div className="flex items-start gap-4">
+      <div ref={wrap} className="min-w-0 flex-1 rounded-2xl border border-line bg-card">
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           <h2 className="text-[13px] font-bold text-fg">Line by line</h2>
           <span className="text-[11px] text-subtle">{shown} of {AV_LINES.length}</span>
@@ -183,19 +207,6 @@ export function AvComparison() {
           </div>
         </div>
 
-        {/* The source panes. Positioned against the table wrapper rather
-            than the viewport so they scroll with the row they belong to,
-            and pointer-events-none so moving the mouse toward them does
-            not count as leaving the row. */}
-        {open && (
-          <div
-            className="pointer-events-none absolute right-3 z-30 hidden xl:block"
-            style={{ top: Math.max(8, open.top - 40) }}
-          >
-            <AvSourcePanes lineKey={open.key} label={open.label} />
-          </div>
-        )}
-
         <div className="overflow-x-auto">
           <table className="w-full min-w-[52rem] text-[12px]">
             <thead>
@@ -211,12 +222,54 @@ export function AvComparison() {
             </thead>
             <tbody>
               {grouped.map(({ group, lines }) => (
-                <GroupRows key={group} group={group} lines={lines} basis={basis} onPeek={setOpen} />
+                <GroupRows key={group} group={group} lines={lines} basis={basis}
+                  onPeek={peek} onPick={pick} activeKey={open.key} />
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+
+        {/* Docked beside the table from xl up, sticky so it stays level
+            with whatever row you are reading. */}
+        <aside className="sticky top-4 hidden w-[26rem] shrink-0 xl:block 2xl:w-[30rem]">
+          <AvSourcePanes
+            key={open.key}
+            lineKey={open.key}
+            label={open.label}
+            pinned={pinned}
+            onPin={() => setPinned((v) => !v)}
+            onClose={() => setPinned(false)}
+            variant="dock"
+          />
+        </aside>
+      </div>
+
+      {/* Below xl there is no room to dock, so a row opens the same panel
+          as a sheet. Same component, same modes — narrow screens get the
+          feature rather than a note explaining they cannot have it. */}
+      {sheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center xl:hidden">
+          <button
+            type="button"
+            aria-label="Close source documents"
+            onClick={() => { setSheet(false); setPinned(false); }}
+            className="absolute inset-0 bg-black/50"
+          />
+          <div className="relative w-full max-w-3xl">
+            <AvSourcePanes
+              key={open.key}
+              lineKey={open.key}
+              label={open.label}
+              pinned
+              onPin={() => { setSheet(false); setPinned(false); }}
+              onClose={() => { setSheet(false); setPinned(false); }}
+              variant="sheet"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Terms. The differences that never show up in a price comparison
              and are the ones that cost money after the fact. */}
@@ -261,20 +314,19 @@ export function AvComparison() {
 }
 
 function GroupRows({
-  group, lines, basis, onPeek,
+  group, lines, basis, onPeek, onPick, activeKey,
 }: {
   group: AvGroup;
   lines: AvLine[];
   basis: "charged" | "list";
-  onPeek: (v: { key: string; label: string; top: number } | null) => void;
+  onPeek: (key: string, label: string) => void;
+  onPick: (key: string, label: string) => void;
+  activeKey: string;
 }) {
   const valueOf = (l: AvLine, k: AvDoc["key"]) =>
     basis === "charged" ? chargedOn(l, k) : amountOn(l, k);
   const deltaOf = (l: AvLine) => (basis === "charged" ? chargedDelta(l) : lineDelta(l));
   const subtotal = (k: AvDoc["key"]) => lines.reduce((n, l) => n + valueOf(l, k), 0);
-
-  const peek = (l: AvLine) => (e: { currentTarget: HTMLElement }) =>
-    onPeek({ key: l.key, label: l.label, top: e.currentTarget.offsetTop });
 
   return (
     <>
@@ -283,48 +335,61 @@ function GroupRows({
           {AV_GROUP_LABELS[group]}
         </td>
       </tr>
-      {lines.map((l) => (
-        <tr
-          key={l.key}
-          tabIndex={0}
-          onMouseEnter={peek(l)}
-          onFocus={peek(l)}
-          className="group border-b border-line/60 align-top outline-none transition-colors last:border-0 hover:bg-elevated/40 focus-visible:bg-elevated/40 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent"
-        >
-          <td className="px-4 py-2.5">
-            <p className="font-semibold text-fg">{l.label}</p>
-            {l.note && <p className="mt-0.5 max-w-prose text-[11px] leading-relaxed text-muted">{l.note}</p>}
-          </td>
-          {COLS.map((doc) => {
-            const e = l[doc.key];
-            const cut = itemReduction(l, doc.key);
-            return (
-              <td key={doc.key} className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">
-                {e ? (
-                  <>
-                    <span className={cn("font-semibold", doc.key === "q2026" ? "text-fg" : "text-muted")}>
-                      {cad(valueOf(l, doc.key), 0)}
-                    </span>
-                    {/* When the document strikes a price out, show it struck
-                        here too — that is the whole reason this row is
-                        cheaper than it first looks. */}
-                    {basis === "charged" && cut > 0 ? (
-                      <span className="block text-[10px] text-subtle line-through">{cad(e.total, 0)}</span>
-                    ) : e.qty > 1 ? (
-                      <span className="block text-[10px] text-subtle">{e.qty} × {cad(e.unit, 0)}</span>
-                    ) : null}
-                  </>
-                ) : (
-                  <span className="text-subtle">—</span>
-                )}
-              </td>
-            );
-          })}
-          <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums">
-            <Delta n={deltaOf(l)} />
-          </td>
-        </tr>
-      ))}
+      {lines.map((l) => {
+        const active = l.key === activeKey;
+        return (
+          <tr
+            key={l.key}
+            tabIndex={0}
+            role="button"
+            aria-label={`Show what the three documents say about ${l.label}`}
+            onMouseEnter={() => onPeek(l.key, l.label)}
+            onFocus={() => onPeek(l.key, l.label)}
+            onClick={() => onPick(l.key, l.label)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(l.key, l.label); }
+            }}
+            className={cn(
+              "group cursor-pointer border-b border-line/60 align-top outline-none transition-colors last:border-0",
+              "hover:bg-elevated/40 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent",
+              active && "bg-accent/[0.07]",
+            )}
+          >
+            <td className={cn("px-4 py-2.5", active && "border-l-2 border-accent pl-[14px]")}>
+              <p className="font-semibold text-fg">{l.label}</p>
+              {l.note && <p className="mt-0.5 max-w-prose text-[11px] leading-relaxed text-muted">{l.note}</p>}
+            </td>
+            {COLS.map((doc) => {
+              const e = l[doc.key];
+              const cut = itemReduction(l, doc.key);
+              return (
+                <td key={doc.key} className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">
+                  {e ? (
+                    <>
+                      <span className={cn("font-semibold", doc.key === "q2026" ? "text-fg" : "text-muted")}>
+                        {cad(valueOf(l, doc.key), 0)}
+                      </span>
+                      {/* When the document strikes a price out, show it struck
+                          here too — that is the whole reason this row is
+                          cheaper than it first looks. */}
+                      {basis === "charged" && cut > 0 ? (
+                        <span className="block text-[10px] text-subtle line-through">{cad(e.total, 0)}</span>
+                      ) : e.qty > 1 ? (
+                        <span className="block text-[10px] text-subtle">{e.qty} × {cad(e.unit, 0)}</span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="text-subtle">—</span>
+                  )}
+                </td>
+              );
+            })}
+            <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums">
+              <Delta n={deltaOf(l)} />
+            </td>
+          </tr>
+        );
+      })}
       <tr className="border-b border-line bg-elevated/30 text-[11px] font-bold">
         <td className="px-4 py-1.5 text-subtle">Subtotal</td>
         {COLS.map((doc) => (

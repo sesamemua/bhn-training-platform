@@ -18,14 +18,17 @@ import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { requireRole } from "@/lib/auth";
-import { AV_CLIPS } from "@/lib/symposium/av";
+import { AV_CLIPS, AV_PAGES } from "@/lib/symposium/av";
 
 export const dynamic = "force-dynamic";
 
 /** Every filename the manifest knows about. Nothing else is servable. */
-const ALLOWED = new Set(
-  Object.values(AV_CLIPS).flatMap((byDoc) => Object.values(byDoc).map((c) => c.file)),
-);
+const ALLOWED = new Set([
+  ...Object.values(AV_CLIPS).flatMap((byDoc) =>
+    Object.values(byDoc).flatMap((c) => [c.file, c.pageFile]),
+  ),
+  ...Object.values(AV_PAGES).map((p) => p.file),
+]);
 
 export async function GET(
   _req: Request,

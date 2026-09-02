@@ -581,14 +581,63 @@ export const AV_GROUP_LABELS: Record<AvGroup, string> = {
  * Served through /api/admin/symposium-av/clip/[file], behind the admin
  * check, because they are pictures of a vendor's pricing.
  */
-export interface AvClip { file: string; w: number; h: number; page: number }
-export const AV_CLIPS = clips as Record<string, Partial<Record<AvDoc["key"], AvClip>>>;
+export interface AvClip {
+  /** Cropped image of just this item's row. */
+  file: string;
+  w: number;
+  h: number;
+  /** 1-based page of the source PDF. */
+  page: number;
+  /** Where the row sits on the full page, as [top, bottom] fractions of
+   *  page height. Lets the panel draw a highlight and scroll to it
+   *  without knowing what resolution the page was rendered at. */
+  box: [number, number];
+  /** Full-page render, for when the row alone is not enough context. */
+  pageFile: string;
+}
+
+export interface AvPage { file: string; w: number; h: number }
+
+const clipData = clips as unknown as {
+  clips: Record<string, Partial<Record<AvDoc["key"], AvClip>>>;
+  pages: Record<string, AvPage>;
+};
+
+export const AV_CLIPS = clipData.clips;
+export const AV_PAGES = clipData.pages;
 
 export function clipsFor(key: string): Partial<Record<AvDoc["key"], AvClip>> {
   return AV_CLIPS[key] ?? {};
 }
 
-export const AV_CLIP_URL = "/api/admin/symposium-av/clip/";
+export function pageOf(docKey: AvDoc["key"], page: number): AvPage | undefined {
+  return AV_PAGES[`${docKey}:${page}`];
+}
+
+/**
+ * A token that changes whenever the crops are regenerated.
+ *
+ * The clip route serves `immutable`, which is a promise that the bytes at
+ * a URL never change — and they do, every time the crops are re-cut from
+ * the PDFs. Without this, an admin who opened the page yesterday keeps
+ * yesterday's images for a day and sees a panel that disagrees with the
+ * table beside it. Hashing the manifest gives exactly the right
+ * invalidation: re-cropping changes the sizes, which changes the hash,
+ * which changes the URL.
+ */
+export const AV_CLIP_VERSION = (() => {
+  const src = JSON.stringify(clipData);
+  let h = 5381;
+  for (let i = 0; i < src.length; i++) h = ((h << 5) + h + src.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+})();
+
+const CLIP_BASE = "/api/admin/symposium-av/clip/";
+
+/** URL for one clip or page render, versioned so caches release it. */
+export function clipUrl(file: string): string {
+  return `${CLIP_BASE}${file}?v=${AV_CLIP_VERSION}`;
+}
 
 export const AV_SOURCE_FOLDER =
   "~/Desktop/Work Files/2026 TRAINING WEEK AND SYMPOSIUM/AV";
