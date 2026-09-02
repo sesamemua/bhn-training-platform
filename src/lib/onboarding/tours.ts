@@ -286,7 +286,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "symposium.av",
     title: "The AV quote, next to what last year really cost",
-    body: "Workspace \u2192 2026 Symposium \u2192 AV puts Livecast's 2026 quote beside the 2025 quote AND the 2025 final invoice. Two things it gets right that a plain comparison would not. The invoice is in there because last year was billed $818.68 over its own estimate, so the 2025 quote column is not what 2025 cost. And the table is priced *after discount*: the printed line amounts are up 41.6%, but Livecast is taking a deeper cut this year (27.5% against 21.8%), so what BHN actually pays is up 31.2%. Toggle to List for the raw figures. Read the bottom section first \u2014 the overtime rate, the cancellation window and a deposit clause that contradicts the payment policy are all new.",
+    body: "Workspace \u2192 2026 Symposium \u2192 AV puts Livecast's 2026 quote beside the 2025 quote AND the 2025 final invoice. **Hover any row** and you see what all three documents actually print about that item, cropped from the PDFs \u2014 which is the only way to catch that the 2026 quote strikes through five of its own prices and charges less. The projectors read as $650 dearer until you look: they are flat. Equipment is up 14%; the bill is up 31%, and the difference is $990 of one-off discounts 2025 got that this quote does not repeat. Read the bottom section too \u2014 the overtime rate, the cancellation window and a deposit clause that contradicts the payment policy are all new.",
     path: "/admin/workspace/symposium-2026/av",
     placement: "center",
     roles: ["admin", "superadmin"],

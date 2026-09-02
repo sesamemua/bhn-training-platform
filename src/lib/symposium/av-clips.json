@@ -1,0 +1,360 @@
+{
+ "wireless-mics": {
+  "q2025": {
+   "file": "q2025--wireless-mics.png",
+   "w": 1469,
+   "h": 150,
+   "page": 1
+  },
+  "i2025": {
+   "file": "i2025--wireless-mics.png",
+   "w": 1469,
+   "h": 123,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--wireless-mics.png",
+   "w": 1469,
+   "h": 81,
+   "page": 1
+  }
+ },
+ "podium-mic": {
+  "q2025": {
+   "file": "q2025--podium-mic.png",
+   "w": 1469,
+   "h": 172,
+   "page": 1
+  },
+  "i2025": {
+   "file": "i2025--podium-mic.png",
+   "w": 1469,
+   "h": 183,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--podium-mic.png",
+   "w": 1469,
+   "h": 107,
+   "page": 1
+  }
+ },
+ "pa-system": {
+  "q2025": {
+   "file": "q2025--pa-system.png",
+   "w": 1469,
+   "h": 123,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--pa-system.png",
+   "w": 1469,
+   "h": 91,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--pa-system.png",
+   "w": 1469,
+   "h": 64,
+   "page": 1
+  }
+ },
+ "mixer": {
+  "q2025": {
+   "file": "q2025--mixer.png",
+   "w": 1469,
+   "h": 123,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--mixer.png",
+   "w": 1469,
+   "h": 123,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--mixer.png",
+   "w": 1469,
+   "h": 81,
+   "page": 1
+  }
+ },
+ "screens": {
+  "q2025": {
+   "file": "q2025--screens.png",
+   "w": 1469,
+   "h": 123,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--screens.png",
+   "w": 1469,
+   "h": 91,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--screens.png",
+   "w": 1469,
+   "h": 82,
+   "page": 1
+  }
+ },
+ "projectors": {
+  "q2025": {
+   "file": "q2025--projectors.png",
+   "w": 1469,
+   "h": 123,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--projectors.png",
+   "w": 1469,
+   "h": 65,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--projectors.png",
+   "w": 1469,
+   "h": 187,
+   "page": 1
+  }
+ },
+ "drape": {
+  "q2025": {
+   "file": "q2025--drape.png",
+   "w": 1469,
+   "h": 122,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--drape.png",
+   "w": 1469,
+   "h": 91,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--drape.png",
+   "w": 1469,
+   "h": 119,
+   "page": 1
+  }
+ },
+ "uplights": {
+  "q2025": {
+   "file": "q2025--uplights.png",
+   "w": 1469,
+   "h": 123,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--uplights.png",
+   "w": 1469,
+   "h": 124,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--uplights.png",
+   "w": 1469,
+   "h": 137,
+   "page": 1
+  }
+ },
+ "long-cables": {
+  "q2025": {
+   "file": "q2025--long-cables.png",
+   "w": 1469,
+   "h": 211,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--long-cables.png",
+   "w": 1469,
+   "h": 71,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--long-cables.png",
+   "w": 1469,
+   "h": 200,
+   "page": 2
+  }
+ },
+ "labour-operate": {
+  "q2025": {
+   "file": "q2025--labour-operate.png",
+   "w": 1469,
+   "h": 150,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--labour-operate.png",
+   "w": 1469,
+   "h": 98,
+   "page": 2
+  },
+  "q2026": {
+   "file": "q2026--labour-operate.png",
+   "w": 1469,
+   "h": 134,
+   "page": 2
+  }
+ },
+ "labour-setup": {
+  "q2025": {
+   "file": "q2025--labour-setup.png",
+   "w": 1469,
+   "h": 116,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--labour-setup.png",
+   "w": 1469,
+   "h": 91,
+   "page": 2
+  },
+  "q2026": {
+   "file": "q2026--labour-setup.png",
+   "w": 1469,
+   "h": 63,
+   "page": 2
+  }
+ },
+ "delivery": {
+  "q2025": {
+   "file": "q2025--delivery.png",
+   "w": 1469,
+   "h": 287,
+   "page": 2
+  },
+  "i2025": {
+   "file": "i2025--delivery.png",
+   "w": 1469,
+   "h": 249,
+   "page": 2
+  },
+  "q2026": {
+   "file": "q2026--delivery.png",
+   "w": 1469,
+   "h": 288,
+   "page": 2
+  }
+ },
+ "encoder-kit": {
+  "i2025": {
+   "file": "i2025--encoder-kit.png",
+   "w": 1469,
+   "h": 65,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--encoder-kit.png",
+   "w": 1469,
+   "h": 63,
+   "page": 1
+  }
+ },
+ "atem": {
+  "i2025": {
+   "file": "i2025--atem.png",
+   "w": 1469,
+   "h": 289,
+   "page": 1
+  },
+  "q2026": {
+   "file": "q2026--atem.png",
+   "w": 1469,
+   "h": 98,
+   "page": 1
+  }
+ },
+ "ac-cables": {
+  "i2025": {
+   "file": "i2025--ac-cables.png",
+   "w": 1469,
+   "h": 65,
+   "page": 2
+  },
+  "q2026": {
+   "file": "q2026--ac-cables.png",
+   "w": 1469,
+   "h": 63,
+   "page": 1
+  }
+ },
+ "power-bar": {
+  "i2025": {
+   "file": "i2025--power-bar.png",
+   "w": 1469,
+   "h": 65,
+   "page": 2
+  },
+  "q2026": {
+   "file": "q2026--power-bar.png",
+   "w": 1469,
+   "h": 82,
+   "page": 1
+  }
+ },
+ "aputure": {
+  "i2025": {
+   "file": "i2025--aputure.png",
+   "w": 1469,
+   "h": 288,
+   "page": 2
+  },
+  "q2026": {
+   "file": "q2026--aputure.png",
+   "w": 1469,
+   "h": 94,
+   "page": 1
+  }
+ },
+ "hybrid-package": {
+  "q2026": {
+   "file": "q2026--hybrid-package.png",
+   "w": 1469,
+   "h": 233,
+   "page": 1
+  }
+ },
+ "usb-audio-interface": {
+  "q2026": {
+   "file": "q2026--usb-audio-interface.png",
+   "w": 1469,
+   "h": 63,
+   "page": 1
+  }
+ },
+ "cameras": {
+  "q2026": {
+   "file": "q2026--cameras.png",
+   "w": 1469,
+   "h": 69,
+   "page": 1
+  }
+ },
+ "tv-43": {
+  "q2026": {
+   "file": "q2026--tv-43.png",
+   "w": 1469,
+   "h": 182,
+   "page": 2
+  }
+ },
+ "decimator": {
+  "q2026": {
+   "file": "q2026--decimator.png",
+   "w": 1469,
+   "h": 82,
+   "page": 2
+  }
+ },
+ "risers": {
+  "q2026": {
+   "file": "q2026--risers.png",
+   "w": 1469,
+   "h": 372,
+   "page": 2
+  }
+ }
+}

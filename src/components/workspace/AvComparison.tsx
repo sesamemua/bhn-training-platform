@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import {
   AV_LINES, AV_DOCS, AV_DELTAS, AV_TERM_CHANGES, AV_GROUP_LABELS, AV_SOURCE_FOLDER,
-  amountOn, lineDelta, netOn, netDelta, discountOf, discountRate,
+  amountOn, lineDelta, chargedOn, chargedDelta, itemReduction,
+  chargedTotal, blanketRate, discountOf, discountRate,
   type AvGroup, type AvLine, type AvDoc,
 } from "@/lib/symposium/av";
 import { cn } from "@/lib/utils";
+import { AvSourcePanes } from "./AvSourcePanes";
 
 const cad = (n: number, dp = 2) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD", minimumFractionDigits: dp, maximumFractionDigits: dp });
@@ -21,10 +23,15 @@ const GROUP_ORDER: AvGroup[] = ["streaming", "audio", "video", "lighting", "stag
 
 export function AvComparison() {
   const [only, setOnly] = useState<"all" | "changed" | "new">("all");
-  const [basis, setBasis] = useState<"net" | "list">("net");
+  const [basis, setBasis] = useState<"charged" | "list">("charged");
+  /* Which row's source documents are on screen. Hover sets it, focus sets
+     it too — a table you can only read with a mouse is a table half the
+     office cannot read. */
+  const [open, setOpen] = useState<{ key: string; label: string; top: number } | null>(null);
+  const wrap = useRef<HTMLDivElement>(null);
 
   const grouped = useMemo(() => {
-    const delta = basis === "net" ? netDelta : lineDelta;
+    const delta = basis === "charged" ? chargedDelta : lineDelta;
     const pass = (l: AvLine) => {
       if (only === "new") return !!l.q2026 && !l.q2025 && !l.i2025;
       if (only === "changed") return delta(l) !== 0;
@@ -89,56 +96,66 @@ export function AvComparison() {
         ))}
       </div>
 
-      {/* ── Why the table has two bases. The list amounts on all three
-             documents are before discount, and the discount is not the
-             same size year to year — it deepens from 12.7% to 27.5%.
-             Comparing lists says the AV bill is up 41.6%. It is up 31.2%. */}
+      {/* ── The three answers to "how much has it gone up", all true, and
+             the sentence that reconciles them. Getting this wrong is easy:
+             the 2026 quote prints prices it then strikes out, so the
+             printed column overstates by 27 points. */}
       <div className="rounded-xl border border-line bg-card p-3.5">
-        <p className="text-[12.5px] font-bold text-fg">The discount is doing real work</p>
-        <p className="mt-1 max-w-prose text-[11.5px] leading-relaxed text-muted">
-          Every line below is a <strong className="text-fg">list</strong> amount — each document
-          then takes a lump off the bottom, and the lump has grown:{" "}
-          {[AV_DOCS.q2025, AV_DOCS.i2025, AV_DOCS.q2026]
-            .map((d) => `${pct0(discountRate(d))} in ${d.key === "q2026" ? "2026" : d.key === "i2025" ? "2025 actual" : "2025 quoted"}`)
-            .join(", ")}
-          . So the two views disagree, and the difference is not small:
+        <p className="text-[12.5px] font-bold text-fg">
+          Three answers to &ldquo;how much has it gone up&rdquo;
         </p>
-        <div className="mt-2.5 flex flex-wrap gap-x-8 gap-y-2">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">List amounts</p>
-            <p className="text-lg font-bold tabular-nums text-rose-500">{pct(AV_DELTAS.listRise)}</p>
-            <p className="text-[11px] tabular-nums text-subtle">
-              {cad(AV_DOCS.i2025.gross, 0)} → {cad(AV_DOCS.q2026.gross, 0)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">What BHN actually pays</p>
-            <p className="text-lg font-bold tabular-nums text-amber-600">{pct(AV_DELTAS.payableRise)}</p>
-            <p className="text-[11px] tabular-nums text-subtle">
-              {cad(AV_DOCS.i2025.subtotal, 0)} → {cad(AV_DOCS.q2026.subtotal, 0)} before tax
-            </p>
-          </div>
+        <div className="mt-2.5 grid gap-3 sm:grid-cols-3">
+          <Answer
+            label="As printed"
+            value={pct(AV_DELTAS.listRise)}
+            sub={`${cad(AV_DOCS.i2025.gross, 0)} → ${cad(AV_DOCS.q2026.gross, 0)}`}
+            tone="rose"
+            hint="Overstates it. The 2026 quote lists five items at prices it then strikes out."
+          />
+          <Answer
+            label="What Livecast will charge"
+            value={pct(AV_DELTAS.chargedRise)}
+            sub={`${cad(chargedTotal(AV_DOCS.i2025), 0)} → ${cad(chargedTotal(AV_DOCS.q2026), 0)}`}
+            tone="emerald"
+            hint="The like-for-like number: equipment and labour, after the reductions written on the quote."
+          />
+          <Answer
+            label="What BHN pays"
+            value={pct(AV_DELTAS.payableRise)}
+            sub={`${cad(AV_DOCS.i2025.subtotal, 0)} → ${cad(AV_DOCS.q2026.subtotal, 0)} before tax`}
+            tone="amber"
+            hint="After each document's across-the-board cut too."
+          />
         </div>
-        <p className="mt-2.5 max-w-prose text-[11px] leading-relaxed text-subtle">
-          The table defaults to <strong className="text-muted">after discount</strong>, which
-          spreads each document&apos;s discount across its lines in proportion to their size.
-          That is an apportionment, not what Livecast did line by line — two of the reductions
-          are plainly item-specific (a $180 &ldquo;50% off&rdquo; on both 2025 documents, and an
-          $810 100% item discount on the invoice), and the documents do not say which lines they
-          applied to. Each document&apos;s own total is exact; the per-line net figures are
-          indicative. Switch to <strong className="text-muted">list</strong> to see the printed
-          numbers.
+        <p className="mt-3 max-w-prose border-t border-line pt-2.5 text-[11.5px] leading-relaxed text-muted">
+          <strong className="text-fg">The gap between the last two is the thing to take into the
+          conversation.</strong>{" "}
+          The kit itself is {pct(AV_DELTAS.chargedRise)} dearer. The bill is{" "}
+          {pct(AV_DELTAS.payableRise)} dearer because 2025 came with{" "}
+          <strong className="text-fg">{cad(AV_DELTAS.lostGoodwill, 0)}</strong> of one-off
+          reductions on top of its 10% — a &ldquo;50% off&rdquo; and a 100% item discount — and the
+          2026 quote does not repeat them. Livecast is cutting{" "}
+          {pct0(blanketRate(AV_DOCS.q2026))} off the bottom this year against{" "}
+          {pct0(blanketRate(AV_DOCS.i2025))} last year.
+        </p>
+        <p className="mt-2 max-w-prose text-[11px] leading-relaxed text-subtle">
+          The table shows charged amounts, with the struck-through list price underneath where
+          the quote reduced one. Those five reductions come to exactly {cad(2320, 0)}, which is
+          the quote&apos;s own &ldquo;Discount&rdquo; line — they are read off the document, not
+          estimated. Switch to <strong className="text-muted">Listed</strong> for the printed
+          figures. <strong className="text-muted">Hover any row</strong> to see what all three
+          documents actually say about it.
         </p>
       </div>
 
       {/* ── The line-by-line table */}
-      <div className="rounded-2xl border border-line bg-card">
+      <div ref={wrap} className="relative rounded-2xl border border-line bg-card" onMouseLeave={() => setOpen(null)}>
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           <h2 className="text-[13px] font-bold text-fg">Line by line</h2>
           <span className="text-[11px] text-subtle">{shown} of {AV_LINES.length}</span>
           <div className="ml-auto flex flex-wrap items-center gap-1">
             <div className="mr-2 flex gap-1 rounded-lg bg-elevated p-0.5">
-              {([["net", "After discount"], ["list", "List"]] as const).map(([k, label]) => (
+              {([["charged", "Charged"], ["list", "Listed"]] as const).map(([k, label]) => (
                 <button
                   key={k}
                   onClick={() => setBasis(k)}
@@ -166,6 +183,19 @@ export function AvComparison() {
           </div>
         </div>
 
+        {/* The source panes. Positioned against the table wrapper rather
+            than the viewport so they scroll with the row they belong to,
+            and pointer-events-none so moving the mouse toward them does
+            not count as leaving the row. */}
+        {open && (
+          <div
+            className="pointer-events-none absolute right-3 z-30 hidden xl:block"
+            style={{ top: Math.max(8, open.top - 40) }}
+          >
+            <AvSourcePanes lineKey={open.key} label={open.label} />
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[52rem] text-[12px]">
             <thead>
@@ -181,7 +211,7 @@ export function AvComparison() {
             </thead>
             <tbody>
               {grouped.map(({ group, lines }) => (
-                <GroupRows key={group} group={group} lines={lines} basis={basis} />
+                <GroupRows key={group} group={group} lines={lines} basis={basis} onPeek={setOpen} />
               ))}
             </tbody>
           </table>
@@ -231,12 +261,20 @@ export function AvComparison() {
 }
 
 function GroupRows({
-  group, lines, basis,
-}: { group: AvGroup; lines: AvLine[]; basis: "net" | "list" }) {
+  group, lines, basis, onPeek,
+}: {
+  group: AvGroup;
+  lines: AvLine[];
+  basis: "charged" | "list";
+  onPeek: (v: { key: string; label: string; top: number } | null) => void;
+}) {
   const valueOf = (l: AvLine, k: AvDoc["key"]) =>
-    basis === "net" ? netOn(l, k) : amountOn(l, k);
-  const deltaOf = (l: AvLine) => (basis === "net" ? netDelta(l) : lineDelta(l));
+    basis === "charged" ? chargedOn(l, k) : amountOn(l, k);
+  const deltaOf = (l: AvLine) => (basis === "charged" ? chargedDelta(l) : lineDelta(l));
   const subtotal = (k: AvDoc["key"]) => lines.reduce((n, l) => n + valueOf(l, k), 0);
+
+  const peek = (l: AvLine) => (e: { currentTarget: HTMLElement }) =>
+    onPeek({ key: l.key, label: l.label, top: e.currentTarget.offsetTop });
 
   return (
     <>
@@ -246,13 +284,20 @@ function GroupRows({
         </td>
       </tr>
       {lines.map((l) => (
-        <tr key={l.key} className="border-b border-line/60 align-top last:border-0">
+        <tr
+          key={l.key}
+          tabIndex={0}
+          onMouseEnter={peek(l)}
+          onFocus={peek(l)}
+          className="group border-b border-line/60 align-top outline-none transition-colors last:border-0 hover:bg-elevated/40 focus-visible:bg-elevated/40 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent"
+        >
           <td className="px-4 py-2.5">
             <p className="font-semibold text-fg">{l.label}</p>
             {l.note && <p className="mt-0.5 max-w-prose text-[11px] leading-relaxed text-muted">{l.note}</p>}
           </td>
           {COLS.map((doc) => {
             const e = l[doc.key];
+            const cut = itemReduction(l, doc.key);
             return (
               <td key={doc.key} className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">
                 {e ? (
@@ -260,10 +305,11 @@ function GroupRows({
                     <span className={cn("font-semibold", doc.key === "q2026" ? "text-fg" : "text-muted")}>
                       {cad(valueOf(l, doc.key), 0)}
                     </span>
-                    {/* In the net view the printed number is shown underneath,
-                        so the row can still be checked against the PDF. */}
-                    {basis === "net" && e.total > 0 ? (
-                      <span className="block text-[10px] text-subtle">{cad(e.total, 0)} list</span>
+                    {/* When the document strikes a price out, show it struck
+                        here too — that is the whole reason this row is
+                        cheaper than it first looks. */}
+                    {basis === "charged" && cut > 0 ? (
+                      <span className="block text-[10px] text-subtle line-through">{cad(e.total, 0)}</span>
                     ) : e.qty > 1 ? (
                       <span className="block text-[10px] text-subtle">{e.qty} × {cad(e.unit, 0)}</span>
                     ) : null}
@@ -302,6 +348,23 @@ function Delta({ n }: { n: number }) {
       {up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
       {cad(Math.abs(n), 0)}
     </span>
+  );
+}
+
+function Answer({
+  label, value, sub, tone, hint,
+}: { label: string; value: string; sub: string; tone: "rose" | "emerald" | "amber"; hint: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">{label}</p>
+      <p className={cn("mt-0.5 text-xl font-bold tabular-nums", {
+        rose: "text-rose-500", emerald: "text-emerald-500", amber: "text-amber-600",
+      }[tone])}>
+        {value}
+      </p>
+      <p className="text-[11px] tabular-nums text-subtle">{sub}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-muted">{hint}</p>
+    </div>
   );
 }
 

@@ -21,6 +21,8 @@
  * cannot quietly report a wrong difference.
  */
 
+import clips from "./av-clips.json";
+
 export type AvGroup =
   | "streaming" | "audio" | "video" | "lighting" | "staging" | "labour" | "other";
 
@@ -35,15 +37,17 @@ export interface AvEntry {
   total: number;
   detail?: string;
   /**
-   * Some 2026 lines carry a second figure in an adjacent column — $1,300
-   * against the EPSON projectors, $200 against the Astera kit, $0.00
-   * against several others. The document does not label it, and it does
-   * not behave like a list price (it is smaller than the charged price on
-   * the Astera line and larger on the EPSON one), so it is recorded as
-   * seen rather than interpreted. Only qty × unit = total is relied on,
-   * and that reconciles against every stated subtotal.
+   * What is actually charged, when the document strikes the list price
+   * through and prints a lower one beside it. Absent means charged = total.
+   *
+   * The 2026 quote does this on five lines. The strikethroughs are drawn
+   * as vector rules rather than font styling, so text extraction alone
+   * shows both numbers with no indication which one survives — which is
+   * how the projectors were first read as a $650 increase when they are
+   * in fact flat. Rendering the rows and reading the rules settles it,
+   * and the five reductions sum to exactly the $2,320 "Discount" line.
    */
-  secondFigure?: number;
+  charged?: number;
 }
 
 export interface AvLine {
@@ -150,8 +154,8 @@ export const AV_LINES: AvLine[] = [
     group: "video",
     q2025: { name: "NEC — 7500 Lumen Projector", qty: 2, unit: 650, total: 1300 },
     i2025: { name: "NEC — 7500 Lumen Projector", qty: 2, unit: 650, total: 1300 },
-    q2026: { name: "EPSON Pro-L1495U Projector", qty: 2, unit: 975, secondFigure: 1300, total: 1950 },
-    note: "Different projector — an EPSON laser unit in place of the NEC. Charged at $975 each against $650 in 2025: +$325 per unit, +$650 in total, the largest single equipment increase. The quote also shows $1,300 in an unlabelled column against this line; worth asking what that figure is before accepting the $975.",
+    q2026: { name: "EPSON Pro-L1495U Projector", qty: 2, unit: 975, total: 1950, charged: 1300 },
+    note: "Different projector — an EPSON laser unit in place of the NEC, listed at $1,950 for the pair. That figure is struck through on the quote: the charged total is $1,300, the same $650 per unit as the 2025 NEC. A better projector at last year's price, not an increase.",
   },
   {
     key: "screens",
@@ -166,8 +170,8 @@ export const AV_LINES: AvLine[] = [
     key: "cameras",
     label: "Sony FS7 cameras ×2",
     group: "video",
-    q2026: { name: "Sony FS7 Camera", qty: 2, unit: 450, total: 900 },
-    note: "New. No camera on either 2025 document. Follows from the stream — and two cameras is a multi-angle setup, not a single locked-off record.",
+    q2026: { name: "Sony FS7 Camera", qty: 2, unit: 450, total: 900, charged: 450 },
+    note: "New — no camera on either 2025 document, and it follows from the stream. Listed at $900 for the pair, struck through and charged at $450.",
   },
   {
     key: "tv-43",
@@ -203,8 +207,8 @@ export const AV_LINES: AvLine[] = [
     group: "lighting",
     q2025: { name: "Astera AX5 Uplight LED Kit (8)", qty: 1, unit: 400, total: 400 },
     i2025: { name: "Astera AX5 Uplight LED Kit (8)", qty: 1, unit: 400, total: 400 },
-    q2026: { name: "Astera AX5 Uplight LED Kit (8)", qty: 1, unit: 400, total: 400, detail: "Plus 8 × Astera AX5 TriplePar uplights, listed with no price" },
-    note: "Unchanged at $400 across all three.",
+    q2026: { name: "Astera AX5 Uplight LED Kit (8)", qty: 1, unit: 400, total: 400, charged: 200, detail: "Plus 8 × Astera AX5 TriplePar uplights, listed with no price" },
+    note: "Same kit both years. Listed at $400 again in 2026, struck through and charged at $200 — half what it cost in 2025.",
   },
   {
     key: "aputure",
@@ -214,8 +218,8 @@ export const AV_LINES: AvLine[] = [
       name: "Aputure 300D w/Fresnel Adapter Kit", qty: 2, unit: 450, total: 900,
       detail: "Two bi-colour lights, medium stands, sandbags, C-stands",
     },
-    q2026: { name: "Aputure LS 300x w/Fresnel Adapter Kit (two lights)", qty: 2, unit: 450, secondFigure: 0, total: 900 },
-    note: "Not on the 2025 quote — added on the day at $900. The 2026 invoice carries a separate 100% item discount of $810 with no line named against it; if that was these lights, the net cost of stage lighting in 2025 was near zero. Worth asking whether the same reduction applies in 2026.",
+    q2026: { name: "Aputure LS 300x w/Fresnel Adapter Kit (two lights)", qty: 2, unit: 450, total: 900, charged: 0 },
+    note: "Not on the 2025 quote — added on the day and billed at $900. Listed at $900 again in 2026, struck through and charged at $0. Free this year, in writing.",
   },
 
   // ── Staging and power
@@ -232,8 +236,8 @@ export const AV_LINES: AvLine[] = [
     key: "risers",
     label: 'Riser decks (4\' × 4\' × 12") ×2',
     group: "staging",
-    q2026: { name: "Riser Deck (4'x4'x12\")", qty: 2, unit: 60, secondFigure: 0, total: 120 },
-    note: "New. Not on either 2025 document.",
+    q2026: { name: "Riser Deck (4'x4'x12\")", qty: 2, unit: 60, total: 120, charged: 0 },
+    note: "New, and free — listed at $120, struck through and charged at $0.",
   },
   {
     key: "power-bar",
@@ -437,12 +441,25 @@ export const AV_DELTAS = {
   projected2026: AV_DOCS.q2026.total * (AV_DOCS.i2025.total / AV_DOCS.q2025.total),
 
   /**
-   * The reason the table offers both views. Reading the line items alone
-   * says the AV bill is up 41.6%; what BHN actually pays is up 31.2%,
-   * because Livecast is taking a deeper discount this year.
+   * Three different answers to "how much has it gone up", all true.
+   *
+   *   listRise     what the printed line items say        +41.6%
+   *   chargedRise  after the reductions on the quote      +14.1%
+   *   payableRise  what BHN is actually asked to pay      +31.2%
+   *
+   * The gap between the middle and the last is the finding: the equipment
+   * is only 14% dearer. 2025 came with $990 of extra goodwill discounts
+   * that the 2026 quote does not repeat, and that is most of the rest.
    */
   listRise: (AV_DOCS.q2026.gross - AV_DOCS.i2025.gross) / AV_DOCS.i2025.gross,
   payableRise: (AV_DOCS.q2026.subtotal - AV_DOCS.i2025.subtotal) / AV_DOCS.i2025.subtotal,
+  get chargedRise() {
+    return (chargedTotal(AV_DOCS.q2026) - chargedTotal(AV_DOCS.i2025)) / chargedTotal(AV_DOCS.i2025);
+  },
+  /** The one-off reductions 2025 got and 2026 does not. */
+  get lostGoodwill() {
+    return discountOf(AV_DOCS.i2025) - AV_DOCS.i2025.gross * 0.1;
+  },
 };
 
 /** Everything on the 2026 quote that is not on either 2025 document. */
@@ -467,24 +484,49 @@ export function lineDelta(line: AvLine): number {
 
 // ── Discounts ──────────────────────────────────────────────────────────
 //
-// The line items on all three documents are LIST amounts. Every document
-// then takes a lump off the bottom, and the size of that lump is not the
-// same year to year — it deepens from 12.7% to 21.8% to 27.5%. Comparing
-// line to line therefore overstates the rise: the 2026 list is 41.6%
-// above the 2025 list, but what BHN actually pays is 31.2% above what it
-// actually paid.
+// Two different things get called "discount" on these documents, and
+// conflating them is what made the first version of this page wrong.
 //
-// So the table can show either. "List" is what each document prints
-// against each item; "after discount" spreads that document's discount
-// across its lines in proportion to their size.
+//   1. ITEM REDUCTIONS. On the 2026 quote, five lines have their list
+//      price struck through and a lower one printed beside it. Those five
+//      reductions sum to exactly the $2,320 "Discount" line, so they are
+//      known, not estimated. The 2025 documents have no struck prices.
 //
-// The apportionment is an estimate and the page says so. Two of the
-// discounts are plainly item-specific — a "50% off" of exactly $180 on
-// both 2025 documents, and a "100% item discount" of $810 on the invoice
-// — so the vendor did not reduce every line by the same percentage.
-// Spreading it evenly is the fairest thing that can be done without
-// knowing which lines those applied to. Document totals stay exact; only
-// the per-line net figures are indicative.
+//   2. A BLANKET CUT off the bottom. 10% on every document, plus — on the
+//      2025 pair only — a $180 "50% off" and, on the invoice, an $810
+//      "100% item discount". Square never says which lines those two hit,
+//      so they are spread across the lines in proportion to size.
+//
+// The consequence: 2026's per-line figures are exact (its blanket cut is
+// a uniform 10%, which apportions perfectly), while 2025's carry the
+// $990 of unattributable reductions. The page says which is which.
+
+/** What a line actually costs on a document, before the blanket cut. */
+export function chargedOn(line: AvLine, key: AvDoc["key"]): number {
+  const e = line[key];
+  if (!e) return 0;
+  return e.charged ?? e.total;
+}
+
+/** List minus charged — the item-level reduction on that line. */
+export function itemReduction(line: AvLine, key: AvDoc["key"]): number {
+  const e = line[key];
+  return e ? e.total - (e.charged ?? e.total) : 0;
+}
+
+/** Sum of a document's line items after item-level reductions. */
+export function chargedTotal(doc: AvDoc): number {
+  return Math.round(AV_LINES.reduce((n, l) => n + chargedOn(l, doc.key), 0) * 100) / 100;
+}
+
+/** The part of the discount that is not attributable to a named line. */
+export function blanketOf(doc: AvDoc): number {
+  return Math.round((chargedTotal(doc) - doc.subtotal) * 100) / 100;
+}
+
+export function blanketRate(doc: AvDoc): number {
+  return blanketOf(doc) / chargedTotal(doc);
+}
 
 /** Total discount on a document, as a positive number. */
 export function discountOf(doc: AvDoc): number {
@@ -496,16 +538,23 @@ export function discountRate(doc: AvDoc): number {
   return discountOf(doc) / doc.gross;
 }
 
-/** One line's share of a document's cost after that document's discount. */
+/**
+ * One line's share of a document's cost, all in: item reduction applied
+ * exactly, blanket cut apportioned by size.
+ */
 export function netOn(line: AvLine, key: AvDoc["key"]): number {
-  const gross = amountOn(line, key);
-  if (gross === 0) return 0;
-  return Math.round(gross * (1 - discountRate(AV_DOCS[key])) * 100) / 100;
+  const charged = chargedOn(line, key);
+  if (charged === 0) return 0;
+  return Math.round(charged * (1 - blanketRate(AV_DOCS[key])) * 100) / 100;
 }
 
-/** 2026 minus 2025-actual for one line, after each document's discount. */
+/** 2026 minus 2025-actual for one line, on the given basis. */
 export function netDelta(line: AvLine): number {
   return Math.round((netOn(line, "q2026") - netOn(line, "i2025")) * 100) / 100;
+}
+
+export function chargedDelta(line: AvLine): number {
+  return Math.round((chargedOn(line, "q2026") - chargedOn(line, "i2025")) * 100) / 100;
 }
 
 export const AV_GROUP_LABELS: Record<AvGroup, string> = {
@@ -517,6 +566,29 @@ export const AV_GROUP_LABELS: Record<AvGroup, string> = {
   labour: "Labour & delivery",
   other: "Other",
 };
+
+/**
+ * Cropped pictures of the row each line occupies on each document —
+ * generated from the PDFs, keyed by line and then by document.
+ *
+ * They exist because reading the extracted TEXT of these quotes is not
+ * enough: the 2026 quote strikes through the prices it is not charging,
+ * and a strikethrough is a vector rule, invisible to text extraction.
+ * Both numbers come out, in an order that does not say which one counts.
+ * Seeing the row settles it — which is how the projectors were caught
+ * being flat rather than $650 dearer.
+ *
+ * Served through /api/admin/symposium-av/clip/[file], behind the admin
+ * check, because they are pictures of a vendor's pricing.
+ */
+export interface AvClip { file: string; w: number; h: number; page: number }
+export const AV_CLIPS = clips as Record<string, Partial<Record<AvDoc["key"], AvClip>>>;
+
+export function clipsFor(key: string): Partial<Record<AvDoc["key"], AvClip>> {
+  return AV_CLIPS[key] ?? {};
+}
+
+export const AV_CLIP_URL = "/api/admin/symposium-av/clip/";
 
 export const AV_SOURCE_FOLDER =
   "~/Desktop/Work Files/2026 TRAINING WEEK AND SYMPOSIUM/AV";

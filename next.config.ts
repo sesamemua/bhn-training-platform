@@ -95,6 +95,10 @@ const nextConfig: NextConfig = {
   // making fs.readFileSync 404 in production. Pin the directory.
   outputFileTracingIncludes: {
     "/admin/security": ["./docs/security/**/*"],
+    // Same reason: the AV clip route reads PNGs from private/av-clips/ at
+    // runtime. They are outside app/, so without this the route 404s in
+    // production while working perfectly in dev.
+    "/api/admin/symposium-av/clip/[file]": ["./private/av-clips/**/*"],
   },
   images: {
     remotePatterns: [
