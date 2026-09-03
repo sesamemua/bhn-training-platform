@@ -82,12 +82,21 @@ export function useConsent() { return useContext(ConsentContext); }
 
 /** Helper for non-React code: are analytics allowed? */
 export function isAnalyticsAllowed(): boolean {
+  return isConsentAllowed("analytics");
+}
+
+/** Helper for advertising conversion tags: has the user opted into marketing? */
+export function isMarketingAllowed(): boolean {
+  return isConsentAllowed("marketing");
+}
+
+function isConsentAllowed(category: "analytics" | "marketing"): boolean {
   if (typeof window === "undefined") return false;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const parsed = JSON.parse(raw) as ConsentState;
-    return !!parsed.analytics;
+    return !!parsed[category];
   } catch {
     return false;
   }

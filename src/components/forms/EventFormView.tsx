@@ -24,6 +24,7 @@ import {
   isFieldVisible,
 } from "@/lib/forms/types";
 import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
+import { trackGoogleAdsConversion } from "@/lib/campaign/google-ads-conversions";
 
 interface Props {
   slug: string;
@@ -217,6 +218,9 @@ export function EventFormView({
       if (!res.ok) {
         setSubmitError(j.error ?? "Submission failed.");
         return;
+      }
+      if (slug === "talent-application") {
+        trackGoogleAdsConversion("experience");
       }
       setSubmitted(true);
       router.refresh();

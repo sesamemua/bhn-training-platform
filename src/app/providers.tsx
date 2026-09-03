@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import { DesignSystemProvider } from "@/components/ui/DesignSystemProvider";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { GoogleAdsTag } from "@/components/analytics/GoogleAdsTag";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { ConsentProvider } from "@/components/consent/ConsentProvider";
 import { CookieBanner } from "@/components/consent/CookieBanner";
@@ -28,6 +29,7 @@ export function Providers({
     <SessionProvider>
       <I18nProvider>
         <ConsentProvider>
+          <GoogleAdsTag />
           <ThemeProvider>
             <DesignSystemProvider value={initialDesignSystem}>
               <Suspense fallback={null}>

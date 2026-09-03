@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
+import { trackGoogleAdsConversion } from "@/lib/campaign/google-ads-conversions";
 
 const MAX_FILES = 5;
 const MAX_SIZE_MB = 10;
@@ -64,6 +65,7 @@ export function CreditApplicationForm({ defaultName = "" }: { defaultName?: stri
         setError(j.error ?? "Submission failed");
         return;
       }
+      trackGoogleAdsConversion("engage");
       router.push("/credits");
     } finally {
       setSubmitting(false);
