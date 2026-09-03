@@ -560,7 +560,10 @@ export function ConnectForm({
           />
           <span className="text-xs text-fg">I acknowledge and agree.</span>
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+        <p className="text-xs font-bold text-fg mt-3">
+          The applicant is required to complete and sign this form.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           <Field label="Print Name" required>
             <input value={form.signaturePrintedName ?? ""} onChange={(e) => set("signaturePrintedName", e.target.value)} className={inputCls} />
           </Field>
