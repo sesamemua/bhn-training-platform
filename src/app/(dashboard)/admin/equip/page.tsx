@@ -15,6 +15,7 @@ import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { DSSection } from "@/components/design-system/DSSection";
 import { DSStatGrid, DSStat } from "@/components/design-system/DSStatGrid";
 import { EquipDemoTools } from "@/components/admin/equip/EquipDemoTools";
+import { DeleteApplicationButton } from "@/components/admin/equip/DeleteApplicationButton";
 import {
   STREAM_META, STATUS_META,
   type EquipStatus, type EquipStream,
@@ -265,12 +266,20 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                         <StatusBadge tone={meta.tone} label={meta.label} />
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <Link
-                          href={`/admin/equip/${a.id}`}
-                          className="text-xs font-bold text-brand-700 hover:text-brand-800 inline-flex items-center gap-0.5"
-                        >
-                          Review <ArrowRight size={11} />
-                        </Link>
+                        <div className="inline-flex items-center gap-2">
+                          <Link
+                            href={`/admin/equip/${a.id}`}
+                            className="text-xs font-bold text-brand-700 hover:text-brand-800 inline-flex items-center gap-0.5"
+                          >
+                            Review <ArrowRight size={11} />
+                          </Link>
+                          <DeleteApplicationButton
+                            applicationId={a.id}
+                            applicantName={applicantOf(a).name ?? "This applicant"}
+                            status={a.status}
+                            approvedAmount={a.approvedAmount}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );

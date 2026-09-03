@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Delete button on the EQUIP review queue
+  {
+    title: "Each application on the EQUIP review queue now has a delete button",
+    body: "A trash icon next to “Review” on every row of `/admin/equip`. The delete rule itself has existed since applicant/admin deletion shipped, but there was no button anywhere on the admin side to actually call it — deleting a test or duplicate application meant knowing the API existed. A draft or an undecided submission deletes with one confirmation. An **approved or funded** application needs a second, explicit one, because deleting it hands its dollar amount back to the applicant's $5,000 cap — that has to be a decision made on purpose, with the exact amount stated, not a side effect discovered later.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── No email addresses in the public post-submission message
   {
     title: "The “application received” page no longer prints an email address",
