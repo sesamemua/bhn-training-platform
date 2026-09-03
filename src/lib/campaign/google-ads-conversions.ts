@@ -4,13 +4,19 @@ import { isMarketingAllowed } from "@/components/consent/ConsentProvider";
 
 export type GoogleAdsProgram = "engage" | "experience" | "venture_connect";
 
-const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim() ?? "";
+const GOOGLE_ADS_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim() || "AW-18353525375";
 
 const CONVERSION_LABELS: Record<GoogleAdsProgram, string> = {
-  engage: process.env.NEXT_PUBLIC_GOOGLE_ADS_ENGAGE_LABEL?.trim() ?? "",
-  experience: process.env.NEXT_PUBLIC_GOOGLE_ADS_EXPERIENCE_LABEL?.trim() ?? "",
+  engage:
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_ENGAGE_LABEL?.trim() ||
+    "kFXtCKzE0-0cEP-k0q9E",
+  experience:
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_EXPERIENCE_LABEL?.trim() ||
+    "cb7LCK_E0-0cEP-k0q9E",
   venture_connect:
-    process.env.NEXT_PUBLIC_GOOGLE_ADS_VENTURE_CONNECT_LABEL?.trim() ?? "",
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_VENTURE_CONNECT_LABEL?.trim() ||
+    "bR6YCKrF0-0cEP-k0q9E",
 };
 
 declare global {
