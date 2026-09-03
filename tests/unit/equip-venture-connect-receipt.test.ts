@@ -14,6 +14,7 @@ const formData: VentureConnectFormData = {
   graduationDate: "2027-06-30",
   institutionEmail: "amara@example.org",
   companyName: "PuriBio & Partners",
+  companyRole: "Co-founder & CEO",
   companyWebsite: "https://example.org",
   hasBiomanufacturingOrHumanHealthApplication: true,
   ventureDescription: "A faster downstream purification platform.",
@@ -55,6 +56,7 @@ test("the receipt includes the complete submitted form and calculated total", ()
     "Biomedical Engineering",
     "PhD Student",
     "PuriBio & Partners",
+    "Co-founder & CEO",
     "A faster downstream purification platform.",
     "Invention disclosure",
     "Provisional patent",
@@ -87,15 +89,29 @@ test("uploaded file metadata cannot leak into the applicant-facing email body", 
 });
 
 test("submission copies stay hidden from the applicant", () => {
+  // EQUIP's own inbox, not ENGAGE's — the two tracks have different
+  // teams and VentureConnect belongs to EQUIP.
   assert.deepEqual(VENTURE_CONNECT_SUBMISSION_BCC, [
     "info@biohubnet.ca",
-    "engage@biohubnet.ca",
+    "equip@biohubnet.ca",
   ]);
   const email = receipt();
-  for (const address of VENTURE_CONNECT_SUBMISSION_BCC) {
-    assert.ok(!email.text.includes(address));
-    assert.ok(!email.html.includes(address));
-  }
+  /*
+   * info@ is a silent internal copy and must never appear in the body —
+   * that is the property this test protects: the applicant should not
+   * be able to tell a copy went anywhere.
+   *
+   * equip@ is the exception, on purpose: it is BOTH the hidden BCC
+   * recipient AND the support address the receipt already prints in its
+   * "Questions?" footer (see renderText/renderHtml). Asserting it is
+   * absent would fail against the correct, intended email — the
+   * applicant is meant to see equip@ as a contact address; they are
+   * just not meant to know it also received a silent copy.
+   */
+  assert.ok(!email.text.includes("info@biohubnet.ca"));
+  assert.ok(!email.html.includes("info@biohubnet.ca"));
+  assert.ok(email.text.includes("equip@biohubnet.ca"));
+  assert.ok(email.html.includes("equip@biohubnet.ca"));
 });
 
 test("applicant-entered text is escaped in HTML", () => {

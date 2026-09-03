@@ -47,6 +47,7 @@ export function validateVentureConnect(f: VentureConnectFormData, docs: EquipDoc
 
   // Company
   if (!f.companyName?.trim())           errors.push("Company: Company Name or Project Title is required");
+  if (!f.companyRole?.trim())           errors.push("Company: Role with the Company is required");
   if (typeof f.hasBiomanufacturingOrHumanHealthApplication !== "boolean") {
     errors.push("Company: answer the biomanufacturing / human health application question");
   }

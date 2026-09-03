@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── VentureConnect: role question, EQUIP inbox
+  {
+    title: "The VentureConnect form now asks your role with the company — and its receipts reach EQUIP, not ENGAGE",
+    body: "**A new required question in Company Information: “Your Role with the Company”** — Founder, Co-founder, CEO, CTO, that kind of thing. It sits beside Company Name and is distinct from Current Role above it, which is your *academic* standing (PhD student, postdoc, …). Someone can be a PhD student and the company's CTO at the same time; the form previously had no way to say the second half of that. It shows on the review page, in the submission receipt and the attached PDF packet, and in the read-only submitted view — the same place Company Name already appears, since a reviewer reads them together. **The internal copy of every VentureConnect submission now goes to equip@biohubnet.ca, not engage@biohubnet.ca.** ENGAGE and EQUIP are different tracks with different teams; VentureConnect is EQUIP's program, and its confirmation emails were quietly BCC'd to the wrong one. info@biohubnet.ca stays on the list. The applicant-facing “Questions?” footer already pointed to equip@biohubnet.ca — it was only the silent internal copy that had the wrong address.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── VentureConnect caps and reconciliation
   {
     title: "VentureConnect now enforces both limits, and tracks what was actually spent",

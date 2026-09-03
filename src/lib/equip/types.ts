@@ -130,6 +130,12 @@ export interface VentureConnectFormData {
 
   // ── Company Information ──────────────────────────────────
   companyName?: string;
+  /** Their position AT the company — Founder, CEO, CTO, Co-founder. Not
+   *  on the paper PDF; distinct from `currentRole` above, which is
+   *  academic standing (PhD student, postdoc, …). Someone can be a PhD
+   *  student and the company's CTO at the same time — this is the half
+   *  of that the academic-role field cannot say. */
+  companyRole?: string;
   companyWebsite?: string;
   hasBiomanufacturingOrHumanHealthApplication?: boolean;
   /** Briefly describe your venture or innovation — overview of

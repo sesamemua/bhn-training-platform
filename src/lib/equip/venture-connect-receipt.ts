@@ -24,7 +24,9 @@ export interface ReceiptSection {
 
 export const VENTURE_CONNECT_SUBMISSION_BCC = [
   "info@biohubnet.ca",
-  "engage@biohubnet.ca",
+  // Not engage@ — that's the ENGAGE track's inbox. VentureConnect is
+  // EQUIP, and its own team needs the copy, not ENGAGE's.
+  "equip@biohubnet.ca",
 ] as const;
 
 const ROLE_LABELS: Record<ApplicantRole, string> = {
@@ -132,6 +134,7 @@ export function receiptSections(formData: VentureConnectFormData): ReceiptSectio
       heading: "Company or project",
       rows: [
         { label: "Company name or project title", value: present(formData.companyName) },
+        { label: "Role with the company", value: present(formData.companyRole) },
         { label: "Website", value: present(formData.companyWebsite) },
         {
           label: "Biomanufacturing / human health application",

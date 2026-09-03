@@ -81,6 +81,7 @@ const SAMPLE_VC: VentureConnectFormData = {
   graduationDate: new Date().toISOString().slice(0, 10),
   institutionEmail: "alex.chen@example.test",
   companyName: "PuriBio Inc.",
+  companyRole: "Co-founder & CTO",
   companyWebsite: "https://example-bio.test",
   hasBiomanufacturingOrHumanHealthApplication: true,
   ventureDescription:
@@ -315,6 +316,14 @@ export function ConnectForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Company Name or Project Title" required>
             <input value={form.companyName ?? ""} onChange={(e) => set("companyName", e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Your Role with the Company" required hint="Founder, CEO, CTO, Co-founder…">
+            <input
+              value={form.companyRole ?? ""}
+              onChange={(e) => set("companyRole", e.target.value)}
+              placeholder="e.g. Co-founder & CTO"
+              className={inputCls}
+            />
           </Field>
           <Field label="Website">
             <input

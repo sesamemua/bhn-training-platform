@@ -282,6 +282,17 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the calendar", href: "/admin/workspace/marketing/newsletter/calendar" },
     since: "2026.09.17a",
   },
+  // ─── VentureConnect: role question + EQUIP inbox
+  {
+    id: "equip.vc-company-role",
+    title: "VentureConnect now asks: what's your role at the company?",
+    body: "A new required question sits beside Company Name — Founder, CEO, CTO, that kind of thing. It's separate from Current Role above it, which is academic standing; someone can be a PhD student and a company's CTO at once, and the form previously had no way to say the second half. It shows on the review page and in the submission receipt. Also fixed: the internal copy of every submission now goes to equip@biohubnet.ca instead of engage@biohubnet.ca — VentureConnect is EQUIP's program, not ENGAGE's.",
+    path: "/apply/venture-connect",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "See the form", href: "/apply/venture-connect" },
+    since: "2026.09.18d",
+  },
   // ─── Admin · EQUIP → VentureConnect caps
   {
     id: "equip.vc-caps",

@@ -55,6 +55,7 @@ test("server validation rejects an extended year", () => {
     graduationDate: "2027-06-30",
     institutionEmail: "alex@example.com",
     companyName: "Example Bio",
+    companyRole: "Co-founder & CTO",
     hasBiomanufacturingOrHumanHealthApplication: true,
     ventureDescription: "A sufficiently detailed venture description for validation.",
     ip: {
@@ -110,6 +111,7 @@ test("server validation requires the new VentureConnect fields and documents", (
 
   const errors = validateVentureConnect(incomplete, []).join("\n");
   assert.match(errors, /Graduation Date is required/);
+  assert.match(errors, /Role with the Company is required/);
   assert.match(errors, /biomanufacturing \/ human health/);
   assert.match(errors, /500-word limit/);
   assert.match(errors, /Funding Request Justification is required/);

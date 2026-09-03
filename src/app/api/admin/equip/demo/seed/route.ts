@@ -75,6 +75,7 @@ function vcForm(applicantName: string, companyName: string, budget: number): Ven
 
     // Company Information
     companyName,
+    companyRole: "Co-founder & CTO",
     companyWebsite: "https://example-bio.test",
     ventureDescription:
       "We're developing a cell-free protein purification platform that drops downstream processing time by ~40%. Current development stage: working prototype validated on three model proteins; planning a paid pilot with one biotech partner next quarter.",

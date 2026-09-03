@@ -89,6 +89,7 @@ export function SubmittedView({ application }: Props) {
           <SubmissionLine k="Institution" v={(application.formData as VentureConnectFormData).institutionAffiliation} />
           <SubmissionLine k="Graduation date" v={(application.formData as VentureConnectFormData).graduationDate} />
           <SubmissionLine k="Company / project" v={(application.formData as VentureConnectFormData).companyName} />
+          <SubmissionLine k="Role with the company" v={(application.formData as VentureConnectFormData).companyRole} />
           <SubmissionLine k="Website"     v={(application.formData as VentureConnectFormData).companyWebsite} />
           <SubmissionLine
             k="Biomanufacturing / human health"

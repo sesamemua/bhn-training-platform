@@ -145,6 +145,7 @@ export default async function AdminEquipReviewPage({
         <DSSection eyebrow="Submission body" title="The application" icon={<FileText size={14} className="text-brand-600" />}>
           <Field label="Graduation date">{formData.graduationDate ?? "—"}</Field>
           <Field label="Company name or project title">{formData.companyName ?? "—"}</Field>
+          <Field label="Role with the company">{formData.companyRole ?? "—"}</Field>
           {formData.companyWebsite && (
             <Field label="Website">
               <a href={formData.companyWebsite} target="_blank" rel="noreferrer" className="text-brand-700 underline">{formData.companyWebsite}</a>
