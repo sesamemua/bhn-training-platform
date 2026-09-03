@@ -7,29 +7,21 @@
   --coral: #dc4633;
   --ink: #1e3765;
   --muted: #59697b;
-  --line: #d0d1c9;
+  --line: #d5dade;
   --soft: #f3f5f7;
-  --white: #ffffff;
-  --low: #277a5c;
-  --med: #9a6810;
-  --high: #b24232;
+  --white: #fff;
   min-width: 0;
   overflow: clip;
   background: #e6e8e8;
   color: var(--ink);
   font-family: "Trade Gothic Next", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .deck *,
 .deck *::before,
 .deck *::after {
   box-sizing: border-box;
-}
-
-.deck a {
-  color: inherit;
-  text-underline-offset: 3px;
 }
 
 .deckbar {
@@ -46,7 +38,6 @@
   color: var(--white);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -54,7 +45,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 5px 14px;
+  gap: 8px 18px;
 }
 
 .deckbar a {
@@ -67,14 +58,13 @@
   color: #d8f18e;
 }
 
-.deckbar a:focus-visible,
 .deck a:focus-visible {
   outline: 2px solid var(--light-blue);
   outline-offset: 3px;
 }
 
 .deckMain {
-  width: min(1240px, calc(100% - 32px));
+  width: min(1320px, calc(100% - 32px));
   margin: 26px auto 60px;
 }
 
@@ -82,7 +72,7 @@
   position: relative;
   min-height: 690px;
   margin-bottom: 24px;
-  padding: 46px 52px 40px;
+  padding: 46px 52px 42px;
   overflow: hidden;
   scroll-margin-top: 70px;
   background: var(--white);
@@ -94,7 +84,7 @@
   content: attr(data-slide);
   position: absolute;
   right: 28px;
-  bottom: 22px;
+  bottom: 20px;
   color: #7b8991;
   font-size: 10px;
   font-weight: 700;
@@ -126,42 +116,38 @@
 
 .deck h1 {
   margin-bottom: 18px;
-  font-size: 76px;
+  font-size: clamp(54px, 6vw, 78px);
   font-weight: 800;
-  letter-spacing: 0;
   line-height: 0.96;
 }
 
 .deck h2 {
   margin-bottom: 0;
-  font-size: 34px;
+  font-size: 36px;
   font-weight: 800;
-  letter-spacing: 0;
   line-height: 1;
 }
 
 .deck h3 {
   margin-bottom: 8px;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .eyebrow {
   margin-bottom: 7px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .status {
-  max-width: 280px;
-  padding: 7px 10px;
+  max-width: 330px;
+  padding: 8px 11px;
   background: var(--soft);
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  line-height: 1.35;
   text-align: right;
   text-transform: uppercase;
 }
@@ -203,413 +189,342 @@
 }
 
 .coverCopy {
-  max-width: 710px;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 19px;
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 20px;
+}
+
+.stateLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 28px;
+  font-size: 12px;
+}
+
+.paused {
+  padding: 7px 12px;
+  background: #f3b61f;
+  color: #17284a;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.coverMeta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.26);
 }
 
 .coverSide strong {
   display: block;
-  margin-bottom: 8px;
-  font-size: 48px;
-  line-height: 1;
+  margin-bottom: 12px;
+  font-size: 40px;
+  line-height: 1.05;
 }
 
 .coverSide p {
-  font-size: 14px;
+  font-size: 15px;
 }
 
-.coverMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 32px;
-  padding-top: 22px;
-  border-top: 1px solid rgba(255, 255, 255, 0.26);
-  font-size: 11px;
-  letter-spacing: 0;
+.coverList {
+  display: grid;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(30, 55, 101, 0.35);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fact {
+  display: grid;
+  gap: 3px;
+}
+
+.fact span {
+  color: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.7;
   text-transform: uppercase;
 }
 
-.keywordLayout {
+.fact strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.keywordGrid,
+.audienceGrid,
+.adGrid,
+.negativeGrid,
+.controlGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.keywordCard,
+.audienceCard,
+.adCard,
+.controlCard {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--program, var(--blue));
+  background: var(--white);
+}
+
+.cardHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.cardHeading h3 {
+  margin: 0;
+}
+
+.cardHeading > span {
+  min-width: 30px;
+  padding: 4px 7px;
+  background: var(--program, var(--blue));
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .keywordList {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 5px solid var(--program);
 }
 
 .keywordList li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(145px, 0.7fr) 42px;
-  min-height: 38px;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+}
+
+.keywordList li:last-child {
+  border-bottom: 0;
 }
 
 .keywordList strong {
   overflow-wrap: anywhere;
+  color: #1d2c45;
   font-family: "Courier New", monospace;
-  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .keywordList small {
   color: var(--muted);
-  font-size: 9px;
-  text-align: right;
+  font-size: 10px;
 }
 
-.level {
-  justify-self: end;
-  min-width: 38px;
-  padding: 3px 5px;
+.medium,
+.high {
+  align-self: start;
+  padding: 3px 6px;
   color: var(--white);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
-  text-align: center;
   text-transform: uppercase;
 }
 
-.low {
-  background: var(--low);
-}
-
-.med {
-  background: var(--med);
+.medium {
+  background: #98680b;
 }
 
 .high {
-  background: var(--high);
+  background: #ae3f31;
 }
 
-.keywordFooter {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  margin-top: 18px;
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.negativeGrid,
-.competitorGrid,
-.adGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.negativeCard,
-.competitorCard,
-.adCard {
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-top: 6px solid var(--program);
-  background: var(--soft);
-}
-
-.negativeCard {
-  background: #3f4852;
-  color: var(--white);
-}
-
-.negativeCard p {
-  margin-bottom: 0;
-  color: var(--white);
-  font-size: 11px;
-  line-height: 1.8;
-}
-
-.negativeCard span {
-  color: var(--white);
-}
-
-.negativeCard .keepOpen {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
-  color: #d9f4a5;
-  font-size: 10px;
-  line-height: 1.5;
-}
-
-.negativeCard .keepOpen strong {
-  color: var(--white);
-}
-
-.competitorGrid {
-  margin-top: 22px;
-}
-
-.competitorCard {
-  background: var(--white);
-}
-
-.competitorCard p {
-  margin-bottom: 7px;
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.competitorCard p:last-child {
-  margin-bottom: 0;
-}
-
-.competitorCard strong {
-  color: var(--ink);
-}
-
-.sourceNote {
-  margin: 16px 0 0;
-  color: var(--muted);
-  font-size: 9px;
-  line-height: 1.55;
-}
-
-.targetingCallout {
+.note,
+.launchBar {
   margin-top: 18px;
   padding: 13px 16px;
   background: #e6f4f8;
   border-left: 6px solid var(--blue);
   color: var(--navy);
-  font-size: 10px;
-}
-
-.costLayout,
-.strategySplit {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 28px;
-}
-
-.tableScroll {
-  min-width: 0;
-  overflow-x: auto;
-}
-
-.costTable tbody tr:last-child {
-  background: transparent;
-  color: var(--ink);
-  font-weight: 400;
-}
-
-.costTable td:nth-child(2) {
-  white-space: nowrap;
-  font-family: "Courier New", monospace;
-  font-weight: 700;
-}
-
-.costCallouts {
-  display: grid;
-  gap: 14px;
-}
-
-.costCallouts article,
-.intentCard {
-  padding: 18px;
-  border-top: 6px solid var(--program);
-  background: var(--soft);
-}
-
-.costCallouts strong {
-  display: block;
-  margin-bottom: 5px;
-  font-size: 27px;
-  line-height: 1;
-}
-
-.costCallouts p,
-.intentCard p {
-  margin-bottom: 0;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.termBlock {
-  margin-top: 13px;
-  padding: 11px 13px;
-  overflow-wrap: anywhere;
-  background: #3f4852;
-  color: var(--white);
-  font-family: "Courier New", monospace;
-  font-size: 10px;
-  line-height: 1.75;
-}
-
-.termBlockKeep {
-  background: var(--navy);
-}
-
-.governance {
-  margin-top: 20px;
-  padding: 16px 18px;
-  border-left: 6px solid var(--green);
-  background: #eef5df;
-  color: var(--navy);
-  font-size: 11px;
-}
-
-.adCard {
-  min-height: 500px;
-  background: var(--white);
-}
-
-.audienceTag {
-  display: inline-block;
-  margin: 1px 0 12px;
-  padding: 5px 8px;
-  background: var(--navy);
-  color: var(--white);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.problemBox {
-  margin: 0 0 14px;
-  padding: 10px 11px;
-  background: var(--soft);
-  border-left: 4px solid var(--program);
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.problemBox strong {
-  color: var(--ink);
-}
-
-.adUrl {
-  margin-bottom: 5px;
-  overflow-wrap: anywhere;
-  color: #28704e;
-  font-size: 10px;
-}
-
-.adTitle {
-  margin-bottom: 7px;
-  color: #185abc;
-  font-size: 20px;
-  line-height: 1.25;
-}
-
-.adDesc {
-  color: var(--muted);
   font-size: 12px;
 }
 
-.assets {
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid var(--line);
-}
-
-.assets p {
-  margin-bottom: 4px;
-  font-family: "Courier New", monospace;
-  font-size: 10px;
-}
-
-.budgetLayout {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 34px;
-}
-
-.deck table {
-  width: 100%;
-  min-width: 540px;
-  border-collapse: collapse;
-}
-
-.deck th,
-.deck td {
-  padding: 11px 9px;
-  border-bottom: 1px solid var(--line);
-  font-size: 11px;
-  text-align: left;
-}
-
-.deck th {
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.deck th:last-child,
-.deck td:last-child {
-  text-align: right;
-}
-
-.deck tbody tr:last-child {
-  background: var(--navy);
+.negativePanel {
+  padding: 20px;
+  background: #3f4852;
+  border-top: 6px solid var(--program, var(--blue));
   color: var(--white);
-  font-weight: 700;
 }
 
-.checklist {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+.negativePanel > p {
+  margin: 15px 0 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
 }
 
-.checklist article {
-  padding: 18px;
-  border-top: 5px solid var(--program);
+.negativePanel .cardHeading > span {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.negativeGrid {
+  margin-top: 18px;
+}
+
+.negativeTerms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.negativeTerms span {
+  padding: 6px 9px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white);
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+}
+
+.audienceCard {
   background: var(--soft);
 }
 
-.checklist ul {
-  margin: 0;
-  padding-left: 17px;
+.audienceCard h3 {
+  font-size: 25px;
+}
+
+.audienceCard dl {
+  margin: 24px 0 0;
+}
+
+.audienceCard dt {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.audienceCard dd {
+  margin: 5px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.adCard h3 {
+  margin-bottom: 18px;
+}
+
+.adUrl {
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+  color: #28704e;
+  font-size: 11px;
+}
+
+.adTitle {
+  margin-bottom: 8px;
+  color: #185abc;
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.adDescription {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.adAssets {
+  display: grid;
+  gap: 7px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.adAssets strong:not(:first-child) {
+  margin-top: 9px;
+}
+
+.controlCard {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  background: var(--soft);
+}
+
+.controlCard h3 {
+  margin-bottom: 8px;
+  font-size: 21px;
+}
+
+.controlCard .fact {
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.controlCard .fact strong {
+  font-size: 13px;
+}
+
+.conversion {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.conversion span,
+.smallPrint {
+  overflow-wrap: anywhere;
+  color: var(--muted);
   font-size: 10px;
 }
 
-.checklist li {
-  margin: 6px 0;
+.promotionCard {
+  background: #edf5df;
+  border-top-color: var(--green);
 }
 
-.approval {
-  margin-top: 26px;
-  padding: 20px 24px;
-  background: #e6f4f8;
-  border-left: 8px solid var(--blue);
-  color: var(--navy);
-  font-size: 20px;
-  font-weight: 700;
+.promotionCard h3 {
+  font-size: 18px;
+  line-height: 1.35;
 }
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.launchBar {
+  padding: 18px 20px;
+  font-size: 15px;
 }
 
 @media (max-width: 1080px) {
   .deckbar nav {
     display: none;
   }
+
+  .keywordGrid,
+  .audienceGrid,
+  .adGrid,
+  .negativeGrid,
+  .controlGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 860px) {
   .deckMain {
-    width: min(100% - 16px, 1240px);
+    width: min(100% - 16px, 1320px);
     margin-top: 10px;
   }
 
@@ -629,12 +544,11 @@
   }
 
   .coverSide {
-    gap: 26px;
+    gap: 28px;
   }
 
   .coverMeta {
-    flex-direction: column;
-    gap: 8px;
+    grid-template-columns: 1fr 1fr;
   }
 
   .slideHeader {
@@ -654,26 +568,6 @@
 
   .deck h2 {
     font-size: 29px;
-    line-height: 1.08;
-  }
-
-  .keywordLayout,
-  .negativeGrid,
-  .competitorGrid,
-  .adGrid,
-  .budgetLayout,
-  .checklist,
-  .costLayout,
-  .strategySplit {
-    grid-template-columns: 1fr;
-  }
-
-  .keywordList li {
-    grid-template-columns: minmax(0, 1fr) 120px 40px;
-  }
-
-  .adCard {
-    min-height: 0;
   }
 }
 
@@ -687,35 +581,13 @@
     display: none;
   }
 
-  .deck h1 {
-    font-size: 48px;
+  .coverMeta {
+    grid-template-columns: 1fr;
   }
 
-  .coverCopy {
-    font-size: 16px;
-  }
-
-  .keywordList li {
-    grid-template-columns: 1fr auto;
-  }
-
-  .keywordList small {
-    grid-column: 1;
-    text-align: left;
-  }
-
-  .level {
-    grid-row: 1 / span 2;
-    grid-column: 2;
-  }
-
-  .keywordFooter {
+  .stateLine {
+    align-items: flex-start;
     flex-direction: column;
-  }
-
-  .approval {
-    padding: 18px;
-    font-size: 17px;
   }
 }
 
