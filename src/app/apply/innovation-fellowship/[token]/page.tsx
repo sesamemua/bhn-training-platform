@@ -28,7 +28,6 @@ export default async function InnovationFellowshipApplicationPage({
       formData: true,
       documents: true,
       submittedAt: true,
-      applicantEmail: true,
     },
   });
   if (!application || application.stream !== "innovation_fellowship") notFound();
@@ -43,14 +42,10 @@ export default async function InnovationFellowshipApplicationPage({
         <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
           Thank you. We received your Innovation Fellowship application
           {application.submittedAt ? ` on ${application.submittedAt.toISOString().slice(0, 10)}` : ""}.
-          A complete PDF copy has been sent to <strong className="text-fg">{application.applicantEmail}</strong>.
+          A complete PDF copy is attached to the confirmation email that&apos;s on its way to you now.
         </p>
         <p className="mt-4 text-[12px] leading-relaxed text-muted">
-          Questions or corrections? Write to{" "}
-          <a href="mailto:equip@biohubnet.ca" className="font-semibold text-brand-700 hover:underline">
-            equip@biohubnet.ca
-          </a>
-          .
+          The EQUIP team will be in touch after reviewing the current funding cycle.
         </p>
       </main>
     );

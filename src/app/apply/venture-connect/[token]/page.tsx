@@ -44,14 +44,9 @@ export default async function PublicVentureConnectFormPage({
         <h1 className="text-2xl font-bold tracking-tight text-fg">Application received</h1>
         <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
           Thank you — we have your VentureConnect application
-          {app.submittedAt ? ` from ${app.submittedAt.toISOString().slice(0, 10)}` : ""}. The
-          EQUIP team will be in touch at{" "}
-          <strong className="text-fg">{app.applicantEmail}</strong>. If anything needs
-          changing, write to{" "}
-          <a href="mailto:equip@biohubnet.ca" className="font-semibold text-brand-700 hover:underline">
-            equip@biohubnet.ca
-          </a>
-          .
+          {app.submittedAt ? ` from ${app.submittedAt.toISOString().slice(0, 10)}` : ""}. A copy of
+          everything you submitted is attached to the confirmation email that&apos;s on its way to
+          you now. The EQUIP team will be in touch after reviewing the current funding cycle.
         </p>
       </main>
     );

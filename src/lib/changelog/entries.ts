@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── No email addresses in the public post-submission message
+  {
+    title: "The “application received” page no longer prints an email address",
+    body: "The confirmation page a public applicant lands on right after submitting — for both VentureConnect and Innovation Fellowship — used to echo back their own email address and print `equip@biohubnet.ca` as a contact link. Neither appears there now; the page just confirms the submission and says a copy of everything they submitted is on its way to their inbox, which it is — the receipt email itself already carries the right contact address.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── Direct VentureConnect link in the sidebar
   {
     title: "The direct VentureConnect link now has its own menu tab",
