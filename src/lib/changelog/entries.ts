@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Direct VentureConnect link in the sidebar
+  {
+    title: "The direct VentureConnect link now has its own menu tab",
+    body: "EQUIP → “VentureConnect (direct link)”, sitting beside Innovation Fellowship. Opens `/apply/venture-connect` — the same application form as the in-platform path, but no 3-question triage wizard and no BioHubNet account required. It existed as a URL you had to already know; now it is discoverable from the sidebar too, for anyone who wants to grab the link to send out rather than typing it from memory.",
+    kind: "feature",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── Removed the leading-dash / dot eyebrow marker platform-wide
   {
     title: "Cleaned up a small recurring design detail: section labels no longer have a leading dash or dot",

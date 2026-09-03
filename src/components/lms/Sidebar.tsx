@@ -72,7 +72,7 @@ import {
   BookUser,
   Radar,
   Search,
-  CalendarClock, MessageSquareText, Images, Speaker} from "lucide-react";
+  CalendarClock, MessageSquareText, Images, Speaker, ExternalLink} from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
 
@@ -245,6 +245,18 @@ const innovationFellowshipItem: NavItem = {
   href: "/apply/innovation-fellowship",
   icon: Award,
   description: "Start an EQUIP Innovation Fellowship application using the online form.",
+};
+
+// The direct VentureConnect link — /apply/venture-connect, not
+// /equip/apply/new?stream=venture_connect. Same form as the in-platform
+// path, but skips the 3-question triage wizard and needs no account:
+// built for a link that already says which grant it is (an email, a
+// slide, a QR code) rather than someone starting from the dashboard.
+const ventureConnectDirectItem: NavItem = {
+  label: "VentureConnect (direct link)",
+  href: "/apply/venture-connect",
+  icon: ExternalLink,
+  description: "The public VentureConnect application — same form, no triage questions and no BioHubNet account needed. Use this for a link you send directly (email, slide, QR code) rather than routing someone through the dashboard.",
 };
 
 const equipAdminDashboardItem: NavItem = {
@@ -1851,6 +1863,7 @@ export function Sidebar({
               return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
             })}
             <NavLink item={innovationFellowshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            <NavLink item={ventureConnectDirectItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             {effectiveRole === "superadmin" && (
               <NavLink item={equipAdminDashboardItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             )}
