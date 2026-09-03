@@ -124,9 +124,24 @@ export interface VentureConnectFormData {
   institutionAffiliation?: string;
   departmentProgram?: string;
   currentRole?: ApplicantRole;
-  /** Expected or completed graduation date. */
-  graduationDate?: string;              // ISO yyyy-mm-dd
+  /**
+   * Replaces an earlier free-date "Graduation Date" field. The
+   * eligibility rule only ever cared about one thing — are they still
+   * a student, or close enough to graduating that VentureConnect is
+   * still the right program for them — and a date picker asked for
+   * more precision than that question needs, on a paper form that
+   * never asked for a date to begin with.
+   */
+  graduationTimeline?: "current_student" | "within_two_years";
   institutionEmail?: string;
+  /**
+   * Optional, and not on the paper PDF. Stored exactly as typed — no
+   * parsing into a canonical profile URL, no format check. Same rule as
+   * the speaker intake form's LinkedIn field: a wrong link is a wrong
+   * link whether or not it was validated, and the field is read by a
+   * person, not computed on.
+   */
+  linkedinUrl?: string;
 
   // ── Company Information ──────────────────────────────────
   companyName?: string;
@@ -165,6 +180,9 @@ export interface VentureConnectFormData {
    *  written the way the event advertises it is more useful to a
    *  reviewer than two date pickers that disagree with the website. */
   eventDates?: string;
+  /** Optional. Not on the paper PDF — a reviewer link to look the event
+   *  up, nothing more; not required the way Name / Location / Dates are. */
+  eventWebsite?: string;
 
   // ── Budget & Supporting Documentation ────────────────────
   /** Which of the named attachments are enclosed. The form is a

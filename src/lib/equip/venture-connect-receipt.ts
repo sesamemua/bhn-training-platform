@@ -36,6 +36,14 @@ const ROLE_LABELS: Record<ApplicantRole, string> = {
   research_associate: "Research Associate",
 };
 
+const GRADUATION_TIMELINE_LABELS: Record<
+  NonNullable<VentureConnectFormData["graduationTimeline"]>,
+  string
+> = {
+  current_student: "Current student",
+  within_two_years: "Within 2 years of graduation",
+};
+
 const EVENT_CATEGORY_LABELS = new Map(
   EVENT_CATEGORIES.map(({ id, label }) => [id, label]),
 );
@@ -126,8 +134,14 @@ export function receiptSections(formData: VentureConnectFormData): ReceiptSectio
           label: "Current role",
           value: formData.currentRole ? ROLE_LABELS[formData.currentRole] : "Not provided",
         },
-        { label: "Graduation date", value: formatDate(formData.graduationDate) },
+        {
+          label: "Academic standing",
+          value: formData.graduationTimeline
+            ? GRADUATION_TIMELINE_LABELS[formData.graduationTimeline]
+            : "Not provided",
+        },
         { label: "Institution email", value: present(formData.institutionEmail) },
+        { label: "LinkedIn profile", value: present(formData.linkedinUrl) },
       ],
     },
     {
@@ -163,6 +177,7 @@ export function receiptSections(formData: VentureConnectFormData): ReceiptSectio
         { label: "Event name", value: present(formData.eventName) },
         { label: "Location", value: present(formData.eventLocation) },
         { label: "Dates", value: present(formData.eventDates) },
+        { label: "Event website", value: present(formData.eventWebsite) },
       ],
     },
     {

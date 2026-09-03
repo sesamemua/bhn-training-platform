@@ -52,7 +52,7 @@ test("server validation rejects an extended year", () => {
     institutionAffiliation: "University of Toronto",
     departmentProgram: "Biochemistry",
     currentRole: "phd_student",
-    graduationDate: "2027-06-30",
+    graduationTimeline: "within_two_years",
     institutionEmail: "alex@example.com",
     companyName: "Example Bio",
     companyRole: "Co-founder & CTO",
@@ -110,7 +110,7 @@ test("server validation requires the new VentureConnect fields and documents", (
   };
 
   const errors = validateVentureConnect(incomplete, []).join("\n");
-  assert.match(errors, /Graduation Date is required/);
+  assert.match(errors, /Current Student or Within 2 Years of Graduation/);
   assert.match(errors, /Role with the Company is required/);
   assert.match(errors, /biomanufacturing \/ human health/);
   assert.match(errors, /500-word limit/);
@@ -118,6 +118,54 @@ test("server validation requires the new VentureConnect fields and documents", (
   assert.match(errors, /select at least one status/);
   assert.match(errors, /select at least one item/);
   assert.match(errors, /attach at least one file/);
+});
+
+test("academic standing is required, but LinkedIn and Event Website are not", () => {
+  const base: VentureConnectFormData = {
+    fullName: "Alex Chen",
+    institutionAffiliation: "University of Toronto",
+    departmentProgram: "Biochemistry",
+    currentRole: "phd_student",
+    institutionEmail: "alex@example.com",
+    companyName: "Example Bio",
+    companyRole: "Co-founder & CTO",
+    hasBiomanufacturingOrHumanHealthApplication: true,
+    ventureDescription: "A sufficiently detailed venture description for validation.",
+    ip: { provisionalPatentChecked: true, provisionalPatentDate: "2026-08-31" },
+    fundingJustification: "A sufficiently detailed funding justification for validation.",
+    eventCategory: "conference",
+    eventName: "Life Sciences Summit",
+    eventLocation: "Toronto",
+    eventDates: "14-16 October 2026",
+    budgetRegistration: 500,
+    supportingDocs: ["pitch_deck"],
+    acknowledged: true,
+    signaturePrintedName: "Alex Chen",
+    signatureDate: "2026-08-31",
+  };
+
+  // Missing graduationTimeline blocks submission.
+  assert.match(
+    validateVentureConnect({ ...base }, [attachedDocument]).join("\n"),
+    /Current Student or Within 2 Years of Graduation/,
+  );
+
+  // Present — either option — clears it, with no LinkedIn or Event
+  // Website supplied at all.
+  assert.deepEqual(
+    validateVentureConnect(
+      { ...base, graduationTimeline: "current_student" },
+      [attachedDocument],
+    ),
+    [],
+  );
+  assert.deepEqual(
+    validateVentureConnect(
+      { ...base, graduationTimeline: "within_two_years" },
+      [attachedDocument],
+    ),
+    [],
+  );
 });
 
 test("each selected intellectual property status requires a date", () => {

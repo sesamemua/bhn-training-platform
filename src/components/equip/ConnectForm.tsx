@@ -78,8 +78,9 @@ const SAMPLE_VC: VentureConnectFormData = {
   institutionAffiliation: "University of Toronto",
   departmentProgram: "Donnelly Centre for Cellular and Biomolecular Research",
   currentRole: "phd_student",
-  graduationDate: new Date().toISOString().slice(0, 10),
+  graduationTimeline: "within_two_years",
   institutionEmail: "alex.chen@example.test",
+  linkedinUrl: "https://www.linkedin.com/in/alex-chen-test/",
   companyName: "PuriBio Inc.",
   companyRole: "Co-founder & CTO",
   companyWebsite: "https://example-bio.test",
@@ -116,6 +117,14 @@ const ROLE_OPTIONS: { id: ApplicantRole; label: string }[] = [
   { id: "phd_student",        label: "PhD Student" },
   { id: "postdoc",            label: "Postdoctoral Fellow" },
   { id: "research_associate", label: "Research Associate" },
+];
+
+const GRADUATION_TIMELINE_OPTIONS: {
+  id: NonNullable<VentureConnectFormData["graduationTimeline"]>;
+  label: string;
+}[] = [
+  { id: "current_student",   label: "Current student" },
+  { id: "within_two_years",  label: "Within 2 years of graduation" },
 ];
 
 function budgetTotal(f: VentureConnectFormData): number {
@@ -301,11 +310,25 @@ export function ConnectForm({
             ))}
           </div>
         </Field>
+        <Field label="Academic Standing" required>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {GRADUATION_TIMELINE_OPTIONS.map((opt) => (
+              <RoleCheckbox
+                key={opt.id}
+                checked={form.graduationTimeline === opt.id}
+                label={opt.label}
+                onChange={() => set("graduationTimeline", opt.id)}
+              />
+            ))}
+          </div>
+        </Field>
         <div className="max-w-sm">
-          <Field label="Graduation Date" required>
-            <FourDigitDateInput
-              value={form.graduationDate ?? ""}
-              onChange={(value) => set("graduationDate", value)}
+          <Field label="LinkedIn Profile" hint="Paste it however it appears. Optional.">
+            <input
+              value={form.linkedinUrl ?? ""}
+              onChange={(e) => set("linkedinUrl", e.target.value)}
+              placeholder="https://www.linkedin.com/in/…"
+              className={inputCls}
             />
           </Field>
         </div>
@@ -426,6 +449,17 @@ export function ConnectForm({
             className={inputCls}
           />
         </Field>
+        <div className="max-w-sm mt-3">
+          <Field label="Event Website" hint="Optional — a link for the reviewer to look the event up.">
+            <input
+              type="url"
+              value={form.eventWebsite ?? ""}
+              onChange={(e) => set("eventWebsite", e.target.value)}
+              placeholder="https://"
+              className={inputCls}
+            />
+          </Field>
+        </div>
         {form.eventCategory === "customer_demo" && (
           <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] leading-snug text-amber-900">
             Customer demonstrations are eligible only when the customer is

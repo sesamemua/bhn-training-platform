@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── VentureConnect form: academic standing, optional LinkedIn + event website
+  {
+    title: "VentureConnect: a graduation-date field became a two-option question, and two links are now optional",
+    body: "**Graduation Date is gone**, replaced with **Academic Standing** — Current Student, or Within 2 Years of Graduation. Required, same as the date field was, but it asks the one thing the eligibility rule actually needed instead of a date picker on a paper form that never asked for a date in the first place. **LinkedIn Profile** is a new, optional field under Applicant Information — stored exactly as pasted, same rule as the speaker intake form's LinkedIn field: not parsed into a canonical URL, not format-checked, because a wrong link is a wrong link either way and the field is read by a person, not computed on. **Event Website** is a new, optional field under Event Information, for a reviewer link to look the event up. Neither shows a required marker, and both read as “Not provided” rather than disappearing when left blank — same behaviour the rest of the form's optional fields already use. All three changes apply everywhere the form is used: the direct public link, the in-platform flow, the review page, the submission receipt and attached PDF packet, and the read-only submitted view.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── Delete button on the EQUIP review queue
   {
     title: "Each application on the EQUIP review queue now has a delete button",

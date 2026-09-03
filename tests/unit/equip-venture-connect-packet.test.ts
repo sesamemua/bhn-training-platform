@@ -9,7 +9,7 @@ const formData: VentureConnectFormData = {
   institutionAffiliation: "University of Toronto",
   departmentProgram: "Biomedical Engineering",
   currentRole: "phd_student",
-  graduationDate: "2027-06-30",
+  graduationTimeline: "within_two_years",
   institutionEmail: "amara@example.org",
   companyName: "PuriBio",
   companyWebsite: "https://example.org",

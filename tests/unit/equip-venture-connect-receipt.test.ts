@@ -11,8 +11,9 @@ const formData: VentureConnectFormData = {
   institutionAffiliation: "University of Toronto",
   departmentProgram: "Biomedical Engineering",
   currentRole: "phd_student",
-  graduationDate: "2027-06-30",
+  graduationTimeline: "within_two_years",
   institutionEmail: "amara@example.org",
+  linkedinUrl: "https://www.linkedin.com/in/amara-okonkwo/",
   companyName: "PuriBio & Partners",
   companyRole: "Co-founder & CEO",
   companyWebsite: "https://example.org",
@@ -29,6 +30,7 @@ const formData: VentureConnectFormData = {
   eventName: "BIO International Convention",
   eventLocation: "San Diego, California",
   eventDates: "June 22-25, 2027",
+  eventWebsite: "https://www.bio.org/conferences/bio-international-convention",
   supportingDocs: ["pitch_deck", "cost_estimates"],
   budgetAirfare: 1200,
   budgetTrainFare: 0,
@@ -55,6 +57,8 @@ test("the receipt includes the complete submitted form and calculated total", ()
     "University of Toronto",
     "Biomedical Engineering",
     "PhD Student",
+    "Within 2 years of graduation",
+    "https://www.linkedin.com/in/amara-okonkwo/",
     "PuriBio & Partners",
     "Co-founder & CEO",
     "A faster downstream purification platform.",
@@ -64,6 +68,7 @@ test("the receipt includes the complete submitted form and calculated total", ()
     "Industry / Investor Conference",
     "BIO International Convention",
     "June 22-25, 2027",
+    "https://www.bio.org/conferences/bio-international-convention",
     "$4,475.00 CAD",
     "Business pitch deck",
     "Travel & accommodation cost estimates",
@@ -129,4 +134,10 @@ test("a no answer is preserved and optional values are readable", () => {
   });
   assert.match(email.text, /Website:\nNot provided/);
   assert.match(email.text, /Biomanufacturing \/ human health application:\nNo/);
+});
+
+test("LinkedIn and Event Website read as 'Not provided' when left blank, not omitted", () => {
+  const email = receipt({ ...formData, linkedinUrl: undefined, eventWebsite: undefined });
+  assert.match(email.text, /LinkedIn profile:\nNot provided/);
+  assert.match(email.text, /Event website:\nNot provided/);
 });

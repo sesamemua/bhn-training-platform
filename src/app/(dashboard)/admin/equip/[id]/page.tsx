@@ -143,7 +143,18 @@ export default async function AdminEquipReviewPage({
 
       {app.stream === "venture_connect" && (
         <DSSection eyebrow="Submission body" title="The application" icon={<FileText size={14} className="text-brand-600" />}>
-          <Field label="Graduation date">{formData.graduationDate ?? "—"}</Field>
+          <Field label="Academic standing">
+            {formData.graduationTimeline === "current_student"
+              ? "Current student"
+              : formData.graduationTimeline === "within_two_years"
+                ? "Within 2 years of graduation"
+                : "—"}
+          </Field>
+          {formData.linkedinUrl && (
+            <Field label="LinkedIn">
+              <a href={formData.linkedinUrl} target="_blank" rel="noreferrer" className="text-brand-700 underline break-all">{formData.linkedinUrl}</a>
+            </Field>
+          )}
           <Field label="Company name or project title">{formData.companyName ?? "—"}</Field>
           <Field label="Role with the company">{formData.companyRole ?? "—"}</Field>
           {formData.companyWebsite && (
