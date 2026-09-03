@@ -170,8 +170,8 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
         <section className={"px-6 sm:px-9 py-7 " + (totalApps > 0 ? "border-t border-line" : "")}>
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-700 font-bold inline-flex items-center gap-2 mb-1.5">
-                <SpineDot /> Pick a stream
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-700 font-bold mb-1.5">
+                Pick a stream
               </p>
               <h2 className="text-[22px] font-bold text-fg leading-tight">Two ways to apply</h2>
               <p className="text-[12.5px] text-muted mt-1.5 max-w-[58ch] leading-relaxed">
@@ -197,8 +197,8 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
           <section className="px-6 sm:px-9 py-7 border-t border-line">
             <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-700 font-bold inline-flex items-center gap-2 mb-1.5">
-                  <SpineDot /> Recent submissions
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-700 font-bold mb-1.5">
+                  Recent submissions
                 </p>
                 <h2 className="text-[22px] font-bold text-fg leading-tight">My applications</h2>
               </div>
@@ -257,12 +257,6 @@ function Kpi({ icon, label, value, help }: { icon: React.ReactNode; label: strin
       <p className="text-[11px] text-muted mt-1.5">{help}</p>
     </div>
   );
-}
-
-/** Tiny brand dot used as a section-eyebrow accent (the "spine"
- *  bullet, matching the line+gradient idiom used elsewhere). */
-function SpineDot() {
-  return <span className="inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-br from-brand-500 to-brand-700" aria-hidden />;
 }
 
 function StreamRow({ stream, hasDraft, deadline }: { stream: EquipStream; hasDraft: boolean; deadline: DerivedDeadlineSpec | null }) {

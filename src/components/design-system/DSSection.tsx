@@ -59,13 +59,22 @@ export function DSSection({ title, eyebrow, icon, tint = false, children }: Prop
     // Cinematic sections are their own rounded-3xl panel so they
     // visually rhyme with the cinematic DSPageHeader (which is also
     // a rounded panel). The eyebrow uses the HR-overview vocabulary
-    // — subtle text colour with a sky→violet gradient hairline — so
-    // section markers read as a layer DOWN from the brand-anchored
-    // page eyebrow inside DSPageHeader.
+    // — subtle text colour, no leading accent — so section markers
+    // read as a layer DOWN from the brand-anchored page eyebrow
+    // inside DSPageHeader.
     //
     // We don't reuse DSEyebrow here because its cinematic branch is
-    // tuned for the page header (brand-700 colour, brand-fade
-    // gradient). Section eyebrows want a subordinate look.
+    // tuned for the page header (brand-700 colour). Section eyebrows
+    // want a subordinate look.
+    //
+    // No leading gradient hairline before the label — that was tried
+    // here too and asked to be removed platform-wide; see the note on
+    // DSEyebrow for why. And eyebrow/title are `flex`, not
+    // `inline-flex`: both are text elements with their OWN internal
+    // `items-center gap-2` (for an inline icon in the title), but as
+    // siblings they need to be block-level or they share one line box
+    // and their `mb-*` margins do nothing — the eyebrow and title run
+    // together instead of stacking.
     return (
       <section
         className="rounded-3xl bg-card border border-line overflow-hidden"
@@ -76,20 +85,12 @@ export function DSSection({ title, eyebrow, icon, tint = false, children }: Prop
       >
         <div className="px-6 sm:px-10 lg:px-14 py-8 sm:py-10">
           {eyebrow && (
-            <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-subtle mb-4 inline-flex items-center gap-2">
-              <span
-                aria-hidden
-                className="block h-px w-6"
-                style={{
-                  background:
-                    "linear-gradient(90deg, rgb(56,189,248), rgb(124,58,237))",
-                }}
-              />
+            <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-subtle mb-4 flex items-center gap-2">
               {eyebrow}
             </p>
           )}
           {title && (
-            <h2 className="text-xl sm:text-2xl font-bold text-fg tracking-tight inline-flex items-center gap-2 mb-5">
+            <h2 className="text-xl sm:text-2xl font-bold text-fg tracking-tight flex items-center gap-2 mb-5">
               {icon}
               {title}
             </h2>

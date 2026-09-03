@@ -239,12 +239,9 @@ function NewDeadlineForm() {
           "linear-gradient(180deg, color-mix(in srgb, var(--brand-50) 30%, var(--card)) 0%, var(--card) 60%)",
       }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span aria-hidden className="block h-px w-5 bg-gradient-to-r from-brand-300 to-transparent" />
-        <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-subtle">
-          Create a new funding window
-        </p>
-      </div>
+      <p className="mb-3 text-[10px] uppercase tracking-[0.22em] font-bold text-subtle">
+        Create a new funding window
+      </p>
       <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_1fr_1fr_auto] gap-2 items-end">
         <label className="block">
           <span className="text-[10px] uppercase tracking-wider font-bold text-subtle">Stream</span>

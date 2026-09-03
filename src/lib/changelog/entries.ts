@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Removed the leading-dash / dot eyebrow marker platform-wide
+  {
+    title: "Cleaned up a small recurring design detail: section labels no longer have a leading dash or dot",
+    body: "Section eyebrows — the small uppercase label above a section title, like “SUBMISSION BODY” or “PICK A STREAM” — used to carry a tiny gradient hairline or coloured dot glued to the front of the text on some pages. Removed everywhere: the shared `DSEyebrow` primitive (used by every page header across the platform), the section-card primitive, and five page-local copies that had grown their own version of the same idea over time. Labels are plain text now, consistently, and two of the pages fixed also had a layout bug where the label and the title below it could run together onto one line instead of stacking — fixed alongside it.",
+    kind: "fix",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── VentureConnect: role question, EQUIP inbox
   {
     title: "The VentureConnect form now asks your role with the company — and its receipts reach EQUIP, not ENGAGE",

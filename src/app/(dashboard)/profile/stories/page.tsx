@@ -216,9 +216,11 @@ export default async function StoryBankPage() {
   );
 }
 
-/** Small eyebrow marker used at the top of each section. Sky → violet
- *  gradient hairline prefix + uppercase tracked text — same vocabulary
- *  the HR-overview sections use for visual rhyme across the platform. */
+/** Small eyebrow marker used at the top of each section. Uppercase
+ *  tracked text, tone carried by colour alone — same vocabulary the
+ *  HR-overview sections use for visual rhyme across the platform. (An
+ *  earlier version prefixed this with a gradient hairline; that was
+ *  asked to be removed platform-wide — see the note on DSEyebrow.) */
 function SectionEyebrow({
   children,
   tone = "default",
@@ -227,15 +229,8 @@ function SectionEyebrow({
   tone?: "default" | "amber";
 }) {
   const textClass = tone === "amber" ? "text-amber-800" : "text-subtle";
-  const gradient =
-    tone === "amber"
-      ? "linear-gradient(90deg, rgb(245,158,11), transparent)"
-      : "linear-gradient(90deg, rgb(56,189,248), rgb(124,58,237))";
   return (
-    <p
-      className={`text-[10px] uppercase tracking-[0.28em] font-bold inline-flex items-center gap-2 ${textClass}`}
-    >
-      <span aria-hidden className="block h-px w-6" style={{ background: gradient }} />
+    <p className={`text-[10px] uppercase tracking-[0.28em] font-bold ${textClass}`}>
       {children}
     </p>
   );

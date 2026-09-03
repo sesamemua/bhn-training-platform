@@ -1060,12 +1060,20 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 
 type EyebrowTone = "brand" | "amber" | "emerald" | "sky" | "violet";
 
-/** Section eyebrow — small uppercase tracked label with a tone-tinted
- *  gradient hairline leading into the title. Used to mark each
- *  hairline-divided section. Tone vocabulary mirrors the sidebar
- *  pillar tones (engage=emerald, experience=amber, equip=sky,
- *  events=violet) so visual association carries across the
- *  platform. */
+/** Section eyebrow — small uppercase tracked label. Tone vocabulary
+ *  mirrors the sidebar pillar tones (engage=emerald, experience=amber,
+ *  equip=sky, events=violet) so visual association carries across the
+ *  platform — carried by the label's own text colour, not by a
+ *  decorative marker glued onto the front of it. (An earlier version
+ *  carried the tone via a leading gradient hairline; that was asked
+ *  to be removed platform-wide — see the note on DSEyebrow.) */
+const EYEBROW_TONE_TEXT: Record<EyebrowTone, string> = {
+  brand: "text-subtle",
+  amber: "text-amber-700",
+  emerald: "text-emerald-700",
+  sky: "text-sky-700",
+  violet: "text-violet-700",
+};
 function SectionEyebrow({
   children,
   tone = "brand",
@@ -1073,19 +1081,8 @@ function SectionEyebrow({
   children: React.ReactNode;
   tone?: EyebrowTone;
 }) {
-  const gradient =
-    tone === "amber"
-      ? "linear-gradient(90deg, rgb(245,158,11), rgb(244,63,94))"
-      : tone === "emerald"
-        ? "linear-gradient(90deg, rgb(16,185,129), rgb(56,189,248))"
-        : tone === "sky"
-          ? "linear-gradient(90deg, rgb(14,165,233), rgb(99,102,241))"
-          : tone === "violet"
-            ? "linear-gradient(90deg, rgb(139,92,246), rgb(244,114,182))"
-            : "linear-gradient(90deg, rgb(56,189,248), rgb(124,58,237))";
   return (
-    <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-subtle inline-flex items-center gap-2">
-      <span aria-hidden className="block h-px w-6" style={{ background: gradient }} />
+    <p className={"text-[10px] uppercase tracking-[0.28em] font-bold " + EYEBROW_TONE_TEXT[tone]}>
       {children}
     </p>
   );
