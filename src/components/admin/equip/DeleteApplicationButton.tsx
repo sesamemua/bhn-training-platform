@@ -3,24 +3,28 @@
 /**
  * Per-row delete on the admin EQUIP queue (/admin/equip).
  *
- * The delete API and its rule (`canDelete` in src/lib/equip/delete.ts)
- * have existed since the applicant/admin-delete feature shipped — this
- * is the first UI that actually calls it from the admin side. Without
- * it, deleting a test or duplicate application meant knowing the DELETE
- * endpoint existed and calling it by hand.
+ * Same protected control as the resume manager's hard-delete
+ * (LaunchSwitch — glass cover, then a countdown that can still be
+ * aborted). No separate window.confirm()/ConfirmDialog stacked on top:
+ * per LaunchSwitch's own doc comment, the cover-flip + countdown +
+ * abort already IS the deliberate-commitment ritual, and a second
+ * "are you sure?" popup on top would be redundant — and here it would
+ * be worse than redundant, since it would have to appear AFTER the
+ * switch has already shown its "DELETED" chip, contradicting what the
+ * person just watched happen.
  *
- * An admin may delete anything, but a DECIDED application with money
- * approved against it (approved/funded, approvedAmount > 0) needs a
- * second, explicit confirmation — deleting it hands that amount back to
- * the applicant's $5,000 cap, which is a decision, not a side effect.
- * The server enforces this (canDelete) regardless of what this button
- * does; the two-step dialog here exists so the consequence is explained
- * BEFORE the server has to say no once already.
+ * The one thing LaunchSwitch's generic ritual can't say on its own is
+ * the EQUIP-specific consequence: deleting an approved/funded
+ * application with money against it returns that amount to the
+ * applicant's $5,000 cap (see canDelete in src/lib/equip/delete.ts).
+ * That gets said as a small line of visible text NEXT TO the switch —
+ * seen before arming, not sprung afterward — rather than crammed into
+ * the switch's own tiny label or bolted on as a second dialog.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Loader2 } from "lucide-react";
-import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AlertTriangle } from "lucide-react";
+import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
 
 export function DeleteApplicationButton({
   applicationId,
@@ -34,86 +38,43 @@ export function DeleteApplicationButton({
   approvedAmount: number | null;
 }) {
   const router = useRouter();
-  const { confirmDialog, node } = useConfirmDialog();
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const decided = status === "approved" || status === "funded";
   const affectsCap = decided && (approvedAmount ?? 0) > 0;
 
-  async function runDelete(confirmed: boolean) {
+  async function handleFire() {
+    setError(null);
     const res = await fetch(
-      `/api/admin/equip/applications/${applicationId}${confirmed ? "?confirm=1" : ""}`,
+      `/api/admin/equip/applications/${applicationId}${affectsCap ? "?confirm=1" : ""}`,
       { method: "DELETE" },
     );
-    const j = (await res.json().catch(() => ({}))) as {
-      error?: string; needsConfirm?: boolean;
-    };
-    return { ok: res.ok, status: res.status, ...j };
-  }
-
-  async function onDelete() {
-    const ok = await confirmDialog({
-      title: `Delete ${applicantName}'s application?`,
-      description: affectsCap
-        ? `This application is ${status} with $${(approvedAmount ?? 0).toLocaleString()} approved against it — deleting it returns that amount to their funding cap. You'll be asked to confirm that specifically next.`
-        : "This permanently removes the application and any attached files. This can't be undone.",
-      confirmLabel: "Delete",
-      cancelLabel: "Keep it",
-      tone: "destructive",
-    });
-    if (!ok) return;
-
-    setBusy(true);
-    setError(null);
-    try {
-      let result = await runDelete(false);
-
-      // The server refuses a cap-affecting delete without an explicit
-      // second confirm — surface ITS reason text (exact dollar amount,
-      // exact consequence) rather than reusing the generic dialog above.
-      if (!result.ok && result.needsConfirm) {
-        const confirmedCap = await confirmDialog({
-          title: "This changes their funding cap",
-          description: result.error ?? "Confirm to proceed.",
-          confirmLabel: "Delete anyway",
-          cancelLabel: "Cancel",
-          tone: "destructive",
-        });
-        if (!confirmedCap) { setBusy(false); return; }
-        result = await runDelete(true);
-      }
-
-      if (!result.ok) {
-        setError(result.error ?? `Delete failed (HTTP ${result.status}).`);
-        return;
-      }
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(j.error ?? `Delete failed (HTTP ${res.status}).`);
+      return;
     }
+    router.refresh();
   }
 
   return (
-    <span className="inline-flex items-center">
-      <button
-        type="button"
-        onClick={onDelete}
-        disabled={busy}
-        title={`Delete ${applicantName}'s application`}
-        aria-label={`Delete ${applicantName}'s application`}
-        className="inline-flex items-center justify-center rounded-md p-1.5 text-rose-500/70 transition-colors hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
-      >
-        {busy ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-      </button>
-      {error && (
-        <span className="ml-1 text-[10px] font-medium text-rose-600" role="alert">
-          {error}
-        </span>
+    <div className="inline-flex flex-col items-end gap-1">
+      {affectsCap && (
+        <p className="flex items-center gap-1 text-[9.5px] font-semibold text-amber-600 whitespace-nowrap">
+          <AlertTriangle size={10} className="shrink-0" />
+          ${(approvedAmount ?? 0).toLocaleString()} returns to their cap
+        </p>
       )}
-      {node}
-    </span>
+      <LaunchSwitch
+        label="DELETE"
+        ariaLabel={`Delete ${applicantName}'s application — protected switch with 10-second countdown`}
+        onFire={handleFire}
+      />
+      {error && (
+        <p className="max-w-[10rem] text-right text-[10px] font-medium text-rose-600" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

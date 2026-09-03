@@ -25,7 +25,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   // ── Delete button on the EQUIP review queue
   {
     title: "Each application on the EQUIP review queue now has a delete button",
-    body: "A trash icon next to “Review” on every row of `/admin/equip`. The delete rule itself has existed since applicant/admin deletion shipped, but there was no button anywhere on the admin side to actually call it — deleting a test or duplicate application meant knowing the API existed. A draft or an undecided submission deletes with one confirmation. An **approved or funded** application needs a second, explicit one, because deleting it hands its dollar amount back to the applicant's $5,000 cap — that has to be a decision made on purpose, with the exact amount stated, not a side effect discovered later.",
+    body: "A protected DELETE switch — glass cover, then a 10-second countdown you can still abort — sits after “Review” on every row of `/admin/equip`. Same control the resume manager uses for its own hard-delete, so it can't be fired by an accidental click, and Review sits to its left rather than the two swapping places. The delete rule itself has existed since applicant/admin deletion shipped, but there was no button anywhere on the admin side to actually call it — deleting a test or duplicate application meant knowing the API existed. Deleting an **approved or funded** application returns its dollar amount to the applicant's $5,000 cap, so that row carries a small line stating the exact amount before you ever touch the switch, rather than a second pop-up sprung on you after the countdown has already shown “DELETED.”",
     kind: "feature",
     visibleTo: STAFF,
     daysAgo: 0,
