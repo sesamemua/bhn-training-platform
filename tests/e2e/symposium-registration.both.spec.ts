@@ -3,7 +3,7 @@
  *
  * This is the canonical example for how E2E specs in this repo work:
  *   1. A trainee submits the public registration form on
- *      /events/2025-annual-symposium/register.
+ *      /events/2026-annual-symposium/register.
  *   2. The success page shows the "submitted — pending approval"
  *      banner (because BhnEvent.requiresApproval defaults to true).
  *   3. The same browser runs an admin task: launch a parallel
@@ -22,7 +22,7 @@
  */
 import { test, expect } from "@playwright/test";
 
-const EVENT_SLUG = "2025-annual-symposium";
+const EVENT_SLUG = "2026-annual-symposium";
 const REGISTER_PATH = `/events/${EVENT_SLUG}/register`;
 const SUCCESS_PATH = `/events/${EVENT_SLUG}/register/success`;
 
