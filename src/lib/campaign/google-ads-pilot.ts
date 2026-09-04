@@ -7,16 +7,12 @@ export type GoogleAdsPilotStatus = "implemented" | "approval_required";
 export interface GoogleAdsPilotProgram {
   id: "engage" | "experience" | "venture-connect";
   name: string;
-  campaignName: string;
   objective: string;
   audience: string;
-  monthlyBudgetCad: number;
-  dailyBudgetCad: number;
+  intent: string;
   keywordCount: number;
-  negativeKeywordCount: number;
+  adGroupNegativeCount: number;
   responsiveSearchAdCount: number;
-  adGroups: readonly string[];
-  utmCampaign: string;
   landingPath: string;
   applicationPath: string;
   primaryConversion: string;
@@ -27,16 +23,12 @@ export const GOOGLE_ADS_PILOT_PROGRAMS: readonly GoogleAdsPilotProgram[] = [
   {
     id: "engage",
     name: CAMPAIGN_PROGRAMS.engage.name,
-    campaignName: "BHN | Search | ENGAGE | EN",
-    objective: "Training Credit applications",
-    audience: "Eligible Master's and PhD students, postdocs, research associates and lab technicians",
-    monthlyBudgetCad: 300,
-    dailyBudgetCad: 9.86,
-    keywordCount: 17,
-    negativeKeywordCount: 13,
-    responsiveSearchAdCount: 3,
-    adGroups: ["Training Credits", "Industry Training", "Learning Pathways"],
-    utmCampaign: "bhn_search_engage_en",
+    objective: "ENGAGE applications",
+    audience: "Master’s, PhD and postdoc trainees in life science, biotech, STEM and medicine",
+    intent: "Find funded skills training, course credits, GMP or regulatory training",
+    keywordCount: 10,
+    adGroupNegativeCount: 5,
+    responsiveSearchAdCount: 1,
     landingPath: "/for-trainees/engage",
     applicationPath: CAMPAIGN_PROGRAMS.engage.applicationPath,
     primaryConversion: CAMPAIGN_EVENT_NAMES.engageApplicationSubmitted,
@@ -45,16 +37,12 @@ export const GOOGLE_ADS_PILOT_PROGRAMS: readonly GoogleAdsPilotProgram[] = [
   {
     id: "experience",
     name: CAMPAIGN_PROGRAMS.experience.name,
-    campaignName: "BHN | Search | EXPERIENCE | EN",
-    objective: "Talent-pool applications",
-    audience: "Eligible Master's and PhD students and postdocs preparing for industry",
-    monthlyBudgetCad: 180,
-    dailyBudgetCad: 5.92,
-    keywordCount: 18,
-    negativeKeywordCount: 10,
-    responsiveSearchAdCount: 3,
-    adGroups: ["Industry Internships", "Talent Community", "Knowledge Exchange"],
-    utmCampaign: "bhn_search_experience_en",
+    objective: "EXPERIENCE applications",
+    audience: "Master’s, PhD and postdoc trainees in life science, biotech, STEM and medicine",
+    intent: "Find a biotech job, internship, placement or first industry experience",
+    keywordCount: 10,
+    adGroupNegativeCount: 5,
+    responsiveSearchAdCount: 1,
     landingPath: "/for-trainees/experience",
     applicationPath: CAMPAIGN_PROGRAMS.experience.applicationPath,
     primaryConversion: CAMPAIGN_EVENT_NAMES.experienceApplicationSubmitted,
@@ -63,22 +51,87 @@ export const GOOGLE_ADS_PILOT_PROGRAMS: readonly GoogleAdsPilotProgram[] = [
   {
     id: "venture-connect",
     name: CAMPAIGN_PROGRAMS["venture-connect"].name,
-    campaignName: "BHN | Search | EQUIP VC | EN",
     objective: "VentureConnect applications",
-    audience: "Eligible trainee founders with human-health and life-science ventures",
-    monthlyBudgetCad: 120,
-    dailyBudgetCad: 3.95,
-    keywordCount: 16,
-    negativeKeywordCount: 12,
-    responsiveSearchAdCount: 3,
-    adGroups: ["VentureConnect Grant", "Biotech Founder Funding", "Conference and Pitch Support"],
-    utmCampaign: "bhn_search_equip_vc_en",
+    audience: "Life-science founders and trainee entrepreneurs with an early-stage venture",
+    intent: "Find travel funding to meet investors, VCs or attend an investor conference",
+    keywordCount: 11,
+    adGroupNegativeCount: 5,
+    responsiveSearchAdCount: 1,
     landingPath: "/for-trainees/venture-connect",
     applicationPath: CAMPAIGN_PROGRAMS["venture-connect"].applicationPath,
     primaryConversion: CAMPAIGN_EVENT_NAMES.ventureConnectApplicationSubmitted,
     status: "Paused",
   },
 ];
+
+export const GOOGLE_ADS_ACTIVE_KEYWORDS = {
+  engage: [
+    '"life science training credits for phd students"',
+    '"funded gmp training for phd students"',
+    '"funded biotech training for postdocs canada"',
+    '"industry training funding for graduate students"',
+    '"funded regulatory affairs training for phd students"',
+    '"biotech training credits for masters students"',
+    "[funded gmp training for phd students]",
+    "[funded biotech training for postdocs canada]",
+    "[industry training funding for graduate students]",
+    "[life science training credits for phd students]",
+  ],
+  experience: [
+    '"postdoc industry internship"',
+    '"phd biotech internship"',
+    '"biotech jobs without industry experience"',
+    '"biotech internship toronto"',
+    '"biotech internship montreal"',
+    '"life science internship for phd students"',
+    "[postdoc industry internship]",
+    "[phd biotech internship]",
+    "[biotech internship toronto]",
+    "[biotech internship montreal]",
+  ],
+  "venture-connect": [
+    '"founder travel funding"',
+    '"investor conference grant"',
+    '"conference travel grant canada"',
+    '"trainee entrepreneur grant"',
+    '"biotech startup travel grant"',
+    '"funding to meet venture capitalists"',
+    '"life science startup investor conference funding"',
+    "[founder travel funding]",
+    "[investor conference grant]",
+    "[conference travel grant canada]",
+    "[trainee entrepreneur grant]",
+  ],
+} as const;
+
+export const GOOGLE_ADS_CAMPAIGN_NEGATIVES = [
+  "biohubnet",
+  "bio hub net",
+  "biohub net",
+  "bio hubnet",
+  "biohub network",
+  "bio hub network",
+  "undergraduate",
+  "bachelor",
+  "high school",
+  "medical school",
+  "nursing",
+  "homework",
+  "wikipedia",
+  "definition",
+  "personal loan",
+  "business loan",
+  "travel agency",
+  "vacation",
+  "restaurant startup",
+  "real estate startup",
+] as const;
+
+export const GOOGLE_ADS_AD_GROUP_NEGATIVES = {
+  engage: ["jobs", "internship", "startup funding", "travel grant", "life sciences career training"],
+  experience: ["course", "courses", "training credits", "startup grant", "travel grant"],
+  "venture-connect": ["jobs", "internship", "course", "courses", "student scholarship"],
+} as const;
 
 export const GOOGLE_ADS_CONVERSION_EVENTS = [
   {
@@ -119,11 +172,19 @@ export const GOOGLE_ADS_CONVERSION_EVENTS = [
 ] as const;
 
 export const GOOGLE_ADS_PILOT_ASSETS = [
-  { label: "Launch keywords", count: 51, source: "keywords.csv" },
-  { label: "Negative keywords", count: 35, source: "negative-keywords.csv" },
-  { label: "Paused responsive search ads", count: 9, source: "responsive-search-ads.csv" },
-  { label: "Cost-planning rows", count: 51, source: "keyword-cost-planning-estimates.csv" },
+  { label: "Active keywords", count: 31, source: "Google Ads" },
+  { label: "Negative keywords", count: 35, source: "Google Ads" },
+  { label: "Responsive search ads", count: 3, source: "Google Ads" },
+  { label: "Paused old ENGAGE keywords", count: 12, source: "Google Ads" },
 ] as const;
+
+export const GOOGLE_ADS_PROMOTION = {
+  offer: "Spend CA$600 and receive CA$600 in Google Ads credit",
+  status: "Redeemed — requirements not yet complete",
+  redeemedOn: "September 2, 2026",
+  requirementsDueOn: "November 1, 2026",
+  useWithinDays: 60,
+} as const;
 
 export const GOOGLE_ADS_LAUNCH_GATES: readonly {
   title: string;
@@ -131,13 +192,13 @@ export const GOOGLE_ADS_LAUNCH_GATES: readonly {
   status: GoogleAdsPilotStatus;
 }[] = [
   {
-    title: "Campaign landing experiences",
-    detail: "ENGAGE, EXPERIENCE and VentureConnect use the platform design system and existing application workflows.",
+    title: "Google Ads campaign setup",
+    detail: "Campaign, ad groups, keywords, negatives, ads, billing and promotion are configured.",
     status: "implemented",
   },
   {
-    title: "Eligibility before application",
-    detail: "Each landing route checks the current 41-institution network before presenting its main application action.",
+    title: "Campaign landing experiences",
+    detail: "ENGAGE, EXPERIENCE and VentureConnect use the platform application workflows.",
     status: "implemented",
   },
   {
@@ -146,37 +207,35 @@ export const GOOGLE_ADS_LAUNCH_GATES: readonly {
     status: "implemented",
   },
   {
-    title: "Submission conversion events",
-    detail: "Primary application conversions are recorded only after their corresponding database write succeeds.",
-    status: "implemented",
-  },
-  {
-    title: "Production publication",
-    detail: "Approve the production push and verify all three landing routes on the live domain.",
+    title: "Production conversion tracking",
+    detail: "Deploy the Google Ads conversion labels, then test all three completed-application events.",
     status: "approval_required",
   },
   {
-    title: "Google Ads and analytics mapping",
-    detail: "Approve the destination account, conversion IDs and consent-mode validation before importing assets.",
-    status: "approval_required",
-  },
-  {
-    title: "Billing and campaign activation",
-    detail: "Keep campaigns paused until live conversion tests pass; billing and activation require explicit approval.",
+    title: "Campaign activation",
+    detail: "Keep the campaign paused until conversion tests pass and launch is approved.",
     status: "approval_required",
   },
 ];
 
 export const GOOGLE_ADS_PILOT = {
-  name: "English Google Search pilot",
-  status: "Draft - not live",
+  name: "BioHubNet Applications | GTA + Montreal | Search",
+  campaignId: "24204276639",
+  account: "info@biohubnet.ca",
+  status: "Paused",
+  spendCad: 0,
   network: "Google Search only",
   language: "English",
-  locations: ["Toronto / GTA", "Greater Montréal"],
+  locations: ["Greater Toronto Area, Ontario", "Montreal, Quebec"],
   locationMode: "Presence only",
   excludedNetworks: ["Search Partners", "Display Network"],
   monthlyBudgetCad: 600,
   dailyBudgetCad: 19.73,
+  bidding: "Maximize clicks",
+  maximumCpcCad: 4,
+  broadMatch: false,
+  aiMax: false,
+  conversionGoal: "Submit lead forms",
   attributionKeys: CAMPAIGN_ATTRIBUTION_KEYS,
-  lastVerifiedOn: "September 1, 2026",
+  lastVerifiedOn: "September 3, 2026",
 } as const;

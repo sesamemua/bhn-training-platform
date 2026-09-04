@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Consent-aware Google Ads campaign measurement
+  {
+    title: "Campaign applications can now be measured without counting page visits as enrollments",
+    body: "ENGAGE, EXPERIENCE and VentureConnect now send their own Google Ads conversion only after the platform confirms that an application was stored. The Google tag stays off unless the visitor has accepted marketing cookies, and ordinary visits, eligibility checks and button clicks do not count as completed applications.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── VentureConnect form: academic standing, optional LinkedIn + event website
   {
     title: "VentureConnect: a graduation-date field became a two-option question, and two links are now optional",

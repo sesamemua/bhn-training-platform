@@ -38,9 +38,9 @@ function formatViolations(violations: Awaited<ReturnType<AxeBuilder["analyze"]>>
 export async function auditPage(page: Page, path: string, testInfo?: TestInfo) {
   await page.goto(path);
   // Several dashboard routes poll (AI status, live counts) or animate
-  // in on mount; give the DOM a moment to settle before scanning so we
-  // don't flag a transient loading-skeleton state.
-  await page.waitForLoadState("networkidle").catch(() => {});
+  // in on mount. Give quiet pages a chance to settle, but do not let a
+  // deliberate polling request consume the test's full timeout.
+  await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
   await page.waitForTimeout(300);
 
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();

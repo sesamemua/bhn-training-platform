@@ -211,7 +211,7 @@ export function CellSplitGame({ firstName, replayMode }: Props) {
     stage === "incubate" && (incubateSeconds ?? 1) > 0;
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-8">
+    <main className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-8">
       {/* Cinematic background — midnight gradient + soft blobs.
           Light enough to keep the dish + UI legible. */}
       <div aria-hidden className="absolute inset-0 pointer-events-none">
@@ -440,7 +440,7 @@ export function CellSplitGame({ firstName, replayMode }: Props) {
           50%      { opacity: 1; transform: scale(1.6); }
         }
       `}</style>
-    </div>
+    </main>
   );
 }
 

@@ -93,12 +93,44 @@ async function mintSession(
   });
 }
 
-/** storageState() captures cookies + localStorage; we only need cookies
- *  for NextAuth, but storing both keeps future flows compatible. */
+/**
+ * Persist a deterministic signed-in browser state. API request contexts
+ * capture cookies but cannot discover browser localStorage, so add the
+ * same necessary-only consent decision a user can make in the banner.
+ * Dismissing onboarding through the real API prevents first-run dialogs
+ * from intercepting clicks in unrelated flow and accessibility tests.
+ */
 async function persistStorageState(
   request: import("@playwright/test").APIRequestContext,
   role: "trainee" | "admin",
 ) {
+  const onboarding = await request.patch("/api/onboarding", {
+    data: { dismissed: true, minimized: false },
+  });
+  expect(
+    onboarding.ok(),
+    `Could not dismiss onboarding for the ${role} E2E session — status ${onboarding.status()}.`,
+  ).toBeTruthy();
+
   const outPath = path.join(AUTH_DIR, `${role}.json`);
-  await request.storageState({ path: outPath });
+  const state = await request.storageState();
+  const origin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001").origin;
+  const consent = JSON.stringify({
+    necessary: true,
+    analytics: false,
+    marketing: false,
+    version: "1.0",
+    acceptedAt: new Date().toISOString(),
+  });
+
+  fs.writeFileSync(
+    outPath,
+    JSON.stringify({
+      ...state,
+      origins: [
+        ...state.origins.filter((entry) => entry.origin !== origin),
+        { origin, localStorage: [{ name: "bhn-consent", value: consent }] },
+      ],
+    }),
+  );
 }

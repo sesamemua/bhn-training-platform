@@ -38,6 +38,7 @@ import {
 } from "@/lib/equip/types";
 import { institutionsForStream } from "@/lib/equip/institutions";
 import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
+import { trackGoogleAdsConversion } from "@/lib/campaign/google-ads-conversions";
 import { LiftDocumentTray, VENTURE_CONNECT_KINDS } from "./LiftDocumentTray";
 
 interface Props {
@@ -217,6 +218,7 @@ export function ConnectForm({
         if (data.details?.length) setValidation(data.details);
         throw new Error(data.error ?? "Could not submit");
       }
+      trackGoogleAdsConversion("venture_connect");
       if (isPublic) router.refresh();
       else router.push("/equip/my-applications");
     } catch (err) {
