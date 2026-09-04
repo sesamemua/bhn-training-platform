@@ -177,7 +177,7 @@ export function SessionCalendar({
                       } ${
                         on
                           ? clashes
-                            ? "border-amber-500 bg-amber-500/15"
+                            ? "border-red-500 bg-red-500/15"
                             : "border-brand-500 bg-brand-500/15"
                           : "border-line bg-card hover:border-brand-400"
                       }`}

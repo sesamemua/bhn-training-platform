@@ -89,6 +89,14 @@ export const THEMES = [
     endsOn: "2026-08-31",
     limited: true,
   },
+  {
+    id: "harvest",
+    name: "Harvest",
+    description: "Rust, burgundy and goldenrod on warm oat, with leaves drifting down over a low woodsmoke haze. A limited fall engagement.",
+    category: "limited",
+    endsOn: "2026-11-30",
+    limited: true,
+  },
 ] as const;
 
 /** Display labels for each category — surfaced as section headers
@@ -136,11 +144,30 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 const STORAGE_KEY = "bhn-theme";
 
+/** The theme every public application form renders in, whatever the
+ *  visitor's OS or saved preference says. */
+export const FORCED_PUBLIC_THEME = "hitech";
+
+/** Surfaces an outside applicant sees, which are always FORCED_PUBLIC_THEME. */
+export function isForcedThemeRoute(pathname: string): boolean {
+  return pathname.startsWith("/apply/");
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeId>("light");
   const [savedTheme, setSavedTheme] = useState<ThemeId | null>(null);
 
   useEffect(() => {
+    /*
+     * The pre-paint script already pinned the public forms to dark. This
+     * effect used to overwrite that from localStorage a moment later, so
+     * a staff member with a saved light theme saw the applicant form in
+     * light — the script won, then lost. Bail before touching anything.
+     */
+    if (isForcedThemeRoute(window.location.pathname)) {
+      document.documentElement.dataset.theme = FORCED_PUBLIC_THEME;
+      return;
+    }
     const saved = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY)) as ThemeId | null;
     const allowedNow = activeThemes().map((t) => t.id);
     if (saved && (allowedNow as string[]).includes(saved)) {
@@ -216,7 +243,21 @@ export function ThemeScript() {
   // Migration: users who had the retired "dark" theme saved are
   // mapped to "hitech" (Voltage) so they keep their dark-mode look
   // instead of being kicked back to light.
-  const code = `(function(){try{var allow=${allowedJson};var s=localStorage.getItem('${STORAGE_KEY}');if(s==='dark'){s='hitech';try{localStorage.setItem('${STORAGE_KEY}','hitech');}catch(_){}}var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(s&&allow.indexOf(s)>=0)?s:(d?'hitech':'light');if(s&&allow.indexOf(s)<0){try{localStorage.removeItem('${STORAGE_KEY}');}catch(_){}}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+  /*
+   * Public application forms are always dark.
+   *
+   * /apply/* is the one surface an outside applicant sees, and it should
+   * look the same for all of them — not light for one and a seasonal
+   * theme for the next because of what their laptop prefers or what a
+   * staff member once picked on this browser. There is no theme picker
+   * on those pages, so this is the whole of "they cannot choose it".
+   *
+   * Decided here rather than in the page so it is applied before first
+   * paint: setting it later would flash light and then correct itself.
+   * A saved theme is deliberately read but not applied — staff keep
+   * their choice everywhere else in the same browser.
+   */
+  const code = `(function(){try{var forced=location.pathname.indexOf('/apply/')===0;if(forced){document.documentElement.setAttribute('data-theme','${FORCED_PUBLIC_THEME}');return;}var allow=${allowedJson};var s=localStorage.getItem('${STORAGE_KEY}');if(s==='dark'){s='hitech';try{localStorage.setItem('${STORAGE_KEY}','hitech');}catch(_){}}var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(s&&allow.indexOf(s)>=0)?s:(d?'hitech':'light');if(s&&allow.indexOf(s)<0){try{localStorage.removeItem('${STORAGE_KEY}');}catch(_){}}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
   return <script dangerouslySetInnerHTML={{ __html: code }} />;
 }
 

@@ -670,8 +670,8 @@ function Question({
               them: "2 pairs clash" leaves the reader to work out which,
               on a calendar they have just been scrolling. */}
           {clashing.length > 0 && (
-            <div role="status" className="mt-2 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-3">
-              <p className="flex items-center gap-2 text-[12.5px] font-semibold text-amber-600">
+            <div role="status" className="mt-2 rounded-lg border-2 border-red-500/60 bg-red-500/10 p-3">
+              <p className="flex items-center gap-2 text-[12.5px] font-semibold text-red-600">
                 <AlertTriangle size={14} className="shrink-0" />
                 {clashing.length === 1
                   ? "Two of your choices cannot both be attended"
@@ -679,7 +679,7 @@ function Question({
               </p>
               <ul className="mt-1.5 space-y-0.5">
                 {clashing.map((c) => (
-                  <li key={`${c.a}|${c.b}`} className="text-[12px] leading-snug text-amber-600">
+                  <li key={`${c.a}|${c.b}`} className="text-[12px] leading-snug text-red-600">
                     {c.a.split(" · ").pop()} <span className="opacity-70">and</span> {c.b.split(" · ").pop()}
                     {/* A declared pair says WHY. A bare time overlap does
                         not need to — the calendar above already shows it. */}
@@ -689,7 +689,7 @@ function Question({
                   </li>
                 ))}
               </ul>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-amber-600">
+              <p className="mt-1.5 text-[12px] leading-relaxed text-red-600">
                 You can leave both chosen — it tells us you would take either — but only{" "}
                 {f.approveFromClash ?? 1} of a conflicting pair can be approved, so you will not be
                 given both.
