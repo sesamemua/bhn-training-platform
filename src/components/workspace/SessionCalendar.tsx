@@ -21,7 +21,7 @@
  * could explain.
  */
 import { useMemo, type ReactNode } from "react";
-import { chosenConflicts, clashes as overlaps, sessionParts } from "@/lib/formbuilder/calendar";
+import { chosenConflicts, clashes as overlaps, sessionParts, type Slot } from "@/lib/formbuilder/calendar";
 import { gridFromSlots, label as hourLabel, place, toMinutes } from "@/lib/allocation/schedule";
 import type { FormField } from "@/lib/formbuilder/types";
 
@@ -89,6 +89,24 @@ export type SessionCalendarProps = {
 );
 
 /**
+ * A day, written one way.
+ *
+ * The grid heading formats the real date; the ranked list under it used
+ * to take its day from the option string a coordinator typed. On a
+ * browser set to en-US that gave "Mon Oct 26" above and "Mon 26 Oct"
+ * two hundred pixels below — one date, two spellings, on one screen.
+ * Both now come through here, off the date, and the option text is only
+ * the fallback for an option with no slot behind it.
+ *
+ * The comma `toLocaleDateString` inserts is dropped so the label reads
+ * as a heading rather than a sentence.
+ */
+export const dayLabel = (day: string) =>
+  new Date(`${day}T12:00:00`)
+    .toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
+    .replace(",", "");
+
+/**
  * "1st choice" — the same object wherever a rank is shown.
  *
  * It was written out four times: on the calendar cell, on the
@@ -134,8 +152,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
   // against a limit that no longer applies is a warning about a decision
   // nobody can still make.
   const atCap = !ro && cap !== undefined && chosen.length >= cap;
-  const dayName = (d: string) =>
-    new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+
 
   // The day prefix is already the column heading, and the hours are
   // already the left-hand scale — repeating both inside every box eats
@@ -173,7 +190,11 @@ export function SessionCalendar(props: SessionCalendarProps) {
      * inside each day, and those are the two things the drawing is for.
      */
     <div className={`mt-2.5 @container ${HOUR_SCALE}`}>
-      <div className="overflow-x-auto rounded-xl border-2 border-line-strong bg-card p-3">
+      {/* On the receipt this is a picture of what the ranked list
+          beneath it states in words — rank, name, day and time. A
+          screen reader gets the sentence; a maze of absolutely
+          positioned divs would only add noise to it. */}
+      <div aria-hidden={ro || undefined} className="overflow-x-auto rounded-xl border-2 border-line-strong bg-card p-3">
         <div className="flex flex-col gap-4 @xl:min-w-[520px] @xl:flex-row @xl:gap-2">
           {/* One scale for all three days, once there is a row to run
               alongside. Stacked, each day carries its own. */}
@@ -184,7 +205,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
               <HourScale grid={grid} height={height} className="w-11 shrink-0 @xl:hidden" />
               <div className="min-w-0 flex-1">
                 <p className="h-[22px] text-[10.5px] font-bold uppercase tracking-wide text-subtle @xl:text-center">
-                  {dayName(day)}
+                  {dayLabel(day)}
                 </p>
                 <div className="relative rounded-lg border border-line bg-elevated/40" style={{ height }}>
                   {grid.hours.map((m) => (
@@ -360,25 +381,35 @@ export function SessionCalendar(props: SessionCalendarProps) {
  * differently from the form.
  */
 export function RankedChoices({
-  chosen, label, note,
-}: { chosen: string[]; label: string; note?: ReactNode }) {
+  chosen, label, note, slots = [],
+}: { chosen: string[]; label: string; note?: ReactNode; slots?: Slot[] }) {
   if (chosen.length === 0) return null;
   return (
     <div className="@container mt-3 rounded-lg border-2 border-brand-500/40 bg-brand-500/[0.06] p-3">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-500">{label}</p>
       <ol className="mt-2 space-y-1.5">
         {chosen.map((o, i) => {
-          const { day, time, name } = sessionParts(o);
+          const parts = sessionParts(o);
+          const slot = slots.find((sl) => sl.option === o);
+          // The date if we have one, the coordinator's text if we do not.
+          const day = slot ? dayLabel(slot.day) : parts.day;
+          const { time, name } = parts;
           return (
             <li key={o} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <RankBadge rank={i + 1} />
+              {/* The same w-11 rail the hour scale occupies directly
+                  above, right-aligned the same way — so the pills end
+                  where the hours end and the session names start where
+                  the day columns start. Two blocks, one left edge. */}
+              <span className="flex w-11 shrink-0 justify-end">
+                <RankBadge rank={i + 1} />
+              </span>
               <span className="min-w-0 flex-1 text-[13px] leading-snug text-fg">{name}</span>
               {/* On its own line on a phone, indented to sit under the
                   name rather than beside a name already wrapping to
                   three lines; out to the right edge once there is room
                   for both. */}
               {(day || time) && (
-                <span className="w-full shrink-0 whitespace-nowrap pl-[2.1rem] font-mono text-[11px] tabular-nums text-subtle @sm:w-auto @sm:pl-0">
+                <span className="w-full shrink-0 whitespace-nowrap pl-[3.25rem] font-mono text-[11px] tabular-nums text-subtle @sm:w-auto @sm:pl-0">
                   {[day, time].filter(Boolean).join(" · ")}
                 </span>
               )}

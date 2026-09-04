@@ -644,6 +644,7 @@ function Question({
           <SessionCalendar field={f} chosen={arr} onToggle={pickMulti} />
           <RankedChoices
             chosen={arr}
+            slots={f.slots}
             label="Your ranking"
             note={
               atCap
@@ -933,6 +934,7 @@ function Confirmation({
           )}
           <RankedChoices
             chosen={ranked}
+            slots={field?.slots}
             label="Your ranking"
             note="This is the order we go by when a room is oversubscribed."
           />
