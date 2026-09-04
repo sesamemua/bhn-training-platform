@@ -9,6 +9,7 @@ test("campaign edits persist, feedback is recorded and handoff includes changes"
   const tag = `editor qa ${Date.now()}`;
   await page.goto(pagePath);
   await expect(page.getByRole("heading", { name: "Google Ads", exact: true })).toBeVisible();
+  await test.info().attach("Google Ads desktop", { body: await page.screenshot(), contentType: "image/png" });
   await page.getByRole("button", { name: "Edit plan", exact: true }).click();
   const keywords = page.locator("#keywords");
   await keywords.getByRole("textbox", { name: "New keywords", exact: true }).fill(tag);
@@ -50,6 +51,7 @@ test("campaign editor works at mobile width and keeps negative text readable", a
   await expect(page.getByRole("heading", { name: "Google Ads", exact: true })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2);
   expect(overflow).toBeFalsy();
+  await test.info().attach("Google Ads mobile", { body: await page.screenshot(), contentType: "image/png" });
   await page.getByRole("link", { name: "Negatives", exact: true }).click();
   const brand = page.locator("#negatives article").filter({ has: page.getByText("biohubnet", { exact: true }) }).first();
   await expect(brand).toBeVisible();

@@ -17,7 +17,7 @@ import { normalizeReviewUrl, pageNameFromReviewUrl } from "@/lib/page-review/acc
 export const dynamic = "force-dynamic";
 
 /** A Mailchimp export is large; this is not a file store. */
-export const MAX_PASTE_CHARS = 1_000_000;
+const MAX_PASTE_CHARS = 1_000_000;
 
 /**
  * Either a live page or a paste. A review of a paste has no address of

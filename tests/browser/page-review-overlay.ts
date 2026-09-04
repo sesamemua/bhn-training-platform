@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { chromium, type Page, type Route } from "@playwright/test";
-import { overlaySource } from "../../src/app/api/public/page-review/[token]/overlay.js/route";
+import { overlaySource } from "../../src/lib/page-review/overlay-source";
 
 const endpoint = "https://review.test/api/public/page-review/review-token";
 const cors = {

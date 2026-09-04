@@ -24,17 +24,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import { STREAM_META } from "@/lib/equip/types";
-
-/** The URL spelling of each stream, kept apart from the stored value so
- *  a link on somebody else's website is not a database identifier. */
-export const STREAMS: Record<string, "venture_connect" | "venture_lift"> = {
-  "venture-connect": "venture_connect",
-  ventureconnect: "venture_connect",
-  connect: "venture_connect",
-  "venture-lift": "venture_lift",
-  venturelift: "venture_lift",
-  lift: "venture_lift",
-};
+import { STREAMS } from "@/lib/equip/entry-streams";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ stream: string }> },
