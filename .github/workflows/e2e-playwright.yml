@@ -71,6 +71,9 @@ jobs:
         uses: patrickedqvist/wait-for-vercel-preview@v1.3.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # This repo also has an obsolete bhn-platform integration. Without
+          # an exact environment, the action can time out on its failed build.
+          environment: "Preview – bhn-training-platform"
           max_timeout: 600
 
       - name: Pick base URL
