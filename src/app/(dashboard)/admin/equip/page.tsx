@@ -10,7 +10,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
-import { ArrowLeft, ArrowRight, AlertTriangle, Rocket, Beaker, Mail, Lightbulb } from "lucide-react";
+import { ArrowRight, AlertTriangle, Rocket, Beaker, Mail, Lightbulb } from "lucide-react";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { DSSection } from "@/components/design-system/DSSection";
 import { DSStatGrid, DSStat } from "@/components/design-system/DSStatGrid";
@@ -124,7 +124,13 @@ export default async function AdminEquipPage({
   const totalApproved = (byStatus.approved ?? 0) + (byStatus.funded ?? 0);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    /* No max-width or padding of its own: the dashboard layout already
+       supplies both (max-w-screen-2xl px-6), and a second constraint on
+       top squeezed the applications table into a horizontal scrollbar on
+       screens with room to spare — as well as opting this page out of the
+       collapsed-rail wide mode, which lifts the layout cap entirely. Same
+       bare wrapper the sibling EQUIP admin pages use. */
+    <div className="space-y-6">
       {/* Back-link removed — the editorial hero owns the top of the
           page; the sidebar handles cross-page navigation. */}
       <DSPageHeader
@@ -213,18 +219,32 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
         {apps.length === 0 ? (
           <p className="text-sm text-subtle">No applications in this view.</p>
         ) : (
-          <div className="rounded-xl border border-line overflow-x-auto">
+          /* Container query, not viewport breakpoints: what decides
+             whether a column fits is the width of THIS box, and that
+             changes with the sidebar (expanded / collapsed rail / wide
+             mode) at a fixed viewport width. Keyed to the viewport, the
+             table both overflowed at 1280 with the rail out and hid
+             columns at 1440 with room to spare. overflow-x-auto stays as
+             the last resort for genuinely narrow screens. */
+          <div className="@container rounded-xl border border-line overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-elevated text-subtle">
                 <tr>
-                  <th className="text-left px-3 py-2">Applicant</th>
-                  <th className="text-left px-3 py-2">Stream</th>
-                  <th className="text-left px-3 py-2">Institution</th>
-                  <th className="text-right px-3 py-2">Amount</th>
-                  <th className="text-left px-3 py-2">Submitted</th>
-                  <th className="text-left px-3 py-2">Reviewer</th>
-                  <th className="text-left px-3 py-2">Status</th>
-                  <th className="text-right px-3 py-2"></th>
+                  {/* Columns drop out narrowest-value-first as the
+                      viewport tightens, so the four that carry the
+                      decision — who, which stream, where it stands, and
+                      the actions — never get pushed under a scrollbar.
+                      Institution and Reviewer also read on the row's own
+                      review page; Submitted is the least load-bearing of
+                      the three. */}
+                  <th className="text-left px-2.5 py-2">Applicant</th>
+                  <th className="text-left px-2.5 py-2">Stream</th>
+                  <th className="hidden @6xl:table-cell text-left px-2.5 py-2">Institution</th>
+                  <th className="text-right px-2.5 py-2">Amount</th>
+                  <th className="hidden @4xl:table-cell text-left px-2.5 py-2">Submitted</th>
+                  <th className="hidden @6xl:table-cell text-left px-2.5 py-2">Reviewer</th>
+                  <th className="text-left px-2.5 py-2">Status</th>
+                  <th className="text-right px-2.5 py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -234,11 +254,19 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                   const stream = STREAM_META[a.stream as EquipStream] ?? { name: a.stream, blurb: "", cadence: "", bestFor: "" };
                   return (
                     <tr key={a.id} className="border-t border-line">
-                      <td className="px-3 py-2">
-                        <p className="text-fg font-semibold">{applicantOf(a).name}</p>
-                        <p className="text-[10px] text-subtle">{applicantOf(a).email}</p>
+                      <td className="px-2.5 py-2">
+                        {/* The address is the widest thing in the row and
+                            can't wrap, so it set the table's minimum
+                            width on its own. Truncated with the full
+                            value on hover — the name is the identifier
+                            here, and the review page shows the address in
+                            full. */}
+                        <p className="max-w-[10rem] @4xl:max-w-[13rem] truncate text-fg font-semibold">{applicantOf(a).name}</p>
+                        <p className="max-w-[10rem] @4xl:max-w-[13rem] truncate text-[10px] text-subtle" title={applicantOf(a).email}>
+                          {applicantOf(a).email}
+                        </p>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2.5 py-2">
                         <span className="inline-flex items-center gap-1.5 text-xs text-fg">
                           {a.stream === "venture_lift"
                             ? <Rocket size={11} />
@@ -248,28 +276,37 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                           {stream.name}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-muted truncate max-w-[180px]">
-                        {institutionLabel(a.institution, a.institutionOther)}
+                      <td className="hidden @6xl:table-cell px-2.5 py-2 text-muted">
+                        {/* truncate needs a block box with a width — on
+                            the <td> itself it does nothing, which is why
+                            long institution names were setting the
+                            table's minimum width. */}
+                        <span
+                          className="block max-w-[9rem] truncate"
+                          title={institutionLabel(a.institution, a.institutionOther)}
+                        >
+                          {institutionLabel(a.institution, a.institutionOther)}
+                        </span>
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums font-mono text-fg">
+                      <td className="px-2.5 py-2 text-right tabular-nums font-mono text-fg">
                         {a.approvedAmount
                           ? `$${a.approvedAmount.toLocaleString()}`
                           : a.requestedAmount
                             ? `$${a.requestedAmount.toLocaleString()}`
                             : "—"}
                       </td>
-                      <td className="px-3 py-2 font-mono text-[10px] text-subtle">
+                      <td className="hidden @4xl:table-cell px-2.5 py-2 font-mono text-[10px] text-subtle whitespace-nowrap">
                         {a.submittedAt ? a.submittedAt.toISOString().slice(0, 10) : "—"}
                       </td>
-                      <td className="px-3 py-2 text-muted">{a.reviewer?.name ?? "—"}</td>
-                      <td className="px-3 py-2">
+                      <td className="hidden @6xl:table-cell px-2.5 py-2 text-muted">{a.reviewer?.name ?? "—"}</td>
+                      <td className="px-2.5 py-2">
                         <StatusBadge tone={meta.tone} label={meta.label} />
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-2.5 py-2 text-right">
                         <div className="inline-flex items-center gap-2">
                           <Link
                             href={`/admin/equip/${a.id}`}
-                            className="text-xs font-bold text-brand-700 hover:text-brand-800 inline-flex items-center gap-0.5"
+                            className="text-xs font-bold text-brand-700 hover:text-brand-800 inline-flex items-center gap-0.5 whitespace-nowrap"
                           >
                             Review <ArrowRight size={11} />
                           </Link>
