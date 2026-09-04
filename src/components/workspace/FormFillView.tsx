@@ -230,8 +230,16 @@ export function FormFillView({
         </p>
       )}
 
-      {/* Two moments, and the second one is not on this form at all. */}
-      {doc.fields.some((f) => f.stage === "confirmation") && (
+      {/* Two moments, and the second one is not on this form at all.
+          Staff only: this switcher exists so a coordinator can preview
+          BOTH moments from the builder. On the live public page it was
+          an invitation to answer "Can you still make it?" weeks before
+          a place had been approved — and since the server always
+          validates against the registration stage, sending from that
+          tab could only ever fail, listing questions the registrant
+          could not see. Registrants get the registration form, which
+          is the only thing this page is for. */}
+      {mode !== "live" && doc.fields.some((f) => f.stage === "confirmation") && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {FIELD_STAGES.map((st) => (
             <button
