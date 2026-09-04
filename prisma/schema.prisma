@@ -6307,6 +6307,19 @@ model EligibilityImport {
   rowsAccepted Int @default(0)
   rowsSkipped  Int @default(0)
 
+  /// What this import CHANGED, against what the source held immediately
+  /// before it — the question an admin actually has about a list that
+  /// keeps growing ("who is new since last week?"), which the row
+  /// counts above cannot answer: re-importing a list with one addition
+  /// and one departure reads as no change at all.
+  ///
+  /// Addresses rather than counts because the point is to see WHO. They
+  /// are the same addresses already in EligibilityEntry, so this is no
+  /// new class of data — it is the audit trail of a list that is
+  /// otherwise silently overwritten on every import.
+  addedEmails   String[]
+  removedEmails String[]
+
   /// Set when something went wrong; null on a clean run.
   error String?
 

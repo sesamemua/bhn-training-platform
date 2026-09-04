@@ -34,7 +34,8 @@ export default async function EligibilityPage() {
       take: 12,
       select: {
         id: true, sourceId: true, rowsRead: true, rowsAccepted: true,
-        rowsSkipped: true, error: true, createdAt: true,
+        rowsSkipped: true, addedEmails: true, removedEmails: true,
+        error: true, createdAt: true,
       },
     }),
   ]);

@@ -49,6 +49,7 @@ export async function GET() {
       select: {
         id: true, sourceId: true, method: true, filename: true,
         rowsRead: true, rowsAccepted: true, rowsSkipped: true,
+        addedEmails: true, removedEmails: true,
         error: true, createdAt: true,
       },
     }),
@@ -145,9 +146,31 @@ export async function PUT(req: NextRequest) {
     );
   }
 
+  /*
+   * What this import changes, worked out BEFORE the rows are replaced.
+   *
+   * Compared against the whole source, hand-added rows included: an
+   * admin who added somebody by hand last week does not want them
+   * reported as "new" every time the sheet is re-imported. Removals are
+   * only the rows an import owns — somebody added by hand survives the
+   * replace below, so calling them removed would be a lie.
+   */
+  const before = await prisma.eligibilityEntry.findMany({
+    where: { sourceId },
+    select: { emailKey: true, email: true, addedById: true },
+  });
+  const beforeKeys = new Set(before.map((r) => r.emailKey));
+  const incomingKeys = new Set(rows.map((r) => r.emailKey));
+  const addedEmails = rows.filter((r) => !beforeKeys.has(r.emailKey)).map((r) => r.email);
+  const removedEmails = before
+    .filter((r) => r.addedById === null && !incomingKeys.has(r.emailKey))
+    .map((r) => r.email);
+
   const record = await prisma.eligibilityImport.create({
     data: {
       sourceId,
+      addedEmails,
+      removedEmails,
       method: "upload",
       filename: String(body.filename ?? "").slice(0, 200) || null,
       rowsRead: lines.filter((l) => l.trim()).length,
@@ -178,6 +201,8 @@ export async function PUT(req: NextRequest) {
     ok: true,
     imported: rows.length,
     skipped,
+    added: addedEmails,
+    removed: removedEmails,
     gate: eligibilityGate(state, new Date()),
     total: state.total,
   });

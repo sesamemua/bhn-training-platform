@@ -24,7 +24,8 @@ interface Source {
 interface Gate { enforcing: boolean; reason: string; stale: boolean }
 interface ImportRow {
   id: string; sourceId: string; rowsRead: number; rowsAccepted: number;
-  rowsSkipped: number; error: string | null; createdAt: string;
+  rowsSkipped: number; addedEmails: string[]; removedEmails: string[];
+  error: string | null; createdAt: string;
 }
 export interface EligibilityState {
   gate: Gate; total: number;
@@ -55,9 +56,15 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceId, text: paste }),
       });
-      const j = (await res.json()) as { error?: string; imported?: number; skipped?: number };
+      const j = (await res.json()) as { error?: string; imported?: number; skipped?: number; added?: string[]; removed?: string[] };
       if (!res.ok) throw new Error(j.error ?? "The import was not accepted.");
-      setResult(`Imported ${j.imported} address${j.imported === 1 ? "" : "es"}${j.skipped ? `, skipped ${j.skipped} line${j.skipped === 1 ? "" : "s"} with no address` : ""}.`);
+      const a = j.added?.length ?? 0, r = j.removed?.length ?? 0;
+      setResult(
+        `${j.imported} address${j.imported === 1 ? "" : "es"} on the list. `
+        + (a === 0 && r === 0
+            ? "Nothing changed since the last import."
+            : `${a} new${r ? `, ${r} no longer on it` : ""}.`),
+      );
       setPaste("");
       setOpenId(null);
       await load();
@@ -152,17 +159,45 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
 
       {state.imports.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-subtle">Recent imports</p>
-          <ul className="mt-1.5 space-y-1">
-            {state.imports.map((im) => (
-              <li key={im.id} className="flex flex-wrap items-center gap-x-3 text-[11.5px] text-muted">
-                <span className="tabular-nums">{new Date(im.createdAt).toLocaleString()}</span>
-                <span className="font-semibold text-fg">{im.sourceId}</span>
-                {im.error
-                  ? <span className="text-rose-700">failed — {im.error}</span>
-                  : <span>{im.rowsAccepted} accepted{im.rowsSkipped ? ` · ${im.rowsSkipped} skipped` : ""}</span>}
-              </li>
-            ))}
+          <p className="text-[10px] font-bold uppercase tracking-wider text-subtle">What each import changed</p>
+          <ul className="mt-1.5 space-y-1.5">
+            {state.imports.map((im) => {
+              const added = im.addedEmails ?? [];
+              const removed = im.removedEmails ?? [];
+              return (
+                <li key={im.id} className="rounded-lg border border-line bg-card-solid px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-x-3 text-[11.5px]">
+                    <span className="tabular-nums text-muted">{new Date(im.createdAt).toLocaleString()}</span>
+                    <span className="font-semibold text-fg">{im.sourceId}</span>
+                    {im.error ? (
+                      <span className="font-semibold text-rose-700">failed — {im.error}</span>
+                    ) : (
+                      <>
+                        <span className="tabular-nums text-muted">{im.rowsAccepted} on the list</span>
+                        {added.length > 0 && <span className="font-bold text-emerald-700">+{added.length} new</span>}
+                        {removed.length > 0 && <span className="font-bold text-rose-700">−{removed.length} gone</span>}
+                        {added.length === 0 && removed.length === 0 && <span className="text-subtle">no change</span>}
+                      </>
+                    )}
+                  </div>
+                  {(added.length > 0 || removed.length > 0) && (
+                    <details className="mt-1">
+                      <summary className="cursor-pointer text-[11px] font-semibold text-muted hover:text-fg">Who</summary>
+                      {added.length > 0 && (
+                        <p className="mt-1 text-[11px] leading-relaxed text-emerald-800">
+                          <strong>Added:</strong> {added.join(", ")}
+                        </p>
+                      )}
+                      {removed.length > 0 && (
+                        <p className="mt-1 text-[11px] leading-relaxed text-rose-800">
+                          <strong>No longer on the list:</strong> {removed.join(", ")}
+                        </p>
+                      )}
+                    </details>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
