@@ -46,6 +46,17 @@ import type { FormField } from "@/lib/formbuilder/types";
 const HOUR_SCALE = "[--hour:46px] @xl:[--hour:62px]";
 
 /**
+ * Shorter again on a receipt.
+ *
+ * Nothing here is clicked, so the floor is legibility rather than a
+ * thumb: 30px keeps the shortest session on the live week at 75px and
+ * puts a stacked three-day receipt inside one phone screen. Above @xl
+ * it is the picker's own 62px, because the whole point of the receipt
+ * is that it is the same drawing.
+ */
+const HOUR_SCALE_RECEIPT = "[--hour:30px] @xl:[--hour:62px]";
+
+/**
  * "1st", "2nd", "3rd" — not "1".
  *
  * A bare numeral on a calendar cell reads as a count, a room number or
@@ -102,9 +113,17 @@ export type SessionCalendarProps = {
  * as a heading rather than a sentence.
  */
 export const dayLabel = (day: string) =>
-  new Date(`${day}T12:00:00`)
-    .toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
-    .replace(",", "");
+  // en-GB, not the runtime default. `undefined` means the SERVER's ICU
+  // locale during the public form's server render and the BROWSER's on
+  // hydration — "Mon Oct 26" replaced by "Mon 26 Oct" is a React text
+  // mismatch. Pinned, it also matches the option strings a coordinator
+  // types and the labels in training-week/schedule-2026.ts, and needs
+  // no comma stripped out afterwards.
+  new Date(`${day}T12:00:00`).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 
 /**
  * "1st choice" — the same object wherever a rank is shown.
@@ -141,6 +160,21 @@ export function SessionCalendar(props: SessionCalendarProps) {
   const height = `calc(${(grid.endMin - grid.startMin) / 60} * var(--hour))`;
 
   /*
+   * A receipt draws the days you chose something on.
+   *
+   * Filtered here, downstream of `gridFromSlots`, so the hour bounds
+   * and the lane packing are byte-identical to the picker's — a day
+   * that IS drawn is the same drawing, unchosen neighbours and all.
+   * (Those stay: CL3's half-width block looks broken with an empty
+   * half beside it.) A whole day with nothing chosen has no such
+   * argument; it is noise on a record, and three of them stacked is
+   * what made the phone receipt too long to show at all.
+   */
+  const days = ro
+    ? grid.days.filter((d) => d.slots.some((sl) => chosen.includes(sl.option)))
+    : grid.days;
+
+  /*
    * Full. Drawn, not just silently refused.
    *
    * A cell that does nothing when clicked reads as broken. Dimmed and
@@ -159,12 +193,20 @@ export function SessionCalendar(props: SessionCalendarProps) {
   // the room the actual name needs.
   const shortLabel = (option: string) => sessionParts(option).name;
 
-  if (grid.days.length === 0) {
+  if (days.length === 0) {
     return (
-      <div className="mt-2 flex flex-wrap gap-2">
-        {unscheduled.map((o) => (
-          <Chip key={o} label={o} rank={chosen.indexOf(o)} full={atCap} onClick={ro ? undefined : () => props.onToggle(o)} />
-        ))}
+      <div className="mt-2">
+        <div className="flex flex-wrap gap-2">
+          {unscheduled.map((o) => (
+            <Chip key={o} label={o} rank={chosen.indexOf(o)} full={atCap} onClick={ro ? undefined : () => props.onToggle(o)} />
+          ))}
+        </div>
+        {/* Said in both branches. A framed row of dimmed chips with the
+            caption silently dropped is a receipt that does not say what
+            it is showing. */}
+        {ro && props.caption && (
+          <p className="mt-1.5 text-[11px] leading-snug text-subtle">{props.caption}</p>
+        )}
       </div>
     );
   }
@@ -189,18 +231,30 @@ export function SessionCalendar(props: SessionCalendarProps) {
      * Duration-as-height and side-by-side-means-clash both survive
      * inside each day, and those are the two things the drawing is for.
      */
-    <div className={`mt-2.5 @container ${HOUR_SCALE}`}>
+    <div className="mt-2.5 @container">
       {/* On the receipt this is a picture of what the ranked list
           beneath it states in words — rank, name, day and time. A
           screen reader gets the sentence; a maze of absolutely
           positioned divs would only add noise to it. */}
-      <div aria-hidden={ro || undefined} className="overflow-x-auto rounded-xl border-2 border-line-strong bg-card p-3">
+      {/* The hour scale lives HERE, one level below `@container`, and not
+          on the container itself. An element is a query container for
+          its DESCENDANTS and never for itself, so `@xl:[--hour:62px]`
+          written up there resolved against whatever ancestor container
+          happened to exist — which on the confirmation was the section
+          (760px, so 62px) and inside a question row was nothing at all
+          (so 46px). The picker and the receipt drew the same week at
+          two different scales, 368px against 496px, and neither the
+          class names nor the screenshots said which was intended. */}
+      <div
+        aria-hidden={ro || undefined}
+        className={`${ro ? HOUR_SCALE_RECEIPT : HOUR_SCALE} overflow-x-auto rounded-xl border-2 border-line-strong bg-card p-3`}
+      >
         <div className="flex flex-col gap-4 @xl:min-w-[520px] @xl:flex-row @xl:gap-2">
           {/* One scale for all three days, once there is a row to run
               alongside. Stacked, each day carries its own. */}
           <HourScale grid={grid} height={height} className="hidden w-11 shrink-0 @xl:block" />
 
-          {grid.days.map(({ day, slots }) => (
+          {days.map(({ day, slots }) => (
             <div key={day} className="flex min-w-0 gap-2 @xl:block @xl:flex-1">
               <HourScale grid={grid} height={height} className="w-11 shrink-0 @xl:hidden" />
               <div className="min-w-0 flex-1">

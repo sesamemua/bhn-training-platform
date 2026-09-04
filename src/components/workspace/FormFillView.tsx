@@ -34,7 +34,7 @@ import { BLOCKED_MESSAGE } from "@/lib/eligibility/messages";
 import { FORM_COLUMN } from "@/lib/formbuilder/layout";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
-import { RankedChoices, SessionCalendar } from "./SessionCalendar";
+import { ordinal, RankedChoices, SessionCalendar } from "./SessionCalendar";
 
 /** Above this many options a radio list becomes a page of its own. */
 const RADIO_MAX = 6;
@@ -820,6 +820,25 @@ function Confirmation({
 }) {
   const ranked = rankedSessions(doc, answers);
   const field = sessionField(doc);
+  /*
+   * The red survives, so the reason has to survive with it.
+   *
+   * There is no cap on this form, so a registrant can submit a pair
+   * that cannot both be attended — the picker warns and does not
+   * refuse. The read-only calendar still tints that pair red, and the
+   * panel that explained it went with the form, leaving two red blocks
+   * on a receipt with nothing anywhere saying why. Same function the
+   * picker calls, never a second derivation of the same rule.
+   */
+  const conflicts = field
+    ? chosenConflicts(field.slots, ranked, field.cannotCombine ?? [])
+    : [];
+  // Positions, not names: the list beside this line already carries the
+  // names, and "your 1st and 2nd" is the shorter way to say it.
+  const ordinalOf = (option: string) => {
+    const at = ranked.indexOf(option);
+    return at < 0 ? option : `your ${ordinal(at + 1)}`;
+  };
   const line = receiptLine(receipt);
   const shown = receipt && "preview" in receipt ? receipt.preview : null;
   // Anything other than a plain "sent" is something a coordinator needs
@@ -918,25 +937,48 @@ function Confirmation({
         is 760px on the public page and narrower inside the builder.
       */}
       {ranked.length > 0 && (
-        <section className="@container mt-5">
+        <section className="mt-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">
             What you asked for
           </p>
           {field && (
-            <div className="hidden @xl:block">
-              <SessionCalendar
-                readOnly
-                field={field}
-                chosen={ranked}
-                caption="The week as you chose it. Anything faded is a session you did not pick."
-              />
-            </div>
+            <SessionCalendar
+              readOnly
+              field={field}
+              chosen={ranked}
+              caption="The days you chose something on, drawn as you saw them. Anything faded is a session you did not pick."
+            />
           )}
           <RankedChoices
             chosen={ranked}
             slots={field?.slots}
             label="Your ranking"
-            note="This is the order we go by when a room is oversubscribed."
+            note={
+              conflicts.length > 0 ? (
+                <>
+                  This is the order we go by when a room is oversubscribed.{" "}
+                  <span className="font-semibold text-red-600">
+                    {conflicts.length === 1
+                      ? "Two of these cannot both be attended"
+                      : `${conflicts.length} pairs of these cannot both be attended`}
+                    {" — "}
+                    {conflicts
+                      .map((c) =>
+                        // Named in the order they were ranked: "your 1st
+                        // and your 2nd", never "your 2nd and your 1st".
+                        [c.a, c.b]
+                          .sort((x, y) => ranked.indexOf(x) - ranked.indexOf(y))
+                          .map(ordinalOf)
+                          .join(" and "),
+                      )
+                      .join(", ")}
+                    . There is nothing for you to do; we will come back to you about it.
+                  </span>
+                </>
+              ) : (
+                "This is the order we go by when a room is oversubscribed."
+              )
+            }
           />
         </section>
       )}

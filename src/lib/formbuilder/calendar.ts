@@ -170,6 +170,11 @@ export interface SessionParts {
 
 export function sessionParts(option: string): SessionParts {
   const bits = option.split(" · ");
-  if (bits.length < 3) return { day: "", time: "", name: option };
+  // Two parts is a session written without a day: keep the time, and
+  // keep the NAME as the name. Returning the whole string here would
+  // print the time twice in a calendar cell that already draws its own
+  // hours — which is what `.pop()` got right before this was shared.
+  if (bits.length === 2) return { day: "", time: bits[0], name: bits[1] };
+  if (bits.length < 2) return { day: "", time: "", name: option };
   return { day: bits[0], time: bits[1], name: bits.slice(2).join(" · ") };
 }

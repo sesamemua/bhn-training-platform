@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chosenClashes, clashes, packDay, packWeek, type Slot } from "../../src/lib/formbuilder/calendar";
+import { chosenClashes, clashes, packDay, packWeek, sessionParts, type Slot } from "../../src/lib/formbuilder/calendar";
 
 const s = (option: string, day: string, start: string, end: string): Slot => ({ option, day, start, end });
 
@@ -68,4 +68,30 @@ test("packing is stable — the same slots give the same lanes twice", () => {
   const one = packDay(slots).map((p) => `${p.option}:${p.lane}`);
   const two = packDay([...slots].reverse()).map((p) => `${p.option}:${p.lane}`);
   assert.deepEqual(one.sort(), two.sort());
+});
+
+test("sessionParts takes an option apart, and degrades rather than losing the name", () => {
+  // The shape the builder writes.
+  assert.deepEqual(sessionParts("Mon 26 Oct · 11:00–13:30 · CCRM tour"), {
+    day: "Mon 26 Oct",
+    time: "11:00–13:30",
+    name: "CCRM tour",
+  });
+
+  // A name containing the separator stays whole — only the first two
+  // parts are ever the day and the time.
+  assert.equal(sessionParts("Wed 28 Oct · 10:00–14:00 · Showcase · part two").name, "Showcase · part two");
+
+  // No day given: the time is still the time, and the NAME is still the
+  // name. Returning the whole string here would print the time twice in
+  // a cell that already draws the hours.
+  assert.deepEqual(sessionParts("11:00–13:30 · CCRM tour"), {
+    day: "",
+    time: "11:00–13:30",
+    name: "CCRM tour",
+  });
+
+  // Nothing to take apart: never lose the label.
+  assert.deepEqual(sessionParts("CCRM tour"), { day: "", time: "", name: "CCRM tour" });
+  assert.deepEqual(sessionParts(""), { day: "", time: "", name: "" });
 });
