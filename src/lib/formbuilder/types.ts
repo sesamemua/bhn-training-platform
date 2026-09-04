@@ -160,6 +160,23 @@ export const FieldSchema = z.object({
   /** How many of a clashing pair will actually be granted. */
   approveFromClash: z.number().int().min(1).max(10).optional(),
   /**
+   * Options that cannot be attended together for a reason the clock
+   * cannot see.
+   *
+   * `slots` catches overlapping times. It cannot catch two sessions on
+   * the same day, hours apart, in different cities — the Monday CCRM
+   * tour is in downtown Toronto and the Catalent tour is in London,
+   * about two hours away, so 11:00-13:30 and 14:00-16:30 do not
+   * overlap and are still impossible as a pair.
+   *
+   * `reason` is shown to the registrant, because "you cannot pick both"
+   * without saying why reads as a bug in the form.
+   */
+  cannotCombine: z.array(z.object({
+    options: z.array(z.string().max(120)).min(2).max(10),
+    reason: z.string().max(200),
+  })).max(20).optional(),
+  /**
    * The most options a "choose several" question will take.
    *
    * The cap used to live only in the help text and in the flow chart's

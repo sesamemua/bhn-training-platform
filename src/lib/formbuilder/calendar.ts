@@ -91,3 +91,55 @@ export function chosenClashes(slots: Slot[], chosen: string[]): [string, string]
   }
   return out;
 }
+
+/** Options that cannot be held together, and why. */
+export interface ExclusiveGroup {
+  options: string[];
+  reason: string;
+}
+
+/** One conflicting pair among the chosen options. */
+export interface Conflict {
+  a: string;
+  b: string;
+  /** Why, when it is not simply the clock. Null for a time overlap. */
+  reason: string | null;
+}
+
+/**
+ * Every reason two chosen options cannot both be attended: the times
+ * overlap, or the form declares the pair impossible.
+ *
+ * Declared groups are evaluated FIRST so that a pair which is both
+ * declared and overlapping keeps the specific reason — "these are two
+ * hours apart by road" tells somebody more than "these clash".
+ */
+export function chosenConflicts(
+  slots: Slot[],
+  chosen: string[],
+  cannotCombine: ExclusiveGroup[] = [],
+): Conflict[] {
+  const out: Conflict[] = [];
+  const seen = new Set<string>();
+  const add = (a: string, b: string, reason: string | null) => {
+    const k = [a, b].sort().join("\u0000");
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push({ a, b, reason });
+  };
+
+  for (const g of cannotCombine) {
+    const hit = g.options.filter((o) => chosen.includes(o));
+    for (let i = 0; i < hit.length; i++) {
+      for (let j = i + 1; j < hit.length; j++) add(hit[i], hit[j], g.reason);
+    }
+  }
+
+  const picked = slots.filter((s) => chosen.includes(s.option));
+  for (let i = 0; i < picked.length; i++) {
+    for (let j = i + 1; j < picked.length; j++) {
+      if (clashes(picked[i], picked[j])) add(picked[i].option, picked[j].option, null);
+    }
+  }
+  return out;
+}

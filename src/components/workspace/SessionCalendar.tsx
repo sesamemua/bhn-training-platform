@@ -21,7 +21,7 @@
  * could explain.
  */
 import { useMemo } from "react";
-import { chosenClashes, clashes as overlaps, type Placed } from "@/lib/formbuilder/calendar";
+import { chosenConflicts, clashes as overlaps, type Placed } from "@/lib/formbuilder/calendar";
 import { gridFromSlots, label as hourLabel, place, toMinutes } from "@/lib/allocation/schedule";
 import type { FormField } from "@/lib/formbuilder/types";
 
@@ -74,7 +74,12 @@ export function SessionCalendar({
   field, chosen, onToggle,
 }: { field: FormField; chosen: string[]; onToggle: (option: string) => void }) {
   const grid = useMemo(() => gridFromSlots(field.slots), [field.slots]);
-  const clashing = useMemo(() => chosenClashes(field.slots, chosen), [field.slots, chosen]);
+  // Same function the warning panel uses — the tint and the text must
+  // never disagree about what conflicts.
+  const clashing = useMemo(
+    () => chosenConflicts(field.slots, chosen, field.cannotCombine ?? []),
+    [field.slots, chosen, field.cannotCombine],
+  );
   // Options with no time given still need somewhere to be chosen.
   const unscheduled = field.options.filter((o) => !field.slots.some((s) => s.option === o));
 
@@ -151,7 +156,7 @@ export function SessionCalendar({
                    */
                   const rank = chosen.indexOf(sl.option);
                   const on = rank >= 0;
-                  const clashes = clashing.some(([a, b]) => a === sl.option || b === sl.option);
+                  const clashes = clashing.some((c) => c.a === sl.option || c.b === sl.option);
                   const pos = place(sl, grid);
                   const against = slots.filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
                   const minutes = toMinutes(sl.end) - toMinutes(sl.start);

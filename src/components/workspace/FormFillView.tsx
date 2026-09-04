@@ -25,7 +25,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Clock, Eye, Mail, RotateCcw } from "lucide-react";
-import { chosenClashes } from "@/lib/formbuilder/calendar";
+import { chosenConflicts } from "@/lib/formbuilder/calendar";
 import { linkify } from "@/lib/formbuilder/linkify";
 import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
 import { rankedSessions } from "@/lib/formbuilder/submit";
@@ -501,7 +501,9 @@ function Question({
 }) {
   const opts = optionsFor(doc, f);
   const arr = Array.isArray(answers[f.key]) ? (answers[f.key] as string[]) : [];
-  const clashing = f.slots.length > 0 ? chosenClashes(f.slots, arr) : [];
+  const clashing = (f.slots.length > 0 || (f.cannotCombine?.length ?? 0) > 0)
+    ? chosenConflicts(f.slots, arr, f.cannotCombine ?? [])
+    : [];
   const none = Boolean(f.noneLabel) && answers[f.key] === f.noneLabel;
 
   /*
@@ -672,19 +674,24 @@ function Question({
               <p className="flex items-center gap-2 text-[12.5px] font-semibold text-amber-600">
                 <AlertTriangle size={14} className="shrink-0" />
                 {clashing.length === 1
-                  ? "Two of your choices are on at the same time"
-                  : `${clashing.length} pairs of your choices are on at the same time`}
+                  ? "Two of your choices cannot both be attended"
+                  : `${clashing.length} pairs of your choices cannot both be attended`}
               </p>
               <ul className="mt-1.5 space-y-0.5">
-                {clashing.map(([a, b]) => (
-                  <li key={`${a}|${b}`} className="text-[12px] leading-snug text-amber-600">
-                    {a.split(" · ").pop()} <span className="opacity-70">and</span> {b.split(" · ").pop()}
+                {clashing.map((c) => (
+                  <li key={`${c.a}|${c.b}`} className="text-[12px] leading-snug text-amber-600">
+                    {c.a.split(" · ").pop()} <span className="opacity-70">and</span> {c.b.split(" · ").pop()}
+                    {/* A declared pair says WHY. A bare time overlap does
+                        not need to — the calendar above already shows it. */}
+                    {c.reason
+                      ? <span className="opacity-80"> — {c.reason}</span>
+                      : <span className="opacity-70"> — same time</span>}
                   </li>
                 ))}
               </ul>
               <p className="mt-1.5 text-[12px] leading-relaxed text-amber-600">
                 You can leave both chosen — it tells us you would take either — but only{" "}
-                {f.approveFromClash ?? 1} of a clashing pair can be approved, so you will not be
+                {f.approveFromClash ?? 1} of a conflicting pair can be approved, so you will not be
                 given both.
               </p>
             </div>
