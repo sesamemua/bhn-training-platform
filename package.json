@@ -37,7 +37,7 @@
     "test:email": "tsx --test tests/unit/email-templates.test.ts",
     "test:schedule": "tsx --test tests/unit/allocation-schedule.test.ts tests/unit/training-week-schedule.test.ts",
     "test:flowchart": "tsx --test tests/unit/flowchart-form.test.ts tests/unit/flowchart-route.test.ts tests/unit/flowchart-institutions.test.ts",
-    "test:campaign": "tsx --test tests/unit/campaign-attribution.test.ts tests/unit/campaign-eligibility.test.ts tests/unit/campaign-content.test.ts tests/unit/google-ads-pilot.test.ts tests/unit/google-ads-conversions.test.ts",
+    "test:campaign": "tsx --test tests/unit/campaign-attribution.test.ts tests/unit/campaign-eligibility.test.ts tests/unit/campaign-content.test.ts tests/unit/google-ads-pilot.test.ts tests/unit/google-ads-conversions.test.ts tests/unit/google-ads-workspace.test.ts",
     "test:campaign:e2e": "playwright test --config=playwright.campaign.config.ts"
   },
   "dependencies": {

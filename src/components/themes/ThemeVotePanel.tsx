@@ -40,6 +40,7 @@ const SWATCH: Record<ThemeId, [string, string, string]> = {
   artdeco:    ["#ece0cd", "#4a7b83", "#c98a5f"],
   canada:     ["#ffffff", "#dc1f2d", "#23161a"],
   endofsummer: ["#faf4ea", "#c87f22", "#2a2016"],
+  harvest:    ["#f6eee1", "#9f482f", "#5b2735"],
 };
 
 function Swatch({ id, size = 36 }: { id: ThemeId; size?: number }) {
