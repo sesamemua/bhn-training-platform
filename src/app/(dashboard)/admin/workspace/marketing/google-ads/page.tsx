@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
-import { GoogleAdsCampaignDeck } from "@/components/campaign/GoogleAdsCampaignDeck";
+import { GoogleAdsWorkspace } from "@/components/campaign/GoogleAdsWorkspace";
 import { requireRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function GoogleAdsCampaignPage() {
   const session = await requireRole("admin").catch(() => null);
-  if (!session) redirect("/dashboard");
+  const viewerId = (session?.user as { id?: string } | undefined)?.id;
+  if (!viewerId) redirect("/dashboard");
 
-  return <GoogleAdsCampaignDeck />;
+  return <GoogleAdsWorkspace key={viewerId} viewerId={viewerId} />;
 }

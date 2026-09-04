@@ -5,13 +5,6 @@ import { trackServer } from "@/lib/analytics";
 import { ensureMerchUnlocks } from "@/lib/rewards/merch";
 import { getTraineeCourseLimit } from "@/lib/settings";
 
-/**
- * Static fallback used only if the settings table isn't reachable.
- * The real limit comes from `getTraineeCourseLimit()` so superadmins
- * can tune it from /admin/settings without a redeploy.
- */
-export const TRAINEE_CONCURRENT_LIMIT = 3;
-
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = await params;
   const session = await requireSession().catch(() => null);

@@ -18,6 +18,7 @@ const SWATCH: Record<ThemeId, [string, string, string]> = {
   artdeco:    ["#ece0cd", "#4a7b83", "#c98a5f"],
   canada:     ["#ffffff", "#dc1f2d", "#23161a"],
   endofsummer: ["#faf4ea", "#c87f22", "#2a2016"],
+  harvest:    ["#f6eee1", "#9f482f", "#5b2735"],
 };
 
 // Each theme picks its own corner-roundness for the swatch, mirroring
@@ -32,6 +33,7 @@ const SWATCH_RADIUS: Record<ThemeId, string> = {
   artdeco:    "3px",
   canada:     "14px",
   endofsummer: "14px",
+  harvest:    "14px",
 };
 
 function Swatch({ id, size = 24 }: { id: ThemeId; size?: number }) {
