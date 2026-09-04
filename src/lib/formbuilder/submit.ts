@@ -11,7 +11,7 @@
  * and says what is wrong with them.
  */
 import { missing, optionsFor, visibleFields, type Answers } from "./logic";
-import type { BuiltForm, FieldStage } from "./types";
+import type { BuiltForm, FieldStage, FormField } from "./types";
 
 export interface Verdict {
   ok: boolean;
@@ -116,9 +116,23 @@ export function emailFrom(form: BuiltForm, answers: Answers): string | null {
   return null;
 }
 
+/**
+ * The question that draws a week.
+ *
+ * Which field is the session picker is a rule, not an observation, and
+ * it was about to be written out a second time on the confirmation
+ * screen — which needs the field itself, not just the strings, to draw
+ * the same calendar back. One function, so a form with two multi
+ * questions cannot have the picker mean one thing while filling in and
+ * another on the receipt.
+ */
+export function sessionField(form: BuiltForm): FormField | undefined {
+  return form.fields.find((x) => x.type === "multi" && x.slots.length > 0);
+}
+
 /** The sessions somebody chose, in the order they ranked them. */
 export function rankedSessions(form: BuiltForm, answers: Answers): string[] {
-  const f = form.fields.find((x) => x.type === "multi" && x.slots.length > 0);
+  const f = sessionField(form);
   if (!f) return [];
   const offered = new Set(optionsFor(form, f));
   return asList(answers[f.key]).filter((o) => offered.has(o));

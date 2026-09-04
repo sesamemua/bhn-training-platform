@@ -143,3 +143,33 @@ export function chosenConflicts(
   }
   return out;
 }
+
+/**
+ * An option string, taken apart.
+ *
+ * A session is written as "Mon 26 Oct · 11:00–13:30 · CCRM tour", and
+ * six places were each splitting it themselves — one with a fallback,
+ * five without. `.pop()` on a string with no separator returns the whole
+ * string, which is the harmless failure; `[1]` returns `undefined`,
+ * which renders as nothing while its `gap` still eats the space, so a
+ * coordinator who writes an option without the separators gets a row
+ * with a hole in it and no clue why.
+ *
+ * One parse, one fallback, and the DAY stops being the part that gets
+ * dropped: the confirmation used to show "13:00–16:30" with nothing
+ * anywhere saying which day that was.
+ */
+export interface SessionParts {
+  /** "Mon 26 Oct", or "" when the option is not written that way. */
+  day: string;
+  /** "11:00–13:30", or "". */
+  time: string;
+  /** Always something: the last part, or the whole string. */
+  name: string;
+}
+
+export function sessionParts(option: string): SessionParts {
+  const bits = option.split(" · ");
+  if (bits.length < 3) return { day: "", time: "", name: option };
+  return { day: bits[0], time: bits[1], name: bits.slice(2).join(" · ") };
+}

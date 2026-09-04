@@ -2570,6 +2570,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open Eligibility lists", href: "/admin/eligibility" },
   },
   {
+    id: "forms.confirmation-echoes-the-picker",
+    title: "The confirmation now shows the week, not a list",
+    body: "Submit a session-based form and the confirmation draws **the same calendar the registrant just picked on** \u2014 same blocks, same 1st / 2nd / 3rd badges, unchosen sessions faded behind them \u2014 above the same **Your ranking** box the form shows while they choose. It used to become a plain list with the day dropped, so \"13:00\u201316:30\" appeared with nothing saying which day.\n\nThe week also **stacks day-under-day on a phone** instead of scrolling sideways, on the picker as well as the receipt. And **\"Fill it in again\" is gone from the public form** \u2014 it invited a duplicate registration, and the public route has no idempotency to stop one. You still get **Run another test** here in the builder's preview, where resetting is the point.",
+    path: "/admin/workspace/forms",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.04",
+    cta: { label: "Open Forms", href: "/admin/workspace/forms" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

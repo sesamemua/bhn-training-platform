@@ -14,6 +14,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
+import { FORM_COLUMN } from "@/lib/formbuilder/layout";
 import { PublicForm } from "@/components/forms/PublicForm";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
 
   return (
     <main className="min-h-screen bg-page px-4 py-10">
-      <div className="mx-auto max-w-[820px]">
+      <div className={FORM_COLUMN}>
         <header className="mb-2">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-500">BioHubNet</p>
           <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight text-fg">{form.title}</h1>

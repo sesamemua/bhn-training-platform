@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registration confirmation: the week you chose, drawn the way you chose it
+  {
+    title: "The registration confirmation now shows your sessions as the calendar you picked them on",
+    body: "After submitting a session-based registration form, the confirmation screen used to turn your ranked choices into a plain grey list with the **day thrown away** — a registration for an event three weeks out showed \"13:00–16:30\" and nothing saying which day. It now draws **the same week, the same time-scaled blocks and the same 1st / 2nd / 3rd badges** you clicked on, with the sessions you did not pick faded behind them, above the same **Your ranking** box the form shows while you are choosing. One component now draws both, so the receipt cannot say it differently from the form.\n\nThe week no longer scrolls sideways on a phone. Below a container width of 576px it **stacks day under day** instead of forcing a 520px grid into a 263px box, which had left every phone scrolling 200px sideways to reach a Wednesday that was still clipped when it got there. That fix lands on the picker as well as the receipt.\n\nThe page title, the form and the confirmation now share **one column and one left edge** — they had been three centred boxes of 820px, 760px and 720px, so the margin moved twice on the way through. The public form also no longer prints its title twice.\n\n**\"Fill it in again\" is gone from the public form.** It cleared every answer and put a registrant back at question one of a form they had already submitted successfully — and because the public route has no idempotency, going round again really did file a second registration, send a second acknowledgement and book a second set of pending seats. Staff keep the reset in the builder's test preview, where it is the point. In its place, any note the form was showing you when you submitted that has a link in it — such as the reminder that the Annual Symposium is a separate registration — is now carried onto the confirmation instead of vanishing with the rest of the form.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── Consent-aware Google Ads campaign measurement
   {
     title: "Campaign applications can now be measured without counting page visits as enrollments",

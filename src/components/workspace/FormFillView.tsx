@@ -24,16 +24,17 @@
  * real registrant that their entry is only a test is a serious lie.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, Clock, Eye, Mail, RotateCcw } from "lucide-react";
-import { chosenConflicts } from "@/lib/formbuilder/calendar";
-import { linkify } from "@/lib/formbuilder/linkify";
+import { AlertTriangle, Check, Eye, RotateCcw } from "lucide-react";
+import { chosenConflicts, sessionParts } from "@/lib/formbuilder/calendar";
+import { hasLink, linkify } from "@/lib/formbuilder/linkify";
 import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
-import { rankedSessions } from "@/lib/formbuilder/submit";
+import { rankedSessions, sessionField } from "@/lib/formbuilder/submit";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { BLOCKED_MESSAGE } from "@/lib/eligibility/messages";
+import { FORM_COLUMN } from "@/lib/formbuilder/layout";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
-import { ordinal, SessionCalendar } from "./SessionCalendar";
+import { RankedChoices, SessionCalendar } from "./SessionCalendar";
 
 /** Above this many options a radio list becomes a page of its own. */
 const RADIO_MAX = 6;
@@ -226,7 +227,7 @@ export function FormFillView({
   }
 
   return (
-    <div className="mx-auto mt-5 max-w-[760px] pb-24">
+    <div className={`${FORM_COLUMN} mt-5 pb-24`}>
       {/* Live registrants need the form, not implementation notes. The
           other two modes state their limits once, at the top, where a
           colleague cannot mistake a test for a registration. */}
@@ -277,9 +278,17 @@ export function FormFillView({
         </div>
       )}
 
+      {/* The public page has already printed this title as its <h1>,
+          two sizes larger and a paragraph earlier. Repeating it here
+          gave the screen two headings saying the same words at two
+          different left edges — the first thing the eye caught, and
+          the first thing it had to dismiss. The builder's preview has
+          no page header above it, so there it stays. */}
       <header className="mt-5">
-        <h2 className="text-[26px] font-bold leading-tight tracking-tight text-fg">{title}</h2>
-        <p className="mt-1.5 text-[13.5px] text-muted">
+        {mode !== "live" && (
+          <h2 className="text-[26px] font-bold leading-tight tracking-tight text-fg">{title}</h2>
+        )}
+        <p className={`text-[13.5px] text-muted ${mode === "live" ? "" : "mt-1.5"}`}>
           {asked.length} question{asked.length === 1 ? "" : "s"}
           {answered > 0 && ` · ${answered} answered`}
           {asked.some((f) => f.required) && ` · questions marked * are required`}
@@ -633,37 +642,17 @@ function Question({
       ) : f.type === "multi" && f.slots.length > 0 ? (
         <>
           <SessionCalendar field={f} chosen={arr} onToggle={pickMulti} />
-          {/* The ranking, written out.
-              Badges on the calendar give each cell its position; this
-              gives the ORDER, which is the thing being asked for and
-              the thing a coordinator reads off the answer. Its own box,
-              because on a busy calendar a line of text under it is not
-              where anybody looks to check what they chose. */}
-          {arr.length > 0 && (
-            <div className="mt-3 rounded-lg border-2 border-brand-500/40 bg-brand-500/[0.06] p-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-500">
-                Your ranking
-              </p>
-              <ol className="mt-1.5 space-y-1">
-                {arr.map((o, i) => (
-                  <li key={o} className="flex items-baseline gap-2 text-[13px] text-fg">
-                    <span className="w-9 shrink-0 text-[11px] font-bold uppercase tracking-wide text-brand-500">
-                      {ordinal(i + 1)}
-                    </span>
-                    <span>{o.split(" · ").pop()}</span>
-                    <span className="font-mono text-[11px] text-subtle">{o.split(" · ")[1]}</span>
-                  </li>
-                ))}
-              </ol>
-              <p className="mt-2 text-[11.5px] leading-snug text-muted">
-                {atCap
-                  ? `That is all ${cap}. To change your mind, click one again to take it back.`
-                  : arr.length === 1
-                    ? `Pick another and it becomes your 2nd choice.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`
-                    : `This is the order we go by when a room is oversubscribed.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`}
-              </p>
-            </div>
-          )}
+          <RankedChoices
+            chosen={arr}
+            label="Your ranking"
+            note={
+              atCap
+                ? `That is all ${cap}. To change your mind, click one again to take it back.`
+                : arr.length === 1
+                  ? `Pick another and it becomes your 2nd choice.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`
+                  : `This is the order we go by when a room is oversubscribed.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`
+            }
+          />
           {/* With no cap on how many may be chosen, this is the ONLY
               thing standing between somebody and a day they cannot
               physically attend. It names the pairs rather than counting
@@ -680,7 +669,7 @@ function Question({
               <ul className="mt-1.5 space-y-0.5">
                 {clashing.map((c) => (
                   <li key={`${c.a}|${c.b}`} className="text-[12px] leading-snug text-red-600">
-                    {c.a.split(" · ").pop()} <span className="opacity-70">and</span> {c.b.split(" · ").pop()}
+                    {sessionParts(c.a).name} <span className="opacity-70">and</span> {sessionParts(c.b).name}
                     {/* A declared pair says WHY. A bare time overlap does
                         not need to — the calendar above already shows it. */}
                     {c.reason
@@ -822,9 +811,14 @@ function Confirmation({
   doc: BuiltForm;
   receipt: Receipt | undefined;
   mode: "preview" | "test" | "live";
-  onAgain: () => void;
+  /**
+   * Staff only. A registrant does not get one — see the note on the
+   * reset button at the bottom of this component.
+   */
+  onAgain?: () => void;
 }) {
   const ranked = rankedSessions(doc, answers);
+  const field = sessionField(doc);
   const line = receiptLine(receipt);
   const shown = receipt && "preview" in receipt ? receipt.preview : null;
   // Anything other than a plain "sent" is something a coordinator needs
@@ -832,85 +826,173 @@ function Confirmation({
   const wrong = receipt && receipt.state !== "sent" && receipt.state !== "sent-to-you";
   const test = mode === "test";
 
+  /*
+   * The things the form said that outlive the form.
+   *
+   * Submitting deletes the questions, and takes the notes with them —
+   * including the one that says the Symposium is a separate
+   * registration and gives the address for it, shown to exactly the
+   * people who answered "not yet, I plan to". The link was being
+   * withdrawn at the moment they were finally free to act on it.
+   *
+   * The rule is general rather than "if the key is symposium_link_note":
+   * a note that was on screen when they submitted AND has somewhere to
+   * go is a thing still to do. Its condition comes from the document,
+   * so changing who sees it is one edit in the builder and both places
+   * move together.
+   */
+  const carried = visibleFields(doc, answers).filter(
+    (f) => f.type === "note" && f.help !== undefined && hasLink(f.help),
+  );
+
   return (
-    <div className="mx-auto mt-5 max-w-[720px] pb-24">
-      <div className="rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/[0.06] p-6">
-        <p className="flex items-center gap-2 text-[20px] font-bold leading-tight text-fg">
-          <Check size={22} className="shrink-0 text-emerald-600" />
-          {test ? "Test registration filed." : "That is your registration in."}
+    <div className={`${FORM_COLUMN} mt-5 pb-16`}>
+      {/*
+        ONE TEXT COLUMN.
+        The tick hangs in the margin and everything else — the sentence,
+        the timeline, the receipt line — starts on the same left edge.
+        It used to be a stack of icon-and-text rows with three icon
+        sizes, two gaps and two alignment strategies between them, which
+        gave one small card four different left edges.
+      */}
+      <div className="rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/[0.06] p-4 sm:p-6">
+        {/* items-start, not items-center: at 375px this sentence wraps
+            to two lines, and centring the tick against a two-line block
+            dropped it twelve pixels below the first line's cap. The 3px
+            is the optical nudge for 20px/leading-tight. Only the
+            heading carries the icon — everything under it starts on the
+            card's own left edge, the same edge every other card on this
+            screen starts on. */}
+        <p className="flex items-start gap-2.5 text-[20px] font-bold leading-tight tracking-tight text-fg">
+          <Check size={20} className="mt-[3px] shrink-0 text-emerald-600" />
+          <span className="min-w-0">
+            {test ? "Test registration filed." : "That is your registration in."}
+          </span>
         </p>
-        <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
-          {test
-            ? "This did not register a real attendee. The row is marked as a test in Admin → Registrants and can be deleted there."
-            : `Thank you for registering for ${title}. You do not need to do anything else.`}
-        </p>
-
-        {!test && (
-          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-line bg-card p-4">
-            <Clock size={16} className="mt-0.5 shrink-0 text-brand-500" />
-            <p className="text-[13px] leading-relaxed text-fg">
-              <strong>We will come back to you within two to three weeks.</strong> Places are limited
-              and every registration is reviewed together rather than as it arrives, so it takes that
-              long. We will write to you either way — whether or not we can offer you a place. If you
-              have not heard after three weeks, reply to the email and we will chase it.
-            </p>
-          </div>
-        )}
-
-        {line && (
-          <p
-            className={`mt-3 flex items-start gap-2 text-[12.5px] leading-relaxed ${
-              wrong ? "text-amber-600" : "text-muted"
-            }`}
-          >
-            {wrong ? <AlertTriangle size={14} className="mt-0.5 shrink-0" /> : <Mail size={14} className="mt-0.5 shrink-0" />}
-            {line}
+        <div>
+          <p className="mt-3 text-[13px] leading-relaxed text-muted">
+            {test
+              ? "This did not register a real attendee. The row is marked as a test in Admin → Registrants and can be deleted there."
+              : `Thank you for registering for ${title}. You do not need to do anything else.`}
           </p>
-        )}
+
+          {!test && (
+            <div className="mt-4 rounded-xl border border-line bg-card p-4">
+              <p className="text-[13px] leading-relaxed text-fg">
+                <strong>We will come back to you within two to three weeks.</strong> Places are limited
+                and every registration is reviewed together rather than as it arrives, so it takes that
+                long. We will write to you either way — whether or not we can offer you a place. If you
+                have not heard after three weeks, reply to the email and we will chase it.
+              </p>
+            </div>
+          )}
+
+          {line && (
+            <p className={`mt-4 text-[13px] leading-relaxed ${wrong ? "text-amber-600" : "text-muted"}`}>
+              {/* An icon only where it means something. On the ordinary
+                  path the line is good news and needs no marker; a
+                  letter that did not go out is the one case worth
+                  flagging. */}
+              {wrong && <AlertTriangle size={14} className="mr-1.5 inline-block shrink-0 align-[-2px]" />}
+              {line}
+            </p>
+          )}
+        </div>
       </div>
 
+      {/*
+        WHAT YOU ASKED FOR, IN THE PICTURE YOU ASKED FOR IT IN.
+
+        The same calendar, the same rank badges, the same ranking box —
+        the components the picker uses, not a second drawing of the same
+        facts. It used to become a plain grey list one screen after a
+        brand-tinted, time-scaled week, with the day dropped, so a
+        registrant had to take on trust that the thing they were reading
+        was the thing they had chosen.
+
+        The week is drawn only where it fits. Below @xl it stacks to
+        three full screens on a phone — right for choosing, far too long
+        for a receipt — and the ranking box says the same thing in three
+        lines. A container query rather than a viewport one: this column
+        is 760px on the public page and narrower inside the builder.
+      */}
       {ranked.length > 0 && (
-        <section className="mt-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">What you asked for</p>
-          <ol className="mt-2 divide-y divide-line overflow-hidden rounded-xl border-2 border-line-strong bg-card">
-            {ranked.map((o, i) => (
-              <li key={o} className="flex items-baseline gap-3 px-4 py-2.5">
-                <span className="w-9 shrink-0 text-[11px] font-bold uppercase tracking-wide text-brand-500">
-                  {ordinal(i + 1)}
-                </span>
-                <span className="min-w-0 flex-1 text-[13px] text-fg">{o.split(" · ").pop()}</span>
-                <span className="font-mono text-[11px] text-subtle">{o.split(" · ")[1]}</span>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-1.5 text-[11.5px] leading-snug text-subtle">
-            Ranked in the order you chose them. Where a room is oversubscribed, that order is what
-            we go by.
+        <section className="@container mt-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-subtle">
+            What you asked for
           </p>
+          {field && (
+            <div className="hidden @xl:block">
+              <SessionCalendar
+                readOnly
+                field={field}
+                chosen={ranked}
+                caption="The week as you chose it. Anything faded is a session you did not pick."
+              />
+            </div>
+          )}
+          <RankedChoices
+            chosen={ranked}
+            label="Your ranking"
+            note="This is the order we go by when a room is oversubscribed."
+          />
         </section>
       )}
+
+      {carried.map((f) => (
+        <section key={f.id} className="mt-5 rounded-2xl border-2 border-line-strong bg-card p-4 sm:p-6">
+          <p className="text-[14px] font-semibold leading-snug text-fg">{f.label}</p>
+          {f.help && (
+            <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
+              <Linked text={f.help} />
+            </p>
+          )}
+        </section>
+      ))}
 
       {/* Shown when the letter did not go out, so a coordinator can see
           exactly what a registrant would have received rather than
           guessing at it. */}
       {shown && wrong && (
-        <details className="mt-4 rounded-xl border border-line bg-elevated/40 p-3">
-          <summary className="cursor-pointer text-[12.5px] font-semibold text-fg">
+        <details className="mt-5 rounded-2xl border-2 border-line-strong bg-elevated/40 p-4 sm:p-6">
+          <summary className="cursor-pointer text-[13px] font-semibold text-fg">
             The letter that would have gone to {shown.to}
           </summary>
-          <p className="mt-2 text-[12.5px] font-semibold text-fg">{shown.subject}</p>
-          <pre className="mt-1.5 whitespace-pre-wrap break-words font-sans text-[12.5px] leading-relaxed text-muted">
+          <p className="mt-2 text-[13px] font-semibold text-fg">{shown.subject}</p>
+          <pre className="mt-1.5 whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-muted">
             {shown.body}
           </pre>
         </details>
       )}
 
-      <button
-        className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-semibold text-muted hover:bg-elevated"
-        onClick={onAgain}
-      >
-        <RotateCcw size={13} /> {test ? "Run another test" : "Fill it in again"}
-      </button>
+      {/*
+        STAFF ONLY, AND DELIBERATELY SO.
+
+        This clears the answers and puts the form back. For a coordinator
+        testing the branches that is the whole point, and it beats a
+        reload, which would throw away the unsaved builder edits the
+        preview is kept mounted to protect.
+
+        For a registrant it was the exact thing this screen exists to
+        prevent — see the note above `if (sent)`. Worse than confusing:
+        submitting again really does file a second registration. There is
+        no idempotency on the public route, so a second pass writes a
+        second submission, sends a second acknowledgement and books a
+        second set of pending seats, and the only thing that eventually
+        stops it is the anti-bot limiter, whose refusal reads as an
+        accusation. Nothing replaces it — the screen ends on what they
+        asked for, which is the right last thing for a finished
+        transaction.
+      */}
+      {test && onAgain && (
+        <button
+          type="button"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-semibold text-muted hover:bg-elevated"
+          onClick={onAgain}
+        >
+          <RotateCcw size={13} /> Run another test
+        </button>
+      )}
     </div>
   );
 }
