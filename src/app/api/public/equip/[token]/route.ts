@@ -13,16 +13,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateVentureConnect } from "@/lib/equip/submit-validation";
 import { validateInnovationFellowship } from "@/lib/equip/innovation-fellowship-validation";
-import {
-  buildVentureConnectSubmissionReceipt,
-  VENTURE_CONNECT_SUBMISSION_BCC,
-} from "@/lib/equip/venture-connect-receipt";
+import { buildVentureConnectSubmissionReceipt } from "@/lib/equip/venture-connect-receipt";
 import { buildVentureConnectApplicationPacket } from "@/lib/equip/venture-connect-packet";
-import {
-  buildInnovationFellowshipSubmissionReceipt,
-  INNOVATION_FELLOWSHIP_SUBMISSION_BCC,
-} from "@/lib/equip/innovation-fellowship-receipt";
+import { buildInnovationFellowshipSubmissionReceipt } from "@/lib/equip/innovation-fellowship-receipt";
 import { buildInnovationFellowshipApplicationPacket } from "@/lib/equip/innovation-fellowship-packet";
+import { getEquipCopyRecipients } from "@/lib/equip/emails";
 import { canDelete } from "@/lib/equip/delete";
 import { purgeApplication } from "@/lib/equip/purge";
 import { mailConfigured, sendMail } from "@/lib/mail";
@@ -36,7 +31,9 @@ import {
 import { CAMPAIGN_EVENT_NAMES } from "@/lib/campaign/events";
 import {
   innovationFellowshipRequestedAmount,
+  isEditable,
   type EquipDocument,
+  type EquipStatus,
   type InnovationFellowshipFormData,
   type VentureConnectFormData,
 } from "@/lib/equip/types";
@@ -45,8 +42,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-/** A submitted application is no longer the applicant's to change. */
-const EDITABLE = new Set(["draft"]);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 async function load(token: string) {
@@ -71,7 +66,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
   const { token } = await ctx.params;
   const app = await load(token);
   if (!app) return NextResponse.json({ error: "This link is no longer active." }, { status: 404 });
-  if (!EDITABLE.has(app.status)) {
+  if (!isEditable(app.status as EquipStatus)) {
     return NextResponse.json(
       { error: "This application has been submitted and can no longer be edited." },
       { status: 409 },
@@ -124,7 +119,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   const { token } = await ctx.params;
   const app = await load(token);
   if (!app) return NextResponse.json({ error: "This link is no longer active." }, { status: 404 });
-  if (!EDITABLE.has(app.status)) {
+  if (!isEditable(app.status as EquipStatus)) {
     return NextResponse.json({ error: "This has already been submitted." }, { status: 409 });
   }
 
@@ -217,11 +212,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
             formData: formData as InnovationFellowshipFormData,
             documents,
           });
+      const copyRecipients = await getEquipCopyRecipients();
       await sendMail({
         to: recipient,
-        bcc: isVentureConnect
-          ? [...VENTURE_CONNECT_SUBMISSION_BCC]
-          : [...INNOVATION_FELLOWSHIP_SUBMISSION_BCC],
+        bcc: isVentureConnect ? copyRecipients.venture_connect : copyRecipients.innovation_fellowship,
         subject: email.subject,
         text: email.text,
         html: email.html,

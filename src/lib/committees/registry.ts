@@ -36,7 +36,7 @@ export interface CommitteeSidebarItem {
   /** Lucide icon name (resolved at render time so this registry
    *  stays tree-shake-friendly and doesn't pull every icon into
    *  every page that imports it). */
-  icon: "Rocket" | "Users" | "Award" | "ClipboardList" | "Sparkles";
+  icon: "Rocket" | "Users" | "Award" | "ClipboardList" | "Sparkles" | "Mail";
 }
 
 export interface CommitteeMeta {
@@ -70,6 +70,7 @@ export const COMMITTEES: readonly CommitteeMeta[] = [
     sidebarItems: [
       { label: "EQUIP overview",     href: "/admin/equip/overview",  icon: "Sparkles" },
       { label: "EQUIP review queue", href: "/admin/equip",           icon: "Rocket" },
+      { label: "EQUIP email templates", href: "/admin/equip/email-templates", icon: "Mail" },
       { label: "EQUIP deadlines",    href: "/admin/equip/deadlines", icon: "ClipboardList" },
     ],
   },

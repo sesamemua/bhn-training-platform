@@ -13,7 +13,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { ConnectForm } from "@/components/equip/ConnectForm";
-import type { EquipDocument, VentureConnectFormData } from "@/lib/equip/types";
+import { isEditable, type EquipDocument, type EquipStatus, type VentureConnectFormData } from "@/lib/equip/types";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -33,12 +33,12 @@ export default async function PublicVentureConnectFormPage({
     where: { publicToken: token },
     select: {
       id: true, stream: true, status: true, formData: true, documents: true, submittedAt: true,
-      applicantName: true, applicantEmail: true,
+      applicantName: true, applicantEmail: true, reviewerNote: true,
     },
   });
   if (!app || app.stream !== "venture_connect") notFound();
 
-  if (app.status !== "draft") {
+  if (!isEditable(app.status as EquipStatus)) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight text-fg">Application received</h1>
@@ -65,6 +65,7 @@ export default async function PublicVentureConnectFormPage({
           organization: null,
           jobTitle: null,
         }}
+        infoRequestedNote={app.status === "info_requested" ? app.reviewerNote : null}
       />
     </main>
   );

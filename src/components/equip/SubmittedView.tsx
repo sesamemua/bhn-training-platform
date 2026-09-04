@@ -87,7 +87,15 @@ export function SubmittedView({ application }: Props) {
           <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">Your submission</p>
           <SubmissionLine k="Applicant"  v={(application.formData as VentureConnectFormData).fullName} />
           <SubmissionLine k="Institution" v={(application.formData as VentureConnectFormData).institutionAffiliation} />
-          <SubmissionLine k="Graduation date" v={(application.formData as VentureConnectFormData).graduationDate} />
+          <SubmissionLine
+            k="Academic standing"
+            v={(application.formData as VentureConnectFormData).graduationTimeline === "current_student"
+              ? "Current student"
+              : (application.formData as VentureConnectFormData).graduationTimeline === "within_two_years"
+                ? "Within 2 years of graduation"
+                : undefined}
+          />
+          <SubmissionLine k="LinkedIn" v={(application.formData as VentureConnectFormData).linkedinUrl} />
           <SubmissionLine k="Company / project" v={(application.formData as VentureConnectFormData).companyName} />
           <SubmissionLine k="Role with the company" v={(application.formData as VentureConnectFormData).companyRole} />
           <SubmissionLine k="Website"     v={(application.formData as VentureConnectFormData).companyWebsite} />

@@ -70,6 +70,14 @@ interface Props {
    *  "Clear" testing strip so admins can populate or empty the
    *  draft in one click while iterating on the UX. */
   isAdmin?: boolean;
+  /**
+   * Set only when status === "info_requested" — the reviewer's own
+   * note on what's missing, reusing the same `reviewerNote` column
+   * Approve/Reject already write to. Rendered as a banner at the top
+   * of the form so reopening it doesn't look like the form just
+   * silently came back with no explanation.
+   */
+  infoRequestedNote?: string | null;
 }
 
 /** Sample-fill body for admin testing. Mirrors what a realistic
@@ -79,8 +87,9 @@ const SAMPLE_VC: VentureConnectFormData = {
   institutionAffiliation: "University of Toronto",
   departmentProgram: "Donnelly Centre for Cellular and Biomolecular Research",
   currentRole: "phd_student",
-  graduationDate: new Date().toISOString().slice(0, 10),
+  graduationTimeline: "within_two_years",
   institutionEmail: "alex.chen@example.test",
+  linkedinUrl: "https://www.linkedin.com/in/alex-chen-test/",
   companyName: "PuriBio Inc.",
   companyRole: "Co-founder & CTO",
   companyWebsite: "https://example-bio.test",
@@ -119,6 +128,14 @@ const ROLE_OPTIONS: { id: ApplicantRole; label: string }[] = [
   { id: "research_associate", label: "Research Associate" },
 ];
 
+const GRADUATION_TIMELINE_OPTIONS: {
+  id: NonNullable<VentureConnectFormData["graduationTimeline"]>;
+  label: string;
+}[] = [
+  { id: "current_student",   label: "Current student" },
+  { id: "within_two_years",  label: "Within 2 years of graduation" },
+];
+
 function budgetTotal(f: VentureConnectFormData): number {
   return (f.budgetAirfare ?? 0)
     + (f.budgetTrainFare ?? 0)
@@ -135,6 +152,7 @@ export function ConnectForm({
   isAdmin = false,
   endpointBase = "/api/equip/applications",
   allowDocuments = true,
+  infoRequestedNote,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<VentureConnectFormData>(() => ({
@@ -233,6 +251,21 @@ export function ConnectForm({
         <SaveIndicator saving={saving} savedAt={savedAt} />
       </header>
 
+      {/* Reopened after "Request more info" — only ever set when
+          status === "info_requested". Sits ahead of everything else on
+          the page: reopening the form with no explanation would read as
+          the platform silently having forgotten the submission. */}
+      {infoRequestedNote && (
+        <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-3 flex items-start gap-2">
+          <AlertCircle size={14} className="text-sky-700 mt-0.5 shrink-0" />
+          <div className="text-[11px] text-sky-900 leading-snug">
+            <p className="font-bold">The EQUIP review committee asked for more information.</p>
+            <p className="mt-1 whitespace-pre-wrap">{infoRequestedNote}</p>
+            <p className="mt-1.5 text-sky-800">Update your application below, then submit again.</p>
+          </div>
+        </div>
+      )}
+
       {/* No-AI disclaimer — surfaced prominently so applicants
           don't accidentally disqualify themselves. */}
       <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-3 flex items-start gap-2">
@@ -303,11 +336,25 @@ export function ConnectForm({
             ))}
           </div>
         </Field>
+        <Field label="Academic Standing" required>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {GRADUATION_TIMELINE_OPTIONS.map((opt) => (
+              <RoleCheckbox
+                key={opt.id}
+                checked={form.graduationTimeline === opt.id}
+                label={opt.label}
+                onChange={() => set("graduationTimeline", opt.id)}
+              />
+            ))}
+          </div>
+        </Field>
         <div className="max-w-sm">
-          <Field label="Graduation Date" required>
-            <FourDigitDateInput
-              value={form.graduationDate ?? ""}
-              onChange={(value) => set("graduationDate", value)}
+          <Field label="LinkedIn Profile" hint="Paste it however it appears. Optional.">
+            <input
+              value={form.linkedinUrl ?? ""}
+              onChange={(e) => set("linkedinUrl", e.target.value)}
+              placeholder="https://www.linkedin.com/in/…"
+              className={inputCls}
             />
           </Field>
         </div>
@@ -428,6 +475,17 @@ export function ConnectForm({
             className={inputCls}
           />
         </Field>
+        <div className="max-w-sm mt-3">
+          <Field label="Event Website" hint="Optional — a link for the reviewer to look the event up.">
+            <input
+              type="url"
+              value={form.eventWebsite ?? ""}
+              onChange={(e) => set("eventWebsite", e.target.value)}
+              placeholder="https://"
+              className={inputCls}
+            />
+          </Field>
+        </div>
         {form.eventCategory === "customer_demo" && (
           <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] leading-snug text-amber-900">
             Customer demonstrations are eligible only when the customer is
@@ -528,7 +586,10 @@ export function ConnectForm({
           />
           <span className="text-xs text-fg">I acknowledge and agree.</span>
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+        <p className="text-xs font-bold text-fg mt-3">
+          The applicant is required to complete and sign this form.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           <Field label="Print Name" required>
             <input value={form.signaturePrintedName ?? ""} onChange={(e) => set("signaturePrintedName", e.target.value)} className={inputCls} />
           </Field>

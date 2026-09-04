@@ -127,6 +127,7 @@ export default async function EquipApplicationDraftPage({
             jobTitle: (app.user?.jobTitle ?? null) ?? null,
           }}
           isAdmin={isAdmin}
+          infoRequestedNote={status === "info_requested" ? app.reviewerNote : null}
         />
       ) : isInFullAppStage(app.stream as EquipStream, app.applicationStage as ApplicationStage, status) ? (
         <LiftFullForm

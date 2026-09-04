@@ -6,13 +6,14 @@
  * ReviewActions component below.
  */
 import { redirect, notFound } from "next/navigation";
-import { FileText, User as UserIcon, MapPin, Briefcase, Mail, Lightbulb } from "lucide-react";
+import { FileText, User as UserIcon, MapPin, Briefcase, Mail, Lightbulb, StickyNote } from "lucide-react";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { DSSection } from "@/components/design-system/DSSection";
 import { ReviewActions } from "@/components/admin/equip/ReviewActions";
 import { TriageSummary } from "@/components/admin/equip/TriageSummary";
+import { DocumentAnnotator } from "@/components/admin/equip/DocumentAnnotator";
 import { MessageThread } from "@/components/equip/MessageThread";
 import { MilestoneTracker } from "@/components/equip/MilestoneTracker";
 import { type EquipMilestone } from "@/lib/equip/types";
@@ -24,6 +25,7 @@ import {
   type VentureLiftReviewerScores, type EquipDocument,
 } from "@/lib/equip/types";
 import { innovationFellowshipReceiptSections } from "@/lib/equip/innovation-fellowship-receipt";
+import { EQUIP_EMAIL_TEMPLATES, STATUS_TO_TEMPLATE, listCustomEquipTemplates } from "@/lib/equip/emails";
 import { institutionLabel } from "@/lib/equip/institutions";
 import { applicantOf } from "@/lib/equip/applicant";
 import { priorApprovalsWhere, capStateFrom, totalVariance } from "@/lib/equip/cap";
@@ -77,6 +79,27 @@ export default async function AdminEquipReviewPage({
     vcTotal = totalVariance([...prior, app]);
   }
 
+  /* Reviewer-only pinned notes on the attachments. Fetched here so the
+     annotator paints its pins on first render rather than flashing an
+     empty document and filling in. */
+  const documentNotes = (
+    await prisma.equipDocumentNote.findMany({
+      where: { applicationId: app.id },
+      orderBy: [{ page: "asc" }, { createdAt: "asc" }],
+    })
+  ).map((n) => ({
+    id: n.id,
+    documentKey: n.documentKey,
+    page: n.page,
+    x: n.x,
+    y: n.y,
+    body: n.body,
+    status: n.status,
+    authorName: n.authorName,
+    createdAt: n.createdAt.toISOString(),
+    updatedAt: n.updatedAt.toISOString(),
+  }));
+
   const stream = STREAM_META[app.stream as EquipStream];
   const status = STATUS_META[app.status as EquipStatus];
   const formData = (app.formData as VentureConnectFormData) ?? {};
@@ -90,6 +113,24 @@ export default async function AdminEquipReviewPage({
   const vcSupportingDocs = SUPPORTING_DOCS.filter((item) =>
     formData.supportingDocs?.includes(item.id),
   );
+
+  // Send-panel data — the client component can't import emails.ts
+  // itself (it pulls in prisma), so the applicable template list and
+  // the status's suggested default come from here. Custom templates
+  // (added/removed from the email-templates page) are appended after
+  // the lifecycle ones, in creation order.
+  const customTemplates = await listCustomEquipTemplates();
+  const emailTemplateOptions = [
+    ...EQUIP_EMAIL_TEMPLATES.filter(
+      (t) =>
+        (t.appliesTo === "both" || t.appliesTo === app.stream) &&
+        t.id !== "deadline" && t.id !== "milestone",
+    ).map((t) => ({ id: t.id, label: t.label, when: t.when })),
+    ...customTemplates
+      .filter((t) => t.appliesTo === "both" || t.appliesTo === app.stream)
+      .map((t) => ({ id: t.id, label: `${t.label} (custom)`, when: "Sent manually, any time" })),
+  ];
+  const defaultEmailTemplateId = STATUS_TO_TEMPLATE[app.status as EquipStatus] ?? null;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -120,6 +161,10 @@ export default async function AdminEquipReviewPage({
         actualNote={app.actualNote}
         hasIpAppendix={documents.some((d) => d.kind === "ip_doc")}
         existingScores={app.reviewerScores as VentureLiftReviewerScores | null}
+        emailTemplateOptions={emailTemplateOptions}
+        defaultEmailTemplateId={defaultEmailTemplateId}
+        lastEmailSentAt={app.lastEmailSentAt}
+        lastEmailTemplateId={app.lastEmailTemplateId}
       />
 
       {vcState && vcTotal && (
@@ -127,6 +172,22 @@ export default async function AdminEquipReviewPage({
       )}
 
       {app.status !== "draft" && <TriageSummary applicationId={app.id} />}
+
+      {documents.length > 0 && (
+        <DSSection
+          eyebrow="Reviewers only"
+          title="Attachments & notes"
+          icon={<StickyNote size={14} className="text-brand-600" />}
+        >
+          <DocumentAnnotator
+            applicationId={app.id}
+            documents={documents.map((d) => ({
+              key: d.key, name: d.name, contentType: d.contentType, kind: d.kind, size: d.size,
+            }))}
+            initialNotes={documentNotes}
+          />
+        </DSSection>
+      )}
 
       <DSSection eyebrow="Applicant" title="Who's applying" icon={<UserIcon size={14} className="text-brand-600" />}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -143,7 +204,18 @@ export default async function AdminEquipReviewPage({
 
       {app.stream === "venture_connect" && (
         <DSSection eyebrow="Submission body" title="The application" icon={<FileText size={14} className="text-brand-600" />}>
-          <Field label="Graduation date">{formData.graduationDate ?? "—"}</Field>
+          <Field label="Academic standing">
+            {formData.graduationTimeline === "current_student"
+              ? "Current student"
+              : formData.graduationTimeline === "within_two_years"
+                ? "Within 2 years of graduation"
+                : "—"}
+          </Field>
+          {formData.linkedinUrl && (
+            <Field label="LinkedIn">
+              <a href={formData.linkedinUrl} target="_blank" rel="noreferrer" className="text-brand-700 underline break-all">{formData.linkedinUrl}</a>
+            </Field>
+          )}
           <Field label="Company name or project title">{formData.companyName ?? "—"}</Field>
           <Field label="Role with the company">{formData.companyRole ?? "—"}</Field>
           {formData.companyWebsite && (

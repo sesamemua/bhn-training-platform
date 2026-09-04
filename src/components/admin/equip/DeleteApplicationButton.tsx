@@ -59,10 +59,14 @@ export function DeleteApplicationButton({
 
   return (
     <div className="inline-flex flex-col items-end gap-1">
+      {/* Allowed to wrap: in the queue table this sits above the switch
+          inside the actions column, and holding it on one line made the
+          whole column ~170px wide — enough on its own to put the table
+          under a horizontal scrollbar. */}
       {affectsCap && (
-        <p className="flex items-center gap-1 text-[9.5px] font-semibold text-amber-600 whitespace-nowrap">
-          <AlertTriangle size={10} className="shrink-0" />
-          ${(approvedAmount ?? 0).toLocaleString()} returns to their cap
+        <p className="flex items-start gap-1 text-right text-[9.5px] font-semibold leading-tight text-amber-600 max-w-[9rem]">
+          <AlertTriangle size={10} className="mt-px shrink-0" />
+          <span>${(approvedAmount ?? 0).toLocaleString()} returns to their cap</span>
         </p>
       )}
       <LaunchSwitch

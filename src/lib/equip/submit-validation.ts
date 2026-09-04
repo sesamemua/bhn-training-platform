@@ -38,12 +38,12 @@ export function validateVentureConnect(f: VentureConnectFormData, docs: EquipDoc
   if (!f.institutionAffiliation?.trim()) errors.push("Applicant: Institution / Affiliation is required");
   if (!f.departmentProgram?.trim())     errors.push("Applicant: Department / Program is required");
   if (!f.currentRole)                   errors.push("Applicant: Current Role is required");
-  if (!f.graduationDate?.trim()) {
-    errors.push("Applicant: Graduation Date is required");
-  } else if (!FOUR_DIGIT_ISO_DATE.test(f.graduationDate)) {
-    errors.push("Applicant: Graduation Date must use a four-digit year (YYYY-MM-DD)");
+  if (!f.graduationTimeline) {
+    errors.push("Applicant: select Current Student or Within 2 Years of Graduation");
   }
   if (!f.institutionEmail?.trim())      errors.push("Applicant: Institution Email is required");
+  // LinkedIn is intentionally not validated here — optional, and taken
+  // as typed. See the field's own comment in types.ts.
 
   // Company
   if (!f.companyName?.trim())           errors.push("Company: Company Name or Project Title is required");

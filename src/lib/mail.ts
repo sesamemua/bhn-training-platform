@@ -4,7 +4,15 @@ const HOST = process.env.SMTP_HOST;
 const PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
 const USER = process.env.SMTP_USER;
 const PASS = process.env.SMTP_PASS;
-const FROM = process.env.SMTP_FROM ?? (USER ? `BHN Training <${USER}>` : "");
+/**
+ * Display name shown to recipients, when SMTP_FROM isn't set explicitly.
+ * info@biohubnet.ca is BioHubNet's own address, not this platform's — a
+ * "BHN Training" sender name on mail sent from it reads as the wrong
+ * organization signing someone else's inbox. Every other configured
+ * mailbox keeps the platform's own name.
+ */
+const SENDER_NAME = USER === "info@biohubnet.ca" ? "BioHubNet" : "BHN Training";
+const FROM = process.env.SMTP_FROM ?? (USER ? `${SENDER_NAME} <${USER}>` : "");
 
 let cached: Transporter | null = null;
 

@@ -22,6 +22,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
 import { randomBytes } from "crypto";
 import { getSession } from "@/lib/auth";
+import { getCommitteesForUser } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { r2, R2_BUCKET, putR2Object } from "@/lib/r2";
 import type { EquipDocument } from "@/lib/equip/types";
@@ -41,7 +42,20 @@ const ALLOWED_KINDS = [
 ] as const;
 type Kind = (typeof ALLOWED_KINDS)[number];
 
-async function loadOwnedOrAdmin(id: string, session: Awaited<ReturnType<typeof getSession>>): Promise<{ app: { id: string; userId: string; status: string; documents: EquipDocument[] }; isAdmin: boolean } | null> {
+/**
+ * Who may touch this application's files.
+ *
+ * `isAdmin` keeps its original meaning — full rights, including
+ * deleting a submitted application's attachments. It is NOT the read
+ * gate: EQUIP Review committee members and equip_grant_reviewers can
+ * open /admin/equip/[id] but held no admin role, so every attachment
+ * on the page 404'd for exactly the people the page exists for. They
+ * are readers here, not owners: `canRead` covers the GET, `isAdmin`
+ * still guards DELETE.
+ */
+async function loadForAccess(id: string, session: Awaited<ReturnType<typeof getSession>>): Promise<
+  { app: { id: string; userId: string; status: string; documents: EquipDocument[] }; isAdmin: boolean; isOwner: boolean; canRead: boolean } | null
+> {
   if (!session) return null;
   const userId = (session.user as { id?: string }).id;
   const role = (session.user as { role?: string }).role ?? "";
@@ -51,10 +65,19 @@ async function loadOwnedOrAdmin(id: string, session: Awaited<ReturnType<typeof g
     select: { id: true, userId: true, status: true, documents: true },
   });
   if (!app) return null;
-  if (!isAdmin && app.userId !== userId) return null;
+
+  const isOwner = !!userId && app.userId === userId;
+  let isReviewer = isAdmin || role === "equip_grant_reviewer";
+  if (!isReviewer && !isOwner && userId) {
+    isReviewer = (await getCommitteesForUser(userId)).includes("equip_review");
+  }
+  if (!isAdmin && !isOwner && !isReviewer) return null;
+
   return {
     app: { id: app.id, userId: app.userId ?? "", status: app.status, documents: (app.documents as unknown as EquipDocument[]) ?? [] },
     isAdmin,
+    isOwner,
+    canRead: isAdmin || isOwner || isReviewer,
   };
 }
 
@@ -64,11 +87,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!r2) return NextResponse.json({ error: "R2 not configured" }, { status: 503 });
 
   const { id } = await params;
-  const auth = await loadOwnedOrAdmin(id, session);
+  const auth = await loadForAccess(id, session);
   if (!auth) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  // Only applicant can upload, and only while draft.
-  if (auth.isAdmin && !auth.app.userId) {
-    return NextResponse.json({ error: "Cannot upload as admin" }, { status: 403 });
+  // Only the applicant uploads, and only while draft. Reviewers can
+  // READ this application's files (loadForAccess lets them in) but
+  // uploading into somebody else's draft is not a reading right.
+  if (!auth.isOwner) {
+    return NextResponse.json({ error: "Only the applicant can upload" }, { status: 403 });
   }
   if (auth.app.status !== "draft") {
     return NextResponse.json({ error: "Application is locked" }, { status: 409 });
@@ -114,7 +139,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!r2) return new NextResponse("R2 not configured", { status: 503 });
 
   const { id } = await params;
-  const auth = await loadOwnedOrAdmin(id, session);
+  const auth = await loadForAccess(id, session);
   if (!auth) return new NextResponse("Not found", { status: 404 });
 
   const url = new URL(req.url);
@@ -144,7 +169,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const auth = await loadOwnedOrAdmin(id, session);
+  const auth = await loadForAccess(id, session);
   if (!auth) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const url = new URL(req.url);
@@ -153,7 +178,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   // Only the applicant (in draft) or an admin can delete. Once
   // submitted, the applicant loses delete rights — admins can still
-  // tidy up if a doc is irrelevant.
+  // tidy up if a doc is irrelevant. A reviewer who is neither is a
+  // reader only: they can open every attachment and annotate it, and
+  // remove none of it.
+  if (!auth.isAdmin && !auth.isOwner) {
+    return NextResponse.json({ error: "Reviewers cannot delete attachments" }, { status: 403 });
+  }
   if (!auth.isAdmin && auth.app.status !== "draft") {
     return NextResponse.json({ error: "Locked" }, { status: 409 });
   }

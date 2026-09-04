@@ -22,18 +22,23 @@ export interface ReceiptSection {
   rows: ReceiptRow[];
 }
 
-export const VENTURE_CONNECT_SUBMISSION_BCC = [
-  "info@biohubnet.ca",
-  // Not engage@ — that's the ENGAGE track's inbox. VentureConnect is
-  // EQUIP, and its own team needs the copy, not ENGAGE's.
-  "equip@biohubnet.ca",
-] as const;
+// Who gets BCC'd on the submission receipt used to be hardcoded here.
+// It's now admin-editable — see getEquipCopyRecipients() in
+// lib/equip/emails.ts, which carries the same addresses as its default.
 
 const ROLE_LABELS: Record<ApplicantRole, string> = {
   master_student: "Master's Student",
   phd_student: "PhD Student",
   postdoc: "Postdoctoral Fellow",
   research_associate: "Research Associate",
+};
+
+const GRADUATION_TIMELINE_LABELS: Record<
+  NonNullable<VentureConnectFormData["graduationTimeline"]>,
+  string
+> = {
+  current_student: "Current student",
+  within_two_years: "Within 2 years of graduation",
 };
 
 const EVENT_CATEGORY_LABELS = new Map(
@@ -126,8 +131,14 @@ export function receiptSections(formData: VentureConnectFormData): ReceiptSectio
           label: "Current role",
           value: formData.currentRole ? ROLE_LABELS[formData.currentRole] : "Not provided",
         },
-        { label: "Graduation date", value: formatDate(formData.graduationDate) },
+        {
+          label: "Academic standing",
+          value: formData.graduationTimeline
+            ? GRADUATION_TIMELINE_LABELS[formData.graduationTimeline]
+            : "Not provided",
+        },
         { label: "Institution email", value: present(formData.institutionEmail) },
+        { label: "LinkedIn profile", value: present(formData.linkedinUrl) },
       ],
     },
     {
@@ -163,6 +174,7 @@ export function receiptSections(formData: VentureConnectFormData): ReceiptSectio
         { label: "Event name", value: present(formData.eventName) },
         { label: "Location", value: present(formData.eventLocation) },
         { label: "Dates", value: present(formData.eventDates) },
+        { label: "Event website", value: present(formData.eventWebsite) },
       ],
     },
     {

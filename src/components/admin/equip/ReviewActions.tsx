@@ -28,13 +28,23 @@
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Check, X, Sparkles, AlertCircle, FastForward, FileCheck2 } from "lucide-react";
+import { Loader2, Check, X, Sparkles, AlertCircle, FastForward, FileCheck2, Mail, Send } from "lucide-react";
 import type {
   EquipStatus,
   EquipStream,
   ApplicationStage,
   VentureLiftReviewerScores,
 } from "@/lib/equip/types";
+
+/** Enough of EQUIP_EMAIL_TEMPLATES (lib/equip/emails.ts) for the send
+ *  panel — that module imports prisma, so its data is passed down from
+ *  the server page instead of imported directly into this client
+ *  component. */
+export interface EmailTemplateOption {
+  id: string;
+  label: string;
+  when: string;
+}
 
 interface Props {
   applicationId: string;
@@ -43,6 +53,14 @@ interface Props {
   currentStatus: EquipStatus;
   requestedAmount: number | null;
   approvedAmount: number | null;
+  /** Every template that applies to this application's stream, for the
+   *  Send email panel. */
+  emailTemplateOptions: EmailTemplateOption[];
+  /** STATUS_TO_TEMPLATE's suggestion for the current status, pre-selected
+   *  in the panel — null when no template maps to this status. */
+  defaultEmailTemplateId: string | null;
+  lastEmailSentAt?: string | Date | null;
+  lastEmailTemplateId?: string | null;
   /** VC only — remaining cumulative cap for this applicant.
    *  Null on VL or when no cap applies. */
   remainingCap?: number | null;
@@ -85,6 +103,8 @@ export function ReviewActions({
   requestedAmount, approvedAmount, remainingCap, slotsLeft,
   actualAmount, actualNote,
   hasIpAppendix, existingScores,
+  emailTemplateOptions, defaultEmailTemplateId,
+  lastEmailSentAt, lastEmailTemplateId,
 }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("idle");
@@ -170,6 +190,63 @@ export function ReviewActions({
       setBusy(false);
     }
   }
+
+  // ── Send email — the only path an applicant ever gets emailed
+  // through past the submission receipt, which fires automatically.
+  // Every other status here (claim, decision, reversal) only writes
+  // the record; a reviewer previews and sends separately, on purpose.
+  const [emailTemplateId, setEmailTemplateId] = useState<string>(
+    defaultEmailTemplateId ?? emailTemplateOptions[0]?.id ?? "",
+  );
+  const [emailPreview, setEmailPreview] = useState<{ subject: string; html: string } | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSentNote, setEmailSentNote] = useState<string | null>(null);
+
+  async function loadEmailPreview() {
+    setEmailBusy(true);
+    setEmailError(null);
+    setEmailSentNote(null);
+    try {
+      const res = await fetch(`/api/admin/equip/applications/${applicationId}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: emailTemplateId, dryRun: true }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((j as { error?: string }).error ?? "Could not build preview");
+      setEmailPreview({ subject: j.subject, html: j.html });
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Could not build preview");
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  async function confirmSendEmail() {
+    setEmailBusy(true);
+    setEmailError(null);
+    try {
+      const res = await fetch(`/api/admin/equip/applications/${applicationId}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: emailTemplateId }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((j as { error?: string }).error ?? "Send failed");
+      setEmailPreview(null);
+      setEmailSentNote(`Sent to ${j.to} just now.`);
+      router.refresh();
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Send failed");
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  const lastEmailLabel = lastEmailTemplateId
+    ? emailTemplateOptions.find((o) => o.id === lastEmailTemplateId)?.label ?? lastEmailTemplateId
+    : null;
 
   // Sum + mean of rubric scores for the Stage-2 reviewer summary.
   const filledScores = CRITERIA
@@ -584,6 +661,86 @@ export function ReviewActions({
             onCancel={() => setMode("idle")}
             busy={busy}
           />
+        </div>
+      )}
+
+      {/* Send email — the only path to the applicant's inbox past the
+          submission receipt. Independent of `mode`: a reviewer can send
+          the current status's email, resend an earlier one, or send
+          nothing at all. */}
+      {emailTemplateOptions.length > 0 && (
+        <div className="rounded-xl border border-line bg-elevated/30 p-3 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-subtle inline-flex items-center gap-1.5">
+            <Mail size={11} /> Send email to applicant
+          </p>
+          <p className="text-[11px] text-muted leading-relaxed">
+            Nothing is emailed automatically past the submission receipt. Pick a template, preview it with this applicant&apos;s real details, then send it yourself.
+          </p>
+          {lastEmailSentAt && (
+            <p className="text-[11px] text-emerald-700">
+              Last sent: <strong>{lastEmailLabel}</strong> — {new Date(lastEmailSentAt).toLocaleString()}.
+            </p>
+          )}
+          {emailSentNote && <p className="text-[11px] text-emerald-700 font-semibold">{emailSentNote}</p>}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={emailTemplateId}
+              onChange={(e) => { setEmailTemplateId(e.target.value); setEmailPreview(null); }}
+              className="bg-card-solid border border-line rounded-lg px-2.5 py-1.5 text-xs font-semibold"
+            >
+              {emailTemplateOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={loadEmailPreview}
+              disabled={emailBusy || !emailTemplateId}
+              className="inline-flex items-center gap-1.5 bg-elevated hover:bg-elevated/70 disabled:opacity-50 text-fg text-xs font-bold px-3 py-1.5 rounded-lg"
+            >
+              {emailBusy && !emailPreview ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
+              Preview
+            </button>
+          </div>
+
+          {emailPreview && (
+            <div className="rounded-lg border border-line bg-card p-2.5 space-y-2">
+              <p className="text-[12px] font-bold text-fg">Subject: {emailPreview.subject}</p>
+              <iframe
+                title="Email preview"
+                srcDoc={emailPreview.html}
+                sandbox=""
+                loading="lazy"
+                style={{ background: "#f1f5f9" }}
+                className="h-[360px] w-full border-0 rounded-md"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEmailPreview(null)}
+                  className="text-xs font-semibold text-muted hover:text-fg px-3 py-1.5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmSendEmail}
+                  disabled={emailBusy}
+                  className="inline-flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
+                >
+                  {emailBusy ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                  Send now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {emailError && (
+            <p className="text-[11px] text-rose-700 inline-flex items-center gap-1.5">
+              <AlertCircle size={11} /> {emailError}
+            </p>
+          )}
         </div>
       )}
 

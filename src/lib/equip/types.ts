@@ -27,6 +27,13 @@ export type EquipStatus =
   | "draft"
   | "submitted"
   | "under_review"
+  /** A reviewer sent it back asking for something specific before a
+   *  decision can be made. `reviewerNote` carries what — reused rather
+   *  than adding a new column, same field Approve/Reject already write
+   *  to. Editable (see isEditable below): the applicant's own form
+   *  reopens instead of the read-only SubmittedView, and resubmitting
+   *  sends it back to "submitted". */
+  | "info_requested"
   | "pre_screen_approved"
   | "pre_screen_rejected"
   | "approved"
@@ -90,6 +97,7 @@ export const STATUS_META: Record<EquipStatus, { label: string; tone: "neutral" |
   draft:                { label: "Draft",                tone: "neutral" },
   submitted:            { label: "Submitted",            tone: "brand"   },
   under_review:         { label: "Under review",         tone: "amber"   },
+  info_requested:       { label: "More info requested",  tone: "amber"   },
   pre_screen_approved:  { label: "Pre-screen passed",    tone: "emerald" },
   pre_screen_rejected:  { label: "Pre-screen — not selected", tone: "rose" },
   approved:             { label: "Approved",             tone: "emerald" },
@@ -124,9 +132,24 @@ export interface VentureConnectFormData {
   institutionAffiliation?: string;
   departmentProgram?: string;
   currentRole?: ApplicantRole;
-  /** Expected or completed graduation date. */
-  graduationDate?: string;              // ISO yyyy-mm-dd
+  /**
+   * Replaces an earlier free-date "Graduation Date" field. The
+   * eligibility rule only ever cared about one thing — are they still
+   * a student, or close enough to graduating that VentureConnect is
+   * still the right program for them — and a date picker asked for
+   * more precision than that question needs, on a paper form that
+   * never asked for a date to begin with.
+   */
+  graduationTimeline?: "current_student" | "within_two_years";
   institutionEmail?: string;
+  /**
+   * Optional, and not on the paper PDF. Stored exactly as typed — no
+   * parsing into a canonical profile URL, no format check. Same rule as
+   * the speaker intake form's LinkedIn field: a wrong link is a wrong
+   * link whether or not it was validated, and the field is read by a
+   * person, not computed on.
+   */
+  linkedinUrl?: string;
 
   // ── Company Information ──────────────────────────────────
   companyName?: string;
@@ -165,6 +188,9 @@ export interface VentureConnectFormData {
    *  written the way the event advertises it is more useful to a
    *  reviewer than two date pickers that disagree with the website. */
   eventDates?: string;
+  /** Optional. Not on the paper PDF — a reviewer link to look the event
+   *  up, nothing more; not required the way Name / Location / Dates are. */
+  eventWebsite?: string;
 
   // ── Budget & Supporting Documentation ────────────────────
   /** Which of the named attachments are enclosed. The form is a
@@ -583,7 +609,7 @@ export interface EquipMilestone {
  *  can also edit when their pre-screening was approved — they
  *  need to fill in Stage 2. */
 export function isEditable(status: EquipStatus): boolean {
-  return status === "draft" || status === "pre_screen_approved";
+  return status === "draft" || status === "pre_screen_approved" || status === "info_requested";
 }
 
 /** Statuses considered "open" — counted in the admin queue. */
