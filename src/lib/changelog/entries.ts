@@ -4714,4 +4714,11 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  {
+    title: "Training Week registration now checks the email against the programme lists",
+    body: "Type the email you registered with BioHubNet, press **Continue**, and the platform checks it against the programme lists there and then. Not on one? The form stops, says so, and points you at your programme coordinator — rather than letting you rank six sessions first and refusing you at the end.\n\nCorrecting a typo reopens the form immediately, so a mistyped address is a two-second recovery, not a dead end.\n\n**New screen: Admin → Eligibility lists.** The lists themselves were never loadable from the platform — the import API existed and nothing called it, so the check shipped switched off with no way to switch it on. Now you can paste each of the three sources (ENGAGE/EXPERIENCE, EQUIP Venture Connect, VentureLift pre-screening) straight from the sheet. Every address in the paste is taken, so a renamed column does not break an import, and re-importing **replaces** that list — somebody removed from a programme stops being eligible — while anyone you added by hand is kept.\n\nThe page leads with the one fact that matters: whether anybody is actually being turned away right now, and if the newest list is more than 72 hours old it says so, because anyone accepted since then would be refused.\n\n**Two deliberate safety properties.** With no list loaded nothing is enforced and everybody gets in — an empty roster refusing every applicant on the morning registration opens is a far worse failure than letting people through. And the inline check is advisory only: the submit action runs the same check again server-side, so skipping the browser gains nothing.\n\nThe check answers only \u201con a list or not\u201d \u2014 never which one. Naming the list would turn the form into a way of finding out who applied to EQUIP by typing addresses at it. It is rate limited per IP for the same reason.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
 ];

@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
 import { checkEligibility, BLOCKED_MESSAGE } from "@/lib/eligibility/check";
+import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
 import { makeSeats } from "@/lib/formbuilder/seats";
 import { since, tooMany } from "@/lib/formbuilder/throttle";
@@ -56,8 +57,8 @@ export async function submitPublicForm(
    * different question from the address they want us to write to —
    * emailFrom prefers `email` and would never fall through to it.
    */
-  const registered = typeof verdict.clean.trainee_email === "string"
-    ? verdict.clean.trainee_email
+  const registered = typeof verdict.clean[ELIGIBILITY_EMAIL_KEY] === "string"
+    ? (verdict.clean[ELIGIBILITY_EMAIL_KEY] as string)
     : null;
   const eligibility = registered ? await checkEligibility(registered) : null;
   if (eligibility?.blocked) {

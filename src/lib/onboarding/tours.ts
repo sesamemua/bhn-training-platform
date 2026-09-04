@@ -2560,6 +2560,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the EQUIP queue", href: "/admin/equip" },
   },
   {
+    id: "admin.eligibility-lists",
+    title: "Load the lists before registration opens",
+    body: "**Admin → Eligibility lists.** Training Week registration checks the email somebody types against the programme lists the moment they enter it, and refuses anyone who is not on one.\n\nUntil you import, **nothing is enforced and everybody gets in** — that is deliberate, because an empty list refusing every applicant on launch morning is the worse failure. The page tells you plainly which state you are in.\n\nPaste each of the three sources straight from the sheet; every address in the paste is picked up, so renamed columns do not matter. Re-importing replaces that list, so someone removed from a programme stops being eligible.",
+    path: "/admin/eligibility",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.04",
+    cta: { label: "Open Eligibility lists", href: "/admin/eligibility" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

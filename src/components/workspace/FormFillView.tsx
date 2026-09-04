@@ -29,6 +29,8 @@ import { chosenClashes } from "@/lib/formbuilder/calendar";
 import { linkify } from "@/lib/formbuilder/linkify";
 import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
 import { rankedSessions } from "@/lib/formbuilder/submit";
+import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
+import { BLOCKED_MESSAGE } from "@/lib/eligibility/messages";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
 import { ordinal, SessionCalendar } from "./SessionCalendar";
@@ -83,6 +85,12 @@ export function FormFillView({
    * what you said.
    */
   const [reach, setReach] = useState(1);
+  /* The roster verdict on the address they typed. Only ever set from
+     the server; "blocked" ends the form the same way a stopsHere note
+     does. Cleared whenever the address changes, so correcting a typo
+     reopens the form instead of stranding them. */
+  const [gateBlocked, setGateBlocked] = useState(false);
+  const [gateChecking, setGateChecking] = useState(false);
   const [all, setAll] = useState(false);
 
   const answeredAt = (f: FormField) => {
@@ -132,7 +140,15 @@ export function FormFillView({
    * required question has an answer" — would be the form contradicting
    * itself on one screen.
    */
-  const stopped = visible.find((f) => f.stopsHere);
+  const stoppedByNote = visible.find((f) => f.stopsHere);
+  /*
+   * Refused by the roster ends the form the same way a stopsHere note
+   * does — one notion of "this is as far as this goes", so Continue,
+   * Submit and the photography terms all disappear together. Folding it
+   * in here rather than adding a second ended-state is what stops the
+   * form offering Submit to somebody it has just turned away.
+   */
+  const stopped = stoppedByNote || (gateBlocked ? ({ key: "__gate" } as unknown as FormField) : undefined);
 
   const more = shown.length - open;
   const last = shown[open - 1];
@@ -151,7 +167,12 @@ export function FormFillView({
    */
   const ended = more === 0 && gaps.length === 0;
 
-  const set = (k: string, v: Answers[string]) => { setAnswers({ ...answers, [k]: v }); setDone(false); };
+  const set = (k: string, v: Answers[string]) => {
+    setAnswers({ ...answers, [k]: v });
+    setDone(false);
+    // Retyping the address is how somebody recovers from a refusal.
+    if (k === ELIGIBILITY_EMAIL_KEY) setGateBlocked(false);
+  };
 
   /*
    * Focus follows the question that just opened.
@@ -276,7 +297,19 @@ export function FormFillView({
         </div>
       )}
 
-      {stopped && (
+      {gateBlocked && (
+        <div role="alert" className="mt-4 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-4">
+          <p className="flex items-center gap-2 text-[13.5px] font-bold text-amber-600">
+            <AlertTriangle size={15} /> We can&apos;t place you on this list
+          </p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-amber-700">{BLOCKED_MESSAGE}</p>
+          <p className="mt-2 text-[12.5px] text-amber-700">
+            Correct the address above and press Continue again if you typed it wrong.
+          </p>
+        </div>
+      )}
+
+      {stoppedByNote && (
         <p className="mt-4 rounded-lg border border-line bg-elevated/60 p-3 text-[12.5px] leading-relaxed text-muted">
           There is nothing more to fill in for now. Once you are in a programme, come back
           to this form and it will carry on from here.
@@ -348,11 +381,42 @@ export function FormFillView({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             className="rounded-lg bg-brand px-5 py-2.5 text-[13.5px] font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
-            disabled={waiting}
+            disabled={waiting || gateChecking}
             aria-describedby="continue-hint"
-            onClick={() => setReach(open + 1)}
+            onClick={async () => {
+              /*
+               * The roster check happens HERE, at the address, rather
+               * than at Submit — being told you are not on the list is
+               * worth knowing before ranking six sessions, not after.
+               *
+               * Advisory only: the submit action checks again on the
+               * server. If this request fails we open the next question
+               * anyway. A registrant must not be stopped by our network.
+               */
+              const typed = answers[ELIGIBILITY_EMAIL_KEY];
+              const asksHere = shown.slice(0, open).some((f) => f.key === ELIGIBILITY_EMAIL_KEY);
+              if (mode === "live" && asksHere && typeof typed === "string" && typed.includes("@")) {
+                setGateChecking(true);
+                try {
+                  const res = await fetch("/api/eligibility/check", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: typed }),
+                  });
+                  if (res.ok) {
+                    const j = (await res.json()) as { blocked?: boolean };
+                    if (j.blocked) { setGateBlocked(true); setGateChecking(false); return; }
+                  }
+                } catch {
+                  /* Network trouble is not a verdict — carry on. */
+                } finally {
+                  setGateChecking(false);
+                }
+              }
+              setReach(open + 1);
+            }}
           >
-            Continue
+            {gateChecking ? "Checking…" : "Continue"}
           </button>
           <span id="continue-hint" className="text-[12px] text-subtle">
             {waiting

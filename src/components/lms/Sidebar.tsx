@@ -608,6 +608,8 @@ const adminEquipItems: NavItem[] = [
     description: "Program-management dashboard for the EQUIP pillar — apps in flight, approved this quarter, $ funded YTD, stalled-app alerts, per-stream funnel, open windows, recent activity. Renders in Studio." },
   { label: "EQUIP review",         href: "/admin/equip",               icon: Rocket,        minRole: "admin",
     description: "Review queue for the EQUIP funding pillar — VentureConnect (≤$5K) + VentureLift (≤$25K). Claim, approve / reject with a note + amount, mark funded. Mirrors the credit-applications shape." },
+  { label: "Eligibility lists",    href: "/admin/eligibility",         icon: ShieldCheck,   minRole: "admin",
+    description: "The programme lists Training Week registration is checked against. Someone not on a list is refused at the email question. Nothing is enforced until a list is imported, so load them before registration opens." },
   { label: "EQUIP email templates", href: "/admin/equip/email-templates", icon: Mail,        minRole: "admin",
     description: "Every email an EQUIP applicant can receive, for both streams — view, hand-edit, or AI-rewrite the copy. Sending itself always happens from the review page as an explicit reviewer action, never automatically." },
   { label: "EQUIP deadlines",      href: "/admin/equip/deadlines",     icon: ClipboardList, minRole: "admin",
