@@ -2550,6 +2550,16 @@ export const TOUR_STEPS: TourStep[] = [
     cta: { label: "Open the email editor", href: "/admin/equip/email-templates" },
   },
   {
+    id: "equip.document-annotations",
+    title: "Mark up an application's attachments",
+    body: "**Review** on the queue now opens the application over the list, so going down the queue doesn't lose your place — the full page is one click away inside it.\n\nEvery PDF and image renders page by page, and **you can click anywhere on a page to pin a comment there**. Pins are numbered, stay put at any zoom, and sit in a rail beside the document that jumps you to their page. Resolve them when they're dealt with.\n\nTwo things to know: the **original file is never changed** — a note is coordinates pointing at it, not an edit — and these are **reviewers-only**, on a separate table from the applicant's comment thread. They're shared and unowned, so any reviewer can add to or tidy any note. The AI triage summary reads the attachments now too.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.03",
+    cta: { label: "Open the EQUIP queue", href: "/admin/equip" },
+  },
+  {
     id: "complete",
     title: "You're all set",
     body: "Reopen this tour anytime from 'Take the tour' in the sidebar — the compass icon at the bottom-left, sitting next to the theme picker. New features will surface here as they ship.",

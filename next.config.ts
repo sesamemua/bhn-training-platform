@@ -88,7 +88,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  serverExternalPackages: ["unzipper", "archiver", "@prisma/client", "bcryptjs", "unpdf", "mammoth"],
+  // @napi-rs/canvas is here for the same reason as the rest, but the
+  // symptom is specific: it loads a platform-specific native binding
+  // (@napi-rs/canvas-darwin-arm64, -linux-x64-gnu, …) through an
+  // optional dependency the bundler cannot trace, so bundling it fails
+  // at runtime with "Cannot find native binding". It rasterises PDF
+  // pages for the EQUIP reviewer annotator
+  // (/api/admin/equip/applications/[id]/document/page).
+  serverExternalPackages: ["unzipper", "archiver", "@prisma/client", "bcryptjs", "unpdf", "mammoth", "@napi-rs/canvas"],
   // /admin/security reads markdown files at runtime from docs/security/.
   // Without an explicit trace include, Vercel's file-tracing layer can
   // exclude content outside `app/` from the serverless function bundle,

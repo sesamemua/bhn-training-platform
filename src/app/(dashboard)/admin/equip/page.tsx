@@ -16,6 +16,7 @@ import { DSSection } from "@/components/design-system/DSSection";
 import { DSStatGrid, DSStat } from "@/components/design-system/DSStatGrid";
 import { EquipDemoTools } from "@/components/admin/equip/EquipDemoTools";
 import { DeleteApplicationButton } from "@/components/admin/equip/DeleteApplicationButton";
+import { QuickReviewOverlay } from "@/components/admin/equip/QuickReviewOverlay";
 import {
   STREAM_META, STATUS_META,
   type EquipStatus, type EquipStream,
@@ -304,12 +305,14 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                       </td>
                       <td className="px-2.5 py-2 text-right">
                         <div className="inline-flex items-center gap-2">
-                          <Link
-                            href={`/admin/equip/${a.id}`}
-                            className="text-xs font-bold text-brand-700 hover:text-brand-800 inline-flex items-center gap-0.5 whitespace-nowrap"
-                          >
-                            Review <ArrowRight size={11} />
-                          </Link>
+                          {/* Opens over the queue rather than navigating,
+                              so working down the list doesn't mean losing
+                              your place on every back-press. The overlay
+                              carries a "Full page" link for the rest. */}
+                          <QuickReviewOverlay
+                            applicationId={a.id}
+                            applicantName={applicantOf(a).name ?? "This applicant"}
+                          />
                           <DeleteApplicationButton
                             applicationId={a.id}
                             applicantName={applicantOf(a).name ?? "This applicant"}

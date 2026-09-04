@@ -6,13 +6,14 @@
  * ReviewActions component below.
  */
 import { redirect, notFound } from "next/navigation";
-import { FileText, User as UserIcon, MapPin, Briefcase, Mail, Lightbulb } from "lucide-react";
+import { FileText, User as UserIcon, MapPin, Briefcase, Mail, Lightbulb, StickyNote } from "lucide-react";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { DSSection } from "@/components/design-system/DSSection";
 import { ReviewActions } from "@/components/admin/equip/ReviewActions";
 import { TriageSummary } from "@/components/admin/equip/TriageSummary";
+import { DocumentAnnotator } from "@/components/admin/equip/DocumentAnnotator";
 import { MessageThread } from "@/components/equip/MessageThread";
 import { MilestoneTracker } from "@/components/equip/MilestoneTracker";
 import { type EquipMilestone } from "@/lib/equip/types";
@@ -77,6 +78,27 @@ export default async function AdminEquipReviewPage({
     vcState = capStateFrom(prior);
     vcTotal = totalVariance([...prior, app]);
   }
+
+  /* Reviewer-only pinned notes on the attachments. Fetched here so the
+     annotator paints its pins on first render rather than flashing an
+     empty document and filling in. */
+  const documentNotes = (
+    await prisma.equipDocumentNote.findMany({
+      where: { applicationId: app.id },
+      orderBy: [{ page: "asc" }, { createdAt: "asc" }],
+    })
+  ).map((n) => ({
+    id: n.id,
+    documentKey: n.documentKey,
+    page: n.page,
+    x: n.x,
+    y: n.y,
+    body: n.body,
+    status: n.status,
+    authorName: n.authorName,
+    createdAt: n.createdAt.toISOString(),
+    updatedAt: n.updatedAt.toISOString(),
+  }));
 
   const stream = STREAM_META[app.stream as EquipStream];
   const status = STATUS_META[app.status as EquipStatus];
@@ -150,6 +172,22 @@ export default async function AdminEquipReviewPage({
       )}
 
       {app.status !== "draft" && <TriageSummary applicationId={app.id} />}
+
+      {documents.length > 0 && (
+        <DSSection
+          eyebrow="Reviewers only"
+          title="Attachments & notes"
+          icon={<StickyNote size={14} className="text-brand-600" />}
+        >
+          <DocumentAnnotator
+            applicationId={app.id}
+            documents={documents.map((d) => ({
+              key: d.key, name: d.name, contentType: d.contentType, kind: d.kind, size: d.size,
+            }))}
+            initialNotes={documentNotes}
+          />
+        </DSSection>
+      )}
 
       <DSSection eyebrow="Applicant" title="Who's applying" icon={<UserIcon size={14} className="text-brand-600" />}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

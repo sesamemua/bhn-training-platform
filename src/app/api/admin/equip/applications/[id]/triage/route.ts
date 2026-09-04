@@ -17,9 +17,12 @@ import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { AI_CONFIGURED, chat } from "@/lib/ai";
 import { applicantOf } from "@/lib/equip/applicant";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { r2, R2_BUCKET } from "@/lib/r2";
+import type { EquipDocument } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const SYSTEM = `You are an experienced biotech / biomanufacturing program reviewer. Read a single Equip funding application (either VentureConnect for events or VentureLift for commercialization) and produce a tight executive summary so a senior reviewer can decide in under 60 seconds.
 
@@ -28,6 +31,8 @@ Return ONLY a single JSON object with these keys:
   • strengths  — array of 2-3 short bullets. Each is one phrase / clause, not a sentence.
   • concerns   — array of 0-3 short bullets. Honest, calibrated; skip if nothing material.
   • verdict    — exactly one of: "looks_promising" | "needs_more_info" | "weak_fit"
+
+You may be given text extracted from the application's ATTACHMENTS (pitch deck, support letters, IP evidence) as well as the form body — weigh both, and never claim to have read an attachment listed as unreadable.
 
 Be candid; reviewers will use this to triage, not to decide. Don't pad — if there are no concerns, leave the array empty. CRITICAL: Output the JSON object only — no prose, no fences.`;
 
@@ -59,6 +64,50 @@ function extractJsonBlock(text: string): string {
   return stripped;
 }
 
+/** Per-attachment cap. A 60-page appendix would otherwise crowd the
+ *  form body — the part the reviewer is actually deciding on — out of
+ *  the context window. */
+const CHARS_PER_ATTACHMENT = 6000;
+const MAX_ATTACHMENTS_READ = 6;
+
+/**
+ * Pull readable text out of the PDF attachments. Best-effort by
+ * design: one unreadable file must not cost the reviewer their whole
+ * summary, so failures are reported as "couldn't read" rather than
+ * thrown.
+ */
+async function extractAttachmentText(
+  docs: EquipDocument[],
+): Promise<{ excerpts: string[]; unread: string[] }> {
+  const excerpts: string[] = [];
+  const unread: string[] = [];
+  if (!r2) return { excerpts, unread: docs.map((d) => d.name) };
+
+  for (const doc of docs.slice(0, MAX_ATTACHMENTS_READ)) {
+    const isPdf = doc.contentType === "application/pdf" || /\.pdf$/i.test(doc.name);
+    if (!isPdf) { unread.push(doc.name); continue; }
+    try {
+      const res = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: doc.key }));
+      if (!res.Body) { unread.push(doc.name); continue; }
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Buffer>) chunks.push(chunk);
+
+      const { extractText, getDocumentProxy } = await import("unpdf");
+      const pdf = await getDocumentProxy(new Uint8Array(Buffer.concat(chunks)));
+      const { text } = await extractText(pdf, { mergePages: true });
+      const clean = String(text).replace(/\s+/g, " ").trim();
+      if (!clean) { unread.push(`${doc.name} (no extractable text — likely a scan)`); continue; }
+      excerpts.push(`--- ${doc.name} (${doc.kind}) ---\n${clean.slice(0, CHARS_PER_ATTACHMENT)}`);
+    } catch {
+      unread.push(doc.name);
+    }
+  }
+  if (docs.length > MAX_ATTACHMENTS_READ) {
+    unread.push(`…and ${docs.length - MAX_ATTACHMENTS_READ} more not read`);
+  }
+  return { excerpts, unread };
+}
+
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireCommitteeOrAdmin(["equip_review"], ["equip_grant_reviewer"]);
   if (!AI_CONFIGURED.chat) {
@@ -87,6 +136,26 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     JSON.stringify(app.formData, null, 2),
   ];
   if (app.reviewerNote) lines.push("", "Existing reviewer note:", app.reviewerNote);
+
+  // Read the attachments too. The form body alone misses the pitch
+  // deck, the support letters and the IP evidence — which is usually
+  // where the substance of a commercialization application actually
+  // lives, and summarising without them was summarising the covering
+  // note rather than the application.
+  const attachmentText = await extractAttachmentText(
+    (app.documents as unknown as EquipDocument[]) ?? [],
+  );
+  if (attachmentText.excerpts.length > 0) {
+    lines.push("", "Attachments (extracted text):", ...attachmentText.excerpts);
+  }
+  if (attachmentText.unread.length > 0) {
+    // Told to the model on purpose: a summary that quietly ignored an
+    // unreadable pitch deck would read as though it had considered it.
+    lines.push(
+      "",
+      `Attachments present but NOT readable as text (do not assume their contents): ${attachmentText.unread.join(", ")}`,
+    );
+  }
 
   const aiResp = await chat(
     [

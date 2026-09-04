@@ -306,14 +306,14 @@ model User {
   // optionally issues a tier-3 MerchReward.
   themeVotes             ThemeVote[]
   logoVotes              LogoVote[]
-  notifyContactsAdded    NotifyContact[] @relation("NotifyContactAddedBy")
-  notifyLogs             NotifyLog[]     @relation("NotifyLogSender")
+  notifyContactsAdded    NotifyContact[]     @relation("NotifyContactAddedBy")
+  notifyLogs             NotifyLog[]         @relation("NotifyLogSender")
   eligibilityAdded       EligibilityEntry[]  @relation("EligibilityAddedBy")
   eligibilityImports     EligibilityImport[] @relation("EligibilityImportBy")
   codeReviews            CodeReview[]        @relation("CodeReviewBy")
   codeReviewNotes        CodeReviewNote[]    @relation("CodeReviewNoteBy")
-  themeProposals         ThemeProposal[] @relation("ThemeProposals")
-  reviewedThemeProposals ThemeProposal[] @relation("ThemeProposalReviewer")
+  themeProposals         ThemeProposal[]     @relation("ThemeProposals")
+  reviewedThemeProposals ThemeProposal[]     @relation("ThemeProposalReviewer")
 
   // ── Application-comment + feedback relations ──
   // Admin / employer comments authored on talent-application
@@ -341,9 +341,10 @@ model User {
   // across the two streams (VentureConnect ≤ $5K, VentureLift
   // ≤ $25K), and the same admin user can also be the reviewer on
   // other people's apps — hence two named relations.
-  equipApplications EquipApplication[]        @relation("EquipApplicant")
-  equipReviewed     EquipApplication[]        @relation("EquipReviewer")
-  equipMessages     EquipApplicationMessage[]
+  equipApplications  EquipApplication[]        @relation("EquipApplicant")
+  equipReviewed      EquipApplication[]        @relation("EquipReviewer")
+  equipMessages      EquipApplicationMessage[]
+  equipDocumentNotes EquipDocumentNote[]       @relation("EquipDocumentNoteAuthor")
 
   // Committee memberships — see CommitteeMembership model. A user
   // can belong to zero or more committees (Equip review, HQP, …).
@@ -2533,15 +2534,15 @@ model LaunchChecklistState {
 /// the relation field is still `event` for readability; only the
 /// type name carries the `Bhn` prefix.
 model BhnEvent {
-  id                   String    @id @default(cuid())
+  id                String  @id @default(cuid())
   /// URL-safe identifier, e.g. "2026-annual-symposium". Renaming one is
   /// safe — add a redirect in next.config so links already sent survive.
-  slug                 String    @unique
+  slug              String  @unique
   /// When true the public speaker-intake form at /events/<slug>/speaker
   /// accepts submissions. Off by default so the link cannot be guessed
   /// into an open door before invitations go out — same shape as
   /// ShowcaseGroup.active.
-  speakerIntakeOpen    Boolean   @default(false)
+  speakerIntakeOpen Boolean @default(false)
 
   /// Word limits for the speaker intake form, per event.
   ///
@@ -2899,10 +2900,10 @@ model WorkshopBooking {
   /// they put it there.
   decisionNote     String?
 
-  workshop   Workshop              @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  user       User?                 @relation(fields: [userId], references: [id], onDelete: Restrict)
-  submission EventFormSubmission?  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  approvedBy User?                 @relation("WorkshopBookingApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  workshop   Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  user       User?                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  submission EventFormSubmission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  approvedBy User?                @relation("WorkshopBookingApprover", fields: [approvedById], references: [id], onDelete: SetNull)
 
   @@unique([workshopId, userId])
   /// The same guarantee for a registration with no account behind it:
@@ -3263,11 +3264,11 @@ model PollResponse {
 /// read-modify-write race where the last write wins and somebody's
 /// ballot quietly disappears. Here two voters touch two rows.
 model LogoVote {
-  id     String @id @default(cuid())
-  userId String
+  id        String   @id @default(cuid())
+  userId    String
   /// Matches an id in src/lib/symposium/logo-options.ts. A String, not
   /// an FK, because the candidates are files on disk, not rows.
-  optionId String
+  optionId  String
   /// Optional one-liner: why this one. Capped in the action, not here.
   note      String?
   createdAt DateTime @default(now())
@@ -3864,9 +3865,10 @@ model EquipApplication {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  user     User?                     @relation("EquipApplicant", fields: [userId], references: [id], onDelete: Cascade)
-  reviewer User?                     @relation("EquipReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
-  messages EquipApplicationMessage[]
+  user          User?                     @relation("EquipApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer      User?                     @relation("EquipReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  messages      EquipApplicationMessage[]
+  documentNotes EquipDocumentNote[]
 
   @@index([userId, status])
   @@index([status, submittedAt])
@@ -3884,6 +3886,50 @@ model EquipApplicationMessage {
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([applicationId, createdAt])
+}
+
+/// A reviewer's note pinned to a point on one page of one attachment.
+///
+/// REVIEWER-ONLY, and structurally so: EquipApplicationMessage above is
+/// the two-way thread the APPLICANT sees (it renders in SubmittedView).
+/// These are a separate table precisely so there is no switch to get
+/// wrong — nothing applicant-facing queries this model at all.
+///
+/// The original file is never touched. R2 holds the upload; this holds
+/// coordinates that point AT it. Deleting every note leaves the
+/// attachment byte-identical.
+///
+/// Not owned by anyone: any reviewer can read, add to, and resolve any
+/// note. authorId/authorName record who wrote it, they do not gate it.
+model EquipDocumentNote {
+  id            String   @id @default(cuid())
+  applicationId String
+  /// R2 key of the attachment (EquipDocument.key). Not a relation —
+  /// documents live in the application's `documents` JSON array, not
+  /// their own table.
+  documentKey   String
+  /// 1-based page. Images are a single page, so always 1.
+  page          Int      @default(1)
+  /// Position within the page, 0..1 from the top-left of the rendered
+  /// page box. Normalized rather than pixels so a pin lands in the same
+  /// spot at any zoom, window size or device pixel ratio — the page is
+  /// re-rendered at whatever width the viewer happens to have.
+  x             Float
+  y             Float
+  body          String
+  /// "open" | "resolved"
+  status        String   @default("open")
+  /// Who wrote it. authorName is snapshotted so a note keeps reading
+  /// correctly after the account is renamed or removed.
+  authorId      String?
+  authorName    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  application EquipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author      User?            @relation("EquipDocumentNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, documentKey, page])
 }
 
 // ─── Committee memberships ──────────────────────────────────────
@@ -6184,7 +6230,7 @@ model NotifyLog {
   /// Stored as sent. Lowercased separately for counting.
   recipient String
 
-  senderId String?
+  senderId  String?
   createdAt DateTime @default(now())
 
   sender User? @relation("NotifyLogSender", fields: [senderId], references: [id], onDelete: SetNull)
@@ -6334,9 +6380,9 @@ model CodeReviewNote {
   /// still carries the ones this app rendered.
   anchorLabel String?
   /// Structural fallback, relative to the frame body.
-  cssPath String?
+  cssPath     String?
   /// found | orphaned — set when a later paste cannot re-locate it.
-  anchorState String @default("found")
+  anchorState String  @default("found")
 
   body   String
   /// open | resolved
