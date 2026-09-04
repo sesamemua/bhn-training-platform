@@ -30,7 +30,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.15b";
+export const TOUR_VERSION = "2026.09.16";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -2576,8 +2576,17 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/admin/workspace/forms",
     placement: "center",
     roles: ["admin", "superadmin"],
-    since: "2026.09.04",
+    since: "2026.09.16",
     cta: { label: "Open Forms", href: "/admin/workspace/forms" },
+  },
+  // ─── Fall's limited theme — Harvest
+  {
+    id: "theme.harvest",
+    title: "Fall's limited theme: Harvest",
+    body: "Rust, burgundy and goldenrod on warm oat, with leaves coming down the page over a low woodsmoke haze. The Limited-time section has been empty since End of Summer retired on 31 August \u2014 this fills it. Open the palette at the bottom-left of the sidebar and pick it under Limited time. It runs the whole of fall and retires after 30 November.",
+    path: "/dashboard",
+    placement: "center",
+    since: "2026.09.16",
   },
   {
     id: "complete",

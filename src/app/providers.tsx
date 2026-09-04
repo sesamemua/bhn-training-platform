@@ -13,6 +13,7 @@ import { SakuraAtmosphere } from "@/components/themes/SakuraAtmosphere";
 import { IceCreamAtmosphere } from "@/components/themes/IceCreamAtmosphere";
 import { CanadaAtmosphere } from "@/components/themes/CanadaAtmosphere";
 import { EndOfSummerAtmosphere } from "@/components/themes/EndOfSummerAtmosphere";
+import { HarvestAtmosphere } from "@/components/themes/HarvestAtmosphere";
 import { DemoTourProvider } from "@/lib/demo/tourContext";
 import type { DesignSystemId } from "@/lib/design-system/registry";
 
@@ -58,6 +59,11 @@ export function Providers({
                   inactive. */}
               <CanadaAtmosphere />
               <EndOfSummerAtmosphere />
+              {/* Falling rust / burgundy / goldenrod leaves + woodsmoke
+                  haze when theme === "harvest" (the fall drop that
+                  replaced End of Summer once August ended). Returns
+                  null for every other theme — free while inactive. */}
+              <HarvestAtmosphere />
               {/* DemoTourProvider — global state + navigation side-effects
                   for the guided platform demo (admin/demo). Wraps children
                   so both the DemoHub launcher and the DemoOverlay visual

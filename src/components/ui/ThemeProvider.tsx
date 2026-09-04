@@ -89,6 +89,14 @@ export const THEMES = [
     endsOn: "2026-08-31",
     limited: true,
   },
+  {
+    id: "harvest",
+    name: "Harvest",
+    description: "Rust, burgundy and goldenrod on warm oat, with leaves drifting down over a low woodsmoke haze. A limited fall engagement.",
+    category: "limited",
+    endsOn: "2026-11-30",
+    limited: true,
+  },
 ] as const;
 
 /** Display labels for each category — surfaced as section headers

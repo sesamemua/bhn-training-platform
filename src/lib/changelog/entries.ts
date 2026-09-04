@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Harvest — limited theme, fall 2026
+  {
+    title: "Harvest — limited-time theme (until 30 November 2026)",
+    body: "The Limited-time section of the theme picker has been empty since **End of Summer** retired on 31 August. **Harvest** fills it: rust, burgundy and goldenrod on warm oat — the season after those last warm evenings, when the leaves are down and there is woodsmoke on the air. Deliberately cooler and greyer than End of Summer's sun-bleached linen, so the two do not read as the same palette a shade apart.\n\nSwitch to it and **leaves come down the page** — rust, burgundy, goldenrod and umber, each with its own fall speed, sway and spin — over a low woodsmoke haze along the bottom of the viewport, with a caption in the corner cycling through fall observations. It shares its tumble mechanic with **O Canada**'s maple leaves deliberately, but draws a plain lobed leaf rather than the maple outline so the two are not reskins of each other. Like every atmosphere layer it respects *prefers-reduced-motion*: the palette stays, nothing moves.\n\nPick it from the **theme switcher** (the oat-and-rust swatch under *Limited time*), or from the theme-of-the-day card. Unlike the earlier drops, which each ran a single calendar month, this one spans the whole of meteorological fall and retires after **30 November** — anyone still on it falls back to their usual theme.",
+    kind: "feature",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── Registration confirmation: the week you chose, drawn the way you chose it
   {
     title: "The registration confirmation now shows your sessions as the calendar you picked them on",
