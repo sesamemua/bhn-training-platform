@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * The week, drawn to scale — shared by the builder and by the form
- * people fill in.
+ * Choosing sessions off the week — the registrant's side of the grid.
  *
- * The vertical axis is TIME. A session's box starts where it starts and
- * is as tall as it is long, so an all-day workshop looks like an all-day
- * workshop and a two-and-a-half-hour tour looks like a third of one.
+ * The drawing itself is `WeekGrid`: hour scale, day columns, lanes,
+ * block geometry. This file is the adapter for ONE kind of data (a
+ * form field's `slots`, plus the options a person has clicked) and the
+ * contents of one kind of cell (a rank badge, a time, a name). The
+ * Admin dashboard is the other adapter over the same drawing.
  *
  * The first version drew every session as an equal-height card grouped
  * into rows, which is a list wearing a calendar's clothes: the CL3
@@ -14,47 +15,18 @@
  * and nothing on screen said one was three times the other. Picking a
  * session is a decision about your day, and a picture that flattens
  * duration hides the part of the decision that matters.
- *
- * The maths is `gridFromSlots`, the same function the Admin dashboard
- * calendar uses. An organiser's view of the week and a registrant's
- * view of it being different drawings would be a difference nobody
- * could explain.
  */
 import { useMemo, type ReactNode } from "react";
-import { chosenConflicts, clashes as overlaps, sessionParts, type Slot } from "@/lib/formbuilder/calendar";
-import { gridFromSlots, label as hourLabel, place, toMinutes } from "@/lib/allocation/schedule";
+import { chosenConflicts, clashes as overlaps, sessionParts, type Placed, type Slot } from "@/lib/formbuilder/calendar";
+import { gridFromSlots, toMinutes } from "@/lib/allocation/schedule";
+import { dayLabel, HOUR_SCALE, WeekGrid, type WeekBlock } from "./WeekGrid";
 import type { FormField } from "@/lib/formbuilder/types";
 
-/**
- * How tall an hour is — set in CSS, not here.
- *
- * Enough that the shortest session on the grid is still a comfortable
- * click target, and few enough pixels that three days of a working day
- * fit on a screen without scrolling.
- *
- * It has to be two numbers, because the week is drawn two ways. Side by
- * side, 62px keeps a two-and-a-half-hour tour a comfortable target.
- * Stacked one day under another on a phone, three days at 62px is two
- * full screens of scrolling, so 46px — still a 114px block for the
- * shortest session here, well over the 44px a thumb needs.
- *
- * A custom property rather than a prop or a piece of state: the
- * container query already knows which layout it is in, and a second
- * source of truth for the same fact is how the two drawings drift
- * apart.
- */
-const HOUR_SCALE = "[--hour:46px] @xl:[--hour:62px]";
-
-/**
- * Shorter again on a receipt.
- *
- * Nothing here is clicked, so the floor is legibility rather than a
- * thumb: 30px keeps the shortest session on the live week at 75px and
- * puts a stacked three-day receipt inside one phone screen. Above @xl
- * it is the picker's own 62px, because the whole point of the receipt
- * is that it is the same drawing.
- */
-const HOUR_SCALE_RECEIPT = "[--hour:30px] @xl:[--hour:62px]";
+// The ranking list below the grid spells the day the same way the day
+// headings above it do, which is the whole reason this lives in one
+// place. Re-exported because it reads as part of this component's
+// surface even though the drawing owns it.
+export { dayLabel };
 
 /**
  * "1st", "2nd", "3rd" — not "1".
@@ -80,10 +52,10 @@ export function ordinal(n: number): string {
  *
  * The rule that keeps this from becoming a second implementation: the
  * mode may fork the CHROME — which element, hover, aria, the caption —
- * and must NEVER fork the GEOMETRY. Every `top`, `height`, `left` and
- * `width` is computed once, above the branch. The moment a `readOnly`
- * test appears inside one of those, this has stopped being one drawing
- * and the grid needs extracting instead.
+ * and cannot fork the GEOMETRY, because the geometry is not reachable
+ * from here at all. `WeekGrid` takes a description of a cell and
+ * positions it itself; there is no `top` or `left` in this file to get
+ * a `readOnly` test wedged into.
  */
 export type SessionCalendarProps = {
   field: FormField;
@@ -98,32 +70,6 @@ export type SessionCalendarProps = {
       caption?: string;
     }
 );
-
-/**
- * A day, written one way.
- *
- * The grid heading formats the real date; the ranked list under it used
- * to take its day from the option string a coordinator typed. On a
- * browser set to en-US that gave "Mon Oct 26" above and "Mon 26 Oct"
- * two hundred pixels below — one date, two spellings, on one screen.
- * Both now come through here, off the date, and the option text is only
- * the fallback for an option with no slot behind it.
- *
- * The comma `toLocaleDateString` inserts is dropped so the label reads
- * as a heading rather than a sentence.
- */
-export const dayLabel = (day: string) =>
-  // en-GB, not the runtime default. `undefined` means the SERVER's ICU
-  // locale during the public form's server render and the BROWSER's on
-  // hydration — "Mon Oct 26" replaced by "Mon 26 Oct" is a React text
-  // mismatch. Pinned, it also matches the option strings a coordinator
-  // types and the labels in training-week/schedule-2026.ts, and needs
-  // no comma stripped out afterwards.
-  new Date(`${day}T12:00:00`).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
 
 /**
  * "1st choice" — the same object wherever a rank is shown.
@@ -155,10 +101,6 @@ export function SessionCalendar(props: SessionCalendarProps) {
   // Options with no time given still need somewhere to be chosen.
   const unscheduled = field.options.filter((o) => !field.slots.some((s) => s.option === o));
 
-  // A CSS length, so the container query owns the scale. Every top/
-  // height inside is a percentage of this box and needs no change.
-  const height = `calc(${(grid.endMin - grid.startMin) / 60} * var(--hour))`;
-
   /*
    * A receipt draws the days you chose something on.
    *
@@ -187,7 +129,6 @@ export function SessionCalendar(props: SessionCalendarProps) {
   // nobody can still make.
   const atCap = !ro && cap !== undefined && chosen.length >= cap;
 
-
   // The day prefix is already the column heading, and the hours are
   // already the left-hand scale — repeating both inside every box eats
   // the room the actual name needs.
@@ -211,180 +152,101 @@ export function SessionCalendar(props: SessionCalendarProps) {
     );
   }
 
-  return (
+  /** One session, as a cell. Chrome only — the box is WeekGrid's. */
+  const cell = (sl: Placed): WeekBlock => {
     /*
-     * Side by side when there is room; one day under another when there
-     * is not.
+     * RANK, from the order you clicked in.
      *
-     * A CONTAINER query, not a viewport one — the same calendar is drawn
-     * at 708px inside a question row, at 760 on the confirmation and
-     * narrower again inside the builder's editor pane, all at one
-     * viewport width. Keyed to the viewport it would stack a grid that
-     * had plenty of room and squeeze one that had none.
-     *
-     * The alternative was what it used to do: a 520px floor inside
-     * `overflow-x-auto`, which on every phone made the week 205px wider
-     * than its box — so you scrolled sideways, and the thing you
-     * scrolled to was still clipped, badges wrapped and Wednesday was
-     * off the edge. Stacking loses the ability to compare heights
-     * ACROSS days, which a sideways scrollbar had already taken away.
-     * Duration-as-height and side-by-side-means-clash both survive
-     * inside each day, and those are the two things the drawing is for.
+     * The question has always been called "choose and rank", and the
+     * array already kept click order — nothing on screen said so, so it
+     * read as a plain multi-select and the order looked accidental.
      */
-    <div className="mt-2.5 @container">
+    const rank = chosen.indexOf(sl.option);
+    const on = rank >= 0;
+    const clashes = clashing.some((c) => c.a === sl.option || c.b === sl.option);
+    // `overlaps` is false across days, so this counts the day's own.
+    const against = days
+      .flatMap((d) => d.slots)
+      .filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
+    const minutes = toMinutes(sl.end) - toMinutes(sl.start);
+    const blocked = !on && atCap;
+
+    const children = (
+      <>
+        {/* The ranking leads. Once a session is picked, its position is
+            the thing the reader is checking — the hours are already the
+            scale it is drawn against. */}
+        {on && <span className="mb-0.5 block"><RankBadge rank={rank + 1} word /></span>}
+        <span className="block truncate font-mono text-[9.5px] text-subtle">
+          {sl.start}–{sl.end}
+        </span>
+        <span className={`mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
+          {shortLabel(sl.option)}
+        </span>
+        {/* Only where there is room for it. A hint that overflows its
+            own box is not a hint — and on a receipt it is not a hint at
+            all: what a session you did not pick ran against is guidance
+            for a decision already made. */}
+        {!ro && against > 0 && minutes >= 120 && (
+          <span className="mt-1 block text-[9.5px] text-subtle">
+            runs against {against} other{against > 1 ? "s" : ""}
+          </span>
+        )}
+      </>
+    );
+
+    const className = `${blocked ? "cursor-not-allowed opacity-40 " : ""}${
+      on
+        ? clashes
+          ? "border-red-500 bg-red-500/15"
+          : "border-brand-500 bg-brand-500/15"
+        // Not chosen, and nothing left to choose: kept on the drawing,
+        // faded. The week they picked FROM is the context that makes a
+        // rank mean anything, but it must not compete with what they
+        // picked.
+        : ro
+          ? "border-line/70 bg-card opacity-45"
+          : "border-line bg-card hover:border-brand-400"
+    }`;
+
+    const name = `${shortLabel(sl.option)} · ${sl.start}–${sl.end}`;
+
+    // A div, not a disabled button: omitting `press` is what asks for
+    // one. The obvious shortcut — keep the button and drop the handler
+    // — leaves a focusable control carrying aria-pressed that does
+    // nothing when clicked, which this file already rules on: a cell
+    // that does nothing when clicked reads as broken.
+    if (ro) return { className, title: name, children };
+
+    return {
+      className,
+      title: blocked ? `${cap} is the most you can choose — take one back first` : name,
+      children,
+      press: { onClick: () => props.onToggle(sl.option), pressed: on, disabled: blocked },
+    };
+  };
+
+  return (
+    <div className="mt-2.5">
       {/* On the receipt this is a picture of what the ranked list
           beneath it states in words — rank, name, day and time. A
           screen reader gets the sentence; a maze of absolutely
           positioned divs would only add noise to it. */}
-      {/* The hour scale lives HERE, one level below `@container`, and not
-          on the container itself. An element is a query container for
-          its DESCENDANTS and never for itself, so `@xl:[--hour:62px]`
-          written up there resolved against whatever ancestor container
-          happened to exist — which on the confirmation was the section
-          (760px, so 62px) and inside a question row was nothing at all
-          (so 46px). The picker and the receipt drew the same week at
-          two different scales, 368px against 496px, and neither the
-          class names nor the screenshots said which was intended. */}
-      <div
-        aria-hidden={ro || undefined}
-        className={`${ro ? HOUR_SCALE_RECEIPT : HOUR_SCALE} overflow-x-auto rounded-xl border-2 border-line-strong bg-card p-3`}
-      >
-        <div className="flex flex-col gap-4 @xl:min-w-[520px] @xl:flex-row @xl:gap-2">
-          {/* One scale for all three days, once there is a row to run
-              alongside. Stacked, each day carries its own. */}
-          <HourScale grid={grid} height={height} className="hidden w-11 shrink-0 @xl:block" />
-
-          {days.map(({ day, slots }) => (
-            <div key={day} className="flex min-w-0 gap-2 @xl:block @xl:flex-1">
-              <HourScale grid={grid} height={height} className="w-11 shrink-0 @xl:hidden" />
-              <div className="min-w-0 flex-1">
-                <p className="h-[22px] text-[10.5px] font-bold uppercase tracking-wide text-subtle @xl:text-center">
-                  {dayLabel(day)}
-                </p>
-                <div className="relative rounded-lg border border-line bg-elevated/40" style={{ height }}>
-                  {grid.hours.map((m) => (
-                    <div
-                      key={m}
-                      className="pointer-events-none absolute inset-x-0 border-t border-line/60"
-                      style={{ top: `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%` }}
-                    />
-                  ))}
-
-                  {slots.map((sl) => {
-                    /*
-                     * RANK, from the order you clicked in.
-                     *
-                     * The question has always been called "choose and
-                     * rank", and the array already kept click order —
-                     * nothing on screen said so, so it read as a plain
-                     * multi-select and the order looked accidental.
-                     */
-                    const rank = chosen.indexOf(sl.option);
-                    const on = rank >= 0;
-                    const clashes = clashing.some((c) => c.a === sl.option || c.b === sl.option);
-                    const pos = place(sl, grid);
-                    const against = slots.filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
-                    const minutes = toMinutes(sl.end) - toMinutes(sl.start);
-                    const blocked = !on && atCap;
-                    /*
-                     * GEOMETRY AND CHROME, COMPUTED ONCE.
-                     *
-                     * Both modes share every number below. Only the
-                     * wrapper element differs, further down — see the
-                     * note on SessionCalendarProps.
-                     */
-                    const cls = `absolute overflow-hidden rounded-md border px-1.5 py-1 text-left transition-colors ${
-                      blocked ? "cursor-not-allowed opacity-40" : ""
-                    } ${
-                      on
-                        ? clashes
-                          ? "border-red-500 bg-red-500/15"
-                          : "border-brand-500 bg-brand-500/15"
-                        // Not chosen, and nothing left to choose: kept on
-                        // the drawing, faded. The week they picked FROM is
-                        // the context that makes a rank mean anything, but
-                        // it must not compete with what they picked.
-                        : ro
-                          ? "border-line/70 bg-card opacity-45"
-                          : "border-line bg-card hover:border-brand-400"
-                    }`;
-                    const box = {
-                      top: `${pos.top}%`,
-                      height: `${pos.height}%`,
-                      // Side by side when they overlap, full width
-                      // when nothing is competing for the hour.
-                      left: `${(sl.lane / sl.lanes) * 100}%`,
-                      width: `calc(${100 / sl.lanes}% - 2px)`,
-                    };
-                    const body = (
-                      <>
-                        {/* The ranking leads. Once a session is picked,
-                            its position is the thing the reader is
-                            checking — the hours are already the scale it
-                            is drawn against. */}
-                        {on && <span className="mb-0.5 block"><RankBadge rank={rank + 1} word /></span>}
-                        <span className="block truncate font-mono text-[9.5px] text-subtle">
-                          {sl.start}–{sl.end}
-                        </span>
-                        <span className={`mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
-                          {shortLabel(sl.option)}
-                        </span>
-                        {/* Only where there is room for it. A hint that
-                            overflows its own box is not a hint — and on a
-                            receipt it is not a hint at all: what a session
-                            you did not pick ran against is guidance for a
-                            decision already made. */}
-                        {!ro && against > 0 && minutes >= 120 && (
-                          <span className="mt-1 block text-[9.5px] text-subtle">
-                            runs against {against} other{against > 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </>
-                    );
-
-                    /*
-                     * A div, not a disabled button.
-                     *
-                     * The obvious shortcut — keep the button and drop the
-                     * handler — leaves a focusable control carrying
-                     * aria-pressed that does nothing when clicked, which
-                     * this file already rules on twenty lines up: a cell
-                     * that does nothing when clicked reads as broken.
-                     */
-                    return ro ? (
-                      <div
-                        key={sl.option}
-                        title={`${shortLabel(sl.option)} · ${sl.start}–${sl.end}`}
-                        className={cls}
-                        style={box}
-                      >
-                        {body}
-                      </div>
-                    ) : (
-                      <button
-                        key={sl.option}
-                        type="button"
-                        onClick={() => props.onToggle(sl.option)}
-                        aria-pressed={on}
-                        disabled={blocked}
-                        title={
-                          blocked
-                            ? `${cap} is the most you can choose — take one back first`
-                            : `${shortLabel(sl.option)} · ${sl.start}–${sl.end}`
-                        }
-                        className={cls}
-                        style={box}
-                      >
-                        {body}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <WeekGrid
+        grid={{ ...grid, days }}
+        scale={ro ? HOUR_SCALE.read : HOUR_SCALE.pick}
+        decorative={ro}
+        // 22px is breathing room, not alignment: the grid works out for
+        // itself where the day bodies start. It is here because a
+        // one-line heading sitting flush on the grid's top border reads
+        // as part of the border.
+        head={(day) => (
+          <p className="h-[22px] text-[10.5px] font-bold uppercase tracking-wide text-subtle @xl:text-center">
+            {dayLabel(day)}
+          </p>
+        )}
+        block={cell}
+      />
 
       {/* The picker's copy is written in the imperative — "the order you
           click in", "click one again to take it back" — which is the
@@ -472,33 +334,6 @@ export function RankedChoices({
         })}
       </ol>
       {note && <p className="mt-2 text-[12px] leading-snug text-muted">{note}</p>}
-    </div>
-  );
-}
-
-/**
- * The hours down the side.
- *
- * Its own component because the week is drawn twice: once as a row of
- * days sharing a single scale, and once stacked, where each day needs
- * its own. Labels sit ON the hour line rather than in the band below
- * it, so a session starting at 11:00 has its top edge against the
- * 11:00 label. The 22px of margin is the day heading it runs beside.
- */
-function HourScale({
-  grid, height, className,
-}: { grid: ReturnType<typeof gridFromSlots>; height: string; className?: string }) {
-  return (
-    <div className={`relative ${className ?? ""}`} style={{ height, marginTop: 22 }}>
-      {grid.hours.map((m) => (
-        <span
-          key={m}
-          className="absolute right-1 -translate-y-1/2 font-mono text-[10px] text-subtle"
-          style={{ top: `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%` }}
-        >
-          {hourLabel(m)}
-        </span>
-      ))}
     </div>
   );
 }

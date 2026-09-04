@@ -5,7 +5,62 @@
  * module may only export async functions — a plain const or a type
  * exported alongside them fails the build, and the failure names the
  * line rather than the rule.
+ *
+ * The Workshop shape and its seat counts live here for a second reason:
+ * the Admin tab is one enormous client component that imports its own
+ * server actions, so anything declared beside them drags `server-only`
+ * into every module that wants the type — including the calendar, which
+ * is otherwise pure drawing.
  */
+import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
+
+export interface AdminBooking {
+  id: string;
+  status: string;
+  bookedAt: string;
+  /** When an admin approved it. Null on rows that never needed it. */
+  approvedAt: string | null;
+  waitlistPosition: number | null;
+  user: { id: string; name: string | null; email: string; organization: string | null; country: string | null } | null;
+}
+
+export interface AdminWorkshop {
+  id: string; slug: string; title: string; kind: string;
+  capacity: number; waitlistCapacity: number;
+  requiresApproval: boolean; isActive: boolean;
+  startDateTime: string; endDateTime: string;
+  locationName: string | null; partnerOrganization: string | null;
+  shortDescription: string | null;
+  bookings: AdminBooking[];
+}
+
+/**
+ * The five numbers for one workshop, in the order the organisers read
+ * them: approved, confirmed, confirmed by the cut-off, waitlisted, and
+ * what the room actually holds.
+ *
+ * `byCutOff` is confirmed AND approved on or before the cut-off, which
+ * is the closest the data supports: the platform records when an ADMIN
+ * approved a booking, not when the registrant themselves confirmed. The
+ * column says what it measures rather than implying the other thing.
+ */
+// One number for the deadline the process uses and the deadline the
+// reporting measures against — two would drift the first time either
+// changed.
+export const CUT_OFF_DAYS = CONFIRM_DAYS_BEFORE;
+
+export function countsOf(w: AdminWorkshop) {
+  const live = w.bookings.filter((b) => b.status !== "cancelled");
+  const cutOff = new Date(w.startDateTime).getTime() - CUT_OFF_DAYS * 86400_000;
+  const confirmed = live.filter((b) => b.status === "confirmed");
+  return {
+    approved: live.filter((b) => b.approvedAt).length,
+    confirmed: confirmed.length,
+    byCutOff: confirmed.filter((b) => b.approvedAt && new Date(b.approvedAt).getTime() <= cutOff).length,
+    waitlisted: live.filter((b) => b.status === "waitlist").length,
+    capacity: w.capacity,
+  };
+}
 
 /** Where the decision model is stored in PlatformSetting. */
 export const RULES_KEY = "trainingWeek.allocationRules";

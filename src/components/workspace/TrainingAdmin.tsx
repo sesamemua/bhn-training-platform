@@ -22,7 +22,13 @@ import {
   removeWorkshop, resetEmailTemplate, saveEmailTemplate, saveRules, saveSupportFormUrl,
   sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
-import type { Audience, SubmissionRow } from "@/lib/allocation/admin-types";
+import {
+  countsOf, CUT_OFF_DAYS,
+  type AdminWorkshop, type Audience, type SubmissionRow,
+} from "@/lib/allocation/admin-types";
+// Declared here until the calendar needed them without dragging this
+// file's server actions along; still this tab's vocabulary.
+export { countsOf, type AdminBooking, type AdminWorkshop } from "@/lib/allocation/admin-types";
 import { DECISION_LABEL, type Decision } from "@/lib/allocation/decisions";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 import { ordinal } from "./SessionCalendar";
@@ -30,28 +36,7 @@ import {
   BODY_MAX, fieldsUsed, MERGE_FIELDS, needsOneSession, refusesMultiSession, render,
   STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
 } from "@/lib/allocation/email-templates";
-import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
-import { idOf, label, place, timeGrid, titleOf } from "@/lib/allocation/schedule";
-import { DAYS, LEARNING_PATHS, SHARED } from "@/lib/training-week/schedule-2026";
-
-export interface AdminBooking {
-  id: string;
-  status: string;
-  bookedAt: string;
-  /** When an admin approved it. Null on rows that never needed it. */
-  approvedAt: string | null;
-  waitlistPosition: number | null;
-  user: { id: string; name: string | null; email: string; organization: string | null; country: string | null } | null;
-}
-export interface AdminWorkshop {
-  id: string; slug: string; title: string; kind: string;
-  capacity: number; waitlistCapacity: number;
-  requiresApproval: boolean; isActive: boolean;
-  startDateTime: string; endDateTime: string;
-  locationName: string | null; partnerOrganization: string | null;
-  shortDescription: string | null;
-  bookings: AdminBooking[];
-}
+import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
 
 type Tab = "dashboard" | "model" | "capacity" | "registrants" | "email";
 
@@ -83,34 +68,6 @@ const outOfTown = (country: string | null | undefined): boolean | undefined => {
   if (!country || !country.trim()) return undefined;
   return country.trim().toLowerCase() !== "canada";
 };
-
-/**
- * The five numbers for one workshop, in the order the organisers read
- * them: approved, confirmed, confirmed by the cut-off, waitlisted, and
- * what the room actually holds.
- *
- * `byCutOff` is confirmed AND approved on or before the cut-off, which
- * is the closest the data supports: the platform records when an ADMIN
- * approved a booking, not when the registrant themselves confirmed. The
- * column says what it measures rather than implying the other thing.
- */
-// One number for the deadline the process uses and the deadline the
-// reporting measures against — two would drift the first time either
-// changed.
-const CUT_OFF_DAYS = CONFIRM_DAYS_BEFORE;
-
-export function countsOf(w: AdminWorkshop) {
-  const live = w.bookings.filter((b) => b.status !== "cancelled");
-  const cutOff = new Date(w.startDateTime).getTime() - CUT_OFF_DAYS * 86400_000;
-  const confirmed = live.filter((b) => b.status === "confirmed");
-  return {
-    approved: live.filter((b) => b.approvedAt).length,
-    confirmed: confirmed.length,
-    byCutOff: confirmed.filter((b) => b.approvedAt && new Date(b.approvedAt).getTime() <= cutOff).length,
-    waitlisted: live.filter((b) => b.status === "waitlist").length,
-    capacity: w.capacity,
-  };
-}
 
 const seatsOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "confirmed").length;
 const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "waitlist").length;
@@ -284,168 +241,11 @@ function Dashboard({
         </p>
       </section>
 
-      <Calendar workshops={live} />
-    </div>
-  );
-}
-
-/**
- * The week as a time grid: hours down the side, a column per day.
- *
- * It used to be three lists under three headings, which says what is on
- * each day and nothing about when. Two tours at the same hour and a tour
- * that runs all afternoon looked the same, and telling them apart is the
- * only reason to draw a calendar rather than a table.
- *
- * All three days share one vertical scale, so 1pm on Monday is level
- * with 1pm on Wednesday and a clash is a shape rather than something you
- * work out from two timestamps.
- */
-function Calendar({ workshops }: { workshops: AdminWorkshop[] }) {
-  // The shared items only widen the grid — they are drawn behind the
-  // sessions rather than beside them, because nobody books a lunch.
-  const grid = useMemo(() => timeGrid(workshops, SHARED), [workshops]);
-  const byId = useMemo(() => new Map(workshops.map((w) => [w.id, w])), [workshops]);
-  const themeOf = (day: string) => DAYS.find((d) => d.date === day);
-  const offset = (m: number) => `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%`;
-  const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-
-  // Tall enough that an hour is a comfortable band, short enough that
-  // three days fit on a screen without scrolling.
-  const HOUR_PX = 56;
-  const height = ((grid.endMin - grid.startMin) / 60) * HOUR_PX;
-
-  if (grid.days.length === 0) {
-    return (
       <section>
         <p className={LABEL}>Calendar</p>
-        <p className="mt-2 text-[12.5px] text-muted">No sessions scheduled.</p>
+        <TrainingWeekCalendar workshops={live} />
       </section>
-    );
-  }
-
-  return (
-    <section>
-      <p className={LABEL}>Calendar</p>
-      <div className="mt-2 overflow-x-auto rounded-xl border-2 border-line-strong bg-card p-3">
-        <div className="flex min-w-[560px] gap-2">
-          {/* The time scale. Labels sit ON the hour line rather than in
-              the band below it, so a session starting at 11:00 has its
-              top edge against the 11:00 label. */}
-          <div className="relative w-12 shrink-0" style={{ height }}>
-            {grid.hours.map((m) => (
-              <span
-                key={m}
-                className="absolute right-1 -translate-y-1/2 font-mono text-[10.5px] text-subtle"
-                style={{ top: `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%` }}
-              >
-                {label(m)}
-              </span>
-            ))}
-          </div>
-
-          {grid.days.map(({ day, slots }) => (
-            <div key={day} className="min-w-0 flex-1">
-              <p className="text-center text-[11px] font-bold uppercase tracking-wide text-subtle">
-                {new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
-                  weekday: "short", day: "numeric", month: "short",
-                })}
-              </p>
-              {/* The programme the day belongs to. It is how the
-                  coordinators talk about the week, and without it the
-                  columns are three anonymous dates. */}
-              <p className="truncate pb-1.5 text-center text-[10px] text-muted" title={themeOf(day)?.theme}>
-                {themeOf(day)?.theme ?? ""}
-              </p>
-              <div className="relative rounded-lg border border-line bg-elevated/40" style={{ height }}>
-                {/* Hour rules, drawn on every column so the eye can carry
-                    a time across the week. */}
-                {grid.hours.map((m) => (
-                  <div
-                    key={m}
-                    className="absolute inset-x-0 border-t border-line/60"
-                    style={{ top: `${((m - grid.startMin) / (grid.endMin - grid.startMin)) * 100}%` }}
-                  />
-                ))}
-
-                {/* Everyone-on-the-day items: drawn first, so they sit
-                    behind the sessions and read as background rather
-                    than as something with seats. */}
-                {SHARED.filter((x) => x.day === day).map((x) => (
-                  <div
-                    key={x.slug}
-                    title={`${x.title} · ${x.start}–${x.end}${x.note ? ` · ${x.note}` : ""}`}
-                    className="absolute inset-x-0 overflow-hidden rounded-md border border-dashed border-line-strong bg-elevated px-1.5 py-0.5"
-                    style={{
-                      top: offset(minutes(x.start)),
-                      height: `${((minutes(x.end) - minutes(x.start)) / (grid.endMin - grid.startMin)) * 100}%`,
-                    }}
-                  >
-                    <p className="truncate text-[10px] text-muted">{x.title}</p>
-                  </div>
-                ))}
-
-                {slots.map((sl) => {
-                  const w = byId.get(idOf(sl.option));
-                  if (!w) return null;
-                  const c = countsOf(w);
-                  const pos = place(sl, grid);
-                  const full = c.confirmed >= c.capacity && c.capacity > 0;
-                  return (
-                    <div
-                      key={sl.option}
-                      title={`${titleOf(sl.option)} · ${sl.start}–${sl.end}${w.locationName ? ` · ${w.locationName}` : ""}`}
-                      className={`absolute overflow-hidden rounded-md border px-1.5 py-1 ${
-                        full ? "border-amber-500/70 bg-amber-500/12" : "border-brand-500/60 bg-brand-500/12"
-                      }`}
-                      style={{
-                        top: `${pos.top}%`,
-                        height: `${pos.height}%`,
-                        // Side by side when they clash, full width when
-                        // nothing is competing for the hour.
-                        left: `${(sl.lane / sl.lanes) * 100}%`,
-                        width: `calc(${100 / sl.lanes}% - 2px)`,
-                      }}
-                    >
-                      <p className="truncate text-[10.5px] font-mono text-subtle">{sl.start}</p>
-                      <p className="text-[11px] font-semibold leading-tight text-fg line-clamp-2">
-                        {titleOf(sl.option)}
-                      </p>
-                      <p className="mt-0.5 truncate text-[10px] text-muted">
-                        {c.confirmed}/{c.capacity}
-                        {c.waitlisted > 0 ? ` · ${c.waitlisted} wait` : ""}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Courses that run alongside the week rather than at an hour on
-          it. No seats and no clash, so they belong under the grid
-          rather than in it — but leaving them out entirely makes the
-          week look emptier than it is. */}
-      {LEARNING_PATHS.length > 0 && (
-        <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-elevated/40">
-          {LEARNING_PATHS.map((lp) => (
-            <li key={lp.title} className="flex flex-wrap items-baseline gap-x-2 px-2.5 py-1.5">
-              <span className="text-[11px] font-semibold text-fg">{lp.title}</span>
-              <span className="font-mono text-[10px] text-subtle">
-                {lp.days.map((d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" })).join(" · ")}
-              </span>
-              {lp.note && <span className="text-[10.5px] text-muted">{lp.note}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="mt-1.5 text-[11px] text-subtle">
-        All three days share one scale, so sessions level with each other run
-        at the same time. Amber means the room is full. Dashed blocks are for
-        everyone on the day and are not booked.
-      </p>
-    </section>
+    </div>
   );
 }
 

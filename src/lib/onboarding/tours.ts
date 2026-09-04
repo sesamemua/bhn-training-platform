@@ -34,6 +34,16 @@ export const TOUR_VERSION = "2026.09.16";
 
 export const TOUR_STEPS: TourStep[] = [
   {
+    id: "training-admin.calendar-one-drawing",
+    title: "The calendar is the same week the form draws",
+    body: "The Admin calendar and the registration form used to be two separate drawings of one week, at two different scales — an hour was 56 pixels here and 62 on the form. They share one component now. Two visible consequences: the **hour labels line up with the lines they name** (they were a heading's height too high, so a 09:30 session looked like it started at 10:00), and the week **stacks day under day on a phone** rather than scrolling sideways to a Wednesday that was clipped anyway.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the Admin calendar", href: "/admin/workspace/training-admin" },
+    since: "2026.10.01a",
+  },
+  {
     id: "newsletter.review-and-send",
     title: "See the reminder before it sends",
     body: "On the newsletter calendar, a reminder's Send button now opens the real email first — rendered, with its actual recipients named and a banner telling you whether it goes to the leads or back to you to forward. The email itself shows the month as a calendar, with the draft, build and send days shaded. Edit anything, hit \"Send test to me\" to mail yourself a copy first, then send for real.",

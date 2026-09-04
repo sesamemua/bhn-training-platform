@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── One calendar, drawn once
+  {
+    title: "The Admin calendar and the registration form now draw the same week the same way",
+    body: "The week appeared in two places — the **Admin dashboard calendar** and the **registration form** — and they were two separate drawings of it. They had drifted: an hour was **56 pixels tall on the dashboard and 62 on the form**, the hour gutter and the minimum width differed too, so the same three days were a different size depending on which screen you were on. Both now use one component, so they cannot disagree again.\n\nTwo things change on the dashboard as a result. **The hour labels now line up with the lines they name.** They were measured from the top of the day heading rather than the top of the grid, which put every label a heading's height above its own line — so a 09:30 session appeared to start at 10:00. And the calendar **stacks day under day on a phone** instead of forcing a 560px grid into a 375px screen, where you scrolled sideways to reach a Wednesday that was still clipped when you got there. The registration form and the confirmation receipt are unchanged, to the pixel.\n\nThe day is also spelled one way now: the dashboard formatted dates in whatever locale the browser happened to be set to, so the same Monday read \"Mon, Oct 26\" there and \"Mon 26 Oct\" on the form.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Harvest — limited theme, fall 2026
   {
     title: "Harvest — limited-time theme (until 30 November 2026)",
