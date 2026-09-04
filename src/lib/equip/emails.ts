@@ -22,6 +22,7 @@
  *   • editing + AI assist      → /api/admin/equip/email-templates/*
  *   • preview gallery          → /admin/equip/email-templates
  */
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { STREAM_META, type EquipStream, type EquipStatus, type ApplicationStage } from "@/lib/equip/types";
 
@@ -60,6 +61,7 @@ export interface EditableFields {
 export type EquipTemplateId =
   | "submission"
   | "under_review"
+  | "info_requested"
   | "pre_screen_passed"
   | "pre_screen_no"
   | "approved"
@@ -88,10 +90,21 @@ const MUTE = "#64748b";
 const LINE = "#e2e8f0";
 const BG = "#f1f5f9";
 
+/** Titles to skip when picking the first name out of a full name — a
+ *  User.name of "Dr. Maya Chen" or "Prof Alex Osei" must greet "Hi
+ *  Maya," / "Hi Alex,", not "Hi Dr.,". Applicant names on this
+ *  platform (grad students, postdocs, PIs) carry these often enough
+ *  that a naive first-token split reads as broken, not formal. */
+const HONORIFICS = new Set([
+  "dr", "dr.", "prof", "prof.", "professor",
+  "mr", "mr.", "mrs", "mrs.", "ms", "ms.", "miss", "mx", "mx.",
+]);
 const firstName = (name?: string | null) => {
   const n = (name ?? "").trim();
   if (!n) return "there";
-  return n.split(/\s+/)[0];
+  const parts = n.split(/\s+/);
+  const idx = parts.findIndex((p) => !HONORIFICS.has(p.toLowerCase()));
+  return idx === -1 ? parts[0] : parts[idx];
 };
 
 function formatCad(n?: number | null): string {
@@ -285,6 +298,17 @@ const UNDER_REVIEW_COMMON: EditableFields = {
   ctaLabel: "View status",
 };
 
+const INFO_REQUESTED_COMMON: EditableFields = {
+  subject: "Action needed on your {{streamName}} application",
+  heading: "We need something more from you",
+  paras: [
+    "Hi {{firstName}},",
+    "The EQUIP review committee needs more information before deciding on your **{{streamName}}** application — see the note below.",
+    "Your application is reopened for editing. Update it and submit again when you're ready; nothing else about it has changed.",
+  ],
+  ctaLabel: "Update my application",
+};
+
 const APPROVED_COMMON: EditableFields = {
   subject: "Your {{streamName}} application has been approved",
   heading: "Your application is approved 🎉",
@@ -339,6 +363,11 @@ export const TEMPLATE_DEFAULTS: DefaultsMap = {
     venture_connect: UNDER_REVIEW_COMMON,
     venture_lift: UNDER_REVIEW_COMMON,
     innovation_fellowship: UNDER_REVIEW_COMMON,
+  },
+  info_requested: {
+    venture_connect: INFO_REQUESTED_COMMON,
+    venture_lift: INFO_REQUESTED_COMMON,
+    innovation_fellowship: INFO_REQUESTED_COMMON,
   },
   pre_screen_passed: {
     venture_lift: {
@@ -423,6 +452,7 @@ export const TEMPLATE_DEFAULTS: DefaultsMap = {
 const TEMPLATE_BEHAVIOUR: Record<EquipTemplateId, { note: "reviewer" | "disbursement" | null; cta: "tracker" | "equip" }> = {
   submission:        { note: null,           cta: "tracker" },
   under_review:      { note: null,           cta: "tracker" },
+  info_requested:    { note: "reviewer",     cta: "tracker" },
   pre_screen_passed: { note: "reviewer",     cta: "tracker" },
   pre_screen_no:     { note: "reviewer",     cta: "equip" },
   approved:          { note: "reviewer",     cta: "tracker" },
@@ -446,14 +476,29 @@ function toHtml(s: string): string {
 
 const stripBold = (s: string) => s.replace(/\*\*([^*]+)\*\*/g, "$1");
 
+export interface TemplateBehaviour {
+  note: "reviewer" | "disbursement" | null;
+  cta: "tracker" | "equip";
+}
+
 /** Render one template variant for one applicant context. Pure. */
 export function renderEquipEmail(
   id: EquipTemplateId,
   ctx: EquipEmailCtx,
   fields: EditableFields,
 ): Built {
+  return renderWithBehaviour(ctx, fields, TEMPLATE_BEHAVIOUR[id]);
+}
+
+/** Same renderer, for a template whose note/CTA behaviour isn't looked
+ *  up from a fixed EquipTemplateId — i.e. a custom template, whose
+ *  admin picks note source + CTA target explicitly at creation time. */
+export function renderWithBehaviour(
+  ctx: EquipEmailCtx,
+  fields: EditableFields,
+  behaviour: TemplateBehaviour,
+): Built {
   const values = resolvePlaceholders(ctx);
-  const behaviour = TEMPLATE_BEHAVIOUR[id];
   const note =
     behaviour.note === "reviewer" ? ctx.reviewerNote
     : behaviour.note === "disbursement" ? ctx.disbursementNote
@@ -530,6 +575,194 @@ export async function resetEquipTemplateOverride(id: EquipTemplateId, stream: Eq
   await writeOverrides(map);
 }
 
+// ── Custom templates (PlatformSetting persistence) ───────────────────────
+//
+// The lifecycle emails above (submission, approved, funded, …) are fixed —
+// each is tied to a status transition and can be edited but not deleted,
+// since STATUS_TO_TEMPLATE and the send panel's default depend on them
+// existing. Custom templates are the opposite: admins add and remove them
+// freely for one-off or recurring messages that aren't tied to any status
+// (an event invite, a manual reminder, a thank-you note). They live
+// alongside the overrides in PlatformSetting rather than a new table —
+// same "small admin-editable JSON blob" shape, no migration needed.
+
+/** Custom templates are scoped like the built-in gallery — VC/VL only.
+ *  Innovation Fellowship doesn't have a lifecycle-email gallery yet
+ *  (email-templates/page.tsx only toggles VC/VL), so a custom template
+ *  can't target it either. */
+export type CustomTemplateStream = "venture_connect" | "venture_lift";
+
+export interface CustomEquipTemplate {
+  /** Always prefixed "custom_" so it can never collide with a built-in
+   *  EquipTemplateId, and so callers can tell the two apart by shape
+   *  alone without a lookup. */
+  id: string;
+  label: string;
+  appliesTo: "both" | CustomTemplateStream;
+  /** Which applicant-specific note (if any) gets appended as a quoted
+   *  callout — same behaviour a built-in template gets from
+   *  TEMPLATE_BEHAVIOUR, just chosen explicitly since there's no status
+   *  to infer it from. */
+  noteSource: "reviewer" | "disbursement" | "none";
+  cta: "tracker" | "equip";
+  fields: EditableFields;
+  createdAt: string;
+}
+
+const CUSTOM_TEMPLATES_KEY = "equipCustomEmailTemplates";
+
+export function isCustomTemplateId(v: unknown): v is string {
+  return typeof v === "string" && v.startsWith("custom_");
+}
+
+export async function listCustomEquipTemplates(): Promise<CustomEquipTemplate[]> {
+  const row = await prisma.platformSetting.findUnique({ where: { key: CUSTOM_TEMPLATES_KEY } }).catch(() => null);
+  if (!row) return [];
+  try {
+    const parsed = JSON.parse(row.value) as CustomEquipTemplate[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeCustomTemplates(list: CustomEquipTemplate[]): Promise<void> {
+  const value = JSON.stringify(list);
+  await prisma.platformSetting.upsert({
+    where: { key: CUSTOM_TEMPLATES_KEY },
+    update: { value },
+    create: { key: CUSTOM_TEMPLATES_KEY, value },
+  });
+}
+
+export async function createCustomEquipTemplate(input: {
+  label: string;
+  appliesTo: "both" | CustomTemplateStream;
+  noteSource: "reviewer" | "disbursement" | "none";
+  cta: "tracker" | "equip";
+  fields: EditableFields;
+}): Promise<CustomEquipTemplate> {
+  const list = await listCustomEquipTemplates();
+  const tpl: CustomEquipTemplate = {
+    id: `custom_${randomUUID()}`,
+    createdAt: new Date().toISOString(),
+    ...input,
+  };
+  list.push(tpl);
+  await writeCustomTemplates(list);
+  return tpl;
+}
+
+export async function updateCustomEquipTemplate(
+  id: string,
+  patch: Partial<Pick<CustomEquipTemplate, "label" | "appliesTo" | "noteSource" | "cta" | "fields">>,
+): Promise<CustomEquipTemplate | null> {
+  const list = await listCustomEquipTemplates();
+  const idx = list.findIndex((t) => t.id === id);
+  if (idx === -1) return null;
+  list[idx] = { ...list[idx], ...patch };
+  await writeCustomTemplates(list);
+  return list[idx];
+}
+
+export async function deleteCustomEquipTemplate(id: string): Promise<boolean> {
+  const list = await listCustomEquipTemplates();
+  const next = list.filter((t) => t.id !== id);
+  if (next.length === list.length) return false;
+  await writeCustomTemplates(next);
+  return true;
+}
+
+/** Render a custom template — same engine as the built-ins, behaviour
+ *  taken from the template's own noteSource/cta rather than a fixed
+ *  per-id table. */
+export function renderCustomEquipEmail(ctx: EquipEmailCtx, tpl: CustomEquipTemplate): Built {
+  return renderWithBehaviour(ctx, tpl.fields, {
+    note: tpl.noteSource === "none" ? null : tpl.noteSource,
+    cta: tpl.cta,
+  });
+}
+
+// ── Internal copy recipients (PlatformSetting persistence) ──────────────
+//
+// Submission confirmations BCC a fixed internal address list, per stream
+// — the EQUIP team's own record that a submission happened, with the PDF
+// packet attached. That list used to be hardcoded (venture-connect-
+// receipt.ts / innovation-fellowship-receipt.ts); it's now admin-editable
+// from /admin/equip/email-templates, with the old hardcoded values as the
+// shipped default. Only these two streams have a submission BCC — VL has
+// no PDF packet builder yet, so there's nothing to attach or copy.
+
+export interface EquipCopyRecipients {
+  venture_connect: string[];
+  innovation_fellowship: string[];
+}
+
+const COPY_RECIPIENTS_KEY = "equipSubmissionCopyRecipients";
+
+/** The shipped defaults — same addresses the hardcoded constants used to
+ *  carry. Kept here (not re-exported from the receipt files) so this is
+ *  the one place "who gets a copy" is decided. */
+export const DEFAULT_COPY_RECIPIENTS: EquipCopyRecipients = {
+  venture_connect: ["info@biohubnet.ca", "equip@biohubnet.ca"],
+  innovation_fellowship: ["info@biohubnet.ca", "engage@biohubnet.ca"],
+};
+
+/** Exported for its own unit coverage (pure — no DB) — the DB-backed
+ *  get/save functions below aren't unit-testable without a live
+ *  PlatformSetting row, but the validation they lean on is. */
+export function sanitizeEmailList(input: unknown, max = 10): string[] {
+  if (!Array.isArray(input)) return [];
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "string") continue;
+    const v = raw.trim().toLowerCase();
+    if (!v || !EMAIL.test(v) || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+export async function getEquipCopyRecipients(): Promise<EquipCopyRecipients> {
+  const row = await prisma.platformSetting.findUnique({ where: { key: COPY_RECIPIENTS_KEY } }).catch(() => null);
+  if (!row) return DEFAULT_COPY_RECIPIENTS;
+  try {
+    const parsed = JSON.parse(row.value) as Partial<EquipCopyRecipients>;
+    return {
+      venture_connect: Array.isArray(parsed.venture_connect)
+        ? sanitizeEmailList(parsed.venture_connect)
+        : DEFAULT_COPY_RECIPIENTS.venture_connect,
+      innovation_fellowship: Array.isArray(parsed.innovation_fellowship)
+        ? sanitizeEmailList(parsed.innovation_fellowship)
+        : DEFAULT_COPY_RECIPIENTS.innovation_fellowship,
+    };
+  } catch {
+    return DEFAULT_COPY_RECIPIENTS;
+  }
+}
+
+/** Save the full list for one stream (the other stream's list is
+ *  untouched). An empty array is valid — it means "nobody gets a copy",
+ *  a deliberate admin choice, not a fallback-to-default signal. */
+export async function saveEquipCopyRecipients(
+  stream: "venture_connect" | "innovation_fellowship",
+  emails: unknown,
+): Promise<EquipCopyRecipients> {
+  const clean = sanitizeEmailList(emails);
+  const current = await getEquipCopyRecipients();
+  const next: EquipCopyRecipients = { ...current, [stream]: clean };
+  await prisma.platformSetting.upsert({
+    where: { key: COPY_RECIPIENTS_KEY },
+    update: { value: JSON.stringify(next) },
+    create: { key: COPY_RECIPIENTS_KEY, value: JSON.stringify(next) },
+  });
+  return next;
+}
+
 /** Default + override resolution for one variant. */
 export function resolveTemplateFields(
   id: EquipTemplateId,
@@ -568,8 +801,12 @@ export function sanitizeEditableFields(input: unknown): EditableFields | null {
 
 // ── High-level senders (used by the API routes) ──────────────────────────
 
-const STATUS_TO_TEMPLATE: Partial<Record<EquipStatus, EquipTemplateId>> = {
+/** Which template a decision status maps to, when an admin wants the
+ *  default suggestion for "send the email for where this application
+ *  is right now" (send-email route + the reviewer send panel). */
+export const STATUS_TO_TEMPLATE: Partial<Record<EquipStatus, EquipTemplateId>> = {
   under_review: "under_review",
+  info_requested: "info_requested",
   pre_screen_approved: "pre_screen_passed",
   pre_screen_rejected: "pre_screen_no",
   approved: "approved",
@@ -608,6 +845,7 @@ export interface EquipEmailTemplateInfo {
 export const EQUIP_EMAIL_TEMPLATES: EquipEmailTemplateInfo[] = [
   { id: "submission",        label: "Submission received",          when: "Applicant submits an application",            appliesTo: "both" },
   { id: "under_review",      label: "Under review",                 when: "A reviewer claims the application",           appliesTo: "both" },
+  { id: "info_requested",    label: "More info requested",          when: "A reviewer sends it back for something before deciding", appliesTo: "both" },
   { id: "pre_screen_passed", label: "Pre-screen passed (Stage 2)",  when: "VL pre-screening passes → Stage 2 unlocks",   appliesTo: "venture_lift" },
   { id: "pre_screen_no",     label: "Pre-screen not selected",      when: "VL pre-screening isn't selected to advance", appliesTo: "venture_lift" },
   { id: "approved",          label: "Approved",                     when: "Application is approved for funding",         appliesTo: "both" },
@@ -625,7 +863,7 @@ export function isEquipTemplateId(v: unknown): v is EquipTemplateId {
 export function sampleEquipCtx(stream: EquipStream): EquipEmailCtx {
   return stream === "venture_connect"
     ? {
-        applicantName: "Dr. Maya Chen",
+        applicantName: "Maya Chen",
         stream,
         requestedAmount: 4200,
         approvedAmount: 4200,
@@ -635,7 +873,7 @@ export function sampleEquipCtx(stream: EquipStream): EquipEmailCtx {
         dueLabel: "in 2 weeks",
       }
     : {
-        applicantName: "Dr. Maya Chen",
+        applicantName: "Maya Chen",
         stream,
         stage: "full_app",
         requestedAmount: 25000,

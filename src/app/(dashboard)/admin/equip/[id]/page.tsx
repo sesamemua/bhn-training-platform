@@ -24,6 +24,7 @@ import {
   type VentureLiftReviewerScores, type EquipDocument,
 } from "@/lib/equip/types";
 import { innovationFellowshipReceiptSections } from "@/lib/equip/innovation-fellowship-receipt";
+import { EQUIP_EMAIL_TEMPLATES, STATUS_TO_TEMPLATE, listCustomEquipTemplates } from "@/lib/equip/emails";
 import { institutionLabel } from "@/lib/equip/institutions";
 import { applicantOf } from "@/lib/equip/applicant";
 import { priorApprovalsWhere, capStateFrom, totalVariance } from "@/lib/equip/cap";
@@ -91,6 +92,24 @@ export default async function AdminEquipReviewPage({
     formData.supportingDocs?.includes(item.id),
   );
 
+  // Send-panel data — the client component can't import emails.ts
+  // itself (it pulls in prisma), so the applicable template list and
+  // the status's suggested default come from here. Custom templates
+  // (added/removed from the email-templates page) are appended after
+  // the lifecycle ones, in creation order.
+  const customTemplates = await listCustomEquipTemplates();
+  const emailTemplateOptions = [
+    ...EQUIP_EMAIL_TEMPLATES.filter(
+      (t) =>
+        (t.appliesTo === "both" || t.appliesTo === app.stream) &&
+        t.id !== "deadline" && t.id !== "milestone",
+    ).map((t) => ({ id: t.id, label: t.label, when: t.when })),
+    ...customTemplates
+      .filter((t) => t.appliesTo === "both" || t.appliesTo === app.stream)
+      .map((t) => ({ id: t.id, label: `${t.label} (custom)`, when: "Sent manually, any time" })),
+  ];
+  const defaultEmailTemplateId = STATUS_TO_TEMPLATE[app.status as EquipStatus] ?? null;
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Back-link removed — the editorial hero owns the top of the
@@ -120,6 +139,10 @@ export default async function AdminEquipReviewPage({
         actualNote={app.actualNote}
         hasIpAppendix={documents.some((d) => d.kind === "ip_doc")}
         existingScores={app.reviewerScores as VentureLiftReviewerScores | null}
+        emailTemplateOptions={emailTemplateOptions}
+        defaultEmailTemplateId={defaultEmailTemplateId}
+        lastEmailSentAt={app.lastEmailSentAt}
+        lastEmailTemplateId={app.lastEmailTemplateId}
       />
 
       {vcState && vcTotal && (

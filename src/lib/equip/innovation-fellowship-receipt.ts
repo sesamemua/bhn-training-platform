@@ -12,10 +12,9 @@ interface InnovationFellowshipReceiptInput {
   formData: InnovationFellowshipFormData;
 }
 
-export const INNOVATION_FELLOWSHIP_SUBMISSION_BCC = [
-  "info@biohubnet.ca",
-  "engage@biohubnet.ca",
-] as const;
+// Who gets BCC'd on the submission receipt used to be hardcoded here.
+// It's now admin-editable — see getEquipCopyRecipients() in
+// lib/equip/emails.ts, which carries the same addresses as its default.
 
 const ROLE_LABELS: Record<ApplicantRole, string> = {
   master_student: "Master's Student",

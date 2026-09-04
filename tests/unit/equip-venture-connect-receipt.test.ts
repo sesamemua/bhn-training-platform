@@ -1,9 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  buildVentureConnectSubmissionReceipt,
-  VENTURE_CONNECT_SUBMISSION_BCC,
-} from "../../src/lib/equip/venture-connect-receipt";
+import { buildVentureConnectSubmissionReceipt } from "../../src/lib/equip/venture-connect-receipt";
 import type { VentureConnectFormData } from "../../src/lib/equip/types";
 
 const formData: VentureConnectFormData = {
@@ -94,12 +91,11 @@ test("uploaded file metadata cannot leak into the applicant-facing email body", 
 });
 
 test("submission copies stay hidden from the applicant", () => {
-  // EQUIP's own inbox, not ENGAGE's — the two tracks have different
-  // teams and VentureConnect belongs to EQUIP.
-  assert.deepEqual(VENTURE_CONNECT_SUBMISSION_BCC, [
-    "info@biohubnet.ca",
-    "equip@biohubnet.ca",
-  ]);
+  // Who actually gets BCC'd is admin-editable now (getEquipCopyRecipients,
+  // lib/equip/emails.ts) — info@ + equip@ are just its shipped default.
+  // This test only covers the receipt BODY: the hidden copy address must
+  // never leak into it, while equip@ legitimately appears as a support
+  // contact regardless of whether it's also a silent recipient.
   const email = receipt();
   /*
    * info@ is a silent internal copy and must never appear in the body —

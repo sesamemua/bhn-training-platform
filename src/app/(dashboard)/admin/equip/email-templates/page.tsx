@@ -9,12 +9,17 @@ import { Mail } from "lucide-react";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { EquipEmailGallery, type StreamPreview } from "@/components/admin/equip/EquipEmailGallery";
+import { CustomEquipTemplates, type CustomTemplateItem } from "@/components/admin/equip/CustomEquipTemplates";
+import { EquipCopyRecipients } from "@/components/admin/equip/EquipCopyRecipients";
 import {
   EQUIP_EMAIL_TEMPLATES,
   PLACEHOLDER_DOCS,
   getEquipTemplateOverrides,
   resolveTemplateFields,
   renderEquipEmail,
+  renderCustomEquipEmail,
+  listCustomEquipTemplates,
+  getEquipCopyRecipients,
   sampleEquipCtx,
 } from "@/lib/equip/emails";
 import { STREAM_META } from "@/lib/equip/types";
@@ -51,6 +56,15 @@ export default async function EquipEmailTemplatesPage() {
     return { key: stream, name: STREAM_META[stream].name, items };
   });
 
+  const customTemplates = await listCustomEquipTemplates();
+  const customPreviews: CustomTemplateItem[] = customTemplates.map((t) => {
+    const previewStream = t.appliesTo === "both" ? "venture_connect" : t.appliesTo;
+    const built = renderCustomEquipEmail(sampleEquipCtx(previewStream), t);
+    return { ...t, subject: built.subject, html: built.html };
+  });
+
+  const copyRecipients = await getEquipCopyRecipients();
+
   return (
     <div className="space-y-6">
       <DSPageHeader
@@ -63,6 +77,14 @@ export default async function EquipEmailTemplatesPage() {
         }
       />
       <EquipEmailGallery streams={streams} placeholders={PLACEHOLDER_DOCS} canEdit={canEdit} />
+
+      <div className="border-t border-line pt-6">
+        <CustomEquipTemplates initial={customPreviews} placeholders={PLACEHOLDER_DOCS} canEdit={canEdit} />
+      </div>
+
+      <div className="border-t border-line pt-6">
+        <EquipCopyRecipients initial={copyRecipients} canEdit={canEdit} />
+      </div>
     </div>
   );
 }

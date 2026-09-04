@@ -29,6 +29,7 @@ import {
   Users,
   ClipboardList,
   Sparkles,
+  Mail,
 } from "lucide-react";
 import { getCommitteeMetaForUser } from "@/lib/committees/membership";
 import type { CommitteeSidebarItem } from "@/lib/committees/registry";
@@ -42,6 +43,7 @@ const ICONS: Record<
   Award,
   ClipboardList,
   Sparkles,
+  Mail,
 };
 
 /** Compact-chip background per badgeTone. Keep palette consistent

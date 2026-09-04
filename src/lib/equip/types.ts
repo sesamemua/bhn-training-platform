@@ -27,6 +27,13 @@ export type EquipStatus =
   | "draft"
   | "submitted"
   | "under_review"
+  /** A reviewer sent it back asking for something specific before a
+   *  decision can be made. `reviewerNote` carries what — reused rather
+   *  than adding a new column, same field Approve/Reject already write
+   *  to. Editable (see isEditable below): the applicant's own form
+   *  reopens instead of the read-only SubmittedView, and resubmitting
+   *  sends it back to "submitted". */
+  | "info_requested"
   | "pre_screen_approved"
   | "pre_screen_rejected"
   | "approved"
@@ -90,6 +97,7 @@ export const STATUS_META: Record<EquipStatus, { label: string; tone: "neutral" |
   draft:                { label: "Draft",                tone: "neutral" },
   submitted:            { label: "Submitted",            tone: "brand"   },
   under_review:         { label: "Under review",         tone: "amber"   },
+  info_requested:       { label: "More info requested",  tone: "amber"   },
   pre_screen_approved:  { label: "Pre-screen passed",    tone: "emerald" },
   pre_screen_rejected:  { label: "Pre-screen — not selected", tone: "rose" },
   approved:             { label: "Approved",             tone: "emerald" },
@@ -601,7 +609,7 @@ export interface EquipMilestone {
  *  can also edit when their pre-screening was approved — they
  *  need to fill in Stage 2. */
 export function isEditable(status: EquipStatus): boolean {
-  return status === "draft" || status === "pre_screen_approved";
+  return status === "draft" || status === "pre_screen_approved" || status === "info_requested";
 }
 
 /** Statuses considered "open" — counted in the admin queue. */

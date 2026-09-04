@@ -29,9 +29,6 @@ import {
   type VentureLiftReviewerScores,
 } from "@/lib/equip/types";
 import { templateMilestones } from "@/lib/equip/milestones";
-import { buildEquipStatusEmail } from "@/lib/equip/emails";
-import { sendMail, mailConfigured } from "@/lib/mail";
-import { applicantOf } from "@/lib/equip/applicant";
 import {
   priorApprovalsWhere, capStateFrom, checkApproval, varianceOf, totalVariance,
 } from "@/lib/equip/cap";
@@ -42,6 +39,7 @@ export const runtime = "nodejs";
 
 const TARGET_STATUSES = new Set<EquipStatus>([
   "under_review",
+  "info_requested",
   "approved", "rejected", "funded",
   // VL pre-screening outcomes
   "pre_screen_approved", "pre_screen_rejected",
@@ -118,6 +116,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     : undefined;
   const actualNote = (body.actualNote as string | undefined)?.slice(0, 2000);
   const reviewerScores = body.reviewerScores as VentureLiftReviewerScores | undefined;
+  /* Reversing an approval that has money against it releases that
+     amount back into the applicant's cap — same "say so on purpose"
+     rule as deleting one (canDelete, cap.ts). */
+  const confirmReversal = body.confirmReversal === true;
 
   /*
    * Reconciliation is not a state transition.
@@ -133,6 +135,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (!reconcileOnly && (!target || !TARGET_STATUSES.has(target))) {
     return NextResponse.json({ error: "Invalid target status" }, { status: 400 });
+  }
+
+  // Sending an application back has to say what for — a blank "more
+  // info requested" leaves the applicant with nothing to act on.
+  if (target === "info_requested" && !reviewerNote) {
+    return NextResponse.json(
+      { error: "Say what's needed — the applicant only sees this note." },
+      { status: 400 },
+    );
   }
 
   const app = await prisma.equipApplication.findUnique({
@@ -226,13 +237,33 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (block) return NextResponse.json({ error: block.message }, { status: 400 });
   }
 
-  // State-machine guard. Once terminal (approved/rejected/funded),
-  // only the approved → funded leg is allowed.
-  if (isTerminal(app.status as EquipStatus)) {
-    const isFundingLeg = app.status === "approved" && target === "funded";
-    if (!isFundingLeg) {
-      return NextResponse.json({ error: "Already decided" }, { status: 409 });
-    }
+  // State-machine guard. Once terminal (approved/rejected/funded), only
+  // two legs are allowed out of "approved": forward to funded, or back
+  // to under_review (an admin undoing the approval). Every other
+  // terminal status (funded, rejected, pre_screen_rejected) stays a
+  // dead end — reachable only through delete, never through a further
+  // decision.
+  const isFundingLeg = app.status === "approved" && target === "funded";
+  const isReversalLeg = app.status === "approved" && target === "under_review";
+  if (isTerminal(app.status as EquipStatus) && !isFundingLeg && !isReversalLeg) {
+    return NextResponse.json({ error: "Already decided" }, { status: 409 });
+  }
+
+  // A reversal that releases money needs the same explicit confirm a
+  // cap-affecting delete does — stated with the dollar figure, so it is
+  // a decision made on purpose rather than a click that happens to
+  // change what the applicant can still be given.
+  if (isReversalLeg && (app.approvedAmount ?? 0) > 0 && !confirmReversal) {
+    return NextResponse.json(
+      {
+        error:
+          `This application has $${(app.approvedAmount ?? 0).toLocaleString()} approved against it. ` +
+          "Reversing the approval returns that amount to the applicant's $5,000 allowance. " +
+          "Confirm if that is what you intend.",
+        needsConfirm: true,
+      },
+      { status: 400 },
+    );
   }
 
   // Build the patch.
@@ -252,8 +283,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (actualNote !== undefined) data.actualNote = actualNote || null;
 
   if (target === "under_review") {
-    // Soft claim — record reviewer, no decision yet.
     data.reviewedAt = now;
+    if (isReversalLeg) {
+      // Undo the approval, not just the status label — decidedAt and
+      // approvedAmount are what the cap sums over (priorApprovalsWhere,
+      // cap.ts) and what canFund reads to know there is money to
+      // disburse. Leaving either set would let the application still
+      // count toward the cap, or still show a Mark Funded button, on a
+      // row that is no longer approved.
+      data.decidedAt = null;
+      data.approvedAmount = null;
+      if (reviewerNote) data.reviewerNote = reviewerNote;
+    }
+    // Plain claim (submitted → under_review) — nothing else to touch,
+    // there was no prior decision to undo.
+  }
+  if (target === "info_requested") {
+    // Not a decision — decidedAt stays untouched (there isn't one yet).
+    // reviewerNote is the note the applicant will read; required above.
+    data.reviewedAt = now;
+    data.reviewerNote = reviewerNote;
   }
   if (target === "approved") {
     data.decidedAt = now;
@@ -315,29 +364,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     },
   });
 
-  // Notify the applicant of the decision. Best-effort: a mail failure must
-  // never roll back or 500 a recorded decision. (under_review/approved/
-  // rejected/funded + the two VL pre-screen outcomes each map to a template.)
-  const notify = applicantOf(updated);
-  if (mailConfigured() && notify.email) {
-    const email = await buildEquipStatusEmail(target, {
-      applicantName: notify.name,
-      stream: app.stream as EquipStream,
-      stage: app.applicationStage as ApplicationStage,
-      requestedAmount: app.requestedAmount,
-      approvedAmount: typeof data.approvedAmount === "number" ? data.approvedAmount : undefined,
-      reviewerNote: reviewerNote ?? null,
-      disbursementNote: disbursementNote ?? null,
-    });
-    if (email) {
-      try {
-        await sendMail({ to: notify.email, subject: email.subject, text: email.text, html: email.html });
-      } catch (err) {
-        console.error("[equip] decision email failed", { id, target, err });
-      }
-    }
-  }
-
+  // No email fires here. A decision only ever updates the record —
+  // the applicant is told about it when a human explicitly reviews and
+  // sends the matching email from the review page (POST
+  // .../send-email), never as a side effect of clicking Approve /
+  // Reject / Fund / etc. The one automatic email in the whole EQUIP
+  // lifecycle is the submission-received confirmation
+  // (submit/route.ts), which just acknowledges receipt and carries no
+  // decision content.
   return NextResponse.json({ ok: true, application: updated });
 }
 

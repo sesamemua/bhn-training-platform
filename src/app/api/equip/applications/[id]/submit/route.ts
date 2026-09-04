@@ -22,6 +22,7 @@ import { prisma } from "@/lib/prisma";
 import {
   STREAM_BUDGETS,
   wordCount,
+  isEditable,
   type EquipStream,
   type EquipStatus,
   type ApplicationStage,
@@ -31,8 +32,9 @@ import {
   type EquipDocument,
 } from "@/lib/equip/types";
 import { nextOpenDeadline } from "@/lib/equip/deadlines";
-import { buildEquipSubmissionEmail } from "@/lib/equip/emails";
-import { sendMail, mailConfigured } from "@/lib/mail";
+import { buildEquipSubmissionEmail, getEquipCopyRecipients } from "@/lib/equip/emails";
+import { buildVentureConnectApplicationPacket } from "@/lib/equip/venture-connect-packet";
+import { sendMail, mailConfigured, type MailAttachment } from "@/lib/mail";
 import { validateVentureConnect, sumVcBudget } from "@/lib/equip/submit-validation";
 import { trackServer } from "@/lib/analytics";
 import {
@@ -203,14 +205,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const status = app.status as EquipStatus;
   const stage  = app.applicationStage as ApplicationStage;
 
-  // Submit is meaningful in two cases:
+  // Submit is meaningful whenever the application is editable —
+  // isEditable() is the single source of truth for that (types.ts):
   //   1. status = "draft"                 → first-time submit (VC + VL Stage-1)
   //   2. status = "pre_screen_approved"   → VL applicant has filled
   //                                         Stage-2 and is submitting it
   //      OR  stage = "full_app" and status is back to "draft"
   //          (post-pre-screen-approval draft of the Stage-2 form)
+  //   3. status = "info_requested"        → reviewer sent it back; this
+  //                                         resubmit sends it to "submitted"
+  //                                         exactly like case 1
   const isVlFullSubmit = app.stream === "venture_lift" && stage === "full_app";
-  if (status !== "draft" && status !== "pre_screen_approved") {
+  if (!isEditable(status)) {
     return NextResponse.json({ ok: true, alreadySubmitted: true });
   }
 
@@ -316,6 +322,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   // Confirmation email to the applicant. Best-effort — never block submit.
+  // VentureConnect also BCCs the internal copy-recipients list (admin-
+  // editable, getEquipCopyRecipients()) with the same PDF packet the
+  // public VentureConnect flow has always attached — the EQUIP team
+  // gets one, regardless of which door the applicant came through.
+  // VentureLift has no packet builder yet, so it stays applicant-only.
   if (mailConfigured()) {
     const applicant = await prisma.user.findUnique({
       where: { id: app.userId },
@@ -328,8 +339,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         stage: app.applicationStage as ApplicationStage,
         requestedAmount,
       });
+      let bcc: string[] | undefined;
+      let attachments: MailAttachment[] | undefined;
+      if (app.stream === "venture_connect") {
+        bcc = (await getEquipCopyRecipients()).venture_connect;
+        try {
+          const packet = await buildVentureConnectApplicationPacket({
+            applicationId: app.id,
+            submittedAt: now,
+            formData: formData as VentureConnectFormData,
+            documents: docs,
+          });
+          attachments = [{ filename: packet.filename, content: packet.content, contentType: packet.contentType }];
+        } catch (err) {
+          console.error("[equip] submission packet build failed", { id, err });
+        }
+      }
       try {
-        await sendMail({ to: applicant.email, subject: email.subject, text: email.text, html: email.html });
+        await sendMail({ to: applicant.email, bcc, subject: email.subject, text: email.text, html: email.html, attachments });
       } catch (err) {
         console.error("[equip] submission email failed", { id, err });
       }

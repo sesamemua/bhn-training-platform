@@ -69,6 +69,14 @@ interface Props {
    *  "Clear" testing strip so admins can populate or empty the
    *  draft in one click while iterating on the UX. */
   isAdmin?: boolean;
+  /**
+   * Set only when status === "info_requested" — the reviewer's own
+   * note on what's missing, reusing the same `reviewerNote` column
+   * Approve/Reject already write to. Rendered as a banner at the top
+   * of the form so reopening it doesn't look like the form just
+   * silently came back with no explanation.
+   */
+  infoRequestedNote?: string | null;
 }
 
 /** Sample-fill body for admin testing. Mirrors what a realistic
@@ -143,6 +151,7 @@ export function ConnectForm({
   isAdmin = false,
   endpointBase = "/api/equip/applications",
   allowDocuments = true,
+  infoRequestedNote,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<VentureConnectFormData>(() => ({
@@ -239,6 +248,21 @@ export function ConnectForm({
         </div>
         <SaveIndicator saving={saving} savedAt={savedAt} />
       </header>
+
+      {/* Reopened after "Request more info" — only ever set when
+          status === "info_requested". Sits ahead of everything else on
+          the page: reopening the form with no explanation would read as
+          the platform silently having forgotten the submission. */}
+      {infoRequestedNote && (
+        <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-3 flex items-start gap-2">
+          <AlertCircle size={14} className="text-sky-700 mt-0.5 shrink-0" />
+          <div className="text-[11px] text-sky-900 leading-snug">
+            <p className="font-bold">The EQUIP review committee asked for more information.</p>
+            <p className="mt-1 whitespace-pre-wrap">{infoRequestedNote}</p>
+            <p className="mt-1.5 text-sky-800">Update your application below, then submit again.</p>
+          </div>
+        </div>
+      )}
 
       {/* No-AI disclaimer — surfaced prominently so applicants
           don't accidentally disqualify themselves. */}

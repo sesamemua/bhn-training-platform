@@ -22,12 +22,9 @@ export interface ReceiptSection {
   rows: ReceiptRow[];
 }
 
-export const VENTURE_CONNECT_SUBMISSION_BCC = [
-  "info@biohubnet.ca",
-  // Not engage@ — that's the ENGAGE track's inbox. VentureConnect is
-  // EQUIP, and its own team needs the copy, not ENGAGE's.
-  "equip@biohubnet.ca",
-] as const;
+// Who gets BCC'd on the submission receipt used to be hardcoded here.
+// It's now admin-editable — see getEquipCopyRecipients() in
+// lib/equip/emails.ts, which carries the same addresses as its default.
 
 const ROLE_LABELS: Record<ApplicantRole, string> = {
   master_student: "Master's Student",

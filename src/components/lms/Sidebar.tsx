@@ -608,6 +608,8 @@ const adminEquipItems: NavItem[] = [
     description: "Program-management dashboard for the EQUIP pillar — apps in flight, approved this quarter, $ funded YTD, stalled-app alerts, per-stream funnel, open windows, recent activity. Renders in Studio." },
   { label: "EQUIP review",         href: "/admin/equip",               icon: Rocket,        minRole: "admin",
     description: "Review queue for the EQUIP funding pillar — VentureConnect (≤$5K) + VentureLift (≤$25K). Claim, approve / reject with a note + amount, mark funded. Mirrors the credit-applications shape." },
+  { label: "EQUIP email templates", href: "/admin/equip/email-templates", icon: Mail,        minRole: "admin",
+    description: "Every email an EQUIP applicant can receive, for both streams — view, hand-edit, or AI-rewrite the copy. Sending itself always happens from the review page as an explicit reviewer action, never automatically." },
   { label: "EQUIP deadlines",      href: "/admin/equip/deadlines",     icon: ClipboardList, minRole: "admin",
     description: "Schedule + manage the funding-window deadlines for VentureConnect (monthly) and VentureLift (quarterly). List + calendar views. Open / close / extend any window. Late submissions are blocked automatically." },
   { label: "Recipient tracker",    href: "/admin/equip/tracker",       icon: Radar,         minRole: "admin",
@@ -741,6 +743,7 @@ const COMMITTEE_ICONS: Record<CommitteeSidebarItem["icon"], typeof Rocket> = {
   Award,
   ClipboardList,
   Sparkles,
+  Mail,
 };
 
 const URGENT_FROM_ONE = new Set<string>([

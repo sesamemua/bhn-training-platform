@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildInnovationFellowshipSubmissionReceipt,
-  INNOVATION_FELLOWSHIP_SUBMISSION_BCC,
   innovationFellowshipReceiptSections,
 } from "../../src/lib/equip/innovation-fellowship-receipt";
 import type { InnovationFellowshipFormData } from "../../src/lib/equip/types";
@@ -59,11 +58,4 @@ test("review sections include signatures and internal program-manager handling",
   assert.ok(signatures);
   assert.ok(signatures.rows.some((row) => row.label === "Supervisor" && row.value.includes("Avery Park")));
   assert.ok(signatures.rows.some((row) => row.label === "Program manager" && row.value.includes("BioHubNet use only")));
-});
-
-test("submission copies go to both BioHubNet inboxes", () => {
-  assert.deepEqual([...INNOVATION_FELLOWSHIP_SUBMISSION_BCC], [
-    "info@biohubnet.ca",
-    "engage@biohubnet.ca",
-  ]);
 });

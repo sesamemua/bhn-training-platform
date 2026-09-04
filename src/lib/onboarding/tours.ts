@@ -673,7 +673,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "equip.applicant-emails",
     title: "EQUIP emails applicants — and you write the words",
-    body: "Applicants get an email at every step — submission, under review, the VentureLift pre-screen result, and the approval / not-selected / funded decisions, for both streams. Decision emails fire automatically and carry your reviewer note. The copy is editable per template: tweak it by hand with {{placeholders}} and a live preview, or ask the AI to rewrite it (“warmer, shorter”) and save when it reads right. One-click reset returns the shipped default.",
+    body: "Applicants can be emailed at every step — submission, under review, the VentureLift pre-screen result, and the approval / not-selected / funded decisions, for both streams. Only the submission confirmation fires automatically; every decision email is a deliberate send from the review page (see “You send every EQUIP decision email now”). The copy is editable per template: tweak it by hand with {{placeholders}} and a live preview, or ask the AI to rewrite it (“warmer, shorter”) and save when it reads right. One-click reset returns the shipped default.",
     path: "/admin/equip/email-templates",
     placement: "center",
     roles: ["admin", "superadmin"],
@@ -2538,6 +2538,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     since: "2026.08.22",
     cta: { label: "Open Industry Insights speakers", href: "/admin/events/2026-industry-insights/speakers" },
+  },
+  {
+    id: "equip.manual-send-and-custom-templates",
+    title: "You send every EQUIP decision email now",
+    body: "Claiming, approving, rejecting, funding, requesting more info, reversing an approval — none of it emails the applicant on its own anymore. The only automatic email left is the submission-received confirmation. Every other one goes out from **Send email to applicant** on the review page: pick a template, **Preview** it filled in with that applicant's real details, then **Send now** yourself.\n\nAdmin → EQUIP → Email templates also has two new sections: **Custom templates** — write your own (or AI-draft it), not tied to any status, and it shows up in every application's send picker until you delete it — and **Internal copy recipients**, where you set who gets BCC'd (with the PDF packet) on a VentureConnect or Innovation Fellowship submission. That used to be hardcoded.",
+    path: "/admin/equip/email-templates",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.03",
+    cta: { label: "Open the email editor", href: "/admin/equip/email-templates" },
   },
   {
     id: "complete",

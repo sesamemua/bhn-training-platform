@@ -3772,12 +3772,22 @@ model EquipApplication {
   /// "venture_connect" | "venture_lift"
   stream                 String
   /// Pipeline status — extended set:
-  ///   draft | submitted | under_review
+  ///   draft | submitted | under_review | info_requested
   ///   | pre_screen_approved | pre_screen_rejected   ← VL stage-1 outcomes
   ///   | approved | rejected | funded
   /// VentureLift moves through pre_screen_approved before its
   /// applicant can open the full Stage-2 form; VentureConnect
   /// skips that intermediate state.
+  /// info_requested is editable (isEditable, types.ts) — a reviewer
+  /// sent it back asking for something specific (reviewerNote carries
+  /// what), and the applicant's own form reopens rather than the
+  /// read-only SubmittedView. Resubmitting sends it back to
+  /// "submitted", same as a first-time submit.
+  /// approved can be reversed back to under_review by an admin — the
+  /// only backward transition besides that one, because reversing a
+  /// decision that was approved-with-money releases the applicant's
+  /// $5,000 VentureConnect cap and has to be a decision made on
+  /// purpose (see checkApproval / cap.ts).
   status                 String    @default("draft")
   /// Which stage of the application is currently in play.
   ///   pre_screen — only set for VL while it's pre-screening
@@ -3841,6 +3851,16 @@ model EquipApplication {
   /// Post-approval check-in templates. Shape: [{ id, title, dueOn,
   /// status, note, updatedAt }].
   milestones             Json      @default("[]")
+  /// Every applicant-facing email past the submission receipt is a
+  /// human decision, sent from the review page rather than fired as a
+  /// side effect of a status change (see /api/.../send-email). These
+  /// two columns are that action's own record — null means nothing
+  /// has been sent since the application last changed status.
+  lastEmailSentAt        DateTime?
+  /// EquipTemplateId (lib/equip/emails.ts) of the last email sent —
+  /// not necessarily the one STATUS_TO_TEMPLATE would suggest, since
+  /// the reviewer can pick a different template on the send panel.
+  lastEmailTemplateId    String?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
