@@ -10,6 +10,7 @@ import {
 } from "@/lib/symposium/av";
 import { cn } from "@/lib/utils";
 import { AvSourcePanes } from "./AvSourcePanes";
+import { AvDocumentViewer } from "./AvDocumentViewer";
 
 const cad = (n: number, dp = 2) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD", minimumFractionDigits: dp, maximumFractionDigits: dp });
@@ -37,6 +38,21 @@ export function AvComparison() {
   );
   const [pinned, setPinned] = useState(false);
   const [sheet, setSheet] = useState(false);
+  /* THE WHOLE PAGE, not the cropped row, is what the panel opens on.
+     The crops are not the magnified view they look like: measured at the
+     dock's real width, the 2026 quote's crops cover 8.5in of paper
+     against the page render's 8.5in — 1.00×, no magnification at all,
+     while showing one line instead of the document around it. Only the
+     2025 invoice's crops are genuinely tighter (1.55×), which is why
+     row mode stays rather than being deleted.
+
+     Held HERE and not in the panel because the panel is remounted on
+     every hover to reset zoom and scroll; a mode kept down there would
+     last until the mouse reached the next row. */
+  const [mode, setMode] = useState<"row" | "page">("page");
+  /* Which document is open full-screen, if any. The line is whichever
+     the panel is showing, so the viewer needs only the document. */
+  const [viewing, setViewing] = useState<AvDoc["key"] | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
 
   const peek = (key: string, label: string) => {
@@ -242,6 +258,9 @@ export function AvComparison() {
             onPin={() => setPinned((v) => !v)}
             onClose={() => setPinned(false)}
             variant="dock"
+            mode={mode}
+            onMode={setMode}
+            onOpenDoc={setViewing}
           />
         </aside>
       </div>
@@ -266,9 +285,24 @@ export function AvComparison() {
               onPin={() => { setSheet(false); setPinned(false); }}
               onClose={() => { setSheet(false); setPinned(false); }}
               variant="sheet"
+              mode={mode}
+              onMode={setMode}
+              onOpenDoc={setViewing}
             />
           </div>
         </div>
+      )}
+
+      {/* The reading surface. Opened from the page in the panel, which
+          is an index into the documents rather than a way to read
+          them. */}
+      {viewing && (
+        <AvDocumentViewer
+          lineKey={open.key}
+          label={open.label}
+          docKey={viewing}
+          onClose={() => setViewing(null)}
+        />
       )}
 
       {/* ── Terms. The differences that never show up in a price comparison

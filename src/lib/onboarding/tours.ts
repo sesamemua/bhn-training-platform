@@ -2609,6 +2609,17 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.16",
     cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
   },
+  // ─── AV: read the source documents, not crops of them
+  {
+    id: "workspace.av-document-viewer",
+    title: "Open the AV quote, not a crop of it",
+    body: "Hover any line in **AV** and the panel now shows **the whole page with that line outlined**, in each of the three documents. **Click the page to open the document full-screen** \u2014 every page, at a readable size, with the line marked and the other two documents one tab away.\n\nThe 2026 quote's **Terms and Conditions** page is in there now; it had never been rendered.",
+    path: "/admin/workspace/symposium-2026/av",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.16",
+    cta: { label: "Open AV", href: "/admin/workspace/symposium-2026/av" },
+  },
   {
     id: "complete",
     title: "You're all set",

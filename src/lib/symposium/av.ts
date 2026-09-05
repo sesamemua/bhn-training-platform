@@ -615,6 +615,28 @@ export function pageOf(docKey: AvDoc["key"], page: number): AvPage | undefined {
 }
 
 /**
+ * Every page of one document, in order.
+ *
+ * Derived from the manifest rather than stored as a count on AvDoc: the
+ * renders and the number of them are the same fact, and a hand-kept
+ * `pages: 4` that disagreed with what is on disk would put a "page 4 of
+ * 4" label on a viewer with nothing to show there.
+ *
+ * All three documents are complete as of 2026-09-04 — q2025 3pp, i2025
+ * 2pp, q2026 4pp. Three of those nine renders were missing until then,
+ * including the 2026 terms and conditions, which is the page this table
+ * argues about most. scripts/av-render-pages.py cuts them.
+ */
+export function pagesOf(docKey: AvDoc["key"]): { page: number; render: AvPage }[] {
+  return Object.entries(AV_PAGES)
+    .flatMap(([id, render]) => {
+      const [key, n] = id.split(":");
+      return key === docKey ? [{ page: Number(n), render }] : [];
+    })
+    .sort((a, b) => a.page - b.page);
+}
+
+/**
  * A token that changes whenever the crops are regenerated.
  *
  * The clip route serves `immutable`, which is a promise that the bytes at

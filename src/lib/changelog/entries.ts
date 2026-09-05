@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── AV comparison: the source panel opens on the page, and the page opens the document
+  {
+    title: "AV: the source panel shows the page now, and clicking it opens the whole document",
+    body: "On **Workspace → 2026 Symposium → AV**, hovering a line showed three cropped strips — one per document — which looked like a magnified view and was not one. Measured at the dock's real width, the 2026 quote's crops cover the same 8.5 inches of paper the full page does: **1.00×, no magnification at all**, while showing one line instead of the document around it. Only the 2025 invoice's crops are genuinely tighter.\n\nThe panel now opens on **the whole page with the line outlined**, so you can see which document you are in and what is around the number. The cropped-row view is still there behind the same toggle, and the toggle now holds — it used to reset every time the mouse crossed another row.\n\n**Click the page and the whole document opens**, at a size you can actually read, with the line marked on the page it appears on and the other two documents one tab away — the same line stays selected, which is the comparison this screen exists for.\n\nThree pages that were never rendered are now there, so \"the whole document\" is true rather than nearly true: the 2025 quote's page 3, and the 2026 quote's pages 3 and 4 — **including the Terms and Conditions**, the cancellation and deposit policy this page's own \"terms that changed\" section argues about. There is also a script to cut them now (`scripts/av-render-pages.py`); the renders had been committed with no tooling beside them, which is why three were missing.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Workspace menu: Training Week split out of 2026 Symposium
   {
     title: "Training Week has its own menu group, and two labels now say what they are",

@@ -31,7 +31,7 @@ const SHORT: Record<AvDoc["key"], string> = {
  * whatever width the dock happens to be. On a laptop that is small type.
  */
 export function AvSourcePanes({
-  lineKey, label, pinned, onPin, onClose, variant,
+  lineKey, label, pinned, onPin, onClose, variant, mode, onMode, onOpenDoc,
 }: {
   lineKey: string;
   label: string;
@@ -39,9 +39,16 @@ export function AvSourcePanes({
   onPin: () => void;
   onClose: () => void;
   variant: "dock" | "sheet";
+  /* Owned by the parent, not by this component, because this component
+     is remounted on every hover (key={lineKey}) to reset zoom and
+     scroll. Local state here would survive exactly until the mouse
+     crossed the next row — a toggle you can press but cannot hold. */
+  mode: "row" | "page";
+  onMode: (next: "row" | "page") => void;
+  /** Open the whole document, this line marked on it. */
+  onOpenDoc: (docKey: AvDoc["key"]) => void;
 }) {
   const clips = clipsFor(lineKey);
-  const [mode, setMode] = useState<"row" | "page">("row");
   const [zoom, setZoom] = useState(1);
 
   /* A new row resets mode, zoom and scroll — carrying a previous zoom or
@@ -85,7 +92,7 @@ export function AvSourcePanes({
           </span>
           <IconBtn onClick={() => setZoom((z) => Math.min(2.4, +(z + 0.2).toFixed(1)))}
             label="Zoom in" disabled={zoom >= 2.4}><ZoomIn size={13} /></IconBtn>
-          <IconBtn onClick={() => setMode((m) => (m === "row" ? "page" : "row"))}
+          <IconBtn onClick={() => onMode(mode === "row" ? "page" : "row")}
             label={mode === "row" ? "Show the whole page" : "Show just the row"} active={mode === "page"}>
             {mode === "row" ? <Maximize2 size={13} /> : <Minimize2 size={13} />}
           </IconBtn>
@@ -137,7 +144,17 @@ export function AvSourcePanes({
                     />
                   </div>
                 ) : (
-                  <FullPage docKey={k} clip={clip} zoom={zoom} label={label} ref_={doc.ref} />
+                  <PageSheet
+                    docKey={k}
+                    page={clip.page}
+                    box={clip.box}
+                    scrollTo
+                    zoom={zoom}
+                    label={label}
+                    ref_={doc.ref}
+                    maxH="22rem"
+                    onOpen={() => onOpenDoc(k)}
+                  />
                 )
               ) : (
                 <p className="rounded-md bg-elevated px-2.5 py-2 text-[11px] italic text-subtle">
@@ -159,59 +176,106 @@ export function AvSourcePanes({
 }
 
 /**
- * The whole page, with this item's row outlined and scrolled into view.
+ * One rendered page, optionally with a row outlined and scrolled to.
  *
- * The box comes from the manifest as top/bottom fractions of page height,
- * so it lands correctly whatever width the dock is and whatever zoom the
- * render used. Positioning it in pixels would have tied the panel to the
- * 2.0× the pages happen to be rendered at.
+ * The box comes from the manifest as top/bottom fractions of page
+ * height, so it lands correctly whatever width the container is and
+ * whatever zoom the render used. Positioning it in pixels would have
+ * tied it to the 2× the pages happen to be rendered at.
+ *
+ * Shared by the dock and the full-document viewer. One implementation of
+ * "where on this page is that line", because two would disagree — this
+ * codebase has shipped that bug twice already.
  */
-function FullPage({
-  docKey, clip, zoom, label, ref_,
+export function PageSheet({
+  docKey, page, box, scrollTo, zoom, label, ref_, maxH, caption, onOpen,
 }: {
   docKey: AvDoc["key"];
-  clip: { pageFile: string; page: number; box: [number, number] };
+  page: number;
+  /** null draws the page plainly — the rest of a document you are reading. */
+  box: [number, number] | null;
+  scrollTo: boolean;
   zoom: number;
   label: string;
   ref_: string;
+  /** Caps the page's own scroller. Absent = grow to fit the parent. */
+  maxH?: string;
+  caption?: string;
+  /** When set, the artwork becomes a button that opens the whole document. */
+  onOpen?: () => void;
 }) {
-  const page = pageOf(docKey, clip.page);
-  const box = useRef<HTMLDivElement>(null);
+  const render = pageOf(docKey, page);
+  const mark = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    box.current?.scrollIntoView({ block: "center", behavior: "auto" });
-  }, [clip.pageFile, zoom]);
-  if (!page) return null;
+    if (scrollTo) mark.current?.scrollIntoView({ block: "center", behavior: "auto" });
+  }, [scrollTo, docKey, page, zoom]);
+  if (!render) return null;
 
-  const [top, bottom] = clip.box;
-  return (
-    <div className="max-h-[22rem] overflow-auto rounded-md bg-white ring-1 ring-inset ring-line">
-      <div className="relative" style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={clipUrl(clip.pageFile)}
-          alt={`Page ${clip.page} of ${ref_}, showing ${label}`}
-          width={page.w} height={page.h}
-          className="block w-full" loading="eager" decoding="sync"
-        />
+  const art = (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={clipUrl(render.file)}
+        alt={box ? `Page ${page} of ${ref_}, showing ${label}` : `Page ${page} of ${ref_}`}
+        width={render.w} height={render.h}
+        className="block w-full" loading="eager" decoding="sync"
+      />
+      {box && (
         <div
-          ref={box}
+          ref={mark}
           aria-hidden
           className="pointer-events-none absolute inset-x-0 rounded-[3px] bg-amber-300/20 ring-2 ring-amber-500"
-          style={{ top: `${top * 100}%`, height: `${(bottom - top) * 100}%` }}
+          style={{ top: `${box[0] * 100}%`, height: `${(box[1] - box[0]) * 100}%` }}
         />
+      )}
+    </>
+  );
+
+  return (
+    <figure className="m-0">
+      <div
+        className="overflow-auto rounded-md bg-white ring-1 ring-inset ring-line"
+        style={maxH ? { maxHeight: maxH } : undefined}
+      >
+        {/* The artwork itself is the target, not the scroller around it:
+            a click that lands after a drag-scroll should not open
+            anything. The highlight above is pointer-events-none, so the
+            amber box never swallows the click. */}
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            title="Open the whole document"
+            className="relative block w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            style={{ width: `${zoom * 100}%`, minWidth: "100%" }}
+          >
+            {art}
+          </button>
+        ) : (
+          <div className="relative" style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
+            {art}
+          </div>
+        )}
       </div>
-    </div>
+      {caption && (
+        <figcaption className="mt-1 text-center text-[10.5px] tabular-nums text-subtle">
+          {caption}
+        </figcaption>
+      )}
+    </figure>
   );
 }
 
-function IconBtn({
-  children, onClick, label, active, disabled,
+export function IconBtn({
+  children, onClick, label, active, disabled, ref_,
 }: {
   children: React.ReactNode; onClick: () => void; label: string;
   active?: boolean; disabled?: boolean;
+  ref_?: React.Ref<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={ref_}
       type="button" onClick={onClick} title={label} aria-label={label} disabled={disabled}
       className={cn(
         "rounded-md p-1.5 transition-colors",
