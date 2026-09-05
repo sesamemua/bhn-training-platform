@@ -84,6 +84,21 @@ export function AvDocumentViewer({
      came from on close. Matches ConfirmDialog and MerchClaimDialog —
      this codebase has never trapped Tab and this is not the place to
      become the first thing that does. */
+  /* The viewer scrolls ITS OWN body to the marked page — PageSheet no
+     longer does any scrolling of its own once its pages are uncapped,
+     and scrollIntoView() here would be safe anyway (this is portalled
+     to <body>, so <main> is not an ancestor) but doing it the same way
+     in both places is one less thing to reason about. */
+  const body = useRef<HTMLDivElement>(null);
+  const mark = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const view = body.current;
+    const box = mark.current;
+    if (!view || !box) { body.current?.scrollTo({ top: 0 }); return; }
+    const top = box.getBoundingClientRect().top - view.getBoundingClientRect().top + view.scrollTop;
+    view.scrollTop = Math.max(0, top - view.clientHeight / 2 + box.offsetHeight / 2);
+  }, [active, zoom]);
+
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const from = document.activeElement as HTMLElement | null;
@@ -166,7 +181,7 @@ export function AvDocumentViewer({
 
           {/* ── The document. Every page, in order, the marked one
                  scrolled to. */}
-          <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-elevated/40 p-3 sm:p-4">
+          <div ref={body} className="min-h-0 flex-1 overflow-auto overscroll-contain bg-elevated/40 p-3 sm:p-4">
             {clip ? (
               <div className="mx-auto flex max-w-[64rem] flex-col gap-4">
                 {pages.map(({ page }) => (
@@ -178,7 +193,8 @@ export function AvDocumentViewer({
                        others are the rest of the document, drawn plainly
                        — a highlight on every page would mark nothing. */
                     box={page === clip.page ? clip.box : null}
-                    scrollTo={page === clip.page}
+                    scrollTo={false}
+                    markRef={page === clip.page ? (el) => { mark.current = el; } : undefined}
                     zoom={zoom}
                     label={label}
                     ref_={doc.ref}

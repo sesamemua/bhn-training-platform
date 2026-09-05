@@ -72,7 +72,12 @@ export function AvSourcePanes({
       className={cn(
         "flex flex-col overflow-hidden border border-line bg-card",
         variant === "dock"
-          ? "h-[calc(100vh-9rem)] max-h-[52rem] rounded-2xl"
+          /* Full height, not 52rem of it. The cap left 229px of empty
+             column under the panel on a 1077px-tall screen, and the
+             taller the display the more it wasted — backwards for a
+             panel whose whole job is showing a page of A4. 2rem is the
+             sticky top-4 plus as much again at the bottom. */
+          ? "h-[calc(100vh-2rem)] rounded-2xl"
           : "h-[min(80vh,44rem)] rounded-t-2xl shadow-2xl",
       )}
     >
@@ -188,7 +193,7 @@ export function AvSourcePanes({
  * codebase has shipped that bug twice already.
  */
 export function PageSheet({
-  docKey, page, box, scrollTo, zoom, label, ref_, maxH, caption, onOpen,
+  docKey, page, box, scrollTo, zoom, label, ref_, maxH, caption, onOpen, markRef,
 }: {
   docKey: AvDoc["key"];
   page: number;
@@ -203,11 +208,32 @@ export function PageSheet({
   caption?: string;
   /** When set, the artwork becomes a button that opens the whole document. */
   onOpen?: () => void;
+  /** The viewer scrolls its own body to this, so it needs the node too. */
+  markRef?: (el: HTMLDivElement | null) => void;
 }) {
   const render = pageOf(docKey, page);
-  const mark = useRef<HTMLDivElement>(null);
+  const mark = useRef<HTMLDivElement | null>(null);
+  const pane = useRef<HTMLDivElement>(null);
+  /*
+   * Centre the mark inside THIS pane, and nothing else.
+   *
+   * scrollIntoView() scrolls every scrollable ancestor it can find, and
+   * on this page one of those is <main>. So running the mouse down the
+   * table scrolled the table itself — up to 142px in one hop, measured —
+   * and the row you were reaching for slid out from under the cursor.
+   * Writing scrollTop on the one element that should move cannot do
+   * that to anybody.
+   *
+   * A no-op in the viewer, where the pages are not height-capped and so
+   * have nothing to scroll; the viewer scrolls its own body to the
+   * marked page instead.
+   */
   useEffect(() => {
-    if (scrollTo) mark.current?.scrollIntoView({ block: "center", behavior: "auto" });
+    if (!scrollTo) return;
+    const box = mark.current;
+    const view = pane.current;
+    if (!box || !view || view.scrollHeight <= view.clientHeight) return;
+    view.scrollTop = Math.max(0, box.offsetTop - (view.clientHeight - box.offsetHeight) / 2);
   }, [scrollTo, docKey, page, zoom]);
   if (!render) return null;
 
@@ -222,7 +248,7 @@ export function PageSheet({
       />
       {box && (
         <div
-          ref={mark}
+          ref={(el) => { mark.current = el; markRef?.(el); }}
           aria-hidden
           className="pointer-events-none absolute inset-x-0 rounded-[3px] bg-amber-300/20 ring-2 ring-amber-500"
           style={{ top: `${box[0] * 100}%`, height: `${(box[1] - box[0]) * 100}%` }}
@@ -234,6 +260,7 @@ export function PageSheet({
   return (
     <figure className="m-0">
       <div
+        ref={pane}
         className="overflow-auto rounded-md bg-white ring-1 ring-inset ring-line"
         style={maxH ? { maxHeight: maxH } : undefined}
       >

@@ -364,10 +364,13 @@ const workspaceSponsorshipItem: NavItem = {
     "The sponsorship offer for the Annual Symposium — why sponsor, event details, tier grid, and how to confirm. Editable in place, with shareable links for prospective sponsors.",
 };
 
-// WORKSPACE → Marketing → Merch. The trade-show giveaway shortlist —
-// sits beside Sponsorship because both are things we hand a visitor at a
-// booth. Distinct from Operations → Merch fulfilment, which is the
-// rewards vault trainees redeem credits against.
+// WORKSPACE → 2026 Symposium → Merch. The trade-show giveaway shortlist.
+// It sat under Marketing beside Sponsorship, which is true of how it is
+// paid for and wrong about when it is used: it is one of the things you
+// order for this event, so it belongs with the other things you order
+// for this event — beside AV. Distinct from Operations → Merch
+// fulfilment, which is the rewards vault trainees redeem credits
+// against.
 const workspaceMerchItem: NavItem = {
   label: "Merch",
   href: "/admin/workspace/merch",
@@ -2020,6 +2023,7 @@ export function Sidebar({
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAvItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Industry Insights">
               <NavLink item={workspaceInsightsSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
@@ -2029,7 +2033,6 @@ export function Sidebar({
               <NavLink item={workspaceVideoItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSponsorshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceNewsletterItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Website">
               <NavLink item={workspaceWebsiteReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── AV panel jump fix, taller dock, Merch regrouped, live-form button
+  {
+    title: "The AV table stopped jumping under the cursor, and the live form button is findable",
+    body: "**AV no longer scrolls itself while you read it.** Running the mouse down the line-by-line table moved the table — up to **142px in one hop**, measured — so the row you were reaching for slid out from under the cursor. The source panel was centring its highlight with `scrollIntoView`, which scrolls *every* scrollable ancestor, and one of those is the page. It now moves only its own pane.\n\n**The panel fills the column.** It was capped at 832px tall, which left 229px of empty space beneath it on a 1080px screen and more on a taller one — backwards for a panel whose job is showing a page of A4.\n\n**Merch moved to 2026 Symposium, under AV.** It sat under Marketing beside Sponsorship, which is true of how it is paid for and wrong about when it is used: it is one of the things you order for this event.\n\n**Open live form is now the primary button** on the registration form's toolbar, and a button rather than an underlined word inside the preview banner. It had been the same neutral outline as *Copy link*, *Question* and everything else on the row — the one thing you actually hand to registrants was the hardest thing there to find.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── AV comparison: the source panel opens on the page, and the page opens the document
   {
     title: "AV: the source panel shows the page now, and clicking it opens the whole document",

@@ -240,11 +240,15 @@ export function FormFillView({
               : "This is a preview. Fill it in as much as you like — nothing is sent and nobody is registered."}
           </span>
           {mode === "test" && liveHref && (
+            /* A button, not an underlined word at the end of a
+               sentence. This banner is the one place a coordinator is
+               told they are looking at a test, so the way out to the
+               real thing should look like a way out. */
             <a
               href={liveHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-auto shrink-0 font-bold underline underline-offset-2 hover:text-amber-700"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-[12px] font-bold text-white shadow-md shadow-brand-600/25 transition-all hover:brightness-110"
             >
               Open live form
             </a>

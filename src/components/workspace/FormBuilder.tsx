@@ -166,11 +166,18 @@ export function FormBuilder({
                 Preview creates test rows; the live form accepts people. */}
             {liveHref && (
               <>
+                {/* The one primary control in this toolbar.
+                    It was the same neutral outline as "Copy link",
+                    "Question" and every other button here, which made
+                    the thing you actually hand to registrants the
+                    hardest thing on the row to find. Design-system
+                    Primary — brand fill plus its shadow — because
+                    exactly one action here is the published form. */}
                 <a
                   href={liveHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={BTN}
+                  className={`${PRIMARY} shadow-md shadow-brand-600/25`}
                 >
                   <ExternalLink size={13} /> Open live form
                 </a>
