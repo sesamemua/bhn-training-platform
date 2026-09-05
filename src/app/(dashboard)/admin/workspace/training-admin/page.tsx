@@ -35,8 +35,8 @@ export default async function TrainingAdminPage() {
     return (
       <>
         <PageHero
-          eyebrow="Workspace · Process"
-          title="Admin"
+          eyebrow="Workspace · Training Week"
+          title="Dashboard"
           description="Seat allocation, workshop capacity, registrants and email for Training Week."
           icon={<SlidersHorizontal />}
         />
@@ -72,8 +72,8 @@ export default async function TrainingAdminPage() {
   return (
     <>
       <PageHero
-        eyebrow="Workspace · Process"
-        title="Admin"
+        eyebrow="Workspace · Training Week"
+        title="Dashboard"
         description="Seat allocation, workshop capacity, registrants and email for Training Week."
         icon={<SlidersHorizontal />}
       />

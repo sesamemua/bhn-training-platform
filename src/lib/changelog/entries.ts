@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace menu: Training Week split out of 2026 Symposium
+  {
+    title: "Training Week has its own menu group, and two labels now say what they are",
+    body: "**Workspace → Training Week** is a new subgroup holding the two items that were filed under *2026 Symposium*: **Registration Form** and **Dashboard**. Training Week runs 26–28 October and the Symposium is the 29th — a different event on different days, which is the same reason Industry Insights already has its own group.\n\nIt also fixes two labels that did not say enough. *Registration Form* did not say which registration, and *Admin Dashboard* did not say which admin — sitting two rows below the form it is the dashboard **for**. Under the Training Week heading they are a pair, and neither label has to carry the event's name to be clear.\n\n**Speakers** is now **Headshots & Bios** in both places it appears (2026 Symposium and Industry Insights). The page exists to collect headshots and bios; *Speakers* read as a list of names.\n\nNo URLs changed, so bookmarks and links still work. Two stale breadcrumbs went with it: the Dashboard page still said *Workspace · Process* two releases after it moved, and its heading was the single word *Admin*.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── One calendar, drawn once
   {
     title: "The Admin calendar and the registration form now draw the same week the same way",

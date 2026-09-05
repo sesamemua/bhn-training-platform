@@ -2598,6 +2598,17 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     since: "2026.09.16",
   },
+  // ─── Workspace menu: Training Week is its own group now
+  {
+    id: "workspace.training-week-group",
+    title: "Training Week moved out of 2026 Symposium",
+    body: "**Workspace \u2192 Training Week** now holds the **Registration Form** and its **Dashboard** \u2014 the two things that run the week, which were filed under the Symposium. Same pages, same URLs.\n\n**Speakers** is now **Headshots & Bios**, in both the Symposium and Industry Insights groups: it is the page where invited speakers upload theirs.",
+    path: "/admin/workspace/symposium-2026/registration",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.16",
+    cta: { label: "Open the Registration Form", href: "/admin/workspace/symposium-2026/registration" },
+  },
   {
     id: "complete",
     title: "You're all set",

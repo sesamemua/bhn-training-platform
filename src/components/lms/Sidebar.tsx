@@ -422,11 +422,16 @@ const workspaceFormsItem: NavItem = {
     "Build a form — questions, logic, external data sheets — beside the workflow its answers run through.",
 };
 
-// WORKSPACE → 2026 Symposium → Registration Form. Its own route rather
+// WORKSPACE → Training Week → Registration Form. Its own route rather
 // than a deep link into Process → Forms: that page opens whichever form
 // was edited last, and the sidebar decides what is highlighted from the
 // pathname, so a query string would light up two entries at once.
-const workspaceSymposiumFormItem: NavItem = {
+//
+// The label stays short because the SUBGROUP says "Training Week".
+// "Training Week Reg Form" measures 185px against the 169px the label
+// column actually has, so it would have arrived truncated to "Training
+// Week Re…" — the two words that matter cut off.
+const workspaceTrainingFormItem: NavItem = {
   label: "Registration Form",
   href: "/admin/workspace/symposium-2026/registration",
   icon: ClipboardList,
@@ -453,7 +458,10 @@ const workspaceLogoVoteItem: NavItem = {
 // work: speaker details being filed under the events module is true and
 // not something anybody should have to remember.
 const workspaceSpeakersItem: NavItem = {
-  label: "Speakers",
+  // What it collects, not who it is about: the page exists to gather
+  // headshots and bios, and "Speakers" alone read as a list of names.
+  // 135px against the 169px available, so nothing truncates.
+  label: "Headshots & Bios",
   href: "/admin/workspace/symposium-2026/speakers",
   icon: Mic,
   minRole: "admin",
@@ -480,7 +488,10 @@ const workspaceAvItem: NavItem = {
 // filing it there would be the same mistake as speakers living under
 // Events, one level down.
 const workspaceInsightsSpeakersItem: NavItem = {
-  label: "Speakers",
+  // Same job, same label. Two identical features under two different
+  // names is a worse inconsistency than renaming one the user did not
+  // point at.
+  label: "Headshots & Bios",
   href: "/admin/events/2026-industry-insights/speakers",
   icon: Mic,
   minRole: "admin",
@@ -488,11 +499,16 @@ const workspaceInsightsSpeakersItem: NavItem = {
     "Industry Insights, 24 September. Hand the invited hiring professionals one link and they fill in their own headshot, bio, LinkedIn and what their session will cover — no account needed.",
 };
 
-// WORKSPACE → 2026 Symposium → Admin. Moved out of Process. Flow Charts
-// and the form builder are general tools; this one is only ever about
-// this event — seats, rooms, who is coming and what they are told.
+// WORKSPACE → Training Week → Dashboard. Flow Charts and the form
+// builder are general tools; this one is only ever about this event —
+// seats, rooms, who is coming and what they are told.
+//
+// "Admin Dashboard" said nothing about WHICH admin dashboard, sitting
+// two rows under a form it is the dashboard FOR. Under the Training
+// Week heading, directly beneath Registration Form, "Dashboard" is
+// unambiguous and the pair reads as one thing.
 const workspaceTrainingAdminItem: NavItem = {
-  label: "Admin Dashboard",
+  label: "Dashboard",
   href: "/admin/workspace/training-admin",
   icon: SlidersHorizontal,
   minRole: "admin",
@@ -1986,13 +2002,24 @@ export function Sidebar({
                 symposium meant visiting Marketing for the plan and
                 Process for the form and the seats — three subgroups for
                 one job, none of which was about the symposium. */}
+            {/* Training Week (26–28 Oct) before the Symposium (29 Oct) —
+                chronological, and its own subgroup for the reason
+                Industry Insights has one: a different event on
+                different days. The form and the dashboard that runs it
+                were filed under "2026 Symposium", where "Registration
+                Form" did not say which registration and "Admin
+                Dashboard" did not say which admin. Under this heading
+                they are a pair and neither label has to carry the
+                event's name. */}
+            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Training Week">
+              <NavLink item={workspaceTrainingFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceSymposiumFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAvItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Industry Insights">
               <NavLink item={workspaceInsightsSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

@@ -1,5 +1,5 @@
 /**
- * Workspace → 2026 Symposium → Registration Form.
+ * Workspace → Training Week → Registration Form.
  *
  * The Training Week registration, on its own page.
  *
@@ -39,7 +39,7 @@ export default async function SymposiumRegistrationPage() {
     <>
       <FullWidthWhenCollapsed />
       <PageHero
-        eyebrow="Workspace · 2026 Symposium"
+        eyebrow="Workspace · Training Week"
         title="Registration Form"
         description="What people fill in to register for Training Week, and the workflow their answers run through."
         icon={<ClipboardList />}

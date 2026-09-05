@@ -748,7 +748,7 @@ function Submissions() {
 
       {rows !== null && rows.length === 0 && (
         <p className="mt-2 rounded-lg border border-line bg-elevated/40 p-3 text-[12.5px] leading-relaxed text-muted">
-          Nothing yet. Open <span className="font-semibold text-fg">2026 Symposium → Registration Form</span>,
+          Nothing yet. Open <span className="font-semibold text-fg">Training Week → Registration Form</span>,
           switch to <span className="font-semibold text-fg">Preview</span> and submit it — the entry lands here,
           marked as a test, and you can delete it from this table.
         </p>
