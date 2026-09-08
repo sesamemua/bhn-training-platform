@@ -2642,6 +2642,17 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.16",
     cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
   },
+  // ─── Social queue
+  {
+    id: "workspace.social-queue",
+    title: "Social posts draft themselves now",
+    body: "**Workspace \u2192 Marketing \u2192 Social.** For every open VentureConnect cycle the platform drafts a launch post, a 14 / 7 / 2 / closing-day reminder ladder, and a recipients announcement \u2014 written from the cycle\u2019s own deadline, so **extending a window moves every unsent reminder with it**.\n\nNothing goes out on its own. Edit, approve, copy, post it yourself, mark it done. Recipients posts name only applicants who have consented.",
+    path: "/admin/workspace/marketing/social",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.16",
+    cta: { label: "Open Social", href: "/admin/workspace/marketing/social" },
+  },
   {
     id: "complete",
     title: "You're all set",

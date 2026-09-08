@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Social posts drafted from live EQUIP cycles
+  {
+    title: "Social posts now draft themselves from the VentureConnect cycle",
+    body: "**Workspace → Marketing → Social** is a queue of posts written from the platform\u2019s own facts rather than typed into a box. For every open VentureConnect cycle a daily job drafts a **launch** post, a **14 / 7 / 2 / closing-day reminder ladder**, and — once there is somebody to name — a **recipients** announcement.\n\nThe point is that nothing has a date typed into it. **Extend a deadline and every unsent reminder moves with it**, because the post and the deadline are the same row. If a post was already approved when the cycle moved, it is left exactly as approved and the queue flags it as stale rather than quietly rewriting words somebody signed off.\n\n**Nothing publishes itself.** A post is drafted, you edit it, you approve it, you copy it and post it, then mark it done — the same rule EQUIP decision emails follow. There is no LinkedIn app behind this and the UI does not pretend otherwise.\n\n**Recipients posts name only applicants who have consented.** A new consent flag defaults to false, so the failure mode is a post naming fewer people than it could rather than one naming somebody who never agreed.\n\nImages are a separate job: each post carries a typed `assetSpec` describing the image it needs, documented in `docs/social-asset-spec.md`, so a renderer can be built against it independently.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Speaker intake: each event chooses its own optional questions
   {
     title: "Each event now chooses which questions its speaker form asks",

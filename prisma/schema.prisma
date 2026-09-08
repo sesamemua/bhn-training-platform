@@ -313,6 +313,7 @@ model User {
   codeReviews            CodeReview[]        @relation("CodeReviewBy")
   codeReviewNotes        CodeReviewNote[]    @relation("CodeReviewNoteBy")
   themeProposals         ThemeProposal[]     @relation("ThemeProposals")
+  socialPostsApproved    SocialPost[]        @relation("SocialPostApprover")
   reviewedThemeProposals ThemeProposal[]     @relation("ThemeProposalReviewer")
 
   // ── Application-comment + feedback relations ──
@@ -3822,6 +3823,16 @@ model EquipApplication {
   applicationStage       String    @default("pre_screen")
   requestedAmount        Float?
   approvedAmount         Float?
+  /// May BioHubNet name this applicant and their venture in a public
+  /// announcement of who was funded?
+  ///
+  /// Default false, and false is the honest default: nobody has been
+  /// asked yet. A recipients post includes only the applicants where
+  /// this is true, so the safe state is a shorter post rather than one
+  /// that names somebody who never agreed to it. Set by an admin on the
+  /// review page today; asking on the application form itself is the
+  /// better place and the obvious next step.
+  publicityConsent       Boolean   @default(false)
   /// What was actually spent and claimed, once receipts are in. Null
   /// means not reconciled yet — deliberately NOT defaulted to
   /// approvedAmount, because "we have not checked" and "they spent
@@ -4047,6 +4058,68 @@ model EquipDeadline {
 
   @@index([stream, status, deadlineAt])
   @@index([deadlineAt])
+}
+
+/// A routine social post, generated from the platform's own facts.
+///
+/// The point of storing these rather than writing posts elsewhere: the
+/// deadline in the post and the deadline in EquipDeadline are the same
+/// row. Extend a window and every unsent reminder moves with it, because
+/// none of them has a date typed into it.
+///
+/// Nothing here publishes anything on its own. A post is drafted by the
+/// daily job, a person edits and approves it, and only then can it go
+/// out — the rule EQUIP decision emails already follow.
+model SocialPost {
+  id     String @id @default(cuid())
+  /// "venture_connect". Text, not an enum, so a second stream is a
+  /// code change rather than a migration — same call EquipDeadline made.
+  stream String
+  /// "launch" | "reminder" | "recipients" — see lib/social/types.ts.
+  kind   String
+  /// The cycle this belongs to.
+  deadlineId String
+  /// For a reminder, which rung of the ladder. 0 for the other kinds,
+  /// so the unique key below is total rather than nullable.
+  daysBefore Int @default(0)
+
+  /// stream:kind:deadlineId:daysBefore. The daily job runs every
+  /// morning and must never make a second copy of a post somebody has
+  /// already edited; a unique index is what makes that guaranteed
+  /// rather than likely.
+  key String @unique
+
+  /// "draft" | "approved" | "scheduled" | "published" | "skipped".
+  /// `skipped` exists so declining a post makes it stay declined —
+  /// deleting it would just bring it back on the next run.
+  status String @default("draft")
+
+  /// The generated copy, as edited. Regenerating overwrites this ONLY
+  /// while the post is still a draft.
+  body String
+  /// The contract with the image renderer, which a separate agent
+  /// builds. Shape in lib/social/types.ts — deliberately free of
+  /// database ids and of anything the body does not also say.
+  assetSpec Json
+  /// Written back by that renderer. Null until an image exists; a post
+  /// is publishable without one.
+  assetUrl String?
+
+  /// When it should go out. 9am Toronto on its day.
+  scheduledFor DateTime
+  /// Set when a human approves. Nothing may be published unapproved.
+  approvedAt   DateTime?
+  approvedById String?
+  publishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  approvedBy User? @relation("SocialPostApprover", fields: [approvedById], references: [id])
+
+  /// "what is due, oldest first" — the queue's only real query.
+  @@index([status, scheduledFor])
+  @@index([deadlineId])
 }
 
 // ─── Opportunity deadlines (KE / MA / Engage highlights) ────────

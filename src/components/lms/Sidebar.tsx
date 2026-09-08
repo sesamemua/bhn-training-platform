@@ -371,6 +371,18 @@ const workspaceSponsorshipItem: NavItem = {
 // for this event — beside AV. Distinct from Operations → Merch
 // fulfilment, which is the rewards vault trainees redeem credits
 // against.
+// WORKSPACE → Marketing → Social. Posts drafted from live EQUIP
+// cycles rather than typed, so a reminder cannot go out carrying last
+// month's deadline. Drafts only — nothing here publishes.
+const workspaceSocialItem: NavItem = {
+  label: "Social",
+  href: "/admin/workspace/marketing/social",
+  icon: Megaphone,
+  minRole: "admin",
+  description:
+    "VentureConnect launch, the reminder ladder and the recipients announcement, drafted from the cycle's own deadline. Approve, copy, post, mark done — the platform drafts, a person publishes.",
+};
+
 const workspaceMerchItem: NavItem = {
   label: "Merch",
   href: "/admin/workspace/merch",
@@ -2048,6 +2060,7 @@ export function Sidebar({
               <NavLink item={workspaceVideoItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSponsorshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceNewsletterItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceSocialItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Website">
               <NavLink item={workspaceWebsiteReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

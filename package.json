@@ -38,7 +38,8 @@
     "test:schedule": "tsx --test tests/unit/allocation-schedule.test.ts tests/unit/training-week-schedule.test.ts tests/unit/week-grid.test.tsx",
     "test:flowchart": "tsx --test tests/unit/flowchart-form.test.ts tests/unit/flowchart-route.test.ts tests/unit/flowchart-institutions.test.ts",
     "test:campaign": "tsx --test tests/unit/campaign-attribution.test.ts tests/unit/campaign-eligibility.test.ts tests/unit/campaign-content.test.ts tests/unit/google-ads-pilot.test.ts tests/unit/google-ads-conversions.test.ts tests/unit/google-ads-workspace.test.ts tests/unit/google-ads-workspace-defaults.test.ts",
-    "test:campaign:e2e": "playwright test --config=playwright.campaign.config.ts"
+    "test:campaign:e2e": "playwright test --config=playwright.campaign.config.ts",
+    "test:social": "tsx --test tests/unit/social-posts.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
