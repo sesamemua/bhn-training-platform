@@ -43,9 +43,14 @@ export default async function SpeakerIntakePage({
           {event.title}
         </p>
         <h1 className="mt-1.5 text-2xl font-bold text-[var(--speaker-control-ink)]">Speaker details</h1>
+        {/* Named from the event, not hardcoded. This page serves every
+            event on the platform, and the sentence used to promise "the
+            official symposium website" to Industry Insights speakers —
+            under a heading that correctly said Industry Insights. One
+            page, three events, one of them in the copy. */}
         <p className="mt-2 text-[14px] leading-relaxed text-[var(--speaker-copy)]">
           Thank you for joining us! Please provide the bio and headshot you would
-          like published on the official symposium website.
+          like published for {event.title}.
         </p>
 
         {event.speakerIntakeOpen ? (
