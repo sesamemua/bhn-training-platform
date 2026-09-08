@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Speaker intake: each event chooses its own optional questions
+  {
+    title: "Each event now chooses which questions its speaker form asks",
+    body: "The speaker intake form is one page serving every event, and on **28 August** the session-pitch and LinkedIn fields were hidden — for all of them at once. Two things followed. **Industry Insights**, whose pitch limit had been deliberately raised to 250 words, was left with a setting governing a field nobody could see. And because the form creates a new speaker row rather than updating one, anybody asked to fill it in again came back with **less** than they gave the first time: two speakers re-submitted on 8 September and both lost their session description and their LinkedIn URL.\n\nBoth fields are back, and which questions an event asks is now **per event**, on its own Speakers page under *Questions this event asks*. Name, role, company, headshot and biography are always asked; session title, session description and LinkedIn are yours to switch off. Turning one off never affects another event, and never deletes answers already collected.\n\nStarting point: everything on, except that **Industry Insights does not ask for a session title** — its five August speakers all filled the pitch and none had a title.\n\n**Also fixed: the Session title box no longer truncates a paste.** It carried `maxLength=200`, so the browser silently discarded anything longer with no warning and no counter — which is how one speaker\u2019s prepared description was stored cut off mid-word. The server still refuses anything over 200, with a message that says so.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── AV split into 2025 / 2026, and the September quotes added
   {
     title: "AV is two pages now — and the September quotes cost $1,220 more than the one they replace",

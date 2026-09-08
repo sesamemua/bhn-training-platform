@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SpeakerIntakeForm } from "@/components/events/SpeakerIntakeForm";
 import { speakerLimits } from "@/lib/events/limits";
+import { speakerFields } from "@/lib/events/fields";
 import styles from "./speaker-intake.module.css";
 
 export const dynamic = "force-dynamic";
@@ -27,11 +28,15 @@ export default async function SpeakerIntakePage({
       speakerIntakeOpen: true,
       speakerBioMaxWords: true,
       speakerPitchMaxWords: true,
+      speakerAskSessionTitle: true,
+      speakerAskSessionPitch: true,
+      speakerAskLinkedin: true,
     },
   });
   if (!event) notFound();
 
   const limits = speakerLimits(event);
+  const fields = speakerFields(event);
 
   return (
     <main
@@ -58,6 +63,8 @@ export default async function SpeakerIntakePage({
             <SpeakerIntakeForm
               slug={slug}
               bioMaxWords={limits.bio}
+              pitchMaxWords={limits.pitch}
+              fields={fields}
             />
           </div>
         ) : (

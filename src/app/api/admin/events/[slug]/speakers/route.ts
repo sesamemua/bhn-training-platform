@@ -13,6 +13,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteR2ObjectByUrl } from "@/lib/r2";
 import { countWords } from "@/lib/events/bio";
+import { speakerFields } from "@/lib/events/fields";
 import {
   speakerLimits, clampWordLimit, maxCharsFor,
   WORD_LIMIT_MAX,
@@ -28,6 +29,15 @@ const PatchSchema = z.discriminatedUnion("action", [
     action: z.literal("setWordLimits"),
     bio: z.number().int().nullable().optional(),
     pitch: z.number().int().nullable().optional(),
+  }),
+  /* Which optional questions this event asks. Each is sent on its own
+     so toggling one cannot clear another — the failure this whole
+     change exists to stop. */
+  z.object({
+    action: z.literal("setFields"),
+    sessionTitle: z.boolean().optional(),
+    sessionPitch: z.boolean().optional(),
+    linkedin: z.boolean().optional(),
   }),
   z.object({
     action: z.literal("editSpeaker"),
@@ -48,7 +58,14 @@ const PatchSchema = z.discriminatedUnion("action", [
 async function eventFor(slug: string) {
   return prisma.bhnEvent.findUnique({
     where: { slug },
-    select: { id: true, speakerBioMaxWords: true, speakerPitchMaxWords: true },
+    select: {
+      id: true,
+      speakerBioMaxWords: true,
+      speakerPitchMaxWords: true,
+      speakerAskSessionTitle: true,
+      speakerAskSessionPitch: true,
+      speakerAskLinkedin: true,
+    },
   });
 }
 
@@ -91,6 +108,24 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ slug: str
     // The resolved numbers, so the UI shows what is actually in force
     // rather than what was typed.
     return NextResponse.json({ ok: true, limits: speakerLimits(updated), stored: updated });
+  }
+
+  if (parsed.data.action === "setFields") {
+    const { sessionTitle, sessionPitch, linkedin } = parsed.data;
+    const updated = await prisma.bhnEvent.update({
+      where: { id: event.id },
+      data: {
+        ...(sessionTitle !== undefined ? { speakerAskSessionTitle: sessionTitle } : {}),
+        ...(sessionPitch !== undefined ? { speakerAskSessionPitch: sessionPitch } : {}),
+        ...(linkedin !== undefined ? { speakerAskLinkedin: linkedin } : {}),
+      },
+      select: {
+        speakerAskSessionTitle: true,
+        speakerAskSessionPitch: true,
+        speakerAskLinkedin: true,
+      },
+    });
+    return NextResponse.json({ ok: true, fields: speakerFields(updated) });
   }
 
   const { speakerId, action: _action, ...rest } = parsed.data;

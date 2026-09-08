@@ -2631,6 +2631,17 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.16",
     cta: { label: "Open AV 2026", href: "/admin/workspace/symposium-2026/av/2026" },
   },
+  // ─── Speaker intake questions, per event
+  {
+    id: "events.speaker-questions",
+    title: "Pick the questions your speaker form asks",
+    body: "On an event\u2019s **Speakers** page there is now **Questions this event asks**. Name, role, company, headshot and biography are always asked; **session title**, **session description** and **LinkedIn** are yours to turn on or off \u2014 per event, so one event never changes another.\n\nThe session description and LinkedIn fields had been hidden everywhere since 28 August. They are back, which matters if you chase a speaker: the form creates a new record rather than updating one, so anyone re-submitting against the reduced form came back with less than they first gave you.",
+    path: "/admin/workspace/symposium-2026/speakers",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.16",
+    cta: { label: "Open Speakers", href: "/admin/workspace/symposium-2026/speakers" },
+  },
   {
     id: "complete",
     title: "You're all set",

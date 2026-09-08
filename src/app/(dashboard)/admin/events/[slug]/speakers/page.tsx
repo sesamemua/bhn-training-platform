@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
 import { speakerLimits } from "@/lib/events/limits";
+import { speakerFields } from "@/lib/events/fields";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ export default async function EventSpeakersPage({
       speakerIntakeOpen: true,
       speakerBioMaxWords: true,
       speakerPitchMaxWords: true,
+      speakerAskSessionTitle: true,
+      speakerAskSessionPitch: true,
+      speakerAskLinkedin: true,
     },
   });
   if (!event) notFound();
@@ -70,7 +74,8 @@ export default async function EventSpeakersPage({
         </Link>
         <SpeakersManager
           slug={slug}
-          intakeOpen={event.speakerIntakeOpen}
+          askFields={speakerFields(event)}
+        intakeOpen={event.speakerIntakeOpen}
           initialSpeakers={rows}
           limits={speakerLimits(event)}
           storedLimits={{

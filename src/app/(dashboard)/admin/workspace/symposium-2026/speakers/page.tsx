@@ -21,6 +21,7 @@ import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenColl
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
 import { speakerLimits } from "@/lib/events/limits";
+import { speakerFields } from "@/lib/events/fields";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,9 @@ export default async function SymposiumSpeakersPage() {
       speakerIntakeOpen: true,
       speakerBioMaxWords: true,
       speakerPitchMaxWords: true,
+      speakerAskSessionTitle: true,
+      speakerAskSessionPitch: true,
+      speakerAskLinkedin: true,
     },
   });
   if (!event) notFound();
@@ -73,7 +77,8 @@ export default async function SymposiumSpeakersPage() {
       <div className="mx-auto max-w-3xl space-y-6 pb-12">
         <SpeakersManager
           slug={EVENT_SLUG}
-          intakeOpen={event.speakerIntakeOpen}
+          askFields={speakerFields(event)}
+        intakeOpen={event.speakerIntakeOpen}
           initialSpeakers={rows}
           limits={speakerLimits(event)}
           storedLimits={{

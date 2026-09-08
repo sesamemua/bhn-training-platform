@@ -16,10 +16,13 @@ import { useCallback, useState } from "react";
 import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 import { HeadshotCropper, type CropState } from "./HeadshotCropper";
 import { countWords } from "@/lib/events/bio";
+import type { SpeakerFields } from "@/lib/events/fields";
 
 export function SpeakerIntakeForm({
   slug,
   bioMaxWords,
+  pitchMaxWords,
+  fields,
 }: {
   slug: string;
   /* Resolved on the server from the event, so the counter on screen and
@@ -27,11 +30,19 @@ export function SpeakerIntakeForm({
      baked into the client would silently disagree the moment an admin
      changed it. */
   bioMaxWords: number;
+  pitchMaxWords: number;
+  /* Which optional questions this event asks. Resolved on the server so
+     the form, the endpoint and the admin toggle are all reading one
+     answer — a field rendered here but ignored there would throw away
+     something a speaker typed. */
+  fields: SpeakerFields;
 }) {
   const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
   const [name, setName] = useState("");
   const [organization, setOrganization] = useState("");
   const [bio, setBio] = useState("");
+  const [pitch, setPitch] = useState("");
+  const [linkedin, setLinkedin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -46,6 +57,8 @@ export function SpeakerIntakeForm({
 
   const bioWords = countWords(bio);
   const over = bioWords > bioMaxWords;
+  const pitchWords = countWords(pitch);
+  const pitchOver = pitchWords > pitchMaxWords;
 
   async function shorten() {
     if (shortening) return;
@@ -154,9 +167,60 @@ export function SpeakerIntakeForm({
         </Field>
       </div>
 
-      <Field label="Session title" hint="If applicable. As it should appear on the event program.">
-        <input name="sessionTitle" maxLength={200} className={INPUT} />
-      </Field>
+      {fields.sessionTitle && (
+        <Field label="Session title" hint="If applicable. As it should appear on the event program.">
+          {/* No maxLength. The attribute silently truncated a pasted
+              answer at 200 characters with no warning and no counter —
+              which is exactly how a speaker's session description ended
+              up cut off mid-word in this box. The endpoint still refuses
+              anything over 200, with a message that says so. */}
+          <input name="sessionTitle" className={INPUT} />
+        </Field>
+      )}
+
+      {fields.sessionPitch && (
+        <Field
+          label="What will your session offer?"
+          hint={`Or who would benefit most from attending. Up to ${pitchMaxWords} words.`}
+          group
+          labelFor="speaker-pitch"
+        >
+          <textarea
+            id="speaker-pitch"
+            name="sessionPitch"
+            rows={5}
+            value={pitch}
+            onChange={(e) => setPitch(e.target.value)}
+            className={INPUT}
+          />
+          <span
+            className={`mt-1 block text-[11.5px] font-medium ${
+              pitchOver ? "text-[var(--speaker-danger)]" : "text-[var(--speaker-subtle)]"
+            }`}
+          >
+            {pitchWords} / {pitchMaxWords} words
+          </span>
+        </Field>
+      )}
+
+      {fields.linkedin && (
+        <Field
+          label="LinkedIn profile"
+          hint="Optional. Paste it however it appears — we don't check it."
+          group
+          labelFor="speaker-linkedin"
+        >
+          <input
+            id="speaker-linkedin"
+            name="linkedin"
+            maxLength={200}
+            value={linkedin}
+            onChange={(e) => setLinkedin(e.target.value)}
+            className={INPUT}
+            placeholder="linkedin.com/in/yourname"
+          />
+        </Field>
+      )}
 
       <Field label="Headshot" required group hint="Drag to frame it inside the circle.">
         <HeadshotCropper onChange={onCrop} />

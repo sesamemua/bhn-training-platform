@@ -2554,6 +2554,29 @@ model BhnEvent {
   /// would make the form impossible to submit.
   speakerBioMaxWords   Int?
   speakerPitchMaxWords Int?
+
+  /// Which OPTIONAL questions the public intake form asks, per event.
+  ///
+  /// Name, role, company, headshot and biography are always asked —
+  /// they are what a speaker card is made of. These three are not
+  /// universal: a two-hour panel wants what you will talk about, a
+  /// symposium programme wants a session title, and neither wants the
+  /// other's question.
+  ///
+  /// They exist because the fields were once hidden GLOBALLY, in one
+  /// commit, for every event. That took the pitch and the LinkedIn URL
+  /// away from an event whose speakerPitchMaxWords had been deliberately
+  /// raised to 250 — a setting left configuring a field nobody could
+  /// see — and turned every re-submission into a quiet deletion of what
+  /// the first one had collected. Per event, so hiding one cannot do
+  /// that to another.
+  ///
+  /// Defaulting to true restores what the form asked before that
+  /// commit. An event that wants fewer questions turns them off on its
+  /// own Speakers page.
+  speakerAskSessionTitle Boolean @default(true)
+  speakerAskSessionPitch Boolean @default(true)
+  speakerAskLinkedin     Boolean @default(true)
   title                String
   /// Short marketing line shown on the landing-page hero.
   tagline              String?

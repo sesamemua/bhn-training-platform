@@ -21,6 +21,7 @@ import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor } from "@/lib/showcase/validation";
 import { countWords } from "@/lib/events/bio";
+import { speakerFields } from "@/lib/events/fields";
 import { speakerLimits, maxCharsFor } from "@/lib/events/limits";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import {
@@ -47,6 +48,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       speakerIntakeOpen: true,
       speakerBioMaxWords: true,
       speakerPitchMaxWords: true,
+      speakerAskSessionTitle: true,
+      speakerAskSessionPitch: true,
+      speakerAskLinkedin: true,
     },
   });
   if (!event) return NextResponse.json({ error: "Unknown event." }, { status: 404 });
@@ -70,11 +74,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const name = String(form.get("name") ?? "").trim();
   const title = String(form.get("title") ?? "").trim();
   const organization = String(form.get("organization") ?? "").trim();
-  const sessionTitle = String(form.get("sessionTitle") ?? "").trim();
+  /*
+   * A question the event does not ask cannot be answered.
+   *
+   * Read from the same resolver the form renders from, so a value
+   * posted for a hidden field is dropped rather than stored. Without
+   * this the endpoint would happily accept anything with the right
+   * name — and an event that turned a question off would still be
+   * collecting it from whoever kept the old page open.
+   */
+  const fields = speakerFields(event);
+  const sessionTitle = fields.sessionTitle ? String(form.get("sessionTitle") ?? "").trim() : "";
   const bio = String(form.get("bio") ?? "").trim();
   const email = String(form.get("email") ?? "").trim();
-  const linkedinRaw = String(form.get("linkedin") ?? "").trim();
-  const sessionPitch = String(form.get("sessionPitch") ?? "").trim();
+  const linkedinRaw = fields.linkedin ? String(form.get("linkedin") ?? "").trim() : "";
+  const sessionPitch = fields.sessionPitch ? String(form.get("sessionPitch") ?? "").trim() : "";
   const topics = String(form.get("topics") ?? "")
     .split(/[,\n]/)
     .map((t) => t.trim())

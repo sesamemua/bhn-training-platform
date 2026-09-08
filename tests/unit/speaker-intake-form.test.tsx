@@ -1,3 +1,4 @@
+import { ALL_SPEAKER_FIELDS } from "../../src/lib/events/fields";
 import test from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
@@ -20,6 +21,8 @@ import { SpeakerIntakeForm } from "../../src/components/events/SpeakerIntakeForm
 const html = renderToStaticMarkup(React.createElement(SpeakerIntakeForm, {
   slug: "2026-industry-insights",
   bioMaxWords: 250,
+  pitchMaxWords: 250,
+  fields: ALL_SPEAKER_FIELDS,
 }));
 
 /** Every <label>…</label> in the output, crudely but adequately. */
@@ -83,14 +86,24 @@ test("the headshot field still says what to do with it", () => {
   assert.match(html, /Drag to frame it inside the circle/);
 });
 
-test("the session title question appears immediately before the headshot", () => {
+test("the session title question comes before the headshot, and does not truncate a paste", () => {
   const sessionTitle = html.indexOf('name="sessionTitle"');
   const headshot = html.indexOf("Headshot");
   const input = html.match(/<input\b(?=[^>]*name="sessionTitle")[^>]*>/)?.[0];
   assert.ok(sessionTitle > -1, "the session title input should be present");
   assert.ok(headshot > sessionTitle, "the headshot question should follow the session title");
   assert.ok(input, "the session title should render as an input");
-  assert.match(input, /maxLength="200"/);
+  /*
+   * NO maxLength, deliberately.
+   *
+   * It used to carry maxLength={200}, and a browser enforces that by
+   * silently discarding the rest of a paste — no warning, no counter.
+   * A speaker pasted a prepared session description in here and it was
+   * stored cut off mid-word. The endpoint still refuses anything over
+   * 200 with a message that says so, which is a rejection somebody can
+   * act on rather than a truncation nobody sees.
+   */
+  assert.doesNotMatch(input, /maxLength/i);
   assert.match(html, /If applicable\. As it should appear on the event program\./);
   assert.doesNotMatch(html, /Optional\. As it should appear on the event program\./);
 });
@@ -251,7 +264,7 @@ test("empty and nonsense give null, not a broken URL", () => {
 
 test("the form states the limit in words, not characters", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SpeakerIntakeForm, { slug: "e", bioMaxWords: 250 }),
+    React.createElement(SpeakerIntakeForm, { slug: "e", bioMaxWords: 250, pitchMaxWords: 250, fields: ALL_SPEAKER_FIELDS }),
   );
   assert.match(html, /Up to 250 words/, "the hint should name the word limit");
   assert.match(html, /0 \/ 250 words/, "the counter should count words");
@@ -260,7 +273,7 @@ test("the form states the limit in words, not characters", () => {
 
 test("shortening is not offered to a bio that is inside the limit", () => {
   const html = renderToStaticMarkup(
-    React.createElement(SpeakerIntakeForm, { slug: "e", bioMaxWords: 250 }),
+    React.createElement(SpeakerIntakeForm, { slug: "e", bioMaxWords: 250, pitchMaxWords: 250, fields: ALL_SPEAKER_FIELDS }),
   );
   // An empty bio is inside the limit, so the button starts disabled —
   // it exists for the speaker who pastes a faculty page, not for
@@ -301,19 +314,54 @@ test("the form shows whatever limit it was given, not a baked-in 250", () => {
   // client would silently disagree with the rule the server enforces.
   const custom = renderToStaticMarkup(
     React.createElement(SpeakerIntakeForm, {
-      slug: "e", bioMaxWords: 80,
+      slug: "e", bioMaxWords: 80, pitchMaxWords: 120, fields: ALL_SPEAKER_FIELDS,
     }),
   );
   assert.match(custom, /Up to 80 words/);
   assert.match(custom, /0 \/ 80 words/);
+  // The two limits are independent and both come from the event.
+  assert.match(custom, /Up to 120 words/);
+  assert.match(custom, /0 \/ 120 words/);
   assert.doesNotMatch(custom, /250 words/);
 });
 
-test("the public form hides LinkedIn and session-advice fields", () => {
-  assert.doesNotMatch(html, /LinkedIn profile/);
-  assert.doesNotMatch(html, /name="linkedin"/);
-  assert.doesNotMatch(html, /A brief description of the advice you plan to share/);
-  assert.doesNotMatch(html, /who would benefit most from attending/);
-  assert.doesNotMatch(html, /name="sessionPitch"/);
-  assert.doesNotMatch(html, /0 \/ 120 words/);
+test("the optional questions are asked, or not, per event", () => {
+  // Asked: this render passes ALL_SPEAKER_FIELDS.
+  assert.match(html, /LinkedIn profile/);
+  assert.match(html, /name="linkedin"/);
+  assert.match(html, /name="sessionPitch"/);
+  assert.match(html, /who would benefit most from attending/);
+
+  // Not asked: each one disappears on its own, and turning one off does
+  // not take another with it. This is the whole point of the change --
+  // hiding these globally is what left an event with a 250-word pitch
+  // limit and no pitch field, and turned every re-submission into a
+  // deletion of what the first one collected.
+  const titleOnly = renderToStaticMarkup(
+    React.createElement(SpeakerIntakeForm, {
+      slug: "e", bioMaxWords: 250, pitchMaxWords: 120,
+      fields: { sessionTitle: true, sessionPitch: false, linkedin: false },
+    }),
+  );
+  assert.match(titleOnly, /name="sessionTitle"/);
+  assert.doesNotMatch(titleOnly, /name="sessionPitch"/);
+  assert.doesNotMatch(titleOnly, /name="linkedin"/);
+  assert.doesNotMatch(titleOnly, /LinkedIn profile/);
+
+  const pitchOnly = renderToStaticMarkup(
+    React.createElement(SpeakerIntakeForm, {
+      slug: "e", bioMaxWords: 250, pitchMaxWords: 120,
+      fields: { sessionTitle: false, sessionPitch: true, linkedin: true },
+    }),
+  );
+  assert.doesNotMatch(pitchOnly, /name="sessionTitle"/);
+  assert.match(pitchOnly, /name="sessionPitch"/);
+  assert.match(pitchOnly, /name="linkedin"/);
+
+  // The always-asked five are in every one of them.
+  for (const markup of [html, titleOnly, pitchOnly]) {
+    assert.match(markup, /name="name"/);
+    assert.match(markup, /name="bio"/);
+    assert.match(markup, /Headshot/);
+  }
 });

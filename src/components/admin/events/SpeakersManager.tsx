@@ -14,6 +14,7 @@ import {
   DEFAULT_LIMITS, WORD_LIMIT_MIN, WORD_LIMIT_MAX,
   type SpeakerLimits,
 } from "@/lib/events/limits";
+import { SPEAKER_FIELD_LABELS, type SpeakerFields } from "@/lib/events/fields";
 import { NotifyPanel } from "@/components/notify/NotifyPanel";
 
 export interface SpeakerRow {
@@ -35,12 +36,14 @@ export interface SpeakerRow {
 export function SpeakersManager({
   slug,
   intakeOpen,
+  askFields,
   initialSpeakers,
   limits,
   storedLimits,
 }: {
   slug: string;
   intakeOpen: boolean;
+  askFields: SpeakerFields;
   initialSpeakers: SpeakerRow[];
   /* What is in force for this event, resolved on the server. */
   limits: SpeakerLimits;
@@ -62,8 +65,41 @@ export function SpeakersManager({
   const [inForce, setInForce] = useState<SpeakerLimits>(limits);
   const [bioLimit, setBioLimit] = useState(storedLimits.bio?.toString() ?? "");
   const [pitchLimit, setPitchLimit] = useState(storedLimits.pitch?.toString() ?? "");
+  const [ask, setAsk] = useState<SpeakerFields>(askFields);
+  const [askBusy, setAskBusy] = useState<keyof SpeakerFields | null>(null);
+  const [askNote, setAskNote] = useState<string | null>(null);
   const [limitsBusy, setLimitsBusy] = useState(false);
   const [limitsNote, setLimitsNote] = useState<string | null>(null);
+
+  /*
+   * One field per request, and the answer comes back from the server.
+   *
+   * Sending all three would mean a stale checkbox in one tab could
+   * switch off a question somebody had just switched on in another —
+   * which is a smaller version of the failure this feature exists to
+   * fix. The response carries what is now in force, so the UI shows
+   * the database rather than what was clicked.
+   */
+  async function saveField(key: keyof SpeakerFields, next: boolean) {
+    if (askBusy) return;
+    setAskBusy(key);
+    setAskNote(null);
+    try {
+      const res = await fetch(`/api/admin/events/${slug}/speakers`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setFields", [key]: next }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { fields?: SpeakerFields; error?: string };
+      if (!res.ok || !j.fields) throw new Error(j.error ?? "Couldn't save.");
+      setAsk(j.fields);
+      setAskNote("Saved.");
+    } catch (e) {
+      setAskNote(e instanceof Error ? e.message : "Couldn't save.");
+    } finally {
+      setAskBusy(null);
+    }
+  }
 
   async function saveLimits() {
     if (limitsBusy) return;
@@ -196,6 +232,40 @@ export function SpeakersManager({
             <ExternalLink size={12} /> Open
           </a>
         </div>
+        {/* ── Which questions this event asks ─────────────────── */}
+        <div className="mt-3 border-t border-line pt-3">
+          <h3 className="text-[12.5px] font-semibold text-fg">Questions this event asks</h3>
+          <p className="mt-0.5 text-[11.5px] leading-relaxed text-fg-subtle">
+            Name, role, company, headshot and biography are always asked. These three are
+            not — turn off what this event does not need. It affects only this event.
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {SPEAKER_FIELD_LABELS.map(({ key, label, hint }) => (
+              <label key={key} className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={ask[key]}
+                  disabled={askBusy !== null}
+                  onChange={(e) => void saveField(key, e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-brand-600 disabled:opacity-40"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[12.5px] font-semibold text-fg">
+                    {label}
+                    {askBusy === key && <span className="ml-2 text-[11px] font-normal text-muted">saving…</span>}
+                  </span>
+                  <span className="block text-[11.5px] leading-snug text-fg-subtle">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {askNote && <p className="mt-1.5 text-[11.5px] text-brand-700">{askNote}</p>}
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-fg-subtle">
+            Turning a question off stops the form asking it. Answers already collected stay
+            on the speakers below — nothing is deleted.
+          </p>
+        </div>
+
         {/* ── Word limits ─────────────────────────────────────── */}
         <div className="mt-3 border-t border-line pt-3">
           <h3 className="text-[12.5px] font-semibold text-fg">Word limits</h3>
