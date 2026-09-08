@@ -36,8 +36,8 @@ export default function PublicVentureConnectApplyPage() {
       <p className="mt-2 max-w-prose text-[13.5px] leading-relaxed text-muted">
         Up to <strong className="text-fg">$5,000 CAD</strong> per company towards attending
         one conference, investor event, customer engagement activity, entrepreneurship
-        workshop or pitch competition. You do not need a BioHubNet account — start below and
-        we will send you a link back to your application.
+        workshop or pitch competition. A BioHubNet account is not required to apply. Once you
+        submit your application, you may download a PDF copy for your records.
       </p>
 
       <div className="mt-5 rounded-2xl border border-line bg-card p-4">
