@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── EQUIP queue: Review away from Delete; packet PDF loses its rules
+  {
+    title: "EQUIP: Review moved off Delete's elbow, and the application PDF lost 35 hairlines",
+    body: "On the **EQUIP review queue**, *Review* and *Delete* sat 8px apart — a plain text link beside a solid red destructive button — so the cursor going for the thing you do fifty times a day passed straight over the thing you do never. They are two separate columns now, with the whole width of one between them.\n\n**The PDF packet** that comes back with every VentureConnect and Innovation Fellowship submission drew a hairline rule under **every single field** — about thirty-five of them across three pages. It read as a table of ruled boxes rather than as an application, and a rule landed immediately above most section headings, fencing them off from the fields they head. The rules are gone; the small-bold-muted label above each answer was already separating one field from the next, so whitespace does the job. The masthead rule under BIOHUBNET | EQUIP stays.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── AV panel jump fix, taller dock, Merch regrouped, live-form button
   {
     title: "The AV table stopped jumping under the cursor, and the live form button is findable",

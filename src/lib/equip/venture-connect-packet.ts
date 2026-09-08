@@ -230,16 +230,25 @@ class PacketWriter {
     this.paragraph(value, { font: this.bold, size: 14, lineHeight: 18, color: BRAND, spaceAfter: 8 });
   }
 
+  /**
+   * One field: its label, then its answer.
+   *
+   * No rule underneath. There used to be one per row, which on a
+   * VentureConnect application meant about thirty-five hairlines down a
+   * three-page document — enough that the page read as a table of
+   * ruled boxes rather than as an application, and enough that a rule
+   * landed immediately above most section headings and fenced them off
+   * from the fields they head.
+   *
+   * A small-bold-muted label above a larger answer already separates
+   * one field from the next; the rule was drawing a boundary the
+   * typography had already drawn. Whitespace does it instead, which is
+   * why spaceAfter went from 8 to 13 when the line came out.
+   */
   row(label: string, value: string): void {
     this.ensureSpace(38);
     this.paragraph(label, { font: this.bold, size: 9, lineHeight: 12, color: MUTED, spaceAfter: 2 });
-    this.paragraph(value, { size: 10.5, lineHeight: 15, spaceAfter: 8 });
-    this.page.drawLine({
-      start: { x: MARGIN, y: this.y + 4 },
-      end: { x: PAGE_WIDTH - MARGIN, y: this.y + 4 },
-      thickness: 0.5,
-      color: LINE,
-    });
+    this.paragraph(value, { size: 10.5, lineHeight: 15, spaceAfter: 13 });
   }
 
   attachmentCover(document: EquipDocument, index: number, total: number, embeddedOnly: boolean): void {

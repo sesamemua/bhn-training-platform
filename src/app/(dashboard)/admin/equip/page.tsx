@@ -245,6 +245,14 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                   <th className="hidden @4xl:table-cell text-left px-2.5 py-2">Submitted</th>
                   <th className="hidden @6xl:table-cell text-left px-2.5 py-2">Reviewer</th>
                   <th className="text-left px-2.5 py-2">Status</th>
+                  {/* Review and Delete are two columns, not two buttons in
+                      one cell. They were 8px apart — a plain text link
+                      beside a solid red destructive button — so the
+                      cursor going for the thing you do fifty times a day
+                      passed over the thing you do never. A column of
+                      space between them costs nothing and removes the
+                      whole class of mistake. */}
+                  <th className="text-right px-2.5 py-2">Review</th>
                   <th className="text-right px-2.5 py-2"></th>
                 </tr>
               </thead>
@@ -304,22 +312,22 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                         <StatusBadge tone={meta.tone} label={meta.label} />
                       </td>
                       <td className="px-2.5 py-2 text-right">
-                        <div className="inline-flex items-center gap-2">
-                          {/* Opens over the queue rather than navigating,
-                              so working down the list doesn't mean losing
-                              your place on every back-press. The overlay
-                              carries a "Full page" link for the rest. */}
-                          <QuickReviewOverlay
-                            applicationId={a.id}
-                            applicantName={applicantOf(a).name ?? "This applicant"}
-                          />
-                          <DeleteApplicationButton
-                            applicationId={a.id}
-                            applicantName={applicantOf(a).name ?? "This applicant"}
-                            status={a.status}
-                            approvedAmount={a.approvedAmount}
-                          />
-                        </div>
+                        {/* Opens over the queue rather than navigating, so
+                            working down the list doesn't mean losing your
+                            place on every back-press. The overlay carries
+                            a "Full page" link for the rest. */}
+                        <QuickReviewOverlay
+                          applicationId={a.id}
+                          applicantName={applicantOf(a).name ?? "This applicant"}
+                        />
+                      </td>
+                      <td className="px-2.5 py-2 pl-6 text-right">
+                        <DeleteApplicationButton
+                          applicationId={a.id}
+                          applicantName={applicantOf(a).name ?? "This applicant"}
+                          status={a.status}
+                          approvedAmount={a.approvedAmount}
+                        />
                       </td>
                     </tr>
                   );
