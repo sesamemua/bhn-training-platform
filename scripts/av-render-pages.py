@@ -58,6 +58,11 @@ DOCS = {
     "q2025": "Livecast_AV_Quote_2025_Estimate_20250956.pdf",
     "i2025": "Livecast_Final_Invoice_2025_Invoice_2025-325.pdf",
     "q2026": "Quote - 2026 Annual Symposium BioHubNet.pdf",
+    # 8 Sept 2026: Livecast replaced the single q2026 quote with two —
+    # streaming split out from the room kit. Both supersede #231775889,
+    # which is kept because the 2025 comparison argues against it.
+    "s2026": "UPDATED QUOTE/unsigned-contract-v1-231816000.pdf",
+    "a2026": "UPDATED QUOTE/unsigned-contract-v1-231816038.pdf",
 }
 
 # 2x the 612x792pt US-Letter mediabox = 1224x1584, i.e. 144 DPI. Any

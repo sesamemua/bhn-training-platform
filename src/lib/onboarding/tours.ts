@@ -2620,6 +2620,17 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.09.16",
     cta: { label: "Open AV", href: "/admin/workspace/symposium-2026/av" },
   },
+  // ─── AV split by year, September quotes added
+  {
+    id: "workspace.av-2026-quotes",
+    title: "The September AV quotes are up",
+    body: "Livecast re-issued the Symposium AV as **two** documents on 8 September \u2014 the room and the stream, quoted separately. Both are at **Workspace \u2192 2026 Symposium \u2192 AV 2026**, line by line, with all eight pages readable.\n\nRead the amber panel first: together they are **$1,220.40 more** than the single quote they replace, and the equipment is identical. The gap is a second delivery fee and a fourth operator.\n\nThe old three-document comparison is now **AV 2025**.",
+    path: "/admin/workspace/symposium-2026/av/2026",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.09.16",
+    cta: { label: "Open AV 2026", href: "/admin/workspace/symposium-2026/av/2026" },
+  },
   {
     id: "complete",
     title: "You're all set",

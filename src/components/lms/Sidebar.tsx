@@ -477,13 +477,27 @@ const workspaceSpeakersItem: NavItem = {
 // The invoice is in there because 2025 was billed 12% above its own
 // quote — comparing 2026 against last year's estimate alone would say
 // the price rose 47% when the honest figure is 31%.
-const workspaceAvItem: NavItem = {
-  label: "AV",
-  href: "/admin/workspace/symposium-2026/av",
+const workspaceAv2025Item: NavItem = {
+  label: "AV 2025",
+  href: "/admin/workspace/symposium-2026/av/2025",
   icon: Speaker,
   minRole: "admin",
   description:
-    "Livecast's 2026 quote against last year's quote and last year's final invoice — line by line, plus the terms that changed and the two that commit BHN to spending not in the quote.",
+    "Livecast's September 1 quote against last year's quote and last year's final invoice — line by line, plus the terms that changed and the two that commit BHN to spending not in the quote.",
+};
+
+// WORKSPACE → 2026 Symposium → AV 2026. The 8 September pair that
+// replaced that single quote: the room and the stream, priced
+// separately. Its own item rather than a fourth column on the 2025
+// page — that page argues about whether this year's number is
+// reasonable, this one about what changed when one quote became two.
+const workspaceAv2026Item: NavItem = {
+  label: "AV 2026",
+  href: "/admin/workspace/symposium-2026/av/2026",
+  icon: Speaker,
+  minRole: "admin",
+  description:
+    "The two Livecast quotes from 8 September — AV Only and Streaming — with what splitting one quote into two did to the price. Every page of both documents is readable here.",
 };
 
 // WORKSPACE → Industry Insights. A different event on a different day,
@@ -2022,7 +2036,8 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceAvItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceAv2026Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceAv2025Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Industry Insights">

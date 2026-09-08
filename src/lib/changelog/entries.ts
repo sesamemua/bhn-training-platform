@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── AV split into 2025 / 2026, and the September quotes added
+  {
+    title: "AV is two pages now — and the September quotes cost $1,220 more than the one they replace",
+    body: "Livecast re-issued the Symposium AV on **8 September** as two documents instead of one: **#231816038 (AV Only)** for the room and **#231816000 (Streaming)** for the broadcast. Both are up at **Workspace → 2026 Symposium → AV 2026**, with every line item, both sets of totals, and all eight pages readable in full.\n\n**Together they come to $10,988.70 against the single quote's $9,768.30 — $1,220.40 more, and the kit did not change.** Every rental line on the new quotes appears on the superseded one at the same price. The difference is labour and delivery, which went from $4,175 to $5,375 before tax, because a second document carries a second crew and a second van: **a second $350 delivery fee**, and **a fourth 10-hour operator block at $850**.\n\nThe old page — this year against last year's quote and last year's final invoice — is now **AV 2025**, at its own URL. `/av` redirects there, so existing links and bookmarks still work.\n\nEvery figure is reconciled against each document's own printed totals by tests, including that both modules agree on what the superseded quote came to.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── VentureConnect confirmation copy + a real date
   {
     title: "VentureConnect's confirmation screen now sets a review timeline, and dates it properly",

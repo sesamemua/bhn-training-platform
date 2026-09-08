@@ -610,7 +610,7 @@ export function clipsFor(key: string): Partial<Record<AvDoc["key"], AvClip>> {
   return AV_CLIPS[key] ?? {};
 }
 
-export function pageOf(docKey: AvDoc["key"], page: number): AvPage | undefined {
+export function pageOf(docKey: string, page: number): AvPage | undefined {
   return AV_PAGES[`${docKey}:${page}`];
 }
 
@@ -627,7 +627,7 @@ export function pageOf(docKey: AvDoc["key"], page: number): AvPage | undefined {
  * including the 2026 terms and conditions, which is the page this table
  * argues about most. scripts/av-render-pages.py cuts them.
  */
-export function pagesOf(docKey: AvDoc["key"]): { page: number; render: AvPage }[] {
+export function pagesOf(docKey: string): { page: number; render: AvPage }[] {
   return Object.entries(AV_PAGES)
     .flatMap(([id, render]) => {
       const [key, n] = id.split(":");

@@ -195,7 +195,10 @@ export function AvSourcePanes({
 export function PageSheet({
   docKey, page, box, scrollTo, zoom, label, ref_, maxH, caption, onOpen, markRef,
 }: {
-  docKey: AvDoc["key"];
+  /* A manifest key, not an AvDoc key: the September 2026 pair render
+     through this same component and are not part of the three-document
+     comparison's union. */
+  docKey: string;
   page: number;
   /** null draws the page plainly — the rest of a document you are reading. */
   box: [number, number] | null;
