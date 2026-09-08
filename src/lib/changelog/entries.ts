@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── VentureConnect confirmation copy + a real date
+  {
+    title: "VentureConnect's confirmation screen now sets a review timeline, and dates it properly",
+    body: "The screen an applicant lands on after submitting used to read *\"Thank you — we have your VentureConnect application from 2026-09-08\"* and end on *\"after reviewing the current funding cycle\"*, which tells nobody when to expect anything.\n\nIt now says the application was **received**, gives a real date (**September 8, 2026**, not `2026-09-08`), separates the PDF-copy note into its own line, and states that **review may take up to 10 business days** before the BioHubNet EQUIP team is in touch.\n\nThe date is pinned to **America/Toronto**, matching the PDF packet's formatter. The old version sliced the raw UTC timestamp, so an application submitted after 8pm Toronto time was shown one date on screen and a different one in the attached packet.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
   // ── EQUIP queue: Review away from Delete; packet PDF loses its rules
   {
     title: "EQUIP: Review moved off Delete's elbow, and the application PDF lost 35 hairlines",

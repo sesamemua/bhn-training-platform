@@ -41,12 +41,18 @@ export default async function PublicVentureConnectFormPage({
   if (!isEditable(app.status as EquipStatus)) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight text-fg">Application received</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-fg">Application Received</h1>
         <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
-          Thank you — we have your VentureConnect application
-          {app.submittedAt ? ` from ${app.submittedAt.toISOString().slice(0, 10)}` : ""}. A copy of
-          everything you submitted is attached to the confirmation email that&apos;s on its way to
-          you now. The EQUIP team will be in touch after reviewing the current funding cycle.
+          Thank you. We have received your VentureConnect application
+          {app.submittedAt ? ` dated ${formatSubmittedDate(app.submittedAt)}` : ""}.
+        </p>
+        <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
+          A copy of materials submitted with your application is attached to the confirmation
+          email that will be sent shortly.
+        </p>
+        <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
+          The review process may take up to 10 business days. The BioHubNet EQUIP team will
+          contact you following the review of your application.
         </p>
       </main>
     );
@@ -69,4 +75,22 @@ export default async function PublicVentureConnectFormPage({
       />
     </main>
   );
+}
+
+/**
+ * "September 8, 2026" — the date an applicant would write, not the one a
+ * database would.
+ *
+ * Pinned to America/Toronto for the same reason the PDF packet's
+ * formatter is: the server renders this in UTC, so a submission made at
+ * 9pm Toronto time would otherwise be dated the following day on screen
+ * while the attached packet said the day before. One timezone, one date.
+ */
+function formatSubmittedDate(value: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Toronto",
+  }).format(value);
 }
