@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Google Ads: each section has its own way into edit mode
+  {
+    title: "Google Ads: keywords and ad copy say how to edit them",
+    body: "Adding and removing keywords, negatives, headlines and ad variants has worked since the plan became editable — but only behind the one **Edit plan** button in the toolbar, and in view mode nothing on the page said so. Every section now carries its own **Edit keywords**, **Edit ad copy** (and so on) button on its heading. It switches on the same edit mode; **Save changes** and the revision history are unchanged.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Workspace home: the front door
   {
     title: "Workspace home: everything waiting on you, in one place",

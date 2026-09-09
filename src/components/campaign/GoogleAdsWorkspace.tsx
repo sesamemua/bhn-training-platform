@@ -29,9 +29,9 @@ function Field({ label, value, onChange, editing, multiline = false, limit, type
   </div>;
 }
 
-function Section({ id, number, title, detail, children }: { id: string; number: string; title: string; detail: string; children: ReactNode }) {
+function Section({ id, number, title, detail, action, children }: { id: string; number: string; title: string; detail: string; action?: ReactNode; children: ReactNode }) {
   return <section id={id} className={styles.section} aria-labelledby={`${id}-title`}>
-    <header className={styles.sectionHeading}><span>{number}</span><div><h2 id={`${id}-title`}>{title}</h2><p>{detail}</p></div></header>
+    <header className={styles.sectionHeading}><span>{number}</span><div><h2 id={`${id}-title`}>{title}</h2><p>{detail}</p></div>{action}</header>
     {children}
   </section>;
 }
@@ -228,6 +228,11 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
   const warnings = getGoogleAdsPlanWarnings(plan);
   const totalKeywords = plan.programs.reduce((n, p) => n + p.keywords.length, 0);
   const totalNegatives = plan.campaignNegatives.length + plan.programs.reduce((n, p) => n + p.negatives.length, 0);
+  // Every editable section carries its own way into edit mode. The toolbar
+  // toggle was the only door, and in view mode nothing on the page said
+  // that keywords and ad copy could be added or removed at all. Same
+  // mode, same Save — just reachable from where the work is.
+  const sectionEdit = (what: string) => (editing ? null : <button type="button" className={styles.sectionAction} onClick={() => setEditing(true)}>Edit {what}</button>);
   const switcher = <div className={styles.programTabs} role="group" aria-label="Choose program">{plan.programs.map(p => <button key={p.id} aria-pressed={p.id === program?.id} onClick={() => setSelected(p.id)}>{p.name}</button>)}</div>;
 
   return <div className={styles.workspace}>
@@ -251,20 +256,20 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
       {copiedText && <label className={styles.field}>Codex handoff<textarea readOnly value={copiedText} rows={8} onFocus={e => e.target.select()} /></label>}
       <nav className={styles.nav} aria-label="Campaign sections"><a href="#keywords">Keywords</a><a href="#negatives">Negatives</a><a href="#audiences">Audiences</a><a href="#ad-copy">Ad copy</a><a href="#settings">Settings</a><a href="#notes">Notes</a><a href="#feedback">Feedback & history</a></nav>
 
-      <Section id="keywords" number="01" title="Keywords" detail="Add, remove and refine the searches we want to reach.">
+      <Section id="keywords" number="01" title="Keywords" detail="Add, remove and refine the searches we want to reach." action={sectionEdit("keywords")}>
         {switcher}
         {program && <TermList key={`kw-${program.id}`} terms={program.keywords} onChange={terms => updateProgram(program.id, { keywords: terms as Keyword[] })} editing={editing} />}
         <p className={styles.helper}>Phrase and exact match keep the pilot focused. Cost and competition need Keyword Planner data; overlapping providers are not proof of paid advertising.</p>
       </Section>
 
-      <Section id="negatives" number="02" title="Negative keywords" detail="Block irrelevant searches. Keep useful training, internship and founder intent.">
+      <Section id="negatives" number="02" title="Negative keywords" detail="Block irrelevant searches. Keep useful training, internship and founder intent." action={sectionEdit("negative keywords")}>
         <details className={styles.scope} open><summary>Across the campaign <span>{plan.campaignNegatives.length} terms</span></summary><TermList terms={plan.campaignNegatives} onChange={terms => setPlan({ ...plan, campaignNegatives: terms as Negative[] })} editing={editing} negative /></details>
         {switcher}
         {program && <details className={styles.scope} open key={`neg-${program.id}`}><summary>{program.name} only <span>{program.negatives.length} terms</span></summary><TermList terms={program.negatives} onChange={terms => updateProgram(program.id, { negatives: terms as Negative[] })} editing={editing} negative /></details>}
         <p className={styles.helper}>Use specific exclusions. Do not block “free,” “funded,” “student,” “jobs,” “internship” or university names across the campaign. Negative keywords do not automatically cover spelling variants.</p>
       </Section>
 
-      <Section id="audiences" number="03" title="Audiences & intent" detail="Speak directly to the people each program can help.">
+      <Section id="audiences" number="03" title="Audiences & intent" detail="Speak directly to the people each program can help." action={sectionEdit("audiences")}>
         <div className={styles.cards}>{plan.programs.map(p => <article className={styles.card} key={p.id}>
           <Field label="Program" value={p.name} onChange={name => updateProgram(p.id, { name })} editing={editing} />
           <Field label="Audience" value={p.audience} onChange={audience => updateProgram(p.id, { audience })} editing={editing} multiline />
@@ -277,7 +282,7 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
         {editing && <button onClick={() => { const id = newId(); setPlan({ ...plan, programs: [...plan.programs, { id, name: "New program", audience: "", intent: "", objective: "", landingUrl: "https://biohubnet.ca/", notes: "Proposed — verify eligibility and intake before use.", keywords: [], negatives: [], ads: [] }] }); setSelected(id); }}>Add program</button>}
       </Section>
 
-      <Section id="ad-copy" number="04" title="Sample ad copy" detail="University-specific options, ready to edit and review.">
+      <Section id="ad-copy" number="04" title="Sample ad copy" detail="University-specific options, ready to edit and review." action={sectionEdit("ad copy")}>
         {switcher}
         <p className={styles.helper}>Keep each university in its own ad variant and use matching searches. Location targeting alone does not confirm someone studies there. Internship placement and funding remain subject to eligibility.</p>
         {program && <div className={styles.cards}>{program.ads.map(ad => <article className={`${styles.card} ${styles.adCard}`} key={ad.id}>
@@ -294,7 +299,7 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
         {editing && program && <button onClick={() => updateProgram(program.id, { ads: [...program.ads, { id: newId(), label: "New ad variant", institution: "", headlines: ["", "", ""], descriptions: ["", ""], notes: "Draft — verify eligibility and offer before use." }] })}>Add ad variant</button>}
       </Section>
 
-      <Section id="settings" number="05" title="Campaign settings" detail="Plan changes to budget, targeting and bidding here.">
+      <Section id="settings" number="05" title="Campaign settings" detail="Plan changes to budget, targeting and bidding here." action={sectionEdit("settings")}>
         <Field label="Campaign name" value={plan.name} onChange={name => setPlan({ ...plan, name })} editing={editing} />
         <Field label="Campaign structure & budget strategy" value={plan.strategy} onChange={strategy => setPlan({ ...plan, strategy })} editing={editing} multiline />
         <div className={styles.settingsGrid}>{([
@@ -302,7 +307,7 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
         ] as const).map(([key, label]) => <Field key={key} label={label} value={plan.settings[key]} editing={editing} type={typeof plan.settings[key] === "number" ? "number" : "text"} onChange={value => setPlan({ ...plan, settings: { ...plan.settings, [key]: typeof plan.settings[key] === "number" ? Number(value) : value } })} />)}</div>
       </Section>
 
-      <Section id="notes" number="06" title="Notes & decisions" detail="Keep offers, sources, tracking checks and planning decisions together.">
+      <Section id="notes" number="06" title="Notes & decisions" detail="Keep offers, sources, tracking checks and planning decisions together." action={sectionEdit("notes")}>
         <div className={styles.cards}>{plan.notes.map(note => <article className={styles.card} key={note.id}>
           <Field label="Topic" value={note.title} onChange={title => setPlan({ ...plan, notes: plan.notes.map(n => n.id === note.id ? { ...n, title } : n) })} editing={editing} />
           <Field label="Details" value={note.body} onChange={body => setPlan({ ...plan, notes: plan.notes.map(n => n.id === note.id ? { ...n, body } : n) })} editing={editing} multiline />

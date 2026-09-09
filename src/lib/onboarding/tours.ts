@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.17";
+export const TOUR_VERSION = "2026.09.18";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.google-ads.section-edit",
+    title: "Keywords and ad copy are yours to change",
+    body: "**Workspace → Marketing → Google Ads.** Each section heading has an **Edit** button — keywords, negative keywords, ad copy, settings, notes. Add a keyword one per line (`[exact]` or `\"phrase\"`), remove one with its Remove button, add or drop headlines and whole ad variants, then **Save changes** with a one-line note. Every save is a revision you can hand to Codex.",
+    path: "/admin/workspace/marketing/google-ads",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the Google Ads plan", href: "/admin/workspace/marketing/google-ads" },
+    since: "2026.10.03a",
+  },
   {
     id: "workspace.home",
     title: "Start here",

@@ -36,6 +36,9 @@
 .sectionHeading > span { font-size:26px; color:var(--blue); font-weight:700; }
 .sectionHeading h2 { margin:0; font-size:26px; line-height:1.2; letter-spacing:-.025em; }
 .sectionHeading p { color:var(--muted); margin:5px 0 0; font-size:14px; }
+.sectionHeading > div { flex:1; min-width:0; }
+.workspace button.sectionAction { margin-left:auto; align-self:center; flex:0 0 auto; white-space:nowrap; background:#e7edf3; font-size:13px; padding:7px 12px; }
+@media (max-width:640px) { .sectionHeading { flex-wrap:wrap; } .workspace button.sectionAction { flex-basis:100%; margin-left:0; } }
 .programTabs { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; }
 .programTabs button[aria-pressed=true] { background:var(--navy); color:white; border-color:var(--navy); }
 .termToolbar { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
