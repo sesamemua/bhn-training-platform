@@ -248,6 +248,46 @@ export function initialsOf(name: string | null | undefined, email = ""): string 
   return (email.trim()[0] ?? "?").toUpperCase();
 }
 
+// ── Tidying what the model gives back ─────────────────────────────────
+// The prompt forbids a greeting and a sign-off; the small model adds one
+// anyway, every time. Asking more loudly does not fix it, so the fix is
+// deterministic and lives here where it can be tested. Same reasoning as
+// sanitizeTemplateEdit in the outreach assistant: never trust the shape
+// of a model's output, correct it.
+
+const GREETING = /^(hi|hello|hey|dear|good (morning|afternoon|evening))\b[^\n,:]{0,60}[,:]\s*/i;
+const SIGNOFF = /\n+\s*(thanks|thank you|cheers|best|regards|many thanks)\b[\s\S]{0,60}$/i;
+
+/**
+ * Strips the greeting and sign-off a model adds despite being told not
+ * to. `firstNames` lets a bare "Epshita and Yeseul," opener be removed
+ * safely — without them, a sentence that happens to start with a name
+ * would be mangled.
+ */
+export function tidyDraftBody(body: string, firstNames: string[] = []): string {
+  let out = (body ?? "").trim();
+  out = out.replace(GREETING, "");
+  const names = firstNames.filter(Boolean).map((n) => n.replace(/[^\p{L}\p{N}]/gu, ""));
+  if (names.length) {
+    // "Epshita and Yeseul," / "Epshita, Yeseul —" — names, joiners, then
+    // a separator, and nothing else on that opening fragment.
+    const alt = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    out = out.replace(new RegExp(`^(?:(?:${alt})(?:\\s*(?:,|and|&)\\s*)?)+\\s*[,:\u2014-]\\s*`, "iu"), "");
+  }
+  out = out.replace(SIGNOFF, "");
+  return out.trim();
+}
+
+/** A subject that names a category rather than the thing is no subject. */
+const USELESS_SUBJECTS = new Set([
+  "favour", "favor", "question", "task", "request", "help", "quick question",
+  "brain pick", "input", "feedback", "advice",
+]);
+
+export function subjectIsUseless(subject: string): boolean {
+  return USELESS_SUBJECTS.has((subject ?? "").trim().toLowerCase().replace(/[.!?]+$/, ""));
+}
+
 // ── The first task ────────────────────────────────────────────────────
 
 /** Pre-loaded so the first brain pick is one click, not a blank form. */

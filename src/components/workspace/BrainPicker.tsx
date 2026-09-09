@@ -459,7 +459,11 @@ function PickForm({ recipients, busy, nothing, onClose, onSend }: {
       if (!res.ok) { setAiNote(j.error ?? "The AI could not help just now."); return; }
       setSubject(j.draft.subject);
       setBody(j.draft.body);
-      setAiNote("Drafted. Read it before you send it — it is your name on it.");
+      setAiNote(
+        j.weakSubject
+          ? "Drafted — but that subject says nothing. Name the actual thing before you send it."
+          : "Drafted. Read it before you send it — it is your name on it.",
+      );
     } catch {
       setAiNote("The AI could not help just now.");
     } finally {

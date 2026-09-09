@@ -4,6 +4,7 @@ import { BRAIN_PICK_ASSIST, PROMPTS } from "../../src/lib/ai/prompts";
 import {
   DRAFTED_SPECIALITIES, FALLBACK_SPECIALITY, MERCH_BRIEF, NOTHING, PROBES,
   audacity, draftedFor, firstNameOf, initialsOf, ledger, probeVerdict, reciprocity,
+  subjectIsUseless, tidyDraftBody,
 } from "../../src/lib/brain/picker";
 import {
   askerTotals, buildTeam, outstanding, pickable, waitingOnYou,
@@ -186,4 +187,34 @@ test("initials and first names survive missing data", () => {
   assert.equal(firstNameOf("Meenakshi Venkatesan"), "Meenakshi");
   assert.equal(firstNameOf(null), "They");
   assert.equal(firstNameOf("   "), "They");
+});
+
+test("a drafted body loses the greeting the model insists on adding", () => {
+  // Observed on production, every single time, however firmly the prompt
+  // forbids it — so it is corrected deterministically rather than hoped away.
+  assert.equal(
+    tidyDraftBody("Epshita and Yeseul, what are your thoughts on merch?", ["Epshita", "Yeseul"]),
+    "what are your thoughts on merch?",
+  );
+  assert.equal(tidyDraftBody("Yeseul, can you look at the thing.", ["Yeseul"]), "can you look at the thing.");
+  assert.equal(tidyDraftBody("Hi Alison, quick one.", ["Alison"]), "quick one.");
+  assert.equal(tidyDraftBody("Dear team: the merch list needs eyes.", []), "the merch list needs eyes.");
+  assert.equal(tidyDraftBody("Two things.\n\nThanks,\nRuilin", []), "Two things.");
+});
+
+test("a sentence that merely starts with a name is left alone", () => {
+  // The greeting strip is name-aware precisely so this survives intact.
+  const keep = "Yeseul mentioned the placements deadline moved. Can you confirm?";
+  assert.equal(tidyDraftBody(keep, ["Yeseul", "Epshita"]), keep);
+  assert.equal(tidyDraftBody("Alison and Roshni both need this by Friday.", ["Alison", "Roshni"]),
+    "Alison and Roshni both need this by Friday.");
+});
+
+test("a subject naming a category is not a subject", () => {
+  for (const bad of ["Favour", "question", "Task", "Quick question", "Input.", "advice"]) {
+    assert.equal(subjectIsUseless(bad), true, `${bad} says nothing`);
+  }
+  for (const good of ["Which merch would you take home?", "Symposium booth giveaways", "Merch: gut reaction wanted"]) {
+    assert.equal(subjectIsUseless(good), false, `${good} names the thing`);
+  }
 });

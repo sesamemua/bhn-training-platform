@@ -17,7 +17,10 @@ import { prisma } from "@/lib/prisma";
 import { AI_CONFIGURED } from "@/lib/ai";
 import { callStructured, delimitContext } from "@/lib/ai/reliability";
 import { BRAIN_PICK_ASSIST } from "@/lib/ai/prompts";
-import { KIND_LABEL, NOTHING, draftedFor, type PickKind } from "@/lib/brain/picker";
+import {
+  KIND_LABEL, NOTHING, draftedFor, firstNameOf, subjectIsUseless, tidyDraftBody,
+  type PickKind,
+} from "@/lib/brain/picker";
 import { TEAM_ROLES } from "@/lib/brain/team";
 
 export const runtime = "nodejs";
@@ -99,5 +102,18 @@ export async function POST(req: NextRequest) {
   if (!res.ok) {
     return NextResponse.json({ error: `The AI could not help just now (${res.error}). Write it yourself.` }, { status: 502 });
   }
-  return NextResponse.json({ draft: res.data });
+
+  // The model opens with a greeting every time however firmly the prompt
+  // forbids one, so it is removed here rather than hoped away.
+  const names = recipients.map((r) => firstNameOf(r.name, ""));
+  const body = tidyDraftBody(res.data.body, names);
+  if (!body) {
+    return NextResponse.json({ error: "The AI returned only a greeting. Try again." }, { status: 422 });
+  }
+  return NextResponse.json({
+    draft: { subject: res.data.subject.trim(), body },
+    // A subject naming a category rather than the thing is no subject;
+    // the form nudges rather than silently accepting it.
+    weakSubject: subjectIsUseless(res.data.subject),
+  });
 }
