@@ -36,8 +36,10 @@ export async function speakersSeenAt(slugs: readonly string[]): Promise<Record<s
   return out;
 }
 
-/** Opening a Headshots & Bios page calls this — clears that event's badge
- *  until newer submissions land. Mirrors employer-intake's seen-at upsert. */
+/** Clears an event's speakers badge until newer submissions land. Called
+ *  by POST /api/admin/speakers/[slug]/seen, which the Headshots & Bios
+ *  pages fire from the browser once they are on screen — never from a
+ *  render, which prefetches and previews also trigger. */
 export async function markSpeakersSeen(slug: string, now = new Date()): Promise<void> {
   const key = speakersSeenKey(slug);
   const value = now.toISOString();
