@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { DSSection } from "@/components/design-system/DSSection";
 import {
-  MERCH_BRIEF, KIND_LABEL, NOTHING, audacity, ledger, probeVerdict, reciprocity,
-  type PickKind,
+  BRIEFS, KIND_LABEL, NOTHING, audacity, ledger, probeVerdict, reciprocity,
+  type Brief, type PickKind,
 } from "@/lib/brain/picker";
 import { askerTotals, outstanding, pickable, waitingOnYou, type Colleague, type PickRow } from "@/lib/brain/team";
 import { cn } from "@/lib/utils";
@@ -39,8 +39,8 @@ export function BrainPicker({
   team: Colleague[];
   picks: WirePick[];
   viewerId: string;
-  /** userId → how many merch items they have starred. The probe's evidence. */
-  evidence: Record<string, number>;
+  /** probe id → userId → how much they actually did. The probes' evidence. */
+  evidence: Record<string, Record<string, number>>;
   nothing?: string;
 }) {
   const router = useRouter();
@@ -69,8 +69,11 @@ export function BrainPicker({
   const others = useMemo(() => pickable(team), [team]);
   const nameOf = (id: string) => team.find((c) => c.id === id);
 
-  const merchAlreadySent = rows.some((p) => p.askedById === viewerId && p.probe === "merch-starred");
   const chosenPeople = others.filter((c) => chosen.has(c.id));
+  /** Which briefs you have already sent, so the page can say so. */
+  const sentProbes = new Set(
+    rows.filter((p) => p.askedById === viewerId && p.probe).map((p) => p.probe as string),
+  );
 
   const toggleChosen = (id: string) =>
     setChosen((cur) => {
@@ -103,9 +106,15 @@ export function BrainPicker({
     }
   }
 
-  const pickMerchBrains = () =>
-    send("/api/admin/brain/picks", "POST", { ...MERCH_BRIEF, askedOfIds: others.map((c) => c.id) },
-      `Sent to ${others.length} people. You have now promised ${others.length} coffees.`);
+  /** Fire a prewritten brief at everybody, or load it for a chosen few. */
+  const sendBrief = (brief: Brief, ids: string[]) =>
+    send(
+      "/api/admin/brain/picks", "POST",
+      { subject: brief.subject, body: brief.body, kind: brief.kind, href: brief.href, probe: brief.probe, bribe: brief.bribe, askedOfIds: ids },
+      ids.length === 1
+        ? `Sent to one person.`
+        : `Sent to ${ids.length} people. You have now promised ${ids.length} coffees.`,
+    );
 
   return (
     <div className="space-y-5">
@@ -150,33 +159,54 @@ export function BrainPicker({
         </div>
       </section>
 
-      {/* ── The first task ──────────────────────────────────────── */}
-      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
-        <div className="min-w-[240px] flex-1">
-          <p className="text-sm font-bold text-fg">Pick everyone&apos;s brain on merch</p>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
-            Asks all {others.length} of them to open the merch board and star what they would genuinely take
-            home. One click, {others.length} favours, no compensation.{" "}
-            {merchAlreadySent && <span className="font-semibold text-amber-700">You have already done this once.</span>}
+      {/* ── Prewritten briefs ───────────────────────────────────── */}
+      <section className="space-y-3 rounded-2xl border border-line bg-card p-4">
+        <div>
+          <p className="text-sm font-bold text-fg">Ready to send</p>
+          <p className="mt-0.5 text-[12.5px] text-muted">
+            The things that actually need eyes, already written. Send one to everybody, or tick a few
+            people below and send it to just them.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={pickMerchBrains}
-            disabled={busy !== null || others.length === 0}
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
-          >
-            {busy === "/api/admin/brain/picks/broadcast" ? <Loader2 size={14} className="animate-spin" /> : <Users2 size={14} />}
-            Ask all {others.length}
-          </button>
-          <button
-            onClick={() => openFor(others.map((c) => c.id))}
-            disabled={busy !== null || others.length === 0}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-line hover:bg-elevated hover:text-fg disabled:opacity-50"
-          >
-            Ask them something else
-          </button>
-        </div>
+        <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {BRIEFS.map((brief) => {
+            const already = brief.probe ? sentProbes.has(brief.probe) : false;
+            return (
+              <li key={brief.id} className="flex h-full flex-col rounded-xl border border-line bg-elevated p-3">
+                <p className="text-[12.5px] font-bold text-fg">{brief.label}</p>
+                <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{brief.blurb}</p>
+                {already && (
+                  <p className="mt-1 text-[10.5px] font-semibold text-amber-700">You have sent this one already.</p>
+                )}
+                <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2.5">
+                  <button
+                    onClick={() => sendBrief(brief, others.map((c) => c.id))}
+                    disabled={busy !== null || others.length === 0}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 text-[11px] font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+                  >
+                    {busy !== null ? <Loader2 size={12} className="animate-spin" /> : <Users2 size={12} />}
+                    Ask all {others.length}
+                  </button>
+                  <button
+                    onClick={() => sendBrief(brief, chosenPeople.map((c) => c.id))}
+                    disabled={busy !== null || chosenPeople.length === 0}
+                    title={chosenPeople.length === 0 ? "Tick some people below first" : undefined}
+                    className="inline-flex h-7 items-center rounded-lg px-2.5 text-[11px] font-semibold text-muted ring-1 ring-inset ring-line hover:bg-raised hover:text-fg disabled:opacity-40"
+                  >
+                    {chosenPeople.length > 0 ? `Ask the ${chosenPeople.length} selected` : "Ask selected"}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <button
+          onClick={() => openFor(others.map((c) => c.id))}
+          disabled={busy !== null || others.length === 0}
+          className="text-[11px] font-semibold text-brand-700 hover:underline disabled:opacity-50"
+        >
+          Or write your own →
+        </button>
       </section>
 
       {/* ── Waiting on you ──────────────────────────────────────── */}
@@ -337,7 +367,8 @@ export function BrainPicker({
           <ul className="divide-y divide-line">
             {open.map((p) => {
               const who = nameOf(p.askedOfId);
-              const verdict = probeVerdict(p.probe, evidence[p.askedOfId] ?? 0, "open", who?.firstName ?? "They");
+              const done = p.probe ? evidence[p.probe]?.[p.askedOfId] ?? 0 : 0;
+              const verdict = probeVerdict(p.probe, done, "open", who?.firstName ?? "They");
               return (
                 <li key={p.id} className="flex flex-wrap items-start gap-x-3 gap-y-1 py-2.5">
                   <div className="min-w-[220px] flex-1">

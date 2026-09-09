@@ -20,7 +20,9 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { BrainPicker } from "@/components/workspace/BrainPicker";
-import { NOTHING } from "@/lib/brain/picker";
+import {
+  GOOGLE_ADS_PROBE_SECTIONS, NOTHING, countFeedbackBySection, type FeedbackNote,
+} from "@/lib/brain/picker";
 import { TEAM_ROLES, buildTeam, type PickRow, type ProfileRow, type UserRow } from "@/lib/brain/team";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +32,7 @@ export default async function BrainPickerPage() {
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!session || !userId) redirect("/dashboard");
 
-  const [users, profiles, picks, merchStars] = await Promise.all([
+  const [users, profiles, picks, merchStars, adsRow] = await Promise.all([
     prisma.user.findMany({
       where: { isActive: true, accountKind: "real", role: { in: [...TEAM_ROLES] } },
       select: { id: true, name: true, email: true, role: true },
@@ -41,14 +43,36 @@ export default async function BrainPickerPage() {
       where: { OR: [{ askedById: userId }, { askedOfId: userId }] },
       orderBy: { createdAt: "desc" },
     }).catch(() => []),
-    // Evidence for the "merch-starred" probe: what somebody actually did,
-    // as opposed to what they said they would do.
+    // Evidence for the probes: what somebody actually did, as opposed to
+    // what they said they would do.
     prisma.merchPick.groupBy({ by: ["userId"], _count: { _all: true } }).catch(() => []),
+    // The Google Ads workspace keeps its feedback inside one settings row.
+    prisma.platformSetting
+      .findUnique({ where: { key: "google_ads_workspace_v1" }, select: { value: true } })
+      .catch(() => null),
   ]);
 
   const team = buildTeam(users as UserRow[], profiles as ProfileRow[], picks as PickRow[], userId);
-  const evidence: Record<string, number> = {};
-  for (const row of merchStars) evidence[row.userId] = row._count._all;
+
+  // One bag of evidence per probe, so a brief's verdict line reads off
+  // the same thing the brief actually asked people to do.
+  const merchEvidence: Record<string, number> = {};
+  for (const row of merchStars) merchEvidence[row.userId] = row._count._all;
+
+  let notes: FeedbackNote[] = [];
+  try {
+    const parsed = adsRow?.value ? JSON.parse(adsRow.value) : null;
+    if (Array.isArray(parsed?.feedback)) notes = parsed.feedback as FeedbackNote[];
+  } catch {
+    // A malformed settings row means no evidence, never a broken page.
+  }
+  const namesByUserId = Object.fromEntries(users.map((u) => [u.id, u.name]));
+  const evidence: Record<string, Record<string, number>> = {
+    "merch-starred": merchEvidence,
+  };
+  for (const [probe, section] of Object.entries(GOOGLE_ADS_PROBE_SECTIONS)) {
+    evidence[probe] = countFeedbackBySection(notes, section, namesByUserId);
+  }
 
   return (
     <div className="space-y-6">

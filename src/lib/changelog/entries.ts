@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Brain Picker: prewritten briefs
+  {
+    title: "Three prewritten brain picks, ready to send",
+    body: "The Brain Picker now opens with **Ready to send** \u2014 the asks that actually need eyes, already written:\n\n- **Merch shortlist** \u2014 which giveaways would they genuinely take home from a booth?\n- **Google Ads keywords** \u2014 would a real person actually type any of these searches, and what are we missing?\n- **Google Ads ad copy** \u2014 does the wording sound like us, and does it promise anything we cannot do?\n\nEach goes to everybody in one click, or to just the people you have ticked. The Google Ads ones **deep-link to the exact section** they are about, and each tells people to reply in the Feedback box on that page under a named section.\n\nThat last detail is the point: the **probe counts exactly that**. An outstanding Google Ads ask now reads *\u201cAlison says it is done. There is no feedback from Alison on the keywords.\u201d* The ask and the measurement are the same instruction, so the verdict is fair rather than a gotcha.\n\nFeedback is recorded against a name rather than an account, so the match is on the name and fails safe \u2014 an unmatched note counts for nobody, meaning a probe can under-report somebody\u2019s help but never invent it.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Brain Picker: group asks + an AI writing aid
   {
     title: "Brain Picker: ask several people at once, and get help writing it",
