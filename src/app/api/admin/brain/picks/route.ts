@@ -16,9 +16,12 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NOTHING, PICK_KINDS, PROBES } from "@/lib/brain/picker";
+import { dispatchPicks } from "@/lib/brain/dispatch";
 import { TEAM_ROLES } from "@/lib/brain/team";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export const PickBody = z.object({
   askedOfIds: z.array(z.string().min(1).max(100)).min(1).max(50),
@@ -28,6 +31,9 @@ export const PickBody = z.object({
   href: z.string().trim().max(500).optional(),
   bribe: z.string().trim().max(160).default(NOTHING),
   probe: z.string().trim().max(60).nullish(),
+  /** Email them as part of asking. The send IS the ask — there is no
+   *  separate approval step, because pressing this button was it. */
+  notify: z.boolean().default(false),
 });
 
 /** A probe nothing implements would render a card with no verdict on it. */
@@ -60,17 +66,30 @@ export async function POST(req: NextRequest) {
   });
   if (colleagues.length === 0) return NextResponse.json({ error: "That is not a colleague." }, { status: 404 });
 
-  const result = await prisma.brainPick.createMany({
-    data: colleagues.map((c) => ({
-      askedById: userId,
-      askedOfId: c.id,
-      subject: d.subject,
-      body: d.body,
-      kind: d.kind,
-      href: d.href || null,
-      bribe: d.bribe || NOTHING,
-      probe: validProbe(d.probe),
-    })),
-  });
-  return NextResponse.json({ sent: result.count }, { status: 201 });
+  // createMany cannot return ids, and the dispatcher needs them, so the
+  // rows are created one by one. At team size this is a handful of
+  // inserts, not a loop worth optimising.
+  const created = await Promise.all(
+    colleagues.map((c) =>
+      prisma.brainPick.create({
+        data: {
+          askedById: userId,
+          askedOfId: c.id,
+          subject: d.subject,
+          body: d.body,
+          kind: d.kind,
+          href: d.href || null,
+          bribe: d.bribe || NOTHING,
+          probe: validProbe(d.probe),
+        },
+        select: { id: true },
+      }),
+    ),
+  );
+
+  if (!d.notify) return NextResponse.json({ created: created.length }, { status: 201 });
+
+  const origin = process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? req.nextUrl.origin;
+  const { sent, failed } = await dispatchPicks(created.map((c) => c.id), userId, origin);
+  return NextResponse.json({ created: created.length, sent, failed }, { status: 201 });
 }

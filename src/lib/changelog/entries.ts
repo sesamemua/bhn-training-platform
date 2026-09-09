@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Brain Picker: one flow, and sending is the send
+  {
+    title: "Brain Picker is one flow now, and pressing send sends it",
+    body: "Asking used to be two disconnected halves: create the asks, then find a separate **Review and send** banner and approve the emails. That second gate is gone.\n\nIt is now one sequence: **1 People → 2 Task → 3 Send.** Tick who should get it, choose one of the ready-made asks (merch, Google Ads keywords, Google Ads ad copy) or write your own, read the wording back — with the AI aid still there to draft or tighten it — and press send. **That press is the email.**\n\nThe approval did not go away; it moved to where it belongs. Choosing the people, choosing the ask and reading the message IS the approval, and the send button says exactly who it reaches. A second confirmation after all that only teaches people to click through it.\n\nThe banner survives in one form only: if the provider fails after the asks are created, a red notice offers to retry the ones that never reached an inbox. In normal use you will never see it.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Brain Picker: email, but only when you press send
   {
     title: "Brain picks can now be emailed \u2014 only when you press send",

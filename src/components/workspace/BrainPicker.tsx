@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Brain, Coffee, Check, X, Loader2, Send, Pencil, ExternalLink,
-  HandCoins, Inbox, Users2, Sparkles, CheckSquare, Mail,
+  HandCoins, Inbox, Sparkles, CheckSquare, Mail,
 } from "lucide-react";
 import { DSSection } from "@/components/design-system/DSSection";
 import {
@@ -51,13 +51,11 @@ export function BrainPicker({
   // asking the team is a set of six — the route takes a list either way,
   // so there is no separate "broadcast" path to drift.
   const [chosen, setChosen] = useState<Set<string>>(new Set());
-  const [formOpen, setFormOpen] = useState(false);
+  // null = not in the flow. Otherwise: who → what → review.
+  const [step, setStep] = useState<"who" | "what" | "review" | null>(null);
+  const [brief, setBrief] = useState<Brief | null>(null);
   const [editing, setEditing] = useState<Colleague | null>(null);
   const [flash, setFlash] = useState("");
-  // Nothing emails itself. This holds the exact list a send would go to,
-  // shown for approval before any of it leaves the building.
-  const [outbox, setOutbox] = useState<{ id: string; to: string; name: string; subject: string }[] | null>(null);
-  const [mailReady, setMailReady] = useState(true);
 
   const rows = useMemo<PickRow[]>(
     () => picks.map((p) => ({
@@ -90,7 +88,8 @@ export function BrainPicker({
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-  const openFor = (ids: string[]) => { setChosen(new Set(ids)); setFormOpen(true); };
+  const openFor = (ids: string[]) => { setChosen(new Set(ids)); setBrief(null); setStep("what"); };
+  const closeFlow = () => { setStep(null); setBrief(null); };
 
   async function send(path: string, method: string, body?: unknown, note?: string) {
     setBusy(path);
@@ -116,41 +115,6 @@ export function BrainPicker({
   }
 
   /** Fire a prewritten brief at everybody, or load it for a chosen few. */
-  /** Ask the server who WOULD be emailed. Sends nothing. */
-  async function reviewOutbox() {
-    setBusy("outbox");
-    try {
-      const res = await fetch("/api/admin/brain/notify");
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) { setFlash(j.error ?? "Could not check the outbox."); return; }
-      setMailReady(!!j.mailConfigured);
-      setOutbox(j.pending ?? []);
-    } catch {
-      setFlash("Could not check the outbox.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  /** The only call in this component that puts email on the wire. */
-  async function sendOutbox() {
-    if (!outbox?.length) return;
-    const ok = await send("/api/admin/brain/notify", "POST", { ids: outbox.map((o) => o.id) });
-    if (ok) {
-      setFlash(`Emailed ${outbox.length === 1 ? "1 person" : `${outbox.length} people`}.`);
-      setOutbox(null);
-    }
-  }
-
-  const sendBrief = (brief: Brief, ids: string[]) =>
-    send(
-      "/api/admin/brain/picks", "POST",
-      { subject: brief.subject, body: brief.body, kind: brief.kind, href: brief.href, probe: brief.probe, bribe: brief.bribe, askedOfIds: ids },
-      ids.length === 1
-        ? `Sent to one person.`
-        : `Sent to ${ids.length} people. You have now promised ${ids.length} coffees.`,
-    );
-
   return (
     <div className="space-y-5">
       {flash && (
@@ -194,79 +158,50 @@ export function BrainPicker({
         </div>
       </section>
 
-      {/* ── Nothing has been emailed until you say so ───────────── */}
+      {/* ── One way in ──────────────────────────────────────────── */}
+      {/* Picking people, choosing the task, reading it back and sending
+          are one sequence, not four places. The send at the end IS the
+          email — there is no separate approval step, because pressing
+          that button was the approval. */}
+      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
+        <div className="min-w-[240px] flex-1">
+          <p className="text-sm font-bold text-fg">Pick some brains</p>
+          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+            Choose who, choose what you want from them, read it back, send. Three of the asks are
+            already written — merch, and the two halves of the Google Ads plan.
+          </p>
+        </div>
+        <button
+          onClick={() => { setChosen(new Set()); setStep("who"); }}
+          disabled={busy !== null || others.length === 0}
+          className="inline-flex h-9 items-center gap-2 rounded-xl bg-brand-600 px-4 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+        >
+          <Brain size={14} /> Start
+        </button>
+      </section>
+
+      {/* Only ever seen when a send failed — asking normally delivers. */}
       {unsent.length > 0 && (
-        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50/60 p-4">
-          <Mail size={16} className="shrink-0 text-amber-700" aria-hidden />
+        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-rose-300 bg-rose-50/60 p-4">
+          <Mail size={16} className="shrink-0 text-rose-700" aria-hidden />
           <div className="min-w-[220px] flex-1">
             <p className="text-sm font-bold text-fg">
-              {unsent.length === 1 ? "One ask has not been emailed" : `${unsent.length} asks have not been emailed`}
+              {unsent.length === 1 ? "One ask never reached its inbox" : `${unsent.length} asks never reached an inbox`}
             </p>
             <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
-              Sending an ask does not email anybody. It sits on their Brain Picker page until you send it —
-              and several colleagues have not signed in for weeks, so until you do, it may not be seen at all.
+              These were created but the email did not go out. They are still waiting on the platform.
             </p>
           </div>
           <button
-            onClick={reviewOutbox}
+            onClick={() => send("/api/admin/brain/notify", "POST", { ids: unsent.map((p) => p.id) }, "Retried.")}
             disabled={busy !== null}
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-amber-500 px-4 text-xs font-bold text-amber-950 hover:bg-amber-400 disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-rose-600 px-4 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
           >
-            {busy === "outbox" ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
-            Review and send
+            {busy !== null ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+            Try again
           </button>
         </section>
       )}
-
-      {/* ── Prewritten briefs ───────────────────────────────────── */}
-      <section className="space-y-3 rounded-2xl border border-line bg-card p-4">
-        <div>
-          <p className="text-sm font-bold text-fg">Ready to send</p>
-          <p className="mt-0.5 text-[12.5px] text-muted">
-            The things that actually need eyes, already written. Send one to everybody, or tick a few
-            people below and send it to just them.
-          </p>
-        </div>
-        <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          {BRIEFS.map((brief) => {
-            const already = brief.probe ? sentProbes.has(brief.probe) : false;
-            return (
-              <li key={brief.id} className="flex h-full flex-col rounded-xl border border-line bg-elevated p-3">
-                <p className="text-[12.5px] font-bold text-fg">{brief.label}</p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{brief.blurb}</p>
-                {already && (
-                  <p className="mt-1 text-[10.5px] font-semibold text-amber-700">You have sent this one already.</p>
-                )}
-                <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2.5">
-                  <button
-                    onClick={() => sendBrief(brief, others.map((c) => c.id))}
-                    disabled={busy !== null || others.length === 0}
-                    className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 text-[11px] font-bold text-white hover:bg-brand-700 disabled:opacity-50"
-                  >
-                    {busy !== null ? <Loader2 size={12} className="animate-spin" /> : <Users2 size={12} />}
-                    Ask all {others.length}
-                  </button>
-                  <button
-                    onClick={() => sendBrief(brief, chosenPeople.map((c) => c.id))}
-                    disabled={busy !== null || chosenPeople.length === 0}
-                    title={chosenPeople.length === 0 ? "Tick some people below first" : undefined}
-                    className="inline-flex h-7 items-center rounded-lg px-2.5 text-[11px] font-semibold text-muted ring-1 ring-inset ring-line hover:bg-raised hover:text-fg disabled:opacity-40"
-                  >
-                    {chosenPeople.length > 0 ? `Ask the ${chosenPeople.length} selected` : "Ask selected"}
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-        <button
-          onClick={() => openFor(others.map((c) => c.id))}
-          disabled={busy !== null || others.length === 0}
-          className="text-[11px] font-semibold text-brand-700 hover:underline disabled:opacity-50"
-        >
-          Or write your own →
-        </button>
-      </section>
 
       {/* ── Waiting on you ──────────────────────────────────────── */}
       {yours.length > 0 && (
@@ -328,7 +263,7 @@ export function BrainPicker({
                 {chosen.size} selected
               </span>
               <button
-                onClick={() => setFormOpen(true)}
+                onClick={() => { setBrief(null); setStep("what"); }}
                 className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 text-[11px] font-bold text-white hover:bg-brand-700"
               >
                 <Brain size={12} /> Pick {chosen.size === 1 ? "that brain" : `these ${chosen.size} brains`}
@@ -453,65 +388,32 @@ export function BrainPicker({
         </DSSection>
       )}
 
-      {formOpen && chosenPeople.length > 0 && (
-        <PickForm
-          recipients={chosenPeople}
+      {step !== null && (
+        <PickFlow
+          step={step}
+          team={others}
+          chosen={chosen}
+          onToggle={toggleChosen}
+          onSelectAll={() => setChosen(new Set(others.map((c) => c.id)))}
+          brief={brief}
+          sentProbes={sentProbes}
+          onBrief={setBrief}
+          onStep={setStep}
           busy={busy !== null}
           nothing={nothing}
-          onClose={() => setFormOpen(false)}
+          onClose={closeFlow}
           onSend={async (payload) => {
+            const ids = chosenPeople.map((c) => c.id);
             const ok = await send(
               "/api/admin/brain/picks", "POST",
-              { ...payload, askedOfIds: chosenPeople.map((c) => c.id) },
-              chosenPeople.length === 1
-                ? `Asked ${chosenPeople[0].firstName}. You offered ${payload.bribe || "nothing"}.`
-                : `Asked ${chosenPeople.length} people the same thing. Efficient.`,
+              { ...payload, askedOfIds: ids, notify: true },
+              ids.length === 1
+                ? `Sent to ${chosenPeople[0].firstName}. You offered ${payload.bribe || "nothing"}.`
+                : `Sent to ${ids.length} people. You have now promised ${ids.length} ${payload.bribe || "nothing"}s.`,
             );
-            if (ok) { setFormOpen(false); setChosen(new Set()); }
+            if (ok) { closeFlow(); setChosen(new Set()); }
           }}
         />
-      )}
-
-      {outbox !== null && (
-        <Sheet
-          title={outbox.length === 0 ? "Nothing to send" : `Email ${outbox.length === 1 ? "1 person" : `${outbox.length} people`}?`}
-          subtitle={outbox.length === 0
-            ? "Every ask you have made has already been emailed."
-            : "These messages go out the moment you press send. Nothing has been sent yet."}
-          onClose={() => setOutbox(null)}
-        >
-          {!mailReady && (
-            <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800 ring-1 ring-inset ring-rose-200">
-              Email is not configured on this environment, so nothing can be sent from here.
-            </p>
-          )}
-          {outbox.length > 0 && (
-            <ul className="divide-y divide-line rounded-lg border border-line">
-              {outbox.map((o) => (
-                <li key={o.id} className="px-3 py-2">
-                  <p className="text-[12px] font-semibold text-fg">{o.name}</p>
-                  <p className="font-mono text-[10.5px] text-subtle">{o.to}</p>
-                  <p className="mt-0.5 text-[11.5px] text-muted">{o.subject}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-          {outbox.length > 0 && (
-            <>
-              <p className="text-[11px] text-subtle">
-                Replies come back to you, not to the platform.
-              </p>
-              <button
-                onClick={sendOutbox}
-                disabled={busy !== null || !mailReady}
-                className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
-              >
-                {busy !== null ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                Send {outbox.length === 1 ? "it" : `all ${outbox.length}`} now
-              </button>
-            </>
-          )}
-        </Sheet>
       )}
 
       {editing && (
@@ -552,12 +454,34 @@ function Sheet({ title, subtitle, onClose, children }: {
 const FIELD =
   "w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40";
 
-function PickForm({ recipients, busy, nothing, onClose, onSend }: {
-  recipients: Colleague[];
+type Step = "who" | "what" | "review";
+
+/**
+ * One sequence: who, what, read it back, send.
+ *
+ * The send at the end is the email. There is no separate approval
+ * screen, because choosing the people, choosing the ask and reading the
+ * wording IS the approval — a second confirmation after all that only
+ * teaches people to click through it.
+ */
+function PickFlow({
+  step, team, chosen, onToggle, onSelectAll, brief, sentProbes, onBrief, onStep,
+  busy, nothing, onClose, onSend,
+}: {
+  step: Step;
+  team: Colleague[];
+  chosen: Set<string>;
+  onToggle: (id: string) => void;
+  onSelectAll: () => void;
+  brief: Brief | null;
+  /** Probes you have already used, so a repeat ask says so. */
+  sentProbes: Set<string>;
+  onBrief: (b: Brief | null) => void;
+  onStep: (s: Step) => void;
   busy: boolean;
   nothing: string;
   onClose: () => void;
-  onSend: (payload: { subject: string; body: string; kind: PickKind; href?: string; bribe: string }) => void;
+  onSend: (payload: { subject: string; body: string; kind: PickKind; href?: string; bribe: string; probe?: string | null }) => void;
 }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -567,15 +491,22 @@ function PickForm({ recipients, busy, nothing, onClose, onSend }: {
   const [drafting, setDrafting] = useState(false);
   const [aiNote, setAiNote] = useState("");
 
+  const recipients = team.filter((c) => chosen.has(c.id));
   const many = recipients.length > 1;
-  const who = many ? `${recipients.length} people` : recipients[0].firstName;
 
-  /**
-   * Ask the AI for a draft. It gets who you are asking and what they do,
-   * plus whatever you have already typed — so "make it better" works as
-   * well as "write it from nothing". Its brief is to make the request
-   * cheap to answer, not to make it sound nice.
-   */
+  /** Loading a brief fills every field, so review starts from something real. */
+  function choose(b: Brief | null) {
+    onBrief(b);
+    if (b) {
+      setSubject(b.subject); setBody(b.body); setKind(b.kind);
+      setHref(b.href); setBribe(b.bribe);
+    } else {
+      setSubject(""); setBody(""); setKind("question"); setHref(""); setBribe("");
+    }
+    setAiNote("");
+    onStep("review");
+  }
+
   async function draft() {
     setDrafting(true); setAiNote("");
     try {
@@ -591,11 +522,9 @@ function PickForm({ recipients, busy, nothing, onClose, onSend }: {
       if (!res.ok) { setAiNote(j.error ?? "The AI could not help just now."); return; }
       setSubject(j.draft.subject);
       setBody(j.draft.body);
-      setAiNote(
-        j.weakSubject
-          ? "Drafted — but that subject says nothing. Name the actual thing before you send it."
-          : "Drafted. Read it before you send it — it is your name on it.",
-      );
+      setAiNote(j.weakSubject
+        ? "Drafted — but that subject says nothing. Name the actual thing before you send it."
+        : "Drafted. Read it before you send it — it is your name on it.");
     } catch {
       setAiNote("The AI could not help just now.");
     } finally {
@@ -603,71 +532,170 @@ function PickForm({ recipients, busy, nothing, onClose, onSend }: {
     }
   }
 
+  const TITLES: Record<Step, string> = {
+    who: "Whose brain?",
+    what: "What do you want?",
+    review: `Read it back${many ? ` — ${recipients.length} people` : ""}`,
+  };
+  const SUBS: Record<Step, string> = {
+    who: "Tick everyone who should get this. They all get the same message.",
+    what: "Pick a ready-made ask, or write your own.",
+    review: recipients.map((c) => c.firstName).join(", "),
+  };
+
   return (
-    <Sheet
-      title={many ? `Pick ${recipients.length} brains at once` : `Pick ${recipients[0].firstName}'s brain`}
-      subtitle={many
-        ? recipients.map((c) => c.firstName).join(", ")
-        : recipients[0].speciality}
-      onClose={onClose}
-    >
-      <label className="block text-[11px] font-semibold text-fg">
-        What is it
-        <select value={kind} onChange={(e) => setKind(e.target.value as PickKind)} className={`mt-1 ${FIELD}`}>
-          <option value="question">A question — you want an opinion</option>
-          <option value="task">A task — you want work done</option>
-          <option value="favour">A favour — you know what this is</option>
-        </select>
-      </label>
+    <Sheet title={TITLES[step]} subtitle={SUBS[step]} onClose={onClose}>
+      {/* Where you are, and how to go back. */}
+      <ol className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+        {(["who", "what", "review"] as Step[]).map((sName, i) => {
+          const at = ["who", "what", "review"].indexOf(step);
+          const done = i < at;
+          return (
+            <li key={sName} className="flex items-center gap-1.5">
+              {i > 0 && <span className="text-subtle">›</span>}
+              <button
+                onClick={() => done && onStep(sName)}
+                disabled={!done}
+                className={cn(
+                  "rounded px-1.5 py-0.5",
+                  i === at ? "bg-brand-600 text-white" : done ? "text-brand-700 hover:underline" : "text-subtle",
+                )}
+              >
+                {sName === "who" ? "1 People" : sName === "what" ? "2 Task" : "3 Send"}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
 
-      {/* The writing aid. It reads what you have so far, so it works both
-          as "write this for me" and as "tidy up what I typed". */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line px-2.5 py-2">
-        <button
-          onClick={draft}
-          disabled={busy || drafting}
-          className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-elevated px-2.5 text-[11px] font-bold text-fg ring-1 ring-inset ring-line hover:bg-raised disabled:opacity-50"
-        >
-          {drafting ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-          {body.trim() || subject.trim() ? "Improve what I wrote" : "Write it for me"}
-        </button>
-        <span className="text-[10.5px] text-subtle">
-          Uses what {many ? "they" : recipients[0].firstName} works on. Aims to make it quick to answer.
-        </span>
-        {aiNote && <span className="basis-full text-[10.5px] font-medium text-amber-700">{aiNote}</span>}
-      </div>
+      {/* ── 1. People ─────────────────────────────────────────── */}
+      {step === "who" && (
+        <>
+          <button onClick={onSelectAll} className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700 hover:underline">
+            <CheckSquare size={12} /> Select everybody ({team.length})
+          </button>
+          <ul className="divide-y divide-line rounded-lg border border-line">
+            {team.map((c) => (
+              <li key={c.id}>
+                <label className="flex cursor-pointer items-start gap-3 px-3 py-2.5 hover:bg-elevated">
+                  <input
+                    type="checkbox"
+                    checked={chosen.has(c.id)}
+                    onChange={() => onToggle(c.id)}
+                    className="mt-0.5 rounded border-line"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12.5px] font-semibold text-fg">{c.name}</span>
+                    <span className="block text-[11px] leading-relaxed text-muted">{c.speciality}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => onStep("what")}
+            disabled={chosen.size === 0}
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            Next — {chosen.size === 0 ? "pick somebody" : `${chosen.size} selected`}
+          </button>
+        </>
+      )}
 
-      <label className="block text-[11px] font-semibold text-fg">
-        Subject
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Quick one — should be five minutes"
-          className={`mt-1 ${FIELD}`} />
-      </label>
-      <label className="block text-[11px] font-semibold text-fg">
-        What you actually want
-        <textarea rows={6} value={body} onChange={(e) => setBody(e.target.value)}
-          placeholder="Be specific. Vagueness is how five minutes becomes an afternoon."
-          className={`mt-1 ${FIELD}`} />
-      </label>
-      <label className="block text-[11px] font-semibold text-fg">
-        A link to the thing <span className="font-normal text-subtle">optional</span>
-        <input value={href} onChange={(e) => setHref(e.target.value)} placeholder="/admin/workspace/merch" className={`mt-1 ${FIELD}`} />
-      </label>
-      <label className="block text-[11px] font-semibold text-fg">
-        What you are offering in return
-        <input value={bribe} onChange={(e) => setBribe(e.target.value)} placeholder="a coffee, eventually" className={`mt-1 ${FIELD}`} />
-        <span className="mt-1 block text-[10.5px] font-normal text-subtle">
-          Leave it empty and the page will record, accurately, that you offered {nothing}
-          {many && ` — ${recipients.length} times over`}.
-        </span>
-      </label>
-      <button
-        onClick={() => onSend({ subject, body, kind, href: href.trim() || undefined, bribe: bribe.trim() || nothing })}
-        disabled={busy || drafting || subject.trim().length < 2 || body.trim().length < 2}
-        className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
-      >
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-        Ask {who}
-      </button>
+      {/* ── 2. Task ───────────────────────────────────────────── */}
+      {step === "what" && (
+        <>
+          <ul className="space-y-2">
+            {BRIEFS.map((b) => (
+              <li key={b.id}>
+                <button
+                  onClick={() => choose(b)}
+                  className="w-full rounded-lg border border-line px-3 py-2.5 text-left hover:border-brand-400 hover:bg-elevated"
+                >
+                  <span className="block text-[12.5px] font-bold text-fg">
+                    {b.label}
+                    {b.probe && sentProbes.has(b.probe) && (
+                      <span className="ml-1.5 font-normal text-amber-700">· you have sent this before</span>
+                    )}
+                  </span>
+                  <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">{b.blurb}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => choose(null)}
+            className="w-full rounded-lg border border-dashed border-line px-3 py-2.5 text-left text-[12.5px] font-semibold text-muted hover:border-brand-400 hover:text-fg"
+          >
+            Something else — write it yourself
+          </button>
+        </>
+      )}
+
+      {/* ── 3. Review and send ────────────────────────────────── */}
+      {step === "review" && (
+        <>
+          {brief && (
+            <p className="rounded-lg bg-brand-50 px-3 py-2 text-[11px] font-semibold text-brand-900">
+              {brief.label} — edit anything below before it goes.
+            </p>
+          )}
+          <label className="block text-[11px] font-semibold text-fg">
+            What is it
+            <select value={kind} onChange={(e) => setKind(e.target.value as PickKind)} className={`mt-1 ${FIELD}`}>
+              <option value="question">A question — you want an opinion</option>
+              <option value="task">A task — you want work done</option>
+              <option value="favour">A favour — you know what this is</option>
+            </select>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line px-2.5 py-2">
+            <button
+              onClick={draft}
+              disabled={busy || drafting}
+              className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-elevated px-2.5 text-[11px] font-bold text-fg ring-1 ring-inset ring-line hover:bg-raised disabled:opacity-50"
+            >
+              {drafting ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {body.trim() || subject.trim() ? "Improve what I wrote" : "Write it for me"}
+            </button>
+            <span className="text-[10.5px] text-subtle">Aims to make it quick to answer.</span>
+            {aiNote && <span className="basis-full text-[10.5px] font-medium text-amber-700">{aiNote}</span>}
+          </div>
+
+          <label className="block text-[11px] font-semibold text-fg">
+            Subject
+            <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Name the actual thing" className={`mt-1 ${FIELD}`} />
+          </label>
+          <label className="block text-[11px] font-semibold text-fg">
+            What you actually want
+            <textarea rows={7} value={body} onChange={(e) => setBody(e.target.value)}
+              placeholder="Be specific. Vagueness is how five minutes becomes an afternoon."
+              className={`mt-1 ${FIELD}`} />
+          </label>
+          <label className="block text-[11px] font-semibold text-fg">
+            A link to the thing <span className="font-normal text-subtle">optional</span>
+            <input value={href} onChange={(e) => setHref(e.target.value)} placeholder="/admin/workspace/merch" className={`mt-1 ${FIELD}`} />
+          </label>
+          <label className="block text-[11px] font-semibold text-fg">
+            What you are offering in return
+            <input value={bribe} onChange={(e) => setBribe(e.target.value)} placeholder="a coffee, eventually" className={`mt-1 ${FIELD}`} />
+          </label>
+
+          <p className="rounded-lg bg-elevated px-3 py-2 text-[11px] text-muted">
+            <Mail size={11} className="mr-1 inline align-[-1px]" />
+            Emails <strong className="text-fg">{recipients.map((c) => c.firstName).join(", ")}</strong> when you press send.
+            Replies come back to you.
+          </p>
+          <button
+            onClick={() => onSend({ subject, body, kind, href: href.trim() || undefined, bribe: bribe.trim() || nothing, probe: brief?.probe ?? null })}
+            disabled={busy || drafting || subject.trim().length < 2 || body.trim().length < 2}
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            Send to {recipients.length === 1 ? recipients[0].firstName : `${recipients.length} people`}
+          </button>
+        </>
+      )}
     </Sheet>
   );
 }
