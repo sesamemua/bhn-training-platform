@@ -77,3 +77,8 @@ prisma/*.db-journal
 # Database dumps written by the guarded apply/seed scripts.
 # They can contain registrant names and email addresses.
 backups/
+
+# gitnexus code-graph database — a 243 MB binary that has no business in
+# the repo. It was committed once (d8eec0c0) and shipped in every clone
+# and every Vercel deployment since.
+.gitnexus/

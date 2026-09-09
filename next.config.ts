@@ -100,6 +100,77 @@ const nextConfig: NextConfig = {
   // Without an explicit trace include, Vercel's file-tracing layer can
   // exclude content outside `app/` from the serverless function bundle,
   // making fs.readFileSync 404 in production. Pin the directory.
+  // Vercel Functions Storage hit 93 GB against a 10 GB limit. Measured
+  // from this repo's own build traces (.next/server/**/*.nft.json): 67.6 GB
+  // traced across 720 bundles, 60.6 GB of it Prisma, ~85 MB of Prisma in
+  // every single one of the 712 bundles that touch the database.
+  //
+  // Almost all of that is unreachable. Prisma ships the WASM query engine
+  // AND query compiler for five SQL dialects, in both CJS and ESM, inside
+  // @prisma/client/runtime. Nothing requires them: the generated client
+  // sets `config.engineWasm = undefined` and `config.compilerWasm =
+  // undefined` (node_modules/.prisma/client/index.js:3128-3129) because
+  // this app uses the library engine, and grepping the whole Prisma tree
+  // for these filenames returns nothing. They are generator templates that
+  // Next's file tracer pulls in through the package's "files" field rather
+  // than through any import.
+  //
+  // Two deliberate omissions, both about asymmetry — being over quota
+  // costs money, breaking every database call costs the platform:
+  //   • the `postgresql` pair stays. It is the provider that matches the
+  //     datasource, and while the evidence says it is just as dead, a
+  //     wrong call there takes down every route at once.
+  //   • runtime/binary.* stays. It is dead only while the engine type is
+  //     "library"; one env var (PRISMA_CLIENT_ENGINE_TYPE=binary) would
+  //     make it load, and an exclude would then fail silently in prod.
+  //
+  // Do NOT add binaryTargets to prisma/schema.prisma to "help" here: a
+  // second target generates a second 19 MB engine into every bundle.
+  outputFileTracingExcludes: {
+    "*": [
+      // Four dialects this app will never speak. ~32 GB across a build.
+      "node_modules/@prisma/client/runtime/query_engine_bg.cockroachdb.*",
+      "node_modules/@prisma/client/runtime/query_engine_bg.mysql.*",
+      "node_modules/@prisma/client/runtime/query_engine_bg.sqlite.*",
+      "node_modules/@prisma/client/runtime/query_engine_bg.sqlserver.*",
+      "node_modules/@prisma/client/runtime/query_compiler_bg.cockroachdb.*",
+      "node_modules/@prisma/client/runtime/query_compiler_bg.mysql.*",
+      "node_modules/@prisma/client/runtime/query_compiler_bg.sqlite.*",
+      "node_modules/@prisma/client/runtime/query_compiler_bg.sqlserver.*",
+      // Edge, browser and React Native variants. Every route here declares
+      // runtime = "nodejs" (328 of them) and there is no middleware or
+      // proxy, so those export conditions can never be selected.
+      "node_modules/@prisma/client/runtime/wasm-engine-edge.*",
+      "node_modules/@prisma/client/runtime/wasm-compiler-edge.*",
+      "node_modules/@prisma/client/runtime/edge.js",
+      "node_modules/@prisma/client/runtime/edge-esm.js",
+      "node_modules/@prisma/client/runtime/react-native.js",
+      "node_modules/@prisma/client/runtime/index-browser.*",
+      "node_modules/.prisma/client/edge.js",
+      // Declarations are never loaded at runtime. Next ignores **/*.d.ts
+      // already but not .d.mts, which is why those were being traced.
+      "node_modules/@prisma/client/runtime/*.d.ts",
+      "node_modules/@prisma/client/runtime/*.d.mts",
+      // Repo directories that no route traces. Note what is NOT here:
+      // docs/ (docs/security is read at runtime), private/ (the AV clip
+      // route reads it), public/, scripts/ and prisma/fixtures — each is
+      // reachable, and an exclude beats an include, so listing any of them
+      // would 404 a live page. That regression has happened here before;
+      // the comment above outputFileTracingIncludes records it.
+      "tests/**",
+      "evals/**",
+      "playwright/**",
+      "test-results/**",
+      "prisma/migrations/**",
+      "docs/guides/**",
+      "docs/plans/**",
+      "docs/ux/**",
+      "samples/**",
+      "backups/**",
+      "mcp/**",
+      ".gitnexus/**",
+    ],
+  },
   outputFileTracingIncludes: {
     "/admin/security": ["./docs/security/**/*"],
     // Same reason: the AV clip route reads PNGs from private/av-clips/ at
