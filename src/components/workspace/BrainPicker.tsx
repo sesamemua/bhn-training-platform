@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Brain, Coffee, Check, X, Loader2, Send, Pencil, ExternalLink,
-  HandCoins, Inbox, Users2,
+  HandCoins, Inbox, Users2, Sparkles, CheckSquare,
 } from "lucide-react";
 import { DSSection } from "@/components/design-system/DSSection";
 import {
@@ -45,8 +45,11 @@ export function BrainPicker({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
-  const [target, setTarget] = useState<Colleague | null>(null);
-  const [broadcast, setBroadcast] = useState(false);
+  // One selection drives everything. Asking one person is a set of one,
+  // asking the team is a set of six — the route takes a list either way,
+  // so there is no separate "broadcast" path to drift.
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Colleague | null>(null);
   const [flash, setFlash] = useState("");
 
@@ -67,6 +70,15 @@ export function BrainPicker({
   const nameOf = (id: string) => team.find((c) => c.id === id);
 
   const merchAlreadySent = rows.some((p) => p.askedById === viewerId && p.probe === "merch-starred");
+  const chosenPeople = others.filter((c) => chosen.has(c.id));
+
+  const toggleChosen = (id: string) =>
+    setChosen((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  const openFor = (ids: string[]) => { setChosen(new Set(ids)); setFormOpen(true); };
 
   async function send(path: string, method: string, body?: unknown, note?: string) {
     setBusy(path);
@@ -92,7 +104,7 @@ export function BrainPicker({
   }
 
   const pickMerchBrains = () =>
-    send("/api/admin/brain/picks/broadcast", "POST", MERCH_BRIEF,
+    send("/api/admin/brain/picks", "POST", { ...MERCH_BRIEF, askedOfIds: others.map((c) => c.id) },
       `Sent to ${others.length} people. You have now promised ${others.length} coffees.`);
 
   return (
@@ -158,7 +170,7 @@ export function BrainPicker({
             Ask all {others.length}
           </button>
           <button
-            onClick={() => setBroadcast(true)}
+            onClick={() => openFor(others.map((c) => c.id))}
             disabled={busy !== null || others.length === 0}
             className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-muted ring-1 ring-inset ring-line hover:bg-elevated hover:text-fg disabled:opacity-50"
           >
@@ -217,6 +229,37 @@ export function BrainPicker({
         eyebrow="The team"
         icon={<Brain size={16} />}
       >
+        {/* Tick several and ask them all the same thing at once. The bar
+            only appears once something is ticked, so the page is not
+            permanently carrying an empty toolbar. */}
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+          {chosen.size > 0 ? (
+            <>
+              <span className="font-bold text-brand-800">
+                {chosen.size} selected
+              </span>
+              <button
+                onClick={() => setFormOpen(true)}
+                className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 text-[11px] font-bold text-white hover:bg-brand-700"
+              >
+                <Brain size={12} /> Pick {chosen.size === 1 ? "that brain" : `these ${chosen.size} brains`}
+              </button>
+              <button onClick={() => setChosen(new Set())} className="font-semibold text-muted hover:text-fg">
+                Clear
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-subtle">Tick a few to ask them the same thing at once.</span>
+              <button
+                onClick={() => setChosen(new Set(others.map((c) => c.id)))}
+                className="inline-flex items-center gap-1 font-semibold text-brand-700 hover:underline"
+              >
+                <CheckSquare size={12} /> Select everybody
+              </button>
+            </>
+          )}
+        </div>
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {team.map((c) => (
             <li key={c.id}>
@@ -237,6 +280,17 @@ export function BrainPicker({
                     </p>
                     <p className="truncate font-mono text-[10px] text-subtle">{c.rate}</p>
                   </div>
+                  {!c.isYou && (
+                    <label className="shrink-0 cursor-pointer p-1" title={`Include ${c.firstName} in a group ask`}>
+                      <input
+                        type="checkbox"
+                        checked={chosen.has(c.id)}
+                        onChange={() => toggleChosen(c.id)}
+                        aria-label={`Include ${c.name} in a group ask`}
+                        className="rounded border-line"
+                      />
+                    </label>
+                  )}
                   <button
                     onClick={() => setEditing(c)}
                     aria-label={`Edit what ${c.firstName} is good at`}
@@ -265,7 +319,7 @@ export function BrainPicker({
 
                 {!c.isYou && (
                   <button
-                    onClick={() => setTarget(c)}
+                    onClick={() => openFor([c.id])}
                     className="mt-auto inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-elevated pt-0 text-xs font-bold text-fg ring-1 ring-inset ring-line hover:bg-raised"
                   >
                     <Brain size={13} /> Pick {c.firstName}&apos;s brain
@@ -309,19 +363,21 @@ export function BrainPicker({
         </DSSection>
       )}
 
-      {(target || broadcast) && (
+      {formOpen && chosenPeople.length > 0 && (
         <PickForm
-          colleague={target}
-          everyone={broadcast ? others.length : 0}
+          recipients={chosenPeople}
           busy={busy !== null}
           nothing={nothing}
-          onClose={() => { setTarget(null); setBroadcast(false); }}
+          onClose={() => setFormOpen(false)}
           onSend={async (payload) => {
-            const ok = target
-              ? await send("/api/admin/brain/picks", "POST", { ...payload, askedOfId: target.id },
-                  `Asked ${target.firstName}. You offered ${payload.bribe || "nothing"}.`)
-              : await send("/api/admin/brain/picks/broadcast", "POST", payload, "Sent to everybody.");
-            if (ok) { setTarget(null); setBroadcast(false); }
+            const ok = await send(
+              "/api/admin/brain/picks", "POST",
+              { ...payload, askedOfIds: chosenPeople.map((c) => c.id) },
+              chosenPeople.length === 1
+                ? `Asked ${chosenPeople[0].firstName}. You offered ${payload.bribe || "nothing"}.`
+                : `Asked ${chosenPeople.length} people the same thing. Efficient.`,
+            );
+            if (ok) { setFormOpen(false); setChosen(new Set()); }
           }}
         />
       )}
@@ -364,9 +420,8 @@ function Sheet({ title, subtitle, onClose, children }: {
 const FIELD =
   "w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/40";
 
-function PickForm({ colleague, everyone, busy, nothing, onClose, onSend }: {
-  colleague: Colleague | null;
-  everyone: number;
+function PickForm({ recipients, busy, nothing, onClose, onSend }: {
+  recipients: Colleague[];
   busy: boolean;
   nothing: string;
   onClose: () => void;
@@ -377,12 +432,47 @@ function PickForm({ colleague, everyone, busy, nothing, onClose, onSend }: {
   const [kind, setKind] = useState<PickKind>("question");
   const [href, setHref] = useState("");
   const [bribe, setBribe] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [aiNote, setAiNote] = useState("");
 
-  const who = colleague ? colleague.firstName : `all ${everyone}`;
+  const many = recipients.length > 1;
+  const who = many ? `${recipients.length} people` : recipients[0].firstName;
+
+  /**
+   * Ask the AI for a draft. It gets who you are asking and what they do,
+   * plus whatever you have already typed — so "make it better" works as
+   * well as "write it from nothing". Its brief is to make the request
+   * cheap to answer, not to make it sound nice.
+   */
+  async function draft() {
+    setDrafting(true); setAiNote("");
+    try {
+      const res = await fetch("/api/admin/brain/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          askedOfIds: recipients.map((c) => c.id),
+          kind, gist: body, subject, bribe: bribe.trim() || nothing,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setAiNote(j.error ?? "The AI could not help just now."); return; }
+      setSubject(j.draft.subject);
+      setBody(j.draft.body);
+      setAiNote("Drafted. Read it before you send it — it is your name on it.");
+    } catch {
+      setAiNote("The AI could not help just now.");
+    } finally {
+      setDrafting(false);
+    }
+  }
+
   return (
     <Sheet
-      title={colleague ? `Pick ${colleague.firstName}'s brain` : "Pick everybody's brain"}
-      subtitle={colleague ? colleague.speciality : "One question, everyone's afternoon."}
+      title={many ? `Pick ${recipients.length} brains at once` : `Pick ${recipients[0].firstName}'s brain`}
+      subtitle={many
+        ? recipients.map((c) => c.firstName).join(", ")
+        : recipients[0].speciality}
       onClose={onClose}
     >
       <label className="block text-[11px] font-semibold text-fg">
@@ -393,6 +483,24 @@ function PickForm({ colleague, everyone, busy, nothing, onClose, onSend }: {
           <option value="favour">A favour — you know what this is</option>
         </select>
       </label>
+
+      {/* The writing aid. It reads what you have so far, so it works both
+          as "write this for me" and as "tidy up what I typed". */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-line px-2.5 py-2">
+        <button
+          onClick={draft}
+          disabled={busy || drafting}
+          className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-elevated px-2.5 text-[11px] font-bold text-fg ring-1 ring-inset ring-line hover:bg-raised disabled:opacity-50"
+        >
+          {drafting ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+          {body.trim() || subject.trim() ? "Improve what I wrote" : "Write it for me"}
+        </button>
+        <span className="text-[10.5px] text-subtle">
+          Uses what {many ? "they" : recipients[0].firstName} works on. Aims to make it quick to answer.
+        </span>
+        {aiNote && <span className="basis-full text-[10.5px] font-medium text-amber-700">{aiNote}</span>}
+      </div>
+
       <label className="block text-[11px] font-semibold text-fg">
         Subject
         <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Quick one — should be five minutes"
@@ -400,7 +508,7 @@ function PickForm({ colleague, everyone, busy, nothing, onClose, onSend }: {
       </label>
       <label className="block text-[11px] font-semibold text-fg">
         What you actually want
-        <textarea rows={5} value={body} onChange={(e) => setBody(e.target.value)}
+        <textarea rows={6} value={body} onChange={(e) => setBody(e.target.value)}
           placeholder="Be specific. Vagueness is how five minutes becomes an afternoon."
           className={`mt-1 ${FIELD}`} />
       </label>
@@ -412,12 +520,13 @@ function PickForm({ colleague, everyone, busy, nothing, onClose, onSend }: {
         What you are offering in return
         <input value={bribe} onChange={(e) => setBribe(e.target.value)} placeholder="a coffee, eventually" className={`mt-1 ${FIELD}`} />
         <span className="mt-1 block text-[10.5px] font-normal text-subtle">
-          Leave it empty and the page will record, accurately, that you offered {nothing}.
+          Leave it empty and the page will record, accurately, that you offered {nothing}
+          {many && ` — ${recipients.length} times over`}.
         </span>
       </label>
       <button
         onClick={() => onSend({ subject, body, kind, href: href.trim() || undefined, bribe: bribe.trim() || nothing })}
-        disabled={busy || subject.trim().length < 2 || body.trim().length < 2}
+        disabled={busy || drafting || subject.trim().length < 2 || body.trim().length < 2}
         className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

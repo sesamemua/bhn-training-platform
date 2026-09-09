@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Brain Picker: group asks + an AI writing aid
+  {
+    title: "Brain Picker: ask several people at once, and get help writing it",
+    body: "**Group asks.** Every colleague card now has a tick box. Tick a few, hit **Pick these 3 brains**, and they all get the same request \u2014 or **Select everybody** for the lot. Asking one person is now the same code path as asking the team, just a shorter list, so the guards cannot drift between them (the separate broadcast route is gone).\n\n**A writing aid.** The pick form has a **Write it for me** button \u2014 or **Improve what I wrote** once you have started. It knows who you are asking and what they work on, and its brief is deliberately not \u201cmake this sound nicer\u201d: it is told to make the request **cheap to answer**. Say exactly what you want, scope it honestly, say why this person, say what happens with the answer. Vagueness is how five minutes becomes an afternoon.\n\nIt drafts, it never sends \u2014 the text lands in the form for you to edit, and the page says so: *read it before you send it, it is your name on it*. If no AI provider is configured the button says so plainly rather than failing quietly.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Brain Picker specialities from the public site; merch button in amber
   {
     title: "Brain Picker now uses everyone\u2019s real title, and the merch catalogue button is where you can see it",

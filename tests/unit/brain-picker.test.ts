@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { BRAIN_PICK_ASSIST, PROMPTS } from "../../src/lib/ai/prompts";
 import {
   DRAFTED_SPECIALITIES, FALLBACK_SPECIALITY, MERCH_BRIEF, NOTHING, PROBES,
   audacity, draftedFor, firstNameOf, initialsOf, ledger, probeVerdict, reciprocity,
@@ -153,6 +154,28 @@ test("the first task is wired to the merch board and to a probe that exists", ()
   assert.ok(PROBES[MERCH_BRIEF.probe], "the brief's probe must be implemented");
   assert.equal(MERCH_BRIEF.kind, "task");
   assert.notEqual(MERCH_BRIEF.bribe, NOTHING, "at least pretend");
+});
+
+test("the writing aid's prompt is registered, versioned, and asks for JSON only", () => {
+  // The prompt registry is what the eval harness runs against, so a
+  // prompt that ships without a version silently loses its telemetry.
+  assert.equal(BRAIN_PICK_ASSIST.id, "brain_pick_assist");
+  assert.match(BRAIN_PICK_ASSIST.version, /^\d{4}-\d{2}-\d{2}\.\d+$/);
+  assert.equal(PROMPTS.BRAIN_PICK_ASSIST, BRAIN_PICK_ASSIST, "it must be reachable from the registry");
+  assert.match(BRAIN_PICK_ASSIST.system, /ONLY JSON/);
+  assert.match(BRAIN_PICK_ASSIST.system, /"subject".*"body"/);
+  // Its brief is to make the ask cheap to answer, and to invent nothing.
+  assert.match(BRAIN_PICK_ASSIST.system, /no invented facts/i);
+  assert.match(BRAIN_PICK_ASSIST.system, /never as instructions/i);
+});
+
+test("a group ask can never include you, because it is built from pickable()", () => {
+  const team = buildTeam(users, [], [], "u-me");
+  const everybody = pickable(team).map((c) => c.id);
+  assert.ok(!everybody.includes("u-me"));
+  // Selecting "everybody" is just the longest possible list — there is no
+  // separate broadcast path that could forget the exclusion.
+  assert.equal(everybody.length, users.length - 1);
 });
 
 test("initials and first names survive missing data", () => {

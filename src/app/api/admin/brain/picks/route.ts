@@ -1,10 +1,15 @@
 /**
- * POST /api/admin/brain/picks — pick one person's brain.
+ * POST /api/admin/brain/picks — pick one, several or everybody's brain.
  *
- * Creates the ask and nothing else. No email goes out: the request lands
- * on the platform and on their sidebar badge, and sending six colleagues
- * an unprompted email is a decision somebody should make on purpose
- * rather than inherit from a button.
+ * One route for all three, because "ask one person" and "ask the whole
+ * team" differ only in the length of a list, and two routes would be two
+ * places for the guards to drift apart. The caller sends the ids; the
+ * client's "select all" is just a longer array.
+ *
+ * Creates the asks and nothing else. No email goes out: a request lands
+ * on the platform and on the recipient's sidebar badge, and mailing six
+ * colleagues should be a decision somebody makes on purpose rather than
+ * inherits from a button.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -16,7 +21,7 @@ import { TEAM_ROLES } from "@/lib/brain/team";
 export const dynamic = "force-dynamic";
 
 export const PickBody = z.object({
-  askedOfId: z.string().min(1).max(100),
+  askedOfIds: z.array(z.string().min(1).max(100)).min(1).max(50),
   subject: z.string().trim().min(2).max(200),
   body: z.string().trim().min(2).max(5_000),
   kind: z.enum(PICK_KINDS as unknown as [string, ...string[]]).default("question"),
@@ -39,27 +44,33 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Say what you want and who from." }, { status: 400 });
   const d = parsed.data;
 
-  if (d.askedOfId === userId) {
+  const wanted = [...new Set(d.askedOfIds)];
+  if (wanted.includes(userId)) {
     return NextResponse.json({ error: "Picking your own brain is just thinking." }, { status: 400 });
   }
-  const target = await prisma.user.findFirst({
-    where: { id: d.askedOfId, isActive: true, accountKind: "real", role: { in: [...TEAM_ROLES] } },
+
+  // Resolve against the real team rather than trusting the ids: a stale
+  // page should ask fewer people, never somebody who is not a colleague.
+  const colleagues = await prisma.user.findMany({
+    where: {
+      id: { in: wanted, not: userId },
+      isActive: true, accountKind: "real", role: { in: [...TEAM_ROLES] },
+    },
     select: { id: true },
   });
-  if (!target) return NextResponse.json({ error: "That is not a colleague." }, { status: 404 });
+  if (colleagues.length === 0) return NextResponse.json({ error: "That is not a colleague." }, { status: 404 });
 
-  const pick = await prisma.brainPick.create({
-    data: {
+  const result = await prisma.brainPick.createMany({
+    data: colleagues.map((c) => ({
       askedById: userId,
-      askedOfId: d.askedOfId,
+      askedOfId: c.id,
       subject: d.subject,
       body: d.body,
       kind: d.kind,
       href: d.href || null,
       bribe: d.bribe || NOTHING,
       probe: validProbe(d.probe),
-    },
-    select: { id: true },
+    })),
   });
-  return NextResponse.json({ id: pick.id }, { status: 201 });
+  return NextResponse.json({ sent: result.count }, { status: 201 });
 }
