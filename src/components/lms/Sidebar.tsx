@@ -73,7 +73,7 @@ import {
   BookUser,
   Radar,
   Search,
-  CalendarClock, MessageSquareText, Images, Speaker, ExternalLink} from "lucide-react";
+  CalendarClock, MessageSquareText, Images, Speaker, ExternalLink, Brain} from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
 
@@ -332,6 +332,19 @@ const workspaceHomeItem: NavItem = {
 
 // WORKSPACE — internal team tooling, its own top-level section. Marketing
 // keeps campaign planning and production work together.
+// WORKSPACE → Brain Picker. Ungrouped beside home: it is about the
+// people rather than any one event, and every subgroup here is an event
+// or a discipline.
+const workspaceBrainPickerItem: NavItem = {
+  label: "Brain Picker",
+  href: "/admin/workspace/brain-picker",
+  icon: Brain,
+  minRole: "admin",
+  badgeKey: "brain-picks-open",
+  description:
+    "Ask a colleague to look at something. Lists the team and what each of them is worth interrupting for — and keeps count of how many favours you have asked for versus how many you have returned.",
+};
+
 const workspaceVideoItem: NavItem = {
   label: "Video Production",
   href: "/admin/workspace/marketing/video",
@@ -817,6 +830,8 @@ const URGENT_FROM_ONE = new Set<string>([
   // One new speaker submission is one person waiting on a reply.
   "speakers-new-symposium",
   "speakers-new-insights",
+  // One unanswered question is one colleague waiting on you.
+  "brain-picks-open",
 ]);
 
 const ROLE_RANK: Record<string, number> = {
@@ -2048,6 +2063,7 @@ export function Sidebar({
           >
             {/* Home sits at the top, ungrouped — the section's single front door. */}
             <NavLink item={workspaceHomeItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            <NavLink item={workspaceBrainPickerItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             {/* Grouped by the THING, not by the department. Running the
                 symposium meant visiting Marketing for the plan and
                 Process for the form and the seats — three subgroups for

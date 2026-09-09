@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Brain Picker
+  {
+    title: "Brain Picker: ask a colleague to look at something, and keep the receipt",
+    body: "**Workspace \u2192 Brain Picker** is a page for asking colleagues for free advice, which is what the name means:\n\n> \u201cbrain picker\u201d is occasionally used to describe someone who frequently asks for free advice, ideas, or informal consulting without offering to compensate you or provide anything of value in return.\n\nIt lists the team with what each of them is worth interrupting for, and you pick whose brain to pick \u2014 a question, a task or a favour, with an optional link to the thing. It lands on their sidebar badge; **no email goes out**, because sending six people an unprompted email should be somebody\u2019s decision rather than a button\u2019s side effect.\n\nThe page keeps score, and **the score is of you**. How many brains you have picked, how many coffees you have promised, how many you have bought (zero \u2014 nothing here can record one, which is the most accurate number on the page), and how often anybody picks yours. There is an audacity meter. It goes up.\n\nThe useful part is the **probe**: an ask can carry a check for whether the thing was actually done, as opposed to said. The first one counts merch stars, so an outstanding request reads *\u201cYeseul says it is done. Yeseul has starred nothing.\u201d*\n\n**First task is loaded and ready:** one button asks everyone to open the merch board and star what they would genuinely take home.\n\nSpecialities ship as drafted guesses and every card says so until somebody corrects it. Click the pencil to fix yours.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Merch board: favourites, added products, a real total
   {
     title: "The merch board is now something the team decides with",

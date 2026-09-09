@@ -84,7 +84,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     canSeeAdminQueues ? getAdminQueueCounts() : Promise.resolve(undefined),
     // Workspace lanes (EQUIP review, social, speakers, seats, newsletter)
     // — same gate, same round trip.
-    canSeeAdminQueues ? getWorkspaceQueueCounts() : Promise.resolve(undefined),
+    canSeeAdminQueues ? getWorkspaceQueueCounts(new Date(), userId) : Promise.resolve(undefined),
     userId ? getTraineeQueueCounts(userId) : Promise.resolve(undefined),
     // Employer join-request badge — only fetched for employer accounts
     // (and admins acting as employer) to avoid an unnecessary DB query

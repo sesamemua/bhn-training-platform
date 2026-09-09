@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "tsx --test tests/unit/*.test.ts tests/unit/*.test.tsx",
     "test:workspace": "tsx --test tests/unit/workspace-queue.test.ts",
+    "test:brain": "tsx --test tests/unit/brain-picker.test.ts",
     "typecheck": "tsc --noEmit",
     "check:migrations": "tsx scripts/check-migrations.ts",
     "eval": "tsx evals/run.ts --save",

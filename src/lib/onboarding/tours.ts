@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.19";
+export const TOUR_VERSION = "2026.09.20";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.brain-picker",
+    title: "Ask someone. Keep the receipt.",
+    body: "**Workspace \u2192 Brain Picker.** The team, what each of them is worth interrupting for, and a button to ask. A question, a task or a favour \u2014 it lands on their sidebar badge, no email. The page keeps count of how many favours you have asked for and how many you have returned, and it is not flattering. Start with **Ask all** on the merch board: one click, everyone\u2019s opinion, no compensation.",
+    path: "/admin/workspace/brain-picker",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Brain Picker", href: "/admin/workspace/brain-picker" },
+    since: "2026.10.05a",
+  },
   {
     id: "workspace.merch.board",
     title: "Star it, set it aside, or add your own",

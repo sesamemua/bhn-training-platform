@@ -36,6 +36,7 @@ export type WorkspaceBadgeKey =
   | "speakers-new-insights"
   | "training-bookings-pending"
   | "newsletter-attention"
+  | "brain-picks-open"
   | "workspace-total";
 
 export const WORKSPACE_BADGE_KEYS: readonly WorkspaceBadgeKey[] = [
@@ -45,6 +46,7 @@ export const WORKSPACE_BADGE_KEYS: readonly WorkspaceBadgeKey[] = [
   "speakers-new-insights",
   "training-bookings-pending",
   "newsletter-attention",
+  "brain-picks-open",
   "workspace-total",
 ];
 
@@ -152,6 +154,15 @@ export function remindersAttentionWhere(today: string): Prisma.NewsletterReminde
  *  issue → nothing to count. */
 export function piecesSubmittedWhere(issueId: string | null): Prisma.NewsletterPieceWhereInput | null {
   return issueId ? { status: "submitted", issueId } : null;
+}
+
+// ── Brain Picker ───────────────────────────────────────────────────────
+// The one per-viewer badge on the board: everything else counts work the
+// team owes, this counts what somebody has asked of YOU. A shared count
+// would be meaningless — an open question is open for exactly one person.
+
+export function brainPicksOpenWhere(viewerId: string): Prisma.BrainPickWhereInput {
+  return { askedOfId: viewerId, status: "open" };
 }
 
 // ── Eligibility (a signal, never a badge) ──────────────────────────────

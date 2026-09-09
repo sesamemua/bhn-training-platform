@@ -307,6 +307,10 @@ model User {
   themeVotes             ThemeVote[]
   logoVotes              LogoVote[]
   merchPicks             MerchPick[]
+  brainProfile           BrainProfile?       @relation("BrainProfileOwner")
+  brainProfilesEdited    BrainProfile[]      @relation("BrainProfileEditor")
+  brainPicksMade         BrainPick[]         @relation("BrainPickAsker")
+  brainPicksReceived     BrainPick[]         @relation("BrainPickTarget")
   merchCardsAdded        MerchCard[]         @relation("MerchCardAuthor")
   merchCardsMoved        MerchCard[]         @relation("MerchCardMover")
   notifyContactsAdded    NotifyContact[]     @relation("NotifyContactAddedBy")
@@ -3383,6 +3387,66 @@ model MerchPick {
 
   @@unique([userId, itemId])
   @@index([itemId])
+}
+
+/// What a colleague is worth picking for.
+///
+/// One row per person, written from their card on the Brain Picker page.
+/// A person with no row is not a person with no speciality — the page
+/// falls back to a drafted line — so this table only ever holds what
+/// somebody has actually edited.
+model BrainProfile {
+  id         String @id @default(cuid())
+  userId     String @unique
+  /// The thing you would interrupt them for.
+  speciality String
+  /// What they charge. Nobody has ever paid it.
+  rate       String @default("Free, apparently")
+
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User  @relation("BrainProfileOwner", fields: [userId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("BrainProfileEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// One ask: a question, a task or a favour, pointed at a colleague.
+///
+/// `probe` names a check for whether they actually did the thing, as
+/// opposed to saying they would — the only honest way to run a page
+/// built on unpaid favours. Today the one probe is "merch-starred",
+/// which counts the asker's MerchPick rows. NULL means their word is
+/// the only evidence there is.
+model BrainPick {
+  id        String @id @default(cuid())
+  askedById String
+  askedOfId String
+
+  subject String
+  body    String
+  /// The thing you want them to look at, when there is one.
+  href    String?
+  /// question | task | favour
+  kind    String  @default("question")
+  /// open | answered | declined
+  status  String  @default("open")
+  /// Named check in PROBES (src/lib/brain/picker.ts), or null.
+  probe   String?
+  /// What was offered in return. The ledger counts these; it is usually
+  /// "nothing", which is the entire point of the page.
+  bribe   String  @default("nothing")
+
+  answer     String?
+  answeredAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  askedBy User @relation("BrainPickAsker", fields: [askedById], references: [id], onDelete: Cascade)
+  askedOf User @relation("BrainPickTarget", fields: [askedOfId], references: [id], onDelete: Cascade)
+
+  @@index([askedOfId, status])
+  @@index([askedById, createdAt])
 }
 
 model ThemeVote {

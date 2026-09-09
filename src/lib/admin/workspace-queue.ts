@@ -13,6 +13,7 @@ import {
   equipOpenWhere,
   piecesSubmittedWhere,
   remindersAttentionWhere,
+  brainPicksOpenWhere,
   socialAttentionWhere,
   speakersNewWhere,
   speakersSeenKey,
@@ -48,7 +49,15 @@ export async function markSpeakersSeen(slug: string, now = new Date()): Promise<
     .catch(() => {});
 }
 
-export async function getWorkspaceQueueCounts(now = new Date()): Promise<WorkspaceQueueCounts> {
+/**
+ * @param viewerId  Who is looking. Only the Brain Picker badge needs it —
+ *   an open question is open for one person, not for the team — so it is
+ *   optional and that one count is simply absent without it.
+ */
+export async function getWorkspaceQueueCounts(
+  now = new Date(),
+  viewerId?: string | null,
+): Promise<WorkspaceQueueCounts> {
   const today = torontoToday(now);
   // Two lookups the counts depend on: when each speakers page was last
   // opened, and which newsletter issue is the one being produced.
@@ -59,7 +68,7 @@ export async function getWorkspaceQueueCounts(now = new Date()): Promise<Workspa
   ]);
   const piecesWhere = piecesSubmittedWhere(cycle?.issueId ?? null);
 
-  const [equip, social, speakersSymposium, speakersInsights, bookings, reminders, pieces] = await Promise.all([
+  const [equip, social, speakersSymposium, speakersInsights, bookings, reminders, pieces, brainPicks] = await Promise.all([
     prisma.equipApplication.count({ where: equipOpenWhere() }).catch(() => 0),
     prisma.socialPost.count({ where: socialAttentionWhere(now) }).catch(() => 0),
     prisma.speaker.count({ where: speakersNewWhere(SYMPOSIUM_EVENT_SLUG, seen[SYMPOSIUM_EVENT_SLUG]) }).catch(() => 0),
@@ -67,6 +76,9 @@ export async function getWorkspaceQueueCounts(now = new Date()): Promise<Workspa
     prisma.workshopBooking.count({ where: trainingBookingsPendingWhere() }).catch(() => 0),
     prisma.newsletterReminder.count({ where: remindersAttentionWhere(today) }).catch(() => 0),
     piecesWhere ? prisma.newsletterPiece.count({ where: piecesWhere }).catch(() => 0) : Promise.resolve(0),
+    viewerId
+      ? prisma.brainPick.count({ where: brainPicksOpenWhere(viewerId) }).catch(() => 0)
+      : Promise.resolve(0),
   ]);
 
   const counts: WorkspaceQueueCounts = {
@@ -76,6 +88,7 @@ export async function getWorkspaceQueueCounts(now = new Date()): Promise<Workspa
     "speakers-new-insights":     speakersInsights,
     "training-bookings-pending": bookings,
     "newsletter-attention":      reminders + pieces,
+    "brain-picks-open":          brainPicks,
   };
   counts["workspace-total"] = workspaceTotal(counts);
   return counts;
