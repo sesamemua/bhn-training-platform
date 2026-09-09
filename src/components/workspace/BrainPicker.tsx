@@ -249,7 +249,9 @@ export function BrainPicker({
                 <p className="mt-2.5 text-xs leading-relaxed text-muted">{c.speciality}</p>
                 {c.specialityIsGuess && (
                   <p className="mt-1 text-[10.5px] font-medium text-amber-700">
-                    A guess. Nobody has corrected it, which is its own kind of answer.
+                    {c.specialitySource
+                      ? `Title from ${c.specialitySource} — what the org says they do, not what they are like. Edit if it is wrong.`
+                      : "Nobody has filled this in. Which is its own kind of answer."}
                   </p>
                 )}
 
@@ -434,9 +436,11 @@ function EditForm({ colleague, busy, onClose, onSave }: {
   return (
     <Sheet
       title={`What is ${colleague.firstName} good at?`}
-      subtitle={colleague.specialityIsGuess
-        ? "The current line is a guess somebody wrote. Replace it."
-        : "Somebody has already written this. You can still improve it."}
+      subtitle={!colleague.specialityIsGuess
+        ? "Somebody has already written this. You can still improve it."
+        : colleague.specialitySource
+          ? `Currently their title from ${colleague.specialitySource}. Say what they are actually worth interrupting for.`
+          : "Nothing here yet. Say what they are worth interrupting for."}
       onClose={onClose}
     >
       <label className="block text-[11px] font-semibold text-fg">

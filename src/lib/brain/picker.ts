@@ -33,50 +33,75 @@ export const KIND_LABEL: Record<PickKind, string> = {
 };
 
 // ── Specialities ──────────────────────────────────────────────────────
-// Drafted, not researched. Every card is editable, and one with no
-// BrainProfile row behind it is marked as a guess on the page — being
-// wrong out loud is fine, being wrong silently is not.
+// Taken from BioHubNet's own About Us page (biohubnet.ca/about-us),
+// which publishes the team's titles. Job titles, not personality
+// readings: the page needs to know what somebody is responsible for so
+// you know who to interrupt, and nothing more than that.
+//
+// Anyone the public site does not list keeps `source: null` and the card
+// says the line is still a guess. Every card is editable either way —
+// a title is what an organisation says you do, which is not always what
+// you actually do.
 
 export interface DraftedSpeciality {
   speciality: string;
   rate: string;
+  /** Where the line came from. Null = nobody has looked it up. */
+  source: string | null;
 }
+
+const BHN = "biohubnet.ca/about-us";
 
 /** Keyed by email, because names change and ids differ per environment. */
 export const DRAFTED_SPECIALITIES: Record<string, DraftedSpeciality> = {
+  "yoojin.park@utoronto.ca": {
+    speciality:
+      "Director. Runs the whole thing, which means every question you cannot place ends up here — so place it somewhere else first.",
+    rate: "The most expensive five minutes on this page",
+    source: BHN,
+  },
   "ruilin.yuan@utoronto.ca": {
-    speciality: "The platform itself — and why the thing you are looking at looks like that.",
+    speciality:
+      "Marketing and communications — and this platform. If the thing you are looking at looks like that, this is the brain responsible.",
     rate: "Already paid in scope creep",
+    source: BHN,
   },
   "a.stirling@utoronto.ca": {
-    speciality: "EQUIP and the funding streams. If it involves VentureConnect money, it involves Alison.",
+    speciality:
+      "Business Officer. Budgets, invoices, and whether you can actually spend that. Worth asking before you commit rather than after.",
     rate: "Free, apparently",
-  },
-  "meena.venkatesan@utoronto.ca": {
-    speciality: "Training content and the people going through it.",
-    rate: "Free, apparently",
+    source: BHN,
   },
   "epshita.islam@utoronto.ca": {
-    speciality: "Events, and what a room can actually hold once you put chairs in it.",
+    speciality:
+      "Advanced Skills Development Lead, ENGAGE — the training pillar. Courses, credits, and who is taking what.",
     rate: "Free, apparently",
+    source: BHN,
   },
   "yes.lee@utoronto.ca": {
-    speciality: "How a thing looks before it goes out, and whether it should.",
+    speciality:
+      "Advanced Skills Development Lead, EXPERIENCE — the placements pillar. Internships, employers, and matching people to them.",
     rate: "Free, apparently",
+    source: BHN,
   },
   "roshni.christo@utoronto.ca": {
-    speciality: "Comms and the newsletter — what we sound like in public.",
+    speciality:
+      "Program Coordinator. Knows where everything actually is, which is a different and rarer skill than knowing where it is supposed to be.",
     rate: "Free, apparently",
+    source: BHN,
   },
-  "yoojin.park@utoronto.ca": {
-    speciality: "Partners, and the people on the other end of them.",
+  "meena.venkatesan@utoronto.ca": {
+    speciality:
+      "Not listed on the public BioHubNet site, so this one is honestly still blank. Asking what somebody is good at is itself a brain pick.",
     rate: "Free, apparently",
+    source: null,
   },
 };
 
 export const FALLBACK_SPECIALITY: DraftedSpeciality = {
   speciality: "Unknown. Which has never stopped anybody asking.",
   rate: "Free, apparently",
+  source: null,
 };
 
 export function draftedFor(email: string): DraftedSpeciality {

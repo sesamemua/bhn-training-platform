@@ -53,6 +53,8 @@ export interface Colleague {
   rate: string;
   /** False when nobody has edited it — the card says so rather than pretending. */
   specialityIsGuess: boolean;
+  /** Where the drafted line came from, when nobody has edited it. */
+  specialitySource: string | null;
   /** How many times the person looking has picked this brain. */
   pickedByYou: number;
   /** Of those, how many came back. */
@@ -97,6 +99,7 @@ export function buildTeam(
         speciality: profile?.speciality ?? drafted.speciality,
         rate: profile?.rate ?? drafted.rate,
         specialityIsGuess: !profile,
+        specialitySource: profile ? null : drafted.source,
         pickedByYou: forThem.length,
         answeredForYou: forThem.filter((p) => asStatus(p.status) === "answered").length,
         openFromYou: forThem.filter((p) => asStatus(p.status) === "open").length,

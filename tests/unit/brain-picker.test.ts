@@ -77,6 +77,14 @@ test("every drafted speciality belongs to somebody, and strangers get the fallba
     assert.equal(email, email.toLowerCase(), "keys are matched lowercase");
     assert.ok(DRAFTED_SPECIALITIES[email].speciality.length > 10);
   }
+  // Six titles come from BioHubNet's own About Us page; the one person
+  // the public site does not list carries no source, and the card says
+  // so rather than presenting a guess as a fact.
+  const sourced = Object.values(DRAFTED_SPECIALITIES).filter((d) => d.source);
+  assert.equal(sourced.length, 6);
+  assert.ok(sourced.every((d) => d.source === "biohubnet.ca/about-us"));
+  assert.equal(DRAFTED_SPECIALITIES["meena.venkatesan@utoronto.ca"].source, null);
+  assert.equal(FALLBACK_SPECIALITY.source, null, "a stranger is never presented as researched");
   assert.equal(draftedFor("SOMEBODY.ELSE@utoronto.ca").speciality, FALLBACK_SPECIALITY.speciality);
   assert.equal(draftedFor("  A.Stirling@utoronto.ca  ").speciality, DRAFTED_SPECIALITIES["a.stirling@utoronto.ca"].speciality);
 });
@@ -89,6 +97,8 @@ test("a card falls back to a guess and says so once somebody writes a real one",
   assert.equal(al?.speciality, "Actually written by a person");
   assert.equal(al?.specialityIsGuess, false);
   assert.equal(ye?.specialityIsGuess, true, "no row means the line is still a guess");
+  assert.equal(al?.specialitySource, null, "an edited card no longer cites a source");
+  assert.equal(ye?.specialitySource, "biohubnet.ca/about-us", "an unedited card says where its title came from");
   assert.equal(ye?.speciality, DRAFTED_SPECIALITIES["yes.lee@utoronto.ca"].speciality);
 });
 

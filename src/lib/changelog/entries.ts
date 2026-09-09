@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Brain Picker specialities from the public site; merch button in amber
+  {
+    title: "Brain Picker now uses everyone\u2019s real title, and the merch catalogue button is where you can see it",
+    body: "The Brain Picker shipped with **guessed** specialities. They are now taken from **BioHubNet\u2019s own About Us page**, and two of the guesses were simply wrong \u2014 Epshita leads **ENGAGE** (training) and Yeseul leads **EXPERIENCE** (placements), which is not what the page said yesterday.\n\nEach card now says where its line came from, so you can tell a published job title from something a colleague actually wrote. **Meenakshi is not listed on the public site**, so that card says so plainly instead of inventing something. Every card is still editable \u2014 a title is what an organisation says you do, which is not always what you do.\n\nOn the merch board, **Browse Business Edge\u2019s catalogue** is now amber with a *Start here* arrow. The hard part of adding a product was never the form; it was knowing there were thousands of them over there to choose from.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Brain Picker
   {
     title: "Brain Picker: ask a colleague to look at something, and keep the receipt",

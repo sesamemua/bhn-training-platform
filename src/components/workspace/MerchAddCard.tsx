@@ -14,7 +14,7 @@
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, Plus, Sparkles, X } from "lucide-react";
+import { ArrowRight, ExternalLink, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { SUPPLIER_HOME, type DraftCard } from "@/lib/merch/supplier";
 import { MERCH } from "@/lib/merch/types";
 import { ProductImage } from "@/components/merch/ProductImage";
@@ -82,16 +82,36 @@ export function MerchAddCard() {
 
   return (
     <section className="space-y-3 rounded-2xl border border-line bg-card p-4">
+      {/* Amber, because this codebase already uses amber to mean "look
+          here" (src/app/globals.css) — and because the hard part of
+          adding merch is not the form, it is knowing there are thousands
+          of products over there to choose from. The arrow says where the
+          sequence starts; it sits in its own row so it can never overlap
+          the controls. */}
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-700">
+        Start here
+        <svg width="34" height="14" viewBox="0 0 34 14" fill="none" aria-hidden className="translate-y-[1px]">
+          <path
+            d="M1 3c7 0 12 4 18 4h11"
+            stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="3 3"
+          />
+          <path d="M26 3.5 30.5 7 26 10.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <a
           href={SUPPLIER_HOME}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700 sm:shrink-0"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-amber-950 shadow-sm transition-colors hover:bg-amber-400 sm:shrink-0"
         >
           Browse {MERCH.meta.supplier}&apos;s catalogue
           <ExternalLink size={15} />
         </a>
+        {/* The flow, drawn: catalogue → paste it back. Horizontal only,
+            since the two stack on a phone and a sideways arrow would
+            then point at nothing. */}
+        <ArrowRight size={16} className="hidden shrink-0 text-amber-600 sm:block" aria-hidden />
         <div className="flex flex-1 items-center gap-2">
           <input
             value={url}
