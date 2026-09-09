@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { BRAIN_PICK_ASSIST, PROMPTS } from "../../src/lib/ai/prompts";
+import { absoluteUrl, buildAskEmail } from "../../src/lib/brain/email";
 import {
   BRIEFS, DRAFTED_SPECIALITIES, FALLBACK_SPECIALITY, GOOGLE_ADS_PROBE_SECTIONS,
   MERCH_BRIEF, NOTHING, PROBES, briefById, countFeedbackBySection,
@@ -289,4 +290,52 @@ test("what to call somebody is asked, not guessed", () => {
   assert.equal(callNameOf("Ruilin Yuan", "Ruilin"), "Ruilin");
   assert.equal(callNameOf("Alison Stirling", "  "), "Alison", "blank is not a preference");
   assert.equal(callNameOf(null, null), "They");
+});
+
+test("an in-app path becomes a link that works from an inbox", () => {
+  assert.equal(absoluteUrl("https://bhn.example.com", "/admin/workspace/merch"),
+    "https://bhn.example.com/admin/workspace/merch");
+  assert.equal(absoluteUrl("https://bhn.example.com/", "/admin/workspace/merch"),
+    "https://bhn.example.com/admin/workspace/merch");
+  assert.equal(absoluteUrl("https://bhn.example.com", "https://elsewhere.test/x"), "https://elsewhere.test/x");
+  // A relative fragment is not a link anywhere; better no button than a broken one.
+  assert.equal(absoluteUrl("https://bhn.example.com", "merch"), null);
+  assert.equal(absoluteUrl("https://bhn.example.com", ""), null);
+  assert.equal(absoluteUrl("https://bhn.example.com", null), null);
+});
+
+test("the ask email says who asked, what for, and where — and escapes what it prints", () => {
+  const mail = buildAskEmail({
+    callName: "Yoo Jin Park",
+    askerName: "Ruilin",
+    subject: "Merch: which of these would you actually take home?",
+    body: "Star anything you would carry out of the venue.",
+    kind: "task",
+    bribe: "a coffee, eventually",
+    href: "/admin/workspace/merch",
+    origin: "https://bhn.example.com",
+  });
+  assert.equal(mail.subject, "Merch: which of these would you actually take home?");
+  assert.match(mail.text, /^Yoo Jin Park,/);
+  assert.match(mail.text, /Ruilin has a task for you\./);
+  assert.match(mail.text, /https:\/\/bhn\.example\.com\/admin\/workspace\/merch/);
+  assert.match(mail.text, /Offered in return: a coffee, eventually\./);
+  assert.match(mail.html, /Open the thing/);
+
+  // Nothing offered is simply not mentioned, rather than promised as "nothing".
+  const bare = buildAskEmail({
+    callName: "Alison", askerName: "Ruilin", subject: "Quick one", body: "Have a look.",
+    kind: "question", bribe: NOTHING, href: null, origin: "https://bhn.example.com",
+  });
+  assert.doesNotMatch(bare.text, /Offered in return/);
+  assert.doesNotMatch(bare.html, /Open the thing/, "no link means no button");
+
+  // A colleague's name is printed into HTML, so it is escaped.
+  const risky = buildAskEmail({
+    callName: '<script>alert(1)</script>', askerName: 'A & B', subject: "s", body: "b < c",
+    kind: "favour", bribe: NOTHING, href: null, origin: "https://bhn.example.com",
+  });
+  assert.doesNotMatch(risky.html, /<script>/);
+  assert.match(risky.html, /&lt;script&gt;/);
+  assert.match(risky.html, /A &amp; B/);
 });

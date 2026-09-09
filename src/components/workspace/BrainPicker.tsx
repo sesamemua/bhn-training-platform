@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Brain, Coffee, Check, X, Loader2, Send, Pencil, ExternalLink,
-  HandCoins, Inbox, Users2, Sparkles, CheckSquare,
+  HandCoins, Inbox, Users2, Sparkles, CheckSquare, Mail,
 } from "lucide-react";
 import { DSSection } from "@/components/design-system/DSSection";
 import {
@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 type WirePick = Omit<PickRow, "createdAt" | "answeredAt"> & {
   createdAt: string | Date;
   answeredAt: string | Date | null;
+  /** When the email went out. Null = nobody has been emailed about it. */
+  notifiedAt?: string | Date | null;
 };
 
 export function BrainPicker({
@@ -52,12 +54,17 @@ export function BrainPicker({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Colleague | null>(null);
   const [flash, setFlash] = useState("");
+  // Nothing emails itself. This holds the exact list a send would go to,
+  // shown for approval before any of it leaves the building.
+  const [outbox, setOutbox] = useState<{ id: string; to: string; name: string; subject: string }[] | null>(null);
+  const [mailReady, setMailReady] = useState(true);
 
   const rows = useMemo<PickRow[]>(
     () => picks.map((p) => ({
       ...p,
       createdAt: new Date(p.createdAt),
       answeredAt: p.answeredAt ? new Date(p.answeredAt) : null,
+      notifiedAt: p.notifiedAt ? new Date(p.notifiedAt) : null,
     })),
     [picks],
   );
@@ -70,6 +77,8 @@ export function BrainPicker({
   const nameOf = (id: string) => team.find((c) => c.id === id);
 
   const chosenPeople = others.filter((c) => chosen.has(c.id));
+  /** Your asks that nobody has been emailed about. Creating one never sends. */
+  const unsent = rows.filter((p) => p.askedById === viewerId && !p.notifiedAt);
   /** Which briefs you have already sent, so the page can say so. */
   const sentProbes = new Set(
     rows.filter((p) => p.askedById === viewerId && p.probe).map((p) => p.probe as string),
@@ -107,6 +116,32 @@ export function BrainPicker({
   }
 
   /** Fire a prewritten brief at everybody, or load it for a chosen few. */
+  /** Ask the server who WOULD be emailed. Sends nothing. */
+  async function reviewOutbox() {
+    setBusy("outbox");
+    try {
+      const res = await fetch("/api/admin/brain/notify");
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setFlash(j.error ?? "Could not check the outbox."); return; }
+      setMailReady(!!j.mailConfigured);
+      setOutbox(j.pending ?? []);
+    } catch {
+      setFlash("Could not check the outbox.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** The only call in this component that puts email on the wire. */
+  async function sendOutbox() {
+    if (!outbox?.length) return;
+    const ok = await send("/api/admin/brain/notify", "POST", { ids: outbox.map((o) => o.id) });
+    if (ok) {
+      setFlash(`Emailed ${outbox.length === 1 ? "1 person" : `${outbox.length} people`}.`);
+      setOutbox(null);
+    }
+  }
+
   const sendBrief = (brief: Brief, ids: string[]) =>
     send(
       "/api/admin/brain/picks", "POST",
@@ -158,6 +193,30 @@ export function BrainPicker({
           </div>
         </div>
       </section>
+
+      {/* ── Nothing has been emailed until you say so ───────────── */}
+      {unsent.length > 0 && (
+        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50/60 p-4">
+          <Mail size={16} className="shrink-0 text-amber-700" aria-hidden />
+          <div className="min-w-[220px] flex-1">
+            <p className="text-sm font-bold text-fg">
+              {unsent.length === 1 ? "One ask has not been emailed" : `${unsent.length} asks have not been emailed`}
+            </p>
+            <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+              Sending an ask does not email anybody. It sits on their Brain Picker page until you send it —
+              and several colleagues have not signed in for weeks, so until you do, it may not be seen at all.
+            </p>
+          </div>
+          <button
+            onClick={reviewOutbox}
+            disabled={busy !== null}
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-amber-500 px-4 text-xs font-bold text-amber-950 hover:bg-amber-400 disabled:opacity-50"
+          >
+            {busy === "outbox" ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+            Review and send
+          </button>
+        </section>
+      )}
 
       {/* ── Prewritten briefs ───────────────────────────────────── */}
       <section className="space-y-3 rounded-2xl border border-line bg-card p-4">
@@ -411,6 +470,48 @@ export function BrainPicker({
             if (ok) { setFormOpen(false); setChosen(new Set()); }
           }}
         />
+      )}
+
+      {outbox !== null && (
+        <Sheet
+          title={outbox.length === 0 ? "Nothing to send" : `Email ${outbox.length === 1 ? "1 person" : `${outbox.length} people`}?`}
+          subtitle={outbox.length === 0
+            ? "Every ask you have made has already been emailed."
+            : "These messages go out the moment you press send. Nothing has been sent yet."}
+          onClose={() => setOutbox(null)}
+        >
+          {!mailReady && (
+            <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800 ring-1 ring-inset ring-rose-200">
+              Email is not configured on this environment, so nothing can be sent from here.
+            </p>
+          )}
+          {outbox.length > 0 && (
+            <ul className="divide-y divide-line rounded-lg border border-line">
+              {outbox.map((o) => (
+                <li key={o.id} className="px-3 py-2">
+                  <p className="text-[12px] font-semibold text-fg">{o.name}</p>
+                  <p className="font-mono text-[10.5px] text-subtle">{o.to}</p>
+                  <p className="mt-0.5 text-[11.5px] text-muted">{o.subject}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {outbox.length > 0 && (
+            <>
+              <p className="text-[11px] text-subtle">
+                Replies come back to you, not to the platform.
+              </p>
+              <button
+                onClick={sendOutbox}
+                disabled={busy !== null || !mailReady}
+                className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {busy !== null ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Send {outbox.length === 1 ? "it" : `all ${outbox.length}`} now
+              </button>
+            </>
+          )}
+        </Sheet>
       )}
 
       {editing && (

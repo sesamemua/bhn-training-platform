@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Brain Picker: email, but only when you press send
+  {
+    title: "Brain picks can now be emailed \u2014 only when you press send",
+    body: "Until now an ask only appeared on the recipient\u2019s Brain Picker page, which assumed they log in. Several colleagues had not signed in for weeks, so a request could sit unseen indefinitely.\n\nAsks can now be **emailed** \u2014 with a hard rule: **nothing sends by itself.** Creating an ask still mails nobody. A banner appears saying how many are unsent, **Review and send** shows you the exact list \u2014 every name, every address, every subject \u2014 and only the button in that dialog puts anything on the wire. There is no cron, no sweep, and no send-on-create anywhere in the feature.\n\nAn ask is stamped only after its email actually goes out, so a failure leaves it queued rather than quietly marking it delivered, and a second click cannot mail the same person twice. **Replies come back to you**, not to a no-reply mailbox.\n\nThe email carries who asked, what for, a button to the exact page, and what you offered in return \u2014 or nothing at all, if that is what you offered.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Brain Picker: prewritten briefs
   {
     title: "Three prewritten brain picks, ready to send",

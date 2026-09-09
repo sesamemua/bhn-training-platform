@@ -42,6 +42,8 @@ export interface PickRow {
   bribe: string;
   answer: string | null;
   answeredAt: Date | null;
+  /** When the email went out. Null = nobody has been emailed about it. */
+  notifiedAt?: Date | null;
   createdAt: Date;
 }
 

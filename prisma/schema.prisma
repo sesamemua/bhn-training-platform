@@ -3439,6 +3439,11 @@ model BrainPick {
 
   answer     String?
   answeredAt DateTime?
+  /// When the email went out. NULL = nobody has been emailed about this,
+  /// which is how every ask starts: creating one never sends anything.
+  /// A person clicks send, and this is what proves it and stops a second
+  /// click mailing somebody twice.
+  notifiedAt DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -3447,6 +3452,7 @@ model BrainPick {
 
   @@index([askedOfId, status])
   @@index([askedById, createdAt])
+  @@index([askedById, notifiedAt])
 }
 
 model ThemeVote {
