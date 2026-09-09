@@ -16,6 +16,7 @@ import { redirect, notFound } from "next/navigation";
 import { Mic } from "lucide-react";
 import { requireRole, deniedRedirect } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { markSpeakersSeen } from "@/lib/admin/workspace-queue";
 import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/SpeakersManager";
@@ -50,6 +51,10 @@ export default async function SymposiumSpeakersPage() {
     where: { eventId: event.id },
     orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
   });
+  // Opening the page marks what has arrived as seen — clears this event's
+  // sidebar badge until newer submissions land (a per-event last-seen
+  // timestamp, the same mechanism as employer intake).
+  await markSpeakersSeen(EVENT_SLUG);
   const rows: SpeakerRow[] = speakers.map((s) => ({
     id: s.id,
     fullName: s.fullName,

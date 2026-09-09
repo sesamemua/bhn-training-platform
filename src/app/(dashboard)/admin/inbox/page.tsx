@@ -1,11 +1,9 @@
-import Link from "next/link";
-import {
-  Inbox, ArrowRight, UserCog, Coins, Layers, Building2,
-  AlertCircle, CheckCircle2, Calendar,
-} from "lucide-react";
+import { Inbox, UserCog, Coins, Layers, Building2, CheckCircle2 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
+import { QueueLane } from "@/components/admin/QueueLane";
+import { ActivityFeed, type ActivityRow } from "@/components/admin/ActivityFeed";
 
 export const dynamic = "force-dynamic";
 
@@ -62,16 +60,7 @@ export default async function AdminInboxPage() {
 
   // Combine everything into a single time-ordered feed for the
   // unified-view at the bottom.
-  type Row = {
-    kind: string;
-    icon: React.ElementType;
-    iconCls: string;
-    title: string;
-    subtitle: string;
-    href: string;
-    at: Date;
-  };
-  const rows: Row[] = [
+  const rows: ActivityRow[] = [
     ...recentRoleChanges.map((r) => ({
       kind: "Role change",
       icon: UserCog,
@@ -126,28 +115,28 @@ export default async function AdminInboxPage() {
         </section>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Lane
+          <QueueLane
             href="/admin/role-requests"
             icon={UserCog}
             label="Role changes"
             count={pendingRoleChanges}
             tone="amber"
           />
-          <Lane
+          <QueueLane
             href="/admin/credit-applications"
             icon={Coins}
             label="Credit apps"
             count={pendingCreditApps}
             tone="emerald"
           />
-          <Lane
+          <QueueLane
             href="/admin/pathway-enrollments"
             icon={Layers}
             label="Pathway enrolments"
             count={pendingPathwayEnrolments}
             tone="violet"
           />
-          <Lane
+          <QueueLane
             href="/admin/access-requests"
             icon={Building2}
             label="Access requests"
@@ -157,76 +146,7 @@ export default async function AdminInboxPage() {
         </div>
       )}
 
-      {rows.length > 0 && (
-        <section className="bg-card border border-line rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-fg inline-flex items-center gap-2">
-              <Calendar size={15} className="text-brand-600" /> Most recent
-            </h2>
-            <span className="text-[11px] text-subtle">{rows.length} of {total}</span>
-          </div>
-          <ul className="divide-y divide-line">
-            {rows.map((r, i) => (
-              <li key={i} className="flex items-center gap-3 py-2.5">
-                <span className={`w-8 h-8 rounded-md border flex items-center justify-center shrink-0 ${r.iconCls}`}>
-                  <r.icon size={14} />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-subtle font-semibold">{r.kind}</p>
-                  <p className="text-sm text-fg truncate">{r.title}</p>
-                  {r.subtitle && <p className="text-xs text-muted truncate">{r.subtitle}</p>}
-                </div>
-                <p className="text-[11px] text-subtle shrink-0">
-                  {new Date(r.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                </p>
-                <Link
-                  href={r.href}
-                  className="text-xs font-medium text-brand-600 hover:text-brand-700 inline-flex items-center gap-1 shrink-0"
-                >
-                  Review <ArrowRight size={11} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {rows.length > 0 && <ActivityFeed title="Most recent" rows={rows} meta={`${rows.length} of ${total}`} />}
     </div>
-  );
-}
-
-function Lane({
-  href, icon: Icon, label, count, tone,
-}: {
-  href: string;
-  icon: React.ElementType;
-  label: string;
-  count: number;
-  tone: "amber" | "emerald" | "violet" | "brand";
-}) {
-  const cls =
-    tone === "amber"   ? "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100"
-  : tone === "emerald" ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-  : tone === "violet"  ? "bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100"
-                       : "bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100";
-  const empty = count === 0;
-  return (
-    <Link
-      href={href}
-      className={empty
-        ? "rounded-xl border px-4 py-3 bg-card-solid border-line text-subtle"
-        : `rounded-xl border px-4 py-3 transition-colors ${cls}`
-      }
-    >
-      <div className="flex items-center justify-between mb-1">
-        <Icon size={15} />
-        {empty ? (
-          <span className="text-[10px] uppercase tracking-wider">empty</span>
-        ) : (
-          <ArrowRight size={11} />
-        )}
-      </div>
-      <p className="text-2xl font-bold leading-none tabular-nums mt-1">{count}</p>
-      <p className="text-[11px] uppercase tracking-wider font-semibold mt-1.5 opacity-90">{label}</p>
-    </Link>
   );
 }

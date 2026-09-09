@@ -102,7 +102,10 @@ test("overlay writes review titles as text and handles SVG class lists", () => {
   assert.match(source, /addEventListener\("pointerdown", startPanelDrag\)/);
   assert.match(source, /addEventListener\("pointermove", movePanel/);
   assert.doesNotMatch(source, /Close website review/);
-  assert.doesNotMatch(source, /addEventListener\("keydown"/);
+  // The overlay is injected into somebody else's page: it must never listen
+  // for keystrokes at document/window level (that is the shape of a
+  // keylogger). Enter-to-submit on its OWN name input is fine.
+  assert.doesNotMatch(source, /(document|window)\.addEventListener\("keydown"/);
   assert.match(source, /threadHighlight/);
   assert.match(source, /bhn-review-flash \.16s linear 5/);
   assert.match(source, /border-color:#eea636/);
@@ -244,6 +247,7 @@ test("reviewer credentials are scoped to one review and preserve account identit
       name: "  Alex\nReviewer  ",
     });
     assert.deepEqual(await verifyPageReviewViewerToken(token, "review-1"), {
+      kind: "user",
       reviewId: "review-1",
       userId: "user-1",
       name: "Alex Reviewer",

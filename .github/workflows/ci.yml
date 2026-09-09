@@ -1,0 +1,88 @@
+# Unit tests, type-check and migration-order check on every push to main
+# and every PR.
+#
+# Until this landed nothing in CI ran the unit tests or `tsc`: CodeQL and
+# the security audit run on push, Playwright and the evals only on PRs,
+# and the only type-check was Vercel's build — which also runs
+# `prisma migrate deploy`, so a type error surfaced after the schema had
+# already moved.
+#
+#   • unit        — `npm test` (Node's runner via tsx). Blocking.
+#   • typecheck   — `tsc --noEmit`, minus the five pre-existing
+#                   module-resolution errors CLAUDE.md allows. Advisory
+#                   (continue-on-error) until the tree is green, then
+#                   flip it to blocking.
+#   • migrations  — new prisma/migrations folders must sort after the
+#                   newest one on main (see scripts/check-migrations.ts).
+
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Not --ignore-scripts: postinstall runs `prisma generate`, and several
+      # unit files import modules that construct the Prisma client at load
+      # (no query is ever made — but the generated client has to exist).
+      - name: Install deps
+        run: npm ci
+      - name: Unit tests
+        run: npm test
+
+  typecheck:
+    name: Type-check (advisory until green)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install deps (postinstall runs `prisma generate`; no database needed)
+        run: npm ci
+      - name: tsc --noEmit
+        run: |
+          npx tsc --noEmit --pretty false > tsc.log 2>&1 || true
+          if grep -E "error TS" tsc.log | grep -vE "react-markdown|remark-gfm|aws-sdk|otplib|qrcode-svg"; then
+            echo "::error::type errors above (the five pre-existing module-resolution errors are excluded)"
+            exit 1
+          fi
+          echo "tsc clean apart from the allowed pre-existing errors"
+
+  migrations:
+    name: Migration order
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install deps
+        run: npm ci --ignore-scripts
+      - name: New migration folders sort after the newest on main
+        # On a push, compare against the pre-push SHA so a multi-commit push
+        # is checked whole; on a PR the script falls back to origin/main.
+        env:
+          MIGRATION_BASE_REF: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: npm run check:migrations

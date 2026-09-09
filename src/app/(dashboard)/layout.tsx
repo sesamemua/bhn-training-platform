@@ -11,7 +11,9 @@ import { AssistTracker } from "@/components/assist/AssistTracker";
 import { AssistHintDock } from "@/components/assist/AssistHintDock";
 import { ASSIST_ENABLED } from "@/lib/assist/flags";
 import { prisma } from "@/lib/prisma";
-import { getAdminQueueCounts, type QueueCounts } from "@/lib/admin/queue-counts";
+import { getAdminQueueCounts } from "@/lib/admin/queue-counts";
+import { getWorkspaceQueueCounts } from "@/lib/admin/workspace-queue";
+import type { AnyQueueCounts } from "@/lib/admin/badge-keys";
 import { getTraineeQueueCounts } from "@/lib/trainee/queue-counts";
 import { getEmployerQueueCounts } from "@/lib/employer/queue-counts";
 import { getCommitteesForUser } from "@/lib/committees/membership";
@@ -78,8 +80,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // "credit-applications") never collide.
   const canSeeAdminQueues = ROLE_RANK[realRole ?? role] >= ROLE_RANK.admin;
   const isEmployer = (realRole ?? role) === "employer";
-  const [adminCounts, traineeCounts, employerCounts, committeeSlugs, translationSetting, unreadCount] = await Promise.all([
+  const [adminCounts, workspaceCounts, traineeCounts, employerCounts, committeeSlugs, translationSetting, unreadCount] = await Promise.all([
     canSeeAdminQueues ? getAdminQueueCounts() : Promise.resolve(undefined),
+    // Workspace lanes (EQUIP review, social, speakers, seats, newsletter)
+    // — same gate, same round trip.
+    canSeeAdminQueues ? getWorkspaceQueueCounts() : Promise.resolve(undefined),
     userId ? getTraineeQueueCounts(userId) : Promise.resolve(undefined),
     // Employer join-request badge — only fetched for employer accounts
     // (and admins acting as employer) to avoid an unnecessary DB query
@@ -97,9 +102,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
   // Platform-level gate: absent row (never set) → enabled (default true).
   const translationPlatformEnabled = translationSetting?.value !== "false";
-  const queueCounts: QueueCounts | undefined =
-    adminCounts || traineeCounts || employerCounts
-      ? { ...traineeCounts, ...adminCounts, ...employerCounts }
+  const queueCounts: AnyQueueCounts | undefined =
+    adminCounts || workspaceCounts || traineeCounts || employerCounts
+      ? { ...traineeCounts, ...adminCounts, ...workspaceCounts, ...employerCounts }
       : undefined;
 
   return (

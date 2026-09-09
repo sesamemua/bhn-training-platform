@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.16";
+export const TOUR_VERSION = "2026.09.17";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.home",
+    title: "Start here",
+    body: "**Workspace home** lists what is waiting on you — one lane per queue, counted by the same rule as the sidebar badge next to each page. Open a lane to act; the badge clears when the queue is empty. Under the lanes: signals that are not counts, what happened recently, and what is coming up in the next 30 days.",
+    path: "/admin/workspace",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Workspace home", href: "/admin/workspace" },
+    since: "2026.10.02a",
+  },
   {
     id: "training-admin.calendar-one-drawing",
     title: "The calendar is the same week the form draws",

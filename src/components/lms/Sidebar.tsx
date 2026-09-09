@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
+import type { AnyQueueBadgeKey } from "@/lib/admin/badge-keys";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -93,11 +94,11 @@ interface NavItem {
    *  later, swap for descriptionKey + dictionary entry. */
   description?: string;
   /** Optional queue-badge key. When the parent passes a queueCounts
-   *  map (admin sidebar only), the matching count is rendered as a
-   *  small chip to the right of the label. Absent / 0 → no badge.
-   *  Keep in sync with the QueueBadgeKey union in
-   *  src/lib/admin/queue-counts.ts. */
-  badgeKey?: string;
+   *  map, the matching count is rendered as a small chip to the right
+   *  of the label. Absent / 0 → no badge. Typed against every fetcher's
+   *  key union (src/lib/admin/badge-keys.ts), so a key nothing produces
+   *  is a compile error rather than a badge that never shows. */
+  badgeKey?: AnyQueueBadgeKey;
 }
 
 // Always-visible top item. Dashboard intentionally has no featureId
@@ -319,6 +320,16 @@ const adminOverview: NavItem = {
   description: "Administration home — quick stats and shortcuts into every admin queue.",
 };
 
+// WORKSPACE → home. The section's own front door: one lane per queue,
+// counted by the same rule that badges the items under it. `exact`, or
+// it would light up on every /admin/workspace/* child.
+const workspaceHomeItem: NavItem = {
+  label: "Workspace home", href: "/admin/workspace", icon: Inbox, exact: true, minRole: "admin",
+  badgeKey: "workspace-total",
+  description:
+    "What is waiting on the team across EQUIP, the events, social, the newsletter and the lists — one lane per queue, plus what happened recently and what is coming up.",
+};
+
 // WORKSPACE — internal team tooling, its own top-level section. Marketing
 // keeps campaign planning and production work together.
 const workspaceVideoItem: NavItem = {
@@ -379,6 +390,7 @@ const workspaceSocialItem: NavItem = {
   href: "/admin/workspace/marketing/social",
   icon: Megaphone,
   minRole: "admin",
+  badgeKey: "social-attention",
   description:
     "VentureConnect launch, the reminder ladder and the recipients announcement, drafted from the cycle's own deadline. Approve, copy, post, mark done — the platform drafts, a person publishes.",
 };
@@ -400,6 +412,7 @@ const workspaceNewsletterItem: NavItem = {
   href: "/admin/workspace/marketing/newsletter",
   icon: Mail,
   minRole: "instructor",
+  badgeKey: "newsletter-attention",
   description:
     "Collect newsletter contributions from the team by section, then let the AI lay the issue out into the Mailchimp template — paste-ready HTML, no formatting rules for contributors.",
 };
@@ -480,6 +493,7 @@ const workspaceSpeakersItem: NavItem = {
   href: "/admin/workspace/symposium-2026/speakers",
   icon: Mic,
   minRole: "admin",
+  badgeKey: "speakers-new-symposium",
   description:
     "Send invited speakers one link and they fill in their own headshot, bio, LinkedIn and what their session offers — no account needed. Review what comes back before it goes on the website.",
 };
@@ -524,6 +538,7 @@ const workspaceInsightsSpeakersItem: NavItem = {
   href: "/admin/events/2026-industry-insights/speakers",
   icon: Mic,
   minRole: "admin",
+  badgeKey: "speakers-new-insights",
   description:
     "Industry Insights, 24 September. Hand the invited hiring professionals one link and they fill in their own headshot, bio, LinkedIn and what their session will cover — no account needed.",
 };
@@ -541,6 +556,7 @@ const workspaceTrainingAdminItem: NavItem = {
   href: "/admin/workspace/training-admin",
   icon: SlidersHorizontal,
   minRole: "admin",
+  badgeKey: "training-bookings-pending",
   description:
     "Seats and capacity per workshop, the decision model behind who gets one, the registrant sheet, and the letters that go out at each stage.",
 };
@@ -651,7 +667,7 @@ const adminExperienceItems: NavItem[] = [
 const adminEquipItems: NavItem[] = [
   { label: "EQUIP overview",       href: "/admin/equip/overview",      icon: Activity,      minRole: "admin",
     description: "Program-management dashboard for the EQUIP pillar — apps in flight, approved this quarter, $ funded YTD, stalled-app alerts, per-stream funnel, open windows, recent activity. Renders in Studio." },
-  { label: "EQUIP review",         href: "/admin/equip",               icon: Rocket,        minRole: "admin",
+  { label: "EQUIP review",         href: "/admin/equip",               icon: Rocket,        minRole: "admin", badgeKey: "equip-review",
     description: "Review queue for the EQUIP funding pillar — VentureConnect (≤$5K) + VentureLift (≤$25K). Claim, approve / reject with a note + amount, mark funded. Mirrors the credit-applications shape." },
   { label: "Eligibility lists",    href: "/admin/eligibility",         icon: ShieldCheck,   minRole: "admin",
     description: "The programme lists Training Week registration is checked against. Someone not on a list is refused at the email question. Nothing is enforced until a list is imported, so load them before registration opens." },
@@ -798,6 +814,9 @@ const URGENT_FROM_ONE = new Set<string>([
   "offer-requests",
   "buddy-invites",
   "employer-intake-new",
+  // One new speaker submission is one person waiting on a reply.
+  "speakers-new-symposium",
+  "speakers-new-insights",
 ]);
 
 const ROLE_RANK: Record<string, number> = {
@@ -2027,6 +2046,8 @@ export function Sidebar({
             tone="neutral"
             description="Internal team tooling for campaigns, content, events, website review and operational planning."
           >
+            {/* Home sits at the top, ungrouped — the section's single front door. */}
+            <NavLink item={workspaceHomeItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             {/* Grouped by the THING, not by the department. Running the
                 symposium meant visiting Marketing for the plan and
                 Process for the form and the seats — three subgroups for

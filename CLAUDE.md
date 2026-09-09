@@ -43,6 +43,7 @@ New code lives next to its peers. Don't invent a new top-level folder without ch
 - **Migrations are hand-crafted SQL.** `prisma migrate dev` doesn't work against this repo because (a) the prod DB has known pgvector-index drift on `Course` / `Pathway` managed outside Prisma, and (b) the dev flow would attempt a destructive reset. New migration files are written by hand at `prisma/migrations/<YYYYMMDD>HHMMSS_<name>/migration.sql`, modelled on the most recent migrations in the folder (`merch_rewards`, `launch_checklist_state`, `add_events_module`).
 - **`prisma format` + `prisma validate` + `prisma generate` are safe locally.** Always run all three after schema changes, then `npx tsc --noEmit`.
 - **Never run `prisma migrate deploy` locally.** Vercel runs it on every deploy via the build hook. Local invocation would target the prod DB.
+- **New migration folders must sort after the newest one on `main`.** Production already holds folders dated ahead of the calendar (up to `20261003000000_social_posts`), all applied and tracked by name in `_prisma_migrations`. Never rename an applied folder (the next Vercel `migrate deploy` would fail), and never date a new one earlier than the current newest — a fresh database applies folders in name order and would run it before the tables it touches exist. `npm run check:migrations` enforces this in CI and prints the next valid prefix.
 - **State machines are commented `String` fields**, not Prisma enums. The whole schema has **zero `enum` declarations** — every `status / kind / tier / type / role / accountKind / …` field is `String` with an inline `// foo | bar | baz` comment. Match this pattern for new fields. Type safety at the boundary is enforced by Zod, not Prisma enums.
 - **`onDelete` is explicit on every relation.** Defaults: `Cascade` on parent→child rows; `SetNull` on audit-preserving FKs (e.g. `fulfilledById`); `Restrict` on audit-bearing User refs that should never be deleted while children exist (`ElectronicSignature.signer`, `Registration.userId`, `WorkshopBooking.userId`).
 - **No raw SQL** except for pgvector operations (similarity search, vector index creation). Those live in raw-SQL migrations.
@@ -100,9 +101,10 @@ New code lives next to its peers. Don't invent a new top-level folder without ch
 
 ## Testing
 
-- **There is no test framework in this repo.** No vitest, no jest, no playwright. No `tests/` directory, no `*.test.ts` files.
-- New code is verified by `npx tsc --noEmit` plus manual smoke testing.
-- If you're tempted to add a test framework, propose it explicitly before installing — it's a stack decision.
+- **Unit tests run on Node's built-in runner via `tsx --test`** — no vitest, no jest. They live in `tests/unit/*.test.ts(x)`; `npm test` runs all of them, `npm run test:<area>` runs one area (see `package.json`). CI runs `npm test` on every push to `main` and every PR (`.github/workflows/ci.yml`).
+- **Test pure modules, not Prisma.** Keep rules and predicates in files with no `@/lib/prisma` import (e.g. `src/lib/eligibility/gate.ts`, `src/lib/admin/workspace-queue-rules.ts`) and import them from tests with relative paths. Nothing in `tests/unit` queries a database — a few suites import modules that construct the Prisma client at load, which is why CI installs with `prisma generate` — but keep new rules in prisma-free files anyway.
+- **Playwright e2e** lives in `tests/e2e` and runs on PRs only (`e2e-playwright.yml`) against the Vercel preview.
+- New code is still verified by `npx tsc --noEmit` (CI runs it too, advisory until the tree is clean) plus manual smoke testing.
 
 ## Commit rules
 

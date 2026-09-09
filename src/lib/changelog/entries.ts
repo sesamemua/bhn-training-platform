@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace home: the front door
+  {
+    title: "Workspace home: everything waiting on you, in one place",
+    body: "**/admin/workspace** used to be a dead link — eight sub-areas and no index. It is now the team\u2019s front door: one lane per queue — EQUIP applications to review, social posts to approve or that slipped past their send time, new speaker submissions for the Symposium and Industry Insights, Training Week seats to decide, newsletter reminders that failed or are due — plus the signals that are not counts (a stale eligibility list, an application nobody has touched in a week), the last dozen things that happened, and every date the rows already know about for the next 30 days.\n\n**The sidebar badges follow the same rules**, so a badge means exactly what a lane means. Opening a Headshots & Bios page marks that event\u2019s new speakers as seen; the badge comes back when newer submissions land.\n\nWhat is deliberately *not* a badge: a closing deadline (a date, not a debt — it is in *Coming up*) and the stale-list warning (a badge that never clears trains people to ignore badges — it is in *Needs a look*).",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Social posts drafted from live EQUIP cycles
   {
     title: "Social posts now draft themselves from the VentureConnect cycle",
