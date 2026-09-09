@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Merch board: favourites, added products, a real total
+  {
+    title: "The merch board is now something the team decides with",
+    body: "**Workspace \u2192 Marketing \u2192 Merch** was a list you could read. It is now a board you can work.\n\n**Star what you like.** A star belongs to the person who left it, so the count on a card is how many colleagues want it and hovering says who. Starred items rise to a **Favourites** shelf at the top \u2014 they stay in their tier as well, because a favourite is a view, not a category.\n\n**Set aside what you don\u2019t.** *Not for us* moves an item to a collapsed **Not selected** shelf at the bottom, and takes it off the public `/merch` page \u2014 publishing a list that still shows what you already turned down misleads whoever you sent it to. *Bring back* undoes it.\n\n**Add anything the shortlist is missing.** There is a button to Business Edge\u2019s catalogue at the top of the board and a box beside it: paste a product link and the platform reads the listing \u2014 name, item code, photo and the **whole published price ladder**, exactly as the supplier lists it. You choose the tier and write the notes, because those are yours and `/merch` publishes them.\n\n**A total that admits what it does not know.** Quantities are now **per item** (the breaks sit at different quantities on every listing, so 300 of one thing and 1,000 of another is normal), and the estimate is a **range**: the low end is what the listings actually publish \u2014 units, decoration, setup \u2014 and the high end adds what nobody has quoted, shipping and an allowance for exchange, brokerage and duty on US-sourced goods. Those assumptions sit next to the number and you can change them.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Google Ads: each section has its own way into edit mode
   {
     title: "Google Ads: keywords and ad copy say how to edit them",

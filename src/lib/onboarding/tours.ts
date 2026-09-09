@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.18";
+export const TOUR_VERSION = "2026.09.19";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.merch.board",
+    title: "Star it, set it aside, or add your own",
+    body: "**Workspace \u2192 Marketing \u2192 Merch.** Star what you like \u2014 the count on a card is how many colleagues want it, and the starred ones rise to the top. **Not for us** moves something to the bottom and takes it off the public `/merch` page. To add a product, use the button to Business Edge\u2019s catalogue and paste the link back in: the listing\u2019s price ladder comes across on its own, and you write the notes. The total at the top takes a **different quantity per item** and shows a **range**, because shipping and duty are not quoted yet.",
+    path: "/admin/workspace/merch",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the merch board", href: "/admin/workspace/merch" },
+    since: "2026.10.04a",
+  },
   {
     id: "workspace.google-ads.section-edit",
     title: "Keywords and ad copy are yours to change",

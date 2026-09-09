@@ -306,6 +306,9 @@ model User {
   // optionally issues a tier-3 MerchReward.
   themeVotes             ThemeVote[]
   logoVotes              LogoVote[]
+  merchPicks             MerchPick[]
+  merchCardsAdded        MerchCard[]         @relation("MerchCardAuthor")
+  merchCardsMoved        MerchCard[]         @relation("MerchCardMover")
   notifyContactsAdded    NotifyContact[]     @relation("NotifyContactAddedBy")
   notifyLogs             NotifyLog[]         @relation("NotifyLogSender")
   eligibilityAdded       EligibilityEntry[]  @relation("EligibilityAddedBy")
@@ -2575,40 +2578,40 @@ model BhnEvent {
   /// Defaulting to true restores what the form asked before that
   /// commit. An event that wants fewer questions turns them off on its
   /// own Speakers page.
-  speakerAskSessionTitle Boolean @default(true)
-  speakerAskSessionPitch Boolean @default(true)
-  speakerAskLinkedin     Boolean @default(true)
-  title                String
+  speakerAskSessionTitle Boolean   @default(true)
+  speakerAskSessionPitch Boolean   @default(true)
+  speakerAskLinkedin     Boolean   @default(true)
+  title                  String
   /// Short marketing line shown on the landing-page hero.
-  tagline              String?
+  tagline                String?
   /// Long description (markdown).
-  description          String?
-  startDate            DateTime
-  endDate              DateTime
-  timezone             String    @default("America/Toronto")
-  mainVenueName        String?
-  mainVenueAddress     String?
-  mainVenueMapUrl      String?
-  coverImageUrl        String?
+  description            String?
+  startDate              DateTime
+  endDate                DateTime
+  timezone               String    @default("America/Toronto")
+  mainVenueName          String?
+  mainVenueAddress       String?
+  mainVenueMapUrl        String?
+  coverImageUrl          String?
   /// Per-event branding overrides (palette, logo, hero image). Null
   /// = use the platform default theme.
-  brandingJson         Json?
+  brandingJson           Json?
   /// "draft" → not visible publicly. "published" → public landing
   /// + registration. "archived" → past event, read-only.
-  status               String    @default("draft") // draft | published | archived
+  status                 String    @default("draft") // draft | published | archived
   /// Optional registration window. Null = open whenever
   /// status="published".
-  registrationOpensAt  DateTime?
-  registrationClosesAt DateTime?
+  registrationOpensAt    DateTime?
+  registrationClosesAt   DateTime?
   /// Hotel block / accommodation guidance for attendees. Markdown.
-  accommodationInfo    String?
+  accommodationInfo      String?
   /// When true, new symposium-day Registration rows start in
   /// `pending` status and admins must approve them from
   /// /admin/events/[slug]/registrations before the spot is held.
   /// Mirrors Workshop.requiresApproval but at the event level. Set to
   /// false to allow auto-confirm (e.g. paid-event flows where Stripe
   /// settlement is the only gate).
-  requiresApproval     Boolean   @default(true)
+  requiresApproval       Boolean   @default(true)
   /// Symposium-day capacity. NULL = uncapped (default — symposium
   /// scale). When set, the registration API counts active rows
   /// (pending + confirmed); a new registration that would push past
@@ -2616,13 +2619,13 @@ model BhnEvent {
   /// is rejected with "event full" (waitlistEnabled=false).
   /// Workshops have their own per-slot caps; this is the event-
   /// level gate.
-  maxAttendees         Int?
+  maxAttendees           Int?
   /// Default true. When the event is at capacity and a new
   /// registration comes in, true → set registrationStatus="waitlist"
   /// + waitlistPosition; false → reject with 403 "event full".
-  waitlistEnabled      Boolean   @default(true)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  waitlistEnabled        Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   workshops         Workshop[]
   symposiumSessions SymposiumSession[]
@@ -3305,6 +3308,81 @@ model LogoVote {
   @@unique([userId, optionId])
   /// Supports the tally — count votes per candidate.
   @@index([optionId])
+}
+
+/// The merch board's shared state — one row per item the board knows
+/// about, whatever its origin.
+///
+/// Two kinds of row live here because they answer the same question
+/// ("where does this sit on the board?"): a catalogue item from
+/// src/lib/merch/items.json gets a row only once somebody moves it off
+/// the shortlist, and carries no payload; a product somebody pasted
+/// carries its whole payload, because items.json is a file in the repo
+/// and nothing can add to it at runtime.
+///
+/// Everything here is published: /merch is open to anyone, so an added
+/// card is public from the moment it is saved.
+model MerchCard {
+  id     String @id @default(cuid())
+  /// Matches an id in items.json, or a slug generated for an addition.
+  itemId String @unique
+  /// catalogue | added
+  source String @default("catalogue")
+  /// shortlist | not_selected
+  status String @default("shortlist")
+
+  /// Payload — NULL for a catalogue item (items.json is the truth for
+  /// those), filled for an addition. Mirrors the MerchItem shape in
+  /// src/lib/merch/types.ts so both render through the same card.
+  name                String?
+  tier                Int?
+  tierKey             String?
+  category            String?
+  pocketFlat          Boolean?
+  /// [{ minQty, unitCad }], ascending — the supplier's published breaks.
+  priceBreaks         Json?
+  decorationSetupCad  Float?
+  estUnitLowCad       Float?
+  estUnitHighCad      Float?
+  supplierProductName String?
+  supplierItemCode    String?
+  productUrl          String?
+  imageUrl            String?
+  whyItWorks          String?
+  decoration          String?
+  watchOut            String?
+
+  addedById String?
+  movedById String?
+  movedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  addedBy User? @relation("MerchCardAuthor", fields: [addedById], references: [id], onDelete: SetNull)
+  movedBy User? @relation("MerchCardMover", fields: [movedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+/// One person's favourite. Same shape and the same reasoning as
+/// LogoVote: (voter, item) is the identity of a star, so starring twice
+/// is not two stars, and the tally is a count per itemId.
+model MerchPick {
+  id     String  @id @default(cuid())
+  userId String
+  /// Matches an id in items.json or a MerchCard.itemId. A String, not an
+  /// FK, because most items are entries in a JSON file, not rows.
+  itemId String
+  /// Optional one-liner: why this one.
+  note   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([itemId])
 }
 
 model ThemeVote {
@@ -4071,17 +4149,17 @@ model EquipDeadline {
 /// daily job, a person edits and approves it, and only then can it go
 /// out — the rule EQUIP decision emails already follow.
 model SocialPost {
-  id     String @id @default(cuid())
+  id         String @id @default(cuid())
   /// "venture_connect". Text, not an enum, so a second stream is a
   /// code change rather than a migration — same call EquipDeadline made.
-  stream String
+  stream     String
   /// "launch" | "reminder" | "recipients" — see lib/social/types.ts.
-  kind   String
+  kind       String
   /// The cycle this belongs to.
   deadlineId String
   /// For a reminder, which rung of the ladder. 0 for the other kinds,
   /// so the unique key below is total rather than nullable.
-  daysBefore Int @default(0)
+  daysBefore Int    @default(0)
 
   /// stream:kind:deadlineId:daysBefore. The daily job runs every
   /// morning and must never make a second copy of a post somebody has
@@ -4096,14 +4174,14 @@ model SocialPost {
 
   /// The generated copy, as edited. Regenerating overwrites this ONLY
   /// while the post is still a draft.
-  body String
+  body      String
   /// The contract with the image renderer, which a separate agent
   /// builds. Shape in lib/social/types.ts — deliberately free of
   /// database ids and of anything the body does not also say.
   assetSpec Json
   /// Written back by that renderer. Null until an image exists; a post
   /// is publishable without one.
-  assetUrl String?
+  assetUrl  String?
 
   /// When it should go out. 9am Toronto on its day.
   scheduledFor DateTime

@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MERCH, allCategories, orderedTiers } from "../../src/lib/merch/types";
+import { MERCH, allCategories, orderedTiers, unitPriceAt } from "../../src/lib/merch/types";
 import {
+  DEFAULT_ASSUMPTIONS,
   EMPTY_FILTERS,
   buildQuoteEmail,
+  estimateOrder,
   estimateSpend,
   filterItems,
   formatCad,
 } from "../../src/lib/merch/filter";
-import { unitPriceAt } from "../../src/lib/merch/types";
 
 test("the catalogue is internally consistent", () => {
   // Deliberately NOT a count. The shortlist is a thing that changes —
@@ -163,9 +164,10 @@ test("money renders as whole dollars", () => {
   assert.equal(formatCad(0), "$0");
 });
 
-test("the quote email carries what the supplier can actually look up", () => {
+test("the quote email carries what the supplier can actually look up, at the quantity asked for", () => {
   const picked = MERCH.items.slice(0, 2);
-  const email = buildQuoteEmail(picked, 275, MERCH.meta);
+  const qtyByItem = { [picked[0].id]: 275, [picked[1].id]: 1000 };
+  const email = buildQuoteEmail(picked, qtyByItem, MERCH.meta);
 
   for (const i of picked) {
     assert.ok(email.includes(i.supplierProductName), "supplier product name must appear");
@@ -173,9 +175,72 @@ test("the quote email carries what the supplier can actually look up", () => {
     assert.ok(email.includes(i.productUrl), "listing URL must appear");
     assert.ok(email.includes(i.name), "our own reference should appear too");
   }
-  assert.match(email, /275 units each/);
-  assert.match(email, /2 items/);
+  // Quantities differ per line now, so each has to carry its own.
+  assert.match(email, /275 units/);
+  assert.match(email, /1,000 units/);
+  assert.match(email, /2 items, 1,275 units in total/);
 
-  // One item shouldn't read "1 items".
-  assert.match(buildQuoteEmail(picked.slice(0, 1), 100, MERCH.meta), /1 item at 100 units each/);
+  // An item with no quantity set falls back to the catalogue's basis
+  // rather than silently asking the supplier for none.
+  const fallback = buildQuoteEmail(picked.slice(0, 1), {}, MERCH.meta);
+  assert.ok(fallback.includes(`${MERCH.meta.quantityBasis} units`));
+  assert.match(fallback, /1 item, /);
 });
+
+test("the order estimate ranges over what nobody has quoted", () => {
+  const picked = MERCH.items.slice(0, 2);
+  const qtyByItem = Object.fromEntries(picked.map((i) => [i.id, 300]));
+  const order = estimateOrder(picked, qtyByItem, MERCH.meta, {
+    setupPerItem: true,
+    shippingLowCad: 0,
+    shippingHighCad: 400,
+    dutyPct: 15,
+  });
+
+  // Known = goods + decoration + setup, and nothing else.
+  const goods = picked.reduce((n, i) => n + 300 * unitPriceAt(i, 300), 0);
+  const decoration = picked.reduce((n, i) => n + i.decorationSetupCad, 0);
+  assert.equal(round(order.goodsCad), round(goods));
+  assert.equal(round(order.decorationCad), round(decoration));
+  assert.equal(order.setupCad, MERCH.meta.setupFeeCad * picked.length);
+  assert.equal(round(order.knownCad), round(goods + decoration + MERCH.meta.setupFeeCad * picked.length));
+
+  // The gap between the ends IS the unquoted part: shipping and duty.
+  assert.equal(round(order.low), round(order.knownCad));
+  assert.equal(round(order.high), round(order.knownCad + 400 + goods * 0.15));
+  assert.ok(order.high > order.low, "a range with no width would be a false promise");
+  assert.equal(order.units, 600);
+  assert.equal(order.count, 2);
+});
+
+test("setup charged once per order is cheaper than once per item", () => {
+  const picked = MERCH.items.slice(0, 3);
+  const qty = Object.fromEntries(picked.map((i) => [i.id, 300]));
+  const perItem = estimateOrder(picked, qty, MERCH.meta, { ...DEFAULT_ASSUMPTIONS, setupPerItem: true });
+  const once = estimateOrder(picked, qty, MERCH.meta, { ...DEFAULT_ASSUMPTIONS, setupPerItem: false });
+  assert.equal(once.setupCad, MERCH.meta.setupFeeCad);
+  assert.equal(perItem.setupCad, MERCH.meta.setupFeeCad * picked.length);
+  assert.ok(once.knownCad < perItem.knownCad);
+});
+
+test("each line is costed at its own quantity, not one shared number", () => {
+  const [a, b] = MERCH.items.slice(0, 2);
+  const order = estimateOrder([a, b], { [a.id]: 100, [b.id]: 2000 }, MERCH.meta, DEFAULT_ASSUMPTIONS);
+  const [lineA, lineB] = order.lines;
+  assert.equal(lineA.qty, 100);
+  assert.equal(lineB.qty, 2000);
+  assert.equal(lineA.unitCad, unitPriceAt(a, 100));
+  assert.equal(lineB.unitCad, unitPriceAt(b, 2000));
+  // The bigger order reaches a break the smaller one cannot.
+  assert.ok(lineB.unitCad <= unitPriceAt(b, 100));
+});
+
+test("an empty order costs nothing at all, including setup", () => {
+  const order = estimateOrder([], {}, MERCH.meta, DEFAULT_ASSUMPTIONS);
+  assert.equal(order.knownCad, 0);
+  assert.equal(order.setupCad, 0);
+  assert.equal(order.low, DEFAULT_ASSUMPTIONS.shippingLowCad);
+  assert.equal(order.count, 0);
+});
+
+const round = (n: number) => Math.round(n * 100) / 100;
