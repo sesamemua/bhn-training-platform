@@ -257,10 +257,36 @@ export function probeVerdict(
   return PROBES[probe]?.verdict(count, status, firstName) ?? null;
 }
 
-/** First name only — the verdicts read as a sentence about a person. */
+/** First token of a name. Internal — prefer callNameOf, which knows when
+ *  taking the first token would be a guess. */
 export function firstNameOf(name: string | null | undefined, fallback = "They"): string {
   const first = (name ?? "").trim().split(/\s+/)[0];
   return first || fallback;
+}
+
+/**
+ * What to call somebody in a sentence.
+ *
+ * In order: what they said to call them, then the first token only when a
+ * name is clearly two parts, then the whole name. The last case matters —
+ * "Yoo Jin Park" is not "Yoo", and this page puts people's names in
+ * sentences about whether they did their homework. Guessing which token is
+ * the given name is not worth being wrong about a colleague's name, so
+ * where it is ambiguous the full name is used and nothing is assumed.
+ *
+ * Anyone can end the guesswork for themselves by setting a preferred name
+ * on their profile.
+ */
+export function callNameOf(
+  name: string | null | undefined,
+  preferredName?: string | null,
+  fallback = "They",
+): string {
+  const preferred = (preferredName ?? "").trim();
+  if (preferred) return preferred;
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 2) return parts[0];
+  return parts.join(" ") || fallback;
 }
 
 /** Initials for the avatar, since nobody on the platform has a photo. */

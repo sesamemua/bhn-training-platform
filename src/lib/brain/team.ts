@@ -9,7 +9,7 @@
  * and above, real accounts only. Trainees are not colleagues to lean on
  * for free, and demo accounts are not people.
  */
-import { draftedFor, firstNameOf, initialsOf, type PickStatus } from "./picker";
+import { callNameOf, draftedFor, initialsOf, type PickStatus } from "./picker";
 
 /** The roles whose brains are on the menu. */
 export const TEAM_ROLES = ["instructor", "admin", "superadmin"] as const;
@@ -17,6 +17,8 @@ export const TEAM_ROLES = ["instructor", "admin", "superadmin"] as const;
 export interface UserRow {
   id: string;
   name: string | null;
+  /** What they asked to be called, when they have said. */
+  preferredName?: string | null;
   email: string;
   role: string;
 }
@@ -55,6 +57,7 @@ export interface Colleague {
   specialityIsGuess: boolean;
   /** Where the drafted line came from, when nobody has edited it. */
   specialitySource: string | null;
+  /** What to call them in a sentence — see callNameOf. */
   /** How many times the person looking has picked this brain. */
   pickedByYou: number;
   /** Of those, how many came back. */
@@ -93,7 +96,7 @@ export function buildTeam(
       return {
         id: u.id,
         name,
-        firstName: firstNameOf(u.name, name),
+        firstName: callNameOf(u.name, u.preferredName, name),
         email: u.email,
         initials: initialsOf(u.name, u.email),
         speciality: profile?.speciality ?? drafted.speciality,

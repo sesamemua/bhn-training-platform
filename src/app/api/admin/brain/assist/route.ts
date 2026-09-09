@@ -18,7 +18,7 @@ import { AI_CONFIGURED } from "@/lib/ai";
 import { callStructured, delimitContext } from "@/lib/ai/reliability";
 import { BRAIN_PICK_ASSIST } from "@/lib/ai/prompts";
 import {
-  KIND_LABEL, NOTHING, draftedFor, firstNameOf, subjectIsUseless, tidyDraftBody,
+  KIND_LABEL, NOTHING, callNameOf, draftedFor, subjectIsUseless, tidyDraftBody,
   type PickKind,
 } from "@/lib/brain/picker";
 import { TEAM_ROLES } from "@/lib/brain/team";
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   const [recipients, profiles] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: d.askedOfIds }, isActive: true, accountKind: "real", role: { in: [...TEAM_ROLES] } },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, preferredName: true, email: true },
     }).catch(() => []),
     prisma.brainProfile.findMany({
       where: { userId: { in: d.askedOfIds } },
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
 
   // The model opens with a greeting every time however firmly the prompt
   // forbids one, so it is removed here rather than hoped away.
-  const names = recipients.map((r) => firstNameOf(r.name, ""));
+  const names = recipients.map((r) => callNameOf(r.name, r.preferredName, ""));
   const body = tidyDraftBody(res.data.body, names);
   if (!body) {
     return NextResponse.json({ error: "The AI returned only a greeting. Try again." }, { status: 422 });

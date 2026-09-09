@@ -35,7 +35,7 @@ export default async function BrainPickerPage() {
   const [users, profiles, picks, merchStars, adsRow] = await Promise.all([
     prisma.user.findMany({
       where: { isActive: true, accountKind: "real", role: { in: [...TEAM_ROLES] } },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, preferredName: true, email: true, role: true },
       orderBy: { createdAt: "asc" },
     }).catch(() => []),
     prisma.brainProfile.findMany({ select: { userId: true, speciality: true, rate: true } }).catch(() => []),

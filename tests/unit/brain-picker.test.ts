@@ -4,7 +4,7 @@ import { BRAIN_PICK_ASSIST, PROMPTS } from "../../src/lib/ai/prompts";
 import {
   BRIEFS, DRAFTED_SPECIALITIES, FALLBACK_SPECIALITY, GOOGLE_ADS_PROBE_SECTIONS,
   MERCH_BRIEF, NOTHING, PROBES, briefById, countFeedbackBySection,
-  audacity, draftedFor, firstNameOf, initialsOf, ledger, probeVerdict, reciprocity,
+  audacity, callNameOf, draftedFor, firstNameOf, initialsOf, ledger, probeVerdict, reciprocity,
   subjectIsUseless, tidyDraftBody,
 } from "../../src/lib/brain/picker";
 import {
@@ -274,4 +274,19 @@ test("a subject naming a category is not a subject", () => {
   for (const good of ["Which merch would you take home?", "Symposium booth giveaways", "Merch: gut reaction wanted"]) {
     assert.equal(subjectIsUseless(good), false, `${good} names the thing`);
   }
+});
+
+test("what to call somebody is asked, not guessed", () => {
+  // Two parts reads as Given Family safely enough.
+  assert.equal(callNameOf("Alison Stirling", null), "Alison");
+  assert.equal(callNameOf("Epshita", null), "Epshita");
+  // Three parts does not. "Yoo Jin Park" is not "Yoo", and this page puts
+  // names in sentences about whether people did what they promised.
+  assert.equal(callNameOf("Yoo Jin Park", null), "Yoo Jin Park");
+  assert.equal(callNameOf("Mary Jane Watson", null), "Mary Jane Watson");
+  // What somebody said to call them always wins.
+  assert.equal(callNameOf("Yoo Jin Park", "Yoo Jin"), "Yoo Jin");
+  assert.equal(callNameOf("Ruilin Yuan", "Ruilin"), "Ruilin");
+  assert.equal(callNameOf("Alison Stirling", "  "), "Alison", "blank is not a preference");
+  assert.equal(callNameOf(null, null), "They");
 });
