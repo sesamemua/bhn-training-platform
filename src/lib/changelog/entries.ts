@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Scheduled jobs switched off
+  {
+    title: "The three scheduled jobs are switched off",
+    body: "All cron schedules have been removed from `vercel.json`. **Nothing runs on a timer any more.** This was deliberate \u2014 a second copy of this app is being set up on another Vercel account, and two deployments sharing one database would have fired every job twice, sending colleagues duplicate reminders.\n\nWhat has stopped:\n\n- **06:00 UTC \u2014 daily maintenance.** Newsletter cycles no longer advance on their own, due reminders are not swept and sent, expired phantom accounts are not cleared, and credit-grant expiry emails (90/30/7 day) do not go out.\n- **07:00 UTC \u2014 event reminders.** The one-week, one-day and one-hour emails for published events will not send.\n- **08:00 UTC \u2014 social posts.** The VentureConnect launch, reminder ladder and recipients posts are no longer drafted from open cycles.\n\nEvery one of those endpoints still works and can be triggered by hand. To restore a job, put its entry back in `vercel.json`:\n\n```\n{ \"path\": \"/api/admin/daily-maintenance\", \"schedule\": \"0 6 * * *\" }\n{ \"path\": \"/api/cron/event-reminders\",   \"schedule\": \"0 7 * * *\" }\n{ \"path\": \"/api/cron/social-posts\",      \"schedule\": \"0 8 * * *\" }\n```",
+    kind: "note",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Brain Picker: one flow, and sending is the send
   {
     title: "Brain Picker is one flow now, and pressing send sends it",
