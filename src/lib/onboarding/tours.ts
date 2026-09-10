@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.09.20";
+export const TOUR_VERSION = "2026.10.06";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.google-ads.one-ask",
+    title: "One Google Ads ask, both halves",
+    body: "**Workspace \u2192 Brain Picker.** The keywords ask and the ad-copy ask were two buttons; they are one \u2014 **Google Ads review**. It names both jobs and says you can do one and skip the other. Notes still go in the Feedback box under \"Keywords\" and \"Ad copy\", and the probe now counts a note in either, so reading both and commenting once still counts as showing up.",
+    path: "/admin/workspace/brain-picker",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Brain Picker", href: "/admin/workspace/brain-picker" },
+    since: "2026.10.06a",
+  },
   {
     id: "workspace.brain-picker",
     title: "Ask someone. Keep the receipt.",

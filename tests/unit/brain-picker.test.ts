@@ -152,7 +152,7 @@ test("outstanding is yours-and-open; waiting-on-you is theirs-and-open", () => {
 });
 
 test("every prewritten brief points somewhere real, with a probe that exists", () => {
-  assert.ok(BRIEFS.length >= 3, "merch plus the two Google Ads asks");
+  assert.ok(BRIEFS.length >= 2, "merch plus the combined Google Ads ask");
   const ids = BRIEFS.map((b) => b.id);
   assert.deepEqual(ids, [...new Set(ids)], "brief ids must be unique");
   for (const b of BRIEFS) {
@@ -171,20 +171,19 @@ test("every prewritten brief points somewhere real, with a probe that exists", (
   assert.notEqual(MERCH_BRIEF.bribe, NOTHING, "at least pretend");
 });
 
-test("the Google Ads briefs deep-link to the section they ask about, and say where to reply", () => {
-  const kw = briefById("google-ads-keywords");
-  const ad = briefById("google-ads-ad-copy");
-  assert.ok(kw && ad);
-  assert.equal(kw.href, "/admin/workspace/marketing/google-ads#keywords");
-  assert.equal(ad.href, "/admin/workspace/marketing/google-ads#ad-copy");
-  // The probe counts feedback in one named section, so the brief has to
+test("the single Google Ads brief covers both halves and says where to reply", () => {
+  const ads = briefById("google-ads");
+  assert.ok(ads);
+  assert.equal(briefById("google-ads-keywords"), undefined, "the split briefs are gone");
+  assert.equal(briefById("google-ads-ad-copy"), undefined, "the split briefs are gone");
+  assert.equal(ads.href, "/admin/workspace/marketing/google-ads#keywords");
+  // The probe counts feedback in the named sections, so the brief has to
   // tell people to reply there — otherwise the verdict measures something
-  // the ask never requested.
-  assert.match(kw.body, /Feedback box/);
-  assert.match(kw.body, /"Keywords"/);
-  assert.match(ad.body, /"Ad copy"/);
-  assert.equal(GOOGLE_ADS_PROBE_SECTIONS[kw.probe!], "Keywords");
-  assert.equal(GOOGLE_ADS_PROBE_SECTIONS[ad.probe!], "Ad copy");
+  // the ask never requested. One ask now, so it has to name both.
+  assert.match(ads.body, /Feedback box/);
+  assert.match(ads.body, /"Keywords"/);
+  assert.match(ads.body, /"Ad copy"/);
+  assert.deepEqual(GOOGLE_ADS_PROBE_SECTIONS[ads.probe!], ["Keywords", "Ad copy"]);
 });
 
 test("Google Ads feedback is counted per person and per section, and never invented", () => {
@@ -204,15 +203,28 @@ test("Google Ads feedback is counted per person and per section, and never inven
   const ad = countFeedbackBySection(notes, "Ad copy", names);
   assert.deepEqual(ad, { "u-ye": 1 });
   assert.deepEqual(countFeedbackBySection([], "Keywords", names), {});
+
+  // The combined ask counts either section, so one note anywhere in the
+  // plan is evidence the person opened it.
+  const both = countFeedbackBySection(notes, ["Keywords", "Ad copy"], names);
+  assert.deepEqual(both, { "u-al": 2, "u-ye": 1 });
+  assert.deepEqual(
+    countFeedbackBySection(notes, ["Notes"], names),
+    { "u-al": 1 },
+    "a section list still excludes everything outside it",
+  );
 });
 
-test("a Google Ads probe reports what was left, not what was claimed", () => {
+test("the Google Ads probe reports what was left, not what was claimed", () => {
   assert.equal(
-    probeVerdict("google-ads-keywords-feedback", 0, "answered", "Alison"),
-    "Alison says it is done. There is no feedback from Alison on the keywords.",
+    probeVerdict("google-ads-feedback", 0, "answered", "Alison"),
+    "Alison says it is done. There is no feedback from Alison on the Google Ads plan.",
   );
-  assert.match(probeVerdict("google-ads-adcopy-feedback", 2, "open", "Yeseul") ?? "", /left 2 notes on the ad copy/);
-  assert.match(probeVerdict("google-ads-keywords-feedback", 0, "open", "Roshni") ?? "", /Nothing from Roshni/);
+  assert.match(probeVerdict("google-ads-feedback", 2, "open", "Yeseul") ?? "", /left 2 notes on the Google Ads plan/);
+  assert.match(probeVerdict("google-ads-feedback", 0, "open", "Roshni") ?? "", /Nothing from Roshni/);
+  // A pick written against one of the retired probes must degrade to no
+  // verdict, never to a wrong one.
+  assert.equal(probeVerdict("google-ads-keywords-feedback", 3, "open", "Alison"), null);
 });
 
 test("the writing aid's prompt is registered, versioned, and asks for JSON only", () => {

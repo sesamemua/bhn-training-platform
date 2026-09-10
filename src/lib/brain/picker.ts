@@ -222,17 +222,14 @@ export const PROBES: Record<string, Probe> = {
       return `${firstName} has starred nothing so far.`;
     },
   },
-  "google-ads-keywords-feedback": {
-    label: "Has left feedback on the Google Ads keywords",
-    verdict: (count, status, firstName) => feedbackVerdict(count, status, firstName, "the keywords"),
-  },
-  "google-ads-adcopy-feedback": {
-    label: "Has left feedback on the Google Ads ad copy",
-    verdict: (count, status, firstName) => feedbackVerdict(count, status, firstName, "the ad copy"),
+  "google-ads-feedback": {
+    label: "Has left feedback on the Google Ads plan",
+    verdict: (count, status, firstName) => feedbackVerdict(count, status, firstName, "the Google Ads plan"),
   },
 };
 
-/** Shared wording for the two Google Ads probes, which differ only in section. */
+/** Wording for the Google Ads probe. Kept separate from the merch one
+ *  because "left a note" and "starred a thing" are different claims. */
 function feedbackVerdict(count: number, status: PickStatus, firstName: string, what: string): string {
   if (count > 0) return `${firstName} left ${plural(count, "note")} on ${what}. Genuinely helped.`;
   if (status === "answered") return `${firstName} says it is done. There is no feedback from ${firstName} on ${what}.`;
@@ -240,11 +237,13 @@ function feedbackVerdict(count: number, status: PickStatus, firstName: string, w
   return `Nothing from ${firstName} on ${what} yet.`;
 }
 
-/** The feedback sections these probes count, verbatim from the Google Ads
- *  workspace's own section list (src/components/campaign/GoogleAdsWorkspace.tsx). */
-export const GOOGLE_ADS_PROBE_SECTIONS: Record<string, string> = {
-  "google-ads-keywords-feedback": "Keywords",
-  "google-ads-adcopy-feedback": "Ad copy",
+/** The feedback sections this probe counts, verbatim from the Google Ads
+ *  workspace's own section list (src/components/campaign/GoogleAdsWorkspace.tsx).
+ *
+ *  A list rather than one string: the ask covers keywords and copy together,
+ *  so a note in either section is evidence the person actually looked. */
+export const GOOGLE_ADS_PROBE_SECTIONS: Record<string, string[]> = {
+  "google-ads-feedback": ["Keywords", "Ad copy"],
 };
 
 export function probeVerdict(
@@ -356,11 +355,11 @@ export interface FeedbackNote {
  */
 export function countFeedbackBySection(
   notes: FeedbackNote[],
-  section: string,
+  section: string | string[],
   namesByUserId: Record<string, string | null>,
 ): Record<string, number> {
   const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
-  const wanted = norm(section);
+  const wanted = new Set((Array.isArray(section) ? section : [section]).map(norm));
   const userByName = new Map<string, string>();
   for (const [userId, name] of Object.entries(namesByUserId)) {
     const key = norm(name ?? "");
@@ -368,7 +367,7 @@ export function countFeedbackBySection(
   }
   const out: Record<string, number> = {};
   for (const n of notes) {
-    if (norm(n.section ?? "") !== wanted) continue;
+    if (!wanted.has(norm(n.section ?? ""))) continue;
     const userId = userByName.get(norm(n.authorName ?? ""));
     if (!userId) continue;
     out[userId] = (out[userId] ?? 0) + 1;
@@ -417,39 +416,33 @@ export const BRIEFS: Brief[] = [
     probe: "merch-starred",
     bribe: "a coffee, eventually",
   },
+  // Keywords and ad copy were two separate asks. They went to the same
+  // people, pointed at two halves of one page, and arrived as two
+  // interruptions for one sitting — so they are one ask now. The probe
+  // counts a note in either section, because either one means somebody
+  // actually opened the plan.
   {
-    id: "google-ads-keywords",
-    label: "Google Ads keywords",
-    blurb: "Do these searches sound like something a real person would type?",
-    subject: "Google Ads: would you actually search for any of these?",
+    id: "google-ads",
+    label: "Google Ads review",
+    blurb: "Do the searches sound real, and does the copy sound like us?",
+    subject: "Google Ads: would you search for this, and does the copy sound like us?",
     body:
-      "We are about to pay for these searches, so I want a second opinion before we do.\n\n" +
-      "Open the keywords section and read them as if you were the person searching. " +
-      "Two things only: which ones does nobody actually type, and what obvious search are we missing?\n\n" +
-      "You do not need to touch the pricing, the match types or the negatives — those are handled. " +
-      "Leave anything you spot in the Feedback box at the bottom of that page, under section " +
-      "\"Keywords\", so it lands with the plan rather than in my inbox.\n\n" +
-      "Five minutes. It goes into the next revision of the plan.",
+      "We are about to pay for these searches and run these ads under our name, so I would " +
+      "like someone else to read the plan before we do. Two sections, about five minutes each, " +
+      "and you can do one and skip the other.\n\n" +
+      "Keywords — read them as the person typing, not as us. Which ones does nobody actually " +
+      "search, and what obvious one are we missing? Match types, negatives and pricing are " +
+      "handled; ignore them.\n\n" +
+      "Ad copy — does anything overpromise (eligibility, funding, placement), and does anything " +
+      "simply not sound like us? Headlines cap at 30 characters and descriptions at 90, so keep " +
+      "any rewrite inside that.\n\n" +
+      "Leave each set of notes in the Feedback box at the bottom of that page, under " +
+      "\"Keywords\" and \"Ad copy\" respectively, so they land with the plan rather than in " +
+      "my inbox.\n\n" +
+      "It goes into the next revision either way.",
     href: "/admin/workspace/marketing/google-ads#keywords",
     kind: "question",
-    probe: "google-ads-keywords-feedback",
-    bribe: "a coffee, eventually",
-  },
-  {
-    id: "google-ads-ad-copy",
-    label: "Google Ads ad copy",
-    blurb: "Does the wording sound like us, and does it promise anything we cannot do?",
-    subject: "Google Ads: does this ad copy sound like us?",
-    body:
-      "These are the ads that would run under our name, so I would like someone else to read them first.\n\n" +
-      "Open the ad copy section and tell me two things: does anything overpromise " +
-      "(eligibility, funding, placement), and does anything simply not sound like us?\n\n" +
-      "Headlines are capped at 30 characters and descriptions at 90, so if you rewrite a line, " +
-      "keep it inside that. Leave it in the Feedback box on that page under section \"Ad copy\".\n\n" +
-      "Five minutes, and it is the difference between an ad we stand behind and one we explain later.",
-    href: "/admin/workspace/marketing/google-ads#ad-copy",
-    kind: "question",
-    probe: "google-ads-adcopy-feedback",
+    probe: "google-ads-feedback",
     bribe: "a coffee, eventually",
   },
 ];

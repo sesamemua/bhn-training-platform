@@ -22,6 +22,13 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  {
+    title: "Google Ads is one brain-pick ask now, not two",
+    body: "The Brain Picker had two prewritten Google Ads asks — one for keywords, one for ad copy. They went to the same people, pointed at two halves of the same page, and landed as two interruptions for what is one sitting. They are now a single **Google Ads review**.\n\nThe ask still names both jobs and both places to reply: keywords read as the person typing, copy read for anything that overpromises or does not sound like us, notes left under \"Keywords\" and \"Ad copy\" in the Feedback box. It says explicitly that you can do one half and skip the other, which was true before and went unsaid.\n\n**The probe changed with it.** Evidence is now a note in *either* section rather than one probe per section, so somebody who read both and commented once still reads as having shown up. Picks written against the two retired probes show no verdict rather than a wrong one.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Scheduled jobs switched off
   {
     title: "The three scheduled jobs are switched off",
