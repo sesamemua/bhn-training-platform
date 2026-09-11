@@ -74,7 +74,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ThemeScript />
         <I18nScript />
       </head>
-      <body className="min-h-full bg-page text-fg">
+      <body
+        /* pb: room for the consent banner while it is up, so a short page's
+           last control can scroll clear of it. 0px once a choice is made —
+           see src/components/consent/CookieBanner.tsx. */
+        className="min-h-full bg-page text-fg pb-[var(--consent-banner-space,0px)]"
+      >
         <Providers initialDesignSystem={activeDesignSystem}>{children}</Providers>
       </body>
     </html>

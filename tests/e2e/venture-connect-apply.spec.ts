@@ -96,6 +96,50 @@ test("the apply page renders, is accessible, and fits the viewport", async ({ pa
   expect(a11y.violations).toEqual([]);
 });
 
+test("the consent banner never hides the Start button", async ({ page }) => {
+  // Deliberately NOT openApply: the banner stays up for this one. It used
+  // to cover the button outright, on desktop and on a phone, with no way
+  // to scroll it clear — so a first-time applicant could not see how to
+  // start without dismissing the banner first.
+  await page.goto(APPLY);
+  const banner = page.getByRole("region", { name: "We respect your privacy" });
+  await expect(banner).toBeVisible();
+
+  await fieldName(page).fill("Ada Founder");
+  await fieldEmail(page).fill("founder@example.com");
+
+  // What a person does: scroll to the bottom and look for the button.
+  await page.evaluate(() => {
+    const main = document.querySelector("main");
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    main?.scrollTo(0, main.scrollHeight);
+  });
+  const button = startButton(page);
+  const box = await button.boundingBox();
+  expect(box, "Start button has a box").not.toBeNull();
+  const onTop = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest("button")?.textContent ?? "",
+    { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 },
+  );
+  expect(onTop, "the pixel a person would click is the button, not the banner").toContain("Start the application");
+
+  // Every actionability check a real click gets, "not obscured" included,
+  // without sending one — nothing is started.
+  await button.click({ trial: true });
+  await expect(banner, "and the banner is still up throughout").toBeVisible();
+
+  // The room is only borrowed while the banner is up. Once a choice is
+  // made it must go, or the visitor keeps an empty strip for the session.
+  const reserved = () => page.evaluate(() => ({
+    variable: getComputedStyle(document.documentElement).getPropertyValue("--consent-banner-space").trim(),
+    padding: getComputedStyle(document.body).paddingBottom,
+  }));
+  expect((await reserved()).padding, "space is reserved while the banner is up").not.toBe("0px");
+  await banner.getByRole("button", { name: "Necessary only" }).click();
+  await expect(banner).toBeHidden();
+  await expect.poll(reserved).toEqual({ variable: "", padding: "0px" });
+});
+
 test("Start stays disabled until there is a real name and an email", async ({ page }) => {
   await openApply(page);
   const button = startButton(page);

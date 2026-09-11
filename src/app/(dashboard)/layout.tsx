@@ -141,7 +141,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           makes clientWidth independent of whether the scrollbar is
           present. Overlay-scrollbar systems are unaffected. */}
       <main
-        className="flex-1 overflow-y-auto relative"
+        className="flex-1 overflow-y-auto relative pb-[var(--consent-banner-space,0px)]"
         style={{ scrollbarGutter: "stable" }}
       >
         {/* Platform rule: the editorial hero (DSPageHeader) is the

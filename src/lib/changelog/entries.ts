@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "The cookie banner no longer covers the button you came to press",
+    body: "On a first visit the consent banner is pinned to the bottom of the screen, and on a short page that is exactly where the main button sits. The VentureConnect application page was the worst case: at an ordinary laptop size, and on a phone, the banner sat squarely over **Start the application**, and the page was too short to scroll it clear. Every new applicant had to dismiss the banner before they could even see how to apply — on the page the Google Ads traffic lands on.\n\nThe page now makes room for the banner while it is showing, so you can scroll the last button clear of it. The room goes away the moment you make a choice. This applies everywhere the banner appears, including inside the dashboard, which scrolls differently from the public pages and needed its own fix.",
+    kind: "fix",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Google Ads is one brain-pick ask now, not two",
     body: "The Brain Picker had two prewritten Google Ads asks — one for keywords, one for ad copy. They went to the same people, pointed at two halves of the same page, and landed as two interruptions for what is one sitting. They are now a single **Google Ads review**.\n\nThe ask still names both jobs and both places to reply: keywords read as the person typing, copy read for anything that overpromises or does not sound like us, notes left under \"Keywords\" and \"Ad copy\" in the Feedback box. It says explicitly that you can do one half and skip the other, which was true before and went unsaid.\n\n**The probe changed with it.** Evidence is now a note in *either* section rather than one probe per section, so somebody who read both and commented once still reads as having shown up. Picks written against the two retired probes show no verdict rather than a wrong one.",
     kind: "improvement",

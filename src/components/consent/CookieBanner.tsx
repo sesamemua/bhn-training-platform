@@ -1,10 +1,54 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { ShieldCheck, Settings2, Check } from "lucide-react";
 import { useConsent } from "./ConsentProvider";
 import { useT } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
+
+/**
+ * The CSS variable the banner publishes its footprint on. Read by the two
+ * scrollers that exist: <body> on public routes and <main> in
+ * (dashboard)/layout.tsx. Both spell it out literally, because Tailwind
+ * only generates class names it can find whole in the source.
+ */
+const SPACE_VAR = "--consent-banner-space";
+
+/** bottom-3 (12px) below the banner, plus a 12px gap above it so the
+ *  page's last line does not sit flush against the banner's edge. */
+const CLEARANCE_PX = 24;
+
+/**
+ * Keep the page scrollable clear of the banner while it is up.
+ *
+ * The banner is fixed to the bottom of the viewport, so on its own it sits
+ * on top of whatever is underneath. On a short page that is the primary
+ * action with no way to scroll it out — the VentureConnect apply page had
+ * its Start button fully covered at 1280x720 and on a phone, so every
+ * first-time applicant had to dismiss the banner before they could see
+ * how to apply. Publishing the height lets each scroller pad by exactly
+ * that much, and only while the banner is actually showing.
+ *
+ * offsetHeight rather than getBoundingClientRect: it ignores transforms,
+ * so the slide-up entry animation cannot skew the reading. ResizeObserver
+ * tracks "Customize" opening the category list; `remeasure` covers the
+ * same change where ResizeObserver is unavailable.
+ */
+function useReservedSpace(ref: RefObject<HTMLDivElement | null>, active: boolean, remeasure: unknown) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!active || !el) return;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty(SPACE_VAR, `${el.offsetHeight + CLEARANCE_PX}px`);
+    publish();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publish);
+    observer?.observe(el);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty(SPACE_VAR);
+    };
+  }, [ref, active, remeasure]);
+}
 
 /**
  * Bottom-of-page consent banner. Appears once until the user picks one
@@ -17,14 +61,18 @@ export function CookieBanner() {
   const [expanded, setExpanded] = useState(false);
   const [analytics, setAnalytics] = useState(consent.analytics);
   const [marketing, setMarketing] = useState(consent.marketing);
+  const regionRef = useRef<HTMLDivElement>(null);
 
   // Wait until we've checked localStorage on the client. Otherwise the
   // banner renders during SSR / first paint and flashes before the
   // effect tells us a decision was already made.
-  if (!ready || hasDecided) return null;
+  const showing = ready && !hasDecided;
+  useReservedSpace(regionRef, showing, expanded);
+  if (!showing) return null;
 
   return (
     <div
+      ref={regionRef}
       role="region"
       aria-label={t("consent.title")}
       className="fixed inset-x-3 bottom-3 z-50 max-w-3xl mx-auto animate-slide-up-in"
