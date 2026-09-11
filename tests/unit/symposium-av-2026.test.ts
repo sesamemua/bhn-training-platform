@@ -159,3 +159,17 @@ test("round 3 is back on the 1 September price, and bundling saves what splittin
   );
   assert.equal(AV26_DECISION.bundlingSaves, AV26_VS_SUPERSEDED.difference);
 });
+
+test("each multi-unit line's 'qty × each' breakdown multiplies out to its list total", () => {
+  // The card prints "2 × $350 each" under the name and the line total in
+  // the price column. That only reads honestly if the per-unit list price
+  // times the quantity is the list total the section adds up from.
+  for (const key of AV26_ALL) {
+    for (const section of AV26_DOCS[key].sections) {
+      for (const line of section.lines) {
+        if (line.qty <= 1) continue;
+        assert.equal(round((line.wasUnit ?? line.unit) * line.qty), line.total, `${AV26_DOCS[key].ref} — ${line.name}`);
+      }
+    }
+  }
+});

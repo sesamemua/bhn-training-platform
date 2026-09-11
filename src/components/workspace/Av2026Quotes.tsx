@@ -233,6 +233,16 @@ function QuoteCard({ doc, onRead, current }: { doc: Av26Doc; onRead: () => void;
                 <li key={line.name} className="flex items-baseline gap-3">
                   <span className="min-w-0 flex-1">
                     <span className="block text-[12.5px] leading-snug text-fg">{line.name}</span>
+                    {/* Quantity as "2 × $350 each", beside the name — never
+                        "2 × $700" beside the price, where $700 is already
+                        the line total and the eye multiplies it. Per-unit
+                        is the list price (wasUnit where the quote reduced
+                        one), so the struck list total below still adds up. */}
+                    {line.qty > 1 && (
+                      <span className="mt-0.5 block font-mono text-[11px] tabular-nums text-subtle">
+                        {line.qty} × {cad(line.wasUnit ?? line.unit, 0)} each
+                      </span>
+                    )}
                     {line.detail && (
                       <span className="mt-0.5 block text-[11px] leading-snug text-subtle">
                         {line.detail}
@@ -245,7 +255,6 @@ function QuoteCard({ doc, onRead, current }: { doc: Av26Doc; onRead: () => void;
                         price where the charge should be: the Aputure
                         lights read $900 when the quote makes them free. */}
                     <span className={cn("block", line.wasUnit !== undefined ? "font-semibold text-emerald-700" : "text-fg")}>
-                      {line.qty > 1 && <span className="font-normal text-subtle">{line.qty} × </span>}
                       {chargedLine(line) === 0 && line.wasUnit !== undefined ? "Free" : cad(chargedLine(line), 0)}
                     </span>
                     {/* The struck-through list price, where the quote
