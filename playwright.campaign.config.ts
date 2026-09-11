@@ -4,7 +4,7 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3002";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: /campaign-public\.spec\.ts/,
+  testMatch: /(campaign-public|venture-connect-apply)\.spec\.ts/,
   fullyParallel: true,
   reporter: "list",
   use: {
