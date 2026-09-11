@@ -525,18 +525,17 @@ const workspaceAv2025Item: NavItem = {
     "Livecast's September 1 quote against last year's quote and last year's final invoice — line by line, plus the terms that changed and the two that commit BHN to spending not in the quote.",
 };
 
-// WORKSPACE → 2026 Symposium → AV 2026. The 8 September pair that
-// replaced that single quote: the room and the stream, priced
-// separately. Its own item rather than a fourth column on the 2025
-// page — that page argues about whether this year's number is
-// reasonable, this one about what changed when one quote became two.
+// WORKSPACE → 2026 Symposium → AV 2026. The quote as it stands (round 3)
+// and the decision it leaves — the room, or the room with a stream. Its
+// own item rather than a column on the 2025 page, which argues about
+// whether this year's number is reasonable; this one is what to sign.
 const workspaceAv2026Item: NavItem = {
   label: "AV 2026",
   href: "/admin/workspace/symposium-2026/av/2026",
   icon: Speaker,
   minRole: "admin",
   description:
-    "The two Livecast quotes from 8 September — AV Only and Streaming — with what splitting one quote into two did to the price. Every page of both documents is readable here.",
+    "Livecast's round-3 quote: what the room costs, what the stream adds, and the total — laid out for deciding whether to stream. What the stream actually buys, and every page of the document.",
 };
 
 // WORKSPACE → Industry Insights. A different event on a different day,

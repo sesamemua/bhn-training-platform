@@ -1,11 +1,11 @@
 /**
  * Workspace → 2026 Symposium → AV 2026.
  *
- * The two quotes Livecast sent on 8 September 2026, which replaced the
- * single quote the 2025 comparison page argues against. Kept as its own
- * page rather than a fourth column over there: that page is an argument
- * about whether this year's number is reasonable, and this one is about
- * what changed when one quote became two.
+ * The Symposium AV quote as it stands — round 3, #231816038 v2 — laid out
+ * for the one decision it leaves: the room alone, or with a stream. The
+ * split pair it replaced sits below, collapsed. Kept as its own page
+ * rather than a column on the 2025 comparison: that page argues about
+ * whether this year's number is reasonable, this one is what to sign.
  *
  * Static: the figures live in src/lib/symposium/av-2026.ts, transcribed
  * from the PDFs and reconciled against each document's own stated
@@ -17,7 +17,7 @@ import { requireRole } from "@/lib/auth";
 import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { Av2026Quotes } from "@/components/workspace/Av2026Quotes";
-import { AV26_VS_SUPERSEDED } from "@/lib/symposium/av-2026";
+import { AV26_DECISION } from "@/lib/symposium/av-2026";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +33,8 @@ export default async function SymposiumAv2026Page() {
       <FullWidthWhenCollapsed />
       <PageHero
         eyebrow="Workspace · 2026 Symposium · AV"
-        title="The September quotes"
-        description={`Livecast re-issued the Symposium AV as two documents on 8 September — the room and the stream, quoted separately. Together they come to ${cad(AV26_VS_SUPERSEDED.difference)} more than the single quote they replace, and the kit did not change.`}
+        title="The AV quote — round 3"
+        description={`Livecast's latest: the room and the stream back in one quote. The room alone is ${cad(AV26_DECISION.roomOnly.total)}; the stream adds ${cad(AV26_DECISION.streaming.total)}, for ${cad(AV26_DECISION.withStream.total)} in total — back on the 1 September price.`}
         icon={<Speaker />}
       />
       <div className="@container mt-6">

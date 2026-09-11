@@ -63,6 +63,10 @@ DOCS = {
     # which is kept because the 2025 comparison argues against it.
     "s2026": "UPDATED QUOTE/unsigned-contract-v1-231816000.pdf",
     "a2026": "UPDATED QUOTE/unsigned-contract-v1-231816038.pdf",
+    # 8 Sept 2026, 6:10 PM — round 3. Livecast recombined the two back into
+    # one document, v2 of #231816038, "AV and Streaming". It supersedes the
+    # pair above and lands on exactly #231775889's $9,768.30.
+    "c2026": "UPDATED QUOTE/QUOTE ROUND 3/unsigned-contract-v2-231816038.pdf",
 }
 
 # 2x the 612x792pt US-Letter mediabox = 1224x1584, i.e. 144 DPI. Any

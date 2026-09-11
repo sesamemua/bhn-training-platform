@@ -1,5 +1,15 @@
 /**
- * The 8 September 2026 Livecast quotes — the pair that replaced one quote.
+ * The 8 September 2026 Livecast quotes.
+ *
+ * ROUND 3 IS THE CURRENT QUOTE. Later on 8 September Livecast recombined
+ * the pair below into one document again — v2 of #231816038, "AV and
+ * Streaming" (`c2026`). It comes to $9,768.30, exactly the single quote
+ * the split had replaced, so the split's $1,220.40 is gone. Its rental and
+ * labour sections are line-for-line the v1 "AV Only" quote; what is new is
+ * a "Streaming and video" section inside the same document. The decision it
+ * leaves is the one AV26_DECISION states: the room alone, or with a stream.
+ *
+ * What follows is the history, kept because it is why the number moved.
  *
  * Livecast re-issued the Symposium AV as TWO documents rather than one:
  * #231816038 "AV Only v1" for the room, and #231816000 "Streaming" for
@@ -25,7 +35,7 @@
  * Pure data. Renders live in the AV 2026 page.
  */
 
-export type Av26Key = "a2026" | "s2026";
+export type Av26Key = "a2026" | "s2026" | "c2026";
 
 /** A section of a quote — Livecast totals rentals and labour separately. */
 export interface Av26Section {
@@ -52,6 +62,21 @@ export interface Av26Line {
   wasTotal?: number;
 }
 
+/**
+ * What a line actually costs.
+ *
+ * Read this before rendering a line. The encoding is the one these
+ * documents were first transcribed in and it is easy to misread: `total`
+ * is the pre-discount LIST total — so a section's lines add up to its
+ * printed subtotal — and where the quote struck a price out (`wasUnit`
+ * set), the amount actually charged for the whole line sits in `unit`.
+ * Aputure lights: list $900, charged $0. Projectors: list $1,950, charged
+ * $1,300. Show `total` alone and a free line reads as $900.
+ */
+export function chargedLine(line: Av26Line): number {
+  return line.wasUnit !== undefined ? line.unit : line.total;
+}
+
 export interface Av26Doc {
   key: Av26Key;
   ref: string;
@@ -72,6 +97,82 @@ export interface Av26Doc {
 }
 
 export const AV26_DOCS: Record<Av26Key, Av26Doc> = {
+  c2026: {
+    key: "c2026",
+    ref: "Quote #231816038 v2",
+    title: "AV and streaming — round 3",
+    scope: "2026 Annual Symposium BioHubNet — Oct 29, 2026 — AV and Streaming",
+    dated: "8 Sep 2026, 6:10 PM",
+    expires: "8 Oct 2026",
+    gross: 11475,
+    discount: -1870,
+    additionalDiscount: -960.5,
+    tax: 1123.8,
+    total: 9768.3,
+    paymentDue: "Final due 28 Nov 2026.",
+    pages: 4,
+    sections: [
+      {
+        heading: "Rental items",
+        subtotal: 5730,
+        discount: -1750,
+        tax: 517.4,
+        total: 4497.4,
+        // Line-for-line the v1 AV-only rental section (a2026, below); the
+        // test holds the two to that.
+        lines: [
+          { name: "Shure QLX-D HH / Lavalier kits", detail: "Wireless handheld or lapel microphone", qty: 3, unit: 150, total: 450 },
+          { name: "Shure MX418 gooseneck microphone", detail: "18\", podium", qty: 1, unit: 75, total: 75 },
+          { name: "Behringer XR18 digital mixer", qty: 1, unit: 150, total: 150 },
+          { name: "7.5' × 13.3' HD Fastfold screen (wide) with DUK", qty: 2, unit: 350, total: 700 },
+          { name: "Black drape (10' × 12')", qty: 2, unit: 90, total: 180 },
+          { name: "Astera AX5 uplight LED kit (8)", detail: "Includes 8 × AX5 TriplePar uplight", qty: 1, unit: 200, total: 400, wasUnit: 400 },
+          { name: "4-speaker PA system — Electro-Voice ZLX-12BT", qty: 1, unit: 265, total: 265 },
+          { name: "Blackmagic ATEM HDMI Mini Extreme", detail: "2 HDMI out, 8 HDMI in", qty: 1, unit: 250, total: 250 },
+          { name: "Encoder kit", qty: 1, unit: 100, total: 100 },
+          { name: "Power bar", qty: 10, unit: 0, total: 0 },
+          { name: "A/C cable", qty: 1, unit: 10, total: 10 },
+          { name: "Aputure LS 300x w/ Fresnel adapter kit (two lights)", qty: 2, unit: 0, total: 900, wasUnit: 450 },
+          { name: "EPSON Pro-L1495U projector", qty: 2, unit: 1300, total: 1950, wasUnit: 975 },
+          { name: "43\" Hisense LED 4K TV", detail: "Timer clock and confidence monitor", qty: 1, unit: 250, total: 250 },
+          { name: "HDMI cable 100'", detail: "Presentation laptops at the front of the room", qty: 1, unit: 0, total: 0 },
+          { name: "SDI cable 100'", detail: "Presentation laptops at the front of the room", qty: 1, unit: 0, total: 0 },
+          { name: "Decimator SDI/HDMI bidirectional converter", qty: 1, unit: 50, total: 50 },
+        ],
+      },
+      {
+        heading: "Streaming and video",
+        subtotal: 1995,
+        discount: -120,
+        tax: 243.75,
+        total: 2118.75,
+        lines: [
+          {
+            name: "Livecast Hybrid Event — Essentials Package",
+            detail: "vMix laptop package, at least one SDI/HDMI input. One-hour, single-channel stream; 1,000 viewers or fewer on Livecast's private CDN. Full-screen slides only — no video, no overlays, no output to onsite screens. Two laptops (one streams, one monitors) plus SDI and HDMI encoders.",
+            qty: 1, unit: 1000, total: 1000,
+          },
+          { name: "Behringer USB audio interface", detail: "No price shown — reads as included with the package", qty: 1, unit: 0, total: 0 },
+          { name: "Sony FS7 camera", qty: 1, unit: 450, total: 450 },
+          { name: "Riser deck (4' × 4' × 12\")", qty: 2, unit: 0, total: 120, wasUnit: 60 },
+          { name: "A/V labour @ $85/hour (regular)", detail: "1 × 5 hours, Thursday 29 Oct from 12:00 PM. OT may apply after 10 hours.", qty: 1, unit: 425, total: 425 },
+        ],
+      },
+      {
+        heading: "Labour & delivery",
+        subtotal: 3750,
+        tax: 487.5,
+        total: 4237.5,
+        lines: [
+          { name: "A/V labour @ $85/hour (regular)", detail: "3 × 10 hours, Thursday 29 Oct from 12:00 PM. OT may apply after 10 hours.", qty: 3, unit: 850, total: 2550 },
+          { name: "A/V labour @ $85/hour (regular) — setup / strike", detail: "2 × 5 hours, Thursday 29 Oct from 12:00 PM", qty: 2, unit: 425, total: 850 },
+          { name: "Delivery fee", qty: 1, unit: 350, total: 350 },
+          { name: "Notes — client to provide hotel rooms for crew; setup the day before", qty: 1, unit: 0, total: 0 },
+        ],
+      },
+    ],
+  },
+
   a2026: {
     key: "a2026",
     ref: "Quote #231816038",
@@ -176,7 +277,14 @@ export const AV26_DOCS: Record<Av26Key, Av26Doc> = {
   },
 };
 
+/** The pair the quote was split into on 8 Sep — superseded by round 3. */
 export const AV26_ORDER: Av26Key[] = ["a2026", "s2026"];
+
+/** The quote that stands. */
+export const AV26_CURRENT: Av26Key = "c2026";
+
+/** Every 2026 document, current first. Per-document checks run over this. */
+export const AV26_ALL: Av26Key[] = ["c2026", "a2026", "s2026"];
 
 /** The two quotes together, which is what BHN actually pays. */
 export const AV26_COMBINED = {
@@ -218,3 +326,65 @@ export const AV26_VS_SUPERSEDED = {
     },
   ],
 };
+
+/**
+ * The decision round 3 leaves: the room alone, or the room with a stream.
+ *
+ * Every figure here is printed on a Livecast document or is the difference
+ * of two printed totals. None is an allocation:
+ *
+ *   room only     $7,861.42  the printed total of #231816038 v1 "AV Only"
+ *                            (a2026). Its rental and labour sections are
+ *                            round 3's line for line, under the same 10%
+ *                            additional discount — so it IS round 3 with
+ *                            the streaming section taken out, which the
+ *                            terms allow ("You may remove item(s) from your
+ *                            order at any time").
+ *   with stream   $9,768.30  the printed total of round 3.
+ *   streaming     $1,906.88  the difference. Apportioning round 3's 10%
+ *                            additional discount to its streaming section
+ *                            alone gives $1,906.875 — the same to the cent,
+ *                            and the test holds it there.
+ */
+export const AV26_DECISION = {
+  roomOnly: { beforeTax: 6957, total: 7861.42 },
+  streaming: { beforeTax: 1687.5, total: 1906.88 },
+  withStream: { beforeTax: 8644.5, total: 9768.3 },
+  /** The stream as its own quote (s2026), for comparison. */
+  streamingAsOwnQuote: 3127.28,
+  /**
+   * 3,127.28 − 1,906.88. Bundling the stream back into the room quote
+   * saves exactly what splitting it out had cost (AV26_VS_SUPERSEDED).
+   */
+  bundlingSaves: 1220.4,
+};
+
+/**
+ * What the $1,906.88 buys — the part of the decision the price alone does
+ * not tell you. Read off the Essentials package wording and the streaming
+ * section's lines.
+ */
+export const AV26_STREAM_SCOPE: { label: string; detail: string; flag?: boolean }[] = [
+  {
+    label: "One hour of live stream",
+    detail: "The Essentials package is a one-hour, single-channel stream. The day itself runs from noon with a ten-hour crew, so streaming more than an hour of it is not in this price.",
+    flag: true,
+  },
+  {
+    label: "Slides — or speakers too?",
+    detail: "The package reads “full screen slides to stream, no video or overlays”, yet the section adds a Sony FS7 camera and riser decks. Ask whether speakers go out on video or only their slides.",
+    flag: true,
+  },
+  {
+    label: "One camera",
+    detail: "The separate streaming quote had two FS7 cameras, one of them free. Round 3 has one.",
+  },
+  {
+    label: "Up to 1,000 viewers",
+    detail: "On Livecast's private CDN.",
+  },
+  {
+    label: "A five-hour crew block",
+    detail: "One technician for five hours from noon, in place of the separate quote's ten-hour operator, setup/strike and its own delivery.",
+  },
+];

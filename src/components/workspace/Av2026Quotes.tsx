@@ -1,20 +1,20 @@
 "use client";
 
 /**
- * The two quotes Livecast sent on 8 September 2026, and what splitting
- * one quote into two did to the price.
+ * The Symposium AV quote as it stands — round 3 — and the decision it
+ * leaves: the room alone, or the room with a stream.
  *
- * The lead is not the totals. It is that the same event, quoted twice
- * instead of once, costs $1,220.40 more — and that almost all of the
- * difference is a second delivery fee and a fourth operator, not
- * equipment. Every rental line here appears on the superseded quote at
- * the same price, which is what makes the labour figure the thing to
- * take into the conversation.
+ * The lead is the three numbers that decision needs, AV / streaming /
+ * total, each one printed on a Livecast document or the difference of two
+ * (see AV26_DECISION). Then what the stream actually buys, because the
+ * price alone hides that it is one hour. The pair round 3 replaced sits
+ * below, collapsed: it is why the number moved, not what to sign.
  */
 import { useState } from "react";
-import { FileText } from "lucide-react";
+import { AlertTriangle, FileText } from "lucide-react";
 import {
-  AV26_COMBINED, AV26_DOCS, AV26_ORDER, AV26_VS_SUPERSEDED,
+  AV26_COMBINED, AV26_CURRENT, AV26_DECISION, AV26_DOCS, AV26_ORDER, AV26_STREAM_SCOPE,
+  AV26_VS_SUPERSEDED, chargedLine,
   type Av26Doc, type Av26Key,
 } from "@/lib/symposium/av-2026";
 import { pagesOf } from "@/lib/symposium/av";
@@ -27,13 +27,111 @@ const cad = (n: number, dp = 2) =>
 export function Av2026Quotes() {
   const [reading, setReading] = useState<Av26Key | null>(null);
 
+  const d = AV26_DECISION;
+  const streamShare = Math.round((d.streaming.total / d.roomOnly.total) * 100);
+
   return (
     <div className="space-y-6">
-      {/* ── What the split cost. Stated first because it is the only
-             number on this page that needs a decision. */}
+      {/* ── The decision. First, because it is the only thing on this
+             page anyone has to act on. */}
+      <section className="rounded-xl border-2 border-line-strong bg-card p-4 sm:p-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-subtle">
+          The decision — the room, or the room with a stream
+        </p>
+
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[26rem] text-[13px]">
+            <thead>
+              <tr className="text-[10.5px] uppercase tracking-wide text-subtle">
+                <th scope="col" className="pb-2 text-left font-semibold"><span className="sr-only">Line</span></th>
+                <th scope="col" className="pb-2 text-right font-semibold">Before tax</th>
+                <th scope="col" className="pb-2 pl-6 text-right font-semibold">With HST</th>
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
+              <tr>
+                <th scope="row" className="py-1.5 text-left font-semibold text-fg">AV — the room</th>
+                <td className="py-1.5 text-right font-mono text-muted">{cad(d.roomOnly.beforeTax)}</td>
+                <td className="py-1.5 pl-6 text-right font-mono text-[16px] font-bold text-fg">{cad(d.roomOnly.total)}</td>
+              </tr>
+              <tr>
+                <th scope="row" className="py-1.5 text-left font-semibold text-fg">
+                  Streaming, added on top
+                  <span className="ml-2 text-[11px] font-normal text-subtle">+{streamShare}% on the room</span>
+                </th>
+                <td className="py-1.5 text-right font-mono text-muted">+{cad(d.streaming.beforeTax)}</td>
+                <td className="py-1.5 pl-6 text-right font-mono text-[16px] font-bold text-brand-700">+{cad(d.streaming.total)}</td>
+              </tr>
+              <tr className="border-t-2 border-line-strong">
+                <th scope="row" className="pt-2.5 text-left font-bold text-fg">Total with streaming</th>
+                <td className="pt-2.5 text-right font-mono text-muted">{cad(d.withStream.beforeTax)}</td>
+                <td className="pt-2.5 pl-6 text-right font-mono text-[22px] font-bold text-fg">{cad(d.withStream.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-3 text-[12.5px] leading-relaxed text-muted">
+          <strong className="text-fg">Without the stream: {cad(d.roomOnly.total)}.</strong> That is
+          Livecast&apos;s own AV-only price — its room lines are round 3&apos;s, line for line — so
+          dropping the stream means asking them to remove the “Streaming and video” section, which
+          the terms allow. <strong className="text-fg">With it: {cad(d.withStream.total)}.</strong>{" "}
+          All figures include every discount on the quote.
+        </p>
+      </section>
+
+      {/* ── What the stream buys. The price hides that it is one hour. */}
+      <section className="rounded-xl border border-line bg-card p-4 sm:p-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-subtle">
+          What {cad(d.streaming.total)} of streaming buys
+        </p>
+        <ul className="mt-3 grid gap-2 @2xl:grid-cols-2">
+          {AV26_STREAM_SCOPE.map((item) => (
+            <li
+              key={item.label}
+              className={cn(
+                "rounded-lg border p-3",
+                item.flag ? "border-amber-500/50 bg-amber-500/[0.06]" : "border-line",
+              )}
+            >
+              <p className="flex items-center gap-1.5 text-[12.5px] font-bold text-fg">
+                {item.flag && <AlertTriangle size={13} className="shrink-0 text-amber-700" aria-hidden="true" />}
+                {item.label}
+                {item.flag && <span className="sr-only">(check before deciding)</span>}
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted">{item.detail}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ── Why round 3 is lower than the pair it replaced. */}
+      <p className="rounded-lg border border-emerald-600/30 bg-emerald-600/[0.05] px-4 py-3 text-[12.5px] leading-relaxed text-muted">
+        <strong className="text-fg">Back on the 1 September price.</strong> Round 3 totals{" "}
+        {cad(d.withStream.total)}, the same as {AV26_VS_SUPERSEDED.supersededRef}. Quoted on its own
+        the stream was {cad(d.streamingAsOwnQuote)}; folded back into the room quote it is{" "}
+        {cad(d.streaming.total)} — {cad(d.bundlingSaves)} less, exactly what splitting it out had
+        added, because one document carries one delivery fee and one crew.
+      </p>
+
+      {/* ── Round 3 itself, every line. */}
+      <QuoteCard doc={AV26_DOCS[AV26_CURRENT]} onRead={() => setReading(AV26_CURRENT)} current />
+
+      {/* ── The pair round 3 replaced. Kept because it is why the number
+             moved; collapsed because it is not what to sign. */}
+      <details className="group rounded-xl border border-line bg-card">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[13px] font-semibold text-fg [&::-webkit-details-marker]:hidden">
+          <span>
+            Superseded — the split pair from earlier on 8 September
+            <span className="ml-2 font-mono text-[12px] font-normal text-subtle">{cad(AV26_COMBINED.total)} together</span>
+          </span>
+          <span className="text-[11px] font-normal text-subtle group-open:hidden">Show</span>
+          <span className="hidden text-[11px] font-normal text-subtle group-open:inline">Hide</span>
+        </summary>
+        <div className="space-y-4 border-t border-line p-4">
       <section className="rounded-xl border-2 border-amber-500/50 bg-amber-500/[0.06] p-4 sm:p-5">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
-          Two quotes now, one before
+          When the quote was split in two
         </p>
         <p className="mt-1.5 text-[26px] font-bold leading-none tracking-tight text-fg tabular-nums">
           +{cad(AV26_VS_SUPERSEDED.difference)}
@@ -88,6 +186,8 @@ export function Av2026Quotes() {
           </span>
         </p>
       </section>
+        </div>
+      </details>
 
       {reading && (
         <DocumentReader docKey={reading} onClose={() => setReading(null)} />
@@ -96,12 +196,19 @@ export function Av2026Quotes() {
   );
 }
 
-function QuoteCard({ doc, onRead }: { doc: Av26Doc; onRead: () => void }) {
+function QuoteCard({ doc, onRead, current }: { doc: Av26Doc; onRead: () => void; current?: boolean }) {
   return (
-    <section className="flex flex-col rounded-xl border-2 border-line-strong bg-card">
+    <section className={cn("flex flex-col rounded-xl border-2 bg-card", current ? "border-brand-500/60" : "border-line-strong")}>
       <header className="border-b border-line px-4 py-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h2 className="text-[14px] font-bold text-fg">{doc.title}</h2>
+          <h2 className="text-[14px] font-bold text-fg">
+            {doc.title}
+            {current && (
+              <span className="ml-2 rounded bg-brand-600 px-1.5 py-0.5 align-middle text-[9.5px] font-bold uppercase tracking-wide text-white">
+                Current quote
+              </span>
+            )}
+          </h2>
           <span className="font-mono text-[11px] text-subtle">{doc.ref}</span>
         </div>
         <p className="mt-1 text-[11.5px] leading-snug text-subtle">{doc.scope}</p>
@@ -133,16 +240,20 @@ function QuoteCard({ doc, onRead }: { doc: Av26Doc; onRead: () => void }) {
                     )}
                   </span>
                   <span className="shrink-0 text-right font-mono text-[11.5px] tabular-nums">
-                    <span className="block text-fg">
-                      {line.qty > 1 && <span className="text-subtle">{line.qty} × </span>}
-                      {cad(line.total, 0)}
+                    {/* What is actually charged for the line — see
+                        chargedLine(). Showing `total` here put the list
+                        price where the charge should be: the Aputure
+                        lights read $900 when the quote makes them free. */}
+                    <span className={cn("block", line.wasUnit !== undefined ? "font-semibold text-emerald-700" : "text-fg")}>
+                      {line.qty > 1 && <span className="font-normal text-subtle">{line.qty} × </span>}
+                      {chargedLine(line) === 0 && line.wasUnit !== undefined ? "Free" : cad(chargedLine(line), 0)}
                     </span>
                     {/* The struck-through list price, where the quote
                         reduced one. It is on the document; leaving it
                         off would make the discount line unexplainable. */}
                     {line.wasUnit !== undefined && (
                       <span className="block text-[10.5px] text-subtle line-through">
-                        {cad(line.wasUnit * line.qty, 0)}
+                        {cad(line.total, 0)}
                       </span>
                     )}
                   </span>

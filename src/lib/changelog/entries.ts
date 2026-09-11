@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "AV round 3: the room is $7,861.42, the stream adds $1,906.88",
+    body: "Livecast's round-3 quote (#231816038 v2) puts the room and the stream back in one document, and **Workspace → AV 2026** now leads with the decision it leaves: **AV for the room $7,861.42**, **streaming +$1,906.88**, **$9,768.30** in total — before-tax figures alongside.\n\nThe room-only figure isn't an estimate: it's Livecast's own AV-only price, whose lines are round 3's line for line, so dropping the stream just means asking them to remove that section. Round 3 is also back on the 1 September price exactly — bundling the stream saves the $1,220.40 that splitting it out had cost.\n\n**Read the stream's scope before deciding.** It's a **one-hour**, single-channel stream, and the package says slides only even though the quote adds a camera — both flagged on the page. The earlier split pair is still there, collapsed, marked superseded.\n\nAlso fixed: struck-through lines showed their list price as if it were charged — the Aputure lights read $900 when they're free, the projectors $1,950 when they're $1,300. They now show what's actually charged.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "The cookie banner no longer covers the button you came to press",
     body: "On a first visit the consent banner is pinned to the bottom of the screen, and on a short page that is exactly where the main button sits. The VentureConnect application page was the worst case: at an ordinary laptop size, and on a phone, the banner sat squarely over **Start the application**, and the page was too short to scroll it clear. Every new applicant had to dismiss the banner before they could even see how to apply — on the page the Google Ads traffic lands on.\n\nThe page now makes room for the banner while it is showing, so you can scroll the last button clear of it. The room goes away the moment you make a choice. This applies everywhere the banner appears, including inside the dashboard, which scrolls differently from the public pages and needed its own fix.",
     kind: "fix",
