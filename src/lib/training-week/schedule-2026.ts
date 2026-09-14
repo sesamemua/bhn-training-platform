@@ -135,6 +135,17 @@ export interface Session {
    * like a stranger's edit and gets skipped.
    */
   previousTitles?: string[];
+  /**
+   * Exact option strings this session has been offered under before.
+   *
+   * A time change moves the option string, and seats are made by exact
+   * match. A form that is frozen with the old string — the v1 Training
+   * Week registration, which people have already filled in — would
+   * otherwise stop producing seats for this session the moment the
+   * schedule moved, silently: makeSeats reports the miss and nobody
+   * reads the report.
+   */
+  previousOptions?: string[];
 }
 
 /**
@@ -199,7 +210,10 @@ export const SESSIONS: Session[] = [
     slug: "communication-chameleon-2026",
     title: "Communication Chameleon",
     kind: "workshop",
-    day: "2026-10-27", start: "13:00", end: "16:00", track: 1,
+    // Runs to 16:30, not 16:00 — corrected by the coordinators in the
+    // Training Week feedback round. The v1 form still offers the 16:00
+    // string, so it stays resolvable below.
+    day: "2026-10-27", start: "13:00", end: "16:30", track: 1,
     capacity: 30,
     venue: { name: "Room 850", status: "booked", note: "Calendar booking done, held 9 AM – 5 PM." },
     partner: "Rainmaker",
@@ -208,6 +222,7 @@ export const SESSIONS: Session[] = [
     summary: "Adapting how you communicate to the room you are in, run by Claudia Ferryman of Rainmaker.",
     notes: ["30 spots", "AV set-up needed", "Pre-assessment form — registration closes 3 weeks before"],
     tentative: false,
+    previousOptions: ["Tue 27 Oct · 13:00–16:00 · Communication Chameleon"],
   },
   {
     slug: "negotiation-skills-2026",
@@ -294,9 +309,15 @@ export const sessionInOption = (option: string): Session | undefined => {
   return hits.length === 1 ? hits[0] : undefined;
 };
 
-/** The Session behind an option string, or undefined if it is stale. */
+/**
+ * The Session behind an option string, or undefined if it is stale.
+ *
+ * Exact, still — the current label or one the session was offered
+ * under before. Not the title substring match above: a seat is a
+ * commitment, and "contains the word Chameleon" is a guess.
+ */
 export const sessionForOption = (option: string) =>
-  SESSIONS.find((s) => optionLabel(s) === option);
+  SESSIONS.find((s) => optionLabel(s) === option || (s.previousOptions ?? []).includes(option));
 
 const toMin = (t: string) => {
   const [h, m] = t.split(":").map(Number);

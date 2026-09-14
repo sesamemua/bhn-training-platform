@@ -54,7 +54,7 @@ const PRIMARY =
 const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 
 export function FormBuilder({
-  formId, initial, canEdit, title = "Form", slug,
+  formId, initial, canEdit, title = "Form", slug, onDirtyChange,
 }: {
   formId: string; initial: BuiltForm; canEdit: boolean; title?: string;
   /**
@@ -63,6 +63,12 @@ export function FormBuilder({
    * general builder, where you may be editing a form that is live.
    */
   slug?: string;
+  /**
+   * Told whenever there are (or stop being) unsaved edits. Actions a
+   * level up read the SAVED form — a copy, opening it — and must not
+   * run past edits that exist only here.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [doc, setDoc] = useState<BuiltForm>(initial);
   /*
@@ -88,6 +94,9 @@ export function FormBuilder({
     setDirty(true);
     setSaved(null);
   }, []);
+
+  // Runs on mount too, so a builder keyed to another form reports clean.
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   const found = useMemo(() => problems(doc), [doc]);
   const shown = useMemo(() => visibleFields(doc, answers, stage), [doc, answers, stage]);

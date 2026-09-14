@@ -22,7 +22,10 @@ import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { FormsWorkspace } from "@/components/workspace/FormsWorkspace";
 import { parseForm } from "@/lib/formbuilder/types";
-import { REGISTRATION_FORM_SLUG } from "@/lib/allocation/symposium-2026";
+import { versionNumber, versionRoot } from "@/lib/formbuilder/versions";
+import {
+  REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_WHERE,
+} from "@/lib/allocation/symposium-2026";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +33,17 @@ export default async function SymposiumRegistrationPage() {
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect("/dashboard");
 
-  const row = await prisma.eventForm.findUnique({
-    where: { slug: REGISTRATION_FORM_SLUG },
+  // Every version, by version root — the same rule the registrant sheet
+  // pools by, so a v3 made with Duplicate is here as well as there.
+  const found = (await prisma.eventForm.findMany({
+    where: REGISTRATION_FORM_WHERE,
     select: { id: true, slug: true, title: true, active: true, fields: true, updatedAt: true },
-  });
+  })).filter((f) => versionRoot(f.slug) === REGISTRATION_FORM_SLUG);
+  // Newest version first. The builder opens on the first form it is
+  // handed, and the newest is the one being given out — v1 stays live,
+  // exactly as the people already registered on it saw it, and is not
+  // the one to edit.
+  const rows = [...found].sort((a, b) => versionNumber(b.slug) - versionNumber(a.slug));
 
   return (
     <>
@@ -44,17 +54,17 @@ export default async function SymposiumRegistrationPage() {
         description="What people fill in to register for Training Week, and the workflow their answers run through."
         icon={<ClipboardList />}
       />
-      {row ? (
+      {rows.length > 0 ? (
         <FormsWorkspace
           only
-          forms={[{
+          forms={rows.map((row) => ({
             id: row.id,
             slug: row.slug,
             title: row.title,
             active: row.active,
             doc: parseForm(row.fields),
             updatedAt: row.updatedAt.toISOString(),
-          }]}
+          }))}
         />
       ) : (
         /*
@@ -64,11 +74,13 @@ export default async function SymposiumRegistrationPage() {
          * fix for "it is there and empty".
          */
         <div className="mt-6 rounded-xl border-2 border-line-strong bg-card p-5">
-          <p className="text-[13px] font-semibold text-fg">The registration form is not in the database yet.</p>
+          <p className="text-[13px] font-semibold text-fg">Neither Training Week registration form is in the database yet.</p>
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-            Nothing is looking for <code className="font-mono text-[11.5px]">{REGISTRATION_FORM_SLUG}</code>.
-            Run <code className="font-mono text-[11.5px]">npx tsx scripts/seed-training-week-2026.ts</code> to
-            create it, or build it under Process → Forms and give it that slug.
+            Nothing is looking for <code className="font-mono text-[11.5px]">{REGISTRATION_FORM_SLUG_V2}</code> or{" "}
+            <code className="font-mono text-[11.5px]">{REGISTRATION_FORM_SLUG}</code>. v2 is built from v1, so v1 comes
+            first: run <code className="font-mono text-[11.5px]">npx tsx scripts/seed-training-week-2026.ts</code> to
+            create it, then <code className="font-mono text-[11.5px]">npx tsx scripts/create-training-week-v2.ts</code> to
+            see what v2 would be, and add <code className="font-mono text-[11.5px]">--apply</code> to create it.
           </p>
         </div>
       )}

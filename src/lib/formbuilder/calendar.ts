@@ -18,6 +18,8 @@ export interface Slot {
   /** "09:00" / "16:30", 24-hour. */
   start: string;
   end: string;
+  /** How many people the room holds, when the form says so. */
+  capacity?: number;
 }
 
 const mins = (hhmm: string) => {

@@ -17,7 +17,8 @@ import {
   isAudience, isId, RULES_KEY,
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
-import { REGISTRATION_FORM_SLUG } from "@/lib/allocation/symposium-2026";
+import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
+import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
@@ -623,18 +624,35 @@ export async function saveSupportFormUrl(url: string): Promise<{ ok: boolean; pr
  */
 export async function loadSubmissions(): Promise<SubmissionRow[]> {
   await requireAdmin();
-  const form = await prisma.eventForm.findUnique({
-    where: { slug: REGISTRATION_FORM_SLUG },
-    select: { id: true, fields: true },
-  });
-  if (!form) return [];
+  // Every version of the registration, pooled. Somebody who registered
+  // on v1 and somebody on v2 are asking for the same seats, and a sheet
+  // that shows only one of them is half a queue. By version root, not a
+  // fixed list: seats are made from whatever form was submitted, so a
+  // v3 made with Duplicate books seats and has to show up here too.
+  const forms = (await prisma.eventForm.findMany({
+    where: REGISTRATION_FORM_WHERE,
+    select: { id: true, slug: true, fields: true },
+  })).filter((f) => versionRoot(f.slug) === REGISTRATION_FORM_SLUG);
+  if (forms.length === 0) return [];
+
+  /*
+   * Each row is read against the form it was SUBMITTED on, never one
+   * shared document. rankedSessions keeps only answers the document
+   * offers, so a v1 row read through v2 silently loses its "13:00–16:00"
+   * Chameleon pick — and the two versions label the same key
+   * differently, so the expanded answers would be mislabelled too.
+   */
+  const byForm = new Map(forms.map((f) => [f.id, {
+    doc: parseForm(f.fields),
+    form: versionLabel(f.slug),
+  }]));
 
   const rows = await prisma.eventFormSubmission.findMany({
-    where: { formId: form.id },
+    where: { formId: { in: forms.map((f) => f.id) } },
     orderBy: { createdAt: "desc" },
     take: 500,
     select: {
-      id: true, data: true, email: true, createdAt: true,
+      id: true, formId: true, data: true, email: true, createdAt: true,
       user: { select: { name: true, email: true } },
       // The seats this registration asked for, which is what a
       // coordinator actually decides on.
@@ -648,15 +666,18 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
     },
   });
 
-  const doc = parseForm(form.fields);
-  return rows.map((r) => {
+  return rows.flatMap((r) => {
+    const own = byForm.get(r.formId);
+    if (!own) return [];
+    const { doc } = own;
     const data = (r.data ?? {}) as Record<string, unknown>;
     const answers = data as Answers;
-    return {
+    return [{
       id: r.id,
       // Submitted timestamp: what first-come-first-served is decided on.
       at: r.createdAt.toISOString(),
       isTest: data.__test === true,
+      form: own.form,
       name: [answers.first_name, answers.last_name].filter(Boolean).join(" ")
         || (typeof answers.trainee_name === "string" ? answers.trainee_name : "")
         || r.user?.name
@@ -679,7 +700,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
             ? (answers[f.key] as string[]).join(" · ")
             : String(answers[f.key] ?? "")]),
       ),
-    };
+    }];
   });
 }
 

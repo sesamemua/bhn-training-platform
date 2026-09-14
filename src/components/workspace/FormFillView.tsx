@@ -32,6 +32,8 @@ import { rankedSessions, sessionField } from "@/lib/formbuilder/submit";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { BLOCKED_MESSAGE } from "@/lib/eligibility/messages";
 import { FORM_COLUMN } from "@/lib/formbuilder/layout";
+import { hasRichLink } from "@/lib/formbuilder/rich-text";
+import { RichText } from "@/components/forms/RichText";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
 import { FIELD_STAGES, type BuiltForm, type FieldStage, type FormField } from "@/lib/formbuilder/types";
 import { ordinal, RankedChoices, SessionCalendar } from "./SessionCalendar";
@@ -66,6 +68,17 @@ export function FormFillView({
   const [sent, setSent] = useState(false);
   const [receipt, setReceipt] = useState<Receipt | undefined>();
   const [refused, setRefused] = useState<string[]>([]);
+
+  /*
+   * How THIS form looks and speaks, as opposed to what it asks. Every
+   * flag is off for a form with no presentation, and every branch that
+   * reads one keeps the old markup on its other side: the live v1 form
+   * has registrations on it and must not move by a byte.
+   */
+  const look = doc.presentation;
+  const bar = look?.progress === "bar";
+  const gateInline = look?.gateInline === true;
+  const hideWaitingHint = look?.hideWaitingHint === true;
 
   const shown = useMemo(() => visibleFields(doc, answers, stage), [doc, answers, stage]);
   // Notes are not questions, so they are not counted as any.
@@ -198,12 +211,49 @@ export function FormFillView({
       ?.querySelector<HTMLElement>(`[data-q="${CSS.escape(opened.key)}"] input, [data-q="${CSS.escape(opened.key)}"] select, [data-q="${CSS.escape(opened.key)}"] textarea`)
       ?.focus();
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+   * A refusal at Submit takes the Submit button away with it, and focus
+   * with it. Sent to the address instead — after the render, so the
+   * field already names the message as its description and a screen
+   * reader reads both. Only for the inline refusal (see refusalPlacement);
+   * the Continue check never sets this.
+   */
+  const gateFocus = useRef(false);
+  useEffect(() => {
+    if (!gateBlocked || !gateFocus.current) return;
+    gateFocus.current = false;
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-q="${CSS.escape(ELIGIBILITY_EMAIL_KEY)}"] input`)
+      ?.focus();
+  }, [gateBlocked]);
+
   const reset = () => {
     setAnswers({}); setTried(false); setDone(false); setSent(false); setRefused([]); setReceipt(undefined);
     setReach(1); setHi(1); setAll(false);
   };
 
   const answered = asked.filter(answeredAt).length;
+  const progress = progressToSubmit({ shown, open, answered: answeredAt, ended });
+  const prompt = gapPrompt({ more, gaps, stopped: Boolean(stopped), hideWaitingHint, lastKey: last?.key });
+
+  /*
+   * The bar counts only once there is something to count. Before
+   * question one is answered it is the only question on screen, and
+   * "0 of 1 answered" is a promise the next click breaks by revealing
+   * eight more. A form that has ended — a stopping note, a refused
+   * address — has no progress left to make.
+   */
+  const tracking = bar && asked.length > 1 && !stopped;
+
+  /*
+   * The line beside Continue. `null` is no line at all, and then nothing
+   * points at it either: aria-describedby naming a missing id describes
+   * the button as nothing.
+   */
+  const hint = waiting
+    ? hideWaitingHint ? null : "Answer this one to carry on."
+    : bar ? null : `${more} more question${more === 1 ? "" : "s"} after this`;
 
   /*
    * Once it is in, the form is gone.
@@ -227,7 +277,7 @@ export function FormFillView({
   }
 
   return (
-    <div className={`${FORM_COLUMN} mt-5 pb-24`}>
+    <div className={`${FORM_COLUMN} mt-5 pb-24${look?.theme === "site" ? " bhn-site" : ""}`}>
       {/* Live registrants need the form, not implementation notes. The
           other two modes state their limits once, at the top, where a
           colleague cannot mistake a test for a registration. */}
@@ -288,16 +338,28 @@ export function FormFillView({
           different left edges — the first thing the eye caught, and
           the first thing it had to dismiss. The builder's preview has
           no page header above it, so there it stays. */}
-      <header className="mt-5">
-        {mode !== "live" && (
-          <h2 className="text-[26px] font-bold leading-tight tracking-tight text-fg">{title}</h2>
-        )}
-        <p className={`text-[13.5px] text-muted ${mode === "live" ? "" : "mt-1.5"}`}>
-          {asked.length} question{asked.length === 1 ? "" : "s"}
-          {answered > 0 && ` · ${answered} answered`}
-          {asked.some((f) => f.required) && ` · questions marked * are required`}
-        </p>
-      </header>
+      {/* With a progress bar the count goes, and on the live page the
+          count was all this header held — so no header at all while the
+          bar is still waiting for a second question, rather than an
+          empty 20px box above question one. */}
+      {(!bar || tracking || mode !== "live") && (
+        <header className="mt-5">
+          {mode !== "live" && (
+            <h2 className="text-[26px] font-bold leading-tight tracking-tight text-fg">{title}</h2>
+          )}
+          {bar ? (
+            tracking && (
+              <Progress done={progress.done} total={progress.total} className={mode === "live" ? "" : "mt-2"} />
+            )
+          ) : (
+            <p className={`text-[13.5px] text-muted ${mode === "live" ? "" : "mt-1.5"}`}>
+              {asked.length} question{asked.length === 1 ? "" : "s"}
+              {answered > 0 && ` · ${answered} answered`}
+              {asked.some((f) => f.required) && ` · questions marked * are required`}
+            </p>
+          )}
+        </header>
+      )}
 
       {tried && gaps.length > 0 && (
         <div role="alert" className="mt-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3">
@@ -310,17 +372,10 @@ export function FormFillView({
         </div>
       )}
 
-      {gateBlocked && (
-        <div role="alert" className="mt-4 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-4">
-          <p className="flex items-center gap-2 text-[13.5px] font-bold text-amber-600">
-            <AlertTriangle size={15} /> We can&apos;t place you on this list
-          </p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-amber-700">{BLOCKED_MESSAGE}</p>
-          <p className="mt-2 text-[12.5px] text-amber-700">
-            Correct the address above and press Continue again if you typed it wrong.
-          </p>
-        </div>
-      )}
+      {/* presentation.gateInline draws this under the address instead —
+          see Question. The submit-time refusal below stays up here in
+          both: by then the address may be several questions away. */}
+      {gateBlocked && !gateInline && <GateRefusal />}
 
       {stoppedByNote && (
         <p className="mt-4 rounded-lg border border-line bg-elevated/60 p-3 text-[12.5px] leading-relaxed text-muted">
@@ -365,6 +420,9 @@ export function FormFillView({
             answers={answers}
             set={set}
             flagged={tried && gapKeys.has(f.key)}
+            gateBlocked={gateInline && gateBlocked && f.key === ELIGIBILITY_EMAIL_KEY}
+            // Refused at Submit, nothing is left to open: no Continue to press again.
+            gateRetry={more > 0 ? "continue" : "submit"}
           />
         ))}
         {shown.length === 0 && (
@@ -381,12 +439,11 @@ export function FormFillView({
       {/* Nothing further to open, but something still to answer. Said
           as a prompt rather than as a Submit button that refuses:
           a disabled control with no explanation is worse than a
-          sentence naming the question. */}
-      {more === 0 && gaps.length > 0 && !stopped && (
+          sentence naming the question. Which sentence, and when
+          presentation.hideWaitingHint drops it, is gapPrompt's to say. */}
+      {prompt !== null && (
         <p role="status" className="mt-4 rounded-lg border border-line bg-elevated/60 p-3 text-[12.5px] leading-relaxed text-muted">
-          {gaps.length === 1
-            ? `Answer “${gaps[0].label}” to carry on.`
-            : `${gaps.length} questions still need an answer.`}
+          {prompt}
         </p>
       )}
 
@@ -395,7 +452,7 @@ export function FormFillView({
           <button
             className="rounded-lg bg-brand px-5 py-2.5 text-[13.5px] font-bold text-white transition-all hover:brightness-110 disabled:opacity-40"
             disabled={waiting || gateChecking}
-            aria-describedby="continue-hint"
+            aria-describedby={hint === null ? undefined : "continue-hint"}
             onClick={async () => {
               /*
                * The roster check happens HERE, at the address, rather
@@ -431,11 +488,11 @@ export function FormFillView({
           >
             {gateChecking ? "Checking…" : "Continue"}
           </button>
-          <span id="continue-hint" className="text-[12px] text-subtle">
-            {waiting
-              ? "Answer this one to carry on."
-              : `${more} more question${more === 1 ? "" : "s"} after this`}
-          </span>
+          {hint !== null && (
+            <span id="continue-hint" className="text-[12px] text-subtle">
+              {hint}
+            </span>
+          )}
           {/* For the person who wants to see what they are in for
               before they start — a progress bar is a promise, and some
               people would rather read the contract. */}
@@ -455,7 +512,7 @@ export function FormFillView({
           submitted have no business above that button. */}
       {shown.length > 0 && ended && !stopped && stage === "registration" && doc.submitNote && (
         <p className="mt-5 rounded-xl border border-line bg-elevated/60 p-4 text-[12.5px] leading-relaxed text-muted">
-          <Linked text={doc.submitNote} />
+          {look?.richText ? <RichText text={doc.submitNote} /> : <Linked text={doc.submitNote} />}
         </p>
       )}
 
@@ -476,7 +533,15 @@ export function FormFillView({
               const r: { ok: boolean; problems?: string[]; receipt?: Receipt } =
                 await submit(answers).catch(() => ({ ok: false, problems: ["Could not reach the server."] }));
               setSending(false);
-              if (r.ok) { setSent(true); setDone(true); setReceipt(r.receipt); } else setRefused(r.problems ?? ["It was not accepted."]);
+              if (r.ok) { setSent(true); setDone(true); setReceipt(r.receipt); }
+              else {
+                const said = refusalPlacement(r.problems, {
+                  gateInline,
+                  emailOnScreen: visible.some((f) => f.key === ELIGIBILITY_EMAIL_KEY),
+                });
+                if (said.gate) { gateFocus.current = true; setGateBlocked(true); }
+                setRefused(said.refused);
+              }
             }}
           >
             {sending
@@ -506,13 +571,26 @@ export function FormFillView({
   );
 }
 
-function Question({
-  doc, field: f, index, answers, set, flagged,
+/**
+ * One question, as the form draws it.
+ *
+ * Exported because a static render of the whole form only ever sees its
+ * first paint, and the things a presentation moves — the refusal under
+ * the address, the note under a ranking — only exist after somebody has
+ * typed or clicked.
+ */
+export function Question({
+  doc, field: f, index, answers, set, flagged, gateBlocked = false, gateRetry = "continue",
 }: {
   doc: BuiltForm; field: FormField; index: number;
   answers: Answers; set: (k: string, v: Answers[string]) => void; flagged: boolean;
+  /** The roster refused this address, said here rather than above the form (presentation.gateInline). */
+  gateBlocked?: boolean;
+  /** What brings the form back once the address is corrected: Continue, or Submit when nothing is left to open. */
+  gateRetry?: "continue" | "submit";
 }) {
   const opts = optionsFor(doc, f);
+  const rich = doc.presentation?.richText === true;
   const arr = Array.isArray(answers[f.key]) ? (answers[f.key] as string[]) : [];
   const clashing = (f.slots.length > 0 || (f.cannotCombine?.length ?? 0) > 0)
     ? chosenConflicts(f.slots, arr, f.cannotCombine ?? [])
@@ -554,7 +632,7 @@ function Question({
         <p className="text-[14px] font-semibold leading-snug text-fg">{f.label}</p>
         {f.help && (
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-            <Linked text={f.help} />
+            {rich ? <RichText text={f.help} gap="mt-1.5" /> : <Linked text={f.help} />}
           </p>
         )}
       </div>
@@ -574,7 +652,11 @@ function Question({
           </span>
           {/* Under the question, above the answer — it is guidance for
               answering, not a footnote about what you already did. */}
-          {f.help && <span className="mt-1 block text-[12.5px] leading-relaxed text-muted">{f.help}</span>}
+          {f.help && (
+            <span className="mt-1 block text-[12.5px] leading-relaxed text-muted">
+              {rich ? <RichText text={f.help} gap="mt-1.5" /> : f.help}
+            </span>
+          )}
         </label>
       )}
 
@@ -591,7 +673,11 @@ function Question({
             <span className="block text-[14px] font-semibold leading-snug text-fg">
               {f.label}{f.required && <span className="ml-1 text-brand-500">*</span>}
             </span>
-            {f.help && <span className="mt-1.5 block text-[12.5px] leading-relaxed text-muted">{f.help}</span>}
+            {f.help && (
+              <span className="mt-1.5 block text-[12.5px] leading-relaxed text-muted">
+                {rich ? <RichText text={f.help} gap="mt-1.5" /> : f.help}
+              </span>
+            )}
           </span>
         </label>
       ) : f.type === "yesno" ? (
@@ -645,7 +731,7 @@ function Question({
         </select>
       ) : f.type === "multi" && f.slots.length > 0 ? (
         <>
-          <SessionCalendar field={f} chosen={arr} onToggle={pickMulti} />
+          <SessionCalendar field={f} chosen={arr} onToggle={pickMulti} hideHint={doc.presentation?.hideCalendarHint} />
           <RankedChoices
             chosen={arr}
             slots={f.slots}
@@ -655,7 +741,11 @@ function Question({
                 ? `That is all ${cap}. To change your mind, click one again to take it back.`
                 : arr.length === 1
                   ? `Pick another and it becomes your 2nd choice.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`
-                  : `This is the order we go by when a room is oversubscribed.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`
+                  : doc.presentation?.hideRankNote
+                    // How rooms are filled is the question's to say; what
+                    // is left of a cap is still news.
+                    ? cap ? `You can choose ${cap - arr.length} more.` : undefined
+                    : `This is the order we go by when a room is oversubscribed.${cap ? ` You can choose ${cap - arr.length} more.` : ""}`
             }
           />
           {/* With no cap on how many may be chosen, this is the ONLY
@@ -730,12 +820,18 @@ function Question({
             type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "email" ? "email" : f.type === "phone" ? "tel" : "text"}
             maxLength={f.key === "postcode" ? 3 : undefined}
             autoCapitalize={f.key === "postcode" ? "characters" : undefined}
+            aria-describedby={gateBlocked ? GATE_REFUSAL_ID : undefined}
             value={none ? "" : String(answers[f.key] ?? "")}
             onChange={(e) => set(f.key, e.target.value)}
           />
           <NoneOption field={f} answers={answers} set={set} />
         </>
       )}
+
+      {/* Under the address it is about, inside this question's own block
+          rather than as a row of the list — a sibling there would draw a
+          divider and read as a question of its own. */}
+      {gateBlocked && <GateRefusal id={GATE_REFUSAL_ID} className="mt-3" retry={gateRetry} />}
     </div>
   );
 }
@@ -764,6 +860,153 @@ function NoneOption({
       />
       <span className={`text-[12.5px] ${on ? "font-semibold text-fg" : "text-muted"}`}>{f.noneLabel}</span>
     </label>
+  );
+}
+
+/** What the address field names as its description while it is refused. */
+const GATE_REFUSAL_ID = "eligibility-refusal";
+
+/**
+ * "We can't place you on this list" — one box, wherever it is drawn.
+ *
+ * Above the questions on every form that has not said otherwise; under
+ * the address on one with presentation.gateInline, because a message
+ * about what you typed reads as being about something else when it sits
+ * a screen above where you typed it. "The address above" is true in
+ * both places.
+ */
+function GateRefusal({
+  id, className = "mt-4", retry = "continue",
+}: { id?: string; className?: string; retry?: "continue" | "submit" }) {
+  return (
+    <div id={id} role="alert" className={`${className} rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-4`}>
+      <p className="flex items-center gap-2 text-[13.5px] font-bold text-amber-600">
+        <AlertTriangle size={15} /> We can&apos;t place you on this list
+      </p>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-amber-700">{BLOCKED_MESSAGE}</p>
+      <p className="mt-2 text-[12.5px] text-amber-700">
+        {retry === "submit"
+          // Refused at Submit after "Show all": there is no Continue on
+          // screen, and correcting the address brings Submit back.
+          ? "Correct the address above and submit again if you typed it wrong."
+          : "Correct the address above and press Continue again if you typed it wrong."}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The line under a form with nothing left to open and something left to
+ * answer — `null` for no line.
+ *
+ * With presentation.hideWaitingHint the one-gap sentence goes only when
+ * that question is the last one open, starred directly above where the
+ * line would sit (question one on first paint). Anywhere else it is the
+ * one thing saying why there is no Submit: a required follow-up that
+ * opened mid-form ("Other — please describe"), or a question skipped
+ * after "Show all". Without it the page just ends.
+ *
+ * Exported so those states can be tested; a static render only ever
+ * reaches first paint.
+ */
+export function gapPrompt({
+  more, gaps, stopped, hideWaitingHint, lastKey,
+}: {
+  more: number; gaps: FormField[]; stopped: boolean; hideWaitingHint: boolean;
+  /** The deepest open field — shown[open - 1]. */
+  lastKey: string | undefined;
+}): string | null {
+  if (more > 0 || gaps.length === 0 || stopped) return null;
+  if (hideWaitingHint && gaps.length === 1 && gaps[0].key === lastKey) return null;
+  return gaps.length === 1
+    ? `Answer “${gaps[0].label}” to carry on.`
+    : `${gaps.length} questions still need an answer.`;
+}
+
+/**
+ * How far from Submit, in questions — for presentation.progress "bar".
+ *
+ * A question is done when it has an answer, or when it is optional and
+ * the registrant is already past it: something below it is open, or
+ * nothing is left to open. A travel question left blank is a decision,
+ * not a debt. Counting it as owed put the bar at 50–75% beside "Submit
+ * registration".
+ *
+ * Full exactly when the form can be submitted, and never before: an
+ * answered question can sit below a branch that opened above it, and a
+ * full bar over a Continue button would be the bar lying the other way.
+ */
+export function progressToSubmit({
+  shown, open, answered, ended,
+}: {
+  shown: FormField[]; open: number; answered: (f: FormField) => boolean;
+  /** Nothing to open, nothing required left: Submit is on screen. */
+  ended: boolean;
+}): { done: number; total: number } {
+  const asked = shown.filter((f) => f.type !== "note");
+  if (ended) return { done: asked.length, total: asked.length };
+  const everythingOpen = open >= shown.length;
+  const done = asked.filter(
+    (f) => answered(f) || (!f.required && (everythingOpen || shown.indexOf(f) < open - 1)),
+  ).length;
+  return { done: Math.min(done, Math.max(0, asked.length - 1)), total: asked.length };
+}
+
+/**
+ * Where a refusal from the server is said.
+ *
+ * With presentation.gateInline, "not on the list" goes under the address
+ * it is about — where the Continue check puts it. "Show all" skips that
+ * check and a failed check lets the person carry on, so the server's
+ * refusal at Submit is often the first they hear of it, and it used to
+ * land above question one. Only while the address is on screen: a
+ * message under a question nobody can see is no message. Anything else
+ * the server said stays in the box above the form.
+ */
+export function refusalPlacement(
+  problems: string[] | undefined,
+  { gateInline, emailOnScreen }: { gateInline: boolean; emailOnScreen: boolean },
+): { gate: boolean; refused: string[] } {
+  const said = problems ?? ["It was not accepted."];
+  if (!gateInline || !emailOnScreen || !said.includes(BLOCKED_MESSAGE)) return { gate: false, refused: said };
+  return { gate: true, refused: said.filter((p) => p !== BLOCKED_MESSAGE) };
+}
+
+/**
+ * How far through, drawn — for a form with presentation.progress "bar".
+ *
+ * Counted by progressToSubmit over the questions on screen now, so the
+ * total moves when a branch opens (a Yes to travel adds the postcode):
+ * "3 of 10 done" after "3 of 9" is true. Full means Submit is there, and
+ * the label says so rather than "10 of 10". Clamped anyway: a bar past
+ * its end or NaN in the label is the kind of wrong nobody forgives a
+ * progress bar.
+ *
+ * Exported for the same reason as gapPrompt: the full bar is never on a
+ * first paint.
+ */
+export function Progress({ done: counted, total, className = "" }: { done: number; total: number; className?: string }) {
+  const of = Math.max(1, total);
+  const done = Math.min(of, Math.max(0, counted));
+  return (
+    <div className={`flex items-center gap-3 ${className}`}>
+      <span id="form-progress" className="shrink-0 text-[12.5px] tabular-nums text-muted">
+        {done === of ? "Ready to submit" : `${done} of ${of} done`}
+      </span>
+      <div
+        role="progressbar"
+        aria-labelledby="form-progress"
+        aria-valuemin={0}
+        aria-valuemax={of}
+        aria-valuenow={done}
+        className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-elevated"
+      >
+        <div
+          className="h-full rounded-full bg-brand-500 transition-[width] duration-300 motion-reduce:transition-none"
+          style={{ width: `${Math.round((done / of) * 100)}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -808,7 +1051,7 @@ function Linked({ text }: { text: string }) {
  * nothing else produces a fortnight of people wondering whether it went
  * through, and then registering again.
  */
-function Confirmation({
+export function Confirmation({
   title, answers, doc, receipt, mode, onAgain,
 }: {
   title: string;
@@ -865,12 +1108,16 @@ function Confirmation({
    * so changing who sees it is one edit in the builder and both places
    * move together.
    */
+  const look = doc.presentation;
+  // A labelled link is still somewhere to go. `hasLink` alone reads the
+  // markup of "[Luma](https://…)" rather than the link it makes.
+  const rich = look?.richText === true;
   const carried = visibleFields(doc, answers).filter(
-    (f) => f.type === "note" && f.help !== undefined && hasLink(f.help),
+    (f) => f.type === "note" && f.help !== undefined && (rich ? hasRichLink(f.help) : hasLink(f.help)),
   );
 
   return (
-    <div className={`${FORM_COLUMN} mt-5 pb-16`}>
+    <div className={`${FORM_COLUMN} mt-5 pb-16${look?.theme === "site" ? " bhn-site" : ""}`}>
       {/*
         ONE TEXT COLUMN.
         The tick hangs in the margin and everything else — the sentence,
@@ -903,10 +1150,19 @@ function Confirmation({
           {!test && (
             <div className="mt-4 rounded-xl border border-line bg-card p-4">
               <p className="text-[13px] leading-relaxed text-fg">
-                <strong>We will come back to you within two to three weeks.</strong> Places are limited
-                and every registration is reviewed together rather than as it arrives, so it takes that
-                long. We will write to you either way — whether or not we can offer you a place. If you
-                have not heard after three weeks, reply to the email and we will chase it.
+                {look?.confirmationNote ? (
+                  // The form's own timeline. An intro that promises offers in
+                  // the last week of September and "two to three weeks" one
+                  // screen later cannot both be true.
+                  <RichText text={look.confirmationNote} />
+                ) : (
+                  <>
+                    <strong>We will come back to you within two to three weeks.</strong> Places are limited
+                    and every registration is reviewed together rather than as it arrives, so it takes that
+                    long. We will write to you either way — whether or not we can offer you a place. If you
+                    have not heard after three weeks, reply to the email and we will chase it.
+                  </>
+                )}
               </p>
             </div>
           )}
@@ -960,7 +1216,7 @@ function Confirmation({
             note={
               conflicts.length > 0 ? (
                 <>
-                  This is the order we go by when a room is oversubscribed.{" "}
+                  {!look?.hideRankNote && "This is the order we go by when a room is oversubscribed. "}
                   <span className="font-semibold text-red-600">
                     {conflicts.length === 1
                       ? "Two of these cannot both be attended"
@@ -979,7 +1235,7 @@ function Confirmation({
                     . There is nothing for you to do; we will come back to you about it.
                   </span>
                 </>
-              ) : (
+              ) : look?.hideRankNote ? undefined : (
                 "This is the order we go by when a room is oversubscribed."
               )
             }
@@ -992,7 +1248,7 @@ function Confirmation({
           <p className="text-[14px] font-semibold leading-snug text-fg">{f.label}</p>
           {f.help && (
             <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-              <Linked text={f.help} />
+              {rich ? <RichText text={f.help} gap="mt-1.5" /> : <Linked text={f.help} />}
             </p>
           )}
         </section>

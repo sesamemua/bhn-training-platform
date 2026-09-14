@@ -149,6 +149,45 @@ test("an option string round-trips back to its session", () => {
   for (const s of SESSIONS) assert.equal(sessionForOption(optionLabel(s))?.slug, s.slug);
 });
 
+/* ── Communication Chameleon, 16:00 → 16:30 ──────────────────────── */
+
+const V1_CHAMELEON = "Tue 27 Oct · 13:00–16:00 · Communication Chameleon";
+const V2_CHAMELEON = "Tue 27 Oct · 13:00–16:30 · Communication Chameleon";
+
+test("Communication Chameleon runs to 16:30", () => {
+  const s = bySlug("communication-chameleon-2026");
+  assert.equal(s.start, "13:00");
+  assert.equal(s.end, "16:30");
+  assert.equal(optionLabel(s), V2_CHAMELEON);
+  assert.ok(SESSION_OPTIONS.includes(V2_CHAMELEON));
+  assert.ok(!SESSION_OPTIONS.includes(V1_CHAMELEON), "the old string is an alias, not an offered option");
+});
+
+test("the frozen v1 form's 16:00 string still makes a Chameleon seat", () => {
+  // Seats are made by EXACT match. The v1 form cannot change, so without
+  // the alias every new v1 registration that picks Chameleon would get
+  // no booking — and nothing would say so.
+  assert.equal(sessionForOption(V1_CHAMELEON)?.slug, "communication-chameleon-2026");
+  assert.equal(sessionForOption(V2_CHAMELEON)?.slug, "communication-chameleon-2026");
+});
+
+test("an alias is exact, never a near miss", () => {
+  assert.equal(sessionForOption("Tue 27 Oct · 13:00–16:15 · Communication Chameleon"), undefined);
+  assert.equal(sessionForOption(V1_CHAMELEON.toLowerCase()), undefined);
+  assert.equal(sessionForOption("Communication Chameleon"), undefined);
+});
+
+test("the Chameleon Workshop row ends at 16:30 Toronto, 20:30 UTC", () => {
+  const row = workshopRows().find((r) => r.slug === "communication-chameleon-2026")!;
+  assert.equal(row.startDateTime.toISOString(), "2026-10-27T17:00:00.000Z");
+  assert.equal(row.endDateTime.toISOString(), "2026-10-27T20:30:00.000Z");
+});
+
+test("the Tuesday clash is now the whole afternoon", () => {
+  const tue = clashPairs().find((c) => c.label.startsWith("Tue 27 Oct"))!;
+  assert.equal(tue.label, "Tue 27 Oct · 13:00–16:30");
+});
+
 test("every slot matches an offered option exactly", () => {
   // The calendar view finds a slot by string equality. One stray
   // character and a session silently stops being drawn.

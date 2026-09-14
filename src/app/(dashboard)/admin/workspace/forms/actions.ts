@@ -9,9 +9,13 @@
  * what is already there should.
  */
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { getSession, requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BuiltFormSchema, parseForm, type BuiltForm, type DataSource } from "@/lib/formbuilder/types";
+import { copyForVersion, copyProblem, nextVersionSlug, versionNumber, versionedTitle } from "@/lib/formbuilder/versions";
+import { REGISTRATION_FORM_SLUGS } from "@/lib/allocation/symposium-2026";
+import { SITE_THEMED_FORM_SLUGS } from "@/lib/formbuilder/site-theme";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
 import { makeSeats } from "@/lib/formbuilder/seats";
@@ -80,6 +84,98 @@ export async function deleteForm(id: string) {
   await prisma.eventForm.delete({ where: { id } });
   revalidatePath(PAGE);
   return { ok: true as const, deactivated: false, submissions: 0 };
+}
+
+/**
+ * Open a closed form to the public.
+ *
+ * Open only. A new version starts closed and this is how it comes to
+ * take registrations. There is deliberately no close beside it: one
+ * mis-click there would shut the live registration form, and Delete
+ * already closes a form that has registrations instead of deleting it.
+ */
+export async function openForm(id: string) {
+  await requireAdmin();
+  const form = await prisma.eventForm.findUnique({ where: { id }, select: { slug: true } });
+  if (!form) return { ok: false as const, problem: "That form no longer exists." };
+
+  await prisma.eventForm.update({ where: { id }, data: { active: true } });
+  revalidatePath(PAGE);
+  // The public page and the Training Week one both read `active`.
+  revalidatePath(`/apply/${form.slug}`);
+  revalidatePath("/admin/workspace/symposium-2026/registration");
+  return { ok: true as const, slug: form.slug };
+}
+
+/**
+ * Copy a form into a new version beside it.
+ *
+ * For changing a form people have already registered on without moving
+ * it under them. The copy takes the questions, logic, workflow and
+ * presentation. It never takes the registrations, and it starts CLOSED:
+ * an open draft is a draft somebody can register on while it is still
+ * being changed.
+ */
+export async function duplicateFormAsVersion(id: string) {
+  await requireAdmin();
+  const source = await prisma.eventForm.findUnique({
+    where: { id },
+    select: { slug: true, title: true, description: true, fields: true },
+  });
+  if (!source) return { ok: false as const, problem: "That form no longer exists." };
+
+  // Through the same gates as a save, so what is stored is what the
+  // builder showed for the original.
+  const doc = copyForVersion(source.fields);
+  if (!doc) return { ok: false as const, problem: "That form could not be read." };
+  // A copy quietly missing questions is worse than no copy: it is
+  // reported as made. Old-editor forms read as empty, so they stop here too.
+  const unreadable = copyProblem(source.fields, doc);
+  if (unreadable) return { ok: false as const, problem: unreadable };
+
+  // Slugs code has already claimed count as taken before their row
+  // exists. A plain copy of v1 must not land on the -v2 that the site
+  // theme, the pooled registrant sheet and the v2 build script expect.
+  const taken = [
+    ...(await prisma.eventForm.findMany({ select: { slug: true } })).map((f) => f.slug),
+    ...REGISTRATION_FORM_SLUGS,
+    ...SITE_THEMED_FORM_SLUGS,
+  ];
+  const slug = nextVersionSlug(source.slug, taken);
+
+  try {
+    const row = await prisma.eventForm.create({
+      data: {
+        slug,
+        title: versionedTitle(source.title, versionNumber(slug)),
+        description: source.description,
+        fields: doc as unknown as object,
+        active: false,
+      },
+      select: { id: true, slug: true, title: true, active: true, fields: true, updatedAt: true },
+    });
+    revalidatePath(PAGE);
+    // The shape loadForms returns, so the picker can select the copy
+    // the moment this answers rather than after the page refreshes.
+    return {
+      ok: true as const,
+      form: {
+        id: row.id,
+        slug: row.slug,
+        title: row.title,
+        active: row.active,
+        doc: parseForm(row.fields),
+        updatedAt: row.updatedAt.toISOString(),
+      },
+    };
+  } catch (e) {
+    // Two people duplicating the same form at once reach for the same
+    // slug, and the unique index lets one of them have it.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { ok: false as const, problem: "Another version was made at the same moment. Try again." };
+    }
+    throw e;
+  }
 }
 
 /**

@@ -156,6 +156,14 @@ export const FieldSchema = z.object({
     day: z.string().max(10),
     start: z.string().max(5),
     end: z.string().max(5),
+    /**
+     * How many people the room holds, said on the calendar cell.
+     *
+     * On the slot, not read from the Workshop row: the form is what the
+     * registrant sees, and a number that appears on one version of a
+     * form must not start appearing on another because a table changed.
+     */
+    capacity: z.number().int().min(1).max(1000).optional(),
   })).max(200).default([]),
   /** How many of a clashing pair will actually be granted. */
   approveFromClash: z.number().int().min(1).max(10).optional(),
@@ -231,6 +239,52 @@ export type WorkflowStep = z.infer<typeof StepSchema>;
 /** The cap on the submit terms, in one place — schema, editor, reader. */
 export const SUBMIT_NOTE_MAX = 2000;
 
+/**
+ * How one form looks and speaks, as opposed to what it asks.
+ *
+ * Every key is optional and absent means "as every other form does it",
+ * so a form without this object renders exactly as before. That is the
+ * point: a second version of a live form can change its skin and its
+ * wording around the questions without the first version — which people
+ * have already registered on — moving at all.
+ *
+ * On the document rather than in code keyed by slug, so a duplicated
+ * form carries its presentation with it.
+ */
+export const PRESENTATION_THEMES = ["site"] as const;
+export type PresentationTheme = (typeof PRESENTATION_THEMES)[number];
+
+export const PresentationSchema = z.object({
+  /** "site": the biohubnet.ca look — light, Libre Baskerville + IBM Plex. */
+  theme: z.enum(PRESENTATION_THEMES).optional(),
+  /** Replaces the page title in the header. EventForm.title still names the form. */
+  heading: z.string().max(160).optional(),
+  /** A line under the heading — dates and place. */
+  subheading: z.string().max(160).optional(),
+  /** Paragraphs under the heading, in RichText syntax. Replaces the description. */
+  intro: z.array(z.string().max(1000)).max(10).optional(),
+  /** Help, notes and the submit note read as RichText: paragraphs, [label](url), **bold**. */
+  richText: z.boolean().optional(),
+  /** The "we can't place you" message sits under the email question, not above the form. */
+  gateInline: z.boolean().optional(),
+  /** No "Height is how long a session runs…" line under the calendar. */
+  hideCalendarHint: z.boolean().optional(),
+  /** No "This is the order we go by when a room is oversubscribed." */
+  hideRankNote: z.boolean().optional(),
+  /** "bar": a progress tracker instead of the question counter and "N more questions after this". */
+  progress: z.enum(["bar"]).optional(),
+  /** No "Answer this one to carry on." */
+  hideWaitingHint: z.boolean().optional(),
+  /**
+   * What the thank-you screen says happens next, in RichText syntax.
+   * Replaces the default "within two to three weeks" paragraph, which a
+   * form that promises a date in its intro must not contradict a screen
+   * later.
+   */
+  confirmationNote: z.string().max(1000).optional(),
+});
+export type Presentation = z.infer<typeof PresentationSchema>;
+
 export const BuiltFormSchema = z.object({
   /**
    * Terms carried by the act of submitting, shown beside the button.
@@ -242,6 +296,7 @@ export const BuiltFormSchema = z.object({
    * pretending to be a choice.
    */
   submitNote: z.string().max(SUBMIT_NOTE_MAX).optional(),
+  presentation: PresentationSchema.optional(),
   version: z.literal(1).default(1),
   fields: z.array(FieldSchema).max(200).default([]),
   sources: z.array(DataSourceSchema).max(20).default([]),
@@ -291,8 +346,21 @@ export function parseForm(raw: unknown): BuiltForm {
   const submitNote = typeof shallow.submitNote === "string"
     ? shallow.submitNote.slice(0, SUBMIT_NOTE_MAX)
     : undefined;
+  // Same rule, same reason. A malformed presentation is dropped whole
+  // rather than half-applied: a form in half a skin is worse than one in
+  // the default.
+  const parsedPresentation = shallow.presentation === undefined
+    ? undefined
+    : PresentationSchema.safeParse(shallow.presentation);
+  const presentation = parsedPresentation?.success && Object.keys(parsedPresentation.data).length > 0
+    ? parsedPresentation.data
+    : undefined;
 
-  return { version: 1, fields, sources, steps, ...(submitNote ? { submitNote } : {}) };
+  return {
+    version: 1, fields, sources, steps,
+    ...(submitNote ? { submitNote } : {}),
+    ...(presentation ? { presentation } : {}),
+  };
 }
 
 function safeJson(raw: string): unknown {

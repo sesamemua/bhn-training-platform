@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { FORCED_THEME_SCRIPT, forcedThemeFor, PUBLIC_FORM_THEME } from "@/lib/formbuilder/site-theme";
 
 /**
  * Theme registry. Each entry has:
@@ -145,12 +146,13 @@ const ThemeContext = createContext<ThemeContextValue>({
 const STORAGE_KEY = "bhn-theme";
 
 /** The theme every public application form renders in, whatever the
- *  visitor's OS or saved preference says. */
-export const FORCED_PUBLIC_THEME = "hitech";
+ *  visitor's OS or saved preference says — except the forms listed in
+ *  src/lib/formbuilder/site-theme.ts, which wear the biohubnet.ca skin. */
+export const FORCED_PUBLIC_THEME = PUBLIC_FORM_THEME;
 
-/** Surfaces an outside applicant sees, which are always FORCED_PUBLIC_THEME. */
+/** Surfaces an outside applicant sees, whose theme is never theirs to pick. */
 export function isForcedThemeRoute(pathname: string): boolean {
-  return pathname.startsWith("/apply/");
+  return forcedThemeFor(pathname) !== null;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -163,9 +165,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
      * effect used to overwrite that from localStorage a moment later, so
      * a staff member with a saved light theme saw the applicant form in
      * light — the script won, then lost. Bail before touching anything.
+     * Same lookup as the script, so the two cannot pin one page to two
+     * different themes.
      */
-    if (isForcedThemeRoute(window.location.pathname)) {
-      document.documentElement.dataset.theme = FORCED_PUBLIC_THEME;
+    const forced = forcedThemeFor(window.location.pathname);
+    if (forced) {
+      document.documentElement.dataset.theme = forced;
       return;
     }
     const saved = (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY)) as ThemeId | null;
@@ -256,8 +261,13 @@ export function ThemeScript() {
    * paint: setting it later would flash light and then correct itself.
    * A saved theme is deliberately read but not applied — staff keep
    * their choice everywhere else in the same browser.
+   *
+   * One exception, still forced: a form in SITE_THEMED_FORM_SLUGS is
+   * pinned to the light biohubnet.ca skin instead, for the same reasons
+   * and just as regardless of OS dark mode. The lookup is serialised
+   * from site-theme.ts rather than retyped here.
    */
-  const code = `(function(){try{var forced=location.pathname.indexOf('/apply/')===0;if(forced){document.documentElement.setAttribute('data-theme','${FORCED_PUBLIC_THEME}');return;}var allow=${allowedJson};var s=localStorage.getItem('${STORAGE_KEY}');if(s==='dark'){s='hitech';try{localStorage.setItem('${STORAGE_KEY}','hitech');}catch(_){}}var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(s&&allow.indexOf(s)>=0)?s:(d?'hitech':'light');if(s&&allow.indexOf(s)<0){try{localStorage.removeItem('${STORAGE_KEY}');}catch(_){}}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+  const code = `(function(){try{var forced=(${FORCED_THEME_SCRIPT})(location.pathname);if(forced){document.documentElement.setAttribute('data-theme',forced);return;}var allow=${allowedJson};var s=localStorage.getItem('${STORAGE_KEY}');if(s==='dark'){s='hitech';try{localStorage.setItem('${STORAGE_KEY}','hitech');}catch(_){}}var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(s&&allow.indexOf(s)>=0)?s:(d?'hitech':'light');if(s&&allow.indexOf(s)<0){try{localStorage.removeItem('${STORAGE_KEY}');}catch(_){}}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
   return <script dangerouslySetInnerHTML={{ __html: code }} />;
 }
 

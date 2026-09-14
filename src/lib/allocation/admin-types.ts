@@ -128,6 +128,20 @@ export interface SubmissionRow {
   at: string;
   /** Filed from the admin preview rather than by a registrant. */
   isTest: boolean;
+  /**
+   * Which version of the registration form it came in on.
+   *
+   * The two ask the same questions in different words, and store
+   * different wording for the same answer — "Yes — accepted into ENGAGE
+   * or EXPERIENCE" on v1 is "I have been accepted into ENGAGE or
+   * EXPERIENCE program" on v2 — so a coordinator reading a status needs
+   * to know which vocabulary it is in.
+   *
+   * "v1", "v2", … — versionLabel of the form's slug. A string rather
+   * than a closed union: a later version made with Duplicate pools here
+   * too, and must be labelled as itself rather than as v1.
+   */
+  form: string;
   name: string;
   email: string;
   /** Their answer to question one, verbatim. */

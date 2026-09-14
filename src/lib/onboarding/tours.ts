@@ -30,9 +30,30 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.07a";
+export const TOUR_VERSION = "2026.10.08a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "forms.duplicate-as-version",
+    title: "Change a live form on a new version",
+    body: "**Duplicate as new version** copies the open form — questions, logic, workflow, calendar and the page's look — to a new link ending **-v2**. Registrations stay with the original, and the copy **starts closed**, so nobody registers on it while you are still editing. Check it in **Preview**, then press **Open registration** when it is ready; the original does not move.",
+    path: "/admin/workspace/forms",
+    selector: "[data-form-duplicate-version]",
+    placement: "bottom",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Forms", href: "/admin/workspace/forms" },
+    since: "2026.10.08a",
+  },
+  {
+    id: "training-admin.registration-v2",
+    title: "Training Week registration has a version 2",
+    body: "The registration form has a second version at **/apply/training-week-registration-2026-v2** — the biohubnet.ca look, clearer wording, a progress tracker and room sizes on the calendar. **Version 1 is unchanged** and keeps its registrations. Both arrive here together, and each registration carries a **v1** or **v2** badge saying which form it came in on.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the Dashboard", href: "/admin/workspace/training-admin" },
+    since: "2026.10.08a",
+  },
   {
     id: "workspace.script-editor-typing",
     title: "Every key types in the script editor",

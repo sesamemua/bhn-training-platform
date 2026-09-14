@@ -1,0 +1,470 @@
+{
+  "_note": "Snapshot of the LIVE v1 Training Week registration form (EventForm slug training-week-registration-2026) taken 2026-09-14. v1 is frozen; v2 is built from this. Do not edit.",
+  "slug": "training-week-registration-2026",
+  "title": "Training Week 2026 registration",
+  "description": "Training Week runs 26–28 October 2026 in Toronto: lab tours, Lunch & Learns, skills workshops and the innovation showcase. It is open to anyone already in a BioHubNet program — ENGAGE, EXPERIENCE, or having submitted an EQUIP application. Choose and rank the sessions you would like; places are confirmed by the team, and we will email you about a week beforehand. The Annual Symposium on 29 October is a separate registration.",
+  "fields": {
+    "steps": [
+      {
+        "id": "w_start",
+        "kind": "start",
+        "next": "w_trainee",
+        "when": [],
+        "label": "Registration opens"
+      },
+      {
+        "id": "w_trainee",
+        "kind": "check",
+        "next": "w_roster",
+        "when": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ],
+        "label": "Says they are a current trainee?",
+        "otherwise": "w_full"
+      },
+      {
+        "id": "w_roster",
+        "kind": "action",
+        "next": "w_full",
+        "note": "A match sets the confirmed-trainee status. Not being found does not stop the registration.",
+        "when": [],
+        "label": "Checked against the trainee roster"
+      },
+      {
+        "id": "w_full",
+        "kind": "check",
+        "next": "w_elig",
+        "when": [
+          {
+            "op": "answered",
+            "field": "sessions"
+          }
+        ],
+        "label": "Any chosen session full?",
+        "otherwise": "w_wait"
+      },
+      {
+        "id": "w_wait",
+        "kind": "action",
+        "next": "w_elig",
+        "when": [],
+        "label": "Added to the waitlist"
+      },
+      {
+        "id": "w_elig",
+        "kind": "action",
+        "next": "w_eligible",
+        "when": [],
+        "label": "Checked against the eligibility sheet"
+      },
+      {
+        "id": "w_eligible",
+        "kind": "check",
+        "next": "w_seat",
+        "when": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ],
+        "label": "Eligible?",
+        "otherwise": "w_declined"
+      },
+      {
+        "id": "w_declined",
+        "kind": "end",
+        "when": [],
+        "label": "Declined, with a reason"
+      },
+      {
+        "id": "w_seat",
+        "kind": "action",
+        "next": "w_hold",
+        "note": "The seat is held from here. Nothing is asked of the registrant yet.",
+        "when": [],
+        "label": "Place approved, info pack emailed"
+      },
+      {
+        "id": "w_hold",
+        "kind": "action",
+        "next": "w_ask",
+        "note": "A quiet period. Approval is not attendance, and asking on the day someone is approved gets an answer about a session weeks away.",
+        "when": [],
+        "label": "Held until 7 days before the session"
+      },
+      {
+        "id": "w_ask",
+        "kind": "action",
+        "next": "w_stillcoming",
+        "note": "One send to everyone approved for that session, from Admin → Email. Each person is asked to confirm or say they cannot make it.",
+        "when": [],
+        "label": "Coordinator sends the confirmation email, in one batch"
+      },
+      {
+        "id": "w_stillcoming",
+        "kind": "check",
+        "next": "w_attends",
+        "when": [
+          {
+            "op": "is",
+            "field": "confirmed",
+            "value": "Yes"
+          }
+        ],
+        "label": "Said they can still make it?",
+        "otherwise": "w_released"
+      },
+      {
+        "id": "w_attends",
+        "kind": "end",
+        "when": [],
+        "label": "Attends"
+      },
+      {
+        "id": "w_released",
+        "kind": "end",
+        "when": [],
+        "label": "Seat released to the waitlist"
+      }
+    ],
+    "fields": [
+      {
+        "id": "f_trainee",
+        "key": "bhn_status",
+        "help": "Training Week is for people already in a BioHubNet program. Having a BioHubNet training platform account is not the same as being in a program. Submitting an EQUIP application counts, whether or not it was funded — applying is the qualification, not winning.",
+        "type": "choice",
+        "label": "Where do you stand with BioHubNet?",
+        "slots": [],
+        "stage": "registration",
+        "options": [
+          "Yes — accepted into ENGAGE or EXPERIENCE",
+          "Yes — I have previously submitted an EQUIP application",
+          "I have a training platform account but no program",
+          "I have no training platform account or BioHubNet program"
+        ],
+        "required": true,
+        "showWhen": []
+      },
+      {
+        "id": "f_needprog",
+        "key": "need_programme_note",
+        "help": "You already have a BioHubNet training platform account, which is what ENGAGE and EXPERIENCE need. Training Week places go to people in ENGAGE, EXPERIENCE or EQUIP, so apply to whichever program fits. EQUIP does not require a BioHubNet training platform account — you apply to it directly, and the application counts from the moment you submit it, funded or not. Read about all three at biohubnet.ca, then come back to this form.",
+        "type": "note",
+        "label": "One step first: join a program.",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "is",
+            "field": "bhn_status",
+            "value": "I have a training platform account but no program"
+          }
+        ],
+        "stopsHere": true
+      },
+      {
+        "id": "f_needacct",
+        "key": "need_account_note",
+        "help": "Create a BioHubNet training platform account, then apply to either ENGAGE or EXPERIENCE. Both programs run on the training platform, so the account comes first. Start at biohubnet.ca, then return to this form once you have applied.",
+        "type": "note",
+        "label": "Create an account, then apply to either ENGAGE or EXPERIENCE.",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "is",
+            "field": "bhn_status",
+            "value": "I have no training platform account or BioHubNet program"
+          }
+        ],
+        "stopsHere": true
+      },
+      {
+        "id": "f_temail",
+        "key": "trainee_email",
+        "help": "Your institutional email, or the secondary email registered with us. We check it against the BioHubNet programme lists — ENGAGE, EXPERIENCE, or an EQUIP application — and you need to be on one of them to register for Training Week. If we cannot find your address, the form will tell you at this question rather than at the end. Just been accepted, or applied under a different address? Email your programme coordinator and they can add you by hand — it takes a minute.",
+        "type": "email",
+        "label": "The email registered with BioHubNet",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": true,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ]
+      },
+      {
+        "id": "f_travel2h",
+        "key": "travel_over_2h",
+        "help": "Door to door, one way. If it is, you may qualify for travel assistance — we will write to you separately about what is available and what we need from you.",
+        "type": "yesno",
+        "label": "Is your travel time to Toronto more than 2 hours?",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ]
+      },
+      {
+        "id": "f_postcode",
+        "key": "postcode",
+        "help": "Enter only the first 3 characters, for example M5V. We use them only to estimate travel distance.",
+        "type": "short_text",
+        "label": "First 3 characters of your postal code",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          },
+          {
+            "op": "is",
+            "field": "travel_over_2h",
+            "value": "Yes"
+          }
+        ]
+      },
+      {
+        "id": "f_sessions",
+        "key": "sessions",
+        "help": "Pick as many as you want — one, or all of them — in order of preference. The number on each is your ranking, taken from the order you clicked, and it is what we go by when a room is oversubscribed. Sessions drawn side by side in the calendar are on at the SAME TIME: you can still choose both, and it is worth doing if you would take either, but only one of them can be approved. The two Monday tours are different: CCRM is in downtown Toronto and Catalent is in London, about two hours away, so you cannot do both even though the times do not overlap — choose the one you want.",
+        "type": "multi",
+        "label": "Choose and rank your sessions",
+        "slots": [
+          {
+            "day": "2026-10-26",
+            "end": "13:30",
+            "start": "11:00",
+            "option": "Mon 26 Oct · 11:00–13:30 · CCRM tour + Lunch & Learn"
+          },
+          {
+            "day": "2026-10-26",
+            "end": "16:30",
+            "start": "14:00",
+            "option": "Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn"
+          },
+          {
+            "day": "2026-10-26",
+            "end": "17:00",
+            "start": "09:30",
+            "option": "Mon 26 Oct · 09:30–17:00 · CL3 workshop"
+          },
+          {
+            "day": "2026-10-27",
+            "end": "16:00",
+            "start": "13:00",
+            "option": "Tue 27 Oct · 13:00–16:00 · Communication Chameleon"
+          },
+          {
+            "day": "2026-10-27",
+            "end": "16:30",
+            "start": "13:00",
+            "option": "Tue 27 Oct · 13:00–16:30 · Negotiation Skills"
+          },
+          {
+            "day": "2026-10-28",
+            "end": "14:00",
+            "start": "10:00",
+            "option": "Wed 28 Oct · 10:00–14:00 · BioHubNet innovation showcase"
+          }
+        ],
+        "stage": "registration",
+        "options": [
+          "Mon 26 Oct · 11:00–13:30 · CCRM tour + Lunch & Learn",
+          "Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn",
+          "Mon 26 Oct · 09:30–17:00 · CL3 workshop",
+          "Tue 27 Oct · 13:00–16:00 · Communication Chameleon",
+          "Tue 27 Oct · 13:00–16:30 · Negotiation Skills",
+          "Wed 28 Oct · 10:00–14:00 · BioHubNet innovation showcase"
+        ],
+        "required": true,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ],
+        "cannotCombine": [
+          {
+            "reason": "Catalent is in London, about two hours from the CCRM tour in downtown Toronto — pick one",
+            "options": [
+              "Mon 26 Oct · 11:00–13:30 · CCRM tour + Lunch & Learn",
+              "Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "f_symp",
+        "key": "symposium_signup",
+        "help": "The Symposium is a SEPARATE registration — signing up for Training Week does not sign you up for it. It runs on Thursday 29 October, the day after Training Week. Most people get more out of the week by doing both.",
+        "type": "choice",
+        "label": "Have you signed up for the 2026 Annual Symposium?",
+        "slots": [],
+        "stage": "registration",
+        "options": [
+          "Yes — already signed up",
+          "Not yet — I plan to",
+          "No — I am not attending the Symposium"
+        ],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ]
+      },
+      {
+        "id": "f_symp_link",
+        "key": "symposium_link_note",
+        "help": "No rush — it is a separate form and nothing here depends on it. When you want it: https://biohubnet.ca/2026-annual-symposium/",
+        "type": "note",
+        "label": "You can register for the Symposium whenever you are ready",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "is",
+            "field": "symposium_signup",
+            "value": "Not yet — I plan to"
+          }
+        ]
+      },
+      {
+        "id": "f_diet",
+        "key": "dietary",
+        "help": "Tick everything that applies, for the meals during Training Week, 26–28 October — the Lunch & Learns and the Tuesday pizza lunch. This does not cover the Symposium on 29 October: that is a separate registration and asks for its own.",
+        "type": "multi",
+        "label": "Dietary requirements for Training Week meals",
+        "slots": [],
+        "stage": "registration",
+        "options": [
+          "No dietary requirements",
+          "Vegetarian",
+          "Vegan",
+          "Halal",
+          "Kosher",
+          "Gluten-free / coeliac",
+          "Dairy-free / lactose intolerant",
+          "Nut allergy",
+          "Shellfish allergy",
+          "Something else — I will describe it"
+        ],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ],
+        "exclusiveOption": "No dietary requirements"
+      },
+      {
+        "id": "f_diet_other",
+        "key": "dietary_other",
+        "help": "What you can and cannot eat, and how serious it is. If it is an allergy, say so plainly — the caterer is told, and severe allergies are handled separately from preferences.",
+        "type": "long_text",
+        "label": "Tell us about it",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": true,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          },
+          {
+            "op": "contains",
+            "field": "dietary",
+            "value": "Something else — I will describe it"
+          }
+        ]
+      },
+      {
+        "id": "f_4uugo8n",
+        "key": "question",
+        "type": "short_text",
+        "label": "Accessibility requirements",
+        "slots": [],
+        "stage": "registration",
+        "options": [],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ],
+        "noneLabel": "N/A — none"
+      },
+      {
+        "id": "f_news",
+        "key": "newsletter_optin",
+        "type": "choice",
+        "label": "Send me the BioHubNet newsletter",
+        "slots": [],
+        "stage": "registration",
+        "options": [
+          "Yes, sign me up",
+          "No thanks",
+          "I am already subscribed"
+        ],
+        "required": false,
+        "showWhen": [
+          {
+            "op": "any of",
+            "field": "bhn_status",
+            "value": "Yes — accepted into ENGAGE or EXPERIENCE,Yes — I have previously submitted an EQUIP application"
+          }
+        ]
+      },
+      {
+        "id": "f_conf",
+        "key": "confirmed",
+        "help": "Asked by email once your place is approved, about 7 days before the session. Yes holds your seat. No releases it to the next person on the waitlist — which is the kind thing to do if you already know you cannot come. No reply by the cut-off is treated as No.",
+        "type": "yesno",
+        "label": "Can you still make it?",
+        "slots": [],
+        "stage": "confirmation",
+        "options": [],
+        "required": true,
+        "showWhen": []
+      }
+    ],
+    "sources": [],
+    "version": 1,
+    "submitNote": "I understand and consent to BioHubNet capturing my photographs and/or videos and using them for promotional purposes during or throughout the Annual Symposium"
+  }
+}

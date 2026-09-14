@@ -22,6 +22,22 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training Week registration v2: a new form beside the live one
+  {
+    title: "Training Week registration, version 2",
+    body: "Training Week registration has a second version at **/apply/training-week-registration-2026-v2**, built from the team's feedback on the first:\n\n- **It looks like biohubnet.ca.** Fonts, sizes and colours follow the 2026 Annual Symposium page, so the form reads as part of the site that links to it.\n- **Clearer wording** from the introduction down: the program-status, travel, dietary and postal-code questions, the instructions for ranking sessions, and the photography note beside Submit. The Symposium question links straight to its Luma registration.\n- **A progress tracker** replaces \"N more questions after this\".\n- **Room sizes on the calendar.** Communication Chameleon and Negotiation Skills each say they hold up to 30 people.\n- **The email check answers beside the email box.** When an address is not on a program list, \"We can't place you on this list\" appears under the email question, not above the first question.\n- **Communication Chameleon runs to 16:30.** Version 2 shows 13:00–16:30. Version 1 still shows 16:00, as the people who registered on it saw it. Decision letters and calendar invites say 16:30 for both once the Workshop's time is updated.\n\n**Version 1 is unchanged.** Its link, wording, look and the registrations already made on it stay exactly as they were. Registrations from both versions appear together in **Workspace → Training Week → Dashboard**.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  // ── Forms: duplicate as a new version
+  {
+    title: "Duplicate a form as a new version",
+    body: "**Workspace → Process → Forms** has a **Duplicate as new version** button beside *New form*. It copies the form you have open — every question, its logic, the workflow, the calendar with its room sizes, and the page's look and wording — into a new form whose link ends in **-v2** (then -v3, and so on), titled *(v2)*.\n\nTwo things it deliberately leaves behind. **Registrations stay with the original**: the copy starts with none. And **the copy starts closed**: its link says *Registration is closed* until it is opened, so nobody registers on a draft you are still changing. The builder's **Preview** shows how the copy looks and walks through its questions; it files nothing, so no registration, seats or email come of it.\n\nWhen the copy is ready, **Open registration** (shown for a closed form) asks you to confirm its public link, then opens it. There is no Close button: **Delete** on a form that already has registrations closes it instead of deleting it, and now says so.\n\nThe original is not touched — same link, same questions, same registrations. That is the point: once people have registered on a form, change the wording on a new version rather than under their answers.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Video script editor: the "c" key
   {
     title: "Fix: typing C in the video script editor",

@@ -171,10 +171,12 @@ test("two sessions of the same length are drawn the same height", () => {
   assert.equal(boxHeight("CCRM tour"), boxHeight("Catalent tour"));
 });
 
-test("the longer of the Tuesday pair is drawn taller", () => {
-  // Negotiation runs to 16:30, Communication Chameleon to 16:00. Half
-  // an hour is a real difference to somebody planning a train home.
-  assert.ok(boxHeight("Negotiation Skills") > boxHeight("Communication Chameleon"));
+test("the Tuesday pair, both 13:00–16:30, are drawn the same height", () => {
+  // Communication Chameleon used to end at 16:00; the coordinators
+  // corrected it to 16:30, the same as Negotiation. Equal runs must look
+  // equal — half an hour is a real difference to somebody planning a
+  // train home, so a drawing that still showed one is a wrong answer.
+  assert.equal(boxHeight("Negotiation Skills"), boxHeight("Communication Chameleon"));
 });
 
 test("a session's position is when it starts", () => {

@@ -62,12 +62,24 @@ export type SessionCalendarProps = {
   /** Chosen options in click order — the index IS the rank. */
   chosen: string[];
 } & (
-  | { readOnly?: false; onToggle: (option: string) => void; caption?: never }
+  | {
+      readOnly?: false;
+      onToggle: (option: string) => void;
+      caption?: never;
+      /**
+       * No "Height is how long a session runs…" line. For a form whose
+       * question help already says how to read the week, where saying it
+       * twice is the form talking over itself. A cap, if there is one, is
+       * still said: that is a limit, not a reading lesson.
+       */
+      hideHint?: boolean;
+    }
   | {
       readOnly: true;
       onToggle?: never;
       /** Replaces the picker's instructions. Omit for no caption. */
       caption?: string;
+      hideHint?: never;
     }
 );
 
@@ -183,6 +195,17 @@ export function SessionCalendar(props: SessionCalendarProps) {
         <span className={`mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
           {shortLabel(sl.option)}
         </span>
+        {/* The room, where the form says it. From the slot rather than the
+            Workshop row, so a form that never set one never shows one.
+            Wraps rather than truncates: half a Tuesday cell is about 85px
+            wide side by side, and "Up to 30 peo…" is worse than a second
+            line in a box three and a half hours tall. Not on the receipt
+            — how big a room you already asked for is not news. */}
+        {!ro && sl.capacity !== undefined && (
+          <span className="mt-0.5 block text-[9.5px] leading-tight text-subtle">
+            Up to {sl.capacity} people
+          </span>
+        )}
         {/* Only where there is room for it. A hint that overflows its
             own box is not a hint — and on a receipt it is not a hint at
             all: what a session you did not pick ran against is guidance
@@ -254,6 +277,14 @@ export function SessionCalendar(props: SessionCalendarProps) {
       {ro ? (
         props.caption && (
           <p className="mt-1.5 text-[11px] leading-snug text-subtle">{props.caption}</p>
+        )
+      ) : props.hideHint ? (
+        cap !== undefined && (
+          <p className="mt-1.5 text-[11px] leading-snug text-subtle">
+            {atCap
+              ? `You have chosen all ${cap}. Click one again to take it back.`
+              : `You can choose up to ${cap} — ${cap - chosen.length} left.`}
+          </p>
         )
       ) : (
         <p className="mt-1.5 text-[11px] leading-snug text-subtle">

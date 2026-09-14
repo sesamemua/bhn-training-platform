@@ -770,6 +770,15 @@ function Submissions() {
                     {r.isTest && (
                       <span className="rounded border border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] text-amber-600">test</span>
                     )}
+                    {/* Which form it came in on. The two store different
+                        wording for the same answer, so the status beside
+                        it only reads right once you know which. */}
+                    <span
+                      className="rounded border border-line px-1.5 font-mono text-[10px] text-subtle"
+                      title={r.form === "v1" ? "Registered on the original (v1) form" : `Registered on the ${r.form} form`}
+                    >
+                      {r.form}
+                    </span>
                     <span className="font-mono text-[11px] text-subtle">
                       {new Date(r.at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </span>

@@ -6,7 +6,8 @@
  *
  *   1. the Workshop rows behind the Admin dashboard,
  *   2. the event's own date range,
- *   3. the live registration form's "Choose your sessions" question,
+ *   3. the live registration form's "Choose your sessions" question —
+ *      EXCEPT the frozen v1 form, which it now skips (see form()),
  *   4. any flow chart drawing the same question.
  *
  * DRY RUN BY DEFAULT. `.env` here points at the production database, so
@@ -26,12 +27,14 @@ import { PrismaClient } from "@prisma/client";
 import { fieldsOf } from "../src/lib/flowchart/form";
 import type { FlowNode } from "../src/lib/flowchart/types";
 import { TRAINING_WEEK_FORM } from "../src/lib/formbuilder/training-week";
+import { FROZEN_FORM_SLUGS } from "../src/lib/allocation/symposium-2026";
 import {
   clashPairs, EVENT_END, optionLabel, SESSION_OPTIONS, SESSION_SLOTS,
   SESSIONS, sessionInOption, workshopRows, WEEK_START,
 } from "../src/lib/training-week/schedule-2026";
 
 const prisma = new PrismaClient();
+
 const FORCE = process.argv.includes("--force");
 const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
@@ -221,6 +224,23 @@ async function form() {
 
   const rows = await prisma.eventForm.findMany({ where: { slug: "training-week-registration-2026" } });
   for (const f of rows) {
+    /*
+     * v1 is FROZEN. People have registered on it and it has to stay
+     * exactly as they saw it, so schedule changes no longer reach it.
+     * The 16:30 Chameleon correction is the case in point: carried here
+     * it would rewrite v1's option string — which is the stored answer —
+     * and its session help. The schedule keeps v1's old string resolving
+     * to the right Workshop through previousOptions instead.
+     *
+     * v2 is not targeted either: its session help is the coordinators'
+     * wording, and this step would overwrite it with the code template.
+     * The workshops and event-window steps are unaffected.
+     */
+    // The one list every form-writing script shares, not a copy of it.
+    if (FROZEN_FORM_SLUGS.has(f.slug)) {
+      skip(`form ${f.slug} is frozen (v1 — people have registered on it) — left untouched`);
+      continue;
+    }
     const doc = f.fields as { fields?: Record<string, unknown>[] } | null;
     const field = doc?.fields?.find((x) => x.key === "sessions");
     if (!field) { skip(`form ${f.slug} has no "sessions" question`); continue; }

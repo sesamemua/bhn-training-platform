@@ -23,7 +23,7 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
-import { REGISTRATION_FORM_SLUG } from "../src/lib/allocation/symposium-2026";
+import { REGISTRATION_FORM_SLUG, refuseFrozenForm } from "../src/lib/allocation/symposium-2026";
 import {
   BHN_STATUS_OPTIONS, ELIGIBLE_STATUS, HAS_ACCOUNT, NO_ACCOUNT, TRAINING_WEEK_FORM,
 } from "../src/lib/formbuilder/training-week";
@@ -49,6 +49,9 @@ async function main() {
 
   const row = await prisma.eventForm.findUnique({ where: { slug: REGISTRATION_FORM_SLUG } });
   if (!row) throw new Error(`No form with slug ${REGISTRATION_FORM_SLUG}`);
+  // The slug above is v1, which is frozen. A dry run may still show what
+  // this would have done; --force refuses before anything is written.
+  if (FORCE) refuseFrozenForm(row.slug, "revise-eligibility-question");
   const doc = row.fields as { fields: Field[]; steps?: Record<string, unknown>[]; submitNote?: string };
   const at = (key: string) => doc.fields.findIndex((f) => f.key === key);
 
@@ -147,6 +150,7 @@ async function main() {
   writeFileSync(file, JSON.stringify(row, null, 2));
   console.log(`\nBacked up the current form to ${file}`);
 
+  refuseFrozenForm(row.slug, "revise-eligibility-question");
   await prisma.eventForm.update({ where: { id: row.id }, data: { fields: doc as object } });
   console.log("Applied.");
 }

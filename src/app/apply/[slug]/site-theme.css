@@ -1,0 +1,309 @@
+/* ============================================================
+ *  The biohubnet.ca skin, for public forms that ask for it.
+ *  ──────────────────────────────────────────────────────────
+ *  Measured off https://biohubnet.ca/2026-annual-symposium/ —
+ *  Libre Baskerville titles, IBM Plex Sans reading text, IBM Plex
+ *  Mono eyebrows and buttons, teal on a pale blue ground, square
+ *  corners, hairline rules instead of boxes.
+ *
+ *  Two ways in, and every rule below uses one of them:
+ *    [data-theme="bhnsite"]  <html>, set before first paint for the
+ *                            slugs in src/lib/formbuilder/site-theme.ts
+ *    .bhn-site               the page's <main>, when the form's
+ *                            presentation.theme is "site"
+ *  A form without that flag matches nothing here — v1 of the Training
+ *  Week form included — which tests/unit/site-theme.test.ts checks.
+ *
+ *  Deliberately NOT in a cascade layer. Tailwind's utilities are in
+ *  @layer utilities, so a plain rule beats them without !important —
+ *  which is the only way a skin can reach the px-literal sizes and
+ *  border-2 weights on components it must not fork. The same test
+ *  checks that every class named here still exists in those
+ *  components, because a renamed class would otherwise stop matching
+ *  in silence.
+ * ============================================================ */
+
+/* ───── Tokens ───── */
+[data-theme="bhnsite"], .bhn-site {
+  /* The site has no dark variant, so neither does this. Native radios,
+   * selects, autofill and scrollbars follow. */
+  color-scheme: light;
+  accent-color: var(--brand-500);
+
+  /* The Training Week section's ground, without its photo: #e7f2fc under
+   * the site's own white overlay, composited. The text column sits on the
+   * left, which is the light end. */
+  --bg:         #ecf6ff;
+  --bg-mesh:    linear-gradient(90deg, #f0f8ff 0%, #ecf6ff 52%, #e3f0fc 100%);
+  --popover-bg: #ffffff;
+  --card:       #ffffff;
+  --card-solid: #ffffff;
+  --elevated:   #f7fbfa;          /* site --paper-2 */
+  --raised:     #d7eff1;          /* site --aqua */
+  --fg:         #081d25;          /* site --ink: 17.3:1 on white */
+  --fg-muted:   #486470;          /* site --muted: 6.3:1 on white, 5.4:1 on the darkest ground */
+  /* Not the site's --quiet (#6f838b, 3.97:1). This one is 5.1:1 on the
+   * darkest ground and 4.6:1 inside a clashing calendar cell, where the
+   * 9.5px session times live. */
+  --fg-subtle:  #53676f;
+  --line:       rgba(8, 29, 37, 0.16);
+  --line-strong: rgba(8, 29, 37, 0.28);
+  --backdrop:   rgba(7, 17, 19, 0.62);
+
+  /* Teal. 500 is the site's --teal: accents, borders, focus, the required
+   * star on a white card (4.9:1). 600 is its nav CTA and everything that
+   * is TEXT on the ground (5.0:1 at the darkest) or white text on a fill
+   * (5.8:1). 400 is hover borders only — 2.2:1, never text. */
+  --brand-50:  #e6f4f4;
+  --brand-100: #d7eff1;
+  --brand-200: #a9dcdc;
+  --brand-300: #7adbd5;
+  --brand-400: #35c2bc;
+  --brand-500: #0f7d80;
+  --brand-600: #0f7076;
+  --brand-700: #0b5f63;
+  --brand-800: #0a4a4e;
+  --brand-900: #081d25;
+
+  /* Site colours the platform has no token for. */
+  --bhn-blue-ink:     #245b7e;    /* date line, link hover */
+  --bhn-teal-bright:  #43d3c9;    /* primary hover fill: ink on it is 9.4:1 */
+  --bhn-hover-fill:   #cee3f4;    /* secondary hover fill */
+  --bhn-hover-ink:    #153c5b;    /* ...and its text, 8.7:1 */
+  /* The site's secondary-button border (#7396b1) is 3.0:1 against a field.
+   * A box you type into has to be findable (WCAG 1.4.11), so a shade
+   * deeper: 3.3:1 on #f7fbfa, 3.45:1 on white. */
+  --bhn-control-line: #6f8ea6;
+
+  /* Square, like the site. */
+  --radius-sm:  0px;
+  --radius:     2px;
+  --radius-md:  2px;
+  --radius-lg:  2px;
+  --radius-xl:  4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 6px;
+
+  --shadow-card-rest:  none;
+  --shadow-card-hover: 0 14px 32px rgba(21, 57, 83, 0.12);
+  --popover-shadow:    0 18px 48px rgba(8, 30, 42, 0.12);
+  --surface-shadow:    none;
+  --surface-border:    1px solid var(--line);
+
+  /* Faces. The variables come from site-fonts.ts on <main>; on <html>
+   * they do not exist, so the fallbacks name the family and the stack
+   * carries on — which is what the cookie banner, outside <main>, gets. */
+  --font-sans-theme:    var(--font-bhn-sans, "IBM Plex Sans"), "Helvetica Neue", Arial, sans-serif;
+  --font-display-theme: var(--font-bhn-serif, "Libre Baskerville"), Georgia, serif;
+  /* The font-sans / font-mono utilities read these two (@theme inline),
+   * and --font-geist-mono is otherwise never defined. */
+  --font-geist-sans:    var(--font-sans-theme);
+  --font-geist-mono:    var(--font-bhn-mono, "IBM Plex Mono"), ui-monospace, Menlo, monospace;
+  --body-features:      normal;
+  /* The global h1-h3 rule reads these and beats the font-* utilities. */
+  --heading-tracking:   0;
+  --heading-weight:     400;
+  --heading-transform:  none;
+  --heading-style:      normal;
+
+  /* State colours, dark enough to read on their own 10% tint (which is
+   * made opaque below). Tailwind's defaults are 3-4:1 there. */
+  --color-red-500:     #b42318;   /* borders, tints, alert text: 5.6:1 on the tint */
+  --color-red-600:     #7a1610;   /* clash panel, including its opacity-70 words: 4.55:1 */
+  --color-red-700:     #7a1610;
+  --color-amber-500:   #b45309;
+  --color-amber-600:   #9a5b00;   /* 4.7:1 on the tint */
+  --color-amber-700:   #8a5300;   /* 5.5:1 */
+  --color-emerald-500: #047857;
+  --color-emerald-600: #0f6b3f;   /* 5.7:1 */
+  --color-emerald-700: #0f6b3f;
+  /* Voltage turns these into translucent tints for a black page. Put
+   * Tailwind's own back. */
+  --color-red-50:      oklch(97.1% 0.013 17.38);
+  --color-red-100:     oklch(93.6% 0.032 17.717);
+  --color-red-200:     oklch(88.5% 0.062 18.334);
+  --color-rose-50:     oklch(96.9% 0.015 12.422);
+  --color-rose-100:    oklch(94.1% 0.03 12.58);
+  --color-rose-200:    oklch(89.2% 0.058 10.001);
+  --color-amber-50:    oklch(98.7% 0.022 95.277);
+  --color-amber-100:   oklch(96.2% 0.059 95.617);
+  --color-amber-200:   oklch(92.4% 0.12 95.746);
+  --color-emerald-50:  oklch(97.9% 0.021 166.113);
+  --color-emerald-100: oklch(95% 0.052 163.051);
+  --color-emerald-200: oklch(90.5% 0.093 164.15);
+}
+
+/* The <html> style is not inherited as tokens are: body resolved its font
+ * and features from whatever theme <html> had, and children inherit that
+ * computed value. So the wrapper says it again. */
+.bhn-site {
+  font-family: var(--font-sans-theme);
+  font-feature-settings: var(--body-features);
+  color: var(--fg);
+  background-color: var(--bg);
+  background-image: var(--bg-mesh);
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ───── If <html> is still Voltage ─────
+ * The pre-paint script only knows the slugs in site-theme.ts. A form
+ * that carries presentation.theme "site" under any other slug keeps a
+ * hitech <html>, and hitech recolours these classes with plain rules at
+ * 0,2,0 — pale amber and red, unreadable on white. One more attribute
+ * beats them. With a bhnsite <html> these repeat what the utilities
+ * already say, and cost nothing. */
+[data-theme] .bhn-site .text-red-600    { color: var(--color-red-600); }
+[data-theme] .bhn-site .text-amber-600  { color: var(--color-amber-600); }
+[data-theme] .bhn-site .text-amber-700  { color: var(--color-amber-700); }
+[data-theme] .bhn-site .text-emerald-600 { color: var(--color-emerald-600); }
+[data-theme] .bhn-site .text-brand-600  { color: var(--brand-600); }
+
+/* ───── Alerts ─────
+ * Opaque, not 10% over whatever is behind. Most of them sit on the
+ * ground rather than on a card, and a translucent amber over pale blue
+ * is 3.9:1 — the same box on white is 4.7:1. */
+.bhn-site .bg-red-500\/10              { background-color: color-mix(in srgb, var(--color-red-500) 10%, #fff); }
+.bhn-site .bg-amber-500\/10            { background-color: color-mix(in srgb, var(--color-amber-500) 10%, #fff); }
+.bhn-site .bg-emerald-500\/10          { background-color: color-mix(in srgb, var(--color-emerald-500) 10%, #fff); }
+.bhn-site .bg-emerald-500\/\[0\.06\]   { background-color: color-mix(in srgb, var(--color-emerald-500) 6%, #fff); }
+.bhn-site .bg-brand-500\/\[0\.06\]     { background-color: color-mix(in srgb, var(--brand-500) 6%, #fff); }
+
+/* ───── Rules, not boxes ─────
+ * The site groups with 1px hairlines and never a 2px frame. */
+.bhn-site .border-2 { border-width: 1px; }
+/* The week's frame gives its lost pixel back as padding, so the day
+ * columns and every cell inside keep exactly the room they had. */
+.bhn-site .border-2[class*="[--hour:"] { padding: calc(0.75rem + 1px); }
+/* Bare `rounded` is a literal .25rem, not a token. */
+.bhn-site .rounded { border-radius: var(--radius-sm); }
+
+/* ───── Type ─────
+ * The platform sets form text at 11-15px; the site's smallest running
+ * text is 15-16px. One step up each, and 16px in the inputs, which also
+ * stops iOS zooming the page when one is focused. */
+.bhn-site .text-\[11px\]   { font-size: 12px; }
+.bhn-site .text-\[12px\],
+.bhn-site .text-\[12\.5px\] { font-size: 14px; }
+.bhn-site .text-\[13px\],
+.bhn-site .text-\[13\.5px\] { font-size: 15px; }
+.bhn-site .text-\[14px\]   { font-size: 16px; }
+.bhn-site .text-\[15px\]   { font-size: 17px; line-height: 1.4; }
+
+/* ...except inside the week. Its cells are drawn to the minute, and a
+ * name one size up overflows a two-hour box. Every step is pinned back to
+ * its own size so a class added there later cannot grow either. */
+.bhn-site [class*="[--hour:"] .text-\[11px\]    { font-size: 11px; }
+.bhn-site [class*="[--hour:"] .text-\[12px\]    { font-size: 12px; }
+.bhn-site [class*="[--hour:"] .text-\[12\.5px\] { font-size: 12.5px; }
+.bhn-site [class*="[--hour:"] .text-\[13px\]    { font-size: 13px; }
+.bhn-site [class*="[--hour:"] .text-\[13\.5px\] { font-size: 13.5px; }
+.bhn-site [class*="[--hour:"] .text-\[14px\]    { font-size: 14px; }
+.bhn-site [class*="[--hour:"] .text-\[15px\]    { font-size: 15px; line-height: revert-layer; }
+
+/* Eyebrows, rank badges, day headings: the site sets every uppercase
+ * label in Plex Mono. */
+.bhn-site .uppercase { font-family: var(--font-geist-mono); }
+/* Teal label text on the ground needs the deeper teal. */
+.bhn-site .uppercase.text-brand-500 { color: var(--brand-600); }
+
+/* "That is your registration in." — a title, so the title face. */
+.bhn-site p.text-\[20px\].font-bold {
+  font-family: var(--font-display-theme);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+/* Links: the deeper teal (5.8:1 on white, 5.0:1 on the ground). The
+ * shared hover goes to brand-400, which is 2.2:1 here. */
+.bhn-site a.text-brand-500       { color: var(--brand-600); }
+.bhn-site a.text-brand-500:hover { color: var(--bhn-blue-ink); }
+
+/* ───── Controls ───── */
+.bhn-site :is(button, input, select, textarea, label.border) {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.18s;
+  transition-timing-function: ease;
+}
+
+/* Primary (Continue, Submit) → the site's .button-dark. */
+.bhn-site button.bg-brand {
+  min-height: 48px;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid var(--brand-600);
+  border-radius: 0;
+  font-family: var(--font-geist-mono);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.bhn-site button.bg-brand:is(:hover, :focus-visible):not(:disabled) {
+  background-color: var(--bhn-teal-bright);
+  border-color: var(--bhn-teal-bright);
+  color: var(--fg);
+  filter: none;
+  /* The global focus ring stays: the site's outline:0 is not something
+   * a form can afford. */
+}
+
+/* Secondary (Start again) → the site's outlined .button-calendar. */
+.bhn-site button.inline-flex.rounded-lg.border-line.text-muted {
+  min-height: 48px;
+  padding: 0.85rem 1.05rem;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--bhn-hover-ink);
+  font-family: var(--font-geist-mono);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* Anything you type into or click to choose gets a border you can find.
+ * Hairlines stay for the rules that only group things. */
+.bhn-site :is(input, select, textarea).border-line,
+.bhn-site button.border-line,
+.bhn-site label.border-line:has(> input) {
+  border-color: var(--bhn-control-line);
+}
+/* A plain rule beats the focus-visible: and hover: utilities too, so
+ * they are said again here. */
+.bhn-site :is(input, select, textarea).border-line:focus-visible { border-color: var(--brand-500); }
+.bhn-site button.border-line:hover:not(:disabled),
+.bhn-site label.border-line:has(> input):hover { border-color: var(--brand-500); }
+.bhn-site button.border-line.text-muted:is(:hover, :focus-visible):not(:disabled) {
+  background-color: var(--bhn-hover-fill);
+  color: var(--bhn-hover-ink);
+}
+
+/* Chosen → the site's selected-option panel: an accent bar down the left
+ * edge. Inset, so nothing moves — the calendar cells included. */
+.bhn-site label.border:has(> input:checked),
+.bhn-site button.border-brand-500[aria-pressed="true"] {
+  box-shadow: inset 3px 0 0 var(--brand-500);
+}
+.bhn-site button.border-red-500[aria-pressed="true"] {
+  box-shadow: inset 3px 0 0 var(--color-red-500);
+}
+
+/* ───── The intro under the heading ─────
+ * It sits on the ground, not a card. */
+.bhn-site .bhn-intro a       { color: var(--brand-600); }
+.bhn-site .bhn-intro a:hover { color: var(--bhn-blue-ink); }
+
+/* The site turns all of its motion off for people who ask. So does this. */
+@media (prefers-reduced-motion: reduce) {
+  .bhn-site,
+  .bhn-site *,
+  [data-theme="bhnsite"],
+  [data-theme="bhnsite"] * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

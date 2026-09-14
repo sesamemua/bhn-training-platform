@@ -13,6 +13,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { TRAINING_WEEK_FORM } from "../src/lib/formbuilder/training-week";
+import { FROZEN_FORM_SLUGS } from "../src/lib/allocation/symposium-2026";
 import { workshopRows } from "../src/lib/training-week/schedule-2026";
 
 const prisma = new PrismaClient();
@@ -30,6 +31,21 @@ async function main() {
   // ── the form ───────────────────────────────────────────────────────
   const slug = "training-week-registration-2026";
   const existing = await prisma.eventForm.findUnique({ where: { slug } });
+  if (existing && process.argv.includes("--force") && FROZEN_FORM_SLUGS.has(slug)) {
+    /*
+     * --force would replace v1 wholesale with TRAINING_WEEK_FORM, which is
+     * not what the live v1 says — and v1 is frozen: people have registered
+     * on it, and it stays exactly as they saw it. Refused before anything
+     * is written, workshops included, so a stray --force changes nothing
+     * rather than half of what it was asked. v2 is created by
+     * scripts/create-training-week-v2.ts, which rebuilds it with
+     * --replace only while it has no registrations.
+     */
+    throw new Error(
+      `Refusing --force: ${slug} is the frozen v1 registration form and is never replaced.\n` +
+      `Run without --force to update the workshops only.`,
+    );
+  }
   if (existing) {
     /*
      * Does NOT overwrite by default, and this is not caution — it is a
