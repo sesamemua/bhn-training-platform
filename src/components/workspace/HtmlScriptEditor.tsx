@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { colorForKey, type PresencePeer } from "@/lib/scripts/presence";
 import { AccountOfferModal } from "./AccountOfferModal";
 import { ScriptCommentLayer } from "./ScriptCommentLayer";
+import { shieldShadowTyping } from "@/lib/workspace/typing-shield";
 
 interface Revision {
   id: string;
@@ -144,6 +145,9 @@ export function HtmlScriptEditor({
 
   const hostRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  // Read by the typing shield, which is wired once at mount but must
+  // follow the current read-only state rather than the first one.
+  const readOnlyRef = useRef(readOnly);
   const presenceStyleRef = useRef<HTMLStyleElement | null>(null);
   const boxesRef = useRef<HTMLElement[]>([]);
   const intercutRef = useRef<HTMLElement[]>([]);
@@ -444,6 +448,13 @@ export function HtmlScriptEditor({
     content.addEventListener("focusin", onSel);
     content.addEventListener("input", onInput);
 
+    // The Vercel Toolbar (and any page-level single-key shortcut) decides
+    // "is the user typing?" from the event target, which outside this shadow
+    // root is the plain host <div> — so it swallowed "c", its comment
+    // shortcut, mid-sentence. See shieldShadowTyping for why this is an
+    // attribute and not stopPropagation.
+    shieldShadowTyping(host, shadow, () => !readOnlyRef.current);
+
     // ── Gantt bars: drag to reschedule (move whole bar, or drag either end) ──
     // The chart lives inside the editable document, so we drive it from here:
     // the grid is made non-editable, and delegated pointer handlers rewrite
@@ -589,6 +600,7 @@ export function HtmlScriptEditor({
   // and the on-chart Gantt controls.
   useEffect(() => { setupPhasesRef.current = setupPhases; }, [setupPhases]);
   useEffect(() => { setupGanttControlsRef.current = setupGanttControls; }, [setupGanttControls]);
+  useEffect(() => { readOnlyRef.current = readOnly; }, [readOnly]);
 
   // ── Presence heartbeat (~2s) ──
   useEffect(() => {

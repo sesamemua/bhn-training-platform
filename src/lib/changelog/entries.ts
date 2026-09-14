@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Video script editor: the "c" key
+  {
+    title: "Fix: typing C in the video script editor",
+    body: "If you are signed in to Vercel, pressing **C** while editing a video script opened Vercel's comment tool instead of typing the letter. The editor now tells page-level shortcuts that you are typing, so every key goes into the document. Nothing changes for guests editing through a share link — they never saw the toolbar.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   {
     title: "AV round 3: the room is $7,861.42, the stream adds $1,906.88",
     body: "Livecast's round-3 quote (#231816038 v2) puts the room and the stream back in one document, and **Workspace → AV 2026** now leads with the decision it leaves: **AV for the room $7,861.42**, **streaming +$1,906.88**, **$9,768.30** in total — before-tax figures alongside.\n\nThe room-only figure isn't an estimate: it's Livecast's own AV-only price, whose lines are round 3's line for line, so dropping the stream just means asking them to remove that section. Round 3 is also back on the 1 September price exactly — bundling the stream saves the $1,220.40 that splitting it out had cost.\n\n**Read the stream's scope before deciding.** It's a **one-hour**, single-channel stream, and the package says slides only even though the quote adds a camera — both flagged on the page. The earlier split pair is still there, collapsed, marked superseded.\n\nAlso fixed: struck-through lines showed their list price as if it were charged — the Aputure lights read $900 when they're free, the projectors $1,950 when they're $1,300. They now show what's actually charged.",

@@ -30,9 +30,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.07";
+export const TOUR_VERSION = "2026.10.07a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.script-editor-typing",
+    title: "Every key types in the script editor",
+    body: "Pressing C while editing a video script no longer opens Vercel's comment tool — the editor now keeps page shortcuts out of your way while you type.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.07a",
+  },
   {
     id: "workspace.av-2026-round-3",
     title: "The room, or the room with a stream",
