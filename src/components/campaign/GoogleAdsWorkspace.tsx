@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { GOOGLE_ADS_PILOT } from "@/lib/campaign/google-ads-pilot";
-import { getGoogleAdsPlanWarnings, googleAdsPlanSchema, type GoogleAdsPlan, type GoogleAdsWorkspaceState } from "@/lib/campaign/google-ads-workspace";
+import { getGoogleAdsBaselineComparison, getGoogleAdsPlanWarnings, googleAdsPlanSchema, type GoogleAdsPlan, type GoogleAdsWorkspaceState } from "@/lib/campaign/google-ads-workspace";
 import styles from "./GoogleAdsWorkspace.module.css";
 
 type Program = GoogleAdsPlan["programs"][number];
@@ -233,6 +233,8 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
   // that keywords and ad copy could be added or removed at all. Same
   // mode, same Save — just reachable from where the work is.
   const sectionEdit = (what: string) => (editing ? null : <button type="button" className={styles.sectionAction} onClick={() => setEditing(true)}>Edit {what}</button>);
+  const baselineComparison = getGoogleAdsBaselineComparison(plan);
+  const savedPlanChanges = state.history.filter((event) => event.kind === "plan-saved").length;
   const switcher = <div className={styles.programTabs} role="group" aria-label="Choose program">{plan.programs.map(p => <button key={p.id} aria-pressed={p.id === program?.id} onClick={() => setSelected(p.id)}>{p.name}</button>)}</div>;
 
   return <div className={styles.workspace}>
@@ -254,7 +256,30 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
       <fieldset className={styles.editorFields} disabled={busy || !!recovery}>
       {editing && <Field label="What changed? (optional save note)" value={summary} onChange={setSummary} editing />}
       {copiedText && <label className={styles.field}>Codex handoff<textarea readOnly value={copiedText} rows={8} onFocus={e => e.target.select()} /></label>}
-      <nav className={styles.nav} aria-label="Campaign sections"><a href="#keywords">Keywords</a><a href="#negatives">Negatives</a><a href="#audiences">Audiences</a><a href="#ad-copy">Ad copy</a><a href="#settings">Settings</a><a href="#notes">Notes</a><a href="#feedback">Feedback & history</a></nav>
+      <nav className={styles.nav} aria-label="Campaign sections"><a href="#actual-vs-proposed">Actual vs proposed</a><a href="#keywords">Keywords</a><a href="#negatives">Negatives</a><a href="#audiences">Audiences</a><a href="#ad-copy">Ad copy</a><a href="#settings">Settings</a><a href="#notes">Notes</a><a href="#feedback">Feedback & history</a></nav>
+
+      <Section id="actual-vs-proposed" number="00" title="Actual vs proposed" detail="Recorded Google Ads data, saved user edits and research recommendations are separate.">
+        <div className={styles.diffCards}>
+          <article className={`${styles.card} ${styles.recordedCard}`}>
+            <p className={styles.diffLabel}>Recorded Google Ads baseline</p>
+            <h3>{GOOGLE_ADS_PILOT.status} · CA${GOOGLE_ADS_PILOT.spendCad} spend</h3>
+            <p>Last recorded account check: {GOOGLE_ADS_PILOT.lastVerifiedOn}. No user search-term or click data is recorded in this workspace.</p>
+            <dl className={styles.diffStats}><div><dt>Keyword entries</dt><dd>{baselineComparison.recordedKeywordCount}</dd></div><div><dt>Negative entries</dt><dd>{baselineComparison.recordedNegativeCount}</dd></div></dl>
+          </article>
+          <article className={`${styles.card} ${styles.proposedCard}`}>
+            <p className={styles.diffLabel}>Proposed dashboard plan</p>
+            <h3>{baselineComparison.proposedKeywordCount} keywords · {baselineComparison.proposedNegativeCount} negatives</h3>
+            <p>These are draft recommendations. Saving them records a plan only; it does not update Google Ads.</p>
+            <p className={styles.diffMeta}>{savedPlanChanges} saved user plan change{savedPlanChanges === 1 ? "" : "s"}. See the before/after record in Saved user changes.</p>
+          </article>
+        </div>
+        <p className={styles.diffCallout}>“Credit card debt” and “payday loan” are proposed safeguards, not actual user searches. Review them against a real Search Terms report after the campaign has data.</p>
+        <div className={styles.diffLists}>
+          <details className={styles.diffDetails} open><summary><strong>Proposed new negative terms</strong><span>{baselineComparison.proposedNegativesNotRecorded.length} terms</span></summary><p>Added in this draft; not evidence that anyone searched for them.</p><div className={styles.diffTerms}>{baselineComparison.proposedNegativesNotRecorded.map((term) => <span key={term}>{term}</span>)}</div></details>
+          <details className={styles.diffDetails}><summary><strong>Recorded negatives not in this draft</strong><span>{baselineComparison.recordedNegativesNotProposed.length} terms</span></summary><p>Historical terms that need review before any Google Ads change.</p><div className={styles.diffTerms}>{baselineComparison.recordedNegativesNotProposed.map((term) => <span key={term}>{term}</span>)}</div></details>
+          <details className={styles.diffDetails}><summary><strong>Keyword changes</strong><span>{baselineComparison.proposedKeywordsNotRecorded.length + baselineComparison.recordedKeywordsNotProposed.length} term differences</span></summary><p>Term-level comparison. Match types remain visible in the keyword editor.</p><h4>New draft keywords</h4><div className={styles.diffTerms}>{baselineComparison.proposedKeywordsNotRecorded.map((term) => <span key={term}>{term}</span>)}</div><h4>Recorded keywords not in this draft</h4><div className={styles.diffTerms}>{baselineComparison.recordedKeywordsNotProposed.map((term) => <span key={term}>{term}</span>)}</div></details>
+        </div>
+      </Section>
 
       <Section id="keywords" number="01" title="Keywords" detail="Add, remove and refine the searches we want to reach." action={sectionEdit("keywords")}>
         {switcher}
@@ -324,7 +349,7 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
           </div>
           <div className={styles.feedbackList}>{state.feedback.length === 0 && <p className={styles.empty}>No feedback yet.</p>}{state.feedback.map(item => <article className={styles.card} key={item.id}><div className={styles.feedbackMeta}><strong>{item.section}</strong><span>{item.status}</span></div><p className={styles.feedbackBody}>{item.body}</p><small>{item.authorName} · {dateLabel(item.createdAt)}</small><button disabled={busy || dirty || conflict} onClick={async () => { if (await mutate("POST", { action: "feedback-status", feedbackId: item.id, status: item.status === "open" ? "resolved" : "open" })) setMessage("Feedback status saved. This does not mark any Google Ads change as applied."); }}>{item.status === "open" ? "Mark reviewed" : "Reopen"}</button></article>)}</div>
         </div>
-        <h3 className={styles.historyHeading}>Saved changes</h3>
+        <h3 className={styles.historyHeading}>Saved user changes</h3>
         {state.history.length === 0 && <p className={styles.empty}>History begins when you save a change or add feedback.</p>}
         {state.history.map(event => <details className={styles.historyEvent} key={event.id}><summary><strong>{event.summary}</strong><span>{event.actorName} · {dateLabel(event.createdAt)}</span></summary><p>Revision {event.revision} · {event.kind}</p>{event.changes.map((change, i) => <div key={i} className={styles.change}><strong>{change.path}</strong><div><span>Before</span><pre>{typeof change.before === "string" ? change.before : JSON.stringify(change.before, null, 2) || "—"}</pre></div><div><span>After</span><pre>{typeof change.after === "string" ? change.after : JSON.stringify(change.after, null, 2) || "—"}</pre></div></div>)}</details>)}
         {state.historyNextCursor && <button onClick={loadMoreHistory} disabled={busy}>Load older changes</button>}

@@ -59,3 +59,12 @@ test("campaign editor works at mobile width and keeps negative text readable", a
   expect(parseFloat(textStyle.fontSize)).toBeGreaterThanOrEqual(16);
   expect(textStyle.decoration).not.toContain("line-through");
 });
+
+test("actual versus proposed view does not present safeguards as user searches", async ({ page }) => {
+  await page.goto(pagePath);
+  await page.getByRole("link", { name: "Actual vs proposed", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Actual vs proposed", exact: true })).toBeVisible();
+  await expect(page.getByText("No user search-term or click data is recorded in this workspace.", { exact: true })).toBeVisible();
+  await expect(page.getByText(/“Credit card debt” and “payday loan” are proposed safeguards/)).toBeVisible();
+  await expect(page.getByText("Proposed new negative terms", { exact: true })).toBeVisible();
+});

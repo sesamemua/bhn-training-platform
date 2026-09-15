@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  buildGoogleAdsHandoff, diffGoogleAdsPlans, getGoogleAdsPlanWarnings, googleAdsPlanSchema,
+  buildGoogleAdsHandoff, diffGoogleAdsPlans, getGoogleAdsBaselineComparison, getGoogleAdsPlanWarnings, googleAdsPlanSchema,
   type GoogleAdsPlan, type WorkspaceEvent,
 } from "../../src/lib/campaign/google-ads-workspace";
+import { createDefaultGoogleAdsPlan } from "../../src/lib/campaign/google-ads-workspace-defaults";
 import {
   createGoogleAdsWorkspaceHandlers, createGoogleAdsWorkspaceStore,
   type WorkspaceDatabase, type WorkspaceTransaction,
@@ -79,6 +80,15 @@ test("stable keyword diffs report one removal and preserve the remaining keyword
   assert.deepEqual(diffGoogleAdsPlans(before, after), [{ path: "programs[engage].keywords[kw1]", before: before.programs[0].keywords[0] }]);
   const changed = plan(); changed.programs[0].keywords[1].text = "updated keyword";
   assert.deepEqual(diffGoogleAdsPlans(before, changed), [{ path: "programs[engage].keywords[kw2].text", before: "phd industry training", after: "updated keyword" }]);
+});
+
+test("baseline comparison keeps recorded account data separate from proposed safeguards", () => {
+  const comparison = getGoogleAdsBaselineComparison(createDefaultGoogleAdsPlan());
+  assert.equal(comparison.recordedKeywordCount, 31);
+  assert.equal(comparison.recordedNegativeCount, 35);
+  assert.ok(comparison.proposedNegativesNotRecorded.includes("credit card debt"));
+  assert.ok(comparison.proposedNegativesNotRecorded.includes("payday loan"));
+  assert.ok(comparison.recordedNegativesNotProposed.includes("personal loan"));
 });
 
 test("budget and negative overlap warnings respect negative match types", () => {

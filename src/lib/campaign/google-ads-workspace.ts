@@ -83,6 +83,54 @@ export interface GoogleAdsWorkspaceState {
   historyNextCursor: string | null;
 }
 
+export interface GoogleAdsBaselineComparison {
+  recordedKeywordCount: number;
+  proposedKeywordCount: number;
+  recordedNegativeCount: number;
+  proposedNegativeCount: number;
+  proposedKeywordsNotRecorded: string[];
+  recordedKeywordsNotProposed: string[];
+  proposedNegativesNotRecorded: string[];
+  recordedNegativesNotProposed: string[];
+}
+
+/**
+ * Compare the editable plan with the historical account snapshot. This is a
+ * configuration comparison only: it never represents Search Terms report data.
+ */
+export function getGoogleAdsBaselineComparison(plan: GoogleAdsPlan): GoogleAdsBaselineComparison {
+  const normalize = (value: string) => value.toLowerCase().replace(/["\[\]]/g, "").trim().replace(/\s+/g, " ");
+  const uniqueTerms = (values: string[]) => {
+    const terms = new Map<string, string>();
+    for (const value of values) {
+      const normalized = normalize(value);
+      if (normalized && !terms.has(normalized)) terms.set(normalized, value.replace(/^["\[]|["\]]$/g, "").trim());
+    }
+    return terms;
+  };
+  const difference = (left: Map<string, string>, right: Map<string, string>) => [...left.entries()]
+    .filter(([term]) => !right.has(term)).map(([, term]) => term).sort((a, b) => a.localeCompare(b));
+  const recordedKeywords = Object.values(GOOGLE_ADS_ACTIVE_KEYWORDS).flatMap((terms) => [...terms]);
+  const recordedNegatives = [...GOOGLE_ADS_CAMPAIGN_NEGATIVES, ...Object.values(GOOGLE_ADS_AD_GROUP_NEGATIVES).flatMap((terms) => [...terms])];
+  const proposedKeywords = plan.programs.flatMap((program) => program.keywords.map((keyword) => keyword.text));
+  const proposedNegatives = [...plan.campaignNegatives, ...plan.programs.flatMap((program) => program.negatives)].map((negative) => negative.text);
+  const recordedKeywordTerms = uniqueTerms(recordedKeywords);
+  const proposedKeywordTerms = uniqueTerms(proposedKeywords);
+  const recordedNegativeTerms = uniqueTerms(recordedNegatives);
+  const proposedNegativeTerms = uniqueTerms(proposedNegatives);
+
+  return {
+    recordedKeywordCount: recordedKeywords.length,
+    proposedKeywordCount: proposedKeywords.length,
+    recordedNegativeCount: recordedNegatives.length,
+    proposedNegativeCount: proposedNegatives.length,
+    proposedKeywordsNotRecorded: difference(proposedKeywordTerms, recordedKeywordTerms),
+    recordedKeywordsNotProposed: difference(recordedKeywordTerms, proposedKeywordTerms),
+    proposedNegativesNotRecorded: difference(proposedNegativeTerms, recordedNegativeTerms),
+    recordedNegativesNotProposed: difference(recordedNegativeTerms, proposedNegativeTerms),
+  };
+}
+
 export const saveGoogleAdsPlanSchema = z.object({
   revision: z.number().int().nonnegative(), plan: googleAdsPlanSchema,
   summary: z.string().trim().min(1).max(1_000),
