@@ -6,14 +6,13 @@
  *
  * The lead is the three numbers that decision needs, AV / streaming /
  * total, each one printed on a Livecast document or the difference of two
- * (see AV26_DECISION). Then what the stream actually buys, because the
- * price alone hides that it is one hour. The pair round 3 replaced sits
- * below, collapsed: it is why the number moved, not what to sign.
+ * (see AV26_DECISION). The pair round 3 replaced sits below, collapsed:
+ * it is why the number moved, not what to sign.
  */
 import { useState } from "react";
-import { AlertTriangle, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import {
-  AV26_COMBINED, AV26_CURRENT, AV26_DECISION, AV26_DOCS, AV26_ORDER, AV26_STREAM_SCOPE,
+  AV26_COMBINED, AV26_CURRENT, AV26_DECISION, AV26_DOCS, AV26_ORDER,
   AV26_VS_SUPERSEDED, chargedLine,
   type Av26Doc, type Av26Key,
 } from "@/lib/symposium/av-2026";
@@ -78,31 +77,6 @@ export function Av2026Quotes() {
           the terms allow. <strong className="text-fg">With it: {cad(d.withStream.total)}.</strong>{" "}
           All figures include every discount on the quote.
         </p>
-      </section>
-
-      {/* ── What the stream buys. The price hides that it is one hour. */}
-      <section className="rounded-xl border border-line bg-card p-4 sm:p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-subtle">
-          What {cad(d.streaming.total)} of streaming buys
-        </p>
-        <ul className="mt-3 grid gap-2 @2xl:grid-cols-2">
-          {AV26_STREAM_SCOPE.map((item) => (
-            <li
-              key={item.label}
-              className={cn(
-                "rounded-lg border p-3",
-                item.flag ? "border-amber-500/50 bg-amber-500/[0.06]" : "border-line",
-              )}
-            >
-              <p className="flex items-center gap-1.5 text-[12.5px] font-bold text-fg">
-                {item.flag && <AlertTriangle size={13} className="shrink-0 text-amber-700" aria-hidden="true" />}
-                {item.label}
-                {item.flag && <span className="sr-only">(check before deciding)</span>}
-              </p>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted">{item.detail}</p>
-            </li>
-          ))}
-        </ul>
       </section>
 
       {/* ── Why round 3 is lower than the pair it replaced. */}

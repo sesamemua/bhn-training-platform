@@ -66,7 +66,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.av-2026-round-3",
     title: "The room, or the room with a stream",
-    body: "**Workspace \u2192 AV 2026** now opens on Livecast's round-3 quote, laid out for one decision: the room is **$7,861.42**, the stream adds **$1,906.88**, together **$9,768.30**. Before you choose, read what the stream buys \u2014 it is **one hour** of live stream, flagged on the page. The earlier split quotes are collapsed underneath.",
+    body: "**Workspace \u2192 AV 2026** now opens on Livecast's round-3 quote, laid out for one decision: the room is **$7,861.42**, the stream adds **$1,906.88**, together **$9,768.30**. The earlier split quotes are collapsed underneath.",
     path: "/admin/workspace/symposium-2026/av/2026",
     placement: "center",
     roles: ["admin", "superadmin"],

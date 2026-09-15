@@ -358,33 +358,3 @@ export const AV26_DECISION = {
    */
   bundlingSaves: 1220.4,
 };
-
-/**
- * What the $1,906.88 buys — the part of the decision the price alone does
- * not tell you. Read off the Essentials package wording and the streaming
- * section's lines.
- */
-export const AV26_STREAM_SCOPE: { label: string; detail: string; flag?: boolean }[] = [
-  {
-    label: "One hour of live stream",
-    detail: "The Essentials package is a one-hour, single-channel stream. The day itself runs from noon with a ten-hour crew, so streaming more than an hour of it is not in this price.",
-    flag: true,
-  },
-  {
-    label: "Slides — or speakers too?",
-    detail: "The package reads “full screen slides to stream, no video or overlays”, yet the section adds a Sony FS7 camera and riser decks. Ask whether speakers go out on video or only their slides.",
-    flag: true,
-  },
-  {
-    label: "One camera",
-    detail: "The separate streaming quote had two FS7 cameras, one of them free. Round 3 has one.",
-  },
-  {
-    label: "Up to 1,000 viewers",
-    detail: "On Livecast's private CDN.",
-  },
-  {
-    label: "A five-hour crew block",
-    detail: "One technician for five hours from noon, in place of the separate quote's ten-hour operator, setup/strike and its own delivery.",
-  },
-];

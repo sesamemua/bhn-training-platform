@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Symposium AV 2026: streaming scope panel removed
+  {
+    title: "Symposium AV 2026: streaming breakdown removed",
+    body: "The **What $1,906.88 of streaming buys** panel is gone from **Workspace → AV 2026**. The decision table (the room, streaming, total), the round 3 quote and the superseded pair are unchanged.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training Week registration v2: a new form beside the live one
   {
     title: "Training Week registration, version 2",
