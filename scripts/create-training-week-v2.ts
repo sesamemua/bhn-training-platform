@@ -25,12 +25,27 @@
  *     was read, so a builder save or a registration in between refuses
  *     instead of being overwritten.
  *
+ * PRESENTATION (--presentation). For the page's look and the words around
+ * the questions — heading, hero facts, buttons, header link, thank-you
+ * note — on a v2 people may already have registered on. It prints v2's
+ * presentation as stored → as built, and with --apply rewrites ONLY the
+ * `presentation` key inside v2's stored document:
+ *   - allowed with submissions, unlike --replace: the presentation changes
+ *     no question, option or rule, so every answer still means what it
+ *     meant when it was given;
+ *   - every other byte of the document is written back as it was read,
+ *     questions included, even where they differ from this build (a
+ *     coordinator's builder edit stays); title, description and `active`
+ *     are not in the write;
+ *   - the v2 row goes to backups/forms/ first, and the write only lands if
+ *     v2 is unchanged since it was read.
+ *
  * v1 IS NEVER WRITTEN. There is no update against it anywhere in this
  * file. On every run it is fingerprinted before and after — if v1
  * changed while this ran, for whatever reason, it says so loudly and
  * exits non-zero. Create also backs it up first.
  *
- * Run: npx tsx scripts/create-training-week-v2.ts [--replace] [--apply]
+ * Run: npx tsx scripts/create-training-week-v2.ts [--replace | --presentation] [--apply]
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -39,11 +54,14 @@ import {
   REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, refuseFrozenForm,
 } from "../src/lib/allocation/symposium-2026";
 import { buildTrainingWeekV2, canon, v2Problems, type TrainingWeekV2 } from "../src/lib/formbuilder/training-week-v2";
-import { parseForm, type BuiltForm, type Condition, type FormField, type WorkflowStep } from "../src/lib/formbuilder/types";
+import {
+  parseForm, type BuiltForm, type Condition, type FormField, type Presentation, type WorkflowStep,
+} from "../src/lib/formbuilder/types";
 
 const prisma = new PrismaClient();
 const APPLY = process.argv.includes("--apply");
 const REPLACE = process.argv.includes("--replace");
+const PRESENTATION = process.argv.includes("--presentation");
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
 /**
@@ -76,6 +94,47 @@ function pair(lines: string[], name: string, before: string, after: string) {
   lines.push(`    ${name.padEnd(13)} ${before}`);
   lines.push(`    ${"".padEnd(13)} → ${after}`);
 }
+
+/** A presentation value as a person reads it: a fact as label: text, a button or link as label → href. */
+function showLook(v: unknown): string {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const o = v as Record<string, unknown>;
+    if (typeof o.label === "string" && typeof o.text === "string") return `${o.label}: ${text(o.text)}`;
+    if (typeof o.label === "string" && typeof o.href === "string") return `${o.label} → ${o.href}`;
+  }
+  return show(v);
+}
+
+/**
+ * The presentation, key by key, before → after. Returns the keys that did
+ * not move, so a caller can say so rather than leave the reader guessing
+ * whether a missing line means "same" or "forgotten".
+ */
+function lookLines(out: string[], before: Presentation | undefined, after: Presentation | undefined): string[] {
+  const a = (before ?? {}) as Record<string, unknown>;
+  const b = (after ?? {}) as Record<string, unknown>;
+  const same: string[] = [];
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const start = out.length;
+    if (Array.isArray(a[k]) || Array.isArray(b[k])) {
+      // One line per paragraph, fact or button, so a one-word change is
+      // one pair to read rather than the whole array twice.
+      const as = (a[k] ?? []) as unknown[];
+      const bs = (b[k] ?? []) as unknown[];
+      for (let i = 0; i < Math.max(as.length, bs.length); i++) pair(out, `${k}[${i}]`, showLook(as[i]), showLook(bs[i]));
+    } else {
+      pair(out, k, showLook(a[k]), showLook(b[k]));
+    }
+    if (out.length === start) same.push(k);
+  }
+  return same;
+}
+
+/** The document minus its presentation: everything an answer was given to. */
+const questionsOf = (doc: BuiltForm) => {
+  const { presentation: _look, ...rest } = doc;
+  return rest;
+};
 
 /**
  * Question keys worded below. Anything else a question carries (a cap,
@@ -160,21 +219,7 @@ function replaceSummary(now: EventForm, nowDoc: BuiltForm, v2: TrainingWeekV2): 
   pair(out, "title", text(now.title), text(v2.title));
   pair(out, "description", text(now.description), text(v2.description));
   pair(out, "submit note", text(nowDoc.submitNote), text(next.submitNote));
-  const lookNow = (nowDoc.presentation ?? {}) as Record<string, unknown>;
-  const lookNext = (next.presentation ?? {}) as Record<string, unknown>;
-  for (const k of new Set([...Object.keys(lookNow), ...Object.keys(lookNext)])) {
-    const a = lookNow[k];
-    const b = lookNext[k];
-    if (Array.isArray(a) || Array.isArray(b)) {
-      // One line per paragraph, so a one-word change in the intro is
-      // one pair to read rather than the whole array twice.
-      const as = (a ?? []) as unknown[];
-      const bs = (b ?? []) as unknown[];
-      for (let i = 0; i < Math.max(as.length, bs.length); i++) pair(out, `${k}[${i}]`, show(as[i]), show(bs[i]));
-    } else {
-      pair(out, k, show(a), show(b));
-    }
-  }
+  lookLines(out, nowDoc.presentation, next.presentation);
   pair(out, "sources", show(nowDoc.sources), show(next.sources));
   out.push(`    ${"active".padEnd(13)} ${now.active} — kept; --replace never opens or closes a form`);
 
@@ -305,9 +350,12 @@ async function replace(v1Doc: BuiltForm, v2: TrainingWeekV2) {
 
   // After the diff, so a refused run still shows what it would have done.
   if (taken > 0) {
+    const lookOnly = canon(questionsOf(nowDoc)) === canon(questionsOf(v2.doc))
+      && now.title === v2.title && now.description === v2.description;
     throw new Error(
       `\nRefusing to replace: ${REGISTRATION_FORM_SLUG_V2} has ${taken} submission${taken === 1 ? "" : "s"}. ` +
-      `Those people answered the questions as they are worded now, so v2 is frozen too — make a new version instead.`,
+      `Those people answered the questions as they are worded now, so v2 is frozen too — make a new version instead.` +
+      (lookOnly ? "\nOnly its presentation differs, though — --presentation updates that and leaves the questions alone." : ""),
     );
   }
   if (!APPLY) {
@@ -367,14 +415,131 @@ async function replace(v1Doc: BuiltForm, v2: TrainingWeekV2) {
   console.log(`Replaced ${REGISTRATION_FORM_SLUG_V2} (id ${now.id}): title, description and questions; active kept ${after.active}.`);
 }
 
+/* ── presentation ───────────────────────────────────────────────────── */
+
+/** The stored JSON minus its presentation key, as stored — keys parseForm ignores included. */
+const withoutLook = (raw: Prisma.JsonObject) => {
+  const { presentation: _look, ...rest } = raw;
+  return rest;
+};
+
+const isObject = (v: Prisma.JsonValue): v is Prisma.JsonObject =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
+
+async function presentation(v1Doc: BuiltForm, v2: TrainingWeekV2) {
+  console.log(`Checks: ${v2Problems(v1Doc, v2.doc).length} problems (schema, parse round trip, keys, rules, sessions → Workshops).`);
+
+  const found = await prisma.eventForm.findUnique({
+    where: { slug: REGISTRATION_FORM_SLUG_V2 },
+    include: { _count: { select: { submissions: true } } },
+  });
+  if (!found) {
+    throw new Error(`Nothing to update: ${REGISTRATION_FORM_SLUG_V2} does not exist. Run without flags to create it.`);
+  }
+  const { _count, ...now } = found;
+  const taken = _count.submissions;
+  console.log(
+    `\nv2 ${REGISTRATION_FORM_SLUG_V2}: id ${now.id}, updated ${now.updatedAt.toISOString()}, ` +
+    `${now.active ? "active" : "closed"}, ${taken} submission${taken === 1 ? "" : "s"} ` +
+    `(allowed — the presentation changes no question, option or rule).\n`,
+  );
+
+  // Rewriting one key needs a document to rewrite it in. A row that is not
+  // a JSON object is not something to guess about on production.
+  if (!isObject(now.fields)) throw new Error(`Refusing: v2's stored document is not a JSON object. Nothing written.`);
+  const raw = now.fields;
+  const nowDoc = parseForm(raw);
+  const next = v2.doc.presentation;
+  if (!next) throw new Error("The build has no presentation — nothing to write.");
+
+  if (raw.presentation !== undefined && !nowDoc.presentation) {
+    // parseForm drops an invalid presentation whole, so the page is in the
+    // default look today, and the "now" column below reads as empty.
+    console.log("Note: v2's stored presentation does not parse — the page currently renders in the default look.\n");
+  }
+  if (canon(questionsOf(nowDoc)) !== canon(questionsOf(v2.doc))) {
+    console.log(
+      "Note: v2's questions differ from this build (edited in the builder since, or the build changed). " +
+      "--presentation leaves them exactly as stored.\n",
+    );
+  }
+
+  console.log("Presentation (v2 now → this build):");
+  const lines: string[] = [];
+  const same = lookLines(lines, nowDoc.presentation, next);
+  if (!lines.length) {
+    console.log("  v2's presentation already matches this build — nothing to update.");
+    return;
+  }
+  for (const line of lines) console.log(line);
+  if (same.length) console.log(`  unchanged: ${same.join(", ")}`);
+
+  /*
+   * The stored object with the one key swapped, so a key parseForm does
+   * not know about survives too. Proved before the write: read the way the
+   * page reads it, it must be the current document with the new look and
+   * nothing else moved.
+   */
+  const nextRaw: Prisma.JsonObject = { ...raw, presentation: next as unknown as Prisma.JsonObject };
+  if (canon(parseForm(nextRaw)) !== canon({ ...nowDoc, presentation: next })) {
+    throw new Error("Refusing: with the new presentation, v2 would not read back as its current questions plus that look. Nothing written.");
+  }
+
+  if (!APPLY) {
+    console.log(
+      `\nWould update ONLY the presentation inside ${REGISTRATION_FORM_SLUG_V2}'s document (id ${now.id}). ` +
+      `Title, description, questions, workflow, submit note and active (${now.active}) stay as stored; ` +
+      `its ${taken} registration${taken === 1 ? "" : "s"} are not touched.`,
+    );
+    console.log("Re-run with --presentation --apply to write it.");
+    return;
+  }
+
+  refuseFrozenForm(now.slug, "create-training-week-v2 --presentation");
+
+  mkdirSync("backups/forms", { recursive: true });
+  const file = `backups/forms/${stamp()}-before-presentation-${REGISTRATION_FORM_SLUG_V2}.json`;
+  writeFileSync(file, JSON.stringify(found, null, 2));
+  console.log(`\nBacked up v2 → ${file}`);
+
+  // Lands only if v2 is the row read above: a builder save bumps updatedAt.
+  // No submissions condition — registrations are exactly what this mode allows.
+  const { count } = await prisma.eventForm.updateMany({
+    where: { id: now.id, updatedAt: now.updatedAt },
+    data: { fields: nextRaw },
+  });
+  if (count !== 1) {
+    throw new Error(
+      "Refusing: v2 was edited while this ran. Nothing written. Re-run the dry run to see it as it is now.",
+    );
+  }
+
+  const after = await prisma.eventForm.findUniqueOrThrow({ where: { id: now.id } });
+  const afterDoc = parseForm(after.fields);
+  const wrong: string[] = [];
+  if (canon(afterDoc.presentation ?? {}) !== canon(next)) wrong.push("its presentation does not read back as built");
+  if (canon(questionsOf(afterDoc)) !== canon(questionsOf(nowDoc))) wrong.push("its questions, workflow or submit note read differently");
+  if (!isObject(after.fields) || canon(withoutLook(after.fields)) !== canon(withoutLook(raw))) {
+    wrong.push("its stored document changed outside the presentation");
+  }
+  if (after.title !== now.title || after.description !== now.description) wrong.push("its title or description moved");
+  if (after.active !== now.active) wrong.push(`its active flag moved (${now.active} → ${after.active})`);
+  if (wrong.length) {
+    throw new Error(`v2 WAS UPDATED (id ${now.id}) but ${wrong.join("; ")}. Compare it with ${file}.`);
+  }
+  console.log(`Updated the presentation of ${REGISTRATION_FORM_SLUG_V2} (id ${now.id}); questions, title, description and active untouched.`);
+}
+
 /* ── run ────────────────────────────────────────────────────────────── */
 
 async function main() {
-  console.log(
-    REPLACE
-      ? (APPLY ? "APPLYING — replacing v2 in place.\n" : "DRY RUN — nothing will be written. Add --apply to replace v2.\n")
-      : (APPLY ? "APPLYING — creating v2.\n" : "DRY RUN — nothing will be written. Add --apply to create v2.\n"),
-  );
+  // Two different writes with two different safety rules; guessing which
+  // one was meant is not a thing to do against production.
+  if (REPLACE && PRESENTATION) throw new Error("--replace and --presentation are different writes — pick one.");
+  const [doing, todo] = PRESENTATION
+    ? ["updating v2's presentation only", "update v2's presentation"]
+    : REPLACE ? ["replacing v2 in place", "replace v2"] : ["creating v2", "create v2"];
+  console.log(APPLY ? `APPLYING — ${doing}.\n` : `DRY RUN — nothing will be written. Add --apply to ${todo}.\n`);
 
   const v1 = await readV1();
   if (!v1) throw new Error(`No form with slug ${REGISTRATION_FORM_SLUG} — v2 is built from it.`);
@@ -388,7 +553,8 @@ async function main() {
     // or if the result fails any of its own checks. Nothing is written
     // before this line, so a refusal here costs nothing.
     const v2 = buildTrainingWeekV2(v1);
-    if (REPLACE) await replace(v1Doc, v2);
+    if (PRESENTATION) await presentation(v1Doc, v2);
+    else if (REPLACE) await replace(v1Doc, v2);
     else await create(v1, v1Doc, v2);
   } catch (err) {
     failure = err;

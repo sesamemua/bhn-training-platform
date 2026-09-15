@@ -161,6 +161,47 @@ test("every rule in site-theme.css is scoped to the skin, so no other page can m
   for (const sel of SELECTORS) assert.match(sel, scoped, sel);
 });
 
+/** The stylesheet with every @supports block cut out, braces and all. */
+function withoutSupports(css: string): string {
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const at = css.indexOf("@supports", i);
+    if (at < 0) return out + css.slice(i);
+    out += css.slice(i, at);
+    let j = css.indexOf("{", at) + 1;
+    for (let depth = 1; depth > 0 && j < css.length; j++) {
+      if (css[j] === "{") depth++;
+      else if (css[j] === "}") depth--;
+    }
+    i = j;
+  }
+}
+
+const CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+
+test("the header's glass over the photo is a scroll timeline behind @supports, on a white header that needs none", () => {
+  assert.match(CODE, /@supports \(animation-timeline: scroll\(\)\)/);
+  // Anywhere else, a browser without scroll timelines would get a header
+  // stuck at one end of an animation it cannot run.
+  assert.doesNotMatch(withoutSupports(CODE), /animation-timeline|animation-range/);
+  const rule = (selector: string) =>
+    new RegExp(`(?:^|\\})\\s*${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`).exec(CODE)?.[1] ?? "";
+  // The resting state is the site's scrolled header: white, colour lockup showing.
+  assert.match(rule(".bhn-site .bhn-header"), /position: fixed;[\s\S]*background-color: rgba\(255, 255, 255, 0\.96\);/);
+  assert.match(rule(".bhn-site .bhn-logo--white"), /opacity: 0;/);
+  assert.match(rule(".bhn-site .bhn-header::before"), /opacity: 0;/);
+});
+
+test("animations are named for the skin, and the only image it fetches from elsewhere is the site's blue glass", () => {
+  const names = [...CODE.matchAll(/@keyframes\s+([\w-]+)/g)].map((m) => m[1]);
+  assert.ok(names.length >= 5, names.join());
+  // @keyframes are global; a bare name could replace another page's.
+  for (const name of names) assert.match(name, /^bhn-/);
+  const urls = new Set([...CODE.matchAll(/url\(\s*["']?([^"')]+)/g)].map((m) => m[1]));
+  assert.deepEqual([...urls], ["https://biohubnet.ca/wp-content/uploads/2026/09/symposium-blue-glass.jpg"]);
+});
+
 test("the stylesheet stays unlayered and is not a second Tailwind entry point", () => {
   // Comments may talk about layers; only the code is checked.
   const code = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -175,6 +216,7 @@ test("every class the skin targets still exists in the components it skins", () 
     "src/components/workspace/SessionCalendar.tsx",
     "src/components/workspace/WeekGrid.tsx",
     "src/components/forms/RichText.tsx",
+    "src/components/forms/SiteChrome.tsx",
     "src/app/apply/[slug]/page.tsx",
   ].map(read).join("\n");
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");

@@ -90,14 +90,14 @@ export const V2_SLOT_CAPACITY: Readonly<Record<string, number>> = {
 };
 
 export const V2_TITLE = "BioHubNet Training Week 2026";
-/** One plain line. It is the meta description; the page shows the intro instead. */
+/** One plain line. It is the meta description; the page shows the hero's facts instead. */
 export const V2_DESCRIPTION =
   "BioHubNet Training Week, 26–28 October 2026 in Toronto, for HQPs accepted into ENGAGE, EXPERIENCE or EQUIP. Choose and rank the sessions you would like to attend.";
 
 /**
- * The one promise about timing (C3). One constant for the intro and the
- * thank-you screen, so the form cannot say one date and the screen after
- * it another — which is what the default "two to three weeks" did.
+ * The one promise about timing (C3). One constant for the "Seat offers"
+ * fact and the thank-you screen, so the form cannot say one date and the
+ * screen after it another — which is what the default "two to three weeks" did.
  */
 export const V2_SEAT_OFFER_TIMELINE =
   "The BioHubNet team will email you with seat offers during the last week of September.";
@@ -105,23 +105,47 @@ export const V2_SEAT_OFFER_TIMELINE =
 /**
  * Replaces the thank-you screen's default paragraph. Keeps what that
  * paragraph was for — why it takes a while, that everyone hears either
- * way, and when to chase — with the date swapped for the intro's.
+ * way, and when to chase — with the date swapped for the hero's.
  */
 export const V2_CONFIRMATION_NOTE =
   `**${V2_SEAT_OFFER_TIMELINE}** Places are limited and every registration is reviewed together rather than as it arrives. ` +
   "We will write to you either way — whether or not we can offer you a place. " +
   "If you have not heard from us by early October, reply to the email and we will chase it.";
 
+/** Where the header points back to: the page this form is part of. */
+export const SYMPOSIUM_PAGE_URL = "https://biohubnet.ca/2026-annual-symposium/";
+
+/*
+ * Laid out like the symposium page's hero. The team's intro paragraphs
+ * are the three facts, word for word, each under a label saying what it
+ * answers; the required-marker line moves down to sit above the
+ * questions it is about. No `intro`: the hero says it, twice would be noise.
+ */
 export const V2_PRESENTATION: Presentation = {
   theme: "site",
   heading: "BioHubNet Training Week",
   subheading: "26–28 October 2026 | Toronto",
-  intro: [
-    "Training Week events are only open to HQPs accepted into ENGAGE, EXPERIENCE, or EQUIP programs.",
-    `Please select and rank the sessions you would like to attend. ${V2_SEAT_OFFER_TIMELINE}`,
-    `The Annual Symposium on 29 October 2026 is a separate event. To register, visit the Symposium registration site: ${LUMA_LINK}`,
-    "Questions marked * are required.",
+  facts: [
+    {
+      label: "Who can register",
+      text: "Training Week events are only open to HQPs accepted into ENGAGE, EXPERIENCE, or EQUIP programs.",
+    },
+    {
+      label: "Seat offers",
+      text: `Please select and rank the sessions you would like to attend. ${V2_SEAT_OFFER_TIMELINE}`,
+    },
+    {
+      label: "Annual Symposium",
+      text: `The Annual Symposium on 29 October 2026 is a separate event. To register, visit the Symposium registration site: ${LUMA_LINK}`,
+    },
   ],
+  // First is the solid button. "#registration" is the questions' anchor on the site-theme page.
+  actions: [
+    { label: "Start registration", href: "#registration" },
+    { label: "Symposium registration", href: LUMA_URL },
+  ],
+  formIntro: "Questions marked * are required.",
+  homeLink: { label: "2026 Symposium", href: SYMPOSIUM_PAGE_URL },
   richText: true,
   gateInline: true,
   hideCalendarHint: true,

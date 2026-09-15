@@ -8,7 +8,7 @@ import {
   V2_NO_ACCOUNT, V2_NO_DIET, V2_SEAT_OFFER_TIMELINE, V2_SYMPOSIUM_OPTIONS, V2_SYMPOSIUM_PLANNING, v2Problems,
 } from "../../src/lib/formbuilder/training-week-v2";
 import { versionLabel, versionRoot } from "../../src/lib/formbuilder/versions";
-import { BuiltFormSchema, parseForm, type BuiltForm } from "../../src/lib/formbuilder/types";
+import { BuiltFormSchema, parseForm, PresentationSchema, type BuiltForm } from "../../src/lib/formbuilder/types";
 import { problems, visibleFields, walk, type Answers } from "../../src/lib/formbuilder/logic";
 import { checkSubmission, emailFrom, rankedSessions } from "../../src/lib/formbuilder/submit";
 import { hasRichLink, parseRich, plainRich } from "../../src/lib/formbuilder/rich-text";
@@ -152,19 +152,73 @@ test("C2: the refusal sits by the email question", () => {
   assert.equal(q(v2, "trainee_email").key, "trainee_email");
 });
 
-test("C3: the header and the intro", () => {
+/**
+ * The team's intro as they signed it off, before the hero took it apart.
+ * Kept here as the record: the layout may move a sentence, never reword one.
+ */
+const TEAM_INTRO = [
+  "Training Week events are only open to HQPs accepted into ENGAGE, EXPERIENCE, or EQUIP programs.",
+  "Please select and rank the sessions you would like to attend. The BioHubNet team will email you with seat offers during the last week of September.",
+  "The Annual Symposium on 29 October 2026 is a separate event. To register, visit the Symposium registration site: [BioHubNet 2026 Annual Symposium · Luma](https://luma.com/wh30nh1n)",
+  "Questions marked * are required.",
+];
+/** "luma.com/…" has a dot too, so a sentence ends at a dot followed by a space and a capital. */
+const sentences = (paragraph: string) => paragraph.split(/(?<=\.)\s+(?=[A-Z])/);
+
+const fact = (label: string) => {
+  const f = v2.presentation?.facts?.find((x) => x.label === label);
+  assert.ok(f, `no fact "${label}"`);
+  return f;
+};
+
+test("C3: the header", () => {
   const p = v2.presentation!;
   assert.equal(p.heading, "BioHubNet Training Week");
   assert.equal(p.subheading, "26–28 October 2026 | Toronto");
-  assert.deepEqual(p.intro, [
-    "Training Week events are only open to HQPs accepted into ENGAGE, EXPERIENCE, or EQUIP programs.",
-    "Please select and rank the sessions you would like to attend. The BioHubNet team will email you with seat offers during the last week of September.",
-    "The Annual Symposium on 29 October 2026 is a separate event. To register, visit the Symposium registration site: [BioHubNet 2026 Annual Symposium · Luma](https://luma.com/wh30nh1n)",
-    "Questions marked * are required.",
+  // The hero says it now; an intro as well would say it twice.
+  assert.ok(!("intro" in p), "the intro key is back");
+  assert.ok(!("intro" in parseForm(JSON.parse(JSON.stringify(v2))).presentation!), "an intro appears on read");
+});
+
+test("C3: every sentence of the team's intro is in the hero or above the questions, verbatim", () => {
+  const p = v2.presentation!;
+  const said = [...(p.facts ?? []).map((f) => f.text), p.formIntro ?? ""];
+  const all = TEAM_INTRO.flatMap(sentences);
+  assert.equal(all.length, 6, "the sentence split has drifted");
+  for (const s of all) assert.ok(said.some((t) => t.includes(s)), `not said verbatim anywhere: "${s}"`);
+
+  // Each paragraph whole, under the label saying what it answers.
+  assert.deepEqual(p.facts, [
+    { label: "Who can register", text: TEAM_INTRO[0] },
+    { label: "Seat offers", text: TEAM_INTRO[1] },
+    { label: "Annual Symposium", text: TEAM_INTRO[2] },
   ]);
-  // The Luma line is a link that reads as the event, not as an address.
-  const luma = parseRich(p.intro![2]).flat().find((piece) => "href" in piece);
-  assert.deepEqual(luma, { text: LUMA_LABEL, href: LUMA_URL });
+  assert.equal(p.formIntro, TEAM_INTRO[3]);
+  // Nothing added that the team did not write, bar the labels.
+  assert.equal(said.join("\n"), TEAM_INTRO.join("\n"));
+});
+
+test("C3: Luma is a labelled link in the Symposium fact, and the second button", () => {
+  const p = v2.presentation!;
+  // A link that reads as the event, not as an address.
+  const links = parseRich(fact("Annual Symposium").text).flat().filter((piece) => "href" in piece);
+  assert.deepEqual(links, [{ text: LUMA_LABEL, href: LUMA_URL }]);
+  for (const label of ["Who can register", "Seat offers"]) assert.ok(!hasRichLink(fact(label).text), label);
+
+  assert.deepEqual(p.actions, [
+    { label: "Start registration", href: "#registration" },
+    { label: "Symposium registration", href: LUMA_URL },
+  ]);
+});
+
+test("C3: the buttons and the header link go somewhere the schema allows", () => {
+  const p = v2.presentation!;
+  for (const a of p.actions ?? []) assert.match(a.href, /^(#[A-Za-z][\w-]*|https:\/\/\S+)$/, a.label);
+  assert.deepEqual(p.homeLink, { label: "2026 Symposium", href: "https://biohubnet.ca/2026-annual-symposium/" });
+  assert.ok(PresentationSchema.safeParse(p).success);
+  // And the schema is the guard, not the test: a script link is refused.
+  assert.ok(!PresentationSchema.safeParse({ ...p, actions: [{ label: "x", href: "javascript:alert(1)" }] }).success);
+  assert.ok(!PresentationSchema.safeParse({ ...p, homeLink: { label: "x", href: "http://biohubnet.ca/" } }).success);
 });
 
 test("C3: the thank-you screen keeps the intro's timeline", () => {
@@ -174,8 +228,8 @@ test("C3: the thank-you screen keeps the intro's timeline", () => {
     note,
     "**The BioHubNet team will email you with seat offers during the last week of September.** Places are limited and every registration is reviewed together rather than as it arrives. We will write to you either way — whether or not we can offer you a place. If you have not heard from us by early October, reply to the email and we will chase it.",
   );
-  // The same sentence the intro promises, so the two screens cannot drift.
-  assert.ok(v2.presentation!.intro![1].endsWith(V2_SEAT_OFFER_TIMELINE));
+  // The same sentence the hero promises, so the two screens cannot drift.
+  assert.ok(fact("Seat offers").text.endsWith(V2_SEAT_OFFER_TIMELINE));
   assert.deepEqual(parseRich(note)[0][0], { text: V2_SEAT_OFFER_TIMELINE, bold: true });
   assert.equal(parseRich(note).length, 1);
   assert.ok(!/two to three weeks|three weeks/i.test(plainRich(note)), "the old turnaround survives");
@@ -363,10 +417,16 @@ test("no v1-only answer survives anywhere in v2", () => {
     ...V1_STATUS,
     "Yes — already signed up", "No — I am not attending the Symposium",
     "Vegetarian", "Gluten-free / coeliac", "Dairy-free / lactose intolerant", "Nut allergy", "Shellfish allergy",
-    "Something else — I will describe it", V1_CHAMELEON, "biohubnet.ca/2026-annual-symposium",
+    "Something else — I will describe it", V1_CHAMELEON,
   ]) {
     assert.ok(!text.includes(old), `"${old}" is still in v2`);
   }
+  // The event page is where the header points back to, and only there:
+  // a question sending people to it instead of Luma is the v1 leftover.
+  const eventPage = "biohubnet.ca/2026-annual-symposium";
+  assert.ok(!JSON.stringify(v2.fields).includes(eventPage), "a question still points at the event page");
+  assert.equal(text.split(eventPage).length - 1, 1);
+  assert.ok(v2.presentation!.homeLink!.href.includes(eventPage));
   // "Not yet — I plan to" is a prefix of its replacement, so it may only
   // appear as that replacement.
   assert.equal(text.split("Not yet — I plan to").length, text.split(V2_SYMPOSIUM_PLANNING).length);

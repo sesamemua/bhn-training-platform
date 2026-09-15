@@ -9,7 +9,8 @@
  *  Two ways in, and every rule below uses one of them:
  *    [data-theme="bhnsite"]  <html>, set before first paint for the
  *                            slugs in src/lib/formbuilder/site-theme.ts
- *    .bhn-site               the page's <main>, when the form's
+ *    .bhn-site               the page's wrapper (and FormFillView's
+ *                            root), when the form's
  *                            presentation.theme is "site"
  *  A form without that flag matches nothing here — v1 of the Training
  *  Week form included — which tests/unit/site-theme.test.ts checks.
@@ -157,7 +158,6 @@
 [data-theme] .bhn-site .text-amber-600  { color: var(--color-amber-600); }
 [data-theme] .bhn-site .text-amber-700  { color: var(--color-amber-700); }
 [data-theme] .bhn-site .text-emerald-600 { color: var(--color-emerald-600); }
-[data-theme] .bhn-site .text-brand-600  { color: var(--brand-600); }
 
 /* ───── Alerts ─────
  * Opaque, not 10% over whatever is behind. Most of them sit on the
@@ -291,10 +291,562 @@
   box-shadow: inset 3px 0 0 var(--color-red-500);
 }
 
-/* ───── The intro under the heading ─────
- * It sits on the ground, not a card. */
-.bhn-site .bhn-intro a       { color: var(--brand-600); }
-.bhn-site .bhn-intro a:hover { color: var(--bhn-blue-ink); }
+/* ============================================================
+ *  The page around the form
+ *  ──────────────────────────────────────────────────────────
+ *  SiteChrome.tsx draws the symposium page's fixed header, photo
+ *  hero, blue-glass section and dark footer; these are their
+ *  measurements. Values are the site's embed stylesheet, with its
+ *  #symposium-blue-refresh block winning wherever both set one.
+ *  Departures say so, and each is for contrast or for a section far
+ *  taller than the one it is copied from.
+ * ============================================================ */
+
+.bhn-site.bhn-chrome {
+  /* The site's 88px bar and its 1px rule. The hero clears it and the
+   * scroller stops below it. */
+  --bhn-header-h: 89px;
+  --bhn-logo-w: clamp(196px, 15vw, 286px);
+  --bhn-shell: min(calc(100% - 48px), 1320px);
+}
+@media (max-width: 980px) {
+  .bhn-site.bhn-chrome { --bhn-header-h: 72px; --bhn-logo-w: clamp(172px, 38vw, 220px); }
+}
+@media (max-width: 760px) {
+  /* The site's phone lockup is 204px wide; 150 leaves the CTA room. */
+  .bhn-site.bhn-chrome { --bhn-header-h: 68px; --bhn-logo-w: clamp(150px, 38vw, 204px); }
+}
+@media (max-width: 680px) {
+  .bhn-site.bhn-chrome { --bhn-shell: calc(100% - 32px); }
+}
+
+/* A fixed header covers whatever the browser scrolls to — the
+ * #registration jump, the question FormFillView focuses — unless the
+ * scroller is told how tall it is. The same three heights as above:
+ * a custom property set lower down does not reach the root. */
+:root:has(.bhn-site.bhn-chrome) { scroll-padding-top: 89px; }
+@media (max-width: 980px) { :root:has(.bhn-site.bhn-chrome) { scroll-padding-top: 72px; } }
+@media (max-width: 760px) { :root:has(.bhn-site.bhn-chrome) { scroll-padding-top: 68px; } }
+
+.bhn-site :is(.bhn-cta, .bhn-button, .bhn-nav-link, .bhn-footer a) {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.18s;
+  transition-timing-function: ease;
+}
+
+/* ───── Skip link ─────
+ * Above the top edge until it has focus: in the tab order, never in
+ * the way. */
+.bhn-site .bhn-skip {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 60;
+  padding: 0.85rem 1.05rem;
+  background: #fff;
+  color: var(--fg);
+  font: 700 0.875rem/1 var(--font-geist-mono);
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(8, 30, 42, 0.18);
+  transform: translateY(calc(-100% - 20px));
+}
+.bhn-site .bhn-skip:focus { transform: none; }
+
+/* ───── Header ─────
+ * header.bhn-global-header. Its resting state here is the site's
+ * SCROLLED one — white, the colour lockup, dark ink — and the glass over
+ * the photo is laid on top by the scroll timeline below. A browser
+ * without scroll-driven animations keeps the white header throughout,
+ * which reads on the photo and on the form alike. */
+.bhn-site .bhn-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;              /* under the cookie banner's 50 */
+  height: var(--bhn-header-h);
+  isolation: isolate;
+  border-bottom: 1px solid rgba(6, 32, 40, 0.12);
+  background-color: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 48px rgba(8, 30, 42, 0.12);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+/* The over-the-photo gradient, on its own layer: a gradient cannot be
+ * faded into a colour, an opacity can. */
+.bhn-site .bhn-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(4, 13, 20, 0.78), rgba(4, 13, 20, 0.34) 66%, rgba(4, 13, 20, 0));
+  opacity: 0;
+  pointer-events: none;
+}
+.bhn-site .bhn-header-bar {
+  width: var(--bhn-shell);
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(1rem, 3vw, 3rem);
+}
+@media (max-width: 680px) {
+  .bhn-site .bhn-header-bar { width: calc(100% - 24px); }
+}
+
+.bhn-site .bhn-brand {
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--bhn-logo-w);
+  /* The lockup's own proportions (2357×619), so neither file is ever
+   * squeezed or letterboxed. */
+  aspect-ratio: 2357 / 619;
+}
+.bhn-site .bhn-logo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+  object-position: left center;
+}
+.bhn-site .bhn-logo--white { opacity: 0; }
+
+.bhn-site .bhn-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2.4vw, 2.4rem);
+}
+.bhn-site .bhn-nav-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: #0b2b36;
+  font: 700 0.875rem/1 var(--font-geist-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-underline-offset: 6px;
+  white-space: nowrap;
+}
+/* Underlined as well as recoloured: over the photo the timeline holds
+ * the colour, so the line is what says "hover" there. */
+.bhn-site .bhn-nav-link:is(:hover, :focus-visible) { color: #0a7d80; text-decoration: underline; }
+/* A phone keeps the logo and the CTA; the link would push one off. */
+@media (max-width: 560px) {
+  .bhn-site .bhn-nav-link { display: none; }
+}
+
+.bhn-site .bhn-cta {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid #0f7076;
+  background: #0f7076;
+  color: #fff;
+  font: 700 0.875rem/1 var(--font-geist-mono);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 12px 28px rgba(15, 112, 118, 0.22);
+}
+.bhn-site .bhn-cta:is(:hover, :focus-visible) { background: #43d3c9; border-color: #43d3c9; color: #071113; }
+@media (max-width: 680px) {
+  .bhn-site .bhn-cta { min-height: 44px; padding-inline: 0.7rem; }
+}
+/* One ring for both states: teal, with a white halo that shows on the glass. */
+.bhn-site .bhn-header :focus-visible {
+  outline: 2px solid #0f7076;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px #fff;
+}
+
+/* The glass over the photo, for the first 40px of scroll. The site
+ * swaps at 28px with a .28s fade; this fades across the distance
+ * instead, and needs no script to do it. */
+@supports (animation-timeline: scroll()) {
+  .bhn-site .bhn-header,
+  .bhn-site .bhn-header::before,
+  .bhn-site .bhn-logo,
+  .bhn-site .bhn-nav-link {
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: scroll(root block);
+    animation-range: 0 40px;
+  }
+  .bhn-site .bhn-header { animation-name: bhn-header-on-photo; }
+  .bhn-site .bhn-header::before,
+  .bhn-site .bhn-logo--white { animation-name: bhn-shown-on-photo; }
+  .bhn-site .bhn-logo--colour { animation-name: bhn-hidden-on-photo; }
+  .bhn-site .bhn-nav-link { animation-name: bhn-link-on-photo; }
+}
+/* Only the photo end is written: the other end is the resting style. */
+@keyframes bhn-header-on-photo {
+  from {
+    background-color: rgba(255, 255, 255, 0);
+    border-bottom-color: rgba(224, 244, 248, 0.18);
+    box-shadow: 0 18px 48px rgba(8, 30, 42, 0);
+  }
+}
+@keyframes bhn-shown-on-photo { from { opacity: 1; } }
+@keyframes bhn-hidden-on-photo { from { opacity: 0; } }
+@keyframes bhn-link-on-photo {
+  from { color: rgba(247, 252, 252, 0.84); text-shadow: 0 1px 22px rgba(0, 0, 0, 0.34); }
+}
+
+/* ───── Hero ───── */
+.bhn-site .bhn-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  color: #eef7f6;
+  /* Under the photo, and all there is if it fails to load: the white
+   * type reads on it too. */
+  background: #174e7b;
+}
+.bhn-site .bhn-hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.bhn-site .bhn-hero-media img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: center 38%;
+  filter: saturate(1.08) contrast(1.06);
+}
+.bhn-site .bhn-hero-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(3, 20, 42, 0.88), rgba(4, 27, 53, 0.48) 55%, rgba(4, 25, 49, 0.2)),
+    linear-gradient(0deg, rgba(3, 20, 42, 0.75), transparent 72%);
+}
+.bhn-site .bhn-hero-content {
+  width: var(--bhn-shell);
+  min-height: min(92vh, 940px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.55fr);
+  gap: clamp(2rem, 6vw, 7rem);
+  align-items: end;
+  padding: clamp(8rem, 14vh, 13rem) 0 clamp(3rem, 8vh, 6rem);
+}
+.bhn-site .bhn-hero-content > * { min-width: 0; }
+/* No facts, no second column. */
+.bhn-site .bhn-hero:not(.bhn-hero--facts) .bhn-hero-content { grid-template-columns: minmax(0, 1fr); }
+
+.bhn-site .bhn-hero h1 {
+  max-width: 760px;
+  margin: 0;
+  color: #eef7f6;
+  font-family: var(--font-display-theme);
+  font-size: clamp(2.35rem, 4.25vw, 4.8rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.bhn-site .bhn-lede {
+  max-width: 780px;
+  margin: 1.4rem 0 0;
+  color: #fff;
+  font-size: clamp(1.35rem, 2.15vw, 1.85rem);
+  line-height: 1.35;
+}
+/* The site has no paragraphs here. Running text a step under the lede,
+ * in the white its facts use. */
+.bhn-site .bhn-hero-intro {
+  max-width: 740px;
+  margin-top: 1.25rem;
+  color: #fff;
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+.bhn-site .bhn-hero-intro p + p { margin-top: 0.75rem; }
+
+.bhn-site .bhn-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 2rem;
+}
+.bhn-site .bhn-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(13, 48, 83, 0.65);
+  color: #fff;
+  font: 700 0.875rem/1 var(--font-geist-mono);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.bhn-site .bhn-button:is(:hover, :focus-visible) { background: #35c2bc; border-color: #35c2bc; color: #081d25; }
+.bhn-site .bhn-button--solid {
+  background: #f0fbff;
+  border-color: #f0fbff;
+  color: #123e64;
+  box-shadow: 0 8px 24px rgba(3, 30, 66, 0.18);
+}
+.bhn-site .bhn-button--solid:is(:hover, :focus-visible) { background: #bcecff; border-color: #bcecff; color: #123e64; }
+
+.bhn-site .bhn-hero-facts {
+  margin: 0;
+  padding: 8px 22px;
+  border-top: 1px solid rgba(210, 239, 255, 0.4);
+  border-bottom: 1px solid rgba(210, 239, 255, 0.4);
+  background: rgba(12, 48, 83, 0.7);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 48px rgba(9, 39, 74, 0.18);
+}
+.bhn-site .bhn-hero-fact {
+  display: grid;
+  grid-template-columns: 7.25rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.15rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.bhn-site .bhn-hero-fact:first-child { border-top: 0; }
+.bhn-site .bhn-hero-fact dt {
+  color: #a9e9ff;
+  font: 700 0.875rem/1.2 var(--font-geist-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.bhn-site .bhn-hero-fact dd {
+  margin: 0;
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+/* RichText's teal link and ink bold are made for a white card. */
+.bhn-site .bhn-hero a.text-brand-500 { color: #a9e9ff; }
+.bhn-site .bhn-hero a.text-brand-500:hover { color: #fff; }
+.bhn-site .bhn-hero strong.text-fg { color: #fff; }
+/* Light rings on the dark: the platform's teal one is too faint here. */
+.bhn-site :is(.bhn-hero, .bhn-footer) :focus-visible { outline-color: #a9e9ff; outline-offset: 3px; }
+
+@media (max-width: 980px) {
+  .bhn-site .bhn-hero-content {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.25rem;
+    align-items: start;
+    padding: calc(var(--bhn-header-h) + 3.5rem) 0 3.5rem;
+  }
+  .bhn-site .bhn-hero-facts { max-width: 650px; }
+}
+@media (max-width: 767px) {
+  /* The site's phone overlay. Its own cascade lets the desktop one win
+   * at every width, which puts white type on the bright ceiling; this
+   * keeps the title and lede at AA. */
+  .bhn-site .bhn-hero-media::after { background: linear-gradient(0deg, rgba(12, 48, 84, 0.88), rgba(12, 48, 84, 0.6)); }
+  .bhn-site .bhn-hero-facts { padding: 6px 16px; }
+}
+@media (max-width: 680px) {
+  .bhn-site .bhn-hero-content { padding: calc(var(--bhn-header-h) + 2.25rem) 0 2.5rem; }
+  .bhn-site .bhn-hero h1 { font-size: clamp(2.45rem, 11.5vw, 3.35rem); line-height: 1; }
+  .bhn-site .bhn-hero-actions .bhn-button { width: 100%; }
+  .bhn-site .bhn-hero-fact { grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bhn-site .bhn-hero-media img { animation: bhn-hero-drift 24s ease-in-out infinite alternate; }
+}
+/* The site's slow drift, scaled up enough that the photo's edge never
+ * comes into view (at the site's own 1.04 a sliver does). */
+@keyframes bhn-hero-drift {
+  from { transform: translate(-3%, 1%) scale(1.08); }
+  to { transform: translate(3%, -2%) scale(1.12); }
+}
+
+/* ───── The form's section ─────
+ * .training: pale blue, the blue-glass photograph on the right, and a
+ * white wash that is nearly solid where the words are. That band is
+ * 520px tall and this one holds the whole form, so the photograph stays
+ * a band — about a screen at the top, fading into the ground — rather
+ * than being blown up to the height of the questions. */
+.bhn-site .bhn-form-section {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  padding-top: clamp(2.5rem, 6vw, 4.5rem);
+  background: #e7f2fc;
+}
+.bhn-site .bhn-form-section::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  top: 0;
+  left: -4%;
+  right: -4%;
+  height: clamp(560px, 110vh, 1040px);
+  background:
+    linear-gradient(180deg, rgba(231, 242, 252, 0) 55%, #e7f2fc),
+    url("https://biohubnet.ca/wp-content/uploads/2026/09/symposium-blue-glass.jpg") center right / cover no-repeat;
+  pointer-events: none;
+}
+.bhn-site .bhn-form-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgba(240, 248, 255, 0.97), rgba(236, 246, 255, 0.92) 52%, rgba(219, 237, 253, 0.35));
+  pointer-events: none;
+}
+@media (max-width: 767px) {
+  .bhn-site .bhn-form-section::after { background: rgba(237, 247, 255, 0.91); }
+}
+.bhn-site .bhn-form-shell {
+  width: var(--bhn-shell);
+  margin: 0 auto;
+}
+/* Left-aligned under the hero's title, as .training-grid is, so the
+ * title, the questions and the receipt share one left edge. */
+.bhn-site .bhn-form-column { margin-left: 0; }
+/* FormFillView paints the skin's ground on its own .bhn-site root,
+ * which here would be a pale box laid over the glass. */
+.bhn-site .bhn-form-section .bhn-site { background: none; }
+.bhn-site .bhn-form-intro {
+  max-width: 740px;
+  margin: 0;
+  color: #36566f;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+/* ───── Footer ─────
+ * <biohubnet-site-footer>, from the component's own stylesheet. Its
+ * mono is SF Mono, which a web page cannot ask for by name; Plex Mono
+ * is already on the page. */
+.bhn-site .bhn-footer {
+  padding: clamp(2.4rem, 5vw, 4.5rem) 0 1.25rem;
+  border-top: 1px solid rgba(203, 229, 224, 0.17);
+  background: #050b0c;
+  color: #b9ced4;
+  font-family: "Avenir Next", Optima, "Gill Sans", "Segoe UI", Arial, sans-serif;
+}
+.bhn-site .bhn-footer-shell {
+  width: min(calc(100% - 48px), 1380px);
+  margin: 0 auto;
+}
+/* The site's three columns; the third held the newsletter and is left
+ * empty so the first two sit where they do there. */
+.bhn-site .bhn-footer-grid {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.82fr) minmax(260px, 0.7fr) minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 4.75rem);
+  align-items: start;
+}
+.bhn-site .bhn-footer-logo {
+  display: block;
+  width: clamp(150px, 13vw, 205px);
+  height: auto;
+  margin: 0 0 1rem;
+}
+.bhn-site .bhn-footer-address {
+  margin: 0;
+  color: rgba(233, 241, 239, 0.7);
+  font-size: 0.9rem;
+  line-height: 1.52;
+}
+.bhn-site .bhn-footer-funding {
+  margin: 1rem 0 0;
+  color: rgba(233, 241, 239, 0.58);
+  font-size: 0.8rem;
+  line-height: 1.52;
+}
+.bhn-site .bhn-footer-funding a {
+  color: #7adbd5;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.bhn-site .bhn-footer-eyebrow {
+  display: block;
+  margin: 0 0 0.9rem;
+  color: #9beddf;
+  font: 700 0.75rem/1.15 var(--font-geist-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.bhn-site .bhn-footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.bhn-site .bhn-footer-links {
+  display: grid;
+  gap: 0.38rem;
+}
+.bhn-site .bhn-footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  color: rgba(233, 241, 239, 0.76);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.bhn-site .bhn-footer-links a:is(:hover, :focus-visible),
+.bhn-site .bhn-footer-funding a:hover { color: #9beddf; }
+.bhn-site .bhn-footer-lower {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: clamp(2rem, 4vw, 3.5rem);
+  padding-top: 1rem;
+  border-top: 1px solid rgba(203, 229, 224, 0.13);
+  color: rgba(233, 241, 239, 0.52);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.bhn-site .bhn-footer-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: rgba(233, 241, 239, 0.7);
+  font: 700 0.78rem/1 var(--font-geist-mono);
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.bhn-site .bhn-footer-in {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(203, 229, 224, 0.42);
+  color: #9beddf;
+  font: 800 1rem/1 Arial, sans-serif;
+  letter-spacing: 0;
+}
+.bhn-site .bhn-footer-social:is(:hover, :focus-visible) .bhn-footer-in {
+  background: #54d8d1;
+  border-color: #54d8d1;
+  color: #06111c;
+}
+@media (max-width: 900px) {
+  .bhn-site .bhn-footer-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 620px) {
+  .bhn-site .bhn-footer { padding-top: 2.3rem; }
+  .bhn-site .bhn-footer-shell { width: calc(100% - 32px); }
+  .bhn-site .bhn-footer-grid { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+  .bhn-site .bhn-footer-lower { flex-direction: column-reverse; align-items: flex-start; }
+}
 
 /* The site turns all of its motion off for people who ask. So does this. */
 @media (prefers-reduced-motion: reduce) {
@@ -305,5 +857,23 @@
     transition: none !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+  /* ...except the header, which is not motion: it still changes with the
+   * scroll, all at once at 40px rather than across it. */
+  @supports (animation-timeline: scroll()) {
+    .bhn-site .bhn-header,
+    .bhn-site .bhn-header::before,
+    .bhn-site .bhn-logo,
+    .bhn-site .bhn-nav-link {
+      animation-timing-function: steps(1, jump-end) !important;
+      animation-fill-mode: both !important;
+      animation-timeline: scroll(root block) !important;
+      animation-range: 0 40px !important;
+    }
+    .bhn-site .bhn-header { animation-name: bhn-header-on-photo !important; }
+    .bhn-site .bhn-header::before,
+    .bhn-site .bhn-logo--white { animation-name: bhn-shown-on-photo !important; }
+    .bhn-site .bhn-logo--colour { animation-name: bhn-hidden-on-photo !important; }
+    .bhn-site .bhn-nav-link { animation-name: bhn-link-on-photo !important; }
   }
 }

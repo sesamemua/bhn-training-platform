@@ -282,6 +282,29 @@ export const PresentationSchema = z.object({
    * later.
    */
   confirmationNote: z.string().max(1000).optional(),
+  /*
+   * The site theme's page chrome, laid out like the symposium page's hero:
+   * labelled facts in a glass panel beside the heading, up to two buttons
+   * under it, a line above the form, and where the header points back to.
+   * Each is optional and only read when theme is "site".
+   */
+  /** Label + RichText pairs for the hero's fact panel ("Who can register" …). */
+  facts: z.array(z.object({
+    label: z.string().min(1).max(40),
+    text: z.string().min(1).max(600),
+  })).max(6).optional(),
+  /** Hero buttons: an in-page anchor ("#registration") or an https link. The first is the solid one. */
+  actions: z.array(z.object({
+    label: z.string().min(1).max(40),
+    href: z.string().regex(/^(#[A-Za-z][\w-]*|https:\/\/\S+)$/).max(300),
+  })).max(2).optional(),
+  /** RichText shown directly above the questions ("Questions marked * are required."). */
+  formIntro: z.string().max(400).optional(),
+  /** The header's link back to the page this form belongs to. */
+  homeLink: z.object({
+    label: z.string().min(1).max(40),
+    href: z.string().regex(/^https:\/\/\S+$/).max(300),
+  }).optional(),
 });
 export type Presentation = z.infer<typeof PresentationSchema>;
 

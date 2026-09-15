@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.08a";
+export const TOUR_VERSION = "2026.10.09a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "training-admin.registration-v2-symposium-look",
+    title: "Registration v2 now looks like the Symposium page",
+    body: "Version 2 of the Training Week registration has the **BioHubNet logo**, a photo hero with the key facts in a glass panel, buttons to **Start registration** or go to **Symposium registration**, the Symposium page's glass background behind the form, and the site footer. **The questions and answers are unchanged**, and version 1 does not move.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open version 2", href: "/apply/training-week-registration-2026-v2" },
+    since: "2026.10.09a",
+  },
   {
     id: "forms.duplicate-as-version",
     title: "Change a live form on a new version",

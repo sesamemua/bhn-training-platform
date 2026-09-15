@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training Week registration v2: the symposium page's look
+  {
+    title: "Training Week registration v2 looks like the symposium page",
+    body: "Version 2 of the Training Week registration, at **/apply/training-week-registration-2026-v2**, is now laid out like the 2026 Annual Symposium page on biohubnet.ca:\n\n- **The BioHubNet logo** heads the page, with a link back to the Symposium page.\n- **A photo hero** carries the title and dates, the key facts in a glass panel — who can register, when seat offers go out, and that the Symposium is registered for separately — and two buttons: **Start registration** jumps to the questions, **Symposium registration** opens Luma.\n- **The Symposium page's glass background** sits behind the form.\n- **The site footer** closes the page.\n\n**The questions and answers are unchanged** — same wording, options, rules, and the registrations already made. The facts are the introduction's own sentences, word for word. Version 1 does not change.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Symposium AV 2026: streaming scope panel removed
   {
     title: "Symposium AV 2026: streaming breakdown removed",
