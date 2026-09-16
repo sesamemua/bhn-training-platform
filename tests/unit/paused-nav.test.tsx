@@ -36,14 +36,17 @@ function withPaused(on: boolean, fn: () => void) {
 }
 
 const noop = () => {};
-const router: AppRouterInstance = {
+// Cast, not annotated: the instance type gains required fields between
+// Next minors (16.3 added bfcacheId), and `next build` type-checks tests —
+// a mock that must list every field breaks the deploy on the next upgrade.
+const router = {
   back: noop,
   forward: noop,
   refresh: noop,
   push: noop,
   replace: noop,
   prefetch: noop,
-};
+} as unknown as AppRouterInstance;
 
 function renderSidebar(role: string, committees: string[] = []): { html: string; hrefs: string[] } {
   const html = renderToStaticMarkup(
