@@ -32,6 +32,7 @@ import {
   Mail,
 } from "lucide-react";
 import { getCommitteeMetaForUser } from "@/lib/committees/membership";
+import { isPausedPath } from "@/lib/deploy/paused";
 import type { CommitteeSidebarItem } from "@/lib/committees/registry";
 
 const ICONS: Record<
@@ -93,7 +94,11 @@ interface Props {
 
 export async function CommitteeBadgeStrip({ userId }: Props) {
   if (!userId) return null;
-  const committees = await getCommitteeMetaForUser(userId);
+  // A committee whose surface is paused on this deployment (HQP, with
+  // ENGAGE) has nowhere to link to, so its badge is left out.
+  const committees = (await getCommitteeMetaForUser(userId)).filter(
+    (c) => !isPausedPath(c.sidebarItems[0]?.href),
+  );
   if (committees.length === 0) return null;
 
   // Partition by display mode — proud big badges first (recognition

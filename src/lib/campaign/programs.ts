@@ -1,4 +1,5 @@
 import type { CampaignProgram } from "./events";
+import { isPausedPath } from "@/lib/deploy/paused";
 
 export interface CampaignProgramConfig {
   slug: "engage" | "experience" | "venture-connect";
@@ -241,8 +242,24 @@ export const CAMPAIGN_PROGRAMS: Record<CampaignProgramConfig["slug"], CampaignPr
   },
 };
 
+/**
+ * The campaign for a public /for-trainees/<slug> page, or null. A program
+ * whose application path is paused on this deployment (ENGAGE and
+ * EXPERIENCE on the production site, see deploy/paused-routes.mjs) is
+ * treated as absent, so its page 404s instead of advertising something
+ * nobody can apply for. Where nothing is paused this is a plain lookup.
+ */
 export function getCampaignProgram(slug: string): CampaignProgramConfig | null {
-  return CAMPAIGN_PROGRAMS[slug as CampaignProgramConfig["slug"]] ?? null;
+  if (!Object.hasOwn(CAMPAIGN_PROGRAMS, slug)) return null;
+  const config = CAMPAIGN_PROGRAMS[slug as CampaignProgramConfig["slug"]];
+  return isPausedPath(config.applicationPath) ? null : config;
+}
+
+/** Slugs whose campaign page is live on this deployment. */
+export function liveCampaignSlugs(): CampaignProgramConfig["slug"][] {
+  return (Object.keys(CAMPAIGN_PROGRAMS) as CampaignProgramConfig["slug"][]).filter(
+    (slug) => getCampaignProgram(slug) !== null,
+  );
 }
 
 export function activePublishedDeadline(

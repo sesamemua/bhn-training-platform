@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Sparkles, X, Minimize2, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { TOUR_STEPS, TOUR_VERSION, type StepRole, type TourStep } from "@/lib/onboarding/tours";
 import { cn } from "@/lib/utils";
+import { withoutPausedSteps } from "@/lib/deploy/paused";
 
 interface State {
   version: string;
@@ -38,8 +39,10 @@ export function Onboarding() {
   const role = ((session?.user as { role?: string })?.role ?? "trainee") as StepRole;
 
   // ── Filter steps for this user ────────────────────────────────────
+  // Steps on (or pointing at) a pillar paused on this deployment are
+  // dropped too; nothing is dropped where nothing is paused.
   const eligibleSteps = useMemo(() => {
-    return TOUR_STEPS.filter((s) => !s.roles || s.roles.includes(role));
+    return withoutPausedSteps(TOUR_STEPS).filter((s) => !s.roles || s.roles.includes(role));
   }, [role]);
 
   const fetchState = useCallback(async () => {

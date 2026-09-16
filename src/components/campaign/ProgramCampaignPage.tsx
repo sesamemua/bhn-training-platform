@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getCampaignProgram } from "@/lib/campaign/programs";
 import {
   ArrowDown,
   ArrowUpRight,
@@ -76,7 +77,7 @@ export function ProgramCampaignPage({
             </span>
           </Link>
           <div className="hidden items-center gap-5 text-sm font-semibold text-muted md:flex">
-            {(["engage", "experience", "venture-connect"] as const).map((slug) => (
+            {(["engage", "experience", "venture-connect"] as const).filter((slug) => getCampaignProgram(slug)).map((slug) => (
               <Link
                 key={slug}
                 href={appendCampaignAttribution(`/for-trainees/${slug}`, attribution)}

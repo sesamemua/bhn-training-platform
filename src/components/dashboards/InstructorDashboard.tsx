@@ -6,6 +6,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { GreetingTagline } from "@/components/lms/GreetingTagline";
 import { PageHero } from "@/components/ui/PageHero";
+import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 
 /**
  * Instructor dashboard — what someone authoring courses actually wants
@@ -62,6 +63,9 @@ export async function InstructorDashboard({
       }).catch(() => []),
     ]);
 
+  // Course links go where ENGAGE is paused on this deployment
+  // (src/lib/deploy/paused.ts); false everywhere else.
+  const coursesPaused = isPausedPath("/courses");
   const myCoursesCount = myCourses.length;
   const publishedCount = myCourses.filter((c) => c.status === "published").length;
 
@@ -81,18 +85,22 @@ export async function InstructorDashboard({
         }
         actions={(
           <>
+            {!coursesPaused && (
             <Link
               href="/courses?from=instructor"
               className="inline-flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-sm transition-colors"
             >
               <Plus size={12} /> New course
             </Link>
+            )}
+            {!isPausedPath("/gradebook") && (
             <Link
               href="/gradebook"
               className="inline-flex items-center gap-1.5 bg-card hover:bg-elevated border border-line text-fg text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
             >
               <ClipboardList size={12} /> Gradebook
             </Link>
+            )}
           </>
         )}
       />
@@ -128,12 +136,12 @@ export async function InstructorDashboard({
 
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
+        {withoutPaused([
           { href: "/courses",          label: "Catalog",     icon: BookOpen, tone: "brand" },
           { href: "/gradebook",        label: "Gradebook",   icon: ClipboardList, tone: "amber" },
           { href: "/admin/internships/new", label: "Authoring", icon: Sparkles, tone: "violet" },
           { href: "/changelog",        label: "Changelog",   icon: FileText, tone: "emerald" },
-        ].map((a) => {
+        ]).map((a) => {
           const Icon = a.icon;
           const tones: Record<string, string> = {
             brand:   "from-brand-500 to-brand-700 shadow-brand-600/20",
@@ -166,9 +174,11 @@ export async function InstructorDashboard({
             <h2 className="font-semibold text-fg">My courses</h2>
             <p className="text-xs text-muted mt-0.5">Most-recently updated first</p>
           </div>
+          {!coursesPaused && (
           <Link href="/courses?from=instructor" className="text-xs font-medium text-brand-700 hover:underline inline-flex items-center gap-1">
             See all <ArrowRight size={11} />
           </Link>
+          )}
         </div>
         {myCourses.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm text-muted">
@@ -192,9 +202,13 @@ export async function InstructorDashboard({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
+                  {coursesPaused ? (
+                    <span className="font-medium text-fg leading-tight">{c.title}</span>
+                  ) : (
                   <Link href={`/courses/${c.id}`} className="font-medium text-fg leading-tight hover:text-brand-700 transition-colors">
                     {c.title}
                   </Link>
+                  )}
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-muted">
                     <span>{c._count.modules} modules</span>
                     <span>·</span>

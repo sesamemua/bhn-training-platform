@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { cn, statusColor } from "@/lib/utils";
 import { Users, BookOpen, TrendingUp, Award, Coins, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 
 interface RecentEnrollment {
   id: string; status: string; enrolledAt: Date;
@@ -98,7 +99,7 @@ export default async function AdminPage() {
 
       {/* Quick links */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
+        {withoutPaused([
           { label: "Manage Users", href: "/admin/users", color: "bg-brand-600" },
           { label: "Enrollments", href: "/admin/enrollments", color: "bg-indigo-600" },
           { label: "Groups", href: "/admin/groups", color: "bg-violet-600" },
@@ -107,7 +108,7 @@ export default async function AdminPage() {
           { label: "Announcements", href: "/admin/announcements", color: "bg-amber-700" },
           { label: "Audit Log", href: "/admin/audit", color: "bg-gray-700" },
           { label: "Platform Settings", href: "/admin/settings", color: "bg-slate-600" },
-        ].map((l) => (
+        ]).map((l) => (
           <Link
             key={l.href}
             href={l.href}
@@ -123,7 +124,9 @@ export default async function AdminPage() {
         <div className="bg-card rounded-xl border border-line overflow-hidden">
           <div className="px-5 py-4 border-b border-line flex items-center justify-between">
             <h2 className="font-semibold text-fg">Recent Enrollments</h2>
-            <Link href="/admin/enrollments" className="text-sm text-brand-600 hover:underline">View all</Link>
+            {!isPausedPath("/admin/enrollments") && (
+              <Link href="/admin/enrollments" className="text-sm text-brand-600 hover:underline">View all</Link>
+            )}
           </div>
           <div className="divide-y divide-line">
             {(recentEnrollments as RecentEnrollment[]).map((e: RecentEnrollment) => (

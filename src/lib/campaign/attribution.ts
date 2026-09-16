@@ -5,6 +5,8 @@
  * conversion. Submission routes attach this object only after their own
  * database write succeeds.
  */
+import { isPausedPath } from "@/lib/deploy/paused";
+
 export const CAMPAIGN_ATTRIBUTION_KEYS = [
   "utm_source",
   "utm_medium",
@@ -91,8 +93,10 @@ export function appendCampaignAttribution(
   return absolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
+// A callback into a pillar paused on this deployment (an old bookmark or
+// email) falls back too, rather than landing on /paused after sign-in.
 export function safeInternalPath(value: string | null | undefined, fallback = "/dashboard"): string {
-  return value && /^\/(?!\/)/.test(value) ? value : fallback;
+  return value && /^\/(?!\/)/.test(value) && !isPausedPath(value) ? value : fallback;
 }
 
 export function campaignAuthUrl(

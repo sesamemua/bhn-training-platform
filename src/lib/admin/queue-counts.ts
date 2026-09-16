@@ -29,6 +29,7 @@
  *   badges render.
  */
 import { prisma } from "@/lib/prisma";
+import { isPausedPath } from "@/lib/deploy/paused";
 
 /** Every key the Sidebar's NavItems can reference as `badgeKey`.
  *  Keep this in sync with the Sidebar's queueBadgeKey values — TS
@@ -93,7 +94,13 @@ export async function getAdminQueueCounts(): Promise<QueueCounts> {
     // Inbox = aggregate of the per-queue counts above (the page itself
     // surfaces them as one inbox). Surfaced separately so the sidebar
     // can badge /admin/inbox with the rolled-up total.
-    "inbox-total":          creditApps + roleChanges + pathwayApps + accessRequests,
+    // Queues whose page is paused on this deployment (ENGAGE's credit and
+    // pathway queues, deploy/paused-routes.mjs) are left out, as on the page.
+    "inbox-total":
+      (isPausedPath("/admin/credit-applications") ? 0 : creditApps) +
+      roleChanges +
+      (isPausedPath("/admin/pathway-enrollments") ? 0 : pathwayApps) +
+      accessRequests,
   };
   return counts;
 }

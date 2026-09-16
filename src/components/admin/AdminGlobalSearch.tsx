@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, Users, BookOpen, Briefcase, Loader2 } from "lucide-react";
+import { pausedPillarsActive } from "@/lib/deploy/paused";
 
 interface ResultItem {
   id: string;
@@ -98,8 +99,10 @@ export function AdminGlobalSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
-          placeholder="Search users, courses, postings…"
-          aria-label="Search users, courses, and postings"
+          // Course and posting results are dropped where ENGAGE and
+          // EXPERIENCE are paused (api/admin/search), so say users only.
+          placeholder={pausedPillarsActive() ? "Search users…" : "Search users, courses, postings…"}
+          aria-label={pausedPillarsActive() ? "Search users" : "Search users, courses, and postings"}
           className="w-full bg-card border border-line rounded-lg pl-9 pr-9 py-2 text-sm text-fg placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
         />
         {query && (

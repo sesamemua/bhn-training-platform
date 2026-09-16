@@ -5,6 +5,7 @@ import {
   Layers, Sparkles, Activity, Clock, Coins,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 
 /**
  * Admin / superadmin dashboard.
@@ -95,7 +96,16 @@ export async function AdminDashboard({
       : Promise.resolve(0),
   ]);
 
-  const totalPending = pendingCreditApps + pendingRoleRequests + pendingPathwayApps;
+  // ENGAGE / EXPERIENCE links drop out where those pillars are paused on
+  // this deployment (src/lib/deploy/paused.ts); all false elsewhere. A
+  // paused queue is not counted as waiting: nobody can open it here.
+  const creditQueuePaused = isPausedPath("/admin/credit-applications");
+  const pathwayQueuePaused = isPausedPath("/admin/pathway-enrollments");
+  const trainingPaused = isPausedPath("/courses");
+  const employerPortalPaused = isPausedPath("/employer");
+  const pendingCreditQueue = creditQueuePaused ? 0 : pendingCreditApps;
+  const pendingPathwayQueue = pathwayQueuePaused ? 0 : pendingPathwayApps;
+  const totalPending = pendingCreditQueue + pendingRoleRequests + pendingPathwayQueue;
 
   const now = new Date();
   const horizon = (days: number) => new Date(now.getTime() + days * 86_400_000);
@@ -126,7 +136,7 @@ export async function AdminDashboard({
     detail: string;
     href: string;
     icon: React.ElementType;
-  }> = [
+  }> = withoutPaused([
     {
       id: "demo-workspace",
       done: demoWorkspaceCount > 0,
@@ -167,10 +177,10 @@ export async function AdminDashboard({
       href: "/employer/applicants",
       icon: Inbox,
     },
-  ];
+  ]);
   const checklistDone = checklist.filter((c) => c.done).length;
   const checklistOpen = checklist.length - checklistDone;
-  const setupPct = Math.round((checklistDone / checklist.length) * 100);
+  const setupPct = checklist.length ? Math.round((checklistDone / checklist.length) * 100) : 100;
   const showChecklist = checklistOpen > 0 && (totalUsers < 10 || activePostings === 0 || employerCount === 0);
   const nextChecklistItem = checklist.find((c) => !c.done);
 
@@ -244,6 +254,7 @@ export async function AdminDashboard({
               admin surface. */}
           <aside className="toc">
             <h3>Across the pillars</h3>
+            {!trainingPaused && (
             <Link className="pillar pillar-engage" href="/admin/courses">
               <div className="ph">
                 <span className="px">Engage</span>
@@ -256,6 +267,8 @@ export async function AdminDashboard({
                 <span><strong>+{new7dUsers}</strong> this week</span>
               </div>
             </Link>
+            )}
+            {!employerPortalPaused && (
             <Link className="pillar pillar-experience" href="/employer/applicants">
               <div className="ph">
                 <span className="px">Experience</span>
@@ -268,15 +281,16 @@ export async function AdminDashboard({
                 {pendingRoleRequests > 0 && <span className="warn"><strong>{pendingRoleRequests}</strong> role req.</span>}
               </div>
             </Link>
+            )}
             <Link className="pillar pillar-equip" href="/admin/equip">
               <div className="ph">
                 <span className="px">Equip</span>
-                <span className={pendingCreditApps > 0 ? "pn warn" : "pn"}>{pendingCreditApps}</span>
+                {!creditQueuePaused && <span className={pendingCreditApps > 0 ? "pn warn" : "pn"}>{pendingCreditApps}</span>}
               </div>
-              <p className="pd">commercialization apps pending</p>
+              <p className="pd">{creditQueuePaused ? "commercialization review" : "commercialization apps pending"}</p>
               <div className="pm">
-                {anyExpiry && <span className="warn"><strong>{expiring30.users}</strong> credit expiring 30d</span>}
-                {!anyExpiry && <span>no expiry watch</span>}
+                {anyExpiry && !creditQueuePaused && <span className="warn"><strong>{expiring30.users}</strong> credit expiring 30d</span>}
+                {!anyExpiry && !creditQueuePaused && <span>no expiry watch</span>}
                 {isSuperAdmin && <span><strong>{aiCalls7d}</strong> AI calls · 7d</span>}
               </div>
             </Link>
@@ -298,25 +312,29 @@ export async function AdminDashboard({
               <h3 className="aero-h"><ClipboardList size={14} /> Triage queue</h3>
               <p className="aero-gloss">What needs you right now.</p>
               <ul className="aero-list">
+                {!creditQueuePaused && (
                 <li>
                   <Link href="/admin/credit-applications" className="row">
                     <span>Credit applications</span>
                     <span className={pendingCreditApps > 0 ? "v warn" : "v"}>{pendingCreditApps}</span>
                   </Link>
                 </li>
+                )}
                 <li>
                   <Link href="/admin/role-requests" className="row">
                     <span>Role-change requests</span>
                     <span className={pendingRoleRequests > 0 ? "v warn" : "v"}>{pendingRoleRequests}</span>
                   </Link>
                 </li>
+                {!pathwayQueuePaused && (
                 <li>
                   <Link href="/admin/pathway-enrollments" className="row">
                     <span>Pathway enrolments</span>
                     <span className={pendingPathwayApps > 0 ? "v warn" : "v"}>{pendingPathwayApps}</span>
                   </Link>
                 </li>
-                {anyExpiry && (
+                )}
+                {anyExpiry && !creditQueuePaused && (
                   <li>
                     <Link href="/admin/credit-applications" className="row">
                       <span>Credit expiry · 30d</span>
@@ -324,7 +342,7 @@ export async function AdminDashboard({
                     </Link>
                   </li>
                 )}
-                {expiring7.users > 0 && (
+                {expiring7.users > 0 && !creditQueuePaused && (
                   <li>
                     <Link href="/admin/credit-applications" className="row">
                       <span>Expiring &lt; 7d <span className="urgent">URGENT</span></span>
@@ -333,7 +351,7 @@ export async function AdminDashboard({
                   </li>
                 )}
               </ul>
-              {totalPending === 0 && !anyExpiry && (
+              {totalPending === 0 && (!anyExpiry || creditQueuePaused) && (
                 <p className="aero-empty">All clear. Nothing on the desk.</p>
               )}
             </div>
@@ -422,9 +440,9 @@ export async function AdminDashboard({
                 <p className="rail-h">Next up</p>
                 <Link
                   href={
-                    pendingCreditApps >= pendingPathwayApps && pendingCreditApps >= pendingRoleRequests
+                    pendingCreditQueue > 0 && pendingCreditQueue >= pendingPathwayQueue && pendingCreditQueue >= pendingRoleRequests
                       ? "/admin/credit-applications"
-                      : pendingPathwayApps >= pendingRoleRequests
+                      : pendingPathwayQueue > 0 && pendingPathwayQueue >= pendingRoleRequests
                         ? "/admin/pathway-enrollments"
                         : "/admin/role-requests"
                   }
@@ -441,6 +459,7 @@ export async function AdminDashboard({
 
             {/* ENGAGE — training pillar. */}
             <p className="rail-h">Engage</p>
+            {!trainingPaused && (
             <Link href="/admin/courses" className="qa">
               <BookOpen size={15} />
               <div>
@@ -448,6 +467,8 @@ export async function AdminDashboard({
                 <p className="qa-s">{totalCourses} published · {totalEnrollments.toLocaleString()} enrolments</p>
               </div>
             </Link>
+            )}
+            {!pathwayQueuePaused && (
             <Link href="/admin/pathway-enrollments" className="qa">
               <Layers size={15} />
               <div>
@@ -455,6 +476,7 @@ export async function AdminDashboard({
                 <p className="qa-s">{pendingPathwayApps > 0 ? `${pendingPathwayApps} awaiting review` : "All approved"}</p>
               </div>
             </Link>
+            )}
             <Link href="/admin/announcements" className="qa">
               <Activity size={15} />
               <div>
@@ -463,7 +485,10 @@ export async function AdminDashboard({
               </div>
             </Link>
 
-            {/* EXPERIENCE — placements pillar. */}
+            {/* EXPERIENCE — placements pillar. Every link here is
+                EXPERIENCE, so the group goes when the pillar is paused. */}
+            {!employerPortalPaused && (
+            <>
             <p className="rail-h">Experience</p>
             <Link href="/employer/applicants" className="qa">
               <Inbox size={15} />
@@ -486,6 +511,8 @@ export async function AdminDashboard({
                 <p className="qa-s">{employerCount} active · {employerInvitesPending} pending</p>
               </div>
             </Link>
+            </>
+            )}
 
             {/* EQUIP — commercialization pillar. */}
             <p className="rail-h">Equip</p>
@@ -493,9 +520,10 @@ export async function AdminDashboard({
               <Coins size={15} />
               <div>
                 <p className="qa-t">Commercialization queue</p>
-                <p className="qa-s">{pendingCreditApps > 0 ? `${pendingCreditApps} apps awaiting review` : "No pending review"}</p>
+                <p className="qa-s">{creditQueuePaused ? "Review VentureConnect and VentureLift" : pendingCreditApps > 0 ? `${pendingCreditApps} apps awaiting review` : "No pending review"}</p>
               </div>
             </Link>
+            {!creditQueuePaused && (
             <Link href="/admin/credit-applications" className="qa">
               <ClipboardList size={15} />
               <div>
@@ -503,6 +531,7 @@ export async function AdminDashboard({
                 <p className="qa-s">{anyExpiry ? `${expiring30.users} users expiring 30d` : "No expiry watch"}</p>
               </div>
             </Link>
+            )}
 
             {/* CROSS-PILLAR — tools, not pillar-specific. */}
             <p className="rail-h">Tools</p>
@@ -513,6 +542,7 @@ export async function AdminDashboard({
                 <p className="qa-s">Cross-pillar metrics</p>
               </div>
             </Link>
+            {!isPausedPath("/admin/demo-workspaces") && (
             <Link href="/admin/demo-workspaces" className="qa">
               <Rocket size={15} />
               <div>
@@ -520,6 +550,7 @@ export async function AdminDashboard({
                 <p className="qa-s">{demoWorkspaceCount > 0 ? `${demoWorkspaceCount} spun up` : "Walk a partner through"}</p>
               </div>
             </Link>
+            )}
             <Link href="/admin/design-archive" className="qa">
               <Layers size={15} />
               <div>

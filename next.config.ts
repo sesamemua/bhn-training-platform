@@ -1,4 +1,10 @@
 import type { NextConfig } from "next";
+import { pausedPillarsBuildConfig } from "./deploy/paused-routes.mjs";
+
+// ENGAGE + EXPERIENCE are paused on the production Vercel project only:
+// redirects to /paused plus the prefixes the app hides links for. Off
+// (no redirects, empty strings) everywhere else. See the module.
+const pausedPillars = pausedPillarsBuildConfig();
 
 const nextConfig: NextConfig = {
   // Pin the workspace root explicitly. Without this, Turbopack's root
@@ -57,6 +63,7 @@ const nextConfig: NextConfig = {
         destination: "/events/2026-annual-symposium/:path*",
         permanent: false,
       },
+      ...pausedPillars.redirects,
     ];
   },
 
@@ -219,6 +226,7 @@ const nextConfig: NextConfig = {
   // Vercel sets VERCEL_GIT_COMMIT_SHA automatically; empty string locally.
   env: {
     NEXT_PUBLIC_COMMIT_SHA: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7),
+    ...pausedPillars.env,
   },
 };
 

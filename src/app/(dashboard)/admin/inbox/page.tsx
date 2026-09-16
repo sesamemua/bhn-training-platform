@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { QueueLane } from "@/components/admin/QueueLane";
 import { ActivityFeed, type ActivityRow } from "@/components/admin/ActivityFeed";
+import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,8 @@ export default async function AdminInboxPage() {
 
   const [
     pendingRoleChanges,
-    pendingCreditApps,
-    pendingPathwayEnrolments,
+    allPendingCreditApps,
+    allPendingPathwayEnrolments,
     pendingAccessRequests,
     recentRoleChanges,
     recentCreditApps,
@@ -56,11 +57,22 @@ export default async function AdminInboxPage() {
     }).catch(() => []),
   ]);
 
+  // A queue whose page is paused on this deployment (ENGAGE's credit and
+  // pathway queues) is left out of the counts, the lanes and the feed.
+  const pendingCreditApps = isPausedPath("/admin/credit-applications") ? 0 : allPendingCreditApps;
+  const pendingPathwayEnrolments = isPausedPath("/admin/pathway-enrollments") ? 0 : allPendingPathwayEnrolments;
   const total = pendingRoleChanges + pendingCreditApps + pendingPathwayEnrolments + pendingAccessRequests;
+  const lanes = withoutPaused([
+    { href: "/admin/role-requests", icon: UserCog, label: "Role changes", count: pendingRoleChanges, tone: "amber" as const },
+    { href: "/admin/credit-applications", icon: Coins, label: "Credit apps", count: pendingCreditApps, tone: "emerald" as const },
+    { href: "/admin/pathway-enrollments", icon: Layers, label: "Pathway enrolments", count: pendingPathwayEnrolments, tone: "violet" as const },
+    { href: "/admin/access-requests", icon: Building2, label: "Access requests", count: pendingAccessRequests, tone: "brand" as const },
+  ]);
+  const laneWord = lanes.length === 4 ? "four" : lanes.length === 2 ? "two" : String(lanes.length);
 
   // Combine everything into a single time-ordered feed for the
   // unified-view at the bottom.
-  const rows: ActivityRow[] = [
+  const rows: ActivityRow[] = withoutPaused([
     ...recentRoleChanges.map((r) => ({
       kind: "Role change",
       icon: UserCog,
@@ -97,7 +109,7 @@ export default async function AdminInboxPage() {
       href: "/admin/access-requests",
       at: a.createdAt,
     })),
-  ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 12);
+  ]).sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 12);
 
   return (
     <div className="space-y-6">
@@ -111,38 +123,13 @@ export default async function AdminInboxPage() {
         <section className="bg-card border border-line rounded-2xl p-16 text-center">
           <CheckCircle2 size={32} className="mx-auto text-emerald-500 mb-3" />
           <p className="font-semibold text-fg">All caught up</p>
-          <p className="text-sm text-muted mt-1">Nothing in any of the four queues. Treat yourself.</p>
+          <p className="text-sm text-muted mt-1">Nothing in any of the {laneWord} queues. Treat yourself.</p>
         </section>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <QueueLane
-            href="/admin/role-requests"
-            icon={UserCog}
-            label="Role changes"
-            count={pendingRoleChanges}
-            tone="amber"
-          />
-          <QueueLane
-            href="/admin/credit-applications"
-            icon={Coins}
-            label="Credit apps"
-            count={pendingCreditApps}
-            tone="emerald"
-          />
-          <QueueLane
-            href="/admin/pathway-enrollments"
-            icon={Layers}
-            label="Pathway enrolments"
-            count={pendingPathwayEnrolments}
-            tone="violet"
-          />
-          <QueueLane
-            href="/admin/access-requests"
-            icon={Building2}
-            label="Access requests"
-            count={pendingAccessRequests}
-            tone="brand"
-          />
+        <div className={lanes.length === 4 ? "grid grid-cols-2 md:grid-cols-4 gap-3" : "grid grid-cols-2 gap-3"}>
+          {lanes.map((lane) => (
+            <QueueLane key={lane.href} {...lane} />
+          ))}
         </div>
       )}
 

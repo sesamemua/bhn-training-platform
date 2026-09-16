@@ -12,6 +12,13 @@ import {
 } from "@/lib/themes/constants";
 import { ThemeVotePanel } from "@/components/themes/ThemeVotePanel";
 import { ThemeProposalForm } from "@/components/themes/ThemeProposalForm";
+import { isPausedPath } from "@/lib/deploy/paused";
+
+// /rewards (where the bundle is claimed) is paused on the production site
+// with the rest of ENGAGE (deploy/paused-routes.mjs); point winners at the
+// team instead. False wherever nothing is paused.
+const REWARDS_PAUSED = isPausedPath("/rewards");
+const BUNDLE_CONTACT = "info@biohubnet.ca";
 
 /**
  * /themes — user-facing theme feedback page.
@@ -158,7 +165,11 @@ export default async function ThemesPage() {
                   {statusKey === "shipped" && p.bountyIssued && (
                     <p className="text-xs text-violet-700 font-semibold mt-1 inline-flex items-center gap-1">
                       <Gift size={11} />
-                      Theme Designer Bundle issued — check the <Link href="/rewards" className="underline">Rewards</Link> page.
+                      {REWARDS_PAUSED ? (
+                        <>Theme Designer Bundle issued — email <a href={`mailto:${BUNDLE_CONTACT}`} className="underline">{BUNDLE_CONTACT}</a> to arrange it.</>
+                      ) : (
+                        <>Theme Designer Bundle issued — check the <Link href="/rewards" className="underline">Rewards</Link> page.</>
+                      )}
                     </p>
                   )}
                 </li>
@@ -246,7 +257,11 @@ function BountyCallout({ status }: { status: string }) {
         <p className="text-sm font-semibold mt-1 leading-snug">{meta.copy}</p>
         <p className="text-xs mt-2 inline-flex items-center gap-1.5">
           <ExternalLink size={11} />
-          <Link href="/rewards" className="underline font-semibold">Manage on the Rewards page</Link>
+          {REWARDS_PAUSED ? (
+            <a href={`mailto:${BUNDLE_CONTACT}`} className="underline font-semibold">Email {BUNDLE_CONTACT} to arrange it</a>
+          ) : (
+            <Link href="/rewards" className="underline font-semibold">Manage on the Rewards page</Link>
+          )}
         </p>
       </div>
     </section>

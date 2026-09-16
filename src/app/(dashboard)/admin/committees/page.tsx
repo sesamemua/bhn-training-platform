@@ -8,11 +8,19 @@
  * HQP page since that's where the bulk of the workflow surfaces
  * lived. The EQUIP Review roster has its own page at
  * /admin/committees/equip-review.
+ *
+ * Where ENGAGE is paused (src/lib/deploy/paused.ts) the HQP pages are not
+ * deployed, so the redirect goes to the EQUIP Review roster instead.
  */
 import { redirect } from "next/navigation";
+import { isPausedPath } from "@/lib/deploy/paused";
 
 export const dynamic = "force-dynamic";
 
 export default function AdminCommitteesIndexPage(): never {
-  redirect("/admin/committees/hqp");
+  redirect(
+    isPausedPath("/admin/committees/hqp")
+      ? "/admin/committees/equip-review"
+      : "/admin/committees/hqp",
+  );
 }

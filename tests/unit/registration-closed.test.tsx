@@ -79,7 +79,12 @@ const loadGate = () => import("../../src/lib/auth/registration-gate");
 const loadConvertRoute = () => import("../../src/app/api/scripts/collaborator/convert/route");
 const loadRegisterPage = () => import("../../src/app/(auth)/register/page");
 const loadRegisterForm = () => import("../../src/app/(auth)/register/RegisterForm");
-const loadLtiRoute = () => import("../../src/app/api/lti/launch/route");
+// api/lti is an ENGAGE folder that the production Vercel build removes
+// (deploy/paused-routes.mjs), and `next build` type-checks tests too — a
+// literal specifier would fail that build. Assembled at runtime instead.
+const LTI_ROUTE = ["..", "..", "src", "app", "api", "lti", "launch", "route"].join("/");
+const loadLtiRoute = () =>
+  import(LTI_ROUTE) as Promise<{ POST: (req: NextRequest) => Promise<Response> }>;
 const loadLoginPage = () => import("../../src/app/(auth)/login/page");
 
 const ENV_KEYS = ["REGISTRATION_OPEN", "NEXT_PUBLIC_DEMO_MODE"] as const;

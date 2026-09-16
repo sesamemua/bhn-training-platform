@@ -18,6 +18,8 @@ import { CREDIT_GRANT_TTL_DAYS } from "@/lib/credits/expiry";
 import { LatestNewsCard } from "@/components/dashboards/LatestNewsCard";
 import { getDisplayName } from "@/lib/user/display-name";
 import { PreferredNameEditor } from "@/components/profile/PreferredNameEditor";
+import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
+import { PageHero } from "@/components/ui/PageHero";
 
 interface EnrollmentWithCourse {
   id: string;
@@ -66,7 +68,35 @@ export default async function DashboardPage() {
   // employers (see Sidebar.tsx). Hitting /dashboard directly (e.g.
   // from the post-login push or an old bookmark) routes here.
   if (role === "employer") {
-    redirect("/employer");
+    if (!isPausedPath("/employer")) redirect("/employer");
+    // The employer portal is paused on this deployment (EXPERIENCE, see
+    // deploy/paused-routes.mjs), so /employer would bounce to /paused and
+    // its "dashboard" link straight back here. Stay in the shell instead,
+    // where the sidebar still offers sign-out.
+    return (
+      <div>
+        <PageHero
+          eyebrow="Employer portal"
+          title="The employer portal is paused for now"
+          description="Hiring tools (postings, applicants and the talent pool) are taking a break on this site. Nothing has been deleted."
+        />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-12 space-y-3 text-sm text-muted leading-relaxed">
+          <p>
+            Questions about a posting or a candidate? Email{" "}
+            <a href="mailto:info@biohubnet.ca" className="font-semibold text-brand-700 hover:underline">
+              info@biohubnet.ca
+            </a>
+            .
+          </p>
+          <p>
+            <Link href="/events" className="font-semibold text-brand-700 hover:underline">
+              BioHubNet events
+            </Link>{" "}
+            carry on as usual.
+          </p>
+        </div>
+      </div>
+    );
   }
   if (role === "admin" || role === "superadmin") {
     return (
@@ -355,18 +385,27 @@ export default async function DashboardPage() {
     ["approved", "approved_skip_review"].includes(talentSubmission.reviewStatus) &&
     talentSubmission.leftPoolAt === null;
 
+  // What is paused on this deployment (src/lib/deploy/paused.ts). All
+  // false wherever nothing is paused, so the page is unchanged there.
+  const trainingPaused = isPausedPath("/courses");
+  const placementsPaused = isPausedPath("/profile/applications");
+  const reviewsPaused = isPausedPath("/api/adaptive");
+  const creditsPaused = isPausedPath("/credits");
+  const buddiesPaused = isPausedPath("/buddy");
+
   const hasReminders =
-    expiringSavedPostings.length > 0 ||
-    pendingBuddyInvites.length > 0 ||
-    (reviewQueue?.length ?? 0) > 0;
+    (expiringSavedPostings.length > 0 && !placementsPaused) ||
+    (pendingBuddyInvites.length > 0 && !buddiesPaused) ||
+    ((reviewQueue?.length ?? 0) > 0 && !reviewsPaused);
 
   // ─── HERO COPY VARIANTS ────────────────────────────────────────
   // Slightly different state-aware lead lines so a returning
   // trainee, a brand-new trainee, and a finished-some trainee each
   // get a fitted sentence under their name instead of one generic
   // line trying to cover every state.
-  const heroLead =
-    inProgress > 0
+  const heroLead = trainingPaused
+    ? "Events and EQUIP funding are open. Pick one up."
+    : inProgress > 0
       ? `${inProgress} course${inProgress === 1 ? "" : "s"} in flight. Today's the day to make a stitch.`
       : completedCourseCount > 0
         ? `${completedCourseCount} course${completedCourseCount === 1 ? "" : "s"} done. The path keeps unfolding.`
@@ -623,7 +662,7 @@ export default async function DashboardPage() {
               {/* Actions — white primary + frosted ghost. */}
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
-                  href={inProgress > 0 ? "/my-courses" : "/courses"}
+                  href={trainingPaused ? "/events" : inProgress > 0 ? "/my-courses" : "/courses"}
                   // `text-[#0f172a]` is a literal hex (Tailwind arbitrary
                   // value), NOT `text-slate-900`. Voltage theme globally
                   // overrides `.text-slate-900` to lift it to slate-100 so
@@ -636,20 +675,23 @@ export default async function DashboardPage() {
                   // `.text-slate-900` so they survive the override.
                   className="inline-flex items-center gap-1.5 bg-white text-[#0f172a] hover:bg-white/90 font-bold text-xs px-4 py-2.5 rounded-full shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                 >
-                  {inProgress > 0 ? "Continue" : "Browse courses"} <ArrowRight size={13} />
+                  {trainingPaused ? "See events" : inProgress > 0 ? "Continue" : "Browse courses"} <ArrowRight size={13} />
                 </Link>
+                {!isPausedPath("/experience") && (
                 <Link
                   href="/experience"
                   className="inline-flex items-center gap-1.5 bg-white/8 hover:bg-white/14 border border-white/25 text-white text-xs font-semibold px-4 py-2.5 rounded-full transition-colors backdrop-blur-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                 >
                   <Compass size={13} /> How it works
                 </Link>
+                )}
               </div>
             </div>
 
             {/* Right-column stats stack — only on lg+. White mono
                 numbers + small uppercase labels against the midnight
                 base. */}
+            {!trainingPaused && (
             <aside className="hidden lg:block self-stretch pl-8 border-l border-white/15">
               <div className="space-y-4">
                 <HeroStat label="In progress" value={inProgress.toLocaleString()} />
@@ -657,6 +699,7 @@ export default async function DashboardPage() {
                 <HeroStat label="Certificates" value={certsCount.toLocaleString()} />
               </div>
             </aside>
+            )}
           </div>
         </div>
       </section>
@@ -671,7 +714,7 @@ export default async function DashboardPage() {
           already in their balance — no point repeating the pitch).
           Also renders for users in the `evaluating` role, who can
           apply but aren't full trainees yet. */}
-      {(role === "trainee" || role === "evaluating") && (
+      {(role === "trainee" || role === "evaluating") && !creditsPaused && (
         <div className="max-w-screen-2xl mx-auto px-6 mt-6">
           <CreditApplicationCallout
             latestApp={latestCreditApp}
@@ -833,7 +876,13 @@ export default async function DashboardPage() {
             DEADLINE-DRIVEN board: status + a primary action per
             pillar. */}
       <section className="border-t border-line">
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:divide-x lg:divide-line">
+        <div
+          className={cn(
+            "grid grid-cols-1 lg:divide-x lg:divide-line",
+            STATUS_GRID_COLS[1 + (trainingPaused ? 0 : 1) + (placementsPaused ? 0 : 1)],
+          )}
+        >
+          {!trainingPaused && (
           <PersonalStatusColumn
             tone="emerald"
             eyebrow="Your training"
@@ -851,6 +900,8 @@ export default async function DashboardPage() {
                   : { label: "Browse catalog", href: "/courses" }
             }
           />
+          )}
+          {!placementsPaused && (
           <PersonalStatusColumn
             tone="amber"
             eyebrow="Your placement"
@@ -875,6 +926,7 @@ export default async function DashboardPage() {
                 : { label: "Apply to talent pool", href: "/forms/talent-application" }
             }
           />
+          )}
           <PersonalStatusColumn
             tone="sky"
             eyebrow="Your funding"
@@ -961,9 +1013,9 @@ export default async function DashboardPage() {
           <SectionEyebrow tone="amber">Reminders</SectionEyebrow>
           <div className="mt-3 divide-y divide-line border-y border-amber-200/40">
             <div className="py-2"><UpcomingEventBanner userId={userId} /></div>
-            <div className="py-2"><ExpiringCreditsBanner userId={userId} /></div>
-            <div className="py-2"><TodaysReviewsCard initial={reviewQueue} /></div>
-            {expiringSavedPostings.length > 0 && (
+            {!creditsPaused && <div className="py-2"><ExpiringCreditsBanner userId={userId} /></div>}
+            {!reviewsPaused && <div className="py-2"><TodaysReviewsCard initial={reviewQueue} /></div>}
+            {expiringSavedPostings.length > 0 && !placementsPaused && (
               <Link
                 href="/profile/applications"
                 className="group flex items-start gap-3 py-3 hover:bg-amber-100/40 transition-colors -mx-5 sm:-mx-8 px-5 sm:px-8"
@@ -987,7 +1039,7 @@ export default async function DashboardPage() {
                 <ArrowRight size={14} className="text-amber-700 shrink-0 mt-1 opacity-60 group-hover:opacity-100 transition-opacity" />
               </Link>
             )}
-            {pendingBuddyInvites.length > 0 && (
+            {pendingBuddyInvites.length > 0 && !buddiesPaused && (
               <Link
                 href="/buddy"
                 className="group flex items-center gap-3 py-3 hover:bg-amber-100/40 transition-colors -mx-5 sm:-mx-8 px-5 sm:px-8"
@@ -1017,6 +1069,7 @@ export default async function DashboardPage() {
             theme" companion has migrated into the theme picker
             itself as a limited-time featured promo, so theme
             discovery lives where the action does. */}
+      {!isPausedPath("/rewards") && (
       <section
         className="border-t border-line py-5 sm:py-6 px-5 sm:px-8"
         // Band wash now matches the inner panel's 3-stop ramp
@@ -1035,6 +1088,7 @@ export default async function DashboardPage() {
           </div>
         </div>
       </section>
+      )}
 
       <ExploreLinks credits={user?.credits ?? 0} />
     </div>
@@ -1109,6 +1163,20 @@ interface PillarItem {
 
 type PillarTone = "emerald" | "amber" | "sky" | "violet";
 
+// Column classes by how many pillars are live on this deployment. Static
+// strings so Tailwind generates them; 4 and 3 are the unpaused layouts.
+const BOARD_GRID_COLS: Record<number, string> = {
+  1: "",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-2 lg:grid-cols-3",
+  4: "md:grid-cols-2 lg:grid-cols-4",
+};
+const STATUS_GRID_COLS: Record<number, string> = {
+  1: "",
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+};
+
 function OpenOpportunitiesBoard({
   engageItems,
   experienceItems,
@@ -1120,6 +1188,42 @@ function OpenOpportunitiesBoard({
   equipItems: PillarItem[];
   eventItems: PillarItem[];
 }) {
+  // A pillar paused on this deployment loses its column (its "view all"
+  // page is not deployed); the grid closes up around the rest.
+  const columns = [
+    {
+      tone: "emerald" as const,
+      label: "Engage · Training",
+      audience: "Open to grad students, postdocs and researchers — free with training credits",
+      emptyMessage: "No upcoming pathway windows. New cohorts drop most quarters.",
+      viewAllHref: "/pathways",
+      items: engageItems,
+    },
+    {
+      tone: "amber" as const,
+      label: "Experience · Placements",
+      audience: "For grad students and postdocs ready for hands-on placements",
+      emptyMessage: "No open internships, KE rounds, or mobility awards right now.",
+      viewAllHref: "/internships",
+      items: experienceItems,
+    },
+    {
+      tone: "sky" as const,
+      label: "Equip · Funding",
+      audience: "For trainee-entrepreneurs with an IP-backed innovation",
+      emptyMessage: "No open funding windows. New VC + VL cycles drop most months.",
+      viewAllHref: "/equip",
+      items: equipItems,
+    },
+    {
+      tone: "violet" as const,
+      label: "Events",
+      audience: "Workshops, mixers, and the annual symposium — open to everyone",
+      emptyMessage: "No public events on the calendar this week.",
+      viewAllHref: "/events",
+      items: eventItems,
+    },
+  ].filter((column) => !isPausedPath(column.viewAllHref));
   return (
     <section
       className="border-t border-line py-4 sm:py-6 px-5 sm:px-8"
@@ -1135,39 +1239,10 @@ function OpenOpportunitiesBoard({
           the four columns each carry their own label + audience line
           so the section reads cleanly without an extra eyebrow row
           above them. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-line border-y md:border-y-0 border-line">
-        <PillarColumn
-          tone="emerald"
-          label="Engage · Training"
-          audience="Open to grad students, postdocs and researchers — free with training credits"
-          emptyMessage="No upcoming pathway windows. New cohorts drop most quarters."
-          viewAllHref="/pathways"
-          items={engageItems}
-        />
-        <PillarColumn
-          tone="amber"
-          label="Experience · Placements"
-          audience="For grad students and postdocs ready for hands-on placements"
-          emptyMessage="No open internships, KE rounds, or mobility awards right now."
-          viewAllHref="/internships"
-          items={experienceItems}
-        />
-        <PillarColumn
-          tone="sky"
-          label="Equip · Funding"
-          audience="For trainee-entrepreneurs with an IP-backed innovation"
-          emptyMessage="No open funding windows. New VC + VL cycles drop most months."
-          viewAllHref="/equip"
-          items={equipItems}
-        />
-        <PillarColumn
-          tone="violet"
-          label="Events"
-          audience="Workshops, mixers, and the annual symposium — open to everyone"
-          emptyMessage="No public events on the calendar this week."
-          viewAllHref="/events"
-          items={eventItems}
-        />
+      <div className={cn("grid grid-cols-1 divide-y md:divide-y-0 md:divide-x divide-line border-y md:border-y-0 border-line", BOARD_GRID_COLS[columns.length])}>
+        {columns.map((column) => (
+          <PillarColumn key={column.viewAllHref} {...column} />
+        ))}
       </div>
     </section>
   );
@@ -1487,11 +1562,15 @@ function ExploreLinks({ credits }: { credits: number }) {
           "partiallyObscured" target-size failure. Genuine padding + gap-y
           avoids that: no overlap is possible because the boxes actually
           occupy the space they claim. */}
-      <Link href="/courses"      className="hover:text-fg hover:underline inline-block px-1 py-2.5">Browse courses</Link>
-      <Link href="/pathways"     className="hover:text-fg hover:underline inline-block px-1 py-2.5">Pathways</Link>
-      <Link href="/certificates" className="hover:text-fg hover:underline inline-block px-1 py-2.5">Certificates</Link>
-      <Link href="/credits"      className="hover:text-fg hover:underline inline-block px-1 py-2.5">{credits.toLocaleString()} credits</Link>
-      <Link href="/experience"   className="hover:text-fg hover:underline inline-block px-1 py-2.5">How the program works</Link>
+      {withoutPaused([
+        { href: "/courses", label: "Browse courses" },
+        { href: "/pathways", label: "Pathways" },
+        { href: "/certificates", label: "Certificates" },
+        { href: "/credits", label: `${credits.toLocaleString()} credits` },
+        { href: "/experience", label: "How the program works" },
+      ]).map((l) => (
+        <Link key={l.href} href={l.href} className="hover:text-fg hover:underline inline-block px-1 py-2.5">{l.label}</Link>
+      ))}
     </p>
   );
 }

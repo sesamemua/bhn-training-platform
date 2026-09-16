@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { safeLocalPath } from "@/lib/demo/mode";
+import { isPausedPath } from "@/lib/deploy/paused";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   // index). Strictly a local absolute path — a full URL or protocol-relative
   // value is ignored, so this can never become an open redirect.
   const safeNext = safeLocalPath(req.nextUrl.searchParams.get("next"));
-  const dest = safeNext ?? (user.role === "employer" ? "/employer" : "/dashboard");
+  // While EXPERIENCE is paused, /employer redirects to /paused; employers
+  // land on /dashboard, which explains the pause inside the app shell.
+  const dest = safeNext ?? (user.role === "employer" && !isPausedPath("/employer") ? "/employer" : "/dashboard");
   const res = NextResponse.redirect(`${origin}${dest}`);
   res.cookies.set({
     name: cookieName,

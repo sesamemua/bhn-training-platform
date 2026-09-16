@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { getAlgoliaClient, ALGOLIA_INDEX } from "@/lib/algolia";
+import { withoutPaused } from "@/lib/deploy/paused";
 
 /**
  * Global admin search — one box, three entities, backed by Algolia
@@ -52,7 +53,9 @@ export async function GET(req: NextRequest) {
       queryID: userResult.queryID,
       position: i + 1,
     })),
-    courses: courses.map((c, i) => ({
+    // Courses and postings open ENGAGE / EXPERIENCE pages; where those are
+    // paused, their results would only lead to /paused.
+    courses: withoutPaused(courses.map((c, i) => ({
       id: c.objectID,
       title: c.title,
       subtitle: c.code ?? undefined,
@@ -60,8 +63,8 @@ export async function GET(req: NextRequest) {
       indexName: ALGOLIA_INDEX.courses,
       queryID: courseResult.queryID,
       position: i + 1,
-    })),
-    postings: postings.map((p, i) => ({
+    }))),
+    postings: withoutPaused(postings.map((p, i) => ({
       id: p.objectID,
       title: p.title,
       subtitle: p.companyName,
@@ -69,6 +72,6 @@ export async function GET(req: NextRequest) {
       indexName: ALGOLIA_INDEX.postings,
       queryID: postingResult.queryID,
       position: i + 1,
-    })),
+    }))),
   });
 }

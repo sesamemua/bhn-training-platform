@@ -38,6 +38,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { sendMail, mailConfigured } from "@/lib/mail";
+import { isPausedPath } from "@/lib/deploy/paused";
 
 /** Single source of truth for the policy length. */
 export const CREDIT_GRANT_TTL_DAYS = 365;
@@ -186,7 +187,10 @@ export async function notifyExpiringGrants(): Promise<{
   notificationsSent: number;
   notificationsSkipped: number;
 }> {
-  const smtp = mailConfigured();
+  // Where ENGAGE is paused (deploy/paused-routes.mjs) the email's links
+  // (/courses, /credits) lead to /paused and there is nothing to spend
+  // credits on, so treat it like SMTP being off: skip, but still stamp.
+  const smtp = mailConfigured() && !isPausedPath("/courses");
   const now = new Date();
   let sent = 0;
   let skipped = 0;

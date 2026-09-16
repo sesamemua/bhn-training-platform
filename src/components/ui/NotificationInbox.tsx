@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Bell, X, Check, BellRing, Users, Eye, Activity, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isPausedPath } from "@/lib/deploy/paused";
 
 interface NotifItem {
   id: string;
@@ -83,7 +84,9 @@ function NotificationInboxDrawer({
         n.id === id ? { ...n, unread: false, readAt: new Date().toISOString() } : n,
       ),
     );
-    if (postingId) {
+    // Every notification is employer activity; with the employer portal
+    // paused on this deployment there is nowhere to send the reader.
+    if (postingId && !isPausedPath("/employer/postings")) {
       window.location.href = `/employer/postings#posting-${postingId}`;
     }
   }

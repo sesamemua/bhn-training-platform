@@ -22,6 +22,15 @@ export interface TourStep {
   placement?: "top" | "right" | "bottom" | "left" | "center";
   /** Roles allowed to see this step. Default: all roles. */
   roles?: StepRole[];
+  /** Describes an ENGAGE / EXPERIENCE feature, so it is dropped where
+   *  those pillars are paused (deploy/paused-routes.mjs) even though its
+   *  path and CTA are live. Steps whose path or CTA is paused are dropped
+   *  anyway and need no flag. */
+  pausedPillar?: boolean;
+  /** Shown only where the pillars are paused (the note explaining it). */
+  onlyWhenPaused?: boolean;
+  /** Replaces `body` where the pillars are paused. */
+  bodyWhenPaused?: string;
   /** Optional CTA shown on the step (label + href). */
   cta?: { label: string; href: string };
   /** Version this step appeared in. Bump when adding new ones. */
@@ -30,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.11a";
+export const TOUR_VERSION = "2026.10.12a";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -52,6 +61,17 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open the store", href: "/admin/workspace/merch/store" },
     since: "2026.10.10a",
+  },
+  {
+    id: "deploy.engage-experience-paused",
+    title: "ENGAGE and EXPERIENCE are paused on the live site",
+    body: "Courses, pathways, credits, internships, the employer portal and the other **ENGAGE** and **EXPERIENCE** pages are left out of the live site for now, with their menu entries, feature toggles and dashboard cards. **Nothing is deleted:** the code and data stay, and both still run locally and on the demo site. An old link into them opens **/paused**, and employer accounts see a short notice on their dashboard. Events, EQUIP and the Workspace are unchanged.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "See the paused page", href: "/paused" },
+    since: "2026.10.12a",
+    onlyWhenPaused: true,
   },
   {
     id: "training-admin.registration-v2-symposium-look",
@@ -1023,6 +1043,7 @@ export const TOUR_STEPS: TourStep[] = [
   // ─── ENGAGE credit application moved to dashboard hero (May 2026)
   {
     id: "trainee.engage-credit-application-callout",
+    pausedPillar: true,
     title: "Apply for ENGAGE training credits — now front-and-centre",
     body: "Trainees can apply for up to 5,000 free ENGAGE training credits if they're Highly Qualified Personnel at one of the 14 partner Ontario institutions. The application asks for a supporting document (transcript + grad-office verification for grad students; employment letter for postdocs / research associates / lab techs). An admin reviews each one personally. The CTA now sits directly under your dashboard hero so it's impossible to miss. Self-aware: once approved, the card disappears.",
     path: "/dashboard",
@@ -1239,6 +1260,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "employer.notification-inbox",
+    pausedPillar: true,
     title: "New: Notification inbox",
     body: "The bell icon in the sidebar header shows unread notifications. Click to open a drawer with all activity grouped by day — new applications, stage changes, interview updates, and more.",
     selector: "[data-notification-bell]",
@@ -1404,6 +1426,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "trainee.dashboard",
     title: "Your home base",
     body: "The dashboard shows what's in progress, your credit balance, and quick links into the catalog and pathways.",
+    bodyWhenPaused: "The dashboard is where you start: upcoming events, EQUIP funding and the latest BioHubNet news.",
     path: "/dashboard",
     placement: "center",
     roles: ["trainee", "evaluating"],
@@ -1537,6 +1560,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "instructor.summary",
+    pausedPillar: true,
     title: "AI summaries help learners",
     body: "On every course detail page, click 'Generate summary' to create a learner-facing 3-paragraph summary grounded in the course's modules and assessments.",
     placement: "center",
@@ -1890,6 +1914,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "dash-equip-deadlines-loot-vault-sakura",
+    pausedPillar: true,
     title: "Dashboard — real EQUIP deadlines, playful Loot Vault, Sakura promo in the picker",
     body: "Three updates to the trainee dashboard. (1) EQUIP pillar column now LISTS the next VC + VL funding windows (with extended pips) instead of a bare \"X windows open\" count — a planning surface, not just a pulse. (2) The Loot Vault at the bottom is back to its full playful style — rainbow gradient panel, floating gift/sparkle glyphs, big mono credits scoreboard with a frosted 3-stat row, glowing milestone bar with circular tier markers. Whole panel links into /rewards. (3) The Sakura promo card that used to sit on the dashboard has moved into the theme picker: open the palette (bottom-left of the sidebar) and a featured \"Try Sakura · X d left\" card sits at the very top of the dropdown for any active limited-time theme. Discovery is now beside the action.",
     placement: "center",
@@ -1904,6 +1929,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "dash-deadline-driven-board",
+    pausedPillar: true,
     title: "Dashboard rebuilt around 'WE ARE DEADLINE-DRIVEN'",
     body: "Trainee dashboard now leads with a four-column DEADLINE-DRIVEN board mirroring the biohubnet.ca card. Each column lists deadline-driven items pulled from real data — ENGAGE (pathways + admin-curated highlights), EXPERIENCE (active internships + Knowledge Exchange + Mobility Award), EQUIP (VentureLift / VentureConnect with their amount + audience spelled out), EVENTS (upcoming workshops with location + time). VC and VL are no longer acronyms-only — every card spells them out and explains who they're for. A compact three-column 'your training / placement / funding' status strip sits below the board for personal state. Loot Vault is now a single-row strip (about half its previous height). Whole page got tighter — section padding reduced, gaps trimmed.",
     placement: "center",
@@ -2037,6 +2063,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "skill-gap-widget",
+    pausedPillar: true,
     title: "See how you match against open roles",
     body: "On the dashboard, the new 'How you match' widget lets you pick any active internship and shows your match score, the skills you bring, what you're missing, and which BHN courses would close the gap.",
     path: "/dashboard",
@@ -2046,6 +2073,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "applicant-kanban",
+    pausedPillar: true,
     title: "Applicant kanban with skill scoring",
     body: "Open any of your postings → Applicants. Each applicant gets a 0–100 skill match, a breakdown of which skills they bring vs miss, and links to the BHN courses that taught them. Drag through New / Reviewing / Shortlisted / Phone screen / Onsite / Offer.",
     placement: "center",
@@ -2054,6 +2082,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "interview-scheduler",
+    pausedPillar: true,
     title: "One-click interview scheduling",
     body: "From an applicant's drawer, click Schedule interview, propose 1–5 time slots and a format. The applicant accepts from /interviews on their dashboard. No external calendar OAuth — minimal friction.",
     placement: "center",
@@ -2072,6 +2101,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "public-marketing-pages",
+    pausedPillar: true,
     title: "/for-employers and /for-trainees",
     body: "Public marketing pages live at /for-employers and /for-trainees, pitching the platform without requiring sign-in. Visitors leave their email and an admin approves from /admin/access-requests.",
     placement: "center",
@@ -2147,6 +2177,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "adaptive-mvp",
+    pausedPillar: true,
     title: "Topic mastery, review bookmarks, video checkpoints",
     body: "Three new primitives have shipped on the learner side. The course detail page now shows a topic-by-topic mastery heatmap based on your assessment attempts. Star any assessment question to save it for review — due bookmarks surface as a 'Today's reviews' card on your dashboard. And video modules with author-placed checkpoints will pause at each one for a quick comprehension check. Cheap MVPs; the deeper Bayesian-knowledge-tracing / SM-2 / auto-chunking versions can come later if these earn their keep.",
     path: "/dashboard",
@@ -2260,6 +2291,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "events-calendar-and-rewards-hero",
+    pausedPillar: true,
     title: "New: events calendar, rewards journey, form clear",
     body: "Three things to try: 1) /events now has a monthly calendar grid alongside the upcoming list — click any event day to jump straight in. Admins get demo-seed buttons there too. 2) /rewards opens with a 'journey' progress bar showing your position between every reward tier, plus a much louder lifetime-credits headline. 3) Every form now has a Clear button next to Submit — one confirm and the whole form resets to blank. Bonus: the View-as switcher in the sidebar is now compact (icon-only quick-toggles), and staff visiting any /events/[slug] page get a sticky admin edit bar pinned to the top.",
     placement: "center",

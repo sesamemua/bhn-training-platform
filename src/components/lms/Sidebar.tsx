@@ -76,6 +76,7 @@ import {
   CalendarClock, MessageSquareText, Images, Speaker, ExternalLink, Brain} from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
+import { isPausedPath, pausedPillarsActive, withoutPaused } from "@/lib/deploy/paused";
 
 interface NavItem {
   label: string;
@@ -1577,10 +1578,14 @@ export function Sidebar({
   // Helper used wherever the sidebar iterates an item list — drops
   // items the user has hidden via /profile/preferences. When the
   // prop is absent (legacy renders, tests, etc.) nothing is filtered.
-  const visibleByPrefs = <T extends { featureId?: string }>(items: T[]): T[] =>
-    hiddenFeatures && hiddenFeatures.size > 0
-      ? items.filter((i) => !i.featureId || !hiddenFeatures.has(i.featureId))
-      : items;
+  // Also drops links into a pillar paused on this deployment
+  // (src/lib/deploy/paused.ts) — a no-op wherever nothing is paused.
+  const visibleByPrefs = <T extends { featureId?: string; href: string }>(items: T[]): T[] => {
+    const live = withoutPaused(items);
+    return hiddenFeatures && hiddenFeatures.size > 0
+      ? live.filter((i) => !i.featureId || !hiddenFeatures.has(i.featureId))
+      : live;
+  };
   const pathname = usePathname();
   const t = useT();
   // Effective role for visibility gating. When a superadmin is acting
@@ -1647,9 +1652,12 @@ export function Sidebar({
   }, [mobileOpen]);
 
   const filterByRole = (item: NavItem) => {
+    if (isPausedPath(item.href)) return false;
     const required = ROLE_RANK[item.minRole ?? "admin"] ?? ROLE_RANK.admin;
     return userRank >= required;
   };
+  // Every employer-portal link is EXPERIENCE; empty where it is paused.
+  const visibleEmployerItems = withoutPaused(employerItems);
   const visibleEngageAdmin     = adminEngageItems.filter(filterByRole);
   const visibleOperationsAdmin = adminOperationsItems.filter(filterByRole);
   const visibleExperienceAdmin = adminExperienceItems.filter(filterByRole);
@@ -1687,7 +1695,7 @@ export function Sidebar({
   const visibleCommittees = rawVisibleCommittees
     .map((c) => ({
       ...c,
-      sidebarItems: c.sidebarItems.filter((s) => !allAdminHrefs.has(s.href)),
+      sidebarItems: c.sidebarItems.filter((s) => !allAdminHrefs.has(s.href) && !isPausedPath(s.href)),
     }))
     .filter((c) => c.sidebarItems.length > 0);
 
@@ -1698,7 +1706,8 @@ export function Sidebar({
   // based rather than committee-based because the committee entry
   // was collapsed into a first-class role on user request.
   const isEngageHqpAdvisor =
-    role === "engage_hqp_advisor" || realRole === "engage_hqp_advisor";
+    (role === "engage_hqp_advisor" || realRole === "engage_hqp_advisor") &&
+    !isPausedPath("/committee/hqp");
   // HR-view preview — surfaces the exact employer-portal nav (same
   // routes the EMPLOYER PORTAL section would render at the top of
   // the sidebar for a real employer) inside the Administration
@@ -1828,23 +1837,25 @@ export function Sidebar({
           <NavLink item={{ ...dashboardItem, label: t(dashboardItem.labelKey) }} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
         )}
 
-        {isEmployer && (
+        {isEmployer && visibleEmployerItems.length > 0 && (
           <SectionGroup
             title="EMPLOYER PORTAL"
             description="Hiring side: company profile, postings you've published, and the candidates who applied."
           >
-            {employerItems.map((item) => (
+            {visibleEmployerItems.map((item) => (
               <NavLink key={item.href} item={{ ...item, label: t(item.labelKey) }} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             ))}
           </SectionGroup>
         )}
 
-        {showLearnerNav && (
+        {/* Where the pillars are paused only Events is left here: drop the
+            header when that is hidden too, and the pathway programmes. */}
+        {showLearnerNav && (!pausedPillarsActive() || isEngageHqpAdvisor || visibleByPrefs(engageItems).length > 0) && (
           <SectionGroup
             title="ENGAGE"
             tone="engage"
             description="Industry-led training, workshops, and mentorship."
-            programs={[
+            programs={pausedPillarsActive() ? undefined : [
               {
                 title: "Medical Affairs Learning Pathway",
                 body: "MSL Accelerator with Agilis Health — 2-day intensive in Toronto. Cohort runs in spring; next group in Fall.",
@@ -1879,7 +1890,7 @@ export function Sidebar({
           </SectionGroup>
         )}
 
-        {showLearnerNav && experienceItems.length > 0 && (
+        {showLearnerNav && withoutPaused(experienceItems).length > 0 && (
           <SectionGroup
             title="EXPERIENCE"
             tone="experience"
@@ -1990,7 +2001,7 @@ export function Sidebar({
           </SectionGroup>
         )}
 
-        {showHrViewPreview && !isEmployer && (
+        {showHrViewPreview && !isEmployer && visibleEmployerItems.length > 0 && (
           <SectionGroup
             title="HR PREVIEW"
             description="What an HR account sees in their menu. Click any link to preview the route; use the xx keyboard shortcut to view-as HR with the act-as cookie set."
@@ -2016,7 +2027,7 @@ export function Sidebar({
                 to view-as HR
               </span>
             </p>
-            {employerItems.map((item) => (
+            {visibleEmployerItems.map((item) => (
               <NavLink
                 key={item.href}
                 item={{ ...item, label: t(item.labelKey) }}

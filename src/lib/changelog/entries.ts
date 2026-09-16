@@ -38,6 +38,14 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     visibleTo: ADMINS,
     daysAgo: 0,
   },
+  // ── Deploy: ENGAGE + EXPERIENCE paused on the live site
+  {
+    title: "ENGAGE and EXPERIENCE are paused on the live site",
+    body: "The live site no longer carries the **ENGAGE** pages (courses, pathways, gradebook, certificates, credits, rewards, learning buddies, the HQP committee) or the **EXPERIENCE** pages (internships, the employer portal, talent pool, jobs board, resume and interview tools, the career simulator), along with their admin screens and APIs. Each route is its own function on Vercel, and the Functions storage is over its limit; these 125 route folders are 375 of the 741 routes the build produced, about half.\n\n- **Nothing is deleted.** The code stays in the repository, the data stays in the database, and both pillars still run locally and on the demo site.\n- **Old links still land somewhere.** A bookmark or emailed link into a paused page, including the Talent Application form, goes to **/paused**, which explains the pause and points to the dashboard, Events and EQUIP. Paused APIs answer 404.\n- **The way in is hidden.** Sidebar entries, Feature switcher toggles, dashboard cards, admin shortcuts, onboarding steps, admin search results for courses and postings, and notification links that led there no longer show on the live site. The ENGAGE and EXPERIENCE campaign pages under /for-trainees answer 404 until the pause ends.\n- **Employer accounts** see a short notice on their dashboard instead of the employer portal, and can still sign out from the sidebar.\n- **Credit-expiry emails** are not sent while the pause lasts, since their links lead to paused pages.\n- **Kept on purpose:** the biohubnet.ca \"Hire an intern\" intake, granting credits from the users page, the /for-trainees hub and its VentureConnect page, EQUIP, Events, the Workspace and the EQUIP Review committee.\n\nPreview deployments of this project are paused the same way. To bring everything back, set **BHN_PAUSE_PILLARS=0** on the Vercel project and redeploy.",
+    kind: "note",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training Week registration v2: the symposium page's look
   {
     title: "Training Week registration v2 looks like the symposium page",

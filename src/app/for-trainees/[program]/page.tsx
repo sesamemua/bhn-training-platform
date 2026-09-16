@@ -4,8 +4,8 @@ import { ProgramCampaignPage } from "@/components/campaign/ProgramCampaignPage";
 import { campaignAttributionFromRecord } from "@/lib/campaign/attribution";
 import {
   activePublishedDeadline,
-  CAMPAIGN_PROGRAMS,
   getCampaignProgram,
+  liveCampaignSlugs,
 } from "@/lib/campaign/programs";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ type PageProps = {
 };
 
 export function generateStaticParams() {
-  return Object.keys(CAMPAIGN_PROGRAMS).map((program) => ({ program }));
+  return liveCampaignSlugs().map((program) => ({ program }));
 }
 
 export async function generateMetadata({ params }: Pick<PageProps, "params">): Promise<Metadata> {

@@ -16,10 +16,17 @@ import {
   GripVertical, Sparkles, Star, Settings, Loader2, Save, CheckCircle2, Eye, EyeOff, Wand2,
 } from "lucide-react";
 import {
-  GROUPS, FEATURES, featuresInGroup, type FeatureGroupDef,
-  MINIMAL_PRESET, DEFAULT_PRESET, FULL_PRESET,
+  GROUPS, FEATURES, featuresInGroup as allFeaturesInGroup, type FeatureGroupDef,
+  MINIMAL_PRESET, DEFAULT_PRESET, FULL_PRESET, isFeaturePaused,
 } from "@/lib/preferences/registry";
 import type { FeaturePrefs } from "@/lib/preferences/active";
+
+// Features whose page is paused on this deployment (deploy/paused-routes.mjs)
+// get no toggle: flipping them would change nothing. Where nothing is
+// paused these are the full registry lists.
+const featuresInGroup = (groupId: FeatureGroupDef["id"]) =>
+  allFeaturesInGroup(groupId).filter((f) => !isFeaturePaused(f.id));
+const shownCount = (ids: Iterable<string>) => [...ids].filter((id) => !isFeaturePaused(id)).length;
 
 interface Props {
   initialPrefs: FeaturePrefs;
@@ -163,9 +170,9 @@ export function PreferencesSwitchboard({ initialPrefs }: Props) {
           }
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <PresetButton icon={Star}     label="Minimal" sub={`${MINIMAL_PRESET.size} features`} onClick={() => applyPreset("minimal")} />
-          <PresetButton icon={Settings} label="Default" sub={`${DEFAULT_PRESET.size} features`} onClick={() => applyPreset("default")} />
-          <PresetButton icon={Wand2}    label="Full"    sub={`${FULL_PRESET.size} features`}    onClick={() => applyPreset("full")} />
+          <PresetButton icon={Star}     label="Minimal" sub={`${shownCount(MINIMAL_PRESET)} features`} onClick={() => applyPreset("minimal")} />
+          <PresetButton icon={Settings} label="Default" sub={`${shownCount(DEFAULT_PRESET)} features`} onClick={() => applyPreset("default")} />
+          <PresetButton icon={Wand2}    label="Full"    sub={`${shownCount(FULL_PRESET)} features`}    onClick={() => applyPreset("full")} />
         </div>
       </div>
 
@@ -278,7 +285,7 @@ export function PreferencesSwitchboard({ initialPrefs }: Props) {
       <p className="text-[11px] text-fg-subtle text-center">
         New features added to the platform won&apos;t appear here until they&apos;re registered in
         <code className="mx-1 px-1 rounded bg-elevated text-[10.5px]">src/lib/preferences/registry.ts</code>.
-        Affects {FEATURES.length} features today.
+        Affects {shownCount(FEATURES.map((f) => f.id))} features today.
       </p>
     </div>
   );

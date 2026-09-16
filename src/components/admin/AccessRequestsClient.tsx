@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, X, Building2, GraduationCap, ExternalLink, Mail, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { isPausedPath } from "@/lib/deploy/paused";
 
 interface Req {
   id: string;
@@ -115,7 +116,9 @@ export function AccessRequestsClient({
                 <div className="flex flex-col gap-1.5 shrink-0">
                   {r.status === "pending" && (
                     <>
-                      {r.kind === "employer" ? (
+                      {r.kind === "employer" && isPausedPath("/admin/employer-invites") ? (
+                        <span className="text-xs text-muted px-1 py-1.5">Employer onboarding is paused</span>
+                      ) : r.kind === "employer" ? (
                         <Link
                           href={`/admin/employer-invites?email=${encodeURIComponent(r.email)}&company=${encodeURIComponent(r.company ?? "")}&website=${encodeURIComponent(r.website ?? "")}`}
                           className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-600 text-white border border-brand-700 hover:bg-brand-700 inline-flex items-center gap-1.5"

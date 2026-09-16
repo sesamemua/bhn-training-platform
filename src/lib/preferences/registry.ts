@@ -40,6 +40,8 @@
  * (dashboard tiles, command palette) later without rewiring.
  */
 
+import { isPausedPath } from "@/lib/deploy/paused";
+
 export type FeatureGroupId =
   | "profile"
   | "learn"
@@ -205,4 +207,51 @@ export const FULL_PRESET = new Set(FEATURES.map((f) => f.id));
 /** Helper — list of FeatureDefs in a group, in registry order. */
 export function featuresInGroup(groupId: FeatureGroupId): FeatureDef[] {
   return FEATURES.filter((f) => f.group === groupId);
+}
+
+/**
+ * The sidebar route behind each feature, copied from the NavItems in
+ * src/components/lms/Sidebar.tsx (tests/unit/paused-nav.test.tsx fails if
+ * the two drift). Only used to hide the toggles of features whose page is
+ * paused on this deployment (ENGAGE + EXPERIENCE on the production site,
+ * see deploy/paused-routes.mjs). Features without a sidebar link are not
+ * listed, except the talent pool, whose page is paused with the rest.
+ */
+export const FEATURE_HREF: Readonly<Record<string, string>> = {
+  "learn-dashboard": "/dashboard",
+  "learn-courses": "/courses",
+  "learn-pathways": "/pathways",
+  "learn-my-courses": "/my-courses",
+  "learn-gradebook": "/gradebook",
+  "learn-certificates": "/certificates",
+  "learn-credits": "/credits",
+  "learn-rewards": "/rewards",
+  "engage-events": "/events",
+  "experience-guide": "/experience",
+  "profile-application": "/profile/application",
+  "profile-master": "/profile/master",
+  "profile-tailor": "/profile/tailor",
+  "profile-resumes": "/profile/resumes",
+  "profile-job-folders": "/profile/job-folders",
+  "experience-talent": "/forms/talent-application",
+  "experience-internships": "/internships",
+  "experience-matches": "/profile/matches",
+  "experience-simulator": "/simulator",
+  "experience-mock-interview": "/mock-interview",
+  "experience-career-paths": "/career-paths",
+  "experience-facilities": "/experience/facilities",
+  "experience-tracker": "/profile/applications",
+  "profile-skills": "/profile/skills",
+  "profile-stories": "/profile/stories",
+  "experience-interviews": "/interviews",
+  "experience-buddy": "/buddy",
+  "engage-changelog": "/changelog",
+  "equip-funding": "/equip",
+  "equip-tracker": "/equip/my-applications",
+  "experience-talent-pool": "/talent-pool",
+};
+
+/** Is this feature's page paused on this deployment? Always false where nothing is paused. */
+export function isFeaturePaused(featureId: string): boolean {
+  return isPausedPath(FEATURE_HREF[featureId]);
 }

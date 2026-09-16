@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isPausedPath } from "@/lib/deploy/paused";
 import {
   dispatchRoleSwitchStart,
   dispatchRoleSwitchDone,
@@ -153,7 +154,9 @@ export function RoleSwitcher({ actingAs }: Props) {
             Preview as
           </p>
           <div>
-            {TARGETS.map((t) => {
+            {/* Employer HR only lands on the employer portal, so it goes
+                where that portal is paused on this deployment. */}
+            {TARGETS.filter((t) => t.id !== "employer" || !isPausedPath("/employer")).map((t) => {
               const active = actingAs === t.id;
               return (
                 <button

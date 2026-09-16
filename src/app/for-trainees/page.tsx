@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { isPausedPath, pausedPillarsActive } from "@/lib/deploy/paused";
 import {
   Sparkles, Users2, Calendar, ArrowRight, GraduationCap, Award, Layers,
   Search, BookOpen,
@@ -34,7 +36,9 @@ export default async function ForTraineesPage() {
           </div>
         </Link>
         <div className="flex items-center gap-4 text-sm">
-          <Link href="/for-employers" className="text-muted hover:text-fg">For employers</Link>
+          {!isPausedPath("/for-employers") && (
+            <Link href="/for-employers" className="text-muted hover:text-fg">For employers</Link>
+          )}
           <Link href="/login" className="font-medium text-brand-700 hover:text-brand-800">Sign in →</Link>
         </div>
       </nav>
@@ -241,4 +245,10 @@ function Bullet({ icon: Icon, text }: { icon: React.ElementType; text: string })
       <span>{text}</span>
     </li>
   );
+}
+
+// While ENGAGE + EXPERIENCE are paused (deploy/paused-routes.mjs) most of
+// this page describes paused features, so keep it out of search results.
+export function generateMetadata(): Metadata {
+  return pausedPillarsActive() ? { robots: { index: false, follow: false } } : {};
 }

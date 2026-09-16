@@ -6,7 +6,7 @@
  * (several routes poll or animate on mount), and the same readable
  * failure formatting — raw axe-core JSON is unusable in a CI log.
  */
-import { expect, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 /** WCAG 2.2 Level AA — the standard this role scans against, plus the
@@ -37,6 +37,12 @@ function formatViolations(violations: Awaited<ReturnType<AxeBuilder["analyze"]>>
  */
 export async function auditPage(page: Page, path: string, testInfo?: TestInfo) {
   await page.goto(path);
+  // ENGAGE + EXPERIENCE are paused on bhn-training-platform deployments
+  // (deploy/paused-routes.mjs): their pages redirect to /paused. Skip
+  // with a reason rather than auditing /paused under the wrong name.
+  if (path !== "/paused" && new URL(page.url()).pathname === "/paused") {
+    test.skip(true, `${path} is paused on this deployment (redirected to /paused)`);
+  }
   // Several dashboard routes poll (AI status, live counts) or animate
   // in on mount. Give quiet pages a chance to settle, but do not let a
   // deliberate polling request consume the test's full timeout.
