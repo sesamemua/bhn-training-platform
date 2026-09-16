@@ -115,14 +115,26 @@ const nextConfig: NextConfig = {
   // Next's file tracer pulls in through the package's "files" field rather
   // than through any import.
   //
-  // Two deliberate omissions, both about asymmetry — being over quota
-  // costs money, breaking every database call costs the platform:
-  //   • the `postgresql` pair stays. It is the provider that matches the
-  //     datasource, and while the evidence says it is just as dead, a
-  //     wrong call there takes down every route at once.
-  //   • runtime/binary.* stays. It is dead only while the engine type is
-  //     "library"; one env var (PRISMA_CLIENT_ENGINE_TYPE=binary) would
-  //     make it load, and an exclude would then fail silently in prod.
+  // Sep 16 follow-up: the `postgresql` pair and runtime/binary.* were kept
+  // back at first, out of caution. Both are now excluded too, after reading
+  // what actually loads:
+  //   • node_modules/.prisma/client/index.js requires exactly one runtime
+  //     file, @prisma/client/runtime/library.js, and sets engineWasm and
+  //     compilerWasm to undefined, so no *.postgresql.* file is ever read.
+  //   • library.js is the library-only runtime build. Its engine factory
+  //     ends in `a ? new LibraryEngine(r) : new LibraryEngine(r)`, so
+  //     PRISMA_CLIENT_ENGINE_TYPE cannot make it load binary.js or
+  //     client.js. (That variable only matters at `prisma generate` time,
+  //     and it is not set locally or on Vercel.)
+  //   • .prisma/client resolves "#main-entry-point" through the `node`
+  //     condition to index.js. wasm.js, index-browser.js, query_engine_bg.*
+  //     and the wasm-*-loader.mjs files serve edge, worker and browser
+  //     targets only.
+  // What must stay: runtime/library.js, .prisma/client/{index.js,
+  // default.js,client.js,package.json,schema.prisma} and the
+  // libquery_engine-* binary. If the generator block ever gains
+  // `engineType = "client"`, revisit this list first: that mode loads
+  // runtime/client.js and .prisma/client/query_compiler_bg.*.
   //
   // Do NOT add binaryTargets to prisma/schema.prisma to "help" here: a
   // second target generates a second 19 MB engine into every bundle.
@@ -147,6 +159,24 @@ const nextConfig: NextConfig = {
       "node_modules/@prisma/client/runtime/react-native.js",
       "node_modules/@prisma/client/runtime/index-browser.*",
       "node_modules/.prisma/client/edge.js",
+      // The unused postgresql WASM engine/compiler and the other engine
+      // runtimes (see above). About 6 MB compressed in every DB function.
+      "node_modules/@prisma/client/runtime/query_engine_bg.postgresql.*",
+      "node_modules/@prisma/client/runtime/query_compiler_bg.postgresql.*",
+      "node_modules/@prisma/client/runtime/binary.*",
+      "node_modules/@prisma/client/runtime/client.*",
+      "node_modules/@prisma/client/runtime/library.mjs",
+      "node_modules/@prisma/client/runtime/*.map",
+      "node_modules/.prisma/client/query_engine_bg.*",
+      "node_modules/.prisma/client/wasm.js",
+      "node_modules/.prisma/client/wasm-*-loader.mjs",
+      "node_modules/.prisma/client/index-browser.js",
+      // @napi-rs/canvas's lockfile entries carry no `libc` field, so npm on
+      // Vercel installs the musl build next to the glibc one, and the
+      // tracer follows both require branches in js-binding.js. Vercel's
+      // runtime is glibc, and isMusl() picks -gnu there. About 12 MB
+      // compressed in the maxDuration=60 bundle.
+      "node_modules/@napi-rs/canvas-linux-x64-musl/**",
       // Declarations are never loaded at runtime. Next ignores **/*.d.ts
       // already but not .d.mts, which is why those were being traced.
       "node_modules/@prisma/client/runtime/*.d.ts",
