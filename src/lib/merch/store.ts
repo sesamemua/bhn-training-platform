@@ -9,7 +9,7 @@
  * in it — there is nothing for such a field to feed.
  *
  * The catalogue and the cart maths live here, pure and DOM-free, so the
- * storefront and its tests cannot disagree (tests/unit/merch-store.test.ts).
+ * storefront and its tests cannot disagree (tests/unit/merch-store.test.tsx).
  *
  * The images are cut from the mascot mockups into public/merch-store/:
  * `<id>-white.webp` and `<id>-black.webp` are the two tees, 800×900.
@@ -75,7 +75,7 @@ export const STORE = {
     "Every shirt passes QC: Quite Cute.",
     "Returns policy: resuspend gently and try again.",
     "Side effects may include spontaneous waving.",
-    "Always pre-wet your tip, and your enthusiasm.",
+    "Measure twice, pipette once.",
     "No lab critters were rushed in the making of these designs.",
   ],
   heroArt: {
@@ -155,11 +155,11 @@ export const STORE_DESIGNS: StoreDesign[] = [
   },
   {
     slug: "tiger",
-    productName: "Easy Tiger, Slow Plunger",
+    productName: "Easy Tiger, Steady Pipette",
     animal: "tiger cub",
     blurb:
-      "Fierce about sterility, gentle on the plunger. This tiger cub brings big-cat focus to small-volume work.",
-    labSpecs: ["Stripes: batch-to-batch consistent", "Pounces on first stop, never second", "Class 100 fluff"],
+      "Fierce about sterility, gentle with every sample. This tiger cub brings big-cat focus to small-volume work.",
+    labSpecs: ["Stripes: batch-to-batch consistent", "Pounces on every stray bubble", "Class 100 fluff"],
     badge: "Fierce fit",
     images: tee("6e635667"),
   },
@@ -221,7 +221,7 @@ export const STORE_DESIGNS: StoreDesign[] = [
 export const BACK_ROOM: { src: string; name: string; alt: string }[] = [
   {
     src: "/merch-store/d7df1a4b-art.webp",
-    name: "Dam Good Technique",
+    name: "Busy Beaver Technique",
     alt: "A beaver in a cleanroom suit holding a pipette and a pink cell-culture flask",
   },
   {

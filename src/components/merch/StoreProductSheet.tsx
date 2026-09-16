@@ -3,7 +3,9 @@
 /**
  * The product view: design, colour, size and quantity, then Add to cart.
  * A bottom sheet on a phone, a centred dialog from `sm` up. Radix handles
- * the focus trap, Escape and the scroll lock.
+ * the focus trap, Escape and the scroll lock. On a phone the sheet is
+ * taller than the screen, so the title with Close and the Add button stay
+ * pinned while the options scroll between them.
  *
  * Size starts unpicked on purpose — a preselected M is the size most
  * people would add without noticing. Pressing Add without one says so and
@@ -37,6 +39,7 @@ export function StoreProductSheet({
   onClose,
   onAdd,
   onOpenCart,
+  onCloseAutoFocus,
 }: {
   design: StoreDesign | null;
   colour: TeeColour;
@@ -45,6 +48,8 @@ export function StoreProductSheet({
   onClose: () => void;
   onAdd: (size: TeeSize, qty: number) => AddResult;
   onOpenCart: () => void;
+  /** Where focus goes on close; there is no Radix Trigger to fall back on. */
+  onCloseAutoFocus: (event: Event) => void;
 }) {
   const [size, setSize] = useState<TeeSize | null>(null);
   const [qty, setQty] = useState(1);
@@ -52,6 +57,21 @@ export function StoreProductSheet({
   const [done, setDone] = useState<(AddResult & { label: string }) | null>(null);
   const sizeGroup = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
+
+  // Start clean after every close, however it happened. Radix only calls
+  // onOpenChange for closes it starts; "Open the cart" closes this sheet from
+  // the parent, and the old "In the cart" note used to greet the next tee.
+  // The size is kept between tees (most people buy one size).
+  const isOpen = design !== null;
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
+    if (!isOpen) {
+      setDone(null);
+      setNeedsSize(false);
+      setQty(1);
+    }
+  }
 
   // The confirmation lands below the button, often below the fold of a tall sheet.
   useEffect(() => {
@@ -74,21 +94,15 @@ export function StoreProductSheet({
   // Anything changed after adding means the confirmation no longer describes the form.
   const touch = () => setDone(null);
 
-  // The size is kept between tees (most people buy one size); the rest starts over.
-  function close() {
-    setDone(null);
-    setNeedsSize(false);
-    setQty(1);
-    onClose();
-  }
-
   return (
-    <Dialog.Root open={design !== null} onOpenChange={(open) => !open && close()}>
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="lfp-fade fixed inset-0 z-[100] bg-slate-950/55 backdrop-blur-[2px]" />
         <Dialog.Content
+          onCloseAutoFocus={onCloseAutoFocus}
           className={cn(
-            "lfp-sheet fixed inset-x-0 bottom-0 z-[101] max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-3xl border border-line bg-card-solid pb-[env(safe-area-inset-bottom)] text-fg shadow-modal outline-none",
+            // Scroll padding keeps a focused size or the confirmation clear of the pinned bars.
+            "lfp-sheet fixed inset-x-0 bottom-0 z-[101] max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-3xl border border-line bg-card-solid text-fg shadow-modal outline-none max-sm:scroll-pb-28 max-sm:scroll-pt-24",
             "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[min(58rem,calc(100vw-2rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl",
           )}
         >
@@ -97,7 +111,10 @@ export function StoreProductSheet({
               {/* ── The tee ─────────────────────────────────────── */}
               {/* Sticky from sm up, so the photo stays in view while the picker scrolls. */}
               <div className="bg-elevated/60 p-4 sm:sticky sm:top-0 sm:self-start sm:rounded-l-3xl sm:p-6">
-                <div className="mx-auto h-1.5 w-12 rounded-full bg-line sm:hidden" aria-hidden />
+                {/* The badge moves here on a phone, so the pinned title bar stays short. */}
+                <p className="mb-3 flex justify-center sm:hidden">
+                  <Badge text={design.badge} />
+                </p>
                 <Image
                   key={design.images[colour]}
                   src={design.images[colour]}
@@ -105,7 +122,7 @@ export function StoreProductSheet({
                   width={PRODUCT_IMAGE_SIZE.width}
                   height={PRODUCT_IMAGE_SIZE.height}
                   sizes="(min-width: 640px) 26rem, 60vw"
-                  className="lfp-fade mx-auto mt-3 h-auto w-full max-w-[15rem] rounded-2xl sm:mt-0 sm:max-w-none"
+                  className="lfp-fade mx-auto h-auto w-full max-w-[11rem] rounded-2xl sm:max-w-none"
                 />
                 <p className="mt-3 text-center text-[11px] font-medium text-subtle">
                   Shown in {COLOUR_LABEL[colour].toLowerCase()}. Mascot not to scale; flask contents not included.
@@ -113,16 +130,17 @@ export function StoreProductSheet({
               </div>
 
               {/* ── The picker ──────────────────────────────────── */}
-              <div className="space-y-5 p-4 sm:p-6">
-                <div className="flex items-start gap-3">
+              <div className="space-y-5 p-4 max-sm:pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
+                {/* Pinned on a phone once the photo has scrolled away, so Close never leaves the screen. */}
+                <div className="flex items-start gap-3 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-4 max-sm:-mt-4 max-sm:border-b max-sm:border-line max-sm:bg-card-solid max-sm:px-4 max-sm:py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-brand-700 ring-1 ring-inset ring-brand-200">
-                      <BadgeCheck size={11} aria-hidden /> {design.badge}
+                    <p className="mb-2 max-sm:hidden">
+                      <Badge text={design.badge} />
                     </p>
-                    <Dialog.Title className="mt-2 text-xl font-bold leading-tight tracking-tight text-fg sm:text-2xl">
+                    <Dialog.Title className="text-lg font-bold leading-tight tracking-tight text-fg sm:text-2xl">
                       {design.productName}
                     </Dialog.Title>
-                    <p className="mt-1 font-mono text-sm font-bold tabular-nums text-fg">
+                    <p className="mt-0.5 font-mono text-[13px] font-bold tabular-nums text-fg sm:mt-1 sm:text-sm">
                       {formatStoreCad(TEE_PRICE_CAD)}
                       <span className="ml-1.5 font-sans text-[11px] font-medium text-subtle">CAD each (simulated)</span>
                     </p>
@@ -292,17 +310,21 @@ export function StoreProductSheet({
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={add}
-                  className="lfp-press inline-flex min-h-12 w-full flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-card-rest transition-colors outline-none hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-card-solid"
-                >
-                  <ShoppingBag size={16} aria-hidden />
-                  Add to cart
-                  <span className="font-mono text-[12px] font-semibold tabular-nums text-white/85">
-                    {formatStoreCad(qty * TEE_PRICE_CAD)} (simulated)
-                  </span>
-                </button>
+                {/* Pinned to the bottom on a phone, so the main action is on screen from the start. */}
+                <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-4 max-sm:border-t max-sm:border-line max-sm:bg-card-solid max-sm:px-4 max-sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))] max-sm:pt-3">
+                  <button
+                    type="button"
+                    onClick={add}
+                    className="lfp-press inline-flex min-h-12 w-full flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-card-rest transition-colors outline-none hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-card-solid"
+                  >
+                    <ShoppingBag size={16} aria-hidden />
+                    Add to cart
+                    {/* Inherits the button colour, not a dimmed white: Voltage flips hover to dark-on-cyan. */}
+                    <span className="font-mono text-[12px] font-semibold tabular-nums">
+                      {formatStoreCad(qty * TEE_PRICE_CAD)} (simulated)
+                    </span>
+                  </button>
+                </div>
 
                 {done && (
                   <div ref={doneRef} className="lfp-rise scroll-mb-4 rounded-2xl border border-emerald-300/70 bg-emerald-50 px-3.5 py-3 text-emerald-900">
@@ -337,5 +359,13 @@ export function StoreProductSheet({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function Badge({ text }: { text: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-brand-700 ring-1 ring-inset ring-brand-200">
+      <BadgeCheck size={11} aria-hidden /> {text}
+    </span>
   );
 }

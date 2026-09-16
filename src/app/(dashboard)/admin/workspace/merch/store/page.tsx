@@ -41,7 +41,10 @@ export default async function WorkspaceMerchStorePage() {
         </span>
       </div>
 
-      <MerchStore />
+      {/* <main> is the scroller here, and the Sidebar's fixed menu button sits at
+          top-3 left-3 (phones, and desktop when collapsed). Stick the rail below
+          it, the same 4rem the container's pt-16 keeps clear. */}
+      <MerchStore railClassName="top-16 scroll-mt-16" />
     </div>
   );
 }

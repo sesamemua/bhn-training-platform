@@ -13,9 +13,9 @@
  * prefers-reduced-motion: no-preference, so the reduced version is simply
  * the same page standing still.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Info, ShoppingBag, Sparkles, Store } from "lucide-react";
+import { Info, Pause, Play, ShoppingBag, Sparkles, Store } from "lucide-react";
 import {
   ART_IMAGE_SIZE, BACK_ROOM, CART_STORAGE_KEY, COLOUR_LABEL, PRODUCT_IMAGE_SIZE, STORE,
   STORE_DESIGNS, TEE_COLOURS, TEE_PRICE_CAD, TEE_SIZES,
@@ -29,7 +29,15 @@ import { Swatch } from "@/components/merch/StoreSwatch";
 import { StoreProductSheet, type AddResult } from "@/components/merch/StoreProductSheet";
 import { StoreCartSheet } from "@/components/merch/StoreCartSheet";
 
-export function MerchStore() {
+export function MerchStore({
+  railClassName = "top-0 scroll-mt-4",
+}: {
+  /**
+   * Where the rail sticks. The public page sticks it to the very top; the
+   * dashboard moves it below the Sidebar's fixed menu button.
+   */
+  railClassName?: string;
+} = {}) {
   const [cart, setCart] = useState<Cart>([]);
   const [hydrated, setHydrated] = useState(false);
   const [colourBySlug, setColourBySlug] = useState<Record<string, TeeColour>>({});
@@ -38,6 +46,8 @@ export function MerchStore() {
   const [receipt, setReceipt] = useState<StoreReceipt | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [bump, setBump] = useState(0);
+  // The on-page way to stop the ticker, bob and swing (WCAG 2.2.2); reduced motion stops them anyway.
+  const [motionPaused, setMotionPaused] = useState(false);
 
   // Read after mount, never during render: the server has no storage, and
   // reading it in render would make the first paint disagree with the HTML.
@@ -63,6 +73,38 @@ export function MerchStore() {
       /* storage full or blocked: the cart still works for this visit */
     }
   }, [cart, hydrated]);
+
+  // A second tab writes the same key. Follow it, so this tab's next change
+  // does not quietly write back a cart the other tab has moved on from.
+  // Writing the same value back fires no event, so this cannot ping-pong.
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key !== null && e.key !== CART_STORAGE_KEY) return;
+      try {
+        if (e.storageArea !== window.localStorage) return;
+        setCart(e.newValue ? parseCart(JSON.parse(e.newValue)) : []);
+      } catch {
+        /* blocked or corrupt storage: keep what this tab has */
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // Neither sheet has a Radix Trigger, so on close Radix has nowhere to send
+  // focus and it falls to <body> — the top of the page. Remember the page
+  // control that opened the sheet and go back to it instead.
+  const openerRef = useRef<HTMLElement | null>(null);
+  const rememberOpener = (el: HTMLElement | null) => {
+    openerRef.current = el;
+  };
+  const returnFocus = useCallback((e: Event) => {
+    e.preventDefault();
+    // Only when focus was dropped: when the sheet hands over to the cart,
+    // the cart heading already has it, and this runs a tick later.
+    const a = document.activeElement;
+    if (!a || a === document.body) openerRef.current?.focus();
+  }, []);
 
   const count = cartCount(cart);
   const colourOf = useCallback((slug: string): TeeColour => colourBySlug[slug] ?? "white", [colourBySlug]);
@@ -104,7 +146,7 @@ export function MerchStore() {
   }
 
   return (
-    <div className="lfp space-y-6">
+    <div className="lfp space-y-6" data-lfp-paused={motionPaused || undefined}>
       <style href="lucky-flask-pop-up" precedence="medium">{MOTION_CSS}</style>
 
       {/* Screen-reader echo of what just happened. Always rendered, so it is registered before it speaks. */}
@@ -139,7 +181,14 @@ export function MerchStore() {
               >
                 <Sparkles size={15} aria-hidden /> Browse the critters
               </a>
-              <CartButton count={count} bump={bump} onClick={openCart} />
+              <CartButton
+                count={count}
+                bump={bump}
+                onClick={(el) => {
+                  rememberOpener(el);
+                  openCart();
+                }}
+              />
             </div>
 
             <dl className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px]">
@@ -185,34 +234,57 @@ export function MerchStore() {
       </section>
 
       {/* ── Ticker ────────────────────────────────────────────── */}
-      <div className="lfp-ticker overflow-hidden rounded-2xl border border-line bg-elevated/60 py-2.5">
-        <ul aria-label="Pop-up notices" className="lfp-ticker-track flex w-max items-center gap-8 px-4">
-          {[...STORE.extraJokes, ...STORE.extraJokes].map((joke, i) => {
-            const copy = i >= STORE.extraJokes.length;
-            return (
-              <li
-                key={`${i}-${joke}`}
-                aria-hidden={copy || undefined}
-                className={cn("flex shrink-0 items-center gap-2 text-[12.5px] font-semibold text-fg", copy && "lfp-dup")}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden />
-                {joke}
-              </li>
-            );
-          })}
-        </ul>
+      <div className="lfp-ticker flex items-center gap-2 rounded-2xl border border-line bg-elevated/60 py-1.5 pr-1.5">
+        <div className="lfp-ticker-view min-w-0 flex-1 overflow-hidden py-1">
+          <ul aria-label="Pop-up notices" className="lfp-ticker-track flex w-max items-center gap-8 px-4">
+            {[...STORE.extraJokes, ...STORE.extraJokes].map((joke, i) => {
+              const copy = i >= STORE.extraJokes.length;
+              return (
+                <li
+                  key={`${i}-${joke}`}
+                  aria-hidden={copy || undefined}
+                  className={cn("flex shrink-0 items-center gap-2 text-[12.5px] font-semibold text-fg", copy && "lfp-dup")}
+                >
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden />
+                  {joke}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        {/* Hover pauses for a mouse; this is the pause for everyone else.
+            Hidden under reduced motion, where nothing moves to pause. */}
+        <button
+          type="button"
+          onClick={() => setMotionPaused((p) => !p)}
+          className="lfp-motion-toggle inline-flex h-9 shrink-0 items-center gap-1.5 self-center rounded-full bg-card-solid px-3 text-[11.5px] font-bold text-fg ring-1 ring-inset ring-line outline-none transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-brand-500"
+        >
+          {motionPaused ? <Play size={12} aria-hidden /> : <Pause size={12} aria-hidden />}
+          {motionPaused ? "Play motion" : "Pause motion"}
+        </button>
       </div>
 
       {/* ── Sticky counter ───────────────────────────────────── */}
       <div
         id="lfp-rail"
-        className="sticky top-0 z-20 -mx-1 flex scroll-mt-4 items-center justify-between gap-2 rounded-2xl border border-line bg-card-solid/90 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card-solid/75"
+        className={cn(
+          "sticky z-20 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-line bg-card-solid/90 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card-solid/75",
+          railClassName,
+        )}
       >
         <div className="min-w-0 flex-1">
           <h3 className="text-[15px] font-bold text-fg">The rail</h3>
           <p className="text-[11.5px] text-muted">Tap a colour to preview it. Pick a size inside.</p>
         </div>
-        <CartButton count={count} bump={bump} onClick={openCart} compact />
+        <CartButton
+          count={count}
+          bump={bump}
+          onClick={(el) => {
+            rememberOpener(el);
+            openCart();
+          }}
+          compact
+        />
       </div>
 
       {/* ── Product grid ─────────────────────────────────────── */}
@@ -224,7 +296,10 @@ export function MerchStore() {
               eager={i < 4}
               colour={colourOf(d.slug)}
               onColour={(c) => setColour(d.slug, c)}
-              onOpen={() => setActiveSlug(d.slug)}
+              onOpen={(el) => {
+                rememberOpener(el);
+                setActiveSlug(d.slug);
+              }}
             />
           </li>
         ))}
@@ -269,7 +344,10 @@ export function MerchStore() {
         }}
         onClose={() => setActiveSlug(null)}
         onAdd={(size, qty) => (active ? add(active, colourOf(active.slug), size, qty) : { added: 0, count })}
+        // No rememberOpener here: the card that opened the sheet is still the
+        // way back, since this button leaves with the sheet.
         onOpenCart={openCart}
+        onCloseAutoFocus={returnFocus}
       />
 
       <StoreCartSheet
@@ -292,6 +370,8 @@ export function MerchStore() {
           setReceipt(null);
           setCartOpen(false);
         }}
+        onCloseAutoFocus={returnFocus}
+        motionPaused={motionPaused}
       />
     </div>
   );
@@ -305,13 +385,14 @@ function CartButton({
 }: {
   count: number;
   bump: number;
-  onClick: () => void;
+  /** Gets the button, so the cart can hand focus back to it. */
+  onClick: (opener: HTMLElement) => void;
   compact?: boolean;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(e) => onClick(e.currentTarget)}
       aria-label={`Open cart, ${count} tee${count === 1 ? "" : "s"}`}
       className={cn(
         "relative inline-flex shrink-0 items-center gap-2 rounded-full bg-card-solid font-bold text-fg ring-1 ring-inset ring-line-strong outline-none transition-colors hover:bg-elevated focus-visible:ring-2 focus-visible:ring-brand-500",
@@ -347,14 +428,16 @@ function ProductCard({
   eager: boolean;
   colour: TeeColour;
   onColour: (colour: TeeColour) => void;
-  onOpen: () => void;
+  /** Gets the "Pick a size" button, which is where focus returns on close. */
+  onOpen: (opener: HTMLElement | null) => void;
 }) {
+  const pick = useRef<HTMLButtonElement>(null);
   return (
     <article className="lfp-card group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition-[box-shadow,transform,border-color] hover:border-brand-300 hover:shadow-card-hover">
       {/* A click on the photo opens the product too — a mouse nicety. Not a
           button: the keyboard already has "Pick a size", and the photo's alt
           text has to stay readable rather than hidden inside a duplicate. */}
-      <div onClick={onOpen} className="cursor-pointer overflow-hidden bg-elevated/60">
+      <div onClick={() => onOpen(pick.current)} className="cursor-pointer overflow-hidden bg-elevated/60">
         <Image
           key={design.images[colour]}
           src={design.images[colour]}
@@ -390,13 +473,15 @@ function ProductCard({
           />
         </div>
 
+        {/* The accessible name starts with the visible words, so "click Pick a size" works by voice.
+            Hover is brand-700: Voltage recolours that one to cyan with dark text; its 600 stays at 4.48:1. */}
         <button
+          ref={pick}
           type="button"
-          onClick={onOpen}
-          aria-label={`Choose size for ${design.productName}`}
-          className="lfp-press inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-elevated text-[12.5px] font-bold text-fg ring-1 ring-inset ring-line outline-none transition-colors hover:bg-brand-600 hover:text-white hover:ring-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500"
+          onClick={(e) => onOpen(e.currentTarget)}
+          className="lfp-press inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-elevated text-[12.5px] font-bold text-fg ring-1 ring-inset ring-line outline-none transition-colors hover:bg-brand-700 hover:text-white hover:ring-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500"
         >
-          Pick a size
+          Pick a size<span className="sr-only"> for {design.productName}</span>
         </button>
       </div>
     </article>
@@ -433,8 +518,10 @@ const MOTION_CSS = `
   @keyframes lfp-slide{from{transform:translateX(100%)}to{transform:none}}
   @keyframes lfp-wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
   .lfp-dup{display:flex}
+  .lfp-ticker-view{-webkit-mask-image:linear-gradient(90deg,transparent,#000 1rem,#000 calc(100% - 1rem),transparent);mask-image:linear-gradient(90deg,transparent,#000 1rem,#000 calc(100% - 1rem),transparent)}
   .lfp-ticker-track{animation:lfp-marquee 38s linear infinite}
   .lfp-ticker:hover .lfp-ticker-track,.lfp-ticker:focus-within .lfp-ticker-track{animation-play-state:paused}
+  [data-lfp-paused] .lfp-ticker-track,[data-lfp-paused] .lfp-bob,[data-lfp-paused] .lfp-swing{animation-play-state:paused}
   .lfp-bob{animation:lfp-bob 3.6s ease-in-out infinite}
   .lfp-swing{transform-origin:50% 0;animation:lfp-swing 4.2s ease-in-out infinite}
   .lfp-pop{animation:lfp-pop .45s cubic-bezier(.3,1.6,.5,1)}
@@ -450,5 +537,7 @@ const MOTION_CSS = `
 }
 @media (prefers-reduced-motion: reduce){
   .lfp-ticker-track{flex-wrap:wrap;width:auto;row-gap:.5rem}
+  .lfp-ticker-track>li{flex-shrink:1;min-width:0}
+  .lfp-motion-toggle{display:none}
 }
 `;

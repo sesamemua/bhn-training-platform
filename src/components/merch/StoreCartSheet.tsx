@@ -27,6 +27,8 @@ export function StoreCartSheet({
   onRemove,
   onCheckout,
   onNewOrder,
+  onCloseAutoFocus,
+  motionPaused,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,11 +38,33 @@ export function StoreCartSheet({
   onRemove: (key: string) => void;
   onCheckout: () => void;
   onNewOrder: () => void;
+  /** Where focus goes on close; there is no Radix Trigger to fall back on. */
+  onCloseAutoFocus: (event: Event) => void;
+  /** The page's Pause motion switch. The sheet is portalled outside the page, so it is passed in. */
+  motionPaused: boolean;
 }) {
   const lines = resolveLines(cart);
   const count = cartCount(cart);
   const receiptHeading = useRef<HTMLHeadingElement>(null);
   const cartHeading = useRef<HTMLHeadingElement>(null);
+  const removeButtons = useRef(new Map<string, HTMLButtonElement>());
+  // After Remove, the button that was pressed is gone. Park focus on the
+  // neighbouring line's Remove ("" means the heading, when the cart empties)
+  // rather than letting it fall back to the whole dialog.
+  const focusAfterRemove = useRef<string | null>(null);
+
+  function remove(key: string) {
+    const i = lines.findIndex((l) => l.key === key);
+    focusAfterRemove.current = (lines[i + 1] ?? lines[i - 1])?.key ?? "";
+    onRemove(key);
+  }
+
+  useEffect(() => {
+    const target = focusAfterRemove.current;
+    if (target === null) return;
+    focusAfterRemove.current = null;
+    (target ? removeButtons.current.get(target) : cartHeading.current)?.focus();
+  }, [cart]);
 
   // Checkout swaps the whole panel, so focus follows to the receipt
   // instead of being dropped with the button that was pressed.
@@ -54,6 +78,8 @@ export function StoreCartSheet({
         <Dialog.Overlay className="lfp-fade fixed inset-0 z-[100] bg-slate-950/55 backdrop-blur-[2px]" />
         <Dialog.Content
           aria-describedby={undefined}
+          data-lfp-paused={motionPaused || undefined}
+          onCloseAutoFocus={onCloseAutoFocus}
           onOpenAutoFocus={(e) => {
             // Land on the heading, not the first stepper: reading the cart comes before changing it.
             e.preventDefault();
@@ -132,8 +158,12 @@ export function StoreCartSheet({
                             </p>
                           </div>
                           <button
+                            ref={(node) => {
+                              if (node) removeButtons.current.set(key, node);
+                              else removeButtons.current.delete(key);
+                            }}
                             type="button"
-                            onClick={() => onRemove(key)}
+                            onClick={() => remove(key)}
                             aria-label={`Remove ${label}`}
                             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-subtle outline-none transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:ring-2 focus-visible:ring-brand-500"
                           >

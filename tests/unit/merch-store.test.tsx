@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import React from "react";
@@ -222,14 +222,70 @@ test("the storefront renders, says it is simulated, and asks for nothing", () =>
   assert.equal((html.match(/role="radio" aria-checked="true"/g) ?? []).length, STORE_DESIGNS.length);
 });
 
-test("the store makes no network calls of its own", async () => {
+const MERCH_DIR = join(process.cwd(), "src/components/merch");
+const storeSources = () =>
+  readdirSync(MERCH_DIR)
+    .filter((f) => f.startsWith("Store") || f.startsWith("MerchStore"))
+    .map((f) => join(MERCH_DIR, f));
+
+test("the store makes no network calls of its own", () => {
   // A static check on the source: the pop-up has no reason to fetch.
-  const { readFileSync, readdirSync } = await import("node:fs");
-  const dir = join(process.cwd(), "src/components/merch");
-  const files = readdirSync(dir).filter((f) => f.startsWith("Store") || f.startsWith("MerchStore"));
+  const files = storeSources();
   assert.ok(files.length >= 4);
-  for (const f of [...files.map((x) => join(dir, x)), join(process.cwd(), "src/lib/merch/store.ts")]) {
+  for (const f of [...files, join(process.cwd(), "src/lib/merch/store.ts")]) {
     const src = readFileSync(f, "utf8");
     assert.doesNotMatch(src, /\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/, `${f} talks to the network`);
   }
+});
+
+test("the product and cart sheets ask for nothing either", () => {
+  // The render test above cannot see them: a Radix portal renders nothing on
+  // the server. So check the source, which is where a checkout field would land.
+  for (const f of storeSources()) {
+    const src = readFileSync(f, "utf8");
+    assert.doesNotMatch(src, /<(form|input|textarea|select)\b|autoComplete=/, `${f} has a form field`);
+  }
+});
+
+test("both store pages stay off the database", () => {
+  for (const page of ["src/app/merch/store/page.tsx", "src/app/(dashboard)/admin/workspace/merch/store/page.tsx"]) {
+    const src = readFileSync(join(process.cwd(), page), "utf8");
+    assert.doesNotMatch(src, /prisma|["']use server["']|\bfetch\(/, `${page} reaches for data`);
+  }
+});
+
+test("everything in public/merch-store is on the page", () => {
+  // The folder is public: an unused crop would still be published with every deploy.
+  const used = new Set([
+    STORE.heroArt.src,
+    ...BACK_ROOM.map((a) => a.src),
+    ...STORE_DESIGNS.flatMap((d) => Object.values(d.images)),
+  ]);
+  const cartSrc = readFileSync(join(MERCH_DIR, "StoreCartSheet.tsx"), "utf8");
+  for (const f of readdirSync(join(PUBLIC, "merch-store"))) {
+    const src = `/merch-store/${f}`;
+    assert.ok(used.has(src) || cartSrc.includes(src), `${src} is not used by the store`);
+  }
+});
+
+test("each Pick a size button is named by its visible words first", () => {
+  // Label in Name: a voice user says what they see.
+  const html = renderToStaticMarkup(<MerchStore />);
+  assert.doesNotMatch(html, /aria-label="Choose size for/);
+  for (const d of STORE_DESIGNS) {
+    const name = d.productName.replace(/'/g, "&#x27;");
+    assert.ok(html.includes(`Pick a size<span class="sr-only"> for ${name}</span>`), `${d.slug} button`);
+  }
+});
+
+test("the ticker has an on-page pause, and the rail offset is the page's to set", () => {
+  const html = renderToStaticMarkup(<MerchStore />);
+  assert.ok(html.includes("Pause motion"), "there is a Pause motion button");
+  assert.match(html, /id="lfp-rail" class="[^"]*\btop-0\b/);
+  // The dashboard moves it below the Sidebar's fixed menu button.
+  const dash = renderToStaticMarkup(<MerchStore railClassName="top-16 scroll-mt-16" />);
+  assert.match(dash, /id="lfp-rail" class="[^"]*\btop-16\b/);
+  assert.doesNotMatch(dash, /id="lfp-rail" class="[^"]*\btop-0\b/);
+  const page = readFileSync(join(process.cwd(), "src/app/(dashboard)/admin/workspace/merch/store/page.tsx"), "utf8");
+  assert.match(page, /<MerchStore railClassName="top-16/);
 });
