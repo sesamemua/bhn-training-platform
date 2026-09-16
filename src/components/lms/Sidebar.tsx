@@ -414,7 +414,7 @@ const workspaceMerchItem: NavItem = {
   icon: Gift,
   minRole: "admin",
   description:
-    "Trade-show giveaway shortlist — 25 items matched to real supplier products, grouped by tier, with cost estimates and a copy-ready quote request.",
+    "Trade-show giveaway shortlist — 25 items matched to real supplier products, grouped by tier, with cost estimates and a copy-ready quote request. Plus the BHN Merch Store: a simulated pop-up for the lab-mascot tees.",
 };
 
 // WORKSPACE → Marketing → Newsletter. Colleagues drop their section's

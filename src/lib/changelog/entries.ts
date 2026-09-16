@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Merch: the BHN Merch Store tab, a simulated pop-up
+  {
+    title: "BHN Merch Store: a pretend pop-up for the lab-critter tees",
+    body: "**Workspace → Merch** now has two tabs: **Giveaway board**, unchanged, and **BHN Merch Store** — the *Lucky Flask Pop-Up*, a simulated shop for the BioHubNet lab-mascot tees.\n\n- **11 designs** — the lucky cat, a raccoon, a panda, three otters, a mouse, a tiger cub, a monkey, a rat and a husky pup, each gowned up with a flask.\n- **Pick the design, colour, size and quantity.** White or black (the photo changes with it), XS to 3XL with a size guide, up to 10 of each.\n- **A cart and a checkout.** Change quantities, remove lines, see a subtotal, then check out for a joke receipt with an order number.\n\n**None of it is real.** There is no payment, name, email or address step, nothing is sent anywhere, and every price is marked *simulated* — the receipt's total due is $0.00. The cart is kept only in your own browser.\n\nThe same store is open to anyone at **/merch/store** (the link is at the top of the tab), so a design can be shown to someone without an account.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training Week registration v2: the symposium page's look
   {
     title: "Training Week registration v2 looks like the symposium page",

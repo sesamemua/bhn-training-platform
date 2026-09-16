@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.09a";
+export const TOUR_VERSION = "2026.10.10a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.merch.store",
+    title: "The lab-critter tees have a pop-up",
+    body: "**Workspace \u2192 Merch \u2192 BHN Merch Store.** The Lucky Flask Pop-Up is a pretend shop for the BioHubNet mascot tees: pick a design, **White** or **Black**, a size and how many, then check out for a joke receipt. **Nothing is charged, sent or saved** \u2014 it asks for no payment or contact details, and the cart stays in your browser. Send **/merch/store** to let anyone try it without an account.",
+    path: "/admin/workspace/merch/store",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the store", href: "/admin/workspace/merch/store" },
+    since: "2026.10.10a",
+  },
   {
     id: "training-admin.registration-v2-symposium-look",
     title: "Registration v2 now looks like the Symposium page",

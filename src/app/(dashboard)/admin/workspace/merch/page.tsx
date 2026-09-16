@@ -16,6 +16,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { MerchBoard } from "@/components/workspace/MerchBoard";
+import { MerchNav } from "@/components/merch/MerchNav";
 import { MERCH } from "@/lib/merch/types";
 import { mergeBoard, type CardRow, type PickRow } from "@/lib/merch/board";
 
@@ -41,6 +42,7 @@ export default async function WorkspaceMerchPage() {
         title="Merch"
         description={`Trade-show giveaway shortlist — ${shortlisted} item${shortlisted === 1 ? "" : "s"} matched to real products in ${MERCH.meta.supplier}'s catalogue, grouped by how much of a conversation the visitor has had. Star what you like, set aside what you don't, add anything the catalogue is missing, and copy a quote request straight to the supplier.`}
       />
+      <MerchNav />
       {/* The way an admin finds the shareable link — and, just as
           importantly, the reminder that everything on this page is already
           public. Whoever adds an item should know that before they
