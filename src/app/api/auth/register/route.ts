@@ -8,6 +8,8 @@ import { checkPassword } from "@/lib/security/password-policy";
 import { subscribeMember, mailchimpEnabled } from "@/lib/mailchimp/client";
 import { findInstitution } from "@/lib/equip/institutions";
 import { sanitizeCampaignAttribution } from "@/lib/campaign/attribution";
+import { isRegistrationOpen, registrationClosedResponse } from "@/lib/auth/registration";
+import { closedRegistrationAllows } from "@/lib/auth/registration-gate";
 
 /**
  * Newsletter intent at signup. Tri-state:
@@ -44,6 +46,7 @@ const VALID_JOB_TITLES = [
 ] as const;
 
 export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null);
   const {
     name,
     email,
@@ -55,7 +58,15 @@ export async function POST(req: NextRequest) {
     institutionOther,
     turnstileToken,
     campaignAttribution,
-  } = await req.json();
+    inviteToken,
+  } = body && typeof body === "object" ? body : ({} as Record<string, unknown>);
+
+  // Sign-up is closed unless ops reopened it; lib/auth/registration-gate
+  // lists the two exceptions (an admin, a live team invite's addressee).
+  if (!isRegistrationOpen() && !(await closedRegistrationAllows(email, inviteToken))) {
+    return registrationClosedResponse();
+  }
+
   const attribution = sanitizeCampaignAttribution(campaignAttribution);
 
   // ── Validation ──────────────────────────────────────────────────

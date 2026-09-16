@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Auth: public sign-up closed by default
+  {
+    title: "Sign-up is closed: new accounts are invite-only",
+    body: "Nobody can create their own account on the platform any more, so nobody signs up by accident.\n\n- **/register** now says *Registration is closed*, with a **Sign in** button and a note to email **support@biohubnet.ca** for access. The sign-up API refuses too, with *Registration is closed.*\n- **Every Create account / Sign up link is gone** — the login page, the /for-trainees page (its main button is now *Request access*, which opens the access-request form), the /for-trainees program pages, and the /jobs footer.\n- **Shared video scripts** no longer offer outside editors an account after 3 edits.\n- **LTI launches** only let in people who already have an account; they no longer create new ones.\n\n**What still works:**\n- **Admin → Users → Create User**, for making an account yourself. On **Admin → Access requests**, a trainee request without an account shows *Create user*; once the account exists, *Email welcome* appears with a draft that points at sign-in.\n- **Company team invites.** Someone invited to a company can still create an account from the invite link — only with the address the invite was sent to. The login page keeps a *Create your account for this invite* button for them.\n- **Employer invite links and demo and test accounts**, which never went through sign-up.\n- **The demo deployment** keeps sign-up open.\n\n**To reopen sign-up:** in Vercel, set the environment variable **REGISTRATION_OPEN** to **true** for Production, then redeploy. Remove it (or set anything else) and redeploy to close it again.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Merch: the BHN Merch Store tab, a simulated pop-up
   {
     title: "BHN Merch Store: a pretend pop-up for the lab-critter tees",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isRegistrationOpen, registrationClosedResponse } from "@/lib/auth/registration";
 
 // LTI 1.3 Launch endpoint — validates JWT and redirects to course
 export async function POST(req: NextRequest) {
@@ -41,6 +42,10 @@ export async function POST(req: NextRequest) {
     // Auto-provision user
     let user = await prisma.user.findUnique({ where: { email: userEmail } });
     if (!user) {
+      // The id_token is not signature-checked yet (see above), so anyone
+      // could forge one. While sign-up is closed only existing accounts
+      // may launch; nobody gets a new one this way.
+      if (!isRegistrationOpen()) return registrationClosedResponse();
       user = await prisma.user.create({
         data: { email: userEmail, name: userName, role: "learner" },
       });

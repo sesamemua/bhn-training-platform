@@ -15,9 +15,31 @@ interface Req {
   source: string;
   status: string;
   createdAt: string;
+  /** A User with this email already exists (checked on the server). */
+  hasAccount?: boolean;
 }
 
-export function AccessRequestsClient({ initial }: { initial: Req[] }) {
+/** The "Email welcome" draft for a trainee request. While public sign-up
+ *  is closed it must not send them to /register, and it is only offered
+ *  once the account exists (see below), so "your account is set up" is
+ *  true when it is sent. */
+export function traineeWelcomeBody(registrationOpen: boolean, siteUrl: string): string {
+  return registrationOpen
+    ? `Hi,\n\nThanks for your interest in BHN Training. You can sign up directly at ${siteUrl}/register — no invite needed.\n\n`
+    : `Hi,\n\nThanks for your interest in BHN Training. Your account is set up for this email address. Sign in at ${siteUrl}/login — we'll send your temporary password separately.\n\n`;
+}
+
+export function AccessRequestsClient({
+  initial,
+  registrationOpen,
+  siteUrl,
+}: {
+  initial: Req[];
+  /** Server's sign-up switch (lib/auth/registration). */
+  registrationOpen: boolean;
+  /** This deployment's origin, so drafts never link to another one. */
+  siteUrl: string;
+}) {
   const [list, setList] = useState(initial);
   const [tab, setTab] = useState<"pending" | "approved" | "rejected">("pending");
   const [busy, setBusy] = useState<string | null>(null);
@@ -101,12 +123,27 @@ export function AccessRequestsClient({ initial }: { initial: Req[] }) {
                           <CheckCircle2 size={12} /> Mint invite →
                         </Link>
                       ) : (
-                        <a
-                          href={`mailto:${r.email}?subject=BHN%20Training%20welcome&body=${encodeURIComponent("Hi,\n\nThanks for your interest in BHN Training. You can sign up directly at https://bhn-training.example.com/register — no invite needed.\n\n")}`}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-600 text-white border border-brand-700 hover:bg-brand-700 inline-flex items-center gap-1.5"
-                        >
-                          <Mail size={12} /> Email welcome
-                        </a>
+                        <>
+                          {/* Sign-up is closed, so the account is made first
+                              and the welcome only appears once it exists —
+                              otherwise it would point at a login that fails. */}
+                          {!registrationOpen && !r.hasAccount ? (
+                            <Link
+                              href={`/admin/users?q=${encodeURIComponent(r.email)}`}
+                              title="No account with this email yet. Create it, then come back to email a welcome."
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-600 text-white border border-brand-700 hover:bg-brand-700 inline-flex items-center gap-1.5"
+                            >
+                              <GraduationCap size={12} /> Create user →
+                            </Link>
+                          ) : (
+                            <a
+                              href={`mailto:${r.email}?subject=BHN%20Training%20welcome&body=${encodeURIComponent(traineeWelcomeBody(registrationOpen, siteUrl))}`}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-600 text-white border border-brand-700 hover:bg-brand-700 inline-flex items-center gap-1.5"
+                            >
+                              <Mail size={12} /> Email welcome
+                            </a>
+                          )}
+                        </>
                       )}
                       <button onClick={() => setStatus(r, "approved")} disabled={busy === r.id} className="text-[11px] font-medium px-3 py-1 rounded-lg text-emerald-700 hover:bg-emerald-50 inline-flex items-center gap-1">
                         <CheckCircle2 size={11} /> Mark approved

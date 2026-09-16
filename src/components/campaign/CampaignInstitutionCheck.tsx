@@ -30,6 +30,9 @@ interface Props {
   primaryAction: string;
   contactEmail: string;
   attribution: CampaignAttribution;
+  /** Server's sign-up switch. Closed drops "Create an account" and makes
+   *  Sign in the way forward. */
+  registrationOpen: boolean;
 }
 
 export function CampaignInstitutionCheck({
@@ -41,6 +44,7 @@ export function CampaignInstitutionCheck({
   primaryAction,
   contactEmail,
   attribution,
+  registrationOpen,
 }: Props) {
   const [institutionSlug, setInstitutionSlug] = useState("");
   const lastTracked = useRef("");
@@ -127,7 +131,26 @@ export function CampaignInstitutionCheck({
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">
-              {authRequired ? (
+              {authRequired && !registrationOpen ? (
+                // Sign-up is closed: Sign in is the only door, so it takes
+                // the primary style, and new people are told how to get in.
+                <>
+                  <Link
+                    href={loginHref}
+                    onClick={() => trackApplicationClick("existing_account")}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-md bg-brand-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+                  >
+                    <LogIn size={16} aria-hidden /> Sign in to continue
+                  </Link>
+                  <p data-registration-closed className="basis-full text-sm leading-6">
+                    New to BioHubNet? Accounts are invite-only right now — email{" "}
+                    <a className="font-bold underline" href={`mailto:${contactEmail}`}>
+                      {contactEmail}
+                    </a>{" "}
+                    for access.
+                  </p>
+                </>
+              ) : authRequired ? (
                 <>
                   <Link
                     href={registerHref}

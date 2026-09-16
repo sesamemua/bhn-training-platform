@@ -7,6 +7,7 @@
  *
  * Body: { email, password, scriptUrl }
  * Auth: the existing collaborator cookie (getCollaborator reads it).
+ * 403 while public sign-up is closed (lib/auth/registration).
  * The scriptUrl is a full URL that the confirmation email links back to.
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -16,6 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { getCollaborator } from "@/lib/scripts/share";
 import { checkPassword } from "@/lib/security/password-policy";
 import { sendMail, mailConfigured } from "@/lib/mail";
+import { isRegistrationOpen, registrationClosedResponse } from "@/lib/auth/registration";
 
 export const runtime = "nodejs";
 
@@ -27,6 +29,10 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // A script share link is not an invitation to the platform: while
+  // sign-up is closed this refuses before reading the cookie or the body.
+  if (!isRegistrationOpen()) return registrationClosedResponse();
+
   const raw = await req.json().catch(() => null);
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });

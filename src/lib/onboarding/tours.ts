@@ -30,9 +30,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.10a";
+export const TOUR_VERSION = "2026.10.11a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "admin.registration-closed",
+    title: "Sign-up is closed — accounts are invite-only",
+    body: "Nobody can create their own account: **/register** says *Registration is closed*, the sign-up links are gone, shared video scripts no longer offer outside editors an account, and LTI launches only let in people who already have one. **Create User** on this page still works, and so do **company team invites**, **employer invite links** and demo accounts. To reopen sign-up, set **REGISTRATION_OPEN=true** in Vercel's Production environment variables and **redeploy**.",
+    path: "/admin/users",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Users", href: "/admin/users" },
+    since: "2026.10.11a",
+  },
   {
     id: "workspace.merch.store",
     title: "The lab-critter tees have a pop-up",
@@ -815,7 +825,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.script-account-offer",
     title: "Collaborators can create an account after 3 edits",
-    body: "External script editors (people who open a share link without logging in) now see a one-click offer to create a BHN account after their third save. They supply email + password and get an account instantly — plus a confirmation email with a link back to the script. Admins see them in the normal Users list once converted.",
+    body: "External script editors (people who open a share link without logging in) now see a one-click offer to create a BHN account after their third save — only while public sign-up is open (it is closed by default). They supply email + password and get an account instantly — plus a confirmation email with a link back to the script. Admins see them in the normal Users list once converted.",
     path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],

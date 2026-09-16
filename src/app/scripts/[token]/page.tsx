@@ -11,6 +11,7 @@ import { FileText } from "lucide-react";
 import { resolveShareToken, getCollaborator } from "@/lib/scripts/share";
 import { HtmlScriptEditor } from "@/components/workspace/HtmlScriptEditor";
 import { JoinScriptForm } from "@/components/workspace/JoinScriptForm";
+import { isRegistrationOpen } from "@/lib/auth/registration";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,8 @@ export default async function SharedScriptPage({ params }: Props) {
             initialEditCount={collab.editCount}
             alreadyConverted={!!collab.convertedUserId}
             scriptUrl={scriptUrl}
+            // No "create an account" offer while public sign-up is closed.
+            offerAccount={isRegistrationOpen()}
           />
         </div>
       ) : (

@@ -6,6 +6,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { LogoMark } from "@/components/ui/Logo";
 import { AccessRequestForm } from "@/components/marketing/AccessRequestForm";
+import { isRegistrationOpen } from "@/lib/auth/registration";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,10 @@ export default async function ForTraineesPage() {
     prisma.user.count({ where: { role: "employer", isActive: true, accountKind: "real" } }).catch(() => 0),
     prisma.certificate.count({ where: { revokedAt: null } }).catch(() => 0),
   ]);
+  // While sign-up is closed the CTAs lead to the access-request form (the
+  // way in for someone new) and Sign in, never to a /register page that
+  // would only say no.
+  const registrationOpen = isRegistrationOpen();
 
   return (
     <div className="min-h-screen has-grain bg-page">
@@ -53,10 +58,10 @@ export default async function ForTraineesPage() {
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
-              href="/register"
+              href={registrationOpen ? "/register" : "#request-access"}
               className="inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-brand-50 font-semibold text-sm px-6 py-3 organic-card shadow-lg shadow-brand-900/30 transition-all hover:-translate-y-0.5"
             >
-              Sign up free <ArrowRight size={14} />
+              {registrationOpen ? "Sign up free" : "Request access"} <ArrowRight size={14} />
             </Link>
             <Link
               href="#how"
@@ -137,29 +142,57 @@ export default async function ForTraineesPage() {
 
       {/* CTA */}
       <section className="max-w-3xl mx-auto px-6 py-20 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-700">Free to start</p>
-        <h2 className="text-3xl md:text-4xl font-bold text-fg mt-2">Ready to train for the role you want?</h2>
-        <p className="mt-3 text-muted leading-relaxed max-w-xl mx-auto">
-          200 BHN credits to begin. Browse the catalog, build your skill profile, get matched to internships from real industry partners.
-        </p>
+        {registrationOpen ? (
+          <>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-700">Free to start</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-fg mt-2">Ready to train for the role you want?</h2>
+            <p className="mt-3 text-muted leading-relaxed max-w-xl mx-auto">
+              200 BHN credits to begin. Browse the catalog, build your skill profile, get matched to internships from real industry partners.
+            </p>
+          </>
+        ) : (
+          <>
+            <p data-registration-closed className="text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-700">
+              Invite-only for now
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-fg mt-2">Want in? Request access.</h2>
+            <p className="mt-3 text-muted leading-relaxed max-w-xl mx-auto">
+              New accounts are by invitation at the moment. Tell us a little about yourself below and the BioHubNet team will get back to you.
+            </p>
+          </>
+        )}
         <div className="mt-7 flex justify-center gap-3 flex-wrap">
-          <Link
-            href="/register"
-            className="inline-flex items-center gap-2 bg-brand-600 text-white hover:bg-brand-700 font-semibold text-sm px-6 py-3 rounded-lg shadow-md shadow-brand-600/25 transition-all hover:-translate-y-0.5"
-          >
-            Sign up free <ArrowRight size={14} />
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 bg-card-solid border border-line text-fg hover:border-brand-300 text-sm font-semibold px-6 py-3 rounded-lg"
-          >
-            Already have an account? Sign in
-          </Link>
+          {registrationOpen ? (
+            <>
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 bg-brand-600 text-white hover:bg-brand-700 font-semibold text-sm px-6 py-3 rounded-lg shadow-md shadow-brand-600/25 transition-all hover:-translate-y-0.5"
+              >
+                Sign up free <ArrowRight size={14} />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 bg-card-solid border border-line text-fg hover:border-brand-300 text-sm font-semibold px-6 py-3 rounded-lg"
+              >
+                Already have an account? Sign in
+              </Link>
+            </>
+          ) : (
+            // The form below is the main action; Sign in is the aside.
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 bg-card-solid border border-line text-fg hover:border-brand-300 text-sm font-semibold px-6 py-3 rounded-lg"
+            >
+              Already have an account? Sign in
+            </Link>
+          )}
         </div>
 
-        <details className="mt-10 text-left">
+        {/* Open by default while sign-up is closed: it is the way in, and
+            the hero's "Request access" jumps here. */}
+        <details id="request-access" className="mt-10 text-left scroll-mt-6" open={!registrationOpen}>
           <summary className="cursor-pointer text-sm text-muted hover:text-fg select-none text-center">
-            Need an organisation invite? Click here.
+            {registrationOpen ? "Need an organisation invite? Click here." : "Tell us about yourself"}
           </summary>
           <div className="mt-4">
             <AccessRequestForm kind="trainee" />

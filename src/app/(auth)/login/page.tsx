@@ -5,13 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowRight, Check, CheckCircle2, Coins, GraduationCap, Layers, Briefcase,
-  FlaskConical, Rocket,
+  FlaskConical, Lock, Rocket,
 } from "lucide-react";
 import { LogoMark } from "@/components/ui/Logo";
 import { DeepSeaStars } from "@/components/branding/DeepSeaStars";
 import { LoginFloaters } from "@/components/branding/LoginFloaters";
 import { ThemeCycler } from "@/components/ui/ThemePicker";
 import { LoginAmbientMenu } from "@/components/branding/LoginAmbientMenu";
+import { useRegistrationOpen } from "@/components/auth/RegistrationStatus";
+import { inviteTokenFromPath } from "@/lib/auth/invite-path";
 import {
   campaignAttributionFromSearchParams,
   campaignAuthUrl,
@@ -44,6 +46,13 @@ function LoginPageInner() {
   const callbackUrl = safeInternalPath(rawCallback);
   const campaignAttribution = campaignAttributionFromSearchParams(params);
   const registerHref = campaignAuthUrl("register", callbackUrl, campaignAttribution);
+  // Decided on the server (login/layout.tsx); closed hides the sign-up CTA.
+  const registrationOpen = useRegistrationOpen();
+  // A company-team invitee lands here from the invite's "Accept & sign in".
+  // They may still sign up while sign-up is closed (register/page.tsx
+  // checks the invite is live), so keep their way in.
+  const inviteSignup = inviteTokenFromPath(callbackUrl) !== null;
+  const showSignup = registrationOpen || inviteSignup;
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -286,8 +295,10 @@ function LoginPageInner() {
         </h1>
         <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
           BioHubNet is amplifying. New pathways, fresh internship rounds, and a cohort
-          that keeps growing. Sign in to watch the lights come on — or pull up a pipette
-          and join the next round.{" "}
+          that keeps growing.{" "}
+          {registrationOpen
+            ? "Sign in to watch the lights come on — or pull up a pipette and join the next round."
+            : "Sign in to watch the lights come on — new seats are by invitation for now."}{" "}
           <span className="font-mono text-xs text-slate-400">// p &lt; 0.05, results pending</span>
         </p>
       </div>
@@ -321,19 +332,49 @@ function LoginPageInner() {
               </p>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
-              Start training{" "}
-              <span className="font-serif italic font-normal text-white/85">with us</span>
-            </h2>
+            {/* The pitch follows the sign-up switch: no "free to start"
+                promise next to a note saying sign-up is invite-only. */}
+            {registrationOpen ? (
+              <>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
+                  Start training{" "}
+                  <span className="font-serif italic font-normal text-white/85">with us</span>
+                </h2>
 
-            <p className="mt-4 text-sm text-slate-300 leading-relaxed">
-              Free to start.{" "}
-              <span className="inline-flex items-center gap-1 text-white font-semibold">
-                <Coins size={11} aria-hidden className="text-amber-300" /> 200 BHN credits
-              </span>{" "}
-              on the house — most courses cost 50–200, with 4,800 more available
-              after admin review.
-            </p>
+                <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+                  Free to start.{" "}
+                  <span className="inline-flex items-center gap-1 text-white font-semibold">
+                    <Coins size={11} aria-hidden className="text-amber-300" /> 200 BHN credits
+                  </span>{" "}
+                  on the house — most courses cost 50–200, with 4,800 more available
+                  after admin review.
+                </p>
+              </>
+            ) : inviteSignup ? (
+              <>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
+                  You&apos;ve been{" "}
+                  <span className="font-serif italic font-normal text-white/85">invited</span>
+                </h2>
+
+                <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+                  No BioHubNet account yet? Create one with the address your team
+                  invite was sent to, and you&apos;ll land straight back on the invite.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
+                  Access is{" "}
+                  <span className="font-serif italic font-normal text-white/85">by invitation</span>
+                </h2>
+
+                <p className="mt-4 text-sm text-slate-300 leading-relaxed">
+                  New accounts are invite-only for now. Once you&apos;re in, here&apos;s
+                  what&apos;s waiting:
+                </p>
+              </>
+            )}
 
             <ul className="mt-6 space-y-3 border-t border-white/10 pt-5">
               <Bullet icon={GraduationCap}>Industry-led training across biomanufacturing, regulatory, and analytical tracks</Bullet>
@@ -350,28 +391,50 @@ function LoginPageInner() {
                 (both columns: `flex flex-col` + `mt-auto pt-8` on
                 the CTA wrapper). */}
             <div className="mt-auto pt-8">
-              <Link
-                href={registerHref}
-                className="group relative w-full inline-flex items-center justify-center gap-3 text-white font-bold tracking-tight py-3.5 text-base overflow-hidden transition-transform hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(120deg, #173f72 0%, #1f6f86 50%, #2f7e50 100%)",
-                  boxShadow:
-                    "0 10px 28px -8px rgba(56,189,248,0.45), inset 0 1px 0 rgba(255,255,255,0.22)",
-                }}
-              >
-                {/* Soft inner shine sweep on hover */}
-                <span
-                  aria-hidden
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              {showSignup ? (
+                <Link
+                  href={registerHref}
+                  className="group relative w-full inline-flex items-center justify-center gap-3 text-white font-bold tracking-tight py-3.5 text-base overflow-hidden transition-transform hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
                   style={{
-                    background:
-                      "linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)",
+                    backgroundImage:
+                      "linear-gradient(120deg, #173f72 0%, #1f6f86 50%, #2f7e50 100%)",
+                    boxShadow:
+                      "0 10px 28px -8px rgba(56,189,248,0.45), inset 0 1px 0 rgba(255,255,255,0.22)",
                   }}
-                />
-                <span className="relative">Create your free account</span>
-                <ArrowRight size={16} aria-hidden className="relative group-hover:translate-x-1 transition-transform" />
-              </Link>
+                >
+                  {/* Soft inner shine sweep on hover */}
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{
+                      background:
+                        "linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)",
+                    }}
+                  />
+                  <span className="relative">
+                    {inviteSignup ? "Create your account for this invite" : "Create your free account"}
+                  </span>
+                  <ArrowRight size={16} aria-hidden className="relative group-hover:translate-x-1 transition-transform" />
+                </Link>
+              ) : (
+                // Sign-up is closed: say so where the button was, and
+                // point at the way in, rather than leave a dead end.
+                <div data-registration-closed className="border-l-2 border-sky-300/70 pl-4 py-1 text-sm text-slate-300 leading-relaxed">
+                  <p className="inline-flex items-center gap-2 font-semibold text-white">
+                    <Lock size={14} aria-hidden className="text-sky-300" /> Need access?
+                  </p>
+                  <p className="mt-1">
+                    Email{" "}
+                    <a
+                      href="mailto:support@biohubnet.ca?subject=BHN%20Training%20access"
+                      className="font-semibold text-white underline decoration-white/40 underline-offset-2 hover:decoration-white"
+                    >
+                      support@biohubnet.ca
+                    </a>{" "}
+                    for access, or open the invite link you were sent.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 

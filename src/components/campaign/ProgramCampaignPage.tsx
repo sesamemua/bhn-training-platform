@@ -16,6 +16,7 @@ import { CampaignAttributionCapture } from "./CampaignAttributionCapture";
 import { CampaignInstitutionCheck } from "./CampaignInstitutionCheck";
 import { appendCampaignAttribution, type CampaignAttribution } from "@/lib/campaign/attribution";
 import type { CampaignProgramConfig } from "@/lib/campaign/programs";
+import { isRegistrationOpen } from "@/lib/auth/registration";
 
 const PROGRAM_STYLES = {
   engage: {
@@ -212,6 +213,7 @@ export function ProgramCampaignPage({
               primaryAction={config.primaryAction}
               contactEmail={config.contactEmail}
               attribution={attribution}
+              registrationOpen={isRegistrationOpen()}
             />
           </div>
         </section>

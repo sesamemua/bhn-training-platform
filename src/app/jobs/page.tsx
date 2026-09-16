@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Briefcase, Search, MapPin, Clock, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { LogoMark } from "@/components/ui/Logo";
+import { isRegistrationOpen } from "@/lib/auth/registration";
 
 export const dynamic = "force-dynamic";
 
@@ -261,12 +262,22 @@ export default async function JobsPage({
               Post your openings →
             </Link>
           </p>
-          <p className="text-sm text-muted">
-            Student or recent grad?{" "}
-            <Link href="/register" className="font-semibold text-brand hover:underline">
-              Create your profile →
-            </Link>
-          </p>
+          {isRegistrationOpen() ? (
+            <p className="text-sm text-muted">
+              Student or recent grad?{" "}
+              <Link href="/register" className="font-semibold text-brand hover:underline">
+                Create your profile →
+              </Link>
+            </p>
+          ) : (
+            // Sign-up is closed: point existing trainees at Sign in instead.
+            <p className="text-sm text-muted">
+              Already a BHN trainee?{" "}
+              <Link href="/login" className="font-semibold text-brand hover:underline">
+                Sign in →
+              </Link>
+            </p>
+          )}
         </div>
       </footer>
     </div>

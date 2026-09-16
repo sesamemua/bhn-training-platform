@@ -116,6 +116,7 @@ export function HtmlScriptEditor({
   initialEditCount = 0,
   alreadyConverted = false,
   scriptUrl,
+  offerAccount = false,
   showStructureTabs = true,
 }: {
   scriptId: string;
@@ -135,6 +136,9 @@ export function HtmlScriptEditor({
   alreadyConverted?: boolean;
   /** P4: full URL of this page, emailed on account creation. */
   scriptUrl?: string;
+  /** P4: may the account offer appear at all? The share page passes the
+   *  server's sign-up switch; off (the default) never offers an account. */
+  offerAccount?: boolean;
   /** Show the Sections + Tables sidebar tabs. Off for docs that don't need
    *  structural editing (e.g. the Symposium plan, edited on-page + on-chart),
    *  leaving just Comments + History. Defaults on (interview guide etc.). */
@@ -723,7 +727,7 @@ export function HtmlScriptEditor({
       loadRevisions();
       // P4: after each save on the shared route the server returns the new editCount.
       // Show the account offer at every multiple of 3 while the collab hasn't converted.
-      if (typeof j.editCount === "number" && !j.converted && !converted && scriptUrl) {
+      if (typeof j.editCount === "number" && !j.converted && !converted && scriptUrl && offerAccount) {
         const newCount = j.editCount;
         setEditCount(newCount);
         const dismissed = sessionStorage.getItem(`offer-dismissed-${scriptId}`);
@@ -1309,7 +1313,7 @@ export function HtmlScriptEditor({
       </div>
       )}
 
-      {showOffer && scriptUrl && (
+      {showOffer && scriptUrl && offerAccount && (
         <AccountOfferModal
           scriptId={scriptId}
           scriptUrl={scriptUrl}
