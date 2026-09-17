@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training Week registration: shorter questions, cleared registrant list
+  {
+    title: "Training Week registration: shorter wording, postal code last",
+    body: "The live **Training Week 2026** registration form reads shorter, and one question now does something new.\n\n- **Postal code moved to the end** of the form, after the newsletter question, and asks plainly: *Postal code — first 3 characters*.\n- **Shorter help text** on travel time, the Symposium question, dietary requirements (and the *tell us about it* follow-up), and the *Can you still make it?* confirmation question.\n- **The session-clash warning** is down to two lines: *Leaving both ticked tells us either one suits you. Only 1 of a clashing pair can be approved, so you will not get both.*\n- **Picking \u201cNot yet \u2014 I plan to register\u201d** for the Symposium now opens the Symposium registration page in a new tab, right on the click.\n- **The confirmation screen** is shorter too: seat offers in the last week of September, every registration read together, and you hear back either way.\n\n**The registrant list was also emptied** \u2014 all 12 test registrations (and the 51 seats they held) were deleted from **Workspace \u2192 Training admin**, so the page starts clean for real sign-ups. A copy was saved outside the repo first.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Workspace: left-rail tabs in HTML script guides
   {
     title: "Video script guide: tabs for each speaker and the pillar leads",

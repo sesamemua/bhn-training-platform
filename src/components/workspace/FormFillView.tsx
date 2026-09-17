@@ -596,6 +596,13 @@ export function Question({
     ? chosenConflicts(f.slots, arr, f.cannotCombine ?? [])
     : [];
   const none = Boolean(f.noneLabel) && answers[f.key] === f.noneLabel;
+  // Answering, plus opening whatever that answer promised to go and do
+  // (f.openOnSelect) — in the click itself, or the pop-up blocker eats it.
+  const choose = (v: string) => {
+    const url = answers[f.key] !== v ? f.openOnSelect?.[v] : undefined;
+    set(f.key, v);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   /*
    * The cap, enforced where the clicking happens.
@@ -718,14 +725,14 @@ export function Question({
                 name={`fill_${f.key}`}
                 className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--brand-500)]"
                 checked={answers[f.key] === o}
-                onChange={() => set(f.key, o)}
+                onChange={() => choose(o)}
               />
               <span className={`text-[13.5px] leading-snug ${answers[f.key] === o ? "font-semibold text-fg" : "text-muted"}`}>{o}</span>
             </label>
           ))}
         </div>
       ) : f.type === "choice" || f.type === "lookup" ? (
-        <select className={FIELD} value={String(answers[f.key] ?? "")} onChange={(e) => set(f.key, e.target.value)}>
+        <select className={FIELD} value={String(answers[f.key] ?? "")} onChange={(e) => choose(e.target.value)}>
           <option value="">Choose…</option>
           {opts.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -774,9 +781,8 @@ export function Question({
                 ))}
               </ul>
               <p className="mt-1.5 text-[12px] leading-relaxed text-red-600">
-                You can leave both chosen — it tells us you would take either — but only{" "}
-                {f.approveFromClash ?? 1} of a conflicting pair can be approved, so you will not be
-                given both.
+                Leaving both ticked tells us either one suits you. Only{" "}
+                {f.approveFromClash ?? 1} of a clashing pair can be approved, so you will not get both.
               </p>
             </div>
           )}

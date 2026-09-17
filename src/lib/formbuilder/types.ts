@@ -124,6 +124,14 @@ export const FieldSchema = z.object({
    */
   noneLabel: z.string().max(40).optional(),
   /**
+   * Choice → URL: picking that option opens the page there and then.
+   *
+   * "Not yet — I plan to register" is a promise to go somewhere else.
+   * Opening it on the click the person is already making is the one
+   * moment the browser allows it, and the one moment they mean it.
+   */
+  openOnSelect: z.record(z.string(), z.string().url()).optional(),
+  /**
    * On a note: the form ENDS here for whoever sees it.
    *
    * A person told to go and join a programme first must not then be

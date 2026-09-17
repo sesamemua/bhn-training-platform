@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.13c";
+export const TOUR_VERSION = "2026.10.14a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.training-week.registration-copy",
+    title: "The registration form reads shorter",
+    body: "On the live **Training Week 2026** form: the **postal code** question moved to the end, the help text on travel, Symposium, dietary and confirmation questions is cut down, and picking **\u201cNot yet \u2014 I plan to register\u201d** opens the Symposium page on the click. The **registrant list was emptied** of the 12 test registrations, so Training admin starts clean.",
+    path: "/admin/workspace/symposium-2026/registration",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the form", href: "/admin/workspace/symposium-2026/registration" },
+    since: "2026.10.14a",
+  },
   {
     id: "workspace.video.script-tabs",
     title: "Script guides can have tabs down the left",
