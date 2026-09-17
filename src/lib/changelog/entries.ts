@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace: sub-tabs in script guides + the Year in Review video tab
+  {
+    title: "Script guides: sub-tabs, and a Year in Review video tab",
+    body: "Tabs in a script guide can now hold tabs of their own. In the **BHN Scientific Directors Video** guide:\n\n- **Pillar leads** splits into **ENGAGE**, **EXPERIENCE** and **EQUIP**, each with its own heading.\n- Each pillar then has **Script** (the 2.5-minute pillar video, unchanged) and **Year highlights** \u2014 a draft 60-second reel for that pillar: the idea in one line, three directions, a beat sheet and what has to be gathered first.\n- A new top-level **Year in Review** tab holds the film for the Symposium on 29 October: the brief, three concepts, a recommendation, a 3-minute beat sheet, the numbers board, an asset checklist and a schedule counting back from the 29th.\n\nEvery figure in those drafts is marked **[confirm]** until a pillar lead signs it off. The rail on the left shows sub-tabs indented under whichever tab is open, and **Sections**, **Tables**, **Comments** and **History** follow the deepest tab you are viewing.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training Week registration: shorter questions, cleared registrant list
   {
     title: "Training Week registration: shorter wording, postal code last",

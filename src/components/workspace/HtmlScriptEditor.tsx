@@ -105,6 +105,32 @@ function findSections(root: HTMLElement): HTMLElement[] {
   return Array.from(main.children).filter((el) => el.tagName === "SECTION" || el.tagName === "ARTICLE") as HTMLElement[];
 }
 
+// ── Tabs inside a document ──
+// A tab is a `.doc-panel[data-tab]`; a panel nested inside another is a
+// sub-tab of it. Only one panel per level carries `active`, and the tab
+// being viewed is the deepest active one.
+const panelsOf = (root: ParentNode): HTMLElement[] =>
+  Array.from(root.querySelectorAll<HTMLElement>(".doc-panel[data-tab]"));
+const panelParent = (el: HTMLElement): HTMLElement | null =>
+  el.parentElement?.closest<HTMLElement>(".doc-panel[data-tab]") ?? null;
+const panelKids = (el: HTMLElement | null, all: HTMLElement[]): HTMLElement[] =>
+  all.filter((p) => panelParent(p) === el);
+/**
+ * The panel whose content is on screen — found by walking DOWN from the top
+ * level, one active panel per level. A sub-tab of a closed tab keeps its
+ * `active` class (so the tab reopens where it was left), and is not on
+ * screen: only the chain from the top counts.
+ */
+function activePanel(root: ParentNode): HTMLElement | null {
+  const all = panelsOf(root);
+  let here: HTMLElement | null = null;
+  for (;;) {
+    const next = panelKids(here, all).find((p) => p.classList.contains("active"));
+    if (!next) return here;
+    here = next;
+  }
+}
+
 const uniqueSid = () => "x" + Math.random().toString(36).slice(2, 8);
 const initials = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
@@ -203,7 +229,7 @@ export function HtmlScriptEditor({
   // Tabbed docs: each .doc-panel[data-tab][data-label] is a tab, listed in a
   // rail outside the page; .active marks the one shown.
   // data-legacy-history marks the tab that owns versions saved before the split.
-  const [docTabs, setDocTabs] = useState<{ key: string; label: string; legacy: boolean }[]>([]);
+  const [docTabs, setDocTabs] = useState<{ key: string; label: string; parent: string | null; legacy: boolean }[]>([]);
   const [docTab, setDocTab] = useState<string | null>(null);
   // Tables panel: each table with its body rows (add / reorder / remove).
   const [tables, setTables] = useState<{ label: string; rows: { label: string }[] }[]>([]);
@@ -229,7 +255,7 @@ export function HtmlScriptEditor({
     const root = contentRef.current;
     if (!root) return;
     // Tabbed doc: the sidebar lists only the tab being viewed.
-    const scope = root.querySelector<HTMLElement>(".doc-panel.active") ?? root;
+    const scope = activePanel(root) ?? root;
     const boxes = findSections(scope);
     boxes.forEach((b) => { if (!b.getAttribute("data-sid")) b.setAttribute("data-sid", uniqueSid()); });
     boxesRef.current = boxes;
@@ -247,9 +273,14 @@ export function HtmlScriptEditor({
     }));
     setHasIntercut(rows.length > 0 || !!scope.querySelector(".full-script, .intercut-list"));
 
-    const panels = Array.from(root.querySelectorAll<HTMLElement>(".doc-panel[data-tab]"));
-    setDocTabs(panels.map((el) => ({ key: el.dataset.tab!, label: el.dataset.label || el.dataset.tab!, legacy: el.hasAttribute("data-legacy-history") })));
-    setDocTab((panels.find((el) => el.classList.contains("active")) ?? panels[0])?.dataset.tab ?? null);
+    const panels = panelsOf(root);
+    setDocTabs(panels.map((el) => ({
+      key: el.dataset.tab!,
+      label: el.dataset.label || el.dataset.tab!,
+      parent: panelParent(el)?.dataset.tab ?? null,
+      legacy: el.hasAttribute("data-legacy-history"),
+    })));
+    setDocTab((activePanel(root) ?? panels[0])?.dataset.tab ?? null);
   }, []);
 
   // Scan every <table> for the Tables panel (add/move/remove rows + a date
@@ -258,7 +289,7 @@ export function HtmlScriptEditor({
   const refreshTables = useCallback(() => {
     const root = contentRef.current;
     if (!root) return;
-    const scope = root.querySelector<HTMLElement>(".doc-panel.active") ?? root;
+    const scope = activePanel(root) ?? root;
     const tbls = Array.from(scope.querySelectorAll<HTMLTableElement>("table"));
     tablesRef.current = tbls;
     setTables(tbls.map((t) => {
@@ -281,10 +312,23 @@ export function HtmlScriptEditor({
   // View state only: not marked dirty, but the shown tab rides along with
   // the next save.
   const showDocTab = useCallback((key: string) => {
-    contentRef.current?.querySelectorAll<HTMLElement>(".doc-panel[data-tab]").forEach((el) => {
-      el.classList.toggle("active", el.dataset.tab === key);
-    });
-    setDocTab(key);
+    const root = contentRef.current;
+    if (!root) return;
+    const all = panelsOf(root);
+    const target = all.find((p) => p.dataset.tab === key);
+    if (!target) return;
+    // Open the target among its siblings, and every ancestor among theirs.
+    for (let el: HTMLElement | null = target; el; el = panelParent(el)) {
+      const here = el;
+      panelKids(panelParent(here), all).forEach((p) => p.classList.toggle("active", p === here));
+    }
+    // A tab with sub-tabs shows its first one.
+    for (let el: HTMLElement | null = target; el; ) {
+      const kids = panelKids(el, all);
+      kids.forEach((k, i) => k.classList.toggle("active", i === 0));
+      el = kids[0] ?? null;
+    }
+    setDocTab(activePanel(root)?.dataset.tab ?? key);
     refreshSections();
     refreshTables();
     // Scrolled down into the old tab? Start the new one at its header.
@@ -834,7 +878,7 @@ export function HtmlScriptEditor({
     const root = contentRef.current;
     if (!root) return;
     // In a tabbed doc, add to the tab being viewed.
-    const host = root.querySelector(".doc-panel.active") ?? root.querySelector("main") ?? root;
+    const host = activePanel(root) ?? root.querySelector("main") ?? root;
     const sec = document.createElement("section");
     const art = document.createElement("article");
     art.className = "box";
@@ -1109,9 +1153,22 @@ export function HtmlScriptEditor({
   const openCount = comments.filter((c) => !c.parentId && c.status !== "resolved" && !inHiddenTab(blockOf(c.anchorSectionId))).length;
   // Tabbed doc: History shows the versions that changed this tab.
   const legacyTab = (docTabs.find((t) => t.legacy) ?? docTabs[0])?.key;
-  const tabRevisions = !docTab
+  // The rail shows the top level, plus the sub-tabs of whatever is open.
+  const openChain = new Set<string>();
+  for (let k = docTab; k; k = docTabs.find((t) => t.key === k)?.parent ?? null) openChain.add(k);
+  const parentOf = (key: string) => docTabs.find((t) => t.key === key)?.parent ?? null;
+  const depthOf = (key: string) => { let d = 0; for (let p = parentOf(key); p; p = parentOf(p)) d++; return d; };
+  const railRows = docTabs
+    .filter((t) => !t.parent || openChain.has(t.parent))
+    .map((t) => ({ ...t, depth: depthOf(t.key) }));
+  const withKids = (key: string): string[] => {
+    const kids = docTabs.filter((t) => t.parent === key).flatMap((t) => withKids(t.key));
+    return [key, ...kids];
+  };
+  const mine = docTab ? new Set(withKids(docTab)) : null;
+  const tabRevisions = !docTab || !mine
     ? revisions
-    : revisions.filter((r) => (r.untabbed ? docTab === legacyTab : !r.tabs || r.tabs.includes(docTab)));
+    : revisions.filter((r) => (r.untabbed ? docTab === legacyTab : !r.tabs || r.tabs.some((t) => mine.has(t))));
 
   return (
     <div className="space-y-3 pb-24">
@@ -1151,17 +1208,21 @@ export function HtmlScriptEditor({
       <div className={cn("grid gap-4", docTabs.length > 0 ? "lg:grid-cols-[160px_minmax(0,1fr)_300px]" : "lg:grid-cols-[minmax(0,1fr)_300px]")}>
         {docTabs.length > 0 && (
           <nav aria-label="Document tabs" className="flex gap-1 self-start overflow-x-auto lg:sticky lg:top-16 lg:flex-col lg:overflow-visible">
-            {docTabs.map((t) => (
+            {railRows.map((t) => (
               <button
                 key={t.key}
                 type="button"
                 onClick={() => showDocTab(t.key)}
-                aria-current={docTab === t.key ? "page" : undefined}
+                aria-current={openChain.has(t.key) ? "page" : undefined}
+                style={t.depth ? { marginLeft: t.depth * 10 } : undefined}
                 className={cn(
-                  "shrink-0 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors",
+                  "shrink-0 rounded-lg border px-3 py-2 text-left transition-colors",
+                  t.depth ? "text-[13px] font-medium" : "text-sm font-semibold",
                   docTab === t.key
                     ? "border-brand-600 bg-card-solid text-fg shadow-card-rest"
-                    : "border-transparent text-muted hover:bg-elevated hover:text-fg",
+                    : openChain.has(t.key)
+                      ? "border-transparent bg-elevated/60 text-fg"
+                      : "border-transparent text-muted hover:bg-elevated hover:text-fg",
                 )}
               >
                 {t.label}

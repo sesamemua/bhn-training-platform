@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.14a";
+export const TOUR_VERSION = "2026.10.14b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.video.script-subtabs",
+    title: "Tabs can hold tabs",
+    body: "In the **BHN Scientific Directors Video** guide, **Pillar leads** now opens into **ENGAGE**, **EXPERIENCE** and **EQUIP**, and each of those into **Script** and **Year highlights**. A new **Year in Review** tab holds draft concepts for the film that plays at the Symposium on 29 October. Sub-tabs appear indented under whichever tab is open.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open video projects", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.14b",
+  },
   {
     id: "workspace.training-week.registration-copy",
     title: "The registration form reads shorter",
