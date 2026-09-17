@@ -195,6 +195,10 @@ export function HtmlScriptEditor({
   // Dialogue rows inside the "Draft Full Intercut Script" block (.intercut-row).
   const [intercut, setIntercut] = useState<{ label: string }[]>([]);
   const [hasIntercut, setHasIntercut] = useState(false);
+  // Tabbed docs: each .doc-panel[data-tab][data-label] is a tab, listed in a
+  // rail outside the page; .active marks the one shown.
+  const [docTabs, setDocTabs] = useState<{ key: string; label: string }[]>([]);
+  const [docTab, setDocTab] = useState<string | null>(null);
   // Tables panel: each table with its body rows (add / reorder / remove).
   const [tables, setTables] = useState<{ label: string; rows: { label: string }[] }[]>([]);
   const [revisions, setRevisions] = useState<Revision[]>([]);
@@ -234,6 +238,22 @@ export function HtmlScriptEditor({
       return { label: `${speaker} · ${copy.slice(0, 46)}${copy.length > 46 ? "…" : ""}` };
     }));
     setHasIntercut(rows.length > 0 || !!root.querySelector(".full-script, .intercut-list"));
+
+    const panels = Array.from(root.querySelectorAll<HTMLElement>(".doc-panel[data-tab]"));
+    setDocTabs(panels.map((el) => ({ key: el.dataset.tab!, label: el.dataset.label || el.dataset.tab! })));
+    setDocTab((panels.find((el) => el.classList.contains("active")) ?? panels[0])?.dataset.tab ?? null);
+  }, []);
+
+  // View state only: not marked dirty, but the shown tab rides along with
+  // the next save.
+  const showDocTab = useCallback((key: string) => {
+    contentRef.current?.querySelectorAll<HTMLElement>(".doc-panel[data-tab]").forEach((el) => {
+      el.classList.toggle("active", el.dataset.tab === key);
+    });
+    setDocTab(key);
+    // Scrolled down into the old tab? Start the new one at its header.
+    const host = hostRef.current;
+    if (host && host.getBoundingClientRect().top < 0) host.scrollIntoView({ block: "start", behavior: "smooth" });
   }, []);
 
   // Scan every <table> for the Tables panel (add/move/remove rows + a date
@@ -481,21 +501,6 @@ export function HtmlScriptEditor({
     // false, so a click never lands a caret.
     const onDelegatedClick = (e: MouseEvent) => {
       const target = e.target as Element | null;
-
-      // Left-rail doc tabs (.doc-tab[data-tab] → .doc-panel[data-tab]).
-      // View state only: not marked dirty, but the active tab rides along
-      // with the next save.
-      const docTab = target?.closest?.(".doc-tab") as HTMLElement | null;
-      if (docTab) {
-        e.preventDefault();
-        const key = docTab.getAttribute("data-tab");
-        docTab.closest(".doc-tabs")?.querySelectorAll<HTMLElement>(".doc-tab, .doc-panel").forEach((el) => {
-          const on = el.getAttribute("data-tab") === key;
-          el.classList.toggle("active", on);
-          if (el.classList.contains("doc-tab")) el.setAttribute("aria-selected", on ? "true" : "false");
-        });
-        return;
-      }
 
       // Phase collapse toggle.
       const phaseBtn = target?.closest?.(".phase-toggle") as HTMLElement | null;
@@ -1098,9 +1103,29 @@ export function HtmlScriptEditor({
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className={cn("grid gap-4", docTabs.length > 0 ? "lg:grid-cols-[160px_minmax(0,1fr)_300px]" : "lg:grid-cols-[minmax(0,1fr)_300px]")}>
+        {docTabs.length > 0 && (
+          <nav aria-label="Document tabs" className="flex gap-1 self-start overflow-x-auto lg:sticky lg:top-16 lg:flex-col lg:overflow-visible">
+            {docTabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => showDocTab(t.key)}
+                aria-current={docTab === t.key ? "page" : undefined}
+                className={cn(
+                  "shrink-0 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors",
+                  docTab === t.key
+                    ? "border-brand-600 bg-card-solid text-fg shadow-card-rest"
+                    : "border-transparent text-muted hover:bg-elevated hover:text-fg",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+        )}
         <div className={cn("min-w-0", showSource && "hidden")}>
-          <div ref={hostRef} />
+          <div ref={hostRef} className="scroll-mt-16" />
         </div>
         {showSource && (
           <textarea
