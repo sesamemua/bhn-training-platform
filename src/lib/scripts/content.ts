@@ -33,6 +33,60 @@ export interface RevisionAuthor {
   kind: "user" | "anon";
 }
 
+// ── Tabbed HTML docs ──
+// A tab is a top-level `<div class="doc-panel…" data-tab="key">`. A panel's
+// chunk runs from its opening tag to the next panel's (the "active" class
+// lives in the tag, so switching tabs never reads as an edit).
+const PANEL_OPEN = /<div\b[^>]*\bclass="doc-panel\b[^"]*"[^>]*\bdata-tab="([^"]+)"[^>]*>/g;
+
+export function docPanelChunks(html: string): Map<string, string> {
+  const hits = [...html.matchAll(PANEL_OPEN)];
+  return new Map(hits.map((h, i) => [h[1], html.slice(h.index + h[0].length, hits[i + 1]?.index ?? html.length)]));
+}
+
+const htmlOf = (rc: unknown): string => {
+  const h = (rc as { html?: unknown } | null)?.html;
+  return typeof h === "string" ? h : "";
+};
+
+/** Tabs whose content differs between two versions of a tabbed doc. */
+export function changedTabs(prevHtml: string, nextHtml: string): string[] {
+  const prev = docPanelChunks(prevHtml);
+  const next = docPanelChunks(nextHtml);
+  return [...new Set([...prev.keys(), ...next.keys()])].filter((k) => prev.get(k) !== next.get(k));
+}
+
+export interface RevisionRow {
+  id: string;
+  authorName: string;
+  authorKind: string;
+  summary: string;
+  createdAt: Date;
+  /** Tabs this save changed; null when not recorded. */
+  tabs: string[] | null;
+  /** The saved doc had no tabs (made before the doc was split). */
+  untabbed: boolean;
+}
+
+/** Recent revisions, newest first, without loading the snapshots. */
+export function listRevisions(scriptId: string): Promise<RevisionRow[]> {
+  return prisma.$queryRaw<RevisionRow[]>`
+    SELECT id, "authorName", "authorKind", summary, "createdAt",
+           snapshot->'tabs' AS tabs,
+           position('doc-panel' in coalesce(snapshot->'richContent'->>'html', '')) = 0 AS untabbed
+    FROM "ScriptRevision"
+    WHERE "scriptId" = ${scriptId}
+    ORDER BY "createdAt" DESC
+    LIMIT 100`;
+}
+
+/** One revision's saved HTML (for restoring a single tab), or null. */
+export async function revisionHtml(scriptId: string, revisionId: string): Promise<string | null> {
+  const rev = await prisma.scriptRevision.findUnique({ where: { id: revisionId }, select: { scriptId: true, snapshot: true } });
+  if (!rev || rev.scriptId !== scriptId) return null;
+  return htmlOf((rev.snapshot as { richContent?: unknown } | null)?.richContent ?? null);
+}
+
 /** Load a script's current content as a snapshot (null if not found). */
 export async function loadScriptSnapshot(scriptId: string): Promise<ScriptSnapshot | null> {
   const script = await prisma.script.findUnique({
@@ -90,13 +144,15 @@ export async function saveScriptContent(args: {
   });
 
   const snapshot = (await loadScriptSnapshot(scriptId))!;
+  const nextHtml = htmlOf(snapshot.richContent);
+  const tabs = nextHtml.includes("doc-panel") ? changedTabs(htmlOf(script.richContent), nextHtml) : undefined;
   await prisma.scriptRevision.create({
     data: {
       scriptId,
       authorUserId: author.userId,
       authorName: author.name || "Someone",
       authorKind: author.kind,
-      snapshot: snapshot as unknown as Prisma.InputJsonValue,
+      snapshot: { ...snapshot, tabs } as unknown as Prisma.InputJsonValue,
       summary: args.summary ?? "",
     },
   });

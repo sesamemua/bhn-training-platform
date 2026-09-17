@@ -1,26 +1,26 @@
 /**
  * Revision history for one script (admin-only).
- *   GET  /api/workspace/scripts/[id]/revisions  → recent revisions (who/when)
+ *   GET  /api/workspace/scripts/[id]/revisions  → recent revisions (who/when, tabs changed); ?id= → one version's HTML
  *   POST /api/workspace/scripts/[id]/revisions  → { restoreId } restores one
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { revertToRevision } from "@/lib/scripts/content";
+import { listRevisions, revertToRevision, revisionHtml } from "@/lib/scripts/content";
 
 export const runtime = "nodejs";
 interface Ctx { params: Promise<{ id: string }> }
 
-export async function GET(_req: NextRequest, ctx: Ctx) {
+export async function GET(req: NextRequest, ctx: Ctx) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
-  const revisions = await prisma.scriptRevision.findMany({
-    where: { scriptId: id },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: { id: true, authorName: true, authorKind: true, summary: true, createdAt: true },
-  });
+  const revId = req.nextUrl.searchParams.get("id");
+  if (revId) {
+    const html = await revisionHtml(id, revId);
+    if (html === null) return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return NextResponse.json({ ok: true, html });
+  }
+  const revisions = await listRevisions(id);
   return NextResponse.json({ ok: true, revisions });
 }
 

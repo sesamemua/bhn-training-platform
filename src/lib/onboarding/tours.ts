@@ -39,18 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.13b";
+export const TOUR_VERSION = "2026.10.13c";
 
 export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.video.script-tabs",
     title: "Script guides can have tabs down the left",
-    body: "The **BHN Scientific Directors Video** guide is split into tabs listed **to the left of the page**: **Overview**, **Molly**, **Gilbert**, **Darius** and **Pillar leads** (the ENGAGE, EXPERIENCE and EQUIP scripts). Each tab has its own heading. Click one to switch; everything stays editable, and **Add section** adds to the tab you're on.",
+    body: "The **BHN Scientific Directors Video** guide is split into tabs listed **to the left of the page**: **Overview**, **Molly**, **Gilbert**, **Darius** and **Pillar leads** (the ENGAGE, EXPERIENCE and EQUIP scripts). Each tab has its own heading. The sidebar follows the tab you're on: **Sections**, **Tables** and **Comments** show only that tab, and **History** lists the saves that changed it \u2014 **Restore** puts back just that tab.",
     path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],
     cta: { label: "Open video projects", href: "/admin/workspace/marketing/video" },
-    since: "2026.10.13b",
+    since: "2026.10.13c",
   },
   {
     id: "admin.registration-closed",

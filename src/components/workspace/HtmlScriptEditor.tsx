@@ -24,7 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { colorForKey, type PresencePeer } from "@/lib/scripts/presence";
 import { AccountOfferModal } from "./AccountOfferModal";
-import { ScriptCommentLayer } from "./ScriptCommentLayer";
+import { ScriptCommentLayer, inHiddenTab } from "./ScriptCommentLayer";
 import { shieldShadowTyping } from "@/lib/workspace/typing-shield";
 
 interface Revision {
@@ -33,6 +33,10 @@ interface Revision {
   authorKind: string;
   summary: string;
   createdAt: string;
+  /** Tabs this save changed (tabbed docs); null when not recorded. */
+  tabs?: string[] | null;
+  /** Saved before the doc had tabs. */
+  untabbed?: boolean;
 }
 
 interface Comment {
@@ -42,6 +46,7 @@ interface Comment {
   authorKind: string;
   status: string;
   parentId: string | null;
+  anchorSectionId: string | null;
   createdAt: string;
 }
 
@@ -197,7 +202,8 @@ export function HtmlScriptEditor({
   const [hasIntercut, setHasIntercut] = useState(false);
   // Tabbed docs: each .doc-panel[data-tab][data-label] is a tab, listed in a
   // rail outside the page; .active marks the one shown.
-  const [docTabs, setDocTabs] = useState<{ key: string; label: string }[]>([]);
+  // data-legacy-history marks the tab that owns versions saved before the split.
+  const [docTabs, setDocTabs] = useState<{ key: string; label: string; legacy: boolean }[]>([]);
   const [docTab, setDocTab] = useState<string | null>(null);
   // Tables panel: each table with its body rows (add / reorder / remove).
   const [tables, setTables] = useState<{ label: string; rows: { label: string }[] }[]>([]);
@@ -222,7 +228,9 @@ export function HtmlScriptEditor({
   const refreshSections = useCallback(() => {
     const root = contentRef.current;
     if (!root) return;
-    const boxes = findSections(root);
+    // Tabbed doc: the sidebar lists only the tab being viewed.
+    const scope = root.querySelector<HTMLElement>(".doc-panel.active") ?? root;
+    const boxes = findSections(scope);
     boxes.forEach((b) => { if (!b.getAttribute("data-sid")) b.setAttribute("data-sid", uniqueSid()); });
     boxesRef.current = boxes;
     setSections(boxes.map((b) => ({
@@ -230,30 +238,18 @@ export function HtmlScriptEditor({
     })));
 
     // The intercut script's dialogue rows — managed as their own sub-list.
-    const rows = Array.from(root.querySelectorAll<HTMLElement>(".intercut-row"));
+    const rows = Array.from(scope.querySelectorAll<HTMLElement>(".intercut-row"));
     intercutRef.current = rows;
     setIntercut(rows.map((r) => {
       const speaker = r.querySelector(".speaker")?.textContent?.trim() || "—";
       const copy = (r.querySelector(".script-copy")?.textContent ?? "").trim().replace(/\s+/g, " ");
       return { label: `${speaker} · ${copy.slice(0, 46)}${copy.length > 46 ? "…" : ""}` };
     }));
-    setHasIntercut(rows.length > 0 || !!root.querySelector(".full-script, .intercut-list"));
+    setHasIntercut(rows.length > 0 || !!scope.querySelector(".full-script, .intercut-list"));
 
     const panels = Array.from(root.querySelectorAll<HTMLElement>(".doc-panel[data-tab]"));
-    setDocTabs(panels.map((el) => ({ key: el.dataset.tab!, label: el.dataset.label || el.dataset.tab! })));
+    setDocTabs(panels.map((el) => ({ key: el.dataset.tab!, label: el.dataset.label || el.dataset.tab!, legacy: el.hasAttribute("data-legacy-history") })));
     setDocTab((panels.find((el) => el.classList.contains("active")) ?? panels[0])?.dataset.tab ?? null);
-  }, []);
-
-  // View state only: not marked dirty, but the shown tab rides along with
-  // the next save.
-  const showDocTab = useCallback((key: string) => {
-    contentRef.current?.querySelectorAll<HTMLElement>(".doc-panel[data-tab]").forEach((el) => {
-      el.classList.toggle("active", el.dataset.tab === key);
-    });
-    setDocTab(key);
-    // Scrolled down into the old tab? Start the new one at its header.
-    const host = hostRef.current;
-    if (host && host.getBoundingClientRect().top < 0) host.scrollIntoView({ block: "start", behavior: "smooth" });
   }, []);
 
   // Scan every <table> for the Tables panel (add/move/remove rows + a date
@@ -262,7 +258,8 @@ export function HtmlScriptEditor({
   const refreshTables = useCallback(() => {
     const root = contentRef.current;
     if (!root) return;
-    const tbls = Array.from(root.querySelectorAll<HTMLTableElement>("table"));
+    const scope = root.querySelector<HTMLElement>(".doc-panel.active") ?? root;
+    const tbls = Array.from(scope.querySelectorAll<HTMLTableElement>("table"));
     tablesRef.current = tbls;
     setTables(tbls.map((t) => {
       const heading = t.closest(".box")?.querySelector("h2,h3,h4");
@@ -280,6 +277,20 @@ export function HtmlScriptEditor({
       };
     }));
   }, []);
+
+  // View state only: not marked dirty, but the shown tab rides along with
+  // the next save.
+  const showDocTab = useCallback((key: string) => {
+    contentRef.current?.querySelectorAll<HTMLElement>(".doc-panel[data-tab]").forEach((el) => {
+      el.classList.toggle("active", el.dataset.tab === key);
+    });
+    setDocTab(key);
+    refreshSections();
+    refreshTables();
+    // Scrolled down into the old tab? Start the new one at its header.
+    const host = hostRef.current;
+    if (host && host.getBoundingClientRect().top < 0) host.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [refreshSections, refreshTables]);
 
   // Live body-row list for a table index (prefers tbody; falls back to
   // non-header rows). Re-queried per op so it always reflects the DOM.
@@ -1026,7 +1037,34 @@ export function HtmlScriptEditor({
   }
 
   async function restore(revId: string) {
-    if (!confirm("Restore this version? The current content is replaced and saved as a new version.")) return;
+    const rev = revisions.find((r) => r.id === revId);
+    const panel = docTab && !rev?.untabbed
+      ? contentRef.current?.querySelector<HTMLElement>(`.doc-panel[data-tab="${CSS.escape(docTab)}"]`)
+      : null;
+    if (panel && docTab) {
+      const label = docTabs.find((t) => t.key === docTab)?.label ?? docTab;
+      if (!confirm(`Restore the ${label} tab to this version? Other tabs stay as they are. The result is saved as a new version.`)) return;
+      const res = await fetch(`${base}/revisions?id=${encodeURIComponent(revId)}`).catch(() => null);
+      const j = (await res?.json().catch(() => ({}))) as { ok?: boolean; html?: string; error?: string } | undefined;
+      if (!j?.ok || typeof j.html !== "string") { setError(j?.error ?? "Restore failed."); return; }
+      const old = new DOMParser().parseFromString(j.html, "text/html")
+        .querySelector(`.doc-panel[data-tab="${CSS.escape(docTab)}"]`);
+      if (!old) { setError(`That version has no ${label} tab.`); return; }
+      panel.innerHTML = old.innerHTML;
+      refreshSections();
+      refreshTables();
+      setupPhasesRef.current();
+      markGanttStaticRef.current();
+      setupGanttControlsRef.current();
+      reconcileTable();
+      markDirty();
+      doSaveRef.current("manual");
+      return;
+    }
+    const whole = rev?.untabbed && docTabs.length > 0
+      ? "This version is from before the document had tabs. Restoring it replaces the whole document, every tab included, and saves it as a new version."
+      : "Restore this version? The current content is replaced and saved as a new version.";
+    if (!confirm(whole)) return;
     await applyRestore(revId);
   }
 
@@ -1066,7 +1104,14 @@ export function HtmlScriptEditor({
 
   const miniBtn = "inline-flex h-6 w-6 items-center justify-center rounded text-muted hover:text-fg hover:bg-elevated disabled:opacity-30";
   const roster = [{ editorKey: meId, name: `${meName} (you)`, color: myColor }, ...peers];
-  const openCount = comments.filter((c) => !c.parentId && c.status !== "resolved").length;
+  const blockOf = (sid: string | null) =>
+    sid ? contentRef.current?.querySelector(`[data-sid="${CSS.escape(sid)}"]`) : null;
+  const openCount = comments.filter((c) => !c.parentId && c.status !== "resolved" && !inHiddenTab(blockOf(c.anchorSectionId))).length;
+  // Tabbed doc: History shows the versions that changed this tab.
+  const legacyTab = (docTabs.find((t) => t.legacy) ?? docTabs[0])?.key;
+  const tabRevisions = !docTab
+    ? revisions
+    : revisions.filter((r) => (r.untabbed ? docTab === legacyTab : !r.tabs || r.tabs.includes(docTab)));
 
   return (
     <div className="space-y-3 pb-24">
@@ -1275,7 +1320,7 @@ export function HtmlScriptEditor({
           )}
 
           {tab === "comments" && (
-            <ScriptCommentLayer contentRef={contentRef} base={base} />
+            <ScriptCommentLayer contentRef={contentRef} base={base} tabKey={docTab} />
           )}
 
           {tab === "history" && (
@@ -1285,7 +1330,7 @@ export function HtmlScriptEditor({
                 {revLoading && <Loader2 size={12} className="animate-spin text-muted" />}
               </div>
               <ul className="max-h-[58vh] space-y-0.5 overflow-y-auto">
-                {revisions.map((r) => (
+                {tabRevisions.map((r) => (
                   <li key={r.id} className="rounded-md px-1.5 py-1.5 hover:bg-elevated">
                     <div className="flex items-center gap-1.5">
                       <UserIcon size={11} className="shrink-0 text-muted" />
@@ -1298,8 +1343,8 @@ export function HtmlScriptEditor({
                     <div className="mt-0.5 pl-[18px] text-[10px] text-muted">{fmtWhen(r.createdAt)}{r.summary ? ` · ${r.summary}` : ""}</div>
                   </li>
                 ))}
-                {!revLoading && revisions.length === 0 && (
-                  <li className="px-2 py-2 text-[11px] text-muted">No saved versions yet. Hit Save to start the history.</li>
+                {!revLoading && tabRevisions.length === 0 && (
+                  <li className="px-2 py-2 text-[11px] text-muted">{docTab ? "No saved changes to this tab yet." : "No saved versions yet. Hit Save to start the history."}</li>
                 )}
               </ul>
             </div>

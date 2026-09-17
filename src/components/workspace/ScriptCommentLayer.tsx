@@ -98,11 +98,19 @@ function relTime(iso: string): string {
   const h = Math.round(m / 60); if (h < 24) return h + "h ago";
   return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
+/** Is this element inside a tab (.doc-panel) that isn't being viewed? */
+export function inHiddenTab(el: Element | null | undefined): boolean {
+  const panel = el?.closest(".doc-panel");
+  return !!panel && !panel.classList.contains("active");
+}
+
 export function ScriptCommentLayer({
-  contentRef, base,
+  contentRef, base, tabKey = null,
 }: {
   contentRef: React.RefObject<HTMLDivElement | null>;
   base: string;
+  /** Tabbed doc: the tab being viewed — only its comments show. */
+  tabKey?: string | null;
 }) {
   const [comments, setComments] = useState<Cmt[]>([]);
   const [canModerate, setCanModerate] = useState(false);
@@ -275,7 +283,9 @@ export function ScriptCommentLayer({
   /* ── geometry ──────────────────────────────────────────────────────── */
   const content = contentRef.current;
   const docRect = content?.getBoundingClientRect();
-  const tops = comments.filter((c) => !c.parentId);
+  // Comments anchored in another tab stay with that tab (tabKey re-renders
+  // this on a switch). Ones whose anchor is lost still show everywhere.
+  const tops = comments.filter((c) => !c.parentId && !(tabKey && inHiddenTab(blockFor(c.anchorSectionId, c.anchorQuote))));
   const repliesOf = (id: string) => comments.filter((c) => c.parentId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const modCount = (c: Cmt) => c.editCount + repliesOf(c.id).length;
   const lastActivity = (c: Cmt) => {

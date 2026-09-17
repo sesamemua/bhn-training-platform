@@ -1,28 +1,28 @@
 /**
  * Public (no login) revision history for a shared script.
- *   GET  /api/scripts/shared/[token]/revisions                → list (who/when)
+ *   GET  /api/scripts/shared/[token]/revisions                → list (who/when, tabs changed); ?id= → one version's HTML
  *   POST /api/scripts/shared/[token]/revisions { restoreId }  → restore one
  * Restore needs an edit link + the collaborator cookie; the restore itself is
  * recorded as a new revision attributed to that collaborator.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { resolveShareToken, getCollaborator } from "@/lib/scripts/share";
-import { revertToRevision } from "@/lib/scripts/content";
+import { listRevisions, revertToRevision, revisionHtml } from "@/lib/scripts/content";
 
 export const runtime = "nodejs";
 interface Ctx { params: Promise<{ token: string }> }
 
-export async function GET(_req: NextRequest, ctx: Ctx) {
+export async function GET(req: NextRequest, ctx: Ctx) {
   const { token } = await ctx.params;
   const res = await resolveShareToken(token);
   if (!res.ok) return NextResponse.json({ error: "This link is no longer valid." }, { status: 404 });
-  const revisions = await prisma.scriptRevision.findMany({
-    where: { scriptId: res.script.id },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: { id: true, authorName: true, authorKind: true, summary: true, createdAt: true },
-  });
+  const revId = req.nextUrl.searchParams.get("id");
+  if (revId) {
+    const html = await revisionHtml(res.script.id, revId);
+    if (html === null) return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return NextResponse.json({ ok: true, html });
+  }
+  const revisions = await listRevisions(res.script.id);
   return NextResponse.json({ ok: true, revisions });
 }
 
