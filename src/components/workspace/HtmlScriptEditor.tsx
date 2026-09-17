@@ -482,6 +482,21 @@ export function HtmlScriptEditor({
     const onDelegatedClick = (e: MouseEvent) => {
       const target = e.target as Element | null;
 
+      // Left-rail doc tabs (.doc-tab[data-tab] → .doc-panel[data-tab]).
+      // View state only: not marked dirty, but the active tab rides along
+      // with the next save.
+      const docTab = target?.closest?.(".doc-tab") as HTMLElement | null;
+      if (docTab) {
+        e.preventDefault();
+        const key = docTab.getAttribute("data-tab");
+        docTab.closest(".doc-tabs")?.querySelectorAll<HTMLElement>(".doc-tab, .doc-panel").forEach((el) => {
+          const on = el.getAttribute("data-tab") === key;
+          el.classList.toggle("active", on);
+          if (el.classList.contains("doc-tab")) el.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        return;
+      }
+
       // Phase collapse toggle.
       const phaseBtn = target?.closest?.(".phase-toggle") as HTMLElement | null;
       if (phaseBtn) {
@@ -802,7 +817,8 @@ export function HtmlScriptEditor({
   function addSection() {
     const root = contentRef.current;
     if (!root) return;
-    const host = root.querySelector("main") ?? root;
+    // In a tabbed doc, add to the tab being viewed.
+    const host = root.querySelector(".doc-panel.active") ?? root.querySelector("main") ?? root;
     const sec = document.createElement("section");
     const art = document.createElement("article");
     art.className = "box";

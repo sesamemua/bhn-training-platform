@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Workspace: left-rail tabs in HTML script guides
+  {
+    title: "Video script guide: tabs for each speaker and the pillar leads",
+    body: "The **BHN Scientific Directors Video** guide (*Molly Interview Conversation Guide*) now has tabs down the left side:\n\n- **Overview** \u2014 project overview, voice and tone, filming plan, and the draft full intercut script.\n- **Molly** \u2014 her framing, the four interview prompts, follow-ups, *Keep in mind*, and the optional 2026 Symposium pickup line.\n- **Gilbert** \u2014 his Industry & Translation script.\n- **Darius** \u2014 his Innovation & Future Science script.\n- **Pillar leads** \u2014 the three pillar video scripts: ENGAGE (*Bridging the Gap*, Epshita Islam), EXPERIENCE (*The Industrial Immersion*, Yeseul Lee) and EQUIP (scene by scene).\n\nNothing was removed \u2014 the existing content was moved into the tabs as is. Everything stays editable, **Add section** adds to the tab you're viewing, and share links get the same tabs. The previous layout is one click away in **History**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Auth: public sign-up closed by default
   {
     title: "Sign-up is closed: new accounts are invite-only",
