@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * Video Production project list — create / open / delete projects, plus a
- * one-click "Seed BHN Promo" that imports the Molly script and jumps into it.
+ * Video Production project list — create / open / delete projects. Each
+ * project is drawn as a film slate: clapper stripes, a black slate with the
+ * title in chalk, and the slate's boxes holding scripts, call sheets, the
+ * shoot day and the budget. Its three tabs are one click from the card.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, FileText, Loader2, ArrowRight, Clapperboard } from "lucide-react";
+import { Plus, Trash2, FileText, Loader2, Clapperboard, ClipboardList, Receipt } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { callSheetsPath, productionCostPath, projectPath } from "@/lib/video/paths";
 
 interface ProjectRow {
   id: string;
@@ -16,8 +19,18 @@ interface ProjectRow {
   summary: string;
   status: string;
   scriptCount: number;
+  callSheetCount: number;
+  /** YYYY-MM-DD, or "" when no call sheet has a date. */
+  shootDate: string;
+  /** Production cost total in cents, or null when the project has no budget. */
+  budget: number | null;
   updatedAt: string;
 }
+
+const shortDate = (d: string) =>
+  d ? new Date(`${d}T12:00:00Z`).toLocaleDateString("en-CA", { day: "numeric", month: "short", timeZone: "UTC" }) : "—";
+const money = (cents: number | null) =>
+  cents == null ? "—" : `$${Math.round(cents / 100).toLocaleString("en-CA")}`;
 
 export function VideoProjectsClient({ initialProjects }: { initialProjects: ProjectRow[] }) {
   const router = useRouter();
@@ -89,33 +102,63 @@ export function VideoProjectsClient({ initialProjects }: { initialProjects: Proj
           <p className="mt-1 text-xs text-muted">Create one above to get started.</p>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 lg:grid-cols-2">
           {projects.map((p) => (
-            <Card key={p.id} className="group flex flex-col p-4">
-              <div className="flex items-start justify-between gap-2">
-                <Link href={`/admin/workspace/marketing/video/${p.id}`} className="min-w-0">
-                  <h3 className="truncate text-sm font-semibold text-fg group-hover:text-brand-700">{p.title}</h3>
-                  <p className="mt-0.5 text-[11px] text-muted">
-                    {p.scriptCount} {p.scriptCount === 1 ? "script" : "scripts"} · {p.status}
-                  </p>
+            <article key={p.id} className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-card-solid shadow-card-rest transition-shadow hover:shadow-elevated">
+              {/* Clapper stick */}
+              <div aria-hidden className="h-4" style={{ background: "repeating-linear-gradient(-45deg, #111 0 16px, #f4f4f4 16px 32px)" }} />
+
+              {/* The slate: always black, whatever the app theme — it is one. */}
+              <div className="flex-1 bg-[#15191d] px-5 pb-5 pt-4 text-white">
+                <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">
+                  <span>Production</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-2 py-0.5 tracking-[0.12em] text-white/80">
+                    <span className={`h-1.5 w-1.5 rounded-full ${p.status === "active" ? "bg-emerald-400" : "bg-white/40"}`} />
+                    {p.status}
+                  </span>
+                </div>
+                <Link href={projectPath(p.id)} className="mt-2 block outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+                  <h3 className="text-[22px] font-extrabold leading-tight tracking-tight group-hover:underline">{p.title}</h3>
                 </Link>
+                {p.summary && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-white/70">{p.summary}</p>}
+
+                <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-md border border-white/25 sm:grid-cols-4">
+                  {[
+                    ["Scripts", String(p.scriptCount)],
+                    ["Call sheets", String(p.callSheetCount)],
+                    ["Shoot", shortDate(p.shootDate)],
+                    ["Budget", money(p.budget)],
+                  ].map(([k, v], i) => (
+                    <div key={k} className={`px-3 py-2 ${i % 2 ? "border-l border-white/25" : ""} ${i > 1 ? "border-t border-white/25 sm:border-t-0" : ""} ${i === 2 ? "sm:border-l" : ""}`}>
+                      <dt className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-white/50">{k}</dt>
+                      <dd className="mt-0.5 truncate font-mono text-[17px] font-semibold tabular-nums">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              {/* The project's three tabs */}
+              <div className="flex flex-wrap items-center gap-1 px-3 py-2.5">
+                {[
+                  { href: projectPath(p.id), label: "Scripts", icon: FileText },
+                  { href: callSheetsPath(p.id), label: "Call sheets", icon: ClipboardList },
+                  { href: productionCostPath(p.id), label: "Production cost", icon: Receipt },
+                ].map((l) => (
+                  <Link key={l.label} href={l.href} className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated">
+                    <l.icon size={13} className="text-muted" /> {l.label}
+                  </Link>
+                ))}
                 <button
                   type="button"
                   onClick={() => remove(p.id, p.title)}
                   title="Delete project"
-                  className="shrink-0 text-muted hover:text-rose-700"
+                  aria-label={`Delete ${p.title}`}
+                  className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-rose-500/10 hover:text-rose-700"
                 >
                   <Trash2 size={14} />
                 </button>
               </div>
-              {p.summary && <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-muted">{p.summary}</p>}
-              <Link
-                href={`/admin/workspace/marketing/video/${p.id}`}
-                className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-900"
-              >
-                <FileText size={12} /> Open scripts <ArrowRight size={12} />
-              </Link>
-            </Card>
+            </article>
           ))}
         </div>
       )}

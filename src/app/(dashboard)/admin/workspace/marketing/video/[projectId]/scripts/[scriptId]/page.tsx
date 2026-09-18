@@ -11,6 +11,7 @@ import { PageHero } from "@/components/ui/PageHero";
 import { ScriptStudio } from "@/components/workspace/ScriptStudio";
 import { HtmlScriptEditor } from "@/components/workspace/HtmlScriptEditor";
 import { SharePanel } from "@/components/workspace/SharePanel";
+import { ProjectNav } from "@/components/workspace/ProjectNav";
 
 export const dynamic = "force-dynamic";
 interface Props { params: Promise<{ projectId: string; scriptId: string }> }
@@ -60,6 +61,7 @@ export default async function ScriptEditorPage({ params }: Props) {
           </div>
         }
       />
+      <ProjectNav projectId={projectId} />
       {isHtml ? (
         <HtmlScriptEditor scriptId={script.id} initialHtml={rc?.html ?? ""} css={rc?.css ?? ""} meId={meId} meName={meName} />
       ) : (

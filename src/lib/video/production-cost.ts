@@ -188,6 +188,15 @@ export const COST_GROUPS: CostGroup[] = [
   },
 ];
 
+/**
+ * Budgets by video project (matched on the project title, which the seeder
+ * keeps stable). A project without one shows an empty Production cost tab.
+ */
+const BUDGETS: Record<string, CostGroup[]> = {
+  "BHN Promo Video Project": COST_GROUPS,
+};
+export const costGroupsFor = (projectTitle: string): CostGroup[] | null => BUDGETS[projectTitle] ?? null;
+
 export const kept = (g: CostGroup) => g.lines.filter((l) => !l.removed);
 export const subtotal = (g: CostGroup) => kept(g).reduce((s, l) => s + l.amount, 0);
 export const groupTotal = (g: CostGroup) => subtotal(g) + g.tax;

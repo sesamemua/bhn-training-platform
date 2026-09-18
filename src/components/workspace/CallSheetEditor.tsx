@@ -18,12 +18,9 @@ import {
   blankPerson, blankScheduleRow, GROUP_LABEL, SHEET_GROUPS,
   type CallSheetData, type CallSheetInput, type Person, type PersonGroup, type ScheduleRow,
 } from "@/lib/video/call-sheet";
-import {
-  deleteCallSheet, duplicateCallSheet, updateCallSheet,
-} from "@/app/(dashboard)/admin/workspace/marketing/video/call-sheets/actions";
+import { deleteCallSheet, duplicateCallSheet, updateCallSheet } from "@/lib/video/call-sheet-actions";
+import { callSheetsPath } from "@/lib/video/paths";
 import { fmtShootDate } from "./CallSheetList";
-
-const LIST = "/admin/workspace/marketing/video/call-sheets";
 
 function move<T>(arr: T[], i: number, j: number): T[] {
   if (j < 0 || j >= arr.length) return arr;
@@ -297,8 +294,11 @@ function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
 
 // ── The page ───────────────────────────────────────────────────────────────
 
-export function CallSheetEditor({ id, initial, updatedAt }: { id: string; initial: CallSheetInput; updatedAt: string }) {
+export function CallSheetEditor({ id, projectId, initial, updatedAt }: {
+  id: string; projectId: string; initial: CallSheetInput; updatedAt: string;
+}) {
   const router = useRouter();
+  const LIST = callSheetsPath(projectId);
   const [sheet, setSheet] = useState<CallSheetInput>(initial);
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(initial));
   const [savedAt, setSavedAt] = useState(updatedAt);

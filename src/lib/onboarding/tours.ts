@@ -39,27 +39,37 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.15c";
+export const TOUR_VERSION = "2026.10.15d";
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    id: "workspace.video.call-sheets",
-    title: "Call sheets for each shoot day",
-    body: "**Video Production \u2192 Call sheets**: one sheet per shoot day \u2014 call times, schedule, location, parking, meals, nearest hospital and contacts. Add, edit, duplicate or delete sheets, and **Print** gives a clean page with the U of T and BioHubNet logos. The **BHN Promo Video** shoot on 6 October is already filled in \u2014 pillar leads right after Molly, wrap by 17:00; check anything marked **TBC**. Suppliers and costs stay off the sheet, on **Production cost**.",
-    path: "/admin/workspace/marketing/video/call-sheets",
+    id: "workspace.video.project-tabs",
+    title: "Each video project has three tabs",
+    body: "Open a project in **Video Production** to find **Scripts**, **Call sheets** and **Production cost** side by side. The project cards show the counts, the next shoot day and the budget at a glance, with the three tabs one click away.",
+    path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],
-    cta: { label: "Open Call sheets", href: "/admin/workspace/marketing/video/call-sheets" },
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.15d",
+  },
+  {
+    id: "workspace.video.call-sheets",
+    title: "Call sheets for each shoot day",
+    body: "In **Video Production**, each project\u2019s **Call sheets** tab: one sheet per shoot day \u2014 call times, schedule, location, parking, meals, nearest hospital and contacts. Add, edit, duplicate or delete sheets, and **Print** gives a clean page with the U of T and BioHubNet logos. The **BHN Promo Video** shoot on 6 October is already filled in \u2014 pillar leads right after Molly, wrap by 17:00; check anything marked **TBC**. Suppliers and costs stay off the sheet, on **Production cost**.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.15c",
   },
   {
     id: "workspace.video.production-cost",
     title: "The promo shoot has a budget page",
-    body: "**Video Production \u2192 Production cost** adds up the 6 October shoot: camera (2D House, without their lens), the William White lens, sound and lighting (CamArt), parking for two, insurance (no premium on U of T rental agreements, so struck out), lunch at U of T\u2019s meal allowance, and two boxes of Tims coffee. Each section is marked **Quoted** or **Estimate**, and the total is at the top.",
-    path: "/admin/workspace/marketing/video/production-cost",
+    body: "In **Video Production**, the BHN Promo Video project\u2019s **Production cost** tab adds up the 6 October shoot: camera (2D House, without their lens), the William White lens, sound and lighting (CamArt), parking for two, insurance (no premium on U of T rental agreements, so struck out), lunch at U of T\u2019s meal allowance, and two boxes of Tims coffee. Each section is marked **Quoted** or **Estimate**, and the total is at the top.",
+    path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],
-    cta: { label: "Open Production cost", href: "/admin/workspace/marketing/video/production-cost" },
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.15a",
   },
   {

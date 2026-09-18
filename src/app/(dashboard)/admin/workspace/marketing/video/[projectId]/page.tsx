@@ -1,13 +1,15 @@
 /**
- * One video project — its scripts (admin-only).
+ * One video project — its Scripts tab (admin-only). Call sheets and
+ * Production cost are the project's other two tabs (ProjectNav).
  */
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
-import { Clapperboard, ArrowLeft } from "lucide-react";
+import { Clapperboard } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { VideoProjectDetailClient } from "@/components/workspace/VideoProjectDetailClient";
+import { ProjectNav } from "@/components/workspace/ProjectNav";
+import { ProjectBackLink } from "@/components/workspace/ProjectBackLink";
 
 export const dynamic = "force-dynamic";
 interface Props { params: Promise<{ projectId: string }> }
@@ -40,18 +42,12 @@ export default async function VideoProjectDetailPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <PageHero
-        eyebrow={<><Clapperboard size={11} /> Video Production</>}
+        eyebrow={<><Clapperboard size={11} /> Video Production · Scripts</>}
         title={project.title}
         description={project.summary || "Scripts for this video."}
-        actions={
-          <Link
-            href="/admin/workspace/marketing/video"
-            className="inline-flex items-center gap-1.5 rounded-md border border-line bg-card-solid px-3 py-1.5 text-xs font-semibold text-fg hover:bg-elevated"
-          >
-            <ArrowLeft size={13} /> All projects
-          </Link>
-        }
+        actions={<ProjectBackLink />}
       />
+      <ProjectNav projectId={project.id} />
       <VideoProjectDetailClient projectId={project.id} initialScripts={scripts} />
     </div>
   );

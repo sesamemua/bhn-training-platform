@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Video Production: per-project tabs + slate cards
+  {
+    title: "Video Production: every project has Scripts, Call sheets and Production cost",
+    body: "Each video project now opens on three tabs \u2014 **Scripts**, **Call sheets** and **Production cost** \u2014 instead of the call sheets and budget sitting beside the project list.\n\n- **Project cards are larger and drawn as a film slate**: clapper stripes, the title in white on black, and the slate\u2019s boxes showing how many scripts and call sheets the project has, its next shoot day and its budget. The three tabs are one click from the card.\n- **Call sheets belong to a project.** The BHN Promo Video shoot-day sheet moved into its project; new sheets are made from the project\u2019s Call sheets tab.\n- **Production cost is per project.** The BHN Promo Video budget is on its project\u2019s tab; a project without a budget says so.\n\nThe old *Call sheets* and *Production cost* tabs at the top of Video Production are gone \u2014 open a project instead.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Video Production: tidy-up, BHN Promo Video pieces, call sheet v2
   {
     title: "Video Production: one BHN Promo Video, and a crew-ready call sheet",

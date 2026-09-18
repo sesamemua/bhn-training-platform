@@ -5,11 +5,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Copy, Loader2, Plus, Trash2, Users } from "lucide-react";
-import {
-  createCallSheet, deleteCallSheet, duplicateCallSheet,
-} from "@/app/(dashboard)/admin/workspace/marketing/video/call-sheets/actions";
-
-const BASE = "/admin/workspace/marketing/video/call-sheets";
+import { createCallSheet, deleteCallSheet, duplicateCallSheet } from "@/lib/video/call-sheet-actions";
+import { callSheetsPath } from "@/lib/video/paths";
 
 export interface CallSheetRow {
   id: string;
@@ -28,8 +25,9 @@ export function fmtShootDate(d: string): string {
   });
 }
 
-export function CallSheetList({ sheets }: { sheets: CallSheetRow[] }) {
+export function CallSheetList({ projectId, sheets }: { projectId: string; sheets: CallSheetRow[] }) {
   const router = useRouter();
+  const BASE = callSheetsPath(projectId);
   const [pending, start] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +37,7 @@ export function CallSheetList({ sheets }: { sheets: CallSheetRow[] }) {
   function create() {
     setError(null);
     start(async () => {
-      const r = await createCallSheet();
+      const r = await createCallSheet(projectId);
       if (r.ok) go(r.id); else setError(r.error);
     });
   }

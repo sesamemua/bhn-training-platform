@@ -5608,6 +5608,9 @@ model SharedFile {
 /// people and schedule live in `data`, validated by CallSheetDataSchema.
 model CallSheet {
   id          String    @id @default(cuid())
+  /// The video project this shoot day belongs to (its Call sheets tab).
+  projectId   String?
+  project     VideoProject? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title       String
   /// The shoot day. NULL until someone sets it.
   shootDate   DateTime? @db.Date
@@ -5618,6 +5621,7 @@ model CallSheet {
   updatedAt   DateTime  @updatedAt
 
   @@index([shootDate])
+  @@index([projectId, shootDate])
 }
 
 model VideoProject {
@@ -5636,7 +5640,8 @@ model VideoProject {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  scripts Script[]
+  scripts    Script[]
+  callSheets CallSheet[]
 
   @@index([category, isArchived])
 }
