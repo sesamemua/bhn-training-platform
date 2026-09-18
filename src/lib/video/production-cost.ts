@@ -147,7 +147,7 @@ export const COST_GROUPS: CostGroup[] = [
     notes: [
       "The garage under King's College Circle (the front-campus lawn). Enter from Wellesley St. West only.",
       "Rate: $4 per half hour, $22 daily maximum; $10 flat evenings and weekends.",
-      "Height clearance is 2.4 m (7 ft 10 in). Check the technician's truck fits — a cube van usually does not, and would need street or surface parking instead.",
+      "Height clearance is 2.4 m (7 ft 10 in) — the technician's truck is confirmed to fit.",
     ],
   },
   {
