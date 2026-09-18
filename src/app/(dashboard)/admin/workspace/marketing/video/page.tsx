@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { VideoProjectsClient } from "@/components/workspace/VideoProjectsClient";
+import { VideoNav } from "@/components/workspace/VideoNav";
 import { ensureBhnPromoProject, ensureSymposiumCommsProject } from "@/lib/scripts/seed";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ export default async function VideoProductionPage() {
         title="Video Production"
         description="Plan promo videos and draft their scripts. Scripts can be shared for collaborative editing — contributors don't need an account."
       />
+      <VideoNav />
       <VideoProjectsClient initialProjects={data} />
     </div>
   );

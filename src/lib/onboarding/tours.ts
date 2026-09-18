@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.14c";
+export const TOUR_VERSION = "2026.10.15a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.video.production-cost",
+    title: "The promo shoot has a budget page",
+    body: "**Video Production \u2192 Production cost** adds up the 6 October shoot: camera (2D House, without their lens), the William White lens, sound and lighting (CamArt), parking for two, an insurance estimate for the three rental days, and catering at U of T\u2019s meal allowance. Each section is marked **Quoted** or **Estimate**, and the total is at the top.",
+    path: "/admin/workspace/marketing/video/production-cost",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Production cost", href: "/admin/workspace/marketing/video/production-cost" },
+    since: "2026.10.15a",
+  },
   {
     id: "workspace.video.script-subtabs",
     title: "Tabs can hold tabs",
