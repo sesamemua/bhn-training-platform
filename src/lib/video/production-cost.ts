@@ -80,10 +80,10 @@ const INSURANCE_PREMIUM = 46000;
 const INSURANCE_RST = Math.round(INSURANCE_PREMIUM * 0.08);
 
 // ── Catering — production day, at U of T's 2026 meal allowance ──
-// Per diem memo effective 1 Jan 2026 (travel in Canada): breakfast $20,
-// lunch $25. Used here as the per-person ceiling for hospitality.
+// Per diem memo effective 1 Jan 2026 (travel in Canada): lunch $25, used
+// here as the per-person ceiling. Lunch only — no breakfast or coffee.
 export const CATERING_HEADCOUNT = 8;
-export const MEAL_ALLOWANCE = { breakfast: 2000, lunch: 2500 } as const;
+export const MEAL_ALLOWANCE = { lunch: 2500 } as const;
 
 export const COST_GROUPS: CostGroup[] = [
   {
@@ -164,7 +164,6 @@ export const COST_GROUPS: CostGroup[] = [
     source: "Per diem memo, effective 1 Jan 2026",
     basis: "estimate",
     lines: [
-      { label: `Coffee & light breakfast × ${CATERING_HEADCOUNT}`, note: "At the $20 breakfast allowance", amount: MEAL_ALLOWANCE.breakfast * CATERING_HEADCOUNT },
       { label: `Lunch × ${CATERING_HEADCOUNT}`, note: "At the $25 lunch allowance", amount: MEAL_ALLOWANCE.lunch * CATERING_HEADCOUNT },
     ],
     tax: 0,
