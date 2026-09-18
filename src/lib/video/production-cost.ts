@@ -84,6 +84,10 @@ const INSURANCE_RST = Math.round(INSURANCE_PREMIUM * 0.08);
 // here as the per-person ceiling. Lunch only — no breakfast or coffee.
 export const CATERING_HEADCOUNT = 8;
 export const MEAL_ALLOWANCE = { lunch: 2500 } as const;
+// Coffee: 2 Tim Hortons coffee boxes ("Take Twelve", ~12 cups each),
+// $19.99–$23.99 depending on store — budgeted at the top of the range.
+const COFFEE_BOX = 2399;
+const COFFEE_BOXES = 2;
 
 export const COST_GROUPS: CostGroup[] = [
   {
@@ -165,9 +169,10 @@ export const COST_GROUPS: CostGroup[] = [
     basis: "estimate",
     lines: [
       { label: `Lunch × ${CATERING_HEADCOUNT}`, note: "At the $25 lunch allowance", amount: MEAL_ALLOWANCE.lunch * CATERING_HEADCOUNT },
+      { label: `Tim Hortons coffee box × ${COFFEE_BOXES}`, note: "About 12 cups each, $23.99 per box (top of the $19.99–$23.99 range)", amount: COFFEE_BOX * COFFEE_BOXES },
     ],
-    tax: 0,
-    taxLabel: "Allowances are all-in",
+    tax: hst(COFFEE_BOX * COFFEE_BOXES),
+    taxLabel: "HST 13% on the coffee (the lunch allowance is all-in)",
     notes: [
       `Headcount ${CATERING_HEADCOUNT}: DoP, sound mixer, producer, one marketing staff, Molly, Gilbert, Darius, and one spare for student B-roll.`,
       "The allowance is a ceiling, not a target — order below it where you can.",

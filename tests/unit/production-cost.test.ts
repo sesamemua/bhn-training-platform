@@ -21,7 +21,7 @@ test("CamArt quote 1237 and the William White lens", () => {
 
 test("grand total", () => {
   const t = totals();
-  assert.equal(t.total, 483879);
+  assert.equal(t.total, 489301);
   assert.equal(t.pre + t.tax, t.total);
   assert.equal(t.quoted + t.estimated, t.total);
 });
