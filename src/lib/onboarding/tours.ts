@@ -39,18 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.15b";
+export const TOUR_VERSION = "2026.10.15c";
 
 export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.video.call-sheets",
     title: "Call sheets for each shoot day",
-    body: "**Video Production \u2192 Call sheets**: one sheet per shoot day \u2014 call times, schedule, location, parking, meals, nearest hospital and contacts. Add, edit, duplicate or delete sheets, and **Print** gives a clean page for the crew. The **BHN Promo Video** shoot on 6 October is already filled in from what is on file; check anything marked **TBC**.",
+    body: "**Video Production \u2192 Call sheets**: one sheet per shoot day \u2014 call times, schedule, location, parking, meals, nearest hospital and contacts. Add, edit, duplicate or delete sheets, and **Print** gives a clean page with the U of T and BioHubNet logos. The **BHN Promo Video** shoot on 6 October is already filled in \u2014 pillar leads right after Molly, wrap by 17:00; check anything marked **TBC**. Suppliers and costs stay off the sheet, on **Production cost**.",
     path: "/admin/workspace/marketing/video/call-sheets",
     placement: "center",
     roles: ["admin", "superadmin"],
     cta: { label: "Open Call sheets", href: "/admin/workspace/marketing/video/call-sheets" },
-    since: "2026.10.15b",
+    since: "2026.10.15c",
   },
   {
     id: "workspace.video.production-cost",

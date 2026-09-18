@@ -20,6 +20,11 @@ const SYMPOSIUM_SCRIPT_TITLE = "2026 Symposium — Communications Plan";
 // near-duplicate one.
 const SPONSORSHIP_SCRIPT_TITLE = "Sponsorship Package";
 
+// The symposium plan and the sponsorship package are documents, not videos:
+// their own Workspace tabs open them, so they sit outside Video Production
+// (which lists category "marketing" only).
+export const SYMPOSIUM_CATEGORY = "symposium";
+
 export async function ensureBhnPromoProject(createdById: string | null): Promise<void> {
   let project = await prisma.videoProject.findFirst({
     where: { title: PROJECT_TITLE },
@@ -53,6 +58,9 @@ export async function ensureBhnPromoProject(createdById: string | null): Promise
     }
     return;
   }
+  // Only seed an EMPTY project. Looking the guide up by title alone meant
+  // renaming it ("BHN Promo Video") made this create a second copy.
+  if (await prisma.script.count({ where: { projectId: project.id } })) return;
 
   await prisma.script.create({
     data: {
@@ -87,7 +95,7 @@ export async function ensureSymposiumCommsProject(createdById: string | null): P
         title: SYMPOSIUM_PROJECT_TITLE,
         summary:
           "Communications & marketing plan for the 2026 Annual Symposium and Training Week — Gantt timeline, pre/during/post promotion, sponsorship, and task breakdown.",
-        category: "marketing",
+        category: SYMPOSIUM_CATEGORY,
         createdById,
       },
       select: { id: true },
@@ -148,7 +156,7 @@ export async function ensureSponsorshipPackageProject(createdById: string | null
         title: SYMPOSIUM_PROJECT_TITLE,
         summary:
           "Communications & marketing plan for the 2026 Annual Symposium and Training Week — Gantt timeline, pre/during/post promotion, sponsorship, and task breakdown.",
-        category: "marketing",
+        category: SYMPOSIUM_CATEGORY,
         createdById,
       },
       select: { id: true },

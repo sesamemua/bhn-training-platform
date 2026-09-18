@@ -82,7 +82,7 @@ const INSURANCE_ESTIMATE = 46000; // Front Row short-shoot, before 8% RST
 // here as the per-person ceiling. Lunch only — no breakfast or coffee.
 export const LUNCH_GUESTS = [
   "Molly", "Gilbert", "Darius", "Yoo Jin", "Ruilin", "Roshni", "Yeseul", "Epshita", "Alison",
-  "Lighting / sound technician",
+  "Darek (sound & lighting)",
 ] as const;
 export const CATERING_HEADCOUNT = LUNCH_GUESTS.length;
 export const MEAL_ALLOWANCE = { lunch: 2500 } as const;
@@ -139,13 +139,13 @@ export const COST_GROUPS: CostGroup[] = [
     vendor: "U of T Transportation Services",
     source: "Landmark Garage, 35 Hart House Circle",
     basis: "estimate",
-    lines: [{ label: `Day parking × ${PARKING_PEOPLE}`, note: "Ruilin's car, and the lighting / sound technician's truck — shoot day, $22 daily maximum each", amount: PARKING_DAY * PARKING_PEOPLE }],
+    lines: [{ label: `Day parking × ${PARKING_PEOPLE}`, note: "Ruilin's car and Darek's truck (sound & lighting) — shoot day, $22 daily maximum each", amount: PARKING_DAY * PARKING_PEOPLE }],
     tax: 0,
     taxLabel: "Posted rate, tax included",
     notes: [
       "The garage under King's College Circle (the front-campus lawn). Enter from Wellesley St. West only.",
       "Rate: $4 per half hour, $22 daily maximum; $10 flat evenings and weekends.",
-      "Height clearance is 2.4 m (7 ft 10 in) — the technician's truck is confirmed to fit.",
+      "Height clearance is 2.4 m (7 ft 10 in) — Darek's truck is confirmed to fit.",
     ],
   },
   {

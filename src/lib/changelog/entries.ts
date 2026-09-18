@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Video Production: tidy-up, BHN Promo Video pieces, call sheet v2
+  {
+    title: "Video Production: one BHN Promo Video, and a crew-ready call sheet",
+    body: "**Video Production** now lists videos only, and the BHN Promo Video shoot is planned in one place.\n\n- **The 2026 Symposium plan and sponsorship package left Video Production.** They are documents, not videos, and they already have their own tabs \u2014 *26 Symposium Comms Plan* and *Sponsorship*. Nothing in them changed.\n- **One guide, renamed \u201cBHN Promo Video\u201d.** The stray *Molly Interview Conversation Guide* (an empty duplicate the platform had re-created) is archived, and it will not come back.\n- **The guide\u2019s Overview** now lists the three pieces the 6 October shoot produces: the **BHN homepage video** (the Scientific Directors on the initiative, and Yoo Jin on the three pillars), the **pillar videos**, and **Symposium content** (each pillar lead\u2019s highlights of the year, and the Scientific Directors\u2019 Year in Review parts). There is a new **Yoo Jin** tab with her pillars script, and her line is in the homepage intercut.\n- **The call sheet** carries the U of T and BioHubNet logos, lists Ruilin as producer & director and Darek on sound & lighting, puts the pillar leads straight after Molly and Yoo Jin after lunch, and wraps by 17:00. It no longer shows suppliers, contracts, rentals or costs \u2014 those stay on *Production cost*.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Video Production: call sheets
   {
     title: "Video Production: call sheets",

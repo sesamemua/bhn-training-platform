@@ -15,7 +15,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "rea
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Copy, Loader2, Plus, Printer, Save, Trash2, X } from "lucide-react";
 import {
-  blankPerson, blankScheduleRow, GROUP_LABEL, PERSON_GROUPS,
+  blankPerson, blankScheduleRow, GROUP_LABEL, SHEET_GROUPS,
   type CallSheetData, type CallSheetInput, type Person, type PersonGroup, type ScheduleRow,
 } from "@/lib/video/call-sheet";
 import {
@@ -114,7 +114,9 @@ interface Ops {
   moveRow: (i: number, dir: -1 | 1) => void;
 }
 
-const PEOPLE_COLS: Record<PersonGroup, { key: keyof Person; head: string; w?: string }[]> = {
+type SheetGroup = (typeof SHEET_GROUPS)[number];
+
+const PEOPLE_COLS: Record<SheetGroup, { key: keyof Person; head: string; w?: string }[]> = {
   // Percentages leave Notes (the auto column) a real share of the width.
   talent: [
     { key: "name", head: "Name", w: "18%" }, { key: "role", head: "Role" },
@@ -128,15 +130,10 @@ const PEOPLE_COLS: Record<PersonGroup, { key: keyof Person; head: string; w?: st
     { key: "name", head: "Name", w: "14%" }, { key: "role", head: "Role", w: "21%" }, { key: "call", head: "Call", w: "64px" },
     { key: "phone", head: "Phone", w: "11%" }, { key: "email", head: "Email", w: "19%" }, { key: "notes", head: "Notes" },
   ],
-  vendor: [
-    { key: "name", head: "Contact", w: "16%" }, { key: "role", head: "Company / supplying", w: "22%" },
-    { key: "phone", head: "Phone", w: "15%" }, { key: "email", head: "Email", w: "18%" }, { key: "notes", head: "Notes" },
-  ],
 };
-const PEOPLE_TITLE: Record<PersonGroup, string> = {
-  talent: "On camera", crew: "Crew", team: "BHN team", vendor: "Vendors & contacts",
-};
-const PEOPLE_ORDER: PersonGroup[] = ["talent", "crew", "team", "vendor"];
+const PEOPLE_TITLE: Record<SheetGroup, string> = { talent: "On camera", crew: "Crew", team: "BHN team" };
+// No vendors table: contracts and rentals stay on Production cost, off the
+// sheet the crew and the people on camera receive.
 
 function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
   const d = sheet.data;
@@ -144,12 +141,21 @@ function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
   const people = d.people.map((p, i) => ({ p, i }));
   const byRole = (role: RegExp) => d.people.find((p) => role.test(p.role));
   const contacts = [
-    ["Producer", byRole(/producer/i)],
-    ["Director of photography", byRole(/director of photography|\bdop\b/i)],
+    // "Director" alone would catch the Scientific Directors.
+    ["Producer & director", byRole(/producer/i)],
+    ["Sound & lighting", byRole(/sound|lighting/i)],
   ] as const;
 
   return (
     <div className="cs-page">
+      {/* ── Logos: U of T signature (always on white) and the BioHubNet lockup ── */}
+      <div className="cs-logos">
+        {/* eslint-disable-next-line @next/next/no-img-element -- copied into the print window, which has no Next image loader */}
+        <img src="/uoft-logo.png" alt="University of Toronto" className="cs-logo-uoft" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/biohubnet-logo.png" alt="BioHubNet" className="cs-logo-bhn" />
+        <div className="cs-logos-label">Call sheet</div>
+      </div>
       {/* ── Header: contacts · title + general call · date & safety ── */}
       <div className="cs-head">
         <div className="cs-box">
@@ -233,7 +239,7 @@ function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
       {ops && <button type="button" className="cs-add" onClick={ops.addRow}><Plus size={12} /> Add schedule row</button>}
 
       {/* ── People, by group ── */}
-      {PEOPLE_ORDER.map((g) => {
+      {SHEET_GROUPS.map((g) => {
         const rows = people.filter(({ p }) => p.group === g);
         if (!ops && rows.length === 0) return null;
         const cols = PEOPLE_COLS[g];
@@ -267,7 +273,7 @@ function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
                         extra={
                           <select aria-label="Move to group" title="Move to another table" value={p.group}
                             onChange={(e) => ops.setPerson(i, { group: e.target.value as PersonGroup })}>
-                            {PERSON_GROUPS.map((x) => <option key={x} value={x}>{GROUP_LABEL[x]}</option>)}
+                            {SHEET_GROUPS.map((x) => <option key={x} value={x}>{GROUP_LABEL[x]}</option>)}
                           </select>
                         } />
                     )}
@@ -280,16 +286,10 @@ function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
         );
       })}
 
-      {/* ── Equipment · notes ── */}
-      <div className="cs-row2">
-        <div className="cs-box">
-          <div className="cs-lbl">Equipment</div>
-          <T v={d.equipment} on={edit("equipment")} label="Equipment" />
-        </div>
-        <div className="cs-box">
-          <div className="cs-lbl">Notes &amp; safety</div>
-          <T v={d.notes} on={edit("notes")} label="Notes" />
-        </div>
+      {/* ── Notes ── */}
+      <div className="cs-notes cs-box">
+        <div className="cs-lbl">Notes &amp; safety</div>
+        <T v={d.notes} on={edit("notes")} label="Notes" />
       </div>
     </div>
   );
@@ -366,11 +366,15 @@ export function CallSheetEditor({ id, initial, updatedAt }: { id: string; initia
   function print() {
     const w = window.open("", "_blank", "width=1000,height=1200");
     if (!w || !printRef.current) return;
-    w.document.head.innerHTML = `<meta charset="utf-8"><title></title><style>${SHEET_CSS}${PRINT_CSS}</style>`;
+    w.document.head.innerHTML = `<meta charset="utf-8"><base href="${window.location.origin}/"><title></title><style>${SHEET_CSS}${PRINT_CSS}</style>`;
     w.document.title = sheet.title;
     w.document.body.innerHTML = printRef.current.innerHTML;
-    w.focus();
-    w.print();
+    // Print once the logos are in, or they come out as blank boxes.
+    const imgs = Array.from(w.document.images);
+    Promise.all(imgs.map((img) => (img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; })))).then(() => {
+      w.focus();
+      w.print();
+    });
   }
 
   return (
@@ -418,6 +422,11 @@ const SHEET_CSS = `
 .cs-note { color: #444; font-size: 11.5px; }
 .cs-txt { display: block; white-space: pre-line; }
 .cs-box { padding: 8px 10px; min-width: 0; }
+.cs-logos { display: flex; align-items: center; gap: 22px; padding: 10px 14px; border-bottom: 2px solid #111; background: #fff; }
+.cs-logo-uoft { height: 40px; width: auto; }
+.cs-logo-bhn { height: 34px; width: auto; }
+.cs-logos-label { margin-left: auto; font-size: 22px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.cs-notes { border-top: 2px solid #111; }
 .cs-head { display: grid; grid-template-columns: 1fr 1.35fr 1fr; border-bottom: 2px solid #111; }
 .cs-head > .cs-box + .cs-box { border-left: 1px solid #111; }
 .cs-contact + .cs-contact { margin-top: 8px; }
@@ -432,8 +441,7 @@ const SHEET_CSS = `
 .cs-wrapline { margin-top: 5px; display: flex; gap: 6px; align-items: baseline; justify-content: center; }
 .cs-day { font-size: 11.5px; color: #333; }
 .cs-row3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; border-bottom: 2px solid #111; }
-.cs-row2 { display: grid; grid-template-columns: 1fr 1fr; border-top: 2px solid #111; }
-.cs-row3 > .cs-box + .cs-box, .cs-row2 > .cs-box + .cs-box { border-left: 1px solid #111; }
+.cs-row3 > .cs-box + .cs-box { border-left: 1px solid #111; }
 .cs-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; font-size: inherit; }
 .cs-table caption { caption-side: top; text-align: left; background: #111; color: #fff; font-size: 10px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase; padding: 4px 10px; }
