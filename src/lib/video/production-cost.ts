@@ -82,7 +82,11 @@ const INSURANCE_RST = Math.round(INSURANCE_PREMIUM * 0.08);
 // ── Catering — production day, at U of T's 2026 meal allowance ──
 // Per diem memo effective 1 Jan 2026 (travel in Canada): lunch $25, used
 // here as the per-person ceiling. Lunch only — no breakfast or coffee.
-export const CATERING_HEADCOUNT = 8;
+export const LUNCH_GUESTS = [
+  "Molly", "Gilbert", "Darius", "Yoo Jin", "Ruilin", "Roshni", "Yeseul", "Epshita", "Alison",
+  "Lighting / sound technician",
+] as const;
+export const CATERING_HEADCOUNT = LUNCH_GUESTS.length;
 export const MEAL_ALLOWANCE = { lunch: 2500 } as const;
 // Coffee: 2 Tim Hortons coffee boxes ("Take Twelve", ~12 cups each),
 // $19.99–$23.99 depending on store — budgeted at the top of the range.
@@ -137,12 +141,13 @@ export const COST_GROUPS: CostGroup[] = [
     vendor: "U of T Transportation Services",
     source: "Landmark Garage, 35 Hart House Circle",
     basis: "estimate",
-    lines: [{ label: `Day parking × ${PARKING_PEOPLE} people`, note: "Shoot day, $22 daily maximum each", amount: PARKING_DAY * PARKING_PEOPLE }],
+    lines: [{ label: `Day parking × ${PARKING_PEOPLE}`, note: "Ruilin's car, and the lighting / sound technician's truck — shoot day, $22 daily maximum each", amount: PARKING_DAY * PARKING_PEOPLE }],
     tax: 0,
     taxLabel: "Posted rate, tax included",
     notes: [
       "The garage under King's College Circle (the front-campus lawn). Enter from Wellesley St. West only.",
       "Rate: $4 per half hour, $22 daily maximum; $10 flat evenings and weekends.",
+      "Height clearance is 2.4 m (7 ft 10 in). Check the technician's truck fits — a cube van usually does not, and would need street or surface parking instead.",
     ],
   },
   {
@@ -174,7 +179,7 @@ export const COST_GROUPS: CostGroup[] = [
     tax: hst(COFFEE_BOX * COFFEE_BOXES),
     taxLabel: "HST 13% on the coffee (the lunch allowance is all-in)",
     notes: [
-      `Headcount ${CATERING_HEADCOUNT}: DoP, sound mixer, producer, one marketing staff, Molly, Gilbert, Darius, and one spare for student B-roll.`,
+      `Lunch for ${CATERING_HEADCOUNT}: ${LUNCH_GUESTS.join(", ")}.`,
       "The allowance is a ceiling, not a target — order below it where you can.",
       "U of T does not reimburse its own staff's meals at on-campus meetings; this is hospitality for the shoot, so keep the attendee list with the receipt.",
     ],
