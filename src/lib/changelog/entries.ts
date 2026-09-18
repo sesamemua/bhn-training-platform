@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Video Production: call sheets
+  {
+    title: "Video Production: call sheets",
+    body: "**Workspace \u2192 Video Production** has a new **Call sheets** tab \u2014 one sheet per shoot day, with everything the crew and the people on camera need.\n\n- **Create, edit, duplicate and delete** sheets. Each one has the shoot day (date, general call, wrap), location and logistics (parking, meals, nearest hospital, weather, equipment), a **People** table (name, role, group, call time, phone, email, notes) and a **Schedule** \u2014 add, remove and reorder rows in both.\n- **Save** keeps everything together; leaving with unsaved changes asks first.\n- **Print** opens just the sheet \u2014 schedule, people grouped by crew / on camera / BHN team / vendors, and logistics \u2014 ready for paper or PDF.\n\n**Already built:** *BHN Promo Video \u2014 Shoot day* for Tuesday 6 October, from what is on file: Molly (1.5 h), Gilbert and Darius (30 min each), the CamArt crew, the BHN team at lunch, a draft schedule from 07:30 to 16:00, Landmark Garage parking for your car and the technician\u2019s truck, lunch for 10 and the Tims coffee, the 2D House / William White / CamArt equipment, and Toronto General as the nearest emergency department. The location and some names are marked **TBC**.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Video Production: the promo-shoot budget
   {
     title: "Video Production: a Production cost tab for the promo shoot",

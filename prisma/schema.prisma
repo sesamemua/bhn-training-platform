@@ -5603,6 +5603,23 @@ model SharedFile {
   @@index([category, isArchived])
 }
 
+/// A call sheet for one shoot day (Workspace → Video Production → Call
+/// sheets). Title and date are columns for sorting; location, logistics,
+/// people and schedule live in `data`, validated by CallSheetDataSchema.
+model CallSheet {
+  id          String    @id @default(cuid())
+  title       String
+  /// The shoot day. NULL until someone sets it.
+  shootDate   DateTime? @db.Date
+  data        Json      @default("{}")
+  /// User.id of whoever created it (plain id, like VideoProject).
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([shootDate])
+}
+
 model VideoProject {
   id          String   @id @default(cuid())
   /// Workspace category this project lives under. "marketing" today;

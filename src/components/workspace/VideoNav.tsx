@@ -1,19 +1,21 @@
 "use client";
 
 /**
- * Tabs for Workspace → Video Production: the project list and the
+ * Tabs for Workspace → Video Production: projects, call sheets and the
  * production-cost sheet. Same underline idiom as MerchNav, directly under
  * the PageHero.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clapperboard, Receipt } from "lucide-react";
+import { ClipboardList, Clapperboard, Receipt } from "lucide-react";
 
 const BASE = "/admin/workspace/marketing/video";
 const COST = `${BASE}/production-cost`;
+const CALLS = `${BASE}/call-sheets`;
 
 const TABS = [
   { key: "projects", label: "Projects", href: BASE, icon: Clapperboard },
+  { key: "calls", label: "Call sheets", href: CALLS, icon: ClipboardList },
   { key: "cost", label: "Production cost", href: COST, icon: Receipt },
 ] as const;
 
@@ -22,7 +24,10 @@ export function VideoNav() {
   return (
     <nav aria-label="Video production" className="flex w-fit max-w-full flex-wrap items-center gap-x-6 gap-y-2 border-b border-line">
       {TABS.map((t) => {
-        const active = t.href === COST ? pathname.startsWith(COST) : !pathname.startsWith(COST);
+        // Projects owns everything else under Video, project pages included.
+        const active = t.href === BASE
+          ? !pathname.startsWith(COST) && !pathname.startsWith(CALLS)
+          : pathname.startsWith(t.href);
         const Icon = t.icon;
         return (
           <Link
