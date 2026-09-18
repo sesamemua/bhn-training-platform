@@ -9,7 +9,8 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { ProjectNav } from "@/components/workspace/ProjectNav";
 import { ProjectBackLink } from "@/components/workspace/ProjectBackLink";
-import { cad, costGroupsFor, groupTotal, subtotal, totals } from "@/lib/video/production-cost";
+import { LunchGuests } from "@/components/workspace/LunchGuests";
+import { cad, costGroupsFor, groupTotal, lunchGuestsKey, parseLunchGuests, subtotal, totals } from "@/lib/video/production-cost";
 
 export const dynamic = "force-dynamic";
 interface Props { params: Promise<{ projectId: string }> }
@@ -21,7 +22,8 @@ export default async function ProductionCostPage({ params }: Props) {
   const project = await prisma.videoProject.findUnique({ where: { id: projectId }, select: { id: true, title: true } });
   if (!project) notFound();
 
-  const groups = costGroupsFor(project.title);
+  const saved = await prisma.platformSetting.findUnique({ where: { key: lunchGuestsKey(project.id) }, select: { value: true } });
+  const groups = costGroupsFor(project.title, parseLunchGuests(saved?.value));
   const t = groups ? totals(groups) : null;
 
   return (
@@ -86,6 +88,7 @@ export default async function ProductionCostPage({ params }: Props) {
                             <span className={l.removed ? "line-through" : undefined}>{l.label}</span>
                             {l.removed && <span className="ml-2 rounded bg-rose-500/12 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">Removed</span>}
                             {l.note && <span className="block text-[11.5px] text-muted">{l.note}</span>}
+                            {l.people && <LunchGuests projectId={project.id} initial={l.people} />}
                           </td>
                           <td className={`whitespace-nowrap px-4 py-2 text-right font-mono tabular-nums ${l.removed ? "line-through" : ""}`}>
                             {cad(l.amount)}
@@ -115,7 +118,7 @@ export default async function ProductionCostPage({ params }: Props) {
             <div>
               <div className="text-[15px] font-bold text-fg">Total production cost</div>
               <div className="text-[12px] text-muted">
-                {cad(t.quoted)} quoted by vendors + {cad(t.estimated)} estimated (parking, catering). Taxes included.
+                {cad(t.quoted)} quoted by vendors + {cad(t.estimated)} estimated (mileage & parking, catering). Taxes included.
               </div>
             </div>
             <div className="font-mono text-2xl font-bold tabular-nums text-fg">{cad(t.total)}</div>

@@ -9,9 +9,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, FileText, Loader2, Clapperboard, ClipboardList, Receipt } from "lucide-react";
+import { Plus, Trash2, FileText, Loader2, Clapperboard, ClipboardList, Receipt, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { callSheetsPath, productionCostPath, projectPath } from "@/lib/video/paths";
+import { callSheetsPath, productionCostPath } from "@/lib/video/paths";
 
 interface ProjectRow {
   id: string;
@@ -19,6 +19,9 @@ interface ProjectRow {
   summary: string;
   status: string;
   scriptCount: number;
+  /** Straight into the script when there is one, else the list. */
+  scriptsHref: string;
+  firstScript: string;
   callSheetCount: number;
   /** YYYY-MM-DD, or "" when no call sheet has a date. */
   shootDate: string;
@@ -102,64 +105,85 @@ export function VideoProjectsClient({ initialProjects }: { initialProjects: Proj
           <p className="mt-1 text-xs text-muted">Create one above to get started.</p>
         </Card>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {projects.map((p) => (
-            <article key={p.id} className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-card-solid shadow-card-rest transition-shadow hover:shadow-elevated">
-              {/* Clapper stick */}
-              <div aria-hidden className="h-4" style={{ background: "repeating-linear-gradient(-45deg, #111 0 16px, #f4f4f4 16px 32px)" }} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          {projects.map((p) => {
+            const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+            const tiles = [
+              {
+                href: p.scriptsHref, label: "Scripts", icon: FileText, tone: "bg-sky-500/12 text-sky-700",
+                value: p.scriptCount === 1 && p.firstScript ? p.firstScript : plural(p.scriptCount, "script", "scripts"),
+              },
+              {
+                href: productionCostPath(p.id), label: "Production cost", icon: Receipt, tone: "bg-emerald-500/12 text-emerald-700",
+                value: p.budget == null ? "No budget yet" : `${money(p.budget)} total`,
+              },
+              {
+                href: callSheetsPath(p.id), label: "Call sheets", icon: ClipboardList, tone: "bg-amber-500/15 text-amber-700",
+                value: p.callSheetCount ? `${plural(p.callSheetCount, "sheet", "sheets")} · ${shortDate(p.shootDate)}` : "None yet",
+              },
+            ];
+            return (
+              <article key={p.id} className="group flex min-h-[30rem] flex-col overflow-hidden rounded-2xl border border-line bg-card-solid shadow-card-rest transition-shadow hover:shadow-elevated">
+                {/* Clapper stick */}
+                <div aria-hidden className="h-5 shrink-0" style={{ background: "repeating-linear-gradient(-45deg, #111 0 18px, #f4f4f4 18px 36px)" }} />
 
-              {/* The slate: always black, whatever the app theme — it is one. */}
-              <div className="flex-1 bg-[#15191d] px-5 pb-5 pt-4 text-white">
-                <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">
-                  <span>Production</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-2 py-0.5 tracking-[0.12em] text-white/80">
-                    <span className={`h-1.5 w-1.5 rounded-full ${p.status === "active" ? "bg-emerald-400" : "bg-white/40"}`} />
-                    {p.status}
-                  </span>
-                </div>
-                <Link href={projectPath(p.id)} className="mt-2 block outline-none focus-visible:ring-2 focus-visible:ring-white/60">
-                  <h3 className="text-[22px] font-extrabold leading-tight tracking-tight group-hover:underline">{p.title}</h3>
-                </Link>
-                {p.summary && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-white/70">{p.summary}</p>}
-
-                <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-md border border-white/25 sm:grid-cols-4">
-                  {[
-                    ["Scripts", String(p.scriptCount)],
-                    ["Call sheets", String(p.callSheetCount)],
-                    ["Shoot", shortDate(p.shootDate)],
-                    ["Budget", money(p.budget)],
-                  ].map(([k, v], i) => (
-                    <div key={k} className={`px-3 py-2 ${i % 2 ? "border-l border-white/25" : ""} ${i > 1 ? "border-t border-white/25 sm:border-t-0" : ""} ${i === 2 ? "sm:border-l" : ""}`}>
-                      <dt className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-white/50">{k}</dt>
-                      <dd className="mt-0.5 truncate font-mono text-[17px] font-semibold tabular-nums">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-
-              {/* The project's three tabs */}
-              <div className="flex flex-wrap items-center gap-1 px-3 py-2.5">
-                {[
-                  { href: projectPath(p.id), label: "Scripts", icon: FileText },
-                  { href: callSheetsPath(p.id), label: "Call sheets", icon: ClipboardList },
-                  { href: productionCostPath(p.id), label: "Production cost", icon: Receipt },
-                ].map((l) => (
-                  <Link key={l.label} href={l.href} className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated">
-                    <l.icon size={13} className="text-muted" /> {l.label}
+                {/* The slate: always black, whatever the app theme — it is one. */}
+                <div className="flex flex-1 flex-col bg-[#15191d] px-6 pb-6 pt-5 text-white">
+                  <div className="flex items-center justify-between gap-3 text-[10.5px] font-bold uppercase tracking-[0.2em] text-white/55">
+                    <span>Production</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-2.5 py-0.5 tracking-[0.12em] text-white/80">
+                      <span className={`h-1.5 w-1.5 rounded-full ${p.status === "active" ? "bg-emerald-400" : "bg-white/40"}`} />
+                      {p.status}
+                    </span>
+                  </div>
+                  <Link href={p.scriptsHref} className="mt-3 block outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+                    <h3 className="text-[28px] font-extrabold leading-[1.1] tracking-tight group-hover:underline">{p.title}</h3>
                   </Link>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => remove(p.id, p.title)}
-                  title="Delete project"
-                  aria-label={`Delete ${p.title}`}
-                  className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-rose-500/10 hover:text-rose-700"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </article>
-          ))}
+                  {p.summary && <p className="mt-2 line-clamp-3 text-[14px] leading-relaxed text-white/70">{p.summary}</p>}
+
+                  <dl className="mt-auto grid grid-cols-3 overflow-hidden rounded-md border border-white/25 pt-0">
+                    {[
+                      ["Shoot", shortDate(p.shootDate)],
+                      ["Scripts", String(p.scriptCount)],
+                      ["Call sheets", String(p.callSheetCount)],
+                    ].map(([k, v], i) => (
+                      <div key={k} className={`px-4 py-3 ${i ? "border-l border-white/25" : ""}`}>
+                        <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">{k}</dt>
+                        <dd className="mt-1 truncate font-mono text-[20px] font-semibold tabular-nums">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+
+                {/* The project's three tabs, as big labelled tiles */}
+                <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-3">
+                  {tiles.map((t) => (
+                    <Link
+                      key={t.label}
+                      href={t.href}
+                      className="flex flex-col gap-2 rounded-xl border border-line bg-card-solid p-3.5 outline-none transition-colors hover:border-brand-400 hover:bg-elevated focus-visible:ring-2 focus-visible:ring-brand-500/50"
+                    >
+                      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${t.tone}`}><t.icon size={16} /></span>
+                      <span className="text-[14.5px] font-bold text-fg">{t.label}</span>
+                      <span className="truncate text-[12px] text-muted" title={t.value}>{t.value}</span>
+                      <span className="mt-auto inline-flex items-center gap-1 text-[11.5px] font-semibold text-brand-700">Open <ArrowRight size={12} /></span>
+                    </Link>
+                  ))}
+                </div>
+                <div className="flex justify-end border-t border-line px-3 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => remove(p.id, p.title)}
+                    title="Delete project"
+                    aria-label={`Delete ${p.title}`}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] text-muted hover:bg-rose-500/10 hover:text-rose-700"
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

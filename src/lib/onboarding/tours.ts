@@ -39,18 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.15d";
+export const TOUR_VERSION = "2026.10.15e";
 
 export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.video.project-tabs",
     title: "Each video project has three tabs",
-    body: "Open a project in **Video Production** to find **Scripts**, **Call sheets** and **Production cost** side by side. The project cards show the counts, the next shoot day and the budget at a glance, with the three tabs one click away.",
+    body: "Each project card in **Video Production** has three tiles \u2014 **Scripts**, **Production cost**, **Call sheets** \u2014 and the same three tabs sit inside the project. Scripts opens the script directly when there is only one. On **Production cost**, take people off the lunch list with the **\u00d7** on their name.",
     path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
-    since: "2026.10.15d",
+    since: "2026.10.15e",
   },
   {
     id: "workspace.video.call-sheets",

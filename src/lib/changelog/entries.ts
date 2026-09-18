@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Video Production: bigger cards, direct Scripts, lunch pills, mileage
+  {
+    title: "Video Production: bigger project cards, lunch list you can edit, mileage",
+    body: "- **Project cards are twice the size**, with three clearly labelled tiles in this order: **Scripts**, **Production cost**, **Call sheets** \u2014 each showing what is inside (the script\u2019s name, the budget total, the next shoot day). The project tabs follow the same order.\n- **Scripts goes straight into the script** when a project has only one \u2014 no more list of one to click through. The BHN Promo Video guide now always opens on **Overview**.\n- **Lunch list on Production cost**: the people having lunch appear as pills under *Lunch*, each with an **\u00d7** to take off someone who doesn\u2019t need it, and a box to add someone. The count and the total update as you go.\n- **Darek\u2019s parking moved into the CamArt quote**, as the after-tax parking incidental the quote already lists.\n- **New: Mileage & parking** (Ruilin) \u2014 the three days\u2019 driving at U of T\u2019s $0.57/km: pick-up day home \u2192 2D House \u2192 William White \u2192 144 College St \u2192 home (86.4 km), shoot day home \u2192 144 College St \u2192 home (51.5 km), return day the same loop as pick-up (86.4 km), plus Landmark Garage parking for all three days. The home address is not stored \u2014 only the kilometres.\n\nThe BHN Promo Video budget is now **$4,618.07** with all ten at lunch.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Video Production: per-project tabs + slate cards
   {
     title: "Video Production: every project has Scripts, Call sheets and Production cost",

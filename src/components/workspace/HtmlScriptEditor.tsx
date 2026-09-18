@@ -483,6 +483,10 @@ export function HtmlScriptEditor({
     shadow.append(style, presenceStyle, content);
 
     findSections(content).forEach((b, i) => { if (!b.getAttribute("data-sid")) b.setAttribute("data-sid", `s${i}`); });
+    // A tabbed doc always opens on its first tab (Overview), not wherever
+    // the last save happened to leave it. Only classes move — not an edit.
+    const firstTab = panelKids(null, panelsOf(content))[0]?.dataset.tab;
+    if (firstTab) showDocTab(firstTab);
     refreshSections();
     refreshTables();
     setupPhases();
@@ -673,7 +677,7 @@ export function HtmlScriptEditor({
     };
     content.addEventListener("pointerdown", onDragDown);
     content.addEventListener("pointermove", onDragHover);
-  }, [css, initialHtml, refreshSections, refreshTables, setupGanttControls, setupPhases, reconcileTable, markDirty, readOnly]);
+  }, [css, initialHtml, refreshSections, refreshTables, setupGanttControls, setupPhases, reconcileTable, markDirty, readOnly, showDocTab]);
 
   // Keep the restore/source-apply paths able to re-inject the phase toggles
   // and the on-chart Gantt controls.

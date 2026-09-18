@@ -7,7 +7,8 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { VideoProjectsClient } from "@/components/workspace/VideoProjectsClient";
-import { costGroupsFor, totals } from "@/lib/video/production-cost";
+import { costGroupsFor, lunchGuestsKey, parseLunchGuests, totals } from "@/lib/video/production-cost";
+import { scriptsHref } from "@/lib/video/paths";
 import { ensureBhnPromoProject } from "@/lib/scripts/seed";
 
 export const dynamic = "force-dynamic";
@@ -27,18 +28,26 @@ export default async function VideoProductionPage() {
     include: {
       _count: { select: { scripts: { where: { isArchived: false } }, callSheets: true } },
       callSheets: { where: { shootDate: { not: null } }, orderBy: { shootDate: "asc" }, select: { shootDate: true } },
+      scripts: { where: { isArchived: false }, orderBy: { order: "asc" }, select: { id: true, title: true }, take: 2 },
     },
   });
   const today = new Date().toISOString().slice(0, 10);
+  const lunch = await prisma.platformSetting.findMany({
+    where: { key: { in: projects.map((p) => lunchGuestsKey(p.id)) } },
+    select: { key: true, value: true },
+  });
+  const lunchFor = (id: string) => parseLunchGuests(lunch.find((r) => r.key === lunchGuestsKey(id))?.value);
   const data = projects.map((p) => {
     const dates = p.callSheets.map((c) => c.shootDate!.toISOString().slice(0, 10));
-    const groups = costGroupsFor(p.title);
+    const groups = costGroupsFor(p.title, lunchFor(p.id));
     return {
       id: p.id,
       title: p.title,
       summary: p.summary,
       status: p.status,
       scriptCount: p._count.scripts,
+      scriptsHref: scriptsHref(p.id, p.scripts.map((s) => s.id)),
+      firstScript: p.scripts[0]?.title ?? "",
       callSheetCount: p._count.callSheets,
       // The next shoot day still ahead, else the last one there was.
       shootDate: dates.find((d) => d >= today) ?? dates.at(-1) ?? "",
