@@ -103,7 +103,7 @@ export default async function ProductionCostPage() {
         <div>
           <div className="text-[15px] font-bold text-fg">Total production cost</div>
           <div className="text-[12px] text-muted">
-            {cad(t.quoted)} quoted by vendors + {cad(t.estimated)} estimated (parking, insurance, catering). Taxes included.
+            {cad(t.quoted)} quoted by vendors + {cad(t.estimated)} estimated (parking, catering). Taxes included.
           </div>
         </div>
         <div className="font-mono text-2xl font-bold tabular-nums text-fg">{cad(t.total)}</div>

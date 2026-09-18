@@ -72,12 +72,10 @@ const PARKING_DAY = 2200;
 const PARKING_PEOPLE = 2;
 
 // ── Insurance — rented camera + lens, 5–7 Oct ──
-// Insured value, full replacement (estimate): Alexa Mini LF package ≈ $110,000;
-// Caldwell Chameleon 75 mm ≈ US$30,900 ≈ $42,000. About $152,000 — inside the
-// $250,000 tier of Front Row's short-term production policy, which starts at
-// $460 for up to 15 days. Ontario charges 8% retail sales tax on premiums.
-const INSURANCE_PREMIUM = 46000;
-const INSURANCE_RST = Math.round(INSURANCE_PREMIUM * 0.08);
+// Struck out: U of T's Office of Enterprise Risk Management & Insurance
+// confirmed no premium is charged for U of T equipment rental agreements.
+// The earlier estimate stays visible, crossed out, so the saving shows.
+const INSURANCE_ESTIMATE = 46000; // Front Row short-shoot, before 8% RST
 
 // ── Catering — production day, at U of T's 2026 meal allowance ──
 // Per diem memo effective 1 Jan 2026 (travel in Canada): lunch $25, used
@@ -153,17 +151,21 @@ export const COST_GROUPS: CostGroup[] = [
   {
     key: "insurance",
     title: "Equipment insurance",
-    vendor: "Short-term production policy (e.g. Front Row Insurance)",
-    source: "Estimate",
-    basis: "estimate",
-    lines: [{ label: "Rented equipment, 3 days (5–7 Oct)", note: "Camera package + lens, ≈ $152,000 replacement value", amount: INSURANCE_PREMIUM }],
-    tax: INSURANCE_RST,
-    taxLabel: "Ontario RST 8% on premiums",
+    vendor: "U of T Office of Enterprise Risk Management & Insurance",
+    source: "No premium charged",
+    basis: "quote",
+    lines: [{
+      label: "Rented equipment, 3 days (5–7 Oct)",
+      note: "No insurance premium would be charged for UofT equipment rental agreements.",
+      amount: INSURANCE_ESTIMATE,
+      removed: true,
+    }],
+    tax: 0,
+    taxLabel: "No premium, no tax",
     notes: [
-      "Covers the gear from pick-up (Day 1) through production (Day 2) to return (Day 3). Front Row's short-shoot policy runs up to 15 days, so one policy covers all three.",
-      "Replacement value is estimated: Alexa Mini LF package ≈ $110,000; Caldwell Chameleon 75 mm ≈ US$30,900 (≈ $42,000).",
-      "Ask U of T Risk Management & Insurance first — the university's blanket property cover may already extend to rented gear, leaving only the deductible. Either way, both rental houses will want a certificate naming them as loss payee.",
-      "Without a certificate, 2D House may charge a damage waiver instead — typically 10–15% of the rental.",
+      "No insurance premium would be charged for UofT equipment rental agreements — per the Office of Enterprise Risk Management & Insurance.",
+      "Struck out: the earlier short-term policy estimate ($460 + 8% RST = $496.80) for the camera package and lens from pick-up (Day 1) to return (Day 3).",
+      "Both rental houses will still want U of T's certificate of insurance before pick-up.",
     ],
   },
   {

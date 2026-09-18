@@ -19,9 +19,15 @@ test("CamArt quote 1237 and the William White lens", () => {
   assert.equal(groupTotal(group("lens")), 57715, "$577.15 all-in");
 });
 
+test("insurance is struck out: no premium on U of T rental agreements", () => {
+  const ins = group("insurance");
+  assert.ok(ins.lines.every((l) => l.removed));
+  assert.equal(groupTotal(ins), 0);
+});
+
 test("grand total", () => {
   const t = totals();
-  assert.equal(t.total, 494301);
+  assert.equal(t.total, 444621);
   assert.equal(t.pre + t.tax, t.total);
   assert.equal(t.quoted + t.estimated, t.total);
 });
