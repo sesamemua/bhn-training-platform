@@ -28,7 +28,10 @@ export default async function ProductionCostPage() {
       />
       <VideoNav />
 
-      <section aria-label="Totals" className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
+      {/* A budget reads down a column: keep label and amount within one
+          eye-span rather than at opposite edges of a wide screen. */}
+      <div className="max-w-3xl space-y-6">
+      <section aria-label="Totals" className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Total, taxes in", value: t.total, strong: true },
           { label: "Before tax", value: t.pre },
@@ -63,7 +66,7 @@ export default async function ProductionCostPage() {
             </header>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[480px] text-[13px]">
+              <table className="w-full min-w-[420px] text-[13px]">
                 <tbody>
                   {g.lines.map((l) => (
                     <tr key={l.label} className={`border-b border-line/70 ${l.removed ? "text-subtle" : "text-fg"}`}>
@@ -105,6 +108,7 @@ export default async function ProductionCostPage() {
         </div>
         <div className="font-mono text-2xl font-bold tabular-nums text-fg">{cad(t.total)}</div>
       </section>
+      </div>
     </div>
   );
 }
