@@ -20,6 +20,7 @@ import {
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
+import { registrantName } from "@/lib/allocation/registrant-name";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
@@ -667,6 +668,15 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
     },
   });
 
+  // Names from platform accounts with the same email — for registrations
+  // that did not give one (v2 only asks since the Full name question).
+  const accountNames = new Map(
+    (await prisma.user.findMany({
+      where: { email: { in: [...new Set(rows.map((r) => r.email).filter((e): e is string => !!e))], mode: "insensitive" }, name: { not: null } },
+      select: { email: true, name: true },
+    })).map((u) => [u.email.toLowerCase(), u.name as string]),
+  );
+
   return rows.flatMap((r) => {
     const own = byForm.get(r.formId);
     if (!own) return [];
@@ -679,10 +689,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
       at: r.createdAt.toISOString(),
       isTest: data.__test === true,
       form: own.form,
-      name: [answers.first_name, answers.last_name].filter(Boolean).join(" ")
-        || (typeof answers.trainee_name === "string" ? answers.trainee_name : "")
-        || r.user?.name
-        || "",
+      name: registrantName(answers) || r.user?.name || accountNames.get((r.email ?? "").toLowerCase()) || "",
       email: r.email ?? r.user?.email ?? "",
       status: typeof answers.bhn_status === "string" ? answers.bhn_status : "",
       sessions: rankedSessions(doc, answers),
@@ -857,6 +864,13 @@ export async function decideSeat(
   return { ok: true, said, letterOwed: !!letterDue(booking.notifiedStatus, decision) };
 }
 
+/** The name on a platform account with this email, if any. */
+async function accountNameFor(email: string | null | undefined): Promise<string | null> {
+  if (!email) return null;
+  const u = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { name: true } });
+  return u?.name?.trim() || null;
+}
+
 /** Did the letter reach somebody? A test registration's goes to the person running it. */
 const delivered = (r: Receipt) => r.state === "sent" || r.state === "sent-to-you";
 
@@ -900,7 +914,7 @@ export async function sendSeatLetter(bookingId: string): Promise<{ ok: boolean; 
 
   const receipt = await sendDecisionLetter(templateId, {
     to: booking.submission?.email ?? booking.user?.email ?? null,
-    name: String(answers.first_name ?? answers.trainee_name ?? booking.user?.name ?? "").trim(),
+    name: registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(booking.submission?.email)) || "",
     session: booking.workshop.title,
     start: booking.workshop.startDateTime,
     end: booking.workshop.endDateTime,

@@ -59,3 +59,10 @@ test("ranking + suggestions fill only the open seats, confirmed seats stand", ()
   assert.equal(s.get("held"), null, "a confirmed seat is never taken back");
   assert.equal(s.get("early-local"), "waitlist");
 });
+
+test("the name: the form's Full name, then an account with that email, then the email", () => {
+  const base = form("n", "ruilin.yuan@utoronto.ca", "No", "2026-09-20T10:00:00Z");
+  assert.equal(applicantFor({ ...base, submission: { ...base.submission!, data: { ...base.submission!.data, full_name: " Ruilin Yuan " } } }).name, "Ruilin Yuan");
+  assert.equal(applicantFor({ ...base, accountName: "Ruilin Y." }).name, "Ruilin Y.", "no Full name: the account's name");
+  assert.equal(applicantFor(base).name, "ruilin.yuan@utoronto.ca", "neither: the email, never the roster's institution");
+});

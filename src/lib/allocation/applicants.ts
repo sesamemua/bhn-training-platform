@@ -20,6 +20,7 @@
  * Pure module: no React, no Prisma, no I/O.
  */
 import type { Applicant, Ranked } from "./model";
+import { registrantName } from "./registrant-name";
 
 export type Travel = "far" | "near" | "unknown";
 export type RosterMatch = "on" | "off" | "unknown";
@@ -47,6 +48,8 @@ export interface BookingFacts {
    * `undefined` when there is no roster to check against.
    */
   roster: (email: string) => { name: string | null } | null | undefined;
+  /** The name on a platform account with this email, if there is one. */
+  accountName?: string | null;
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -73,9 +76,8 @@ export function applicantFor(f: BookingFacts): ApplicantInfo {
   const entry = email ? f.roster(email) : undefined;
   const roster: RosterMatch = entry === undefined ? "unknown" : entry ? "on" : "off";
 
-  // What the person told us, else their account, else their address.
-  const formName = [str(a.first_name), str(a.last_name)].filter(Boolean).join(" ") || str(a.trainee_name);
-  const name = formName || str(f.user?.name) || email || "Unnamed";
+  // What the person told us, else an account with their email, else the address.
+  const name = registrantName(a) || str(f.user?.name) || str(f.accountName) || email || "Unnamed";
 
   return {
     id: f.bookingId,

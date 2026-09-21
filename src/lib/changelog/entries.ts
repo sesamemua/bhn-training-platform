@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registrant names
+  {
+    title: "Registrants have names again — and the form now asks for one",
+    body: "The Training Week registration form never asked for a name, so after the roster fix registrants showed only as email addresses.\n\n- **New question: Full name** (required) on the live registration form, just before the trainee email.\n- **Everywhere a registrant is named** \u2014 Registrants views, Seat suggestions, the registration list, and the decision letters \u2014 now uses their Full name; if they registered before the question existed, the name on a platform account with the same email; otherwise the email.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Fix: roster "names" that were institutions
   {
     title: "Fixed: registrants shown under their institution's name",

@@ -113,6 +113,12 @@ export default async function TrainingAdminPage() {
     prisma.eligibilityEntry.findMany({ where: { emailKey: { in: keys } }, select: { emailKey: true, name: true } }),
   ]);
   const onRoster = new Map<string, string | null>(entries.map((e) => [e.emailKey, e.name]));
+  // Names from platform accounts with the registrant's email.
+  const accounts = await prisma.user.findMany({
+    where: { email: { in: [...new Set(all.map(emailOf).filter(Boolean))], mode: "insensitive" }, name: { not: null } },
+    select: { email: true, name: true },
+  });
+  const accountName = new Map(accounts.map((u) => [u.email.toLowerCase(), u.name]));
   const roster = (email: string) => {
     if (rosterSize === 0) return undefined;
     const k = emailKey(email);
@@ -161,6 +167,7 @@ export default async function TrainingAdminPage() {
                 ? { data: (b.submission.data ?? {}) as Record<string, unknown>, email: b.submission.email, createdAt: b.submission.createdAt.toISOString() }
                 : null,
               roster,
+              accountName: accountName.get(emailOf(b).toLowerCase()) ?? null,
             }),
           })),
         }))}
