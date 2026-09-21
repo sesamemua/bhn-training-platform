@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training admin: the decision model now helps decide
+  {
+    title: "Training admin: the decision model now suggests who gets each seat",
+    body: "The **Decision model** used to be a preview that decided nothing, and most of its rules had nothing to read for people registering through the public form. It now works from what registrants actually tell us, and a new **Seat suggestions** tab puts it to use.\n\n- **Real facts per person:** *out of town* comes from the form\u2019s \u201cone-way travel over 2 hours\u201d answer; *trainee* comes from matching their email against the eligibility roster (which also gives the name we know them by); *applied* is when they submitted; *seats held* counts their other confirmed seats. A blank answer stays \u201cunknown\u201d rather than counting as local or as not a trainee.\n- **Seat suggestions** ranks every workshop by the saved model and shows, per person: travel, roster match, their own choice (1st, 2nd\u2026), when they applied, where the seat stands now, the model\u2019s suggestion (approve / waitlist) and the rule that placed them above the next person. A line marks the last seat inside capacity.\n- **Apply** runs one workshop\u2019s suggestions after a confirmation that says how many will be approved and waitlisted \u2014 each person gets their letter, exactly as if you had clicked their seat. Confirmed seats are never taken back, anything decided elsewhere in the meantime is skipped, and every seat can still be changed afterwards.\n- **The Decision model preview** has a workshop picker, uses the same facts, and warns when a rule has nothing to read in that room.\n- **Registrants** shows form registrants by name instead of blank.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Video Production: bigger cards, direct Scripts, lunch pills, mileage
   {
     title: "Video Production: bigger project cards, lunch list you can edit, mileage",

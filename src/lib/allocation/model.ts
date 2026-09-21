@@ -162,8 +162,8 @@ function compareBy(rule: Rule, a: Applicant, b: Applicant): number {
   }
 }
 
-export interface Ranked {
-  applicant: Applicant;
+export interface Ranked<T extends Applicant = Applicant> {
+  applicant: T;
   position: number;
   /** Inside capacity, or over it. */
   outcome: "seat" | "waitlist";
@@ -181,11 +181,11 @@ export interface Ranked {
  * `capacity` only labels the outcome; everyone is ranked either way, so
  * the waitlist is in the order it would be promoted.
  */
-export function rankApplicants(
-  applicants: Applicant[],
+export function rankApplicants<T extends Applicant>(
+  applicants: T[],
   rules: Rule[],
   capacity: number,
-): Ranked[] {
+): Ranked<T>[] {
   const active = rules.filter((r) => r.isActive);
 
   const sorted = [...applicants].sort((a, b) => {

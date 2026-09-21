@@ -13,6 +13,7 @@
  * is otherwise pure drawing.
  */
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
+import type { ApplicantInfo } from "./applicants";
 
 export interface AdminBooking {
   id: string;
@@ -22,6 +23,8 @@ export interface AdminBooking {
   approvedAt: string | null;
   waitlistPosition: number | null;
   user: { id: string; name: string | null; email: string; organization: string | null; country: string | null } | null;
+  /** What the decision model knows about the person — from the form and the roster. */
+  applicant: ApplicantInfo;
 }
 
 export interface AdminWorkshop {

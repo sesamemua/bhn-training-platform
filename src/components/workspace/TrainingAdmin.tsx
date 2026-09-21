@@ -17,8 +17,9 @@ import {
   DEFAULT_RULES, RULE_KINDS, rankApplicants, validateRules,
   type Applicant, type Rule, type RuleKind,
 } from "@/lib/allocation/model";
+import { suggestSeats, type ApplicantInfo } from "@/lib/allocation/applicants";
 import {
-  createWorkshop, decideSeat, deleteSubmission, loadEmailTemplates, loadSubmissions, previewAudience,
+  applySeatSuggestions, createWorkshop, decideSeat, deleteSubmission, loadEmailTemplates, loadSubmissions, previewAudience,
   removeWorkshop, resetEmailTemplate, saveEmailTemplate, saveRules, saveSupportFormUrl,
   sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
@@ -38,11 +39,12 @@ import {
 } from "@/lib/allocation/email-templates";
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
 
-type Tab = "dashboard" | "model" | "capacity" | "registrants" | "email";
+type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "email";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "model", label: "Decision model" },
+  { id: "suggest", label: "Seat suggestions" },
   { id: "capacity", label: "Capacity" },
   { id: "registrants", label: "Registrants" },
   { id: "email", label: "Email" },
@@ -56,18 +58,6 @@ const BTN =
   "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 const PRIMARY =
   "inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-[12.5px] font-bold text-white hover:brightness-110 disabled:opacity-40";
-
-/**
- * Out of town, from the only location the account carries.
- *
- * `undefined` where the country is blank — unknown is not the same as
- * local, and a rule that treats every blank field as "lives here" hands
- * seats to whoever filled their profile in.
- */
-const outOfTown = (country: string | null | undefined): boolean | undefined => {
-  if (!country || !country.trim()) return undefined;
-  return country.trim().toLowerCase() !== "canada";
-};
 
 const seatsOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "confirmed").length;
 const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "waitlist").length;
@@ -107,6 +97,7 @@ export function TrainingAdmin({
           <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} />
         )}
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
+        {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
         {tab === "capacity" && <Capacity eventId={eventId} workshops={workshops} />}
         {tab === "registrants" && <Registrants workshops={workshops} />}
         {tab === "email" && <EmailSection eventId={eventId} workshops={workshops} />}
@@ -411,52 +402,32 @@ function DecisionModel({ initial, workshops }: { initial: Rule[]; workshops: Adm
  * difference between editing a policy and guessing at one.
  */
 function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWorkshop[] }) {
-  const busiest = useMemo(
-    () => [...workshops].sort((a, b) => b.bookings.length - a.bookings.length)[0] ?? null,
+  const busiestId = useMemo(
+    () => [...workshops].sort((a, b) => b.bookings.length - a.bookings.length)[0]?.id ?? null,
     [workshops],
   );
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const busiest = workshops.find((w) => w.id === (pickedId ?? busiestId)) ?? null;
 
-  const ranked = useMemo(() => {
-    if (!busiest) return [];
-    // Seats held across the WHOLE week, not just this room — the rule
-    // is about how much of the week one person is taking.
-    const heldBy = new Map<string, number>();
-    for (const w of workshops)
-      for (const bk of w.bookings)
-        if (bk.user && bk.status !== "cancelled")
-          heldBy.set(bk.user.id, (heldBy.get(bk.user.id) ?? 0) + 1);
+  // The facts come from the registration form and the trainee roster
+  // (applicantFor, on the server) — the same ones Seat suggestions uses.
+  const ranked = useMemo(
+    () => (busiest ? rankApplicants(busiest.bookings.filter((b) => b.status !== "cancelled").map((b) => b.applicant), rules, busiest.capacity) : []),
+    [busiest, rules],
+  );
 
-    const applicants: Applicant[] = busiest.bookings
-      .filter((b) => b.status !== "cancelled")
-      .map((b) => ({
-        id: b.id,
-        name: b.user?.name || b.user?.email || "Unnamed",
-        appliedAt: b.bookedAt,
-        // Every field the rules can read is supplied, or the rule that
-        // reads it silently ranks nobody — three of the five kinds used
-        // to be unable to move a single person in the one place the
-        // model is ever seen running.
-        isOutOfTown: outOfTown(b.user?.country),
-        isCurrentTrainee: b.status === "confirmed",
-        organizationType: b.user?.organization ?? null,
-        seatsHeld: b.user ? heldBy.get(b.user.id) ?? 0 : 0,
-      }));
-    return rankApplicants(applicants, rules, busiest.capacity);
-  }, [busiest, rules, workshops]);
-
-  // Which active rules have no field to read across this audience.
+  // Which active rules have nothing to read for anyone in this room.
   const starved = useMemo(() => {
     if (!busiest) return [];
-    const rows = busiest.bookings.filter((b) => b.status !== "cancelled");
-    const none = (f: (b: (typeof rows)[number]) => unknown) => rows.length > 0 && rows.every((b) => !f(b));
+    const people = busiest.bookings.filter((b) => b.status !== "cancelled").map((b) => b.applicant);
+    const none = (f: (a: ApplicantInfo) => boolean) => people.length > 0 && people.every(f);
     return rules
       .filter((r) => r.isActive)
       .filter((r) =>
-        r.kind === "out_of_town"
-          ? none((b) => b.user?.country)
-          : r.kind === "under_represented_org"
-            ? none((b) => b.user?.organization)
-            : false,
+        r.kind === "out_of_town" ? none((a) => a.travel === "unknown")
+        : r.kind === "current_trainee" ? none((a) => a.roster === "unknown")
+        : r.kind === "under_represented_org" ? none((a) => !a.organizationType)
+        : false,
       )
       .map((r) => r.label);
   }, [busiest, rules]);
@@ -472,7 +443,15 @@ function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWork
 
   return (
     <aside className={`${CARD} lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-auto`}>
-      <p className={LABEL}>Preview · {busiest.title}</p>
+      <p className={LABEL}>Preview</p>
+      <select
+        aria-label="Workshop to preview"
+        value={busiest.id}
+        onChange={(e) => setPickedId(e.target.value)}
+        className="mt-1 w-full rounded-md border border-line bg-elevated px-2 py-1 text-[12.5px] text-fg"
+      >
+        {workshops.map((w) => <option key={w.id} value={w.id}>{w.title}</option>)}
+      </select>
       <p className="mt-1 text-[11.5px] text-subtle">
         {ranked.length} applicants, {busiest.capacity} seats. Reorder the rules
         and this reorders with them.
@@ -482,8 +461,9 @@ function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWork
           to the top and conclude the model is broken. */}
       {starved.length > 0 && (
         <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] leading-snug text-amber-600">
-          Nothing to rank on yet for: {starved.join(", ")}. These change no
-          order until the registration form carries that answer through.
+          Nothing to rank on for: {starved.join(", ")}. Nobody in this room
+          has that answer — the travel question, a roster to match, or an
+          organisation — so these rules change no order here.
         </p>
       )}
       {ranked.length === 0 ? (
@@ -511,6 +491,155 @@ function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWork
         </ol>
       )}
     </aside>
+  );
+}
+
+// ── seat suggestions ─────────────────────────────────────────────────
+
+const chip = "inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10.5px] font-bold";
+const TRAVEL_CHIP: Record<ApplicantInfo["travel"], [string, string]> = {
+  far: ["Out of town", "bg-sky-500/12 text-sky-600"],
+  near: ["Local", "bg-elevated text-muted"],
+  unknown: ["Travel ?", "bg-elevated text-subtle"],
+};
+const ROSTER_CHIP: Record<ApplicantInfo["roster"], [string, string]> = {
+  on: ["On roster", "bg-emerald-500/12 text-emerald-600"],
+  off: ["Not on roster", "bg-rose-500/10 text-rose-600"],
+  unknown: ["Roster ?", "bg-elevated text-subtle"],
+};
+const STATUS_CHIP: Record<string, string> = {
+  confirmed: "bg-emerald-500/12 text-emerald-600",
+  waitlist: "bg-amber-500/12 text-amber-600",
+  pending: "bg-brand-500/12 text-brand-500",
+};
+
+/**
+ * The decision model, put to work: every workshop ranked under the SAVED
+ * rules, with what the model would do with the seats still open.
+ *
+ * Suggest, never decide. Nothing moves until a coordinator presses Apply
+ * on a workshop — and Apply sends each person their letter, so it says so
+ * before it runs.
+ */
+export function SeatSuggestions({ rules, workshops }: { rules: Rule[]; workshops: AdminWorkshop[] }) {
+  const verdict = validateRules(rules);
+  const rooms = workshops.filter((w) => w.bookings.some((b) => b.status !== "cancelled"));
+
+  return (
+    <div className="space-y-5">
+      <p className="max-w-3xl text-[12.5px] leading-relaxed text-muted">
+        Each workshop, ranked by the saved <strong className="text-fg">Decision model</strong>:
+        out of town from the form&apos;s travel question, trainees from the roster, then first come.
+        Suggestions only fill seats that are still open — a confirmed seat is never taken back.
+        Nothing changes until you press <strong className="text-fg">Apply</strong>, and applying
+        emails each person their letter.
+      </p>
+      {!verdict.ok && (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-[12px] text-amber-600">
+          The saved decision model can&apos;t allocate yet: {verdict.problem} Fix it on the Decision model tab.
+        </p>
+      )}
+      {rooms.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">
+          Nobody has registered yet. Each workshop&apos;s ranking and suggestions appear here as registrations come in.
+        </p>
+      ) : (
+        rooms.map((w) => <WorkshopSuggestions key={w.id} workshop={w} rules={rules} canApply={verdict.ok} />)
+      )}
+    </div>
+  );
+}
+
+function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: AdminWorkshop; rules: Rule[]; canApply: boolean }) {
+  const [pending, start] = useTransition();
+  const [said, setSaid] = useState<string | null>(null);
+  const ranked = useMemo(
+    () => rankApplicants(w.bookings.filter((b) => b.status !== "cancelled").map((b) => b.applicant), rules, w.capacity),
+    [w, rules],
+  );
+  const suggestion = useMemo(() => suggestSeats(ranked, w.capacity), [ranked, w.capacity]);
+  const approve = ranked.filter((r) => suggestion.get(r.applicant.id) === "approve").map((r) => r.applicant.id);
+  const waitlist = ranked.filter((r) => suggestion.get(r.applicant.id) === "waitlist").map((r) => r.applicant.id);
+  const confirmed = ranked.filter((r) => r.applicant.status === "confirmed").length;
+  const open = Math.max(0, w.capacity - confirmed);
+
+  function apply() {
+    const parts = [approve.length && `approve ${approve.length}`, waitlist.length && `waitlist ${waitlist.length}`].filter(Boolean).join(" and ");
+    if (!confirm(`${w.title}: ${parts}?\n\nEach person is emailed their letter now. You can still change any seat afterwards.`)) return;
+    setSaid(null);
+    start(async () => {
+      const r = await applySeatSuggestions(w.id, approve, waitlist);
+      setSaid(r.ok
+        ? `Approved ${r.approved}, waitlisted ${r.waitlisted}.`
+          + (r.skipped ? ` ${r.skipped} skipped — already decided elsewhere.` : "")
+          + (r.mailProblems ? ` ${r.mailProblems} letter${r.mailProblems === 1 ? "" : "s"} did not go out — check Registrants.` : "")
+        : r.problem ?? "Nothing was applied.");
+    });
+  }
+
+  return (
+    <section className={CARD}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-[14.5px] font-bold text-fg">{w.title}</h3>
+          <p className="mt-0.5 text-[12px] text-muted">
+            {ranked.length} asking · {w.capacity} seats · {confirmed} confirmed ·{" "}
+            <strong className="text-fg">{open} open</strong>
+          </p>
+        </div>
+        <button type="button" onClick={apply} disabled={!canApply || pending || (approve.length + waitlist.length === 0)} className={PRIMARY}>
+          {pending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+          {approve.length + waitlist.length === 0
+            ? "Nothing to apply"
+            : `Apply: approve ${approve.length}${waitlist.length ? `, waitlist ${waitlist.length}` : ""}`}
+        </button>
+      </div>
+      {said && <p role="status" className="mt-2 text-[12px] text-fg">{said}</p>}
+
+      <div className="mt-3 overflow-x-auto rounded-lg border border-line">
+        <table className="w-full min-w-[860px] border-collapse text-[12.5px]">
+          <thead>
+            <tr className="bg-elevated text-left">
+              {["#", "Name", "Travel", "Trainee", "Their choice", "Applied", "Now", "Suggestion", "Above the next person because"].map((h) => (
+                <th key={h} className="whitespace-nowrap px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.map((r) => {
+              const a = r.applicant;
+              const sug = suggestion.get(a.id);
+              return (
+                <tr key={a.id} className={`border-t border-line ${r.position === w.capacity ? "border-b-2 border-b-brand-500/60" : ""}`}>
+                  <td className="px-3 py-1.5 font-mono text-subtle">{r.position}</td>
+                  <td className="px-3 py-1.5">
+                    <div className="font-semibold text-fg">{a.name}</div>
+                    {a.email && a.email !== a.name && <div className="font-mono text-[11px] text-subtle">{a.email}</div>}
+                  </td>
+                  <td className="px-3 py-1.5"><span className={`${chip} ${TRAVEL_CHIP[a.travel][1]}`}>{TRAVEL_CHIP[a.travel][0]}</span></td>
+                  <td className="px-3 py-1.5"><span className={`${chip} ${ROSTER_CHIP[a.roster][1]}`}>{ROSTER_CHIP[a.roster][0]}</span></td>
+                  <td className="px-3 py-1.5 text-muted">{a.preference ? `${ordinal(a.preference)} choice` : "—"}</td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-subtle">
+                    {new Date(a.appliedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <span className={`${chip} ${STATUS_CHIP[a.status] ?? "bg-elevated text-subtle"}`}>
+                      {a.status === "pending" ? "Undecided" : DECISION_LABEL[a.status as Decision] ?? a.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {sug === "approve" ? <span className={`${chip} bg-emerald-500/15 text-emerald-600`}>Approve</span>
+                      : sug === "waitlist" ? <span className={`${chip} bg-amber-500/15 text-amber-600`}>Waitlist</span>
+                      : <span className="text-[11px] text-subtle">—</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-[11.5px] text-muted">{r.decidedBy ?? "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -922,8 +1051,8 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
     const all = workshops.flatMap((w) =>
       w.bookings.map((b) => ({
         workshop: w.title,
-        name: b.user?.name ?? "",
-        email: b.user?.email ?? "",
+        name: b.applicant.name,
+        email: b.applicant.email,
         organization: b.user?.organization ?? "",
         country: b.user?.country ?? "",
         status: b.status,

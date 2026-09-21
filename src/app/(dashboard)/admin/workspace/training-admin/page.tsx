@@ -16,6 +16,8 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { TrainingAdmin } from "@/components/workspace/TrainingAdmin";
 import { loadRules } from "./actions";
+import { applicantFor } from "@/lib/allocation/applicants";
+import { emailKey } from "@/lib/eligibility/email-key";
 
 export const dynamic = "force-dynamic";
 
@@ -60,14 +62,42 @@ export default async function TrainingAdminPage() {
         partnerOrganization: true, shortDescription: true,
         bookings: {
           select: {
-            id: true, status: true, bookedAt: true, waitlistPosition: true, approvedAt: true,
+            id: true, status: true, bookedAt: true, waitlistPosition: true, approvedAt: true, rank: true,
+            userId: true, submissionId: true,
             user: { select: { id: true, name: true, email: true, organization: true, country: true } },
+            // The registration behind a public-form seat: what the model reads.
+            submission: { select: { data: true, email: true, createdAt: true } },
           },
           orderBy: { bookedAt: "asc" },
         },
       },
     }),
   ]);
+
+  /*
+   * The trainee roster, looked up once for every email in play. An empty
+   * roster means "cannot tell", not "nobody is a trainee".
+   */
+  const all = workshops.flatMap((w) => w.bookings);
+  const emailOf = (b: (typeof all)[number]) => {
+    const d = (b.submission?.data ?? {}) as Record<string, unknown>;
+    return (typeof d.trainee_email === "string" && d.trainee_email) || b.submission?.email || b.user?.email || "";
+  };
+  const keys = [...new Set(all.map((b) => emailKey(emailOf(b))).filter((k): k is string => !!k))];
+  const [rosterSize, entries] = await Promise.all([
+    prisma.eligibilityEntry.count(),
+    prisma.eligibilityEntry.findMany({ where: { emailKey: { in: keys } }, select: { emailKey: true, name: true } }),
+  ]);
+  const onRoster = new Map<string, string | null>(entries.map((e) => [e.emailKey, e.name]));
+  const roster = (email: string) => {
+    if (rosterSize === 0) return undefined;
+    const k = emailKey(email);
+    return k && onRoster.has(k) ? { name: onRoster.get(k) ?? null } : null;
+  };
+  // Confirmed seats per person across the week (a registration, or an account).
+  const personOf = (b: (typeof all)[number]) => b.submissionId ?? b.userId ?? b.id;
+  const held = new Map<string, number>();
+  for (const b of all) if (b.status === "confirmed") held.set(personOf(b), (held.get(personOf(b)) ?? 0) + 1);
 
   return (
     <>
@@ -86,10 +116,25 @@ export default async function TrainingAdminPage() {
           startDateTime: w.startDateTime.toISOString(),
           endDateTime: w.endDateTime.toISOString(),
           bookings: w.bookings.map((b) => ({
-            ...b,
+            id: b.id,
+            status: b.status,
+            waitlistPosition: b.waitlistPosition,
             bookedAt: b.bookedAt.toISOString(),
             approvedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
             user: b.user ?? null,
+            applicant: applicantFor({
+              bookingId: b.id,
+              status: b.status,
+              bookedAt: b.bookedAt.toISOString(),
+              preference: b.rank,
+              // Their OTHER confirmed seats: this one is what is being decided.
+              seatsHeld: (held.get(personOf(b)) ?? 0) - (b.status === "confirmed" ? 1 : 0),
+              user: b.user,
+              submission: b.submission
+                ? { data: (b.submission.data ?? {}) as Record<string, unknown>, email: b.submission.email, createdAt: b.submission.createdAt.toISOString() }
+                : null,
+              roster,
+            }),
           })),
         }))}
       />

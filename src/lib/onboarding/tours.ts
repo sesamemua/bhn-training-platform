@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.15e";
+export const TOUR_VERSION = "2026.10.16a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "training-admin.seat-suggestions",
+    title: "Let the decision model suggest the seats",
+    body: "**Training admin \u2192 Seat suggestions** ranks every workshop by your saved decision model \u2014 out of town from the registration form, trainees from the roster, then first come \u2014 and suggests who to approve and who to waitlist for the seats still open, with the reason for each place. **Apply** carries out one workshop\u2019s suggestions after you confirm, and sends each person their letter.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training admin", href: "/admin/workspace/training-admin" },
+    since: "2026.10.16a",
+  },
   {
     id: "workspace.video.project-tabs",
     title: "Each video project has three tabs",

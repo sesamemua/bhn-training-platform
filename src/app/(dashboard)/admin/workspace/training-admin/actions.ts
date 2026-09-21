@@ -729,6 +729,47 @@ export async function deleteSubmission(id: string): Promise<{ ok: boolean }> {
 // ── deciding on a seat ───────────────────────────────────────────────
 
 /**
+ * Apply the decision model's suggestions for one workshop — the seats the
+ * coordinator just reviewed and confirmed on the Seat suggestions tab.
+ *
+ * Each seat goes through decideSeat, one at a time, so every one gets the
+ * same letter, calendar entry and audit line as a single click would.
+ * Only seats still in this workshop and still undecided / waitlisted are
+ * touched: anything decided in another tab since the page loaded is left
+ * alone rather than overwritten.
+ */
+export async function applySeatSuggestions(
+  workshopId: string,
+  approve: string[],
+  waitlist: string[],
+): Promise<{ ok: boolean; approved: number; waitlisted: number; skipped: number; mailProblems: number; problem?: string }> {
+  await requireAdmin();
+  if (!isId(workshopId)) return { ok: false, approved: 0, waitlisted: 0, skipped: 0, mailProblems: 0, problem: "That is not a workshop." };
+  const wanted = [...approve.map((id) => [id, "confirmed"] as const), ...waitlist.map((id) => [id, "waitlist"] as const)]
+    .filter(([id]) => isId(id))
+    .slice(0, 200);
+  const rows = await prisma.workshopBooking.findMany({
+    where: { id: { in: wanted.map(([id]) => id) }, workshopId },
+    select: { id: true, status: true },
+  });
+  const current = new Map(rows.map((r) => [r.id, r.status]));
+  let approved = 0, waitlisted = 0, skipped = 0, mailProblems = 0;
+  for (const [id, to] of wanted) {
+    const now = current.get(id);
+    const movable = to === "confirmed" ? now === "pending" || now === "waitlist" : now === "pending";
+    if (!movable) { skipped++; continue; }
+    const r = await decideSeat(id, to);
+    if (!r.ok) { skipped++; continue; }
+    if (to === "confirmed") approved++; else waitlisted++;
+    // A letter that did not reach the registrant is counted, so the
+    // coordinator knows to follow up rather than assume it went.
+    if (r.receipt && r.receipt.state !== "sent" && r.receipt.state !== "sent-to-you") mailProblems++;
+  }
+  revalidatePath(PAGE);
+  return { ok: true, approved, waitlisted, skipped, mailProblems };
+}
+
+/**
  * Approve, waitlist, decline, or take it back.
  *
  * REVERSIBLE by design: every decision is a move between four states,
