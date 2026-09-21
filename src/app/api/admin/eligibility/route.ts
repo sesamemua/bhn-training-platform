@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { emailKey } from "@/lib/eligibility/email-key";
+import { parseRoster } from "@/lib/eligibility/import";
 import { eligibilitySource, ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
 import { eligibilityGate } from "@/lib/eligibility/gate";
 import { rosterState } from "@/lib/eligibility/check";
@@ -109,35 +110,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "That is more than one paste can carry." }, { status: 413 });
   }
 
-  /*
-   * Every address in the paste, wherever it is.
-   *
-   * Nobody on this side controls those spreadsheets' headers, and they
-   * have been renamed before. Rather than guess which column is the
-   * email, take every address the text contains — a row without one is
-   * a row we could not have used anyway.
-   */
-  const lines = text.split(/\r?\n/).slice(0, MAX_IMPORT_ROWS);
-  const seen = new Set<string>();
-  const rows: { emailKey: string; email: string; name: string | null }[] = [];
-  let skipped = 0;
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const cells = line.split(/[,\t;]/);
-    const found = cells.map((c) => ({ raw: c, key: emailKey(c) })).find((c) => c.key);
-    if (!found?.key) { skipped += 1; continue; }
-    if (seen.has(found.key)) continue;
-    seen.add(found.key);
-    // The longest other cell that is not an address is very likely the
-    // name. A guess, and a harmless one — it is only ever displayed.
-    const name = cells
-      .filter((c) => c !== found.raw && !emailKey(c))
-      .map((c) => c.trim().replace(/^["']|["']$/g, ""))
-      .filter((c) => c.length > 1 && c.length < 80 && /[\p{L}]/u.test(c))
-      .sort((a, b) => b.length - a.length)[0] ?? null;
-    rows.push({ emailKey: found.key, email: found.raw.trim(), name });
-  }
+  // Every address in the paste; the name only from a column headed as one.
+  const { rows, skipped } = parseRoster(text, MAX_IMPORT_ROWS);
 
   if (rows.length === 0) {
     return NextResponse.json(
@@ -173,7 +147,7 @@ export async function PUT(req: NextRequest) {
       removedEmails,
       method: "upload",
       filename: String(body.filename ?? "").slice(0, 200) || null,
-      rowsRead: lines.filter((l) => l.trim()).length,
+      rowsRead: text.split(/\r?\n/).slice(0, MAX_IMPORT_ROWS).filter((l) => l.trim()).length,
       rowsAccepted: rows.length,
       rowsSkipped: skipped,
       byId: me.user.id ?? null,

@@ -7,8 +7,9 @@
  *
  *   • out of town — the form's "one-way travel over 2 hours?" answer;
  *     an account's country only when there is no form answer;
- *   • trainee — the email matched against the eligibility roster (which
- *     also gives the name people are known by);
+ *   • trainee — the email matched against the eligibility roster. The
+ *     roster's "name" column is NOT used: on the ENGAGE/EXPERIENCE import
+ *     it holds the institution, not the person;
  *   • applied at — when the registration was submitted;
  *   • seats held — their other confirmed seats this week.
  *
@@ -72,8 +73,9 @@ export function applicantFor(f: BookingFacts): ApplicantInfo {
   const entry = email ? f.roster(email) : undefined;
   const roster: RosterMatch = entry === undefined ? "unknown" : entry ? "on" : "off";
 
+  // What the person told us, else their account, else their address.
   const formName = [str(a.first_name), str(a.last_name)].filter(Boolean).join(" ") || str(a.trainee_name);
-  const name = entry?.name?.trim() || formName || str(f.user?.name) || email || "Unnamed";
+  const name = formName || str(f.user?.name) || email || "Unnamed";
 
   return {
     id: f.bookingId,

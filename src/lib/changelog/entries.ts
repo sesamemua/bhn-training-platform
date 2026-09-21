@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Fix: roster "names" that were institutions
+  {
+    title: "Fixed: registrants shown under their institution's name",
+    body: "Registrants could appear as **\u201cHospital for Sick Children\u201d**, **\u201cUniversity of Toronto\u201d** and so on in Training admin. The trainee roster import used to guess each person\u2019s name as the longest cell in their row \u2014 which on the ENGAGE/EXPERIENCE sheet is the institution.\n\n- **Training admin** (Registrants views, Seat suggestions) now shows the name the person gave, else their account name, else their email. The roster is still used to tell who is a trainee.\n- **Roster imports** now read the name only from a column headed *Name* (or *First name* + *Last name*), never from an institution or organisation column \u2014 and leave it blank rather than guess when there is none.\n\nThe names already stored for the ENGAGE and EXPERIENCE list are still institutions until that sheet is imported again.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training admin: registrant views
   {
     title: "Training admin: registrant views — by workshop, day, dietary, decision, email and distance",

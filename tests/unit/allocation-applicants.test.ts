@@ -14,7 +14,7 @@ const form = (id: string, email: string, travel: string | undefined, at: string,
 
 test("facts come from the form and the roster", () => {
   const a = applicantFor(form("1", "ana@utoronto.ca", "Yes", "2026-09-20T10:00:00Z"));
-  assert.equal(a.name, "Ana Diaz", "the roster name");
+  assert.equal(a.name, "ana@utoronto.ca", "the roster's name column is not trusted — it can hold the institution");
   assert.equal(a.isOutOfTown, true);
   assert.equal(a.isCurrentTrainee, true);
   const c = applicantFor(form("3", "cat@gmail.com", undefined, "2026-09-20T10:00:00Z"));
