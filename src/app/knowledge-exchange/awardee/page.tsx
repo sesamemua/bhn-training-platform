@@ -8,6 +8,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { KeAwardeeForm } from "@/components/knowledge-exchange/KeAwardeeForm";
+import { LOGO_COLOUR } from "@/components/forms/SiteChrome";
 import { QUOTE_WORDS_KEY, settingsFrom } from "@/lib/knowledge-exchange/intake";
 import styles from "@/app/events/[slug]/speaker/speaker-intake.module.css";
 
@@ -29,8 +30,19 @@ export default async function KeAwardeePage() {
       className={`${styles.daylight} min-h-screen bg-gradient-to-b from-[var(--speaker-page-tint)] to-white px-4 py-12`}
     >
       <div className="mx-auto max-w-xl">
+        {/* The official colour lockup as-is — the page is always light. Not a
+            link: one stray tap should not leave a half-filled form. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- the official lockup, served as-is */}
+        <img
+          src={LOGO_COLOUR.src}
+          width={LOGO_COLOUR.width}
+          height={LOGO_COLOUR.height}
+          alt="BioHubNet"
+          decoding="async"
+          className="mb-8 h-10 w-auto sm:h-12"
+        />
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--brand-700)]">
-          BioHubNet · Knowledge Exchange
+          Knowledge Exchange
         </p>
         <h1 className="mt-1.5 text-2xl font-bold text-[var(--speaker-control-ink)]">Awardee details</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-[var(--speaker-copy)]">
