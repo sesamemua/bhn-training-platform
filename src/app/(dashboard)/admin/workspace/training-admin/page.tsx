@@ -26,7 +26,8 @@ import { emailKey } from "@/lib/eligibility/email-key";
 
 export const dynamic = "force-dynamic";
 
-export default async function TrainingAdminPage() {
+export default async function TrainingAdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams;
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect("/dashboard");
 
@@ -145,6 +146,7 @@ export default async function TrainingAdminPage() {
         rules={rules}
         views={parseViews(savedViews?.value)}
         catering={parseSnapshot(cateringCopy?.value)}
+        initialTab={tab}
         workshops={workshops.map((w) => ({
           ...w,
           startDateTime: w.startDateTime.toISOString(),

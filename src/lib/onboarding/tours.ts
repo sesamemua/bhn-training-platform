@@ -39,18 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16d";
+export const TOUR_VERSION = "2026.10.16e";
 
 export const TOUR_STEPS: TourStep[] = [
   {
     id: "training-admin.catering-copy",
     title: "Send the caterer exactly what they need",
-    body: "In **Registrants \u2192 Dietary & accessibility**, **Copy for the caterer** copies headcounts, dietary needs with names and accessibility needs for the sessions still to come. Next time, **Copy only what changed** sends just the updates since your last copy \u2014 sessions that are over are left out.",
+    body: "On the **Catering & accessibility** tab, **Copy for the caterer** copies headcounts, dietary needs with names and accessibility needs for the sessions still to come. Next time, **Copy only what changed** sends just the updates since your last copy \u2014 sessions that are over are left out.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["admin", "superadmin"],
-    cta: { label: "Open Training admin", href: "/admin/workspace/training-admin" },
-    since: "2026.10.16d",
+    cta: { label: "Open Catering & accessibility", href: "/admin/workspace/training-admin?tab=catering" },
+    since: "2026.10.16e",
   },
   {
     id: "training-admin.registrant-views",

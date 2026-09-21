@@ -65,9 +65,7 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
 const toggle = <T,>(list: T[], x: T) => (list.includes(x) ? list.filter((y) => y !== x) : [...list, x]);
 const same = (a: View, b: View) => JSON.stringify({ ...a, name: "" }) === JSON.stringify({ ...b, name: "" });
 
-export function RegistrantViews({ workshops, initialViews, catering }: {
-  workshops: AdminWorkshop[]; initialViews: View[]; catering: Snapshot | null;
-}) {
+export function RegistrantViews({ workshops, initialViews }: { workshops: AdminWorkshop[]; initialViews: View[] }) {
   const [saved, setSaved] = useState<View[]>(initialViews);
   const all = [...BUILT_IN_VIEWS, ...saved];
   const [activeId, setActiveId] = useState("all");
@@ -138,7 +136,11 @@ export function RegistrantViews({ workshops, initialViews, catering }: {
         ))}
       </div>
 
-      {activeId === "dietary" && <CateringPanel rows={rows} initial={catering} />}
+      {activeId === "dietary" && (
+        <p className="mt-3 rounded-lg border border-brand-500/30 bg-brand-500/[0.04] px-3 py-2 text-[12.5px] text-muted">
+          To send this to the caterer, use the <strong className="text-fg">Catering &amp; accessibility</strong> tab — it copies only upcoming, approved attendees and tracks what changed.
+        </p>
+      )}
 
       {/* Filters */}
       <div className="mt-3 grid gap-2.5 rounded-lg border border-line bg-elevated/40 p-3 text-[12px]">

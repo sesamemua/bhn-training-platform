@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training admin: Catering & accessibility tab
+  {
+    title: "Training admin: a Catering & accessibility tab",
+    body: "Catering and accessibility now have their own tab in **Training admin**, next to Registrants:\n\n- **For the caterer** at the top \u2014 *Copy for the caterer* and *Copy only what changed*, as before.\n- **Each upcoming session** below it: date and time, how many are attending, a count per dietary requirement, and a table of everyone with a dietary or accessibility need. Approved attendees only; sessions that are over drop off.\n\nLink straight to it with **/admin/workspace/training-admin?tab=catering**. The Registrants tab\u2019s *Dietary & accessibility* view now points here.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Registrants: copy for the caterer
   {
     title: "Registrants: one-click copy for the caterer, and updates with only what changed",

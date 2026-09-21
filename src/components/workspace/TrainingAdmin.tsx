@@ -39,10 +39,13 @@ import {
 } from "@/lib/allocation/email-templates";
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
 import { RegistrantViews } from "./RegistrantViews";
+import { CateringTab } from "./CateringTab";
 import type { View } from "@/lib/allocation/registrant-views";
 import type { Snapshot } from "@/lib/allocation/catering";
 
-type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "email";
+type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "catering" | "email";
+const isTab = (v: unknown): v is Tab =>
+  typeof v === "string" && ["dashboard", "model", "suggest", "capacity", "registrants", "catering", "email"].includes(v);
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
@@ -50,6 +53,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "suggest", label: "Seat suggestions" },
   { id: "capacity", label: "Capacity" },
   { id: "registrants", label: "Registrants" },
+  { id: "catering", label: "Catering & accessibility" },
   { id: "email", label: "Email" },
 ];
 
@@ -67,13 +71,15 @@ const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "wait
 const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending").length;
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, catering, workshops,
+  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab,
 }: {
   eventId: string; eventTitle: string; rules: Rule[]; views: View[]; catering: Snapshot | null; workshops: AdminWorkshop[];
+  /** ?tab=… in the URL — e.g. a link straight to Catering & accessibility. */
+  initialTab?: string;
 }) {
   // Opens on the dashboard: the first question anybody has here is
-  // "how is it going", not "let me change the policy".
-  const [tab, setTab] = useState<Tab>("dashboard");
+  // "how is it going", not "let me change the policy". A link can name a tab.
+  const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : "dashboard");
 
   return (
     <div className="mt-6">
@@ -102,7 +108,8 @@ export function TrainingAdmin({
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
         {tab === "capacity" && <Capacity eventId={eventId} workshops={workshops} />}
-        {tab === "registrants" && <Registrants workshops={workshops} views={views} catering={catering} />}
+        {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
+        {tab === "catering" && <CateringTab workshops={workshops} catering={catering} />}
         {tab === "email" && <EmailSection eventId={eventId} workshops={workshops} />}
       </div>
     </div>
@@ -1129,11 +1136,11 @@ function LetterQueue({ workshops }: { workshops: AdminWorkshop[] }) {
  * Registrants: the letters owed, the list seen through a view (built-in
  * or saved), and below it each registration with its seats to decide.
  */
-function Registrants({ workshops, views, catering }: { workshops: AdminWorkshop[]; views: View[]; catering: Snapshot | null }) {
+function Registrants({ workshops, views }: { workshops: AdminWorkshop[]; views: View[] }) {
   return (
     <div className="space-y-5">
       <LetterQueue workshops={workshops} />
-      <RegistrantViews workshops={workshops} initialViews={views} catering={catering} />
+      <RegistrantViews workshops={workshops} initialViews={views} />
       <Submissions />
     </div>
   );
