@@ -4,13 +4,13 @@ import {
   PDFDocument,
   StandardFonts,
   rgb,
-  type PDFFont,
   type PDFImage,
   type PDFPage,
   type RGB,
 } from "pdf-lib";
 import { R2_BUCKET, r2 } from "@/lib/r2";
 import { receiptSections, type ReceiptSection } from "./venture-connect-receipt";
+import { drawRuns, widthOf, type FontSet } from "./pdf-text";
 import type { EquipDocument, VentureConnectFormData } from "./types";
 
 const PAGE_WIDTH = 612;
@@ -104,19 +104,11 @@ function documentFormat(document: EquipDocument): "pdf" | "jpg" | "png" | "embed
   return "embedded";
 }
 
-function supportedText(font: PDFFont, value: string): string {
-  const supported = new Set(font.getCharacterSet());
-  return Array.from(value.replace(/\r/g, "")).map((character) => {
-    const codePoint = character.codePointAt(0) ?? 63;
-    return supported.has(codePoint) ? character : "?";
-  }).join("");
-}
-
-function wrapText(font: PDFFont, value: string, size: number, maxWidth: number): string[] {
-  const safe = supportedText(font, value);
+function wrapText(fonts: FontSet, value: string, size: number, maxWidth: number): string[] {
+  const fits = (t: string) => widthOf(fonts, t, size) <= maxWidth;
   const lines: string[] = [];
 
-  for (const paragraph of safe.split("\n")) {
+  for (const paragraph of value.replace(/\r/g, "").split("\n")) {
     if (!paragraph.trim()) {
       lines.push("");
       continue;
@@ -125,13 +117,13 @@ function wrapText(font: PDFFont, value: string, size: number, maxWidth: number):
     let line = "";
     for (const word of paragraph.trim().split(/\s+/)) {
       const candidate = line ? `${line} ${word}` : word;
-      if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      if (fits(candidate)) {
         line = candidate;
         continue;
       }
       if (line) lines.push(line);
 
-      if (font.widthOfTextAtSize(word, size) <= maxWidth) {
+      if (fits(word)) {
         line = word;
         continue;
       }
@@ -139,7 +131,7 @@ function wrapText(font: PDFFont, value: string, size: number, maxWidth: number):
       let fragment = "";
       for (const character of word) {
         const next = fragment + character;
-        if (font.widthOfTextAtSize(next, size) > maxWidth && fragment) {
+        if (!fits(next) && fragment) {
           lines.push(fragment);
           fragment = character;
         } else {
@@ -160,8 +152,8 @@ class PacketWriter {
 
   constructor(
     private readonly document: PDFDocument,
-    private readonly regular: PDFFont,
-    private readonly bold: PDFFont,
+    private readonly regular: FontSet,
+    private readonly bold: FontSet,
   ) {
     this.page = this.newPage();
     this.y = PAGE_HEIGHT - 93;
@@ -173,7 +165,7 @@ class PacketWriter {
       x: MARGIN,
       y: PAGE_HEIGHT - 52,
       size: 9,
-      font: this.bold,
+      font: this.bold.base,
       color: BRAND,
     });
     page.drawLine({
@@ -197,7 +189,7 @@ class PacketWriter {
   paragraph(
     value: string,
     options: {
-      font?: PDFFont;
+      font?: FontSet;
       size?: number;
       lineHeight?: number;
       color?: RGB;
@@ -213,7 +205,7 @@ class PacketWriter {
     for (const line of lines) {
       this.ensureSpace(lineHeight);
       if (line) {
-        this.page.drawText(line, { x: MARGIN, y: this.y, size, font, color });
+        drawRuns(this.page, line, { x: MARGIN, y: this.y, size, fonts: font, color });
       }
       this.y -= lineHeight;
     }
@@ -284,7 +276,7 @@ class PacketWriter {
   }
 }
 
-function drawImagePage(document: PDFDocument, image: PDFImage, name: string, font: PDFFont): void {
+function drawImagePage(document: PDFDocument, image: PDFImage, name: string, fonts: FontSet): void {
   const landscape = image.width > image.height;
   const width = landscape ? PAGE_HEIGHT : PAGE_WIDTH;
   const height = landscape ? PAGE_WIDTH : PAGE_HEIGHT;
@@ -298,13 +290,7 @@ function drawImagePage(document: PDFDocument, image: PDFImage, name: string, fon
   const renderedWidth = image.width * scale;
   const renderedHeight = image.height * scale;
 
-  page.drawText(supportedText(font, name), {
-    x: margin,
-    y: height - margin,
-    size: 9,
-    font,
-    color: MUTED,
-  });
+  drawRuns(page, name, { x: margin, y: height - margin, size: 9, fonts, color: MUTED });
   page.drawImage(image, {
     x: (width - renderedWidth) / 2,
     y: (height - labelHeight - renderedHeight) / 2,
@@ -332,8 +318,12 @@ export async function buildEquipApplicationPacket(
   loadDocument: EquipDocumentLoader = loadR2Document,
 ): Promise<EquipApplicationPacket> {
   const document = await PDFDocument.create();
-  const regular = await document.embedFont(StandardFonts.Helvetica);
-  const bold = await document.embedFont(StandardFonts.HelveticaBold);
+  // Helvetica for text, with Symbol and ZapfDingbats for what it lacks
+  // (Greek, maths, arrows, ticks, bullets) — see pdf-text.ts.
+  const symbol = await document.embedFont(StandardFonts.Symbol);
+  const dingbats = await document.embedFont(StandardFonts.ZapfDingbats);
+  const regular: FontSet = { base: await document.embedFont(StandardFonts.Helvetica), symbol, dingbats };
+  const bold: FontSet = { base: await document.embedFont(StandardFonts.HelveticaBold), symbol, dingbats };
   document.setTitle(`${input.title} - ${input.applicantName || input.applicationId}`);
   document.setAuthor("BioHubNet EQUIP");
   document.setSubject(input.subject);

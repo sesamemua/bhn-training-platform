@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16f";
+export const TOUR_VERSION = "2026.10.16g";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "equip.packet-characters",
+    title: "Application PDFs print every character",
+    body: "The combined **VentureConnect** and **Innovation Fellowship** PDFs no longer turn Greek letters, maths symbols, ticks or Word bullets into **?**. Text the PDF can’t draw at all, such as a Chinese file name, shows as *[Chinese text]*.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open EQUIP", href: "/admin/equip" },
+    since: "2026.10.16g",
+  },
   {
     id: "training-admin.travel-follow-up",
     title: "Follow up with long-distance travellers",

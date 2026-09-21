@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
+import { PDFDict, PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 import { buildVentureConnectApplicationPacket } from "../../src/lib/equip/venture-connect-packet";
+import { runsOf } from "../../src/lib/equip/pdf-text";
 import type { EquipDocument, VentureConnectFormData } from "../../src/lib/equip/types";
 
 const formData: VentureConnectFormData = {
@@ -91,4 +92,40 @@ test("Word and Excel originals are embedded inside the single PDF", async () => 
 
   assert.ok(embeddedFiles, "the PDF should have an embedded-files name tree");
   assert.deepEqual(packet.includedFiles, ["recommendation.docx"]);
+});
+
+test("text Helvetica cannot draw no longer prints as question marks", async () => {
+  const document = await PDFDocument.create();
+  const [base, symbol, dingbats] = await Promise.all(
+    [StandardFonts.Helvetica, StandardFonts.Symbol, StandardFonts.ZapfDingbats].map((f) => document.embedFont(f)),
+  );
+  const fonts = { base, symbol, dingbats };
+  const shown = (value: string) => runsOf(fonts, value).map((r) => r.text).join("");
+
+  assert.equal(shown("IFN-γ release"), "IFN-γ release");
+  assert.equal(runsOf(fonts, "IFN-γ").at(-1)?.font, symbol);
+  assert.equal(shown(" First point"), "• First point"); // Word bullet
+  assert.equal(shown("◦ sub-point ‑ ✓ done"), "• sub-point - ✓ done");
+  assert.equal(runsOf(fonts, "✓").at(0)?.font, dingbats);
+  assert.equal(shown("项目与团队介绍.pdf"), "[Chinese text].pdf");
+  assert.equal(shown("项目 与 团队 plan"), "[Chinese text] plan");
+  assert.equal(shown("Łukasz Nguyễn, IC₅₀ 🚀"), "Lukasz Nguyen, IC50 ");
+  assert.equal(shown("Résumé\tv2"), "Résumé v2"); // macOS file names are decomposed
+
+  const packet = await buildVentureConnectApplicationPacket(
+    {
+      ...packetInput,
+      formData: { ...formData, ventureDescription: " Measures IFN-γ in real time ✓" },
+      documents: [equipDocument("项目与团队介绍.pdf", "application/pdf", 2048)],
+    },
+    async () => sourcePdf(),
+  );
+  const pdf = await PDFDocument.load(packet.content);
+  const fontNames = pdf.getPages().flatMap((page) => {
+    const dict = page.node.Resources()?.lookupMaybe(PDFName.of("Font"), PDFDict);
+    return dict ? dict.values().map((ref) => String(pdf.context.lookup(ref, PDFDict).get(PDFName.of("BaseFont")))) : [];
+  });
+  assert.ok(fontNames.includes("/Symbol"), "γ is drawn in the Symbol font");
+  assert.ok(fontNames.includes("/ZapfDingbats"), "✓ is drawn in ZapfDingbats");
+  assert.deepEqual(packet.includedFiles, ["项目与团队介绍.pdf"]);
 });

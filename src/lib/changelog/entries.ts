@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── EQUIP: application PDFs print Greek letters, symbols and bullets
+  {
+    title: "EQUIP application PDFs: no more question marks",
+    body: "The combined PDF for **VentureConnect** and **Innovation Fellowship** applications printed a **?** for any character outside basic Western European text. It now draws them:\n\n- **Greek letters and maths** — IFN-γ, TNF-α, ≥, ≤, ±, →\n- **Ticks and bullets**, including bullets pasted from Word\n- **Accented letters** the PDF font lacks lose only the accent (Łukasz → Lukasz, Nguyễn → Nguyen)\n- **Chinese, Japanese and Korean** text, such as a file name, shows as *[Chinese text]* — the PDF’s built-in fonts can’t draw it. Emoji are left out.\n\nPDFs downloaded from an application’s shared link are rebuilt each time, so older applications print correctly too. Copies already emailed are unchanged.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training admin: Travel follow-up tab + CSV downloads
   {
     title: "Training admin: Travel follow-up tab, and CSV downloads",
