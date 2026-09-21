@@ -6,7 +6,6 @@ import { putR2Object, r2PublicUrl, R2_PUBLIC_URL } from "@/lib/r2";
 import { trackServer } from "@/lib/analytics";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

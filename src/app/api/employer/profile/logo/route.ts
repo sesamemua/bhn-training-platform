@@ -33,7 +33,6 @@ import {
 } from "@/lib/r2";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const ALLOWED_TYPES = new Set([
   "image/png",

@@ -7,7 +7,6 @@ import { parseCampaignAttribution } from "@/lib/campaign/attribution";
 import { CAMPAIGN_EVENT_NAMES } from "@/lib/campaign/events";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB

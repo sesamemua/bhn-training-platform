@@ -40,7 +40,6 @@ import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, deleteR2ObjectByUrl, R2_PUBLIC_URL } from "@/lib/r2";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const RESUME_MAX = 10 * 1024 * 1024; // 10 MB
 const VIDEO_MAX  = 60 * 1024 * 1024; // 60 MB

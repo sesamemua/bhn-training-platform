@@ -16,7 +16,6 @@ import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, deleteR2ObjectByUrl } from "@/lib/r2";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const MAX_SIZE = 8 * 1024 * 1024;
 const EXT_OK = new Set(["png", "jpg", "jpeg", "webp", "avif"]);

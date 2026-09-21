@@ -18,7 +18,6 @@ import { callNameOf } from "@/lib/brain/picker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 const Body = z.object({ ids: z.array(z.string().min(1).max(100)).min(1).max(50) });
 

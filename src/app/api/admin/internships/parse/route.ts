@@ -3,7 +3,6 @@ import { requireSession } from "@/lib/auth";
 import { AI_CONFIGURED } from "@/lib/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const CF_ACCOUNT = process.env.CF_ACCOUNT_ID;
 const CF_TOKEN = process.env.CF_AI_TOKEN;

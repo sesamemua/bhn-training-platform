@@ -32,7 +32,6 @@ import {
 } from "@/lib/resume/master-tailor";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 /** GET — list candidate postings the drawer can offer in its picker.
  *  Pulls the caller's saved postings first (most-relevant) plus a

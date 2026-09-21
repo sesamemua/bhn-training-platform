@@ -9,7 +9,6 @@ import { prisma } from "@/lib/prisma";
 import { ingestJob } from "@/lib/tailoring/ingest";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 async function uid(): Promise<string | null> {
   const s = await requireSession().catch(() => null);

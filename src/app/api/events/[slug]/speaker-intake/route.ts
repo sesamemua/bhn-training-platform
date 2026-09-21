@@ -30,7 +30,6 @@ import {
 } from "@/lib/notify/speaker-submission";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const isEmail = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
 

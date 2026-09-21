@@ -22,7 +22,6 @@ import { r2, R2_BUCKET } from "@/lib/r2";
 import type { EquipDocument } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const SYSTEM = `You are an experienced biotech / biomanufacturing program reviewer. Read a single Equip funding application (either VentureConnect for events or VentureLift for commercialization) and produce a tight executive summary so a senior reviewer can decide in under 60 seconds.
 

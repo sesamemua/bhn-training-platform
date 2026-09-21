@@ -12,7 +12,6 @@ import { TRIAGE_AGENT } from "@/lib/agent/config";
 import { runTriageAgent } from "@/lib/agent/runTriage";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const session = await requireRole("admin").catch(() => null);

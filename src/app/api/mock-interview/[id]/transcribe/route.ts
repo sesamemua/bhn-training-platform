@@ -11,7 +11,6 @@ import { transcribe } from "@/lib/ai";
 import { computeDelivery } from "@/lib/interview/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const MAX_BYTES = 12 * 1024 * 1024; // ~12 MB ≈ a few minutes of compressed audio
 interface Ctx { params: Promise<{ id: string }> }

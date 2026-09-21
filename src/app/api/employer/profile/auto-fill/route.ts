@@ -9,7 +9,6 @@ import {
 } from "@/lib/employer/logo-discovery";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const SYSTEM = `You research a company's website and produce structured profile JSON.
 

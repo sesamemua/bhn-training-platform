@@ -21,7 +21,6 @@ import { callText } from "@/lib/ai/reliability";
 import { ASSIST_DISABLED } from "@/lib/assist/flags";
 
 export const runtime = "nodejs";
-export const maxDuration = 300; // up to 5 min for bigger orgs
 
 const SYSTEM = `You write extremely terse weekly journey summaries for the BHN training platform's AI assist memory.
 

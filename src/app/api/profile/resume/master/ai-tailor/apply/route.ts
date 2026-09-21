@@ -38,7 +38,6 @@ import {
 } from "@/lib/resume/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const VALID_KINDS: ReadonlySet<ResumeSectionKind> = new Set<ResumeSectionKind>([
   "summary", "experience", "skills", "education", "projects",

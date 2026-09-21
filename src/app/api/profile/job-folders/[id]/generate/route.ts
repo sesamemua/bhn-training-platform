@@ -15,7 +15,6 @@ import { generateCoverLetter, generateInterviewPrep } from "@/lib/job-folders/ai
 import type { ResumeContent } from "@/lib/resume/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 interface RouteCtx { params: Promise<{ id: string }> }
 

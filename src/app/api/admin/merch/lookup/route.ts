@@ -17,7 +17,6 @@ import { detailUrlFor, draftCardFrom, listingUrlFor, parseProductPage, productCo
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
 
 const Body = z.object({ url: z.string().trim().min(1).max(500) });
 

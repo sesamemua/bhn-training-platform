@@ -14,7 +14,6 @@ import { prisma } from "@/lib/prisma";
 import { extractSkillsFromText, tagUser } from "@/lib/skills/ontology";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 async function getUserId() {
   const session = await getServerSession(authOptions);

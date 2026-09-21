@@ -16,7 +16,6 @@ import { fulfillWithNewPayload } from "@/lib/simulator/request-fulfillment";
 import { notifySimFailed } from "@/lib/simulator/notify";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
 
 export async function POST(
   _req: Request,

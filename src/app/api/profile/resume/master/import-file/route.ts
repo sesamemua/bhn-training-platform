@@ -20,7 +20,6 @@ import { parseResumeText } from "@/lib/resume/parse";
 import { importContentIntoMaster, EmbeddingUnavailableError } from "@/lib/resume/master-import";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 

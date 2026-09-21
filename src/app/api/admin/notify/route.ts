@@ -29,7 +29,6 @@ import {
 } from "@/lib/notify/recipients";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 /*
  * requireRole throws, which reaches the client as an opaque 500. This

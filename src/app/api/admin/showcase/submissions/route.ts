@@ -22,7 +22,6 @@ import { putR2Object, r2PublicUrl, R2_PUBLIC_URL, deleteR2ObjectByUrl } from "@/
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, normaliseLinkedin, photoExtFor } from "@/lib/showcase/validation";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 /**
  * GET /api/admin/showcase/submissions?slug=<groupSlug>

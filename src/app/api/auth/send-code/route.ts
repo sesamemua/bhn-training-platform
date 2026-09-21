@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 
 export const runtime = "nodejs";
-export const maxDuration = 15;
 
 // 10 minutes is long enough that a user can switch to their email app
 // and back without rushing, short enough that a leaked code is useless.

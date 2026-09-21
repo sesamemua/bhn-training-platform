@@ -35,7 +35,6 @@ import { fetchHomepageHtml } from "@/lib/employer/logo-discovery";
 import { isHexColor, type CompanyBrand } from "@/lib/employer/brand";
 
 export const runtime = "nodejs";
-export const maxDuration = 25;
 
 function normalizeUrl(input: string) {
   const trimmed = input.trim();

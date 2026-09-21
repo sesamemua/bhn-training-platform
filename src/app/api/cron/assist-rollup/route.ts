@@ -16,7 +16,6 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const RAW_RETENTION_DAYS = 90;
 

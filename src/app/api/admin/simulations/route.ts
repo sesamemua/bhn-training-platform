@@ -30,9 +30,6 @@ import { validatePayload } from "@/lib/simulator/validate";
 import { PROMPT_VERSION, type SimulationPayload } from "@/lib/simulator/types";
 
 export const runtime = "nodejs";
-// AI generation races two providers at up to 120 s each — give the
-// route the same 300 s ceiling the request-generate route uses.
-export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const session = await requireRole("admin").catch(() => null);

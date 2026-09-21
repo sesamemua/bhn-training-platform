@@ -18,7 +18,6 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 /** A Mailchimp export is large; this is not a file store. */
 const MAX_CODE_CHARS = 1_000_000;

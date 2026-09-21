@@ -18,8 +18,6 @@ import {
   ensureSkillSeed, embedMissingSkills, tagCourse, tagPosting, tagUser,
 } from "@/lib/skills/ontology";
 
-export const maxDuration = 60; // seconds — backfill might run a while
-
 interface BackfillReport {
   kind: string;
   processed: number;

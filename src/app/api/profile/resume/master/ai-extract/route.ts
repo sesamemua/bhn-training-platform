@@ -18,7 +18,6 @@ import { importContentIntoMaster, EmbeddingUnavailableError } from "@/lib/resume
 import type { ResumeContent } from "@/lib/resume/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 async function getMyUserId(): Promise<string | null> {
   const session = await requireSession().catch(() => null);

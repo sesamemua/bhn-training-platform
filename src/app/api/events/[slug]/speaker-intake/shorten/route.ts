@@ -31,7 +31,6 @@ import type { ChatMessage } from "@/lib/ai";
 import { speakerLimits, targetMinFor } from "@/lib/events/limits";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const Out = z.object({ bio: z.string() });
 

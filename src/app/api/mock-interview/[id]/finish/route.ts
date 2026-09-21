@@ -9,7 +9,6 @@ import { prisma } from "@/lib/prisma";
 import { summarizeInterview } from "@/lib/interview/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 interface Ctx { params: Promise<{ id: string }> }
 
 export async function POST(_req: NextRequest, ctx: Ctx) {

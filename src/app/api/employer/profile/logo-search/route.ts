@@ -43,7 +43,6 @@ import {
 } from "@/lib/employer/logo-discovery";
 
 export const runtime = "nodejs";
-export const maxDuration = 25;
 
 function normalizeUrl(input: string) {
   const trimmed = input.trim();

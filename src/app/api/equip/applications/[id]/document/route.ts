@@ -28,7 +28,6 @@ import { r2, R2_BUCKET, putR2Object } from "@/lib/r2";
 import type { EquipDocument } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 

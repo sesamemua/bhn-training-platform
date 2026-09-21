@@ -30,10 +30,6 @@ import { extractJobDescriptionFromText } from "@/lib/simulator/jd-extractor";
 import { PROMPT_VERSION } from "@/lib/simulator/types";
 
 export const runtime = "nodejs";
-/** Capped at 30s — URL extraction (Jina Reader) usually returns in
- *  3–8s but ZipRecruiter / LinkedIn sometimes time out. We don't need
- *  the longer AI-generation budget anymore. */
-export const maxDuration = 30;
 
 const RECENT_REQUEST_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 

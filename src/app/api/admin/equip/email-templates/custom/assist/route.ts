@@ -18,7 +18,6 @@ import {
 import { STREAM_META, type EquipStream } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const isStream = (v: unknown): v is EquipStream => v === "venture_connect" || v === "venture_lift";
 

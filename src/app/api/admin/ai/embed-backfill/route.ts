@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { embed, toVectorLiteral, AI_CONFIGURED } from "@/lib/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 /**
  * Embed every Course / Pathway that doesn't yet have an embedding (or

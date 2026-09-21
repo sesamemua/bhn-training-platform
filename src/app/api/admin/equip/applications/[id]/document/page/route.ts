@@ -27,7 +27,6 @@ import { r2, R2_BUCKET } from "@/lib/r2";
 import type { EquipDocument } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 /** Guards a malicious or fat-fingered ?page= from asking us to
  *  rasterise the 900th page of a 3-page file. */

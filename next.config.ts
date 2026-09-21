@@ -107,6 +107,18 @@ const nextConfig: NextConfig = {
   // Without an explicit trace include, Vercel's file-tracing layer can
   // exclude content outside `app/` from the serverless function bundle,
   // making fs.readFileSync 404 in production. Pin the directory.
+  //
+  // How Functions Storage is actually counted (Sep 21, from Vercel's build
+  // output and the usage-metrics history): Vercel merges routes whose
+  // function config matches into one Lambda, so a deployment is a handful
+  // of zips, not one per route. A deployment's zips then count for 30 days
+  // from its creation, whether or not it is deleted. The figure to keep
+  // small is zip total per deployment × deploys per 30 days. Each distinct
+  // `maxDuration` export forced a bundle of its own, with another copy of
+  // Prisma's ~8 MB engine, so no route sets one: the project default
+  // (300 s under Fluid compute) covers all of them, and
+  // tests/unit/function-bundles.test.ts keeps it that way.
+  //
   // Vercel Functions Storage hit 93 GB against a 10 GB limit. Measured
   // from this repo's own build traces (.next/server/**/*.nft.json): 67.6 GB
   // traced across 720 bundles, 60.6 GB of it Prisma, ~85 MB of Prisma in
@@ -182,7 +194,7 @@ const nextConfig: NextConfig = {
       // Vercel installs the musl build next to the glibc one, and the
       // tracer follows both require branches in js-binding.js. Vercel's
       // runtime is glibc, and isMusl() picks -gnu there. About 12 MB
-      // compressed in the maxDuration=60 bundle.
+      // compressed in the API bundle.
       "node_modules/@napi-rs/canvas-linux-x64-musl/**",
       // Declarations are never loaded at runtime. Next ignores **/*.d.ts
       // already but not .d.mts, which is why those were being traced.

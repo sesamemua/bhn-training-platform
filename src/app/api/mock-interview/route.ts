@@ -11,7 +11,6 @@ import { prisma } from "@/lib/prisma";
 import { generateInterviewQuestions } from "@/lib/interview/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   const session = await getSession();

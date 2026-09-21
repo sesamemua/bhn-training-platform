@@ -10,7 +10,6 @@ import type { EquipDocument } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 async function loadPublicApplication(token: string) {
   if (!token || token.length < 20) return null;

@@ -20,7 +20,6 @@ import { prisma } from "@/lib/prisma";
 import { callText, delimitContext } from "@/lib/ai/reliability";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const JINA_BASE = process.env.JINA_READER_BASE ?? "https://r.jina.ai";
 const MAX_PAGE_CHARS = 6000;

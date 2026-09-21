@@ -46,10 +46,6 @@ import type { AssistEventInput } from "@/lib/assist/types";
 import type { Role } from "@/lib/auth";
 
 export const runtime = "nodejs";
-// The stuck path may call the LLM inline (gated to ≤1 per 5 min/user),
-// so give the function headroom beyond the default. Plain ingestion
-// still returns in milliseconds.
-export const maxDuration = 30;
 
 const VALID_KINDS = new Set([
   "click", "rage_click", "dead_click", "surface.view",

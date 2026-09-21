@@ -31,7 +31,6 @@ import { recordRevision } from "@/lib/resume/revisions";
 import { getActiveResume } from "@/lib/resume/active";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   const session = await requireSession().catch(() => null);

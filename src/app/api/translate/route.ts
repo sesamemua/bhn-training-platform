@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const CF_ACCOUNT = process.env.CF_ACCOUNT_ID;
 const CF_TOKEN   = process.env.CF_AI_TOKEN;

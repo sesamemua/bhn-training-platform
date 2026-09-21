@@ -26,7 +26,6 @@ import { putR2Object, r2PublicUrl, R2_PUBLIC_URL } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, normaliseLinkedin } from "@/lib/showcase/validation";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   if (!R2_PUBLIC_URL) {

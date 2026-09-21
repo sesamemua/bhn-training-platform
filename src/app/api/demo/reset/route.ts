@@ -31,7 +31,6 @@ import { applyCatalogue, type SheetRow } from "../../../../../scripts/import-eng
 import fixture from "../../../../../prisma/fixtures/engage-catalogue.json";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 async function reset(req: NextRequest) {
   if (!demoMode()) return new NextResponse(null, { status: 404 });

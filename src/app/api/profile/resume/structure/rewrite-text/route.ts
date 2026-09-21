@@ -23,7 +23,6 @@ import { requireSession } from "@/lib/auth";
 import { callStructured } from "@/lib/ai/reliability";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const SYSTEM = `You rewrite a single piece of resume text to be stronger.
 

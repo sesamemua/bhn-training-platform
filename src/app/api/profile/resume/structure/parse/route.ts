@@ -21,7 +21,6 @@ import { recordRevision } from "@/lib/resume/revisions";
 import { getOrCreateActiveResume } from "@/lib/resume/active";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 async function getMyUser() {
   const session = await requireSession().catch(() => null);

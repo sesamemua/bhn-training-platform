@@ -4,8 +4,8 @@
  *
  * The owner does not need the ENGAGE (courses, pathways, credits…) or
  * EXPERIENCE (internships, employer portal, resume tools…) functions for
- * now. Every route on Vercel is its own ~30 MB function, and the account
- * is far over its Functions Storage limit, so those routes are left out
+ * now. Their routes add code to every deployment's Vercel functions, and
+ * the account is far over its Functions Storage limit, so they are left out
  * of the bhn-training-platform project's Vercel builds only (production
  * and preview). The code stays in the repo and still runs locally and on
  * the bhn-demo project, unchanged.

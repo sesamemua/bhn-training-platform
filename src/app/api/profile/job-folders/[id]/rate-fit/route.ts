@@ -15,7 +15,6 @@ import { prisma } from "@/lib/prisma";
 import { rateFitMatrix } from "@/lib/job-folders/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
 
 export async function POST(
   _req: Request,

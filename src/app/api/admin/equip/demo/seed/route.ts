@@ -29,7 +29,6 @@ import type {
 } from "@/lib/equip/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 const DEMO_EMAIL_PREFIX = "equip-demo-";
 const DEMO_EMAIL_SUFFIX = "@bhn.test";

@@ -7,7 +7,6 @@ import { trackServer } from "@/lib/analytics";
 import { applyDefaultOverlayIfAbsent } from "@/lib/courses/thumbnail-overlay-default";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole("admin").catch(() => null);

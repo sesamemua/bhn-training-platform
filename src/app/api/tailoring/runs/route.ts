@@ -11,7 +11,6 @@ import { atsPlan } from "@/lib/tailoring/ats";
 import type { AtsKind } from "@/lib/tailoring/schemas";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
 
 async function uid(): Promise<string | null> {
   const s = await requireSession().catch(() => null);

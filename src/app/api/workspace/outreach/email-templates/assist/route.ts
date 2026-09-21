@@ -17,7 +17,6 @@ import {
 } from "@/lib/outreach/templates";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 function extractJson(raw: string): unknown {
   if (typeof raw !== "string") return null;

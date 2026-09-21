@@ -21,7 +21,6 @@ import { TEAM_ROLES } from "@/lib/brain/team";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 export const PickBody = z.object({
   askedOfIds: z.array(z.string().min(1).max(100)).min(1).max(50),

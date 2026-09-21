@@ -37,7 +37,6 @@ import { requireRole } from "@/lib/auth";
 import { findHelpCard } from "@/lib/assist/help-cards";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 /** Six demo trainees, each shaped around a different stuck-pattern
  *  so the admin sees variety in the dashboard. The first field is

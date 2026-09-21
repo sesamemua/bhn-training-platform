@@ -10,7 +10,6 @@ import { prisma } from "@/lib/prisma";
 import { evaluateAnswer, type DeliveryMetrics, type VoiceAcoustics } from "@/lib/interview/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 interface Ctx { params: Promise<{ id: string }> }
 
 export async function POST(req: NextRequest, ctx: Ctx) {

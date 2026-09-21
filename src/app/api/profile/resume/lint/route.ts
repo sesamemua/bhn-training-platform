@@ -19,7 +19,6 @@ import { buildLintPrompt, parseLintResponse } from "@/lib/resume/lint";
 import type { ResumeContent } from "@/lib/resume/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const session = await requireSession().catch(() => null);

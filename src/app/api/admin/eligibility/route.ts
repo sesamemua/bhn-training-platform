@@ -22,7 +22,6 @@ import { eligibilityGate } from "@/lib/eligibility/gate";
 import { rosterState } from "@/lib/eligibility/check";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 /** A pasted sheet, not a database. Past this it is a file upload. */
 const MAX_IMPORT_CHARS = 2_000_000;

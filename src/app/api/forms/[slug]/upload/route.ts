@@ -7,7 +7,6 @@ import type { FormField } from "@/lib/forms/types";
 import { isFileField } from "@/lib/forms/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const DEFAULT_MAX = 10 * 1024 * 1024; // 10 MB
 const HARD_MAX = 50 * 1024 * 1024;    // 50 MB ceiling

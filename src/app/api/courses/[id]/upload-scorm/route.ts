@@ -9,7 +9,6 @@ import os from "os";
 import unzipper from "unzipper";
 
 export const runtime = "nodejs";
-export const maxDuration = 300; // seconds — Pro plan only; safe to leave for Hobby (capped at 60)
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = await params;

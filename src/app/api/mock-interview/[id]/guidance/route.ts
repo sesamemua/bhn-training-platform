@@ -12,7 +12,6 @@ import { prisma } from "@/lib/prisma";
 import { generateAnswerGuidance, type AnswerGuidance } from "@/lib/interview/ai";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 interface Ctx { params: Promise<{ id: string }> }
 
 function asGuidance(v: unknown): AnswerGuidance | null {

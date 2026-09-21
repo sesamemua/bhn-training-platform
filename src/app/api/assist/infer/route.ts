@@ -33,7 +33,6 @@ import { getAssistPrefs, shouldShowHint } from "@/lib/assist/preferences";
 import { ASSIST_DISABLED } from "@/lib/assist/flags";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const HINT_TTL_MS = 30 * 60 * 1000;
 const DAILY_LLM_BUDGET = 20;

@@ -26,7 +26,6 @@ import {
 } from "@/lib/knowledge-exchange/intake";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 
 const refuse = (error: string, status: number) => NextResponse.json({ error }, { status });
 

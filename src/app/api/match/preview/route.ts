@@ -13,8 +13,6 @@ import { requireRole, getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractSkillsFromText, scoreMatch } from "@/lib/skills/ontology";
 
-export const maxDuration = 30;
-
 export async function POST(req: NextRequest) {
   // Open to employers, admins, and superadmins.
   const session = await getSession();
