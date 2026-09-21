@@ -39,3 +39,12 @@ export function parseCsv(text: string): string[][] {
   if (row.some((v) => v.trim())) rows.push(row);
   return rows;
 }
+
+/** Rows → CSV text. Cells with a comma, quote or line break are quoted. */
+export function toCsv(rows: (string | number | null | undefined)[][]): string {
+  const esc = (v: string | number | null | undefined) => {
+    const s = v == null ? "" : String(v);
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return rows.map((r) => r.map(esc).join(",")).join("\n");
+}

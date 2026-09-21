@@ -8,7 +8,8 @@
  * views are shared by every admin.
  */
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, ClipboardCopy, Loader2, Pencil, Plus, RotateCcw, Save, Trash2, UtensilsCrossed } from "lucide-react";
+import { ChevronDown, ClipboardCopy, Download, Loader2, Pencil, Plus, RotateCcw, Save, Trash2, UtensilsCrossed } from "lucide-react";
+import { downloadText, fileDate } from "@/lib/download";
 import { saveCateringSnapshot, saveRegistrantViews } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { changesSince, currentEntries, fullText, updateText, type Snapshot } from "@/lib/allocation/catering";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
@@ -300,7 +301,16 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
         ))}
       </div>
 
-      <details className="mt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => downloadText(`training-week-${draft.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${fileDate()}.csv`, csv)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated"
+        >
+          <Download size={12} /> Download this view as CSV
+        </button>
+      </div>
+      <details className="mt-2">
         <summary className="cursor-pointer text-[12.5px] text-muted hover:text-fg">
           <ChevronDown size={12} className="inline" /> Copy this view as CSV
         </summary>

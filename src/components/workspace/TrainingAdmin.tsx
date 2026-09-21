@@ -40,12 +40,13 @@ import {
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
 import { RegistrantViews } from "./RegistrantViews";
 import { CateringTab } from "./CateringTab";
+import { TravelTab } from "./TravelTab";
 import type { View } from "@/lib/allocation/registrant-views";
 import type { Snapshot } from "@/lib/allocation/catering";
 
-type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "catering" | "email";
+type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "catering" | "travel" | "email";
 const isTab = (v: unknown): v is Tab =>
-  typeof v === "string" && ["dashboard", "model", "suggest", "capacity", "registrants", "catering", "email"].includes(v);
+  typeof v === "string" && ["dashboard", "model", "suggest", "capacity", "registrants", "catering", "travel", "email"].includes(v);
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
@@ -54,6 +55,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "capacity", label: "Capacity" },
   { id: "registrants", label: "Registrants" },
   { id: "catering", label: "Catering & accessibility" },
+  { id: "travel", label: "Travel follow-up" },
   { id: "email", label: "Email" },
 ];
 
@@ -110,6 +112,7 @@ export function TrainingAdmin({
         {tab === "capacity" && <Capacity eventId={eventId} workshops={workshops} />}
         {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
         {tab === "catering" && <CateringTab workshops={workshops} catering={catering} />}
+        {tab === "travel" && <TravelTab workshops={workshops} />}
         {tab === "email" && <EmailSection eventId={eventId} workshops={workshops} />}
       </div>
     </div>

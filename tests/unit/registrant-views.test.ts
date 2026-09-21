@@ -2,8 +2,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  BUILT_IN_VIEWS, ViewSchema, applyView, emptyFilters, parseViews, type RegistrantRow, type View,
+  BUILT_IN_VIEWS, ViewSchema, applyView, emptyFilters, parseViews, travellerCells, travellers, type RegistrantRow, type View,
 } from "../../src/lib/allocation/registrant-views";
+import { toCsv } from "../../src/lib/formbuilder/csv";
 
 const row = (o: Partial<RegistrantRow>): RegistrantRow => ({
   bookingId: "b", personKey: "p", name: "N", email: "n@x.ca", workshopId: "w1", workshop: "GMP", day: "2026-10-26",
@@ -60,4 +61,16 @@ test("saved views: junk and built-in ids are dropped, never fatal", () => {
   assert.deepEqual(parseViews(JSON.stringify([good, { id: "all", name: "hijack" }, { nope: 1 }])).map((v) => v.id), ["mine"]);
   assert.deepEqual(parseViews("not json"), []);
   assert.deepEqual(parseViews(null), []);
+});
+
+
+test("travel follow-up: one row per person who travels over 2 hours, with their sessions", () => {
+  const t = travellers(rows);
+  assert.deepEqual(t.map((x) => x.name), ["Ana"]);
+  assert.equal(t[0].sessions.length, 2);
+  assert.match(travellerCells(t[0])[3], /GMP \(approved\); Tue 27 Oct RA 101 \(waitlisted\)/);
+});
+
+test("CSV quotes what needs quoting", () => {
+  assert.equal(toCsv([["a", "b,c", 'say "hi"', null, 3]]), 'a,"b,c","say ""hi""",,3');
 });

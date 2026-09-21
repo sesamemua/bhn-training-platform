@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16e";
+export const TOUR_VERSION = "2026.10.16f";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "training-admin.travel-follow-up",
+    title: "Follow up with long-distance travellers",
+    body: "**Training admin \u2192 Travel follow-up** lists everyone travelling more than 2 hours each way, with their postcode and sessions. **Copy list** or **Download CSV** to work through them. Registrants views can be downloaded as CSV too.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Travel follow-up", href: "/admin/workspace/training-admin?tab=travel" },
+    since: "2026.10.16f",
+  },
   {
     id: "training-admin.catering-copy",
     title: "Send the caterer exactly what they need",

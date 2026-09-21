@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training admin: Travel follow-up tab + CSV downloads
+  {
+    title: "Training admin: Travel follow-up tab, and CSV downloads",
+    body: "- **Travel follow-up** \u2014 a new tab listing everyone who said their one-way trip to downtown Toronto is **over 2 hours**, one row per person: name, email, postcode, each session they asked for with its decision, and when they registered. **Copy list** (pastes into a spreadsheet as columns) or **Download CSV**.\n- **Registrants views** can now be **downloaded as CSV** as well as copied \u2014 the file is named after the view and the date.\n\nCSV files open cleanly in Excel, accented names included.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training admin: Catering & accessibility tab
   {
     title: "Training admin: a Catering & accessibility tab",

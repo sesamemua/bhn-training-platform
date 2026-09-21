@@ -199,3 +199,36 @@ export function applyView(rows: RegistrantRow[], view: View): Group[] {
     .sort((a, b) => a.order.localeCompare(b.order))
     .map(({ key, label, rows }) => ({ key, label, rows: rows.sort((x, y) => x.name.localeCompare(y.name)) }));
 }
+
+
+// ── travel follow-up ────────────────────────────────────────────────
+
+export interface Traveller {
+  personKey: string;
+  name: string;
+  email: string;
+  postcode: string;
+  sessions: { workshop: string; dayLabel: string; status: string; start: string }[];
+  appliedAt: string;
+}
+
+/** Everyone who said their one-way trip is over 2 hours — one row per person. */
+export function travellers(rows: RegistrantRow[]): Traveller[] {
+  const m = new Map<string, Traveller>();
+  for (const r of rows) {
+    if (r.travel !== "far") continue;
+    const t = m.get(r.personKey) ?? { personKey: r.personKey, name: r.name, email: r.email, postcode: r.postcode, sessions: [], appliedAt: r.appliedAt };
+    t.sessions.push({ workshop: r.workshop, dayLabel: r.dayLabel, status: r.status, start: r.workshopStart });
+    m.set(r.personKey, t);
+  }
+  for (const t of m.values()) t.sessions.sort((a, b) => a.start.localeCompare(b.start));
+  return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export const TRAVEL_HEAD = ["Name", "Email", "Postcode", "Sessions", "Registered"];
+const DECISION: Record<string, string> = { pending: "not decided", confirmed: "approved", waitlist: "waitlisted", cancelled: "declined" };
+export const travellerCells = (t: Traveller) => [
+  t.name, t.email, t.postcode,
+  t.sessions.map((s) => `${s.dayLabel} ${s.workshop} (${DECISION[s.status] ?? s.status})`).join("; "),
+  new Date(t.appliedAt).toLocaleDateString("en-CA"),
+];
