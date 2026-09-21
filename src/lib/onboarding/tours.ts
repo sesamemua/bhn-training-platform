@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16b";
+export const TOUR_VERSION = "2026.10.16c";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "training-admin.registrant-views",
+    title: "See registrants the way you need them",
+    body: "**Registrants** has views along the top \u2014 by workshop, by day, dietary & accessibility, approved, declined, waitlisted, letters not sent, by distance. Adjust the filters and grouping, then **Save as new view** to keep it; saved views can be updated, renamed or deleted, and every admin sees them. **Copy this view as CSV** hands a list straight to catering.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training admin", href: "/admin/workspace/training-admin" },
+    since: "2026.10.16c",
+  },
   {
     id: "training-admin.letters",
     title: "Decide now, email when you're ready",

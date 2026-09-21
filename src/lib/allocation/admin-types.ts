@@ -27,6 +27,16 @@ export interface AdminBooking {
   applicant: ApplicantInfo;
   /** The latest decision has not been emailed to them yet. */
   letterOwed: boolean;
+  /** Said on the registration: what the Registrants views read. */
+  registrant: {
+    /** One person: their registration, or their account. */
+    personKey: string;
+    dietary: string[];
+    dietaryOther: string;
+    /** "" not answered · "none" said none · otherwise what they wrote. */
+    accessibility: string;
+    postcode: string;
+  };
 }
 
 export interface AdminWorkshop {
@@ -69,6 +79,8 @@ export function countsOf(w: AdminWorkshop) {
 
 /** Where the decision model is stored in PlatformSetting. */
 export const RULES_KEY = "trainingWeek.allocationRules";
+/** Where the saved Registrants views are stored (shared by every admin). */
+export const REGISTRANT_VIEWS_KEY = "trainingWeek.registrantViews";
 
 export interface WorkshopInput {
   title: string;

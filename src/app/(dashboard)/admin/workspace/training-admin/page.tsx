@@ -18,6 +18,9 @@ import { TrainingAdmin } from "@/components/workspace/TrainingAdmin";
 import { loadRules } from "./actions";
 import { applicantFor } from "@/lib/allocation/applicants";
 import { letterDue } from "@/lib/allocation/decisions";
+import { REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
+import { REGISTRANT_VIEWS_KEY } from "@/lib/allocation/admin-types";
+import { parseViews } from "@/lib/allocation/registrant-views";
 import { emailKey } from "@/lib/eligibility/email-key";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +54,7 @@ export default async function TrainingAdminPage() {
     );
   }
 
-  const [rules, workshops] = await Promise.all([
+  const [rules, workshops, forms, savedViews] = await Promise.all([
     loadRules(),
     prisma.workshop.findMany({
       where: { eventId: event.id },
@@ -73,7 +76,27 @@ export default async function TrainingAdminPage() {
         },
       },
     }),
+    // Registration form versions: to find which answer is "accessibility"
+    // (its key was made by the form builder, so it is found by its label).
+    prisma.eventForm.findMany({ where: REGISTRATION_FORM_WHERE, select: { fields: true } }),
+    prisma.platformSetting.findUnique({ where: { key: REGISTRANT_VIEWS_KEY }, select: { value: true } }),
   ]);
+  const accessKeys = new Set(
+    forms.flatMap((f) => ((f.fields as { fields?: { key?: string; label?: string }[] } | null)?.fields ?? []))
+      .filter((q) => /accessib/i.test(q.label ?? "") && q.key)
+      .map((q) => q.key as string),
+  );
+  const said = (data: unknown) => {
+    const d = (data ?? {}) as Record<string, unknown>;
+    const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const access = [...accessKeys].map((k) => text(d[k])).find(Boolean) ?? "";
+    return {
+      dietary: Array.isArray(d.dietary) ? d.dietary.filter((x): x is string => typeof x === "string") : [],
+      dietaryOther: text(d.dietary_other),
+      accessibility: /^n\/?a\b/i.test(access) || /^none\b/i.test(access) ? "none" : access,
+      postcode: text(d.postcode).toUpperCase().slice(0, 3),
+    };
+  };
 
   /*
    * The trainee roster, looked up once for every email in play. An empty
@@ -112,6 +135,7 @@ export default async function TrainingAdminPage() {
         eventId={event.id}
         eventTitle={event.title}
         rules={rules}
+        views={parseViews(savedViews?.value)}
         workshops={workshops.map((w) => ({
           ...w,
           startDateTime: w.startDateTime.toISOString(),
@@ -124,6 +148,7 @@ export default async function TrainingAdminPage() {
             approvedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
             user: b.user ?? null,
             letterOwed: !!letterDue(b.notifiedStatus, b.status),
+            registrant: { personKey: personOf(b), ...said(b.submission?.data) },
             applicant: applicantFor({
               bookingId: b.id,
               status: b.status,

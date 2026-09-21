@@ -14,11 +14,12 @@ import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseRules, validateRules, type Rule } from "@/lib/allocation/model";
 import {
-  isAudience, isId, RULES_KEY,
+  isAudience, isId, REGISTRANT_VIEWS_KEY, RULES_KEY,
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
+import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
@@ -726,6 +727,34 @@ export async function deleteSubmission(id: string): Promise<{ ok: boolean }> {
   await logSend(admin.id, "training_admin.submission_deleted", { id, email: row.email, wasTest });
   revalidatePath(PAGE);
   return { ok: true };
+}
+
+// ── saved registrant views ───────────────────────────────────────────
+
+/**
+ * Save the whole list of custom Registrants views — create, rename,
+ * update and delete are all edits to this one list. Validated here, since
+ * a server action is a public endpoint: built-in ids, duplicates and
+ * anything malformed are dropped rather than stored.
+ */
+export async function saveRegistrantViews(views: unknown): Promise<{ ok: boolean; views: View[]; problem?: string }> {
+  await requireAdmin();
+  if (!Array.isArray(views)) return { ok: false, views: [], problem: "Nothing to save." };
+  const seen = new Set<string>();
+  const clean = views.flatMap((v) => {
+    const r = ViewSchema.safeParse(v);
+    if (!r.success || isBuiltInView(r.data.id) || seen.has(r.data.id)) return [];
+    seen.add(r.data.id);
+    return [r.data];
+  }).slice(0, 50);
+  const value = JSON.stringify(clean);
+  await prisma.platformSetting.upsert({
+    where: { key: REGISTRANT_VIEWS_KEY },
+    create: { key: REGISTRANT_VIEWS_KEY, value },
+    update: { value },
+  });
+  revalidatePath(PAGE);
+  return { ok: true, views: clean };
 }
 
 // ── deciding on a seat ───────────────────────────────────────────────

@@ -38,6 +38,8 @@ import {
   STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
 } from "@/lib/allocation/email-templates";
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
+import { RegistrantViews } from "./RegistrantViews";
+import type { View } from "@/lib/allocation/registrant-views";
 
 type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "email";
 
@@ -64,9 +66,9 @@ const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "wait
 const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending").length;
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, workshops,
+  eventId, eventTitle, rules: initialRules, views, workshops,
 }: {
-  eventId: string; eventTitle: string; rules: Rule[]; workshops: AdminWorkshop[];
+  eventId: string; eventTitle: string; rules: Rule[]; views: View[]; workshops: AdminWorkshop[];
 }) {
   // Opens on the dashboard: the first question anybody has here is
   // "how is it going", not "let me change the policy".
@@ -99,7 +101,7 @@ export function TrainingAdmin({
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
         {tab === "capacity" && <Capacity eventId={eventId} workshops={workshops} />}
-        {tab === "registrants" && <Registrants workshops={workshops} />}
+        {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
         {tab === "email" && <EmailSection eventId={eventId} workshops={workshops} />}
       </div>
     </div>
@@ -1122,109 +1124,17 @@ function LetterQueue({ workshops }: { workshops: AdminWorkshop[] }) {
   );
 }
 
-function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
-  const [filter, setFilter] = useState("");
-  const rows = useMemo(() => {
-    const all = workshops.flatMap((w) =>
-      w.bookings.map((b) => ({
-        workshop: w.title,
-        name: b.applicant.name,
-        email: b.applicant.email,
-        organization: b.user?.organization ?? "",
-        country: b.user?.country ?? "",
-        status: b.status,
-        letter: b.letterOwed ? "Not sent" : b.status === "pending" ? "" : "Sent",
-        position: b.waitlistPosition,
-        bookedAt: b.bookedAt,
-      })),
-    );
-    const q = filter.trim().toLowerCase();
-    return q
-      ? all.filter((r) =>
-          [r.workshop, r.name, r.email, r.organization, r.status].join(" ").toLowerCase().includes(q),
-        )
-      : all;
-  }, [workshops, filter]);
-
-  const csv = useMemo(() => {
-    const head = ["Workshop", "Name", "Email", "Organization", "Country", "Status", "Waitlist #", "Booked"];
-    const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-    return [head, ...rows.map((r) => [r.workshop, r.name, r.email, r.organization, r.country, r.status, r.position ?? "", r.bookedAt])]
-      .map((line) => line.map((c) => esc(String(c))).join(","))
-      .join("\n");
-  }, [rows]);
-
+/**
+ * Registrants: the letters owed, the list seen through a view (built-in
+ * or saved), and below it each registration with its seats to decide.
+ */
+function Registrants({ workshops, views }: { workshops: AdminWorkshop[]; views: View[] }) {
   return (
-    <>
+    <div className="space-y-5">
       <LetterQueue workshops={workshops} />
+      <RegistrantViews workshops={workshops} initialViews={views} />
       <Submissions />
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter by name, email, organisation, workshop, status"
-          className="w-full max-w-md rounded-md border border-line bg-elevated px-2.5 py-1.5 text-[13px] text-fg outline-none placeholder:text-subtle focus-visible:border-brand-500"
-        />
-        <p className="text-[12.5px] text-muted">{rows.length} rows</p>
-      </div>
-
-      {/* Wide, so it scrolls in its own box rather than the page. */}
-      <div className="mt-3 overflow-x-auto rounded-lg border border-line">
-        <table className="w-full min-w-[840px] border-collapse text-[12.5px]">
-          <thead>
-            <tr className="bg-elevated text-left">
-              {["Workshop", "Name", "Email", "Organisation", "Country", "Status", "Letter", "#", "Booked"].map((h) => (
-                <th key={h} className="whitespace-nowrap px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-subtle">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className="border-t border-line">
-                <td className="px-3 py-1.5 text-muted">{r.workshop}</td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-fg">{r.name}</td>
-                <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[11.5px] text-muted">{r.email}</td>
-                <td className="px-3 py-1.5 text-muted">{r.organization}</td>
-                <td className="px-3 py-1.5 text-muted">{r.country}</td>
-                <td className="px-3 py-1.5">
-                  <span className={`rounded px-1.5 py-0.5 text-[10.5px] font-bold ${
-                    r.status === "confirmed" ? "bg-emerald-500/12 text-emerald-500"
-                    : r.status === "waitlist" ? "bg-amber-500/12 text-amber-500"
-                    : r.status === "pending" ? "bg-brand-500/12 text-brand-400"
-                    : "bg-elevated text-subtle"}`}>{r.status}</span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5">
-                  {r.letter === "Not sent"
-                    ? <span className="rounded bg-amber-500/12 px-1.5 py-0.5 text-[10.5px] font-bold text-amber-600">Not sent</span>
-                    : <span className="text-[11.5px] text-subtle">{r.letter}</span>}
-                </td>
-                <td className="px-3 py-1.5 text-muted">{r.position ?? ""}</td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-subtle">{new Date(r.bookedAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={9} className="px-3 py-6 text-center text-muted">Nothing matches that.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <details className="mt-3">
-        <summary className="cursor-pointer text-[12.5px] text-muted hover:text-fg">
-          <ChevronDown size={12} className="inline" /> Copy as CSV
-        </summary>
-        {/* A textarea rather than a download: the viewer sandbox blocks
-            page-initiated downloads, and select-all-copy always works. */}
-        <textarea
-          readOnly
-          value={csv}
-          rows={6}
-          className="mt-2 w-full rounded-md border border-line bg-elevated p-2 font-mono text-[11px] text-muted"
-        />
-      </details>
     </div>
-    </>
   );
 }
 

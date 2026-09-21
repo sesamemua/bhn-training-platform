@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training admin: registrant views
+  {
+    title: "Training admin: registrant views — by workshop, day, dietary, decision, email and distance",
+    body: "The **Registrants** tab now shows the list through a **view**:\n\n- **Nine built in:** *All*, *By workshop*, *By day*, *Dietary & accessibility* (one row per person, grouped by requirement \u2014 someone who is vegan and halal appears under both), *Approved*, *Declined*, *Waitlisted*, *Letters not sent*, and *By distance* (out of town over 2 hours / local / not answered, with the postcode).\n- **Adjust any view:** group by workshop, day, dietary requirement, accessibility, decision, email status or distance; show one row per **seat** or per **person**; filter by workshop, day, dietary, accessibility, decision, email status and distance; search names, emails, postcodes and needs.\n- **Save your own views** \u2014 **Save as new view**, then **Save changes**, **Rename** or **Delete view** (it asks first). Saved views are shared by every admin; deleting one never touches a registration.\n- **Copy this view as CSV** for catering or accessibility planning.\n\nThe Letters box and each registration\u2019s decision controls are still on the tab, below the views.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training admin: decide first, email when you choose
   {
     title: "Training admin: decisions no longer email people straight away",
