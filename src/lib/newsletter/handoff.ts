@@ -92,6 +92,8 @@ Choosing the shape:
   "Coming Soon".
 - "body" for everything else.
 Most pieces need only headline + body.
+- SECTION top is the issue's top story, printed first on a light band.
+  Keep it light: a headline, one or two short paragraphs, the key dates.
 
 Rules:
 - Return one entry for EVERY piece below, with its id copied exactly.

@@ -1,13 +1,14 @@
 /**
  * Newsletter workshop — shared vocabulary.
  *
- * The four sections mirror the programme names used everywhere else on
- * the platform, plus a per-issue events block. Colours and sub-labels
- * are lifted verbatim from the shipped Mailchimp template so a rendered
- * issue is indistinguishable from a hand-built one.
+ * A top story that opens the issue, then sections that mirror the
+ * programme names used everywhere else on the platform, plus a per-issue
+ * events block. Colours and sub-labels are lifted verbatim from the
+ * shipped Mailchimp template so a rendered issue is indistinguishable
+ * from a hand-built one.
  */
 
-export const SECTIONS = ["engage", "experience", "equip", "event"] as const;
+export const SECTIONS = ["top", "engage", "experience", "equip", "event"] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export function isSection(s: string): s is Section {
@@ -27,11 +28,29 @@ export interface SectionTheme {
   accent: string;
   /** Divider + glance-card label tint. */
   rule: string;
+  /** A pale band with a small label instead of a solid ribbon. */
+  light?: boolean;
+  /** What the section is for, told to contributors and to the AI layout. */
+  brief?: string;
 }
 
 /** Verbatim from the June 2026 issue. Don't drift these — they're the
  *  reason a generated issue matches the hand-built ones. */
 export const SECTION_THEME: Record<Section, SectionTheme> = {
+  // The lead item, before the programmes. Light on purpose: a pale band
+  // and a small label rather than another block of solid colour, so the
+  // issue opens on the story. The tagline is empty — in the email the
+  // label says it all.
+  top: {
+    label: "TOP STORY",
+    tagline: "",
+    solid: "#016e8f",
+    ribbon: "linear-gradient(135deg, #f3f8fa 0%, #e6f0f4 100%)",
+    accent: "#016e8f",
+    rule: "#016e8f",
+    light: true,
+    brief: "The issue's lead story, printed first on a light band. Keep it light: a headline, a sentence or two, the key dates and one link.",
+  },
   engage: {
     label: "ENGAGE",
     tagline: "Training · Development",

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Newsletter: Top Story section
+  {
+    title: "Newsletter: a Top Story section before ENGAGE",
+    body: "The Newsletter workshop has a **Top Story** box above ENGAGE for the issue\u2019s lead item. In the email it opens the issue on a **light band** with a small TOP STORY label instead of a coloured ribbon. Keep it light: a headline, a sentence or two, the key dates and one link \u2014 the AI layout and the \u201cUse my own AI\u201d prompt are told the same.\n\nThe **September** issue\u2019s top story is pre-filled with the **2026 Annual Symposium & Training Week** from biohubnet.ca: Training Week dates, the symposium date and venue, ticket prices, a **Register Now** button and links to the program and Training Week. Edit it like any contribution.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Knowledge Exchange: awardee intake form
   {
     title: "Knowledge Exchange: an intake form for awardees",

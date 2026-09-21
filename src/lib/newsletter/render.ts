@@ -32,6 +32,8 @@ function safeUrl(u: string | undefined): string | null {
 }
 
 const FONT = "Arial, Helvetica, sans-serif";
+/** The top story's pale band. */
+const LIGHT_BAND = "#f3f8fa";
 
 function paragraph(text: string, last = false, attrs = ""): string {
   return `<p${attrs} style="margin:0 0 ${last ? 0 : 16}px 0; font-family:${FONT}; font-size:15px; line-height:24px; color:#3a4a5c;">${esc(text)}</p>`;
@@ -175,13 +177,18 @@ export function renderIssue(input: RenderIssueInput): string {
     const pieces = input.bySection[s] ?? [];
     if (pieces.length === 0) continue; // an empty section prints nothing
     const t = SECTION_THEME[s];
-
-    parts.push(`<tr><td style="background-color:${t.solid}; background-image:${t.ribbon}; padding:22px 36px;" align="left"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td valign="middle"><p style="margin:0; font-family:${FONT}; font-size:26px; line-height:32px; color:#ffffff; font-weight:700; letter-spacing:1px;">${t.label} <span style="font-weight:400; font-size:14px; letter-spacing:1px; padding-left:6px; color:#ffffff;"> ${esc(t.tagline)}</span></p></td></tr></tbody></table></td></tr>`);
-
     const inner = pieces
       .map((p, i) => renderPiece(p, s, i === pieces.length - 1, ids[s]?.[i]))
       .join("\n");
-    parts.push(`<tr><td style="padding:44px 44px 32px 44px;" align="left">${inner}</td></tr>`);
+
+    if (t.light) {
+      // A small label on a pale band, the story straight under it.
+      parts.push(`<tr><td style="background-color:${LIGHT_BAND}; padding:30px 44px 0 44px;" align="left"><p style="margin:0; font-family:${FONT}; font-size:13px; line-height:18px; color:${t.accent}; font-weight:700; letter-spacing:2.5px; text-transform:uppercase;">${esc(t.label)}</p></td></tr>`);
+      parts.push(`<tr><td style="background-color:${LIGHT_BAND}; padding:12px 44px 36px 44px;" align="left">${inner}</td></tr>`);
+    } else {
+      parts.push(`<tr><td style="background-color:${t.solid}; background-image:${t.ribbon}; padding:22px 36px;" align="left"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td valign="middle"><p style="margin:0; font-family:${FONT}; font-size:26px; line-height:32px; color:#ffffff; font-weight:700; letter-spacing:1px;">${t.label} <span style="font-weight:400; font-size:14px; letter-spacing:1px; padding-left:6px; color:#ffffff;"> ${esc(t.tagline)}</span></p></td></tr></tbody></table></td></tr>`);
+      parts.push(`<tr><td style="padding:44px 44px 32px 44px;" align="left">${inner}</td></tr>`);
+    }
     parts.push(`<tr><td style="height:8px; line-height:8px; font-size:1px;">&nbsp;</td></tr>`);
   }
 

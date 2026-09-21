@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16h";
+export const TOUR_VERSION = "2026.10.16i";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "newsletter.top-story",
+    title: "Open the newsletter with a top story",
+    body: "**Workspace \u2192 Marketing \u2192 Newsletter** has a **Top Story** box above ENGAGE. It opens the email on a light band \u2014 keep it to a headline, a sentence or two and one link. This month\u2019s is pre-filled with the Symposium & Training Week.",
+    path: "/admin/workspace/marketing/newsletter",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open the Newsletter", href: "/admin/workspace/marketing/newsletter" },
+    since: "2026.10.16i",
+  },
   {
     id: "knowledge-exchange.awardee-intake",
     title: "Collect Knowledge Exchange awardee details",

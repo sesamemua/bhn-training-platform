@@ -118,7 +118,8 @@ export async function normalisePiece(
   const USER: ChatMessage = {
     role: "user",
     content: [
-      `## Section: ${theme.label} (${theme.tagline})`,
+      `## Section: ${theme.label}${theme.tagline ? ` (${theme.tagline})` : ""}`,
+      theme.brief ? `## What this section is for\n${theme.brief}` : "",
       input.siblingHeadlines?.length
         ? `## Headlines already used this issue (don't repeat)\n${input.siblingHeadlines.map((h) => `- ${h}`).join("\n")}`
         : "",

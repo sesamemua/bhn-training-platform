@@ -2,7 +2,7 @@
 /**
  * Newsletter workshop.
  *
- * Left: four drop-boxes, one per section — a colleague pastes whatever
+ * Left: one drop-box per section — a colleague pastes whatever
  * they have and hits Add. No formatting rules, no fields to fill in.
  * Right: the assembled issue. "Lay out with AI" normalises every new
  * contribution and renders the Mailchimp fragment, which the editor
@@ -144,12 +144,13 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
             return (
               <section key={s} className="rounded-2xl border border-line bg-card overflow-hidden">
                 <header
-                  className="px-4 py-3 flex items-baseline gap-2 flex-wrap"
+                  className={`px-4 py-3 flex items-baseline gap-2 flex-wrap ${t.light ? "border-b border-line" : ""}`}
                   style={{ background: t.ribbon }}
                 >
-                  <h3 className="text-white font-bold tracking-wide text-sm">{t.label}</h3>
-                  <span className="text-white/80 text-[11px]">{t.tagline}</span>
-                  <span className="ml-auto text-white/90 text-[11px] font-mono tabular-nums">
+                  {/* The top story's band is pale, so its words are dark — the colours it will have in the email. */}
+                  <h3 className="font-bold tracking-wide text-sm" style={{ color: t.light ? t.accent : "#ffffff" }}>{t.label}</h3>
+                  <span className="text-[11px]" style={{ color: t.light ? "#3a4a5c" : "rgba(255,255,255,0.8)" }}>{t.tagline}</span>
+                  <span className="ml-auto text-[11px] font-mono tabular-nums" style={{ color: t.light ? "#3a4a5c" : "rgba(255,255,255,0.9)" }}>
                     {mine.length} {mine.length === 1 ? "piece" : "pieces"}
                   </span>
                 </header>
@@ -234,7 +235,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                     value={d.body}
                     onChange={(e) => setDrafts((c) => ({ ...c, [s]: { ...d, body: e.target.value } }))}
                     rows={3}
-                    placeholder={`Paste anything for ${t.label} — a paragraph, bullets, a forwarded note.`}
+                    placeholder={t.brief ?? `Paste anything for ${t.label} — a paragraph, bullets, a forwarded note.`}
                     className="w-full text-sm bg-card border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 resize-y"
                   />
                   <div className="flex gap-2 flex-wrap">
