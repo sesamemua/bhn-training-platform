@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16g";
+export const TOUR_VERSION = "2026.10.16h";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "knowledge-exchange.awardee-intake",
+    title: "Collect Knowledge Exchange awardee details",
+    body: "**Workspace → Knowledge Exchange → Awardee Intake** has a link to send awardees: name, project, institutions, a photo, a quote and LinkedIn, no account needed. Submissions are **grouped by round** — new ones go into the current round (starting at Round 5), only admins see it, and you can move anyone. The quote’s word limit is set there too.",
+    path: "/admin/workspace/knowledge-exchange",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Awardee Intake", href: "/admin/workspace/knowledge-exchange" },
+    since: "2026.10.16h",
+  },
   {
     id: "equip.packet-characters",
     title: "Application PDFs print every character",

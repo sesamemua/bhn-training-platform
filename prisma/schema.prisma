@@ -6685,3 +6685,32 @@ model CodeReviewNote {
 
   @@index([reviewId, status])
 }
+
+/// A Knowledge Exchange awardee's details, sent by the awardee through the
+/// public form at /knowledge-exchange/awardee (no account). Used to
+/// introduce them — `quote` is quoted as written.
+model KnowledgeExchangeAwardee {
+  id              String   @id @default(cuid())
+  /// The Knowledge Exchange round. The team's, never shown to the
+  /// awardee: a submission is filed under the current round
+  /// (PlatformSetting "knowledgeExchange.currentRound", first round 5)
+  /// and an admin can move it.
+  round           Int
+  fullName        String
+  projectTitle    String
+  /// One sentence.
+  projectSummary  String
+  homeInstitution String
+  hostInstitution String
+  hostDepartment  String
+  /// Headshot or a photo in the lab: public R2 URL with a random key.
+  photoUrl        String
+  /// What they hope to achieve from the placement. Word-capped by
+  /// PlatformSetting "knowledgeExchange.quoteMaxWords" (default 40).
+  quote           String
+  linkedinUrl     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([round, createdAt])
+}

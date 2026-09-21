@@ -330,7 +330,7 @@ export function SpeakerIntakeForm({
   );
 }
 
-const INPUT =
+export const INPUT =
   "w-full rounded-lg border border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-3 py-2 text-[14px] text-[var(--speaker-control-ink)] outline-none transition focus:border-[var(--brand-500)]";
 
 /**
@@ -348,7 +348,7 @@ const INPUT =
  * the controls inside carry their own labels — and the HTML stops
  * claiming that one label describes three controls.
  */
-function Field({
+export function Field({
   label,
   hint,
   required,

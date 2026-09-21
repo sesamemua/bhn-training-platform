@@ -556,6 +556,18 @@ const workspaceInsightsSpeakersItem: NavItem = {
     "Industry Insights, 24 September. Hand the invited hiring professionals one link and they fill in their own headshot, bio, LinkedIn and what their session will cover — no account needed.",
 };
 
+// WORKSPACE → Knowledge Exchange → Awardee Intake. Its own subgroup, like
+// Industry Insights: a programme, not an event or a discipline. In the
+// Workspace because Administration → Experience is paused in production.
+const workspaceKeAwardeesItem: NavItem = {
+  label: "Awardee Intake",
+  href: "/admin/workspace/knowledge-exchange",
+  icon: Award,
+  minRole: "admin",
+  description:
+    "Send Knowledge Exchange awardees one link and they fill in their project, institutions, a photo, a quote and their LinkedIn — no account needed. Filed by round; only admins see the round.",
+};
+
 // WORKSPACE → Training Week → Dashboard. Flow Charts and the form
 // builder are general tools; this one is only ever about this event —
 // seats, rooms, who is coming and what they are told.
@@ -2101,6 +2113,9 @@ export function Sidebar({
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Industry Insights">
               <NavLink item={workspaceInsightsSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+            </AdminSubgroup>
+            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Knowledge Exchange">
+              <NavLink item={workspaceKeAwardeesItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Marketing">
               <NavLink item={workspaceGoogleAdsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

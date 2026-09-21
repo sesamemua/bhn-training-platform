@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Knowledge Exchange: awardee intake form
+  {
+    title: "Knowledge Exchange: an intake form for awardees",
+    body: "A public form for **Knowledge Exchange awardees** at **/knowledge-exchange/awardee** — no account needed. It asks for their full name, project title and a one-sentence description, home institution, host institution and department, a **headshot or a photo of them in the lab**, what they hope to achieve from the placement (**40 words**, used as a quote) and their LinkedIn (optional). Phone photos are shrunk before upload, and their location data is removed.\n\nSubmissions land in **Workspace → Knowledge Exchange → Awardee Intake**, **grouped by round** (or newest first), with **Download CSV**:\n\n- **Round** — only admins see it. New submissions go into the current round, starting at **Round 5**; move any awardee to another round from their card.\n- **Quote length** — change the 40-word limit there; the form follows at once.\n- **Delete** a submission (its photo goes too), after a confirmation.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── EQUIP: application PDFs print Greek letters, symbols and bullets
   {
     title: "EQUIP application PDFs: no more question marks",
