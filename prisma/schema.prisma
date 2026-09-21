@@ -2930,6 +2930,13 @@ model WorkshopBooking {
   /// Shown to nobody automatically — it goes into the letter only if
   /// they put it there.
   decisionNote     String?
+  /// What the registrant was last TOLD about this seat, and when. Deciding
+  /// no longer emails anyone; a letter goes when a coordinator sends it.
+  /// The letter owed is the move from `notifiedStatus` (null = never told
+  /// anything, i.e. undecided) to `status` — so a mind changed before
+  /// sending costs one letter with the final answer, not two.
+  notifiedStatus   String?
+  notifiedAt       DateTime?
 
   workshop   Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   user       User?                @relation(fields: [userId], references: [id], onDelete: Restrict)

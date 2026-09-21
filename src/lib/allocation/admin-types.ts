@@ -25,6 +25,8 @@ export interface AdminBooking {
   user: { id: string; name: string | null; email: string; organization: string | null; country: string | null } | null;
   /** What the decision model knows about the person — from the form and the roster. */
   applicant: ApplicantInfo;
+  /** The latest decision has not been emailed to them yet. */
+  letterOwed: boolean;
 }
 
 export interface AdminWorkshop {
@@ -161,6 +163,10 @@ export interface SubmissionRow {
     status: string;
     note: string | null;
     decidedAt: string | null;
+    /** The decision has not been emailed yet. */
+    letterOwed: boolean;
+    /** When they were last emailed about this seat. */
+    toldAt: string | null;
   }[];
   /** Everything else, by question label, for the expanded view. */
   answers: Record<string, string>;

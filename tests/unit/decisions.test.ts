@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  DECISIONS, DECISION_LABEL, describe as describeChange, isDecision, letterFor,
+  DECISIONS, DECISION_LABEL, describe as describeChange, isDecision, letterDue, letterFor,
   takesAQueueSpot, takesASeat,
 } from "../../src/lib/allocation/decisions";
 
@@ -54,4 +54,20 @@ test("only an approval takes a seat, and only a waitlist takes a queue spot", ()
   // over- or under-fills a room.
   assert.deepEqual(DECISIONS.filter(takesASeat), ["confirmed"]);
   assert.deepEqual(DECISIONS.filter(takesAQueueSpot), ["waitlist"]);
+});
+
+// ── letters are sent separately from decisions ──────────────────────
+
+test("a decision owes the letter from what they were last told to what is true now", () => {
+  assert.equal(letterDue(null, "pending"), null, "undecided and never told: nothing to say");
+  assert.equal(letterDue(null, "confirmed"), "approved");
+  assert.equal(letterDue(null, "cancelled"), "session_declined");
+  assert.equal(letterDue("confirmed", "confirmed"), null, "already told: nothing owed");
+  // Approved, then moved to the waitlist BEFORE any letter went: one letter, the final answer.
+  assert.equal(letterDue(null, "waitlist"), "waitlisted");
+  // Told they were approved, then waitlisted: they must hear it.
+  assert.equal(letterDue("confirmed", "waitlist"), "waitlisted");
+  // Taken back to undecided after being told: silent, as before.
+  assert.equal(letterDue("confirmed", "pending"), null);
+  assert.equal(letterDue("junk", "confirmed"), "approved", "an unreadable 'told' counts as never told");
 });

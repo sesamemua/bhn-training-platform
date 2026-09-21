@@ -17,6 +17,7 @@ import { PageHero } from "@/components/ui/PageHero";
 import { TrainingAdmin } from "@/components/workspace/TrainingAdmin";
 import { loadRules } from "./actions";
 import { applicantFor } from "@/lib/allocation/applicants";
+import { letterDue } from "@/lib/allocation/decisions";
 import { emailKey } from "@/lib/eligibility/email-key";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +63,7 @@ export default async function TrainingAdminPage() {
         partnerOrganization: true, shortDescription: true,
         bookings: {
           select: {
-            id: true, status: true, bookedAt: true, waitlistPosition: true, approvedAt: true, rank: true,
+            id: true, status: true, bookedAt: true, waitlistPosition: true, approvedAt: true, rank: true, notifiedStatus: true,
             userId: true, submissionId: true,
             user: { select: { id: true, name: true, email: true, organization: true, country: true } },
             // The registration behind a public-form seat: what the model reads.
@@ -122,6 +123,7 @@ export default async function TrainingAdminPage() {
             bookedAt: b.bookedAt.toISOString(),
             approvedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
             user: b.user ?? null,
+            letterOwed: !!letterDue(b.notifiedStatus, b.status),
             applicant: applicantFor({
               bookingId: b.id,
               status: b.status,

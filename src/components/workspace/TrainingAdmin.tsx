@@ -19,7 +19,7 @@ import {
 } from "@/lib/allocation/model";
 import { suggestSeats, type ApplicantInfo } from "@/lib/allocation/applicants";
 import {
-  applySeatSuggestions, createWorkshop, decideSeat, deleteSubmission, loadEmailTemplates, loadSubmissions, previewAudience,
+  applySeatSuggestions, createWorkshop, decideSeat, deleteSubmission, sendLetters, sendSeatLetter, loadEmailTemplates, loadSubmissions, previewAudience,
   removeWorkshop, resetEmailTemplate, saveEmailTemplate, saveRules, saveSupportFormUrl,
   sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
@@ -532,13 +532,14 @@ export function SeatSuggestions({ rules, workshops }: { rules: Rule[]; workshops
         out of town from the form&apos;s travel question, trainees from the roster, then first come.
         Suggestions only fill seats that are still open — a confirmed seat is never taken back.
         Nothing changes until you press <strong className="text-fg">Apply</strong>, and applying
-        emails each person their letter.
+        sends no email — the letters wait in the Letters box below until you send them.
       </p>
       {!verdict.ok && (
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-[12px] text-amber-600">
           The saved decision model can&apos;t allocate yet: {verdict.problem} Fix it on the Decision model tab.
         </p>
       )}
+      <LetterQueue workshops={workshops} />
       {rooms.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">
           Nobody has registered yet. Each workshop&apos;s ranking and suggestions appear here as registrations come in.
@@ -565,14 +566,13 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
 
   function apply() {
     const parts = [approve.length && `approve ${approve.length}`, waitlist.length && `waitlist ${waitlist.length}`].filter(Boolean).join(" and ");
-    if (!confirm(`${w.title}: ${parts}?\n\nEach person is emailed their letter now. You can still change any seat afterwards.`)) return;
+    if (!confirm(`${w.title}: ${parts}?\n\nNo emails go out yet — the letters wait in the Letters box until you send them. You can still change any seat.`)) return;
     setSaid(null);
     start(async () => {
       const r = await applySeatSuggestions(w.id, approve, waitlist);
       setSaid(r.ok
-        ? `Approved ${r.approved}, waitlisted ${r.waitlisted}.`
+        ? `Approved ${r.approved}, waitlisted ${r.waitlisted}. Letters are waiting to be sent.`
           + (r.skipped ? ` ${r.skipped} skipped — already decided elsewhere.` : "")
-          + (r.mailProblems ? ` ${r.mailProblems} letter${r.mailProblems === 1 ? "" : "s"} did not go out — check Registrants.` : "")
         : r.problem ?? "Nothing was applied.");
     });
   }
@@ -959,7 +959,11 @@ function Submissions() {
                   <button
                     className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-semibold text-muted hover:border-red-500/50 hover:text-red-500 disabled:opacity-40"
                     disabled={pending}
-                    onClick={() => start(async () => { await deleteSubmission(r.id); reload(); })}
+                    onClick={() => {
+                      const who = r.name || r.email || "this registration";
+                      if (!confirm(`Delete ${r.isTest ? "the test registration from" : "the registration from"} ${who}?\n\nTheir ${r.seats.length} seat request${r.seats.length === 1 ? "" : "s"} go with it. This can't be undone.`)) return;
+                      start(async () => { await deleteSubmission(r.id); reload(); });
+                    }}
                   >
                     <Trash2 size={12} /> Delete this {r.isTest ? "test " : ""}submission
                   </button>
@@ -995,13 +999,21 @@ function Seat({ seat, onDone }: { seat: SubmissionRow["seats"][number]; onDone: 
   const [mail, setMail] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  // Deciding records the decision only; the letter waits (seat.letterOwed)
+  // until it is sent here, per workshop, or all at once.
   const decide = (to: Decision) =>
     start(async () => {
       const r = await decideSeat(seat.id, to, note);
       setSaid(r.ok ? r.said ?? null : r.problem ?? "Could not record that.");
+      setMail(null);
+      onDone();
+    });
+  const send = () =>
+    start(async () => {
+      const r = await sendSeatLetter(seat.id);
       // What happened to the letter, said out loud. A coordinator told
       // it went out when it did not will never follow up.
-      setMail(r.receipt ? receiptLine(r.receipt) : null);
+      setMail(r.receipt ? receiptLine(r.receipt) : r.problem ?? "Nothing to send — they already know.");
       onDone();
     });
 
@@ -1039,9 +1051,74 @@ function Seat({ seat, onDone }: { seat: SubmissionRow["seats"][number]; onDone: 
         onChange={(e) => setNote(e.target.value)}
       />
 
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11.5px]">
+        {seat.letterOwed ? (
+          <>
+            <span className="rounded bg-amber-500/12 px-1.5 py-0.5 font-bold text-amber-600">Letter not sent</span>
+            <button type="button" onClick={send} disabled={pending} className={BTN}>
+              <Mail size={12} /> Send letter
+            </button>
+          </>
+        ) : seat.toldAt ? (
+          <span className="text-muted">Emailed {new Date(seat.toldAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+        ) : null}
+      </div>
+
       {said && <p role="status" className="mt-1.5 text-[11.5px] text-fg">{said}</p>}
       {mail && <p className="mt-0.5 text-[11.5px] text-muted">{mail}</p>}
     </div>
+  );
+}
+
+/**
+ * The letters owed: decisions taken but not yet emailed. Pick one
+ * workshop or all of them, see how many, send. Confirmed before it runs,
+ * because it writes to people.
+ */
+function LetterQueue({ workshops }: { workshops: AdminWorkshop[] }) {
+  const [scope, setScope] = useState<string>("all");
+  const [pending, start] = useTransition();
+  const [said, setSaid] = useState<string | null>(null);
+  const owed = (w: AdminWorkshop) => w.bookings.filter((b) => b.letterOwed).length;
+  const total = workshops.reduce((n, w) => n + owed(w), 0);
+  const picked = scope === "all" ? null : workshops.find((w) => w.id === scope) ?? null;
+  const count = picked ? owed(picked) : total;
+
+  function send() {
+    const where = picked ? `for ${picked.title}` : "across all workshops";
+    if (!confirm(`Send ${count} letter${count === 1 ? "" : "s"} ${where}?\n\nEach person gets the letter for their seat's current decision.`)) return;
+    setSaid(null);
+    start(async () => {
+      const r = await sendLetters(picked ? { workshopId: picked.id } : {});
+      setSaid(r.ok
+        ? `Sent ${r.sent}.` + (r.notSent ? ` ${r.notSent} did not go out — they stay in the queue; open the registration to see why.` : "")
+        : r.problem ?? "Nothing was sent.");
+    });
+  }
+
+  return (
+    <section className={`${CARD} flex flex-wrap items-center gap-3`}>
+      <Mail size={16} className="text-muted" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-bold text-fg">
+          Letters · {total === 0 ? "nothing waiting" : `${total} decision${total === 1 ? "" : "s"} not emailed yet`}
+        </p>
+        <p className="text-[11.5px] text-muted">Deciding a seat no longer emails anyone. Send the letters here — for one workshop or all — or one by one from each registration.</p>
+      </div>
+      <select
+        aria-label="Which workshop's letters"
+        value={scope}
+        onChange={(e) => setScope(e.target.value)}
+        className="rounded-md border border-line bg-elevated px-2 py-1.5 text-[12.5px] text-fg"
+      >
+        <option value="all">All workshops ({total})</option>
+        {workshops.map((w) => <option key={w.id} value={w.id}>{w.title} ({owed(w)})</option>)}
+      </select>
+      <button type="button" onClick={send} disabled={pending || count === 0} className={PRIMARY}>
+        {pending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />} Send {count} letter{count === 1 ? "" : "s"}
+      </button>
+      {said && <p role="status" className="basis-full text-[12px] text-fg">{said}</p>}
+    </section>
   );
 }
 
@@ -1056,6 +1133,7 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
         organization: b.user?.organization ?? "",
         country: b.user?.country ?? "",
         status: b.status,
+        letter: b.letterOwed ? "Not sent" : b.status === "pending" ? "" : "Sent",
         position: b.waitlistPosition,
         bookedAt: b.bookedAt,
       })),
@@ -1078,6 +1156,7 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
 
   return (
     <>
+      <LetterQueue workshops={workshops} />
       <Submissions />
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1095,7 +1174,7 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
         <table className="w-full min-w-[840px] border-collapse text-[12.5px]">
           <thead>
             <tr className="bg-elevated text-left">
-              {["Workshop", "Name", "Email", "Organisation", "Country", "Status", "#", "Booked"].map((h) => (
+              {["Workshop", "Name", "Email", "Organisation", "Country", "Status", "Letter", "#", "Booked"].map((h) => (
                 <th key={h} className="whitespace-nowrap px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-subtle">{h}</th>
               ))}
             </tr>
@@ -1115,12 +1194,17 @@ function Registrants({ workshops }: { workshops: AdminWorkshop[] }) {
                     : r.status === "pending" ? "bg-brand-500/12 text-brand-400"
                     : "bg-elevated text-subtle"}`}>{r.status}</span>
                 </td>
+                <td className="whitespace-nowrap px-3 py-1.5">
+                  {r.letter === "Not sent"
+                    ? <span className="rounded bg-amber-500/12 px-1.5 py-0.5 text-[10.5px] font-bold text-amber-600">Not sent</span>
+                    : <span className="text-[11.5px] text-subtle">{r.letter}</span>}
+                </td>
                 <td className="px-3 py-1.5 text-muted">{r.position ?? ""}</td>
                 <td className="whitespace-nowrap px-3 py-1.5 text-subtle">{new Date(r.bookedAt).toLocaleDateString()}</td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted">Nothing matches that.</td></tr>
+              <tr><td colSpan={9} className="px-3 py-6 text-center text-muted">Nothing matches that.</td></tr>
             )}
           </tbody>
         </table>

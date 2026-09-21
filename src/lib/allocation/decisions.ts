@@ -56,6 +56,16 @@ export function letterFor(from: Decision, to: Decision): string | null {
   return LETTER_FOR[to];
 }
 
+/**
+ * The letter still owed on a seat: the move from what the registrant was
+ * last told (`notified`, null = never told anything) to where the seat
+ * stands now. Null when there is nothing to send.
+ */
+export function letterDue(notified: string | null | undefined, status: string): string | null {
+  if (!isDecision(status)) return null;
+  return letterFor(isDecision(notified) ? notified : "pending", status);
+}
+
 /** Said in the audit log, and back to the coordinator. */
 export function describe(from: Decision, to: Decision): string {
   if (from === to) return `left as ${DECISION_LABEL[to].toLowerCase()}`;

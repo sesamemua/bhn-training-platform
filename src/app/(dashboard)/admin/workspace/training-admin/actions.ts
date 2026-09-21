@@ -23,7 +23,7 @@ import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
 import {
-  describe as describeDecision, isDecision, letterFor, type Decision,
+  describe as describeDecision, isDecision, letterDue, type Decision,
 } from "@/lib/allocation/decisions";
 import type { Receipt } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
@@ -659,7 +659,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
       bookings: {
         orderBy: { rank: "asc" },
         select: {
-          id: true, status: true, rank: true, decisionNote: true, approvedAt: true,
+          id: true, status: true, rank: true, decisionNote: true, approvedAt: true, notifiedStatus: true, notifiedAt: true,
           workshop: { select: { title: true, capacity: true } },
         },
       },
@@ -692,6 +692,8 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
         status: b.status,
         note: b.decisionNote,
         decidedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
+        letterOwed: !!letterDue(b.notifiedStatus, b.status),
+        toldAt: b.notifiedAt ? b.notifiedAt.toISOString() : null,
       })),
       answers: Object.fromEntries(
         doc.fields
@@ -733,7 +735,8 @@ export async function deleteSubmission(id: string): Promise<{ ok: boolean }> {
  * coordinator just reviewed and confirmed on the Seat suggestions tab.
  *
  * Each seat goes through decideSeat, one at a time, so every one gets the
- * same letter, calendar entry and audit line as a single click would.
+ * same audit line as a single click would. No letters go out here — they
+ * are owed, and sent from the Letters box when the coordinator is ready.
  * Only seats still in this workshop and still undecided / waitlisted are
  * touched: anything decided in another tab since the page loaded is left
  * alone rather than overwritten.
@@ -742,9 +745,9 @@ export async function applySeatSuggestions(
   workshopId: string,
   approve: string[],
   waitlist: string[],
-): Promise<{ ok: boolean; approved: number; waitlisted: number; skipped: number; mailProblems: number; problem?: string }> {
+): Promise<{ ok: boolean; approved: number; waitlisted: number; skipped: number; problem?: string }> {
   await requireAdmin();
-  if (!isId(workshopId)) return { ok: false, approved: 0, waitlisted: 0, skipped: 0, mailProblems: 0, problem: "That is not a workshop." };
+  if (!isId(workshopId)) return { ok: false, approved: 0, waitlisted: 0, skipped: 0, problem: "That is not a workshop." };
   const wanted = [...approve.map((id) => [id, "confirmed"] as const), ...waitlist.map((id) => [id, "waitlist"] as const)]
     .filter(([id]) => isId(id))
     .slice(0, 200);
@@ -753,7 +756,7 @@ export async function applySeatSuggestions(
     select: { id: true, status: true },
   });
   const current = new Map(rows.map((r) => [r.id, r.status]));
-  let approved = 0, waitlisted = 0, skipped = 0, mailProblems = 0;
+  let approved = 0, waitlisted = 0, skipped = 0;
   for (const [id, to] of wanted) {
     const now = current.get(id);
     const movable = to === "confirmed" ? now === "pending" || now === "waitlist" : now === "pending";
@@ -761,50 +764,37 @@ export async function applySeatSuggestions(
     const r = await decideSeat(id, to);
     if (!r.ok) { skipped++; continue; }
     if (to === "confirmed") approved++; else waitlisted++;
-    // A letter that did not reach the registrant is counted, so the
-    // coordinator knows to follow up rather than assume it went.
-    if (r.receipt && r.receipt.state !== "sent" && r.receipt.state !== "sent-to-you") mailProblems++;
   }
   revalidatePath(PAGE);
-  return { ok: true, approved, waitlisted, skipped, mailProblems };
+  return { ok: true, approved, waitlisted, skipped };
 }
 
 /**
- * Approve, waitlist, decline, or take it back.
+ * Approve, waitlist, decline, or take it back — the DECISION only.
  *
  * REVERSIBLE by design: every decision is a move between four states,
  * and any move is allowed. Coordinators change their minds — somebody
  * drops out, a room grows, a mistake is spotted — and a system that
  * only moves forwards makes the fix a database job.
  *
- * A change that lands on a real decision writes to the registrant,
- * including a reversal: somebody told they had a place and then moved
- * to the waitlist has to hear it from us rather than notice. Going back
- * to undecided is silent — "your place is now undecided" is worse than
- * saying nothing, and the next real decision is the news.
- *
- * The letter is sent AFTER the row is written and its outcome reported,
- * never swallowed. A decision is not lost because the mail server is
- * having a bad afternoon, and a coordinator who is told it went out
- * when it did not will not follow up.
+ * Deciding no longer emails anyone. The seat now owes a letter (see
+ * letterDue), sent when a coordinator chooses: one seat at a time, one
+ * workshop, or everything owed at once (sendSeatLetter / sendLetters).
+ * Pass `send: true` to decide and send in one go.
  */
 export async function decideSeat(
   bookingId: string,
   to: string,
   note?: string,
-): Promise<{ ok: boolean; problem?: string; said?: string; receipt?: Receipt }> {
+  opts?: { send?: boolean },
+): Promise<{ ok: boolean; problem?: string; said?: string; letterOwed?: boolean; receipt?: Receipt }> {
   const admin = await requireAdmin();
   if (!isDecision(to)) return { ok: false, problem: "That is not a decision." };
   if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
 
   const booking = await prisma.workshopBooking.findUnique({
     where: { id: bookingId },
-    select: {
-      id: true, status: true, rank: true, bookedAt: true,
-      workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, capacity: true } },
-      user: { select: { name: true, email: true } },
-      submission: { select: { id: true, data: true, email: true } },
-    },
+    select: { id: true, status: true, notifiedStatus: true, workshop: { select: { title: true } } },
   });
   if (!booking) return { ok: false, problem: "That seat no longer exists." };
 
@@ -831,39 +821,112 @@ export async function decideSeat(
   const said = `${booking.workshop.title}: ${describeDecision(from, decision)}`;
   revalidatePath(PAGE);
 
-  const templateId = letterFor(from, decision);
-  if (!templateId) return { ok: true, said };
+  if (opts?.send) {
+    const sent = await sendSeatLetter(bookingId);
+    return { ok: true, said, letterOwed: !sent.delivered && !!sent.receipt, receipt: sent.receipt };
+  }
+  return { ok: true, said, letterOwed: !!letterDue(booking.notifiedStatus, decision) };
+}
 
+/** Did the letter reach somebody? A test registration's goes to the person running it. */
+const delivered = (r: Receipt) => r.state === "sent" || r.state === "sent-to-you";
+
+/**
+ * Send the letter a seat owes, if it owes one.
+ *
+ * The letter is the move from what the registrant was last told to where
+ * the seat stands NOW — so approve-then-waitlist before sending is one
+ * waitlist letter, and a decision taken back to what they already know
+ * owes nothing. Only a letter that actually went out marks them told; a
+ * failed one stays owed, so it shows up again rather than vanishing.
+ */
+export async function sendSeatLetter(bookingId: string): Promise<{ ok: boolean; delivered: boolean; receipt?: Receipt; problem?: string }> {
+  const admin = await requireAdmin();
+  if (!isId(bookingId)) return { ok: false, delivered: false, problem: "That is not a seat." };
+  const booking = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true,
+      workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true } },
+      user: { select: { name: true, email: true } },
+      submission: { select: { data: true, email: true } },
+    },
+  });
+  if (!booking) return { ok: false, delivered: false, problem: "That seat no longer exists." };
+  const templateId = letterDue(booking.notifiedStatus, booking.status);
+  if (!templateId) return { ok: true, delivered: false };
+
+  const told = isDecision(booking.notifiedStatus) ? booking.notifiedStatus : "pending";
   const answers = ((booking.submission?.data ?? {}) as Record<string, unknown>) as Answers;
-  const to_ = booking.submission?.email ?? booking.user?.email ?? null;
   /*
-   * The calendar entry follows the SEAT, not the letter.
-   *
-   * An approval carries one to add. A seat that WAS approved and no
-   * longer is carries the withdrawal — same entry, removed — because
-   * otherwise the session stays in their calendar for ever and they
-   * turn up to a room with no place for them. Nothing else carries one:
-   * a waitlist is not a date to put in a diary.
+   * The calendar entry follows the SEAT, not the letter: an approval
+   * carries one to add; a seat they were told was approved and no longer
+   * is carries the withdrawal, or the session stays in their calendar and
+   * they turn up to a room with no place for them.
    */
   const calendar =
-    decision === "confirmed" ? "add" as const
-    : from === "confirmed" ? "remove" as const
+    booking.status === "confirmed" ? "add" as const
+    : told === "confirmed" ? "remove" as const
     : undefined;
 
   const receipt = await sendDecisionLetter(templateId, {
-    to: to_,
+    to: booking.submission?.email ?? booking.user?.email ?? null,
     name: String(answers.first_name ?? answers.trainee_name ?? booking.user?.name ?? "").trim(),
     session: booking.workshop.title,
     start: booking.workshop.startDateTime,
     end: booking.workshop.endDateTime,
     venue: booking.workshop.locationName,
-    note: note?.trim() || null,
+    note: booking.decisionNote?.trim() || null,
     bookingId: booking.id,
     bookedAt: booking.bookedAt,
-    decidedAt: new Date(),
+    decidedAt: booking.approvedAt ?? new Date(),
     calendar,
   });
-  return { ok: true, said, receipt };
+
+  if (delivered(receipt)) {
+    await prisma.workshopBooking.update({
+      where: { id: booking.id },
+      data: { notifiedStatus: booking.status, notifiedAt: new Date() },
+    });
+  }
+  await logSend(admin.id, "training_admin.seat_letter", {
+    bookingId, template: templateId, state: receipt.state, workshop: booking.workshop.title,
+  });
+  revalidatePath(PAGE);
+  return { ok: true, delivered: delivered(receipt), receipt };
+}
+
+/**
+ * Send every letter owed — across the week, or for one workshop.
+ *
+ * One at a time through sendSeatLetter, so each is the same letter a
+ * single send would be, and one failure never stops the rest.
+ */
+export async function sendLetters(scope: { workshopId?: string } = {}): Promise<{
+  ok: boolean; sent: number; notSent: number; problem?: string;
+}> {
+  await requireAdmin();
+  if (scope.workshopId && !isId(scope.workshopId)) return { ok: false, sent: 0, notSent: 0, problem: "That is not a workshop." };
+  const eventId = await trainingWeekEventId();
+  if (!eventId) return { ok: false, sent: 0, notSent: 0, problem: "No Training Week event." };
+  const seats = await prisma.workshopBooking.findMany({
+    where: { workshop: { eventId, ...(scope.workshopId ? { id: scope.workshopId } : {}) } },
+    select: { id: true, status: true, notifiedStatus: true },
+    orderBy: { bookedAt: "asc" },
+  });
+  let sent = 0, notSent = 0;
+  for (const s of seats) {
+    if (!letterDue(s.notifiedStatus, s.status)) continue;
+    const r = await sendSeatLetter(s.id);
+    if (r.delivered) sent++; else notSent++;
+  }
+  return { ok: true, sent, notSent };
+}
+
+/** The Training Week event — the one carrying the most workshops, as the page picks it. */
+async function trainingWeekEventId(): Promise<string | null> {
+  const events = await prisma.bhnEvent.findMany({ select: { id: true, _count: { select: { workshops: true } } } });
+  return [...events].sort((a, b) => b._count.workshops - a._count.workshops)[0]?.id ?? null;
 }
 
 /** Decide several seats at once — the whole of one registration. */

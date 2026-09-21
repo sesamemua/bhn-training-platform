@@ -39,13 +39,23 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16a";
+export const TOUR_VERSION = "2026.10.16b";
 
 export const TOUR_STEPS: TourStep[] = [
   {
+    id: "training-admin.letters",
+    title: "Decide now, email when you're ready",
+    body: "Decisions on seats no longer email anyone. The **Letters** box on **Registrants** shows how many decisions haven't been sent \u2014 pick one workshop or all and press **Send**, or use **Send letter** on a single seat. Change your mind before sending and the person still gets just one letter, with the final answer.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training admin", href: "/admin/workspace/training-admin" },
+    since: "2026.10.16b",
+  },
+  {
     id: "training-admin.seat-suggestions",
     title: "Let the decision model suggest the seats",
-    body: "**Training admin \u2192 Seat suggestions** ranks every workshop by your saved decision model \u2014 out of town from the registration form, trainees from the roster, then first come \u2014 and suggests who to approve and who to waitlist for the seats still open, with the reason for each place. **Apply** carries out one workshop\u2019s suggestions after you confirm, and sends each person their letter.",
+    body: "**Training admin \u2192 Seat suggestions** ranks every workshop by your saved decision model \u2014 out of town from the registration form, trainees from the roster, then first come \u2014 and suggests who to approve and who to waitlist for the seats still open, with the reason for each place. **Apply** records one workshop\u2019s suggestions after you confirm; the letters wait in the Letters box.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["admin", "superadmin"],
