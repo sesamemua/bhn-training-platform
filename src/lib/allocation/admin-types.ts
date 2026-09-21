@@ -81,6 +81,8 @@ export function countsOf(w: AdminWorkshop) {
 export const RULES_KEY = "trainingWeek.allocationRules";
 /** Where the saved Registrants views are stored (shared by every admin). */
 export const REGISTRANT_VIEWS_KEY = "trainingWeek.registrantViews";
+/** What was last copied for the caterer — the baseline for "only what changed". */
+export const CATERING_COPY_KEY = "trainingWeek.cateringCopy";
 
 export interface WorkshopInput {
   title: string;

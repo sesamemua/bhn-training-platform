@@ -8,8 +8,9 @@
  * views are shared by every admin.
  */
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, Loader2, Pencil, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
-import { saveRegistrantViews } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { ChevronDown, ClipboardCopy, Loader2, Pencil, Plus, RotateCcw, Save, Trash2, UtensilsCrossed } from "lucide-react";
+import { saveCateringSnapshot, saveRegistrantViews } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { changesSince, currentEntries, fullText, updateText, type Snapshot } from "@/lib/allocation/catering";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
 import {
   BUILT_IN_VIEWS, GROUP_BY, GROUP_LABEL, LETTERS, LETTER_LABEL, STATUSES, TRAVELS, TRAVEL_LABEL,
@@ -55,6 +56,8 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       accessibility: b.registrant.accessibility,
       preference: b.applicant.preference,
       appliedAt: String(b.applicant.appliedAt),
+      workshopStart: w.startDateTime,
+      workshopEnd: w.endDateTime,
     })),
   );
 }
@@ -62,7 +65,9 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
 const toggle = <T,>(list: T[], x: T) => (list.includes(x) ? list.filter((y) => y !== x) : [...list, x]);
 const same = (a: View, b: View) => JSON.stringify({ ...a, name: "" }) === JSON.stringify({ ...b, name: "" });
 
-export function RegistrantViews({ workshops, initialViews }: { workshops: AdminWorkshop[]; initialViews: View[] }) {
+export function RegistrantViews({ workshops, initialViews, catering }: {
+  workshops: AdminWorkshop[]; initialViews: View[]; catering: Snapshot | null;
+}) {
   const [saved, setSaved] = useState<View[]>(initialViews);
   const all = [...BUILT_IN_VIEWS, ...saved];
   const [activeId, setActiveId] = useState("all");
@@ -132,6 +137,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
           </button>
         ))}
       </div>
+
+      {activeId === "dietary" && <CateringPanel rows={rows} initial={catering} />}
 
       {/* Filters */}
       <div className="mt-3 grid gap-2.5 rounded-lg border border-line bg-elevated/40 p-3 text-[12px]">
@@ -299,5 +306,115 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
         <textarea readOnly value={csv} rows={6} className="mt-2 w-full rounded-md border border-line bg-elevated p-2 font-mono text-[11px] text-muted" />
       </details>
     </section>
+  );
+}
+
+const stampOf = (iso: string) =>
+  new Date(iso).toLocaleString("en-CA", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+
+/**
+ * For the caterer: one big button that copies everything they need for
+ * the sessions still to come, and a second that copies only what changed
+ * since the last copy. Every copy becomes the new baseline.
+ */
+export function CateringPanel({ rows, initial }: { rows: RegistrantRow[]; initial: Snapshot | null }) {
+  const [snap, setSnap] = useState<Snapshot | null>(initial);
+  const [pending, start] = useTransition();
+  const [said, setSaid] = useState<string | null>(null);
+  const [fallback, setFallback] = useState<string | null>(null);
+  const [preview, setPreview] = useState<"full" | "update" | null>(null);
+
+  const entries = useMemo(() => currentEntries(rows), [rows]);
+  const changes = useMemo(() => changesSince(snap, entries), [snap, entries]);
+  const count = (k: string) => changes.filter((c) => c.kind === k).length;
+  const sessions = new Set(entries.map((e) => e.workshopId)).size;
+
+  const textFor = (kind: "full" | "update") => {
+    const now = new Date().toISOString();
+    return kind === "full" || !snap ? fullText(entries, now) : updateText(changes, entries, snap.at, now);
+  };
+
+  async function copy(kind: "full" | "update") {
+    const text = textFor(kind);
+    setFallback(null);
+    let byHand = false;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // No clipboard access (an iframe, an old browser): show it to copy by hand.
+      byHand = true;
+      setFallback(text);
+    }
+    start(async () => {
+      const r = await saveCateringSnapshot(entries);
+      if (r.ok && r.snapshot) {
+        setSnap(r.snapshot);
+        setSaid(byHand
+          ? "Copy the text below by hand — it is now the baseline for the next update."
+          : `${kind === "full" ? "Everything" : "The changes"} copied — paste into your email to the caterer.`);
+      } else setSaid(r.problem ?? "Copied, but could not record it — the next update may repeat these changes.");
+    });
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border-2 border-brand-500/30 bg-brand-500/[0.04] p-4">
+      <div className="flex flex-wrap items-start gap-4">
+        <UtensilsCrossed size={22} className="mt-1 shrink-0 text-brand-500" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-bold text-fg">For the caterer</p>
+          <p className="mt-0.5 text-[12.5px] text-muted">
+            Approved attendees of the {sessions} session{sessions === 1 ? "" : "s"} still to come — headcount, dietary requirements with names,
+            and accessibility needs. Sessions that are over are left out.
+          </p>
+          <p className="mt-1.5 text-[12.5px]">
+            {snap ? (
+              <>
+                <span className="text-muted">Last copied {stampOf(snap.at)}{snap.by ? ` by ${snap.by}` : ""}. </span>
+                {changes.length === 0
+                  ? <span className="font-semibold text-emerald-600">Nothing has changed since.</span>
+                  : <span className="font-semibold text-amber-600">Since then: {count("added")} added · {count("changed")} changed · {count("removed")} no longer attending.</span>}
+              </>
+            ) : (
+              <span className="text-muted">Not copied yet.</span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => copy("full")}
+          disabled={pending}
+          className="inline-flex h-12 items-center gap-2 rounded-xl bg-brand-600 px-6 text-[15px] font-bold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+        >
+          {pending ? <Loader2 size={18} className="animate-spin" /> : <ClipboardCopy size={18} />} Copy for the caterer
+        </button>
+        <button
+          type="button"
+          onClick={() => copy("update")}
+          disabled={pending || !snap || changes.length === 0}
+          title={!snap ? "Copy everything once first" : changes.length === 0 ? "Nothing has changed since the last copy" : undefined}
+          className="inline-flex h-12 items-center gap-2 rounded-xl border-2 border-brand-500/50 px-5 text-[14px] font-bold text-fg hover:bg-brand-500/10 disabled:opacity-40"
+        >
+          Copy only what changed{snap && changes.length ? ` (${changes.length})` : ""}
+        </button>
+        <button type="button" onClick={() => setPreview(preview ? null : snap && changes.length ? "update" : "full")} className="ml-1 text-[12px] font-semibold text-muted underline-offset-2 hover:text-fg hover:underline">
+          {preview ? "Hide preview" : "Preview"}
+        </button>
+      </div>
+
+      {said && <p role="status" className="mt-2 text-[12.5px] font-medium text-fg">{said}</p>}
+      {fallback && <textarea readOnly autoFocus onFocus={(e) => e.currentTarget.select()} value={fallback} rows={10} className="mt-2 w-full rounded-md border border-line bg-card p-2 font-mono text-[11.5px] text-fg" />}
+      {preview && !fallback && (
+        <div className="mt-3">
+          <div className="mb-1 flex gap-1.5">
+            <button type="button" className={pill(preview === "full")} onClick={() => setPreview("full")}>Everything</button>
+            {snap && <button type="button" className={pill(preview === "update")} onClick={() => setPreview("update")}>Only what changed</button>}
+          </div>
+          <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md border border-line bg-card p-3 font-mono text-[11.5px] leading-relaxed text-fg">{textFor(preview)}</pre>
+        </div>
+      )}
+    </div>
   );
 }

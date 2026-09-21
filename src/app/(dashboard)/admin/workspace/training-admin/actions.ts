@@ -14,13 +14,14 @@ import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseRules, validateRules, type Rule } from "@/lib/allocation/model";
 import {
-  isAudience, isId, REGISTRANT_VIEWS_KEY, RULES_KEY,
+  CATERING_COPY_KEY, isAudience, isId, REGISTRANT_VIEWS_KEY, RULES_KEY,
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
+import { EntrySchema, type Snapshot } from "@/lib/allocation/catering";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
@@ -734,6 +735,26 @@ export async function deleteSubmission(id: string): Promise<{ ok: boolean }> {
   await logSend(admin.id, "training_admin.submission_deleted", { id, email: row.email, wasTest });
   revalidatePath(PAGE);
   return { ok: true };
+}
+
+// ── catering copy ────────────────────────────────────────────────────
+
+/**
+ * Record what was just copied for the caterer, so the next copy can be
+ * "only what changed". Validated: a server action is a public endpoint.
+ */
+export async function saveCateringSnapshot(entries: unknown): Promise<{ ok: boolean; snapshot?: Snapshot; problem?: string }> {
+  const admin = await requireAdmin();
+  const parsed = EntrySchema.array().max(5000).safeParse(entries);
+  if (!parsed.success) return { ok: false, problem: "That list could not be read." };
+  const snapshot: Snapshot = { at: new Date().toISOString(), by: admin.name ?? "", entries: parsed.data };
+  const value = JSON.stringify(snapshot);
+  await prisma.platformSetting.upsert({
+    where: { key: CATERING_COPY_KEY },
+    create: { key: CATERING_COPY_KEY, value },
+    update: { value },
+  });
+  return { ok: true, snapshot };
 }
 
 // ── saved registrant views ───────────────────────────────────────────

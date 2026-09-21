@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registrants: copy for the caterer
+  {
+    title: "Registrants: one-click copy for the caterer, and updates with only what changed",
+    body: "The **Dietary & accessibility** view has a **For the caterer** panel:\n\n- **Copy for the caterer** \u2014 one big button copies a ready-to-paste summary for every session **still to come**: day and time, approved headcount, each dietary requirement with a count and names, *Other* notes, and accessibility needs. Sessions that are over are left out, and only approved attendees count.\n- **It remembers what you sent.** Each copy is recorded (when, and by whom), and the panel shows what has changed since: people added, people whose needs changed, and people no longer attending.\n- **Copy only what changed** sends just those changes, session by session, with each session\u2019s new total \u2014 and becomes the new baseline.\n- **Preview** shows either text before you copy it.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Registrant names
   {
     title: "Registrants have names again — and the form now asks for one",

@@ -40,6 +40,7 @@ import {
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
 import { RegistrantViews } from "./RegistrantViews";
 import type { View } from "@/lib/allocation/registrant-views";
+import type { Snapshot } from "@/lib/allocation/catering";
 
 type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "email";
 
@@ -66,9 +67,9 @@ const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "wait
 const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending").length;
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, workshops,
+  eventId, eventTitle, rules: initialRules, views, catering, workshops,
 }: {
-  eventId: string; eventTitle: string; rules: Rule[]; views: View[]; workshops: AdminWorkshop[];
+  eventId: string; eventTitle: string; rules: Rule[]; views: View[]; catering: Snapshot | null; workshops: AdminWorkshop[];
 }) {
   // Opens on the dashboard: the first question anybody has here is
   // "how is it going", not "let me change the policy".
@@ -101,7 +102,7 @@ export function TrainingAdmin({
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
         {tab === "capacity" && <Capacity eventId={eventId} workshops={workshops} />}
-        {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
+        {tab === "registrants" && <Registrants workshops={workshops} views={views} catering={catering} />}
         {tab === "email" && <EmailSection eventId={eventId} workshops={workshops} />}
       </div>
     </div>
@@ -1128,11 +1129,11 @@ function LetterQueue({ workshops }: { workshops: AdminWorkshop[] }) {
  * Registrants: the letters owed, the list seen through a view (built-in
  * or saved), and below it each registration with its seats to decide.
  */
-function Registrants({ workshops, views }: { workshops: AdminWorkshop[]; views: View[] }) {
+function Registrants({ workshops, views, catering }: { workshops: AdminWorkshop[]; views: View[]; catering: Snapshot | null }) {
   return (
     <div className="space-y-5">
       <LetterQueue workshops={workshops} />
-      <RegistrantViews workshops={workshops} initialViews={views} />
+      <RegistrantViews workshops={workshops} initialViews={views} catering={catering} />
       <Submissions />
     </div>
   );

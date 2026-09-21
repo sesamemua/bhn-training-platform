@@ -31,6 +31,9 @@ export interface RegistrantRow {
   accessibility: string;
   preference: number | null;
   appliedAt: string;
+  /** The session's start and end (ISO) — catering skips sessions that are over. */
+  workshopStart: string;
+  workshopEnd: string;
 }
 
 export const GROUP_BY = ["none", "workshop", "day", "dietary", "accessibility", "status", "letter", "distance"] as const;

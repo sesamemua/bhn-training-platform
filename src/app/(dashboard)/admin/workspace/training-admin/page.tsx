@@ -19,7 +19,8 @@ import { loadRules } from "./actions";
 import { applicantFor } from "@/lib/allocation/applicants";
 import { letterDue } from "@/lib/allocation/decisions";
 import { REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
-import { REGISTRANT_VIEWS_KEY } from "@/lib/allocation/admin-types";
+import { CATERING_COPY_KEY, REGISTRANT_VIEWS_KEY } from "@/lib/allocation/admin-types";
+import { parseSnapshot } from "@/lib/allocation/catering";
 import { parseViews } from "@/lib/allocation/registrant-views";
 import { emailKey } from "@/lib/eligibility/email-key";
 
@@ -54,7 +55,7 @@ export default async function TrainingAdminPage() {
     );
   }
 
-  const [rules, workshops, forms, savedViews] = await Promise.all([
+  const [rules, workshops, forms, savedViews, cateringCopy] = await Promise.all([
     loadRules(),
     prisma.workshop.findMany({
       where: { eventId: event.id },
@@ -80,6 +81,7 @@ export default async function TrainingAdminPage() {
     // (its key was made by the form builder, so it is found by its label).
     prisma.eventForm.findMany({ where: REGISTRATION_FORM_WHERE, select: { fields: true } }),
     prisma.platformSetting.findUnique({ where: { key: REGISTRANT_VIEWS_KEY }, select: { value: true } }),
+    prisma.platformSetting.findUnique({ where: { key: CATERING_COPY_KEY }, select: { value: true } }),
   ]);
   const accessKeys = new Set(
     forms.flatMap((f) => ((f.fields as { fields?: { key?: string; label?: string }[] } | null)?.fields ?? []))
@@ -142,6 +144,7 @@ export default async function TrainingAdminPage() {
         eventTitle={event.title}
         rules={rules}
         views={parseViews(savedViews?.value)}
+        catering={parseSnapshot(cateringCopy?.value)}
         workshops={workshops.map((w) => ({
           ...w,
           startDateTime: w.startDateTime.toISOString(),
