@@ -98,17 +98,27 @@ class Sheet {
     }
     return this;
   }
-  /** The two figures the reader is actually here for. */
+  /**
+   * The ask, and beside it what it saves — deliberately the smaller of the
+   * two. The reader approves one number; the other is the reason it is a
+   * good one. Equal cells made them argue for the same attention.
+   */
   headline(left: { label: string; value: string }, right: { label: string; value: string }) {
-    const h = 62, top = this.y - h + 14, half = (CONTENT - 12) / 2;
-    this.page.drawRectangle({ x: M.left, y: top, width: half, height: h, color: WASH });
-    this.page.drawRectangle({ x: M.left + half + 12, y: top, width: half, height: h, color: WASH });
-    const cell = (x: number, cellLabel: string, value: string, color: RGB) => {
-      drawRuns(this.page, cellLabel.toUpperCase(), { x: x + 12, y: top + h - 20, size: 7.5, fonts: this.fonts.bold, color: MUTED });
-      drawRuns(this.page, value, { x: x + 12, y: top + 16, size: 21, fonts: this.fonts.bold, color });
+    const gap = 12, h = 62, top = this.y - h + 14;
+    const leftW = (CONTENT - gap) * 0.62, rightW = CONTENT - gap - leftW;
+    const rightX = M.left + leftW + gap;
+    this.page.drawRectangle({ x: M.left, y: top, width: leftW, height: h, color: WASH });
+    this.page.drawRectangle({ x: rightX, y: top, width: rightW, height: h, color: WASH });
+    const cell = (x: number, cellLabel: string, value: string, color: RGB, size: number, width: number) => {
+      const label = cellLabel.toUpperCase();
+      // Shrink rather than run past the cell: the right label is the longer
+      // of the two and sits in the narrower box.
+      const labelSize = widthOf(this.fonts.bold, label, 7.5) <= width - 24 ? 7.5 : 6.5;
+      drawRuns(this.page, label, { x: x + 12, y: top + h - 20, size: labelSize, fonts: this.fonts.bold, color: MUTED });
+      drawRuns(this.page, value, { x: x + 12, y: top + 16, size, fonts: this.fonts.bold, color });
     };
-    cell(M.left, left.label, left.value, INK);
-    cell(M.left + half + 12, right.label, right.value, GOOD);
+    cell(M.left, left.label, left.value, INK, 21, leftW);
+    cell(rightX, right.label, right.value, GOOD, 15, rightW);
     this.y = top - 22;
     return this;
   }
@@ -153,7 +163,7 @@ export async function buildProductionProposalPdf(input: ProposalPdfInput): Promi
     .gap(14)
     .headline(
       { label: "Approval requested", value: cad(t.chosen) },
-      { label: "Less than the quotes received", value: cad(t.saved) },
+      { label: "Saving from alternative quote", value: cad(t.saved) },
     );
 
   one.heading("In short");
