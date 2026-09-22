@@ -10,7 +10,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
-import { ArrowRight, AlertTriangle, Rocket, Beaker, Mail, Lightbulb } from "lucide-react";
+import { ArrowRight, AlertTriangle, Rocket, Beaker, Mail, Lightbulb, PencilLine } from "lucide-react";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { DSSection } from "@/components/design-system/DSSection";
 import { DSStatGrid, DSStat } from "@/components/design-system/DSStatGrid";
@@ -68,6 +68,7 @@ export default async function AdminEquipPage({
     institution: string | null;
     institutionOther: string | null;
     applicantType: string | null;
+    createdAt: Date;
     submittedAt: Date | null;
     decidedAt: Date | null;
     fundedAt: Date | null;
@@ -80,27 +81,49 @@ export default async function AdminEquipPage({
     reviewer: { id: string; name: string | null } | null;
   };
   let apps: QueueRow[] = [];
+  let drafts: QueueRow[] = [];
   let counts: { status: string; _count: { _all: number } }[] = [];
   let totalFunded: { _sum: { approvedAmount: number | null } } = { _sum: { approvedAmount: 0 } };
   let tableMissing = false;
   try {
-    [apps, counts] = await Promise.all([
+    const columns = {
+      id: true, stream: true, status: true,
+      requestedAmount: true, approvedAmount: true,
+      institution: true, institutionOther: true,
+      applicantType: true,
+      createdAt: true, submittedAt: true, decidedAt: true, fundedAt: true,
+      updatedAt: true,
+      user: { select: { id: true, name: true, email: true } },
+      applicantName: true, applicantEmail: true,
+      reviewer: { select: { id: true, name: true } },
+    } as const;
+    [apps, drafts, counts] = await Promise.all([
       prisma.equipApplication.findMany({
         where,
-        orderBy: [{ status: "asc" }, { submittedAt: "desc" }, { updatedAt: "desc" }],
+        // Newest submission first. Ordering by status put every
+        // "approved" above a submission that came in this morning,
+        // which is the row a reviewer opening this page is looking for.
+        orderBy: [{ submittedAt: "desc" }, { updatedAt: "desc" }],
         take: 100,
-        select: {
-          id: true, stream: true, status: true,
-          requestedAmount: true, approvedAmount: true,
-          institution: true, institutionOther: true,
-          applicantType: true,
-          submittedAt: true, decidedAt: true, fundedAt: true,
-          updatedAt: true,
-          user: { select: { id: true, name: true, email: true } },
-          applicantName: true, applicantEmail: true,
-          reviewer: { select: { id: true, name: true } },
-        },
+        select: columns,
       }),
+      /*
+       * Drafts, kept out of the queue and listed underneath it.
+       *
+       * A draft is not waiting on a reviewer — it is waiting on the
+       * applicant — so it does not belong in a list somebody works
+       * down. Ordered by when it was last touched: that is the
+       * question a coordinator has before a deadline, who is still
+       * writing and who stopped three weeks ago.
+       */
+      activeTab === "open"
+        ? prisma.equipApplication.findMany({
+            where: { status: "draft" },
+            orderBy: { updatedAt: "desc" },
+            take: 100,
+            select: columns,
+          })
+        : Promise.resolve([]),
       prisma.equipApplication.groupBy({
         by: ["status"],
         _count: { _all: true },
@@ -242,7 +265,7 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                   <th className="text-left px-2.5 py-2">Stream</th>
                   <th className="hidden @6xl:table-cell text-left px-2.5 py-2">Institution</th>
                   <th className="text-right px-2.5 py-2">Amount</th>
-                  <th className="hidden @4xl:table-cell text-left px-2.5 py-2">Submitted</th>
+                  <th className="hidden @4xl:table-cell text-left px-2.5 py-2">Submitted / started</th>
                   <th className="hidden @6xl:table-cell text-left px-2.5 py-2">Reviewer</th>
                   <th className="text-left px-2.5 py-2">Status</th>
                   {/* Review and Delete are two columns, not two buttons in
@@ -305,7 +328,18 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                             : "—"}
                       </td>
                       <td className="hidden @4xl:table-cell px-2.5 py-2 font-mono text-[10px] text-subtle whitespace-nowrap">
-                        {a.submittedAt ? a.submittedAt.toISOString().slice(0, 10) : "—"}
+                        {a.submittedAt ? (
+                          day(a.submittedAt)
+                        ) : (
+                          // A draft has no submission date; what it has is
+                          // when somebody started it and when they last
+                          // touched it, which is the pair that says whether
+                          // it is alive.
+                          <>
+                            {day(a.createdAt)}
+                            <span className="block text-subtle/80">changed {day(a.updatedAt)}</span>
+                          </>
+                        )}
                       </td>
                       <td className="hidden @6xl:table-cell px-2.5 py-2 text-muted">{a.reviewer?.name ?? "—"}</td>
                       <td className="px-2.5 py-2">
@@ -338,9 +372,78 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
         )}
       </DSSection>
 
+      {drafts.length > 0 && (
+        <DSSection
+          eyebrow="Last change first"
+          title={`Drafts — ${drafts.length} started, none submitted`}
+          icon={<PencilLine size={14} className="text-amber-600" />}
+        >
+          <p className="mb-2 text-[12px] text-muted">
+            Nobody is waiting on a reviewer for these: the applicant has started one and not sent it.
+            Shown newest change first, so the ones that stopped are at the bottom.
+          </p>
+          <div className="@container rounded-xl border border-line overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-elevated text-subtle">
+                <tr>
+                  <th className="text-left px-2.5 py-2">Applicant</th>
+                  <th className="text-left px-2.5 py-2">Stream</th>
+                  <th className="hidden @4xl:table-cell text-left px-2.5 py-2">Started</th>
+                  <th className="text-left px-2.5 py-2">Last changed</th>
+                  <th className="text-right px-2.5 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {drafts.map((d) => {
+                  const who = applicantOf(d);
+                  return (
+                    <tr key={d.id} className="hover:bg-elevated/60">
+                      <td className="px-2.5 py-2">
+                        <span className="block font-semibold text-fg">{who.name ?? "—"}</span>
+                        <span className="block text-[10px] text-muted">{who.email ?? "no address"}</span>
+                      </td>
+                      <td className="px-2.5 py-2 text-muted">{STREAM_META[d.stream as EquipStream]?.name ?? d.stream}</td>
+                      <td className="hidden @4xl:table-cell px-2.5 py-2 font-mono text-[10px] text-subtle whitespace-nowrap">
+                        {day(d.createdAt)}
+                      </td>
+                      <td className="px-2.5 py-2 font-mono text-[10px] text-subtle whitespace-nowrap">
+                        {day(d.updatedAt)}
+                        <span className="block text-subtle/80">{sinceWords(d.updatedAt)}</span>
+                      </td>
+                      <td className="px-2.5 py-2 text-right">
+                        <DeleteApplicationButton
+                          applicationId={d.id}
+                          applicantName={who.name ?? "This applicant"}
+                          status={d.status}
+                          approvedAmount={d.approvedAmount}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </DSSection>
+      )}
+
       <EquipDemoTools />
     </div>
   );
+}
+
+/** One date, as a date — the table is read down a column, not in prose. */
+const day = (d: Date) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "short", day: "numeric" }).format(d);
+
+/** "yesterday", "3 days ago" — how dead a draft is, without doing the arithmetic. */
+function sinceWords(d: Date, now: Date = new Date()): string {
+  const days = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 31) return `${days} days ago`;
+  const months = Math.round(days / 30);
+  return months === 1 ? "a month ago" : `${months} months ago`;
 }
 
 function StatusBadge({ tone, label }: { tone: string; label: string }) {

@@ -34,14 +34,26 @@ export interface DeadlineRow {
 }
 
 /** Is the given row effectively accepting submissions right now?
- *  Closed → never. Open / extended → yes if deadlineAt is in the
- *  future (we let admins create future-dated open windows so the
+ *  Closed → never. Anything else → yes if deadlineAt is in the
+ *  future (we let admins create future-dated windows so the
  *  applicant page can show "next deadline" copy without re-opening
- *  every cycle). */
+ *  every cycle).
+ *
+ *  "scheduled" counts. VentureConnect runs monthly rounds that are
+ *  published a year ahead, and a row only becomes "open" when an
+ *  admin loads /admin/equip/deadlines and the sync re-stamps it. That
+ *  made the rollover depend on somebody visiting a page: the day the
+ *  September round closed, October was still "scheduled" and the next
+ *  applicant was told there was no open window at all. The next
+ *  published deadline that has not passed IS the current round. */
 export function isOpenForSubmissions(row: Pick<DeadlineRow, "status" | "deadlineAt">, now: Date = new Date()): boolean {
   if (row.status === "closed") return false;
   return row.deadlineAt.getTime() >= now.getTime();
 }
+
+/** The statuses a window can carry and still be the one an application
+ *  is judged against. Closed is the only word that stops it. */
+export const SUBMITTABLE_STATUSES = ["open", "extended", "scheduled"] as const;
 
 /**
  * The next deadline a new application for this stream would be
@@ -55,7 +67,7 @@ export const nextOpenDeadline = cache(async (stream: EquipStream): Promise<Deadl
   const rows = await prisma.equipDeadline.findMany({
     where: {
       stream,
-      status: { in: ["open", "extended"] },
+      status: { in: [...SUBMITTABLE_STATUSES] },
       deadlineAt: { gte: now },
     },
     orderBy: { deadlineAt: "asc" },
@@ -70,7 +82,7 @@ export const nextOpenDeadlines = cache(async (): Promise<Record<EquipStream, Dea
   const now = new Date();
   const rows = await prisma.equipDeadline.findMany({
     where: {
-      status: { in: ["open", "extended"] },
+      status: { in: [...SUBMITTABLE_STATUSES] },
       deadlineAt: { gte: now },
     },
     orderBy: { deadlineAt: "asc" },

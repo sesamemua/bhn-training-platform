@@ -22,6 +22,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── EQUIP: the round rolls over by itself, and drafts get their own list
+  {
+    title: "EQUIP: the funding round rolls over on its own",
+    body: "The open window is now **the next published deadline that has not passed**. It used to be whichever row an admin had last stamped *open* by loading **Admin → EQUIP → Deadlines** — so on the day a round closed, the next one was still marked *scheduled* and an applicant pressing Submit was told there was no open funding window at all.\n\nFor **VentureConnect** that means the **October round** (closes **Monday 26 October, 12:00**) takes over the moment the September round closes on the 24th, with nobody opening a page to make it happen. November and December follow the same way. A window an admin closes **on purpose** still stops — closed is the one word that overrides the schedule.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
+    title: "Admin → EQUIP: newest submission on top, drafts listed underneath",
+    body: "The applications queue is ordered by **when it was submitted, newest first**. It used to sort by status, which put every approved application above a submission that arrived this morning — the one row a reviewer opening the page is looking for.\n\nUnder the queue, a **Drafts** section lists every application somebody started and has not sent, **newest change first**, with **when it was started**, **when it was last changed**, and how long ago that was. Nobody is waiting on a reviewer for those, so they are no longer mixed into a list you work down — but before a deadline they are exactly who to chase.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Registration: the open/paused/closed switch
   {
     title: "Dashboard: a switch for opening, pausing and closing registration",

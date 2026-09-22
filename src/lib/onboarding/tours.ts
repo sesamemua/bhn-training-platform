@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16p";
+export const TOUR_VERSION = "2026.10.16q";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "admin.equip-drafts-and-rounds",
+    title: "Drafts have their own list, and the round rolls over",
+    body: "**Admin → EQUIP** puts the **newest submission on top** and lists **Drafts** underneath — newest change first, with when each was started and last touched, so you can see who to chase before a deadline. And the open window is now the next published deadline: VentureConnect’s **October round closes 26 October** and takes over by itself when September closes.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open EQUIP", href: "/admin/equip" },
+    since: "2026.10.16q",
+  },
   {
     id: "dashboard.registration-switch",
     title: "Open, pause or close registration",
