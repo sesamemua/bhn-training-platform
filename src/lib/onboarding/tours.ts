@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16s";
+export const TOUR_VERSION = "2026.10.16t";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.video.proposal-pdf",
+    title: "The shoot budget prints as a proposal",
+    body: "The **BHN Promo Video** project\u2019s **Production cost** tab has a **Proposal PDF** button. Two pages for whoever approves the spend: what the camera package, lens, sound and lighting cost (**$4,119.99** all in), and the **three quotes we turned down** to get there \u2014 each with the vendor\u2019s own reference, adding up to **$4,185.87 more**. Mileage, insurance and catering stay on the page; they are not part of the ask.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.16t",
+  },
   {
     id: "website-review.paste-renders",
     title: "A pasted page reviews as itself",

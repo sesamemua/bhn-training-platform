@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Video production cost: a one-page proposal to hand to whoever approves it
+  {
+    title: "Production cost: download the equipment proposal as a PDF",
+    body: "The promo video's **Production cost** tab now has a **Proposal PDF** button. Two pages, written for somebody who approves the spend and reads nothing else.\n\nIt shows only the four things the shoot rents or hires \u2014 **camera package, lens, sound and lighting**, $4,119.99 all in \u2014 and leaves mileage, insurance and catering on the platform where the full budget lives.\n\nPage two is why that is a good number: the **three quotes we turned down**, each with the vendor's own reference so any figure can be checked against the document it came from. Sunbelt/William F. White quoted $6,322.37 for camera and lens together (we took one line off it \u2014 the Caldwell Chameleon 75\u00a0mm anamorphic, which no other Toronto house carries \u2014 and rented the camera from 2D House instead). 2D House quoted $883.49 for a full grip-and-electric order for a sit-down interview in one office. A sound recordist quoted $1,100 for sound alone; CamArt does sound **and** lighting for the same $1,100 before tax. Turned down, added up: $8,305.86 \u2014 **$4,185.87 more than what we are asking for**.\n\nThe four sections are derived from the budget page's own cost groups rather than retyped, so the sheet cannot drift from the page; a test holds the two together and fails the build if they part. The turned-down quotes are the one thing kept as fixed figures, because they are the counterfactual and must **not** follow a change in the budget.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Page review: the overlay's CSS stopped styling the page under review
   {
     title: "Page review: the page under review scrolls again",

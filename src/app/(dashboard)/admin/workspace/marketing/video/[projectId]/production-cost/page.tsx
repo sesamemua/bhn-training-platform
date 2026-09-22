@@ -3,7 +3,7 @@
  * total. Read-only; the figures live in src/lib/video/production-cost.ts.
  */
 import { notFound, redirect } from "next/navigation";
-import { Receipt } from "lucide-react";
+import { FileDown, Receipt } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
@@ -34,7 +34,20 @@ export default async function ProductionCostPage({ params }: Props) {
         description={groups
           ? "The shoot budget: vendor quotes and estimates, taxes in. Camera and lens are picked up Monday 5 October and returned Wednesday 7 October; the shoot is Tuesday 6 October."
           : "No budget for this project yet."}
-        actions={<ProjectBackLink />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {groups && (
+              // A plain link, so the sheet downloads without a client component.
+              <a
+                href={`/api/workspace/video-projects/${project.id}/proposal.pdf`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-brand-500/40 bg-brand-500/10 px-3 py-1.5 text-xs font-semibold text-fg hover:bg-brand-500/20"
+              >
+                <FileDown size={13} /> Proposal PDF
+              </a>
+            )}
+            <ProjectBackLink />
+          </div>
+        }
       />
       <ProjectNav projectId={project.id} />
 

@@ -35,7 +35,9 @@ export interface CostGroup {
   notes: string[];
 }
 
-const HST = 0.13;
+/** Ontario HST. Exported so the proposal can tax a slice of a group at
+ *  the same rate rather than keeping a second copy of the number. */
+export const HST = 0.13;
 const hst = (cents: number) => Math.round(cents * HST);
 
 // ── Camera — 2D House quote 263434 (15% period discount already applied) ──
