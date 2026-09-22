@@ -185,9 +185,10 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       // same hour is a problem however few you picked, and six that do
       // not overlap is not a problem at all.
       // Derived from the times, as PAIRS. Grouping them by day would
-      // misinform: CL3 overlaps both Monday tours, but the tours run
-      // back to back, so a "Monday" group would warn people off a
-      // combination that is perfectly allowed.
+      // misinform as soon as a day holds two sessions that do not
+      // overlap — the Monday tours ran back to back until October's
+      // grid, and a "Monday" group warned people off a combination
+      // that was perfectly allowed.
       clashes: clashPairs().map((c) => ({ label: c.label, options: [...c.options] })),
     } };
 

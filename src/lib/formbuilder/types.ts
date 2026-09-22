@@ -180,10 +180,10 @@ export const FieldSchema = z.object({
    * cannot see.
    *
    * `slots` catches overlapping times. It cannot catch two sessions on
-   * the same day, hours apart, in different cities — the Monday CCRM
-   * tour is in downtown Toronto and the Catalent tour is in London,
-   * about two hours away, so 11:00-13:30 and 14:00-16:30 do not
-   * overlap and are still impossible as a pair.
+   * the same day, hours apart, in different cities — the 2026 week ran
+   * the Monday CCRM tour in downtown Toronto and the Catalent tour in
+   * London, about two hours away, so 11:00-13:30 and 14:00-16:30 did
+   * not overlap and were still impossible as a pair.
    *
    * `reason` is shown to the registrant, because "you cannot pick both"
    * without saying why reads as a bug in the form.

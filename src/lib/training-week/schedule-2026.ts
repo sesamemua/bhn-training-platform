@@ -10,7 +10,7 @@
  * out four separate times — once in the seed script, once in the form,
  * once in the chart, once in the database — and the copies drifted:
  * the Catalent tour was recorded as running at the same hour as the
- * CCRM tour when the plan has them back to back, which quietly turned
+ * CCRM tour when that plan had them back to back, which quietly turned
  * a "you could do both" into a clash the form warned people about.
  *
  * Times are Toronto wall-clock, the way the planning grid writes them.
@@ -111,8 +111,8 @@ export interface Session {
   /** Toronto wall-clock, 24-hour. */
   start: string;
   end: string;
-  /** Which parallel track of the day, as the grid's "Option 1 / 2" columns. */
-  track: 1 | 2;
+  /** Which parallel track of the day, as the grid's "Option 1 / 2 / 3" columns. */
+  track: 1 | 2 | 3;
   capacity: number;
   venue: Venue;
   partner: string | null;
@@ -149,70 +149,70 @@ export interface Session {
 }
 
 /**
- * The six bookable sessions.
+ * The six bookable sessions, from the coordinators' October grid.
  *
- * Read off the coordinators' planning grid. Two readings are worth
- * calling out because they changed behaviour:
+ * Three readings are worth calling out because they changed what a
+ * registrant sees:
  *
- *   • The Monday tours run BACK TO BACK (11:00–13:30, then
- *     14:00–16:30), not concurrently. Someone can do both.
- *   • CL3 runs the whole day, so it clashes with both tours — which
- *     is a clash the form never used to mention.
+ *   • Monday offers ONE company tour, 09:30–15:30, with the host still
+ *     to be chosen. The Catalent tour is gone, and the CCRM tour has
+ *     moved to Tuesday afternoon.
+ *   • Monday's other option is the Pandemic Preparedness workshop and
+ *     tour at the THCF, 09:30–14:30 — it used to be "CL3 workshop",
+ *     with no facility named and ten places.
+ *   • Tuesday now has three options, not two: the CCRM tour runs
+ *     15:00–17:00, across the end of both afternoon workshops.
  */
 export const SESSIONS: Session[] = [
   {
-    slug: "ccrm-tour-lunch-learn-2026",
-    title: "CCRM tour + Lunch & Learn",
-    kind: "tour",
-    day: "2026-10-26", start: "11:00", end: "13:30", track: 1,
-    capacity: 20,
-    venue: { name: "CCRM", status: "inquiry", note: "Inquiry made, site to be confirmed." },
-    partner: "CCRM",
-    facilitator: null,
-    lead: "Epshita",
-    summary: "Lunch & Learn, a tour of the facility, and time to talk to the people who work there.",
-    notes: ["Lunch & Learn", "Company tour", "Talk to employees"],
-    tentative: false,
-  },
-  {
+    /*
+     * The slug is Catalent's because the Workshop row is. October's
+     * grid keeps Monday's tour and replaces the host with "TBD", so
+     * this is the same session with a host still to be chosen — and a
+     * slug names a row, not a company. Renaming it would leave the row
+     * and its bookings behind.
+     */
     slug: "catalent-tour-lunch-learn-2026",
-    title: "Catalent tour + Lunch & Learn",
+    title: "Company tour + Lunch & Learn",
     kind: "tour",
-    day: "2026-10-26", start: "14:00", end: "16:30", track: 1,
+    day: "2026-10-26", start: "09:30", end: "15:30", track: 1,
     capacity: 20,
-    venue: { name: "Catalent", status: "inquiry", note: "Inquiry made, site to be confirmed." },
-    partner: "Catalent",
-    facilitator: null,
-    lead: "Epshita",
-    summary: "Lunch & Learn, a tour of the facility, and time to talk to the people who work there.",
-    notes: ["Lunch & Learn", "Company tour", "Talk to employees"],
-    tentative: false,
-  },
-  {
-    slug: "cl3-workshop-2026",
-    title: "CL3 workshop",
-    kind: "workshop",
-    day: "2026-10-26", start: "09:30", end: "17:00", track: 2,
-    capacity: 10,
-    // The grid's Option 2 venue cell is BLANK. The old row named a
-    // containment facility that appears nowhere in the plan, and a
-    // guessed venue reads exactly like a decided one. The render sites
-    // already fall back to "TBA".
-    venue: { name: null, status: "tbc", note: "Venue not yet named on the plan." },
+    venue: { name: null, status: "inquiry", note: "Host company still to be chosen; inquiry made." },
     partner: null,
     facilitator: null,
     lead: "Epshita",
-    summary: "A full day in containment level 3, framed around pandemic preparedness.",
-    notes: ["Runs the full day — it overlaps both company tours", "For the link to pandemic preparedness"],
+    summary: "A Lunch & Learn, a tour of the company, and time to talk to the people who work there. The host is being confirmed.",
+    notes: ["20 spots", "Lunch & Learn", "Company tour", "Talk to employees", "Host company to be confirmed"],
     tentative: true,
+    previousTitles: ["Catalent tour + Lunch & Learn"],
+    previousOptions: ["Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn"],
+  },
+  {
+    slug: "cl3-workshop-2026",
+    title: "Pandemic Preparedness — THCF",
+    kind: "workshop",
+    day: "2026-10-26", start: "09:30", end: "14:30", track: 2,
+    capacity: 20,
+    // The grid's venue cell is still blank, but the session names the
+    // facility — so it is read as the place without being read as a
+    // room that has been booked.
+    venue: { name: "Toronto High Containment Facility", status: "inquiry", note: "Named on the grid; no booking recorded." },
+    partner: null,
+    facilitator: null,
+    lead: "Epshita",
+    summary: "A containment-level-3 workshop on pandemic preparedness, with a tour of the facility.",
+    notes: ["20 spots", "Workshop + tour"],
+    tentative: false,
+    previousTitles: ["CL3 workshop"],
+    previousOptions: ["Mon 26 Oct · 09:30–17:00 · CL3 workshop"],
   },
   {
     slug: "communication-chameleon-2026",
     title: "Communication Chameleon",
-    kind: "workshop",
     // Runs to 16:30, not 16:00 — corrected by the coordinators in the
     // Training Week feedback round. The v1 form still offers the 16:00
     // string, so it stays resolvable below.
+    kind: "workshop",
     day: "2026-10-27", start: "13:00", end: "16:30", track: 1,
     capacity: 30,
     venue: { name: "Room 850", status: "booked", note: "Calendar booking done, held 9 AM – 5 PM." },
@@ -226,7 +226,7 @@ export const SESSIONS: Session[] = [
   },
   {
     slug: "negotiation-skills-2026",
-    title: "Negotiation Skills",
+    title: "Negotiation Navigator",
     kind: "workshop",
     day: "2026-10-27", start: "13:00", end: "16:30", track: 2,
     capacity: 30,
@@ -235,12 +235,32 @@ export const SESSIONS: Session[] = [
     facilitator: "Glen Whyte",
     lead: "Epshita",
     summary: "Negotiation for researchers and founders, run by Glen Whyte.",
-    notes: ["30 spots", "Priority: trainee entrepreneurs", "Scope and costs agreed — go/no-go decision pending"],
+    notes: ["30 spots", "Priority: trainee entrepreneurs"],
     tentative: false,
+    previousTitles: ["Negotiation Skills"],
+    previousOptions: ["Tue 27 Oct · 13:00–16:30 · Negotiation Skills"],
+  },
+  {
+    // Monday's CCRM tour on the September grid. October's grid moves it
+    // to Tuesday afternoon, names it, and cuts it to 18 places.
+    slug: "ccrm-tour-lunch-learn-2026",
+    title: "Discovery to Delivery — CCRM",
+    kind: "tour",
+    day: "2026-10-27", start: "15:00", end: "17:00", track: 3,
+    capacity: 18,
+    venue: { name: "CCRM at MaRS", status: "inquiry", note: "Company tour at MaRS; site to be confirmed." },
+    partner: "CCRM",
+    facilitator: null,
+    lead: "Epshita",
+    summary: "A tour of CCRM at MaRS — how a discovery becomes a therapy that reaches patients.",
+    notes: ["18 spots", "Company tour, MaRS"],
+    tentative: false,
+    previousTitles: ["CCRM tour + Lunch & Learn"],
+    previousOptions: ["Mon 26 Oct · 11:00–13:30 · CCRM tour + Lunch & Learn"],
   },
   {
     slug: "innovation-showcase-2026",
-    title: "BioHubNet innovation showcase",
+    title: "Innovation Ignited",
     kind: "workshop",
     day: "2026-10-28", start: "10:00", end: "14:00", track: 1,
     capacity: 100,
@@ -254,7 +274,8 @@ export const SESSIONS: Session[] = [
     summary: "A pitch competition for selected participants, followed by the venture showcase.",
     notes: ["Pitch competition — selected participants", "Venture showcase — three-minute thesis"],
     tentative: false,
-    previousTitles: ["Innovation showcase"],
+    previousTitles: ["BioHubNet innovation showcase", "Innovation showcase"],
+    previousOptions: ["Wed 28 Oct · 10:00–14:00 · BioHubNet innovation showcase"],
   },
 ];
 
@@ -291,9 +312,15 @@ export function optionLabel(s: Session): string {
 
 export const SESSION_OPTIONS: string[] = SESSIONS.map(optionLabel);
 
-/** What the form's calendar view draws, and what it derives clashes from. */
+/**
+ * What the form's calendar view draws, and what it derives clashes from.
+ *
+ * The capacity rides along because the grid writes it on the session
+ * — "[20 spots]", "[18 spots]" — and a registrant ranking six sessions
+ * is choosing partly on how likely a place is.
+ */
 export const SESSION_SLOTS: Slot[] = SESSIONS.map((s) => ({
-  option: optionLabel(s), day: s.day, start: s.start, end: s.end,
+  option: optionLabel(s), day: s.day, start: s.start, end: s.end, capacity: s.capacity,
 }));
 
 /**
@@ -327,9 +354,10 @@ const toMin = (t: string) => {
 /**
  * Pairs that genuinely overlap, as pairs rather than as day-groups.
  *
- * A group would be a lie here. CL3 overlaps both Monday tours but the
- * tours do not overlap each other, so lumping all three under "Monday"
- * would warn someone off a combination that is perfectly fine.
+ * A group would be a lie as soon as one day holds a pair that does
+ * not overlap — the Monday tours ran back to back until October's
+ * grid, and lumping them under "Monday" warned people off a
+ * combination that was perfectly fine. Pairs cannot say that.
  */
 export function clashPairs(): { label: string; options: [string, string] }[] {
   const out: { label: string; options: [string, string] }[] = [];
@@ -398,8 +426,7 @@ export const PHYSICALLY_POSSIBLE = (() => {
  * Compared as INSTANTS rather than as minutes-past-midnight. The first
  * version sorted every session by time-of-day and stapled the winner
  * onto DAYS[0] — which happened to be right only because the earliest
- * time in the week is also Monday's, and Monday's earliest is the one
- * session the grid still marks tentative. Take CL3 out and the week
+ * time in the week is also Monday's. Take Monday out and the week
  * would have claimed to start at a time lifted off Wednesday.
  */
 const instants = SESSIONS.map((s) => [

@@ -159,32 +159,28 @@ function boxTop(title: string): number {
 }
 
 test("a session's height is how long it runs", () => {
-  // The whole point. CL3 runs 09:30-17:00 and the CCRM tour runs
-  // 11:00-13:30 — three times as long, and it has to look it.
-  const cl3 = boxHeight("CL3 workshop");
-  const ccrm = boxHeight("CCRM tour");
-  assert.ok(cl3 > ccrm * 2.5, `CL3 is ${cl3}% and the tour is ${ccrm}% — not to scale`);
-});
-
-test("two sessions of the same length are drawn the same height", () => {
-  // Both Monday tours run 2.5 hours.
-  assert.equal(boxHeight("CCRM tour"), boxHeight("Catalent tour"));
+  // The whole point. Monday's company tour runs 09:30-15:30 and the
+  // CCRM tour 15:00-17:00 — three times as long, and it has to look it.
+  const tour = boxHeight("Company tour");
+  const ccrm = boxHeight("Discovery to Delivery");
+  assert.ok(tour > ccrm * 2.5, `the day is ${tour}% and the tour is ${ccrm}% — not to scale`);
 });
 
 test("the Tuesday pair, both 13:00–16:30, are drawn the same height", () => {
+  // The same-length check, on the only pair the week still has.
   // Communication Chameleon used to end at 16:00; the coordinators
   // corrected it to 16:30, the same as Negotiation. Equal runs must look
   // equal — half an hour is a real difference to somebody planning a
   // train home, so a drawing that still showed one is a wrong answer.
-  assert.equal(boxHeight("Negotiation Skills"), boxHeight("Communication Chameleon"));
+  assert.equal(boxHeight("Negotiation Navigator"), boxHeight("Communication Chameleon"));
 });
 
 test("a session's position is when it starts", () => {
-  // The CCRM tour is at 11:00 and the Catalent tour at 14:00, so one
-  // sits well below the other on a 9-to-5 grid.
-  assert.ok(boxTop("Catalent tour") > boxTop("CCRM tour") + 20);
-  // The two Tuesday sessions both start at 13:00 — same height on the page.
-  assert.equal(boxTop("Communication Chameleon"), boxTop("Negotiation Skills"));
+  // Monday's tour is at 09:30 and the CCRM tour at 15:00, so one sits
+  // well below the other on a 9-to-5 grid.
+  assert.ok(boxTop("Discovery to Delivery") > boxTop("Company tour") + 20);
+  // The two Tuesday workshops both start at 13:00 — same height on the page.
+  assert.equal(boxTop("Communication Chameleon"), boxTop("Negotiation Navigator"));
 });
 
 test("the hours are drawn down the side", () => {
@@ -193,16 +189,16 @@ test("the hours are drawn down the side", () => {
   }
 });
 
-test("concurrent sessions sit side by side, consecutive ones share a column", () => {
-  // Lane is expressed as a left offset. The Tuesday pair clash, so one
-  // is pushed across; the Monday tours are consecutive and both sit at
-  // the left edge of their shared lane.
+test("concurrent sessions sit side by side", () => {
+  // Lane is expressed as a left offset. Both of Monday's options and
+  // both Tuesday workshops run at the same time, so each pair is split
+  // across two columns rather than one hiding the other.
   const left = (title: string) => {
     const tag = calendar.split("<button").find((t) => t.includes(title))!;
     return Number(tag.match(/left:\s*([\d.]+)%/)![1]);
   };
-  assert.notEqual(left("Communication Chameleon"), left("Negotiation Skills"));
-  assert.equal(left("CCRM tour"), left("Catalent tour"));
+  assert.notEqual(left("Communication Chameleon"), left("Negotiation Navigator"));
+  assert.notEqual(left("Company tour"), left("Pandemic Preparedness"));
 });
 
 test("it says what the height means, because a scale nobody reads is decoration", () => {
@@ -210,9 +206,9 @@ test("it says what the height means, because a scale nobody reads is decoration"
 });
 
 test("the day is a column heading, not repeated inside every box", () => {
-  // "Mon 26 Oct · 11:00–13:30 · CCRM tour" in a box that is already in
-  // Monday's column under an 11:00 line is three copies of one fact.
-  const tag = calendar.split("<button").find((t) => t.includes("CCRM tour"))!;
+  // "Mon 26 Oct · 09:30–15:30 · Company tour" in a box that is already
+  // in Monday's column under a 09:30 line is three copies of one fact.
+  const tag = calendar.split("<button").find((t) => t.includes("Company tour"))!;
   const body = tag.slice(tag.indexOf(">"));
   assert.ok(!body.includes("Mon 26 Oct"), "the box repeats the day it is already under");
 });
@@ -220,7 +216,7 @@ test("the day is a column heading, not repeated inside every box", () => {
 test("no session is drawn past the bottom of its day", () => {
   // top + height > 100% overflows the column and the box spills over
   // whatever is under it. Cheap to check, invisible until it happens.
-  for (const t of ["CL3 workshop", "CCRM tour", "Catalent tour", "Communication Chameleon", "Negotiation Skills", "innovation showcase"]) {
+  for (const t of ["Company tour", "Pandemic Preparedness", "Communication Chameleon", "Negotiation Navigator", "Discovery to Delivery", "Innovation Ignited"]) {
     const bottom = boxTop(t) + boxHeight(t);
     assert.ok(bottom <= 100.01, `${t} ends at ${bottom.toFixed(1)}% of the day`);
   }
@@ -665,6 +661,7 @@ test("the note for somebody who already has an account says the same about EQUIP
 /* ── ranking the sessions ────────────────────────────────────────── */
 
 import { SESSIONS_2026 } from "../../src/lib/formbuilder/training-week";
+import { optionLabel, SESSIONS } from "../../src/lib/training-week/schedule-2026";
 
 test("the number on a session is the order it was clicked in", () => {
   // The question has always been called "choose and rank". The array
@@ -794,12 +791,13 @@ test("choosing sessions that overlap still warns, and NAMES them", () => {
 });
 
 test("the clash rule itself is unchanged — the pairs are still the real overlaps", () => {
-  const both = chosenClashes(sessionsField().slots, [SESSIONS_2026[3], SESSIONS_2026[4]]);
-  assert.equal(both.length, 1, "the two Tuesday sessions clash");
-  const tours = chosenClashes(sessionsField().slots, [SESSIONS_2026[0], SESSIONS_2026[1]]);
-  assert.deepEqual(tours, [], "the Monday tours run back to back");
+  const option = (slug: string) => optionLabel(SESSIONS.find((s) => s.slug === slug)!);
+  const tuesday = [option("communication-chameleon-2026"), option("negotiation-skills-2026")];
+  assert.equal(chosenClashes(sessionsField().slots, tuesday).length, 1, "the two Tuesday workshops clash");
+  const monday = [option("catalent-tour-lunch-learn-2026"), option("cl3-workshop-2026")];
+  assert.equal(chosenClashes(sessionsField().slots, monday).length, 1, "Monday's tour and workshop run at the same time");
   const all = chosenClashes(sessionsField().slots, SESSIONS_2026);
-  assert.equal(all.length, 3, "CL3 against both tours, and the Tuesday pair");
+  assert.equal(all.length, 4, "Monday's pair, the Tuesday pair, and the CCRM tour against each of them");
 });
 
 test("only one of a clashing pair can be approved, and the question says so", () => {

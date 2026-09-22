@@ -16,25 +16,27 @@ const bySlug = (slug: string) => SESSIONS.find((s) => s.slug === slug)!;
 
 /* ── the schedule itself ─────────────────────────────────────────── */
 
-test("the Monday company tours run back to back, not at the same time", () => {
-  // The bug this whole module exists to stop coming back: the tours
-  // were recorded as concurrent, so the form warned people off doing
-  // both when the plan is that they can.
-  const ccrm = bySlug("ccrm-tour-lunch-learn-2026");
-  const catalent = bySlug("catalent-tour-lunch-learn-2026");
-  assert.equal(ccrm.end, "13:30");
-  assert.equal(catalent.start, "14:00");
+test("Monday is one company tour against the THCF workshop, and they overlap", () => {
+  // October's grid replaced the two back-to-back tours with a single
+  // tour whose host is still to be chosen, and gave the workshop the
+  // facility's name, an end at 14:30 and twice the places.
+  const tour = bySlug("catalent-tour-lunch-learn-2026");
+  const thcf = bySlug("cl3-workshop-2026");
+  assert.deepEqual([tour.day, tour.start, tour.end, tour.capacity], ["2026-10-26", "09:30", "15:30", 20]);
+  assert.deepEqual([thcf.day, thcf.start, thcf.end, thcf.capacity], ["2026-10-26", "09:30", "14:30", 20]);
   assert.equal(clashes(
-    { option: "a", day: ccrm.day, start: ccrm.start, end: ccrm.end },
-    { option: "b", day: catalent.day, start: catalent.start, end: catalent.end },
-  ), false);
+    { option: "a", day: tour.day, start: tour.start, end: tour.end },
+    { option: "b", day: thcf.day, start: thcf.start, end: thcf.end },
+  ), true);
 });
 
-test("CL3 runs across both tours, so both are clashes", () => {
-  const pairs = clashPairs().map((c) => c.options.join(" + "));
-  const cl3 = optionLabel(bySlug("cl3-workshop-2026"));
-  const withCl3 = pairs.filter((p) => p.includes(cl3));
-  assert.equal(withCl3.length, 2, "CL3 overlaps the CCRM tour and the Catalent tour");
+test("the CCRM tour is Tuesday afternoon now, running into both workshops", () => {
+  const ccrm = bySlug("ccrm-tour-lunch-learn-2026");
+  assert.deepEqual([ccrm.day, ccrm.start, ccrm.end, ccrm.capacity], ["2026-10-27", "15:00", "17:00", 18]);
+  const withCcrm = clashPairs()
+    .map((c) => c.options.join(" + "))
+    .filter((p) => p.includes(optionLabel(ccrm)));
+  assert.equal(withCcrm.length, 2, "it overlaps the end of Communication Chameleon and of Negotiation Navigator");
 });
 
 test("the two Tuesday workshops clash with each other", () => {
@@ -48,7 +50,7 @@ test("clashes are pairs, never day-wide groups", () => {
   for (const c of clashPairs()) assert.equal(c.options.length, 2);
 });
 
-test("the week has exactly these three clashes, named", () => {
+test("the week has exactly these four clashes, named", () => {
   // Pinned as SLUG PAIRS, not recomputed. The next test compares
   // clashPairs() against calendar.clashes — which is the same predicate
   // over the same data, so it moves whenever the schedule moves and
@@ -58,20 +60,20 @@ test("the week has exactly these three clashes, named", () => {
     .sort();
   assert.deepEqual(pairs, [
     "catalent-tour-lunch-learn-2026 + cl3-workshop-2026",
-    "ccrm-tour-lunch-learn-2026 + cl3-workshop-2026",
+    "ccrm-tour-lunch-learn-2026 + communication-chameleon-2026",
+    "ccrm-tour-lunch-learn-2026 + negotiation-skills-2026",
     "communication-chameleon-2026 + negotiation-skills-2026",
   ]);
 });
 
-test("the two Monday tours share a lane, which is how the calendar draws consecutive sessions", () => {
+test("Monday's two options take a lane each, which is how the calendar draws a clash", () => {
   const monday = packWeek(SESSION_SLOTS).find((d) => d.day === "2026-10-26")!;
   const lane = (slug: string) =>
     monday.slots.find((s) => sessionForOption(s.option)!.slug === slug)!.lane;
-  assert.equal(
-    lane("ccrm-tour-lunch-learn-2026"), lane("catalent-tour-lunch-learn-2026"),
-    "consecutive sessions reuse a lane; only a genuine clash splits them",
+  assert.notEqual(
+    lane("catalent-tour-lunch-learn-2026"), lane("cl3-workshop-2026"),
+    "they run at the same time, so neither may hide the other",
   );
-  assert.notEqual(lane("cl3-workshop-2026"), lane("ccrm-tour-lunch-learn-2026"));
 });
 
 test("every clash is a genuine overlap, and every overlap is listed", () => {
@@ -97,8 +99,8 @@ test("nothing caps how many sessions may be chosen", () => {
   // a broken count — corrupt the greedy into counting everything and
   // it reads 6, which is still >= 3.
   assert.equal(
-    PHYSICALLY_POSSIBLE, 4,
-    "both Monday tours back to back, one of the Tuesday pair, the Wednesday showcase",
+    PHYSICALLY_POSSIBLE, 3,
+    "one of Monday's pair, one of Tuesday's three, and the Wednesday showcase",
   );
   // And the week's real ceiling is still worth knowing, even though
   // nothing is refused.
@@ -141,7 +143,7 @@ test("the week's bounds span the first start to the last end", () => {
 test("an option string names the day, the hours and the session", () => {
   assert.equal(
     optionLabel(bySlug("ccrm-tour-lunch-learn-2026")),
-    "Mon 26 Oct · 11:00–13:30 · CCRM tour + Lunch & Learn",
+    "Tue 27 Oct · 15:00–17:00 · Discovery to Delivery — CCRM",
   );
 });
 
@@ -238,10 +240,10 @@ test("workshop rows carry the schedule's times as instants", () => {
   const rows = workshopRows();
   assert.equal(rows.length, SESSIONS.length);
   const ccrm = rows.find((r) => r.slug === "ccrm-tour-lunch-learn-2026")!;
-  assert.equal(ccrm.startDateTime.toISOString(), "2026-10-26T15:00:00.000Z");
-  assert.equal(ccrm.endDateTime.toISOString(), "2026-10-26T17:30:00.000Z");
-  const catalent = rows.find((r) => r.slug === "catalent-tour-lunch-learn-2026")!;
-  assert.equal(catalent.startDateTime.toISOString(), "2026-10-26T18:00:00.000Z");
+  assert.equal(ccrm.startDateTime.toISOString(), "2026-10-27T19:00:00.000Z");
+  assert.equal(ccrm.endDateTime.toISOString(), "2026-10-27T21:00:00.000Z");
+  const tour = rows.find((r) => r.slug === "catalent-tour-lunch-learn-2026")!;
+  assert.equal(tour.startDateTime.toISOString(), "2026-10-26T13:30:00.000Z");
 });
 
 test("workshop rows are in display order with no gaps", () => {
@@ -276,9 +278,11 @@ test("a venue that is not booked says so, and a room with no name stays empty", 
   assert.match(venue("innovation-showcase-2026")!, /to be confirmed/);
   // Booked rooms are stated plainly, with no hedge.
   assert.equal(venue("communication-chameleon-2026"), "Room 850");
-  // The plan names no venue for CL3, so neither do we — the render
-  // sites fall back to TBA rather than to an invented building.
-  assert.equal(venue("cl3-workshop-2026"), null);
+  // The grid names the facility for the Monday workshop but has not
+  // booked it, and names no host at all for the Monday tour — the
+  // render sites fall back to TBA rather than to an invented building.
+  assert.equal(venue("cl3-workshop-2026"), "Toronto High Containment Facility (to be confirmed)");
+  assert.equal(venue("catalent-tour-lunch-learn-2026"), null);
   for (const s of SESSIONS) {
     if (s.venue.status === "options") {
       assert.ok(s.venue.alternative, `${s.title} has two candidate rooms but names only one`);
@@ -317,19 +321,17 @@ test("the admin calendar lays the real week out correctly", () => {
   const at = (day: string, slug: string) =>
     grid.days.find((d) => d.day === day)!.slots.find((s) => idOf(s.option) === slug)!;
 
-  // Monday: the two tours are consecutive, so they share a lane; CL3
-  // runs across both and takes its own.
-  const ccrm = at("2026-10-26", "ccrm-tour-lunch-learn-2026");
-  const catalent = at("2026-10-26", "catalent-tour-lunch-learn-2026");
-  const cl3 = at("2026-10-26", "cl3-workshop-2026");
-  assert.equal(ccrm.lane, catalent.lane);
-  assert.notEqual(cl3.lane, ccrm.lane);
-  assert.equal(cl3.lanes, 2, "CL3 is drawn half width against the tours");
+  // Monday: the tour and the workshop run at the same time, so they
+  // take a lane each and are drawn half width.
+  const tour = at("2026-10-26", "catalent-tour-lunch-learn-2026");
+  const thcf = at("2026-10-26", "cl3-workshop-2026");
+  assert.notEqual(tour.lane, thcf.lane);
+  assert.equal(thcf.lanes, 2, "Monday's two options are drawn half width against each other");
 
   // The same hour on two days is the same height — the property that
   // makes the three columns readable across.
   const tue = at("2026-10-27", "communication-chameleon-2026");   // 13:00
-  assert.equal(place(tue, grid).top, place({ ...ccrm, start: "13:00" }, grid).top);
+  assert.equal(place(tue, grid).top, place({ ...tour, start: "13:00" }, grid).top);
 
   // The shared lunch sits inside the grid rather than off the top of it.
   const lunch = SHARED[0];

@@ -12,7 +12,7 @@ import { BuiltFormSchema, parseForm, PresentationSchema, type BuiltForm } from "
 import { problems, visibleFields, walk, type Answers } from "../../src/lib/formbuilder/logic";
 import { checkSubmission, emailFrom, rankedSessions } from "../../src/lib/formbuilder/submit";
 import { hasRichLink, parseRich, plainRich } from "../../src/lib/formbuilder/rich-text";
-import { sessionForOption } from "../../src/lib/training-week/schedule-2026";
+import { optionLabel, sessionForOption } from "../../src/lib/training-week/schedule-2026";
 import {
   FROZEN_FORM_SLUGS, REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_SLUGS,
   REGISTRATION_FORM_WHERE, refuseFrozenForm,
@@ -287,11 +287,11 @@ test("C8: Communication Chameleon runs until 16:30, everywhere", () => {
   // Same Workshop either way — v1 keeps producing Chameleon seats.
   assert.equal(sessionForOption(V2_CHAMELEON)?.slug, "communication-chameleon-2026");
   assert.equal(sessionForOption(V1_CHAMELEON)?.slug, "communication-chameleon-2026");
-  // Every other session is v1's to the character.
-  assert.deepEqual(
-    f.options.filter((o) => o !== V2_CHAMELEON),
-    sessionsOf(v1).filter((o) => o !== V1_CHAMELEON),
-  );
+  // Every session is the schedule's current string for whatever v1
+  // offered in that place — five of the six moved with October's grid,
+  // and the build takes the new string from the schedule rather than
+  // from a table that would go stale on the next change.
+  assert.deepEqual(f.options, sessionsOf(v1).map((o) => optionLabel(sessionForOption(o)!)));
 });
 
 test("C9: the status question", () => {
@@ -348,27 +348,22 @@ test("C11: the Symposium question, required, pointing at Luma", () => {
   assert.ok(hasRichLink(note.help!));
 });
 
-test("C12: choose and rank, in three paragraphs", () => {
+test("C12: choose and rank, in two paragraphs", () => {
   const f = q(v2, "sessions");
   assert.equal(f.label, "Choose and Rank Your Sessions");
   assert.equal(f.required, true);
   assert.equal(
     f.help,
     "Select as many sessions as you wish and rank them in order of preference. Sessions will be allocated based on your stated order of preference, subject to availability.\n" +
-    "Please note: Sessions displayed side by side in the calendar take place at the same time. You may select both sessions if you would be willing to attend either; however, you can only be approved for one.\n" +
-    "For the tours on Monday, 26 October, CCRM is in downtown Toronto, while Catalent is in London. Please select and rank the Monday tour you prefer.",
+    "Please note: Sessions displayed side by side in the calendar take place at the same time. You may select both sessions if you would be willing to attend either; however, you can only be approved for one.",
   );
-  assert.equal(parseRich(f.help!).length, 3);
-  assert.deepEqual(f.cannotCombine, [{
-    options: q(v1, "sessions").cannotCombine![0].options,
-    reason: "CCRM is in downtown Toronto and Catalent is in London, so you can only be approved for one Monday tour",
-  }]);
-  // The clash panel prints "— <reason>" and then "You can leave both
-  // chosen … only 1 of a conflicting pair can be approved". The reason
-  // must not add a second dash, nor tell them to pick one.
-  const reason = f.cannotCombine![0].reason;
-  assert.ok(!reason.includes("—"), "a second dash in the clash line");
-  assert.ok(!/please select|choose one/i.test(reason), "contradicts 'You can leave both chosen'");
+  assert.equal(parseRich(f.help!).length, 2);
+  // v1's third paragraph and its rule told people to choose between the
+  // Monday tours, which October's grid does not have: one tour, host to
+  // be confirmed, and CCRM moved to Tuesday. A sentence about where two
+  // sessions are cannot be rewritten by a build, so it goes.
+  assert.deepEqual(f.cannotCombine, []);
+  assert.ok(!JSON.stringify(v2).includes("Catalent"), "a tour the week no longer runs");
   assert.equal(f.maxChoices, undefined, "a cap has come back");
 });
 

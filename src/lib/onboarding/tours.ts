@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16l";
+export const TOUR_VERSION = "2026.10.16m";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "training-week.october-grid",
+    title: "Training Week follows October’s grid",
+    body: "The registration’s session list, the Admin calendar and the Workshop rows now match the October grid: one **Company tour** on Monday (host to be confirmed) against **Pandemic Preparedness — THCF**, **Negotiation Navigator** on Tuesday with the **CCRM tour** moved to 15:00, and **Innovation Ignited** on Wednesday. Each session says how many places it holds.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Training admin", href: "/admin/workspace/training-admin" },
+    since: "2026.10.16m",
+  },
   {
     id: "dashboard.symposium-awaiting-approval",
     title: "Symposium: who is awaiting approval",

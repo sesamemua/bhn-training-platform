@@ -212,12 +212,10 @@ const WORDING: Readonly<Record<string, Rewrite>> = {
     help: para(
       "Select as many sessions as you wish and rank them in order of preference. Sessions will be allocated based on your stated order of preference, subject to availability.",
       "Please note: Sessions displayed side by side in the calendar take place at the same time. You may select both sessions if you would be willing to attend either; however, you can only be approved for one.",
-      "For the tours on Monday, 26 October, CCRM is in downtown Toronto, while Catalent is in London. Please select and rank the Monday tour you prefer.",
     ),
     // Said as a fact, not an instruction: the clash panel prints this
     // after its own dash and then "You can leave both chosen", so "please
     // select one" here would contradict the sentence under it.
-    cannotCombineReason: "CCRM is in downtown Toronto and Catalent is in London, so you can only be approved for one Monday tour",
   },
   symposium_signup: {
     label: "Have you registered for the 2026 Annual Symposium?",
@@ -281,9 +279,14 @@ const RENAMES: Readonly<Record<string, RenameTable>> = {
       "Something else — I will describe it": V2_DIET_OTHER,
     },
   },
-  // Not strict: five of the six sessions keep their strings. Identity is
-  // checked afterwards — every option must reach the same Workshop.
-  sessions: { strict: false, map: { [V1_CHAMELEON]: V2_CHAMELEON } },
+  /*
+   * Empty on purpose: a session string is the schedule's to decide.
+   * renameOne resolves a v1 string through the schedule's aliases and
+   * hands back whatever that session is called NOW, so a typed table
+   * here would go stale the first time the coordinators move an hour —
+   * and the build's own check would then reject it.
+   */
+  sessions: { strict: false, map: {} },
 };
 
 /** The options each renamed question must end up with, in order. */
@@ -306,6 +309,11 @@ function renameOne(key: string, value: string, where: string): string | null {
   if (Object.hasOwn(table.map, value)) return table.map[value];
   if (table.strict) {
     fail(`${where} names "${value}", which the rename table for "${key}" does not account for. v1 has changed since this was written — look before building.`);
+  }
+  if (key === "sessions") {
+    const session = sessionForOption(value);
+    if (!session) fail(`${where} names "${value}", which matches no session in the schedule.`);
+    return optionLabel(session);
   }
   return value;
 }
@@ -352,14 +360,27 @@ function rewriteField(f: FormField): FormField {
     };
   });
 
-  let cannotCombine = f.cannotCombine?.map((rule) => ({
-    ...rule,
-    options: rule.options.map((o) => {
-      const next = renameOne(f.key, o, `${where} cannotCombine`);
-      if (next === null) fail(`${where} cannotCombine names "${o}", which v2 no longer offers.`);
-      return next;
-    }),
-  }));
+  /*
+   * A "cannot combine" rule names two options and says why, in a
+   * sentence about where and when they were. Once the schedule has
+   * moved either one the sentence is no longer true and no code can
+   * write the coordinators a new one — so a rule whose options moved
+   * is dropped rather than carried over with stale wording. The one
+   * this replaced said the Monday tours were in two cities; October's
+   * grid has a single Monday tour.
+   */
+  let cannotCombine = f.cannotCombine
+    ?.map((rule) => ({
+      ...rule,
+      moved: rule.options.some((o) => renameOne(f.key, o, `${where} cannotCombine`) !== o),
+      options: rule.options.map((o) => {
+        const next = renameOne(f.key, o, `${where} cannotCombine`);
+        if (next === null) fail(`${where} cannotCombine names "${o}", which v2 no longer offers.`);
+        return next;
+      }),
+    }))
+    .filter((rule) => !rule.moved)
+    .map(({ moved: _moved, ...rule }) => rule);
   if (w.cannotCombineReason !== undefined) {
     if (cannotCombine?.length !== 1) fail(`${where} was expected to carry exactly one cannotCombine rule.`);
     cannotCombine = [{ ...cannotCombine[0], reason: w.cannotCombineReason }];

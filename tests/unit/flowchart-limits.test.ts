@@ -92,19 +92,16 @@ test("the seeded Training Week chart carries the schedule's clashes, and no cap"
     "the two Tuesday afternoon workshops should clash",
   );
 
-  // The regression this whole change exists to prevent. The two Monday
-  // company tours run back to back — 11:00-13:30 then 14:00-16:30 — so
-  // picking both must produce NO warning. The chart used to say it did.
-  const tours = [option("ccrm-tour-lunch-learn-2026"), option("catalent-tour-lunch-learn-2026")];
-  assert.deepEqual(
-    limitState(TRAINING_WEEK_FLOW, "sessions", tours).clashes, [],
-    "the Monday tours are consecutive, not concurrent",
-  );
+  // Monday's company tour and the THCF workshop both start at 09:30, so
+  // picking both is one warning.
+  const monday = [option("catalent-tour-lunch-learn-2026"), option("cl3-workshop-2026")];
+  assert.equal(limitState(TRAINING_WEEK_FLOW, "sessions", monday).clashes.length, 1);
 
-  // CL3 runs the whole day, so it does clash with each tour separately.
-  const cl3 = option("cl3-workshop-2026");
-  assert.equal(limitState(TRAINING_WEEK_FLOW, "sessions", [cl3, tours[0]]).clashes.length, 1);
-  assert.equal(limitState(TRAINING_WEEK_FLOW, "sessions", [cl3, tours[1]]).clashes.length, 1);
+  // The CCRM tour runs 15:00-17:00, into the end of each Tuesday
+  // workshop — a warning against either, separately.
+  const ccrm = option("ccrm-tour-lunch-learn-2026");
+  assert.equal(limitState(TRAINING_WEEK_FLOW, "sessions", [ccrm, tuesday[0]]).clashes.length, 1);
+  assert.equal(limitState(TRAINING_WEEK_FLOW, "sessions", [ccrm, tuesday[1]]).clashes.length, 1);
 
   // Every option named in a clash must actually exist on the question.
   const q = TRAINING_WEEK_FLOW.nodes.find((n) => n.field?.key === "sessions");

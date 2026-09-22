@@ -78,7 +78,7 @@ test("a session is drawn at the same place on the form and on the dashboard", ()
 
 test("every session's box is a real position, not a default", () => {
   // Guards the comparison above: two empty strings are also equal.
-  const box = boxOf(picker, "CCRM tour + Lunch & Learn");
+  const box = boxOf(picker, "Company tour + Lunch & Learn");
   for (const part of ["top:", "height:", "left:", "width:"]) {
     assert.ok(box.includes(part), `${part} missing from ${box}`);
   }
@@ -134,8 +134,8 @@ test("a session with no workshop behind it is drawn as nothing", () => {
   const partial = renderToStaticMarkup(
     React.createElement(TrainingWeekCalendar, { workshops: workshops.slice(0, 2) }),
   );
-  assert.match(partial, /CCRM tour/);
-  assert.doesNotMatch(partial, /Negotiation Skills/);
+  assert.match(partial, /Company tour/);
+  assert.doesNotMatch(partial, /Negotiation Navigator/);
 });
 
 test("the picker's cells are buttons and the receipt's are not", () => {

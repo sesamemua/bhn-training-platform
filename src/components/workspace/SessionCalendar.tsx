@@ -10,9 +10,9 @@
  * Admin dashboard is the other adapter over the same drawing.
  *
  * The first version drew every session as an equal-height card grouped
- * into rows, which is a list wearing a calendar's clothes: the CL3
- * workshop runs 09:30 to 17:00 and the CCRM tour runs 11:00 to 13:30,
- * and nothing on screen said one was three times the other. Picking a
+ * into rows, which is a list wearing a calendar's clothes: the Monday
+ * workshop ran 09:30 to 17:00 and the CCRM tour 11:00 to 13:30, and
+ * nothing on screen said one was three times the other. Picking a
  * session is a decision about your day, and a picture that flattens
  * duration hides the part of the decision that matters.
  */
@@ -119,8 +119,8 @@ export function SessionCalendar(props: SessionCalendarProps) {
    * Filtered here, downstream of `gridFromSlots`, so the hour bounds
    * and the lane packing are byte-identical to the picker's — a day
    * that IS drawn is the same drawing, unchosen neighbours and all.
-   * (Those stay: CL3's half-width block looks broken with an empty
-   * half beside it.) A whole day with nothing chosen has no such
+   * (Those stay: a half-width block looks broken with an empty half
+   * beside it.) A whole day with nothing chosen has no such
    * argument; it is noise on a record, and three of them stacked is
    * what made the phone receipt too long to show at all.
    */

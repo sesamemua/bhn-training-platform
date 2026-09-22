@@ -27,7 +27,10 @@ import { PrismaClient } from "@prisma/client";
 import { fieldsOf } from "../src/lib/flowchart/form";
 import type { FlowNode } from "../src/lib/flowchart/types";
 import { TRAINING_WEEK_FORM } from "../src/lib/formbuilder/training-week";
-import { FROZEN_FORM_SLUGS } from "../src/lib/allocation/symposium-2026";
+import {
+  FROZEN_FORM_SLUGS, REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE,
+} from "../src/lib/allocation/symposium-2026";
+import { versionRoot } from "../src/lib/formbuilder/versions";
 import {
   clashPairs, EVENT_END, optionLabel, SESSION_OPTIONS, SESSION_SLOTS,
   SESSIONS, sessionInOption, workshopRows, WEEK_START,
@@ -215,6 +218,20 @@ async function eventWindow(eventId: string) {
 
 /* ── 3. the live form ───────────────────────────────────────────── */
 
+/**
+ * Help lines a schedule change has made false.
+ *
+ * The help on the live form is the coordinators' wording and is never
+ * rewritten from the code template — but a line about sessions the week
+ * no longer has is worse than no line at all. Exact matches only: once
+ * they have reworded it themselves, nothing matches and nothing goes.
+ */
+const STALE_HELP_LINES = [
+  // October's grid drops the Catalent tour and moves CCRM to Tuesday,
+  // so there is no longer a Monday tour to choose between.
+  "For the tours on Monday, 26 October, CCRM is in downtown Toronto, while Catalent is in London. Please select and rank the Monday tour you prefer.",
+];
+
 async function form() {
   // The help sentence is NOT retyped here. It is whatever the form
   // module says it is, so the cap and the wording cannot be right in
@@ -222,7 +239,10 @@ async function form() {
   const template = TRAINING_WEEK_FORM.fields.find((f) => f.key === "sessions");
   if (!template) throw new Error("The built form has no sessions question — nothing to apply.");
 
-  const rows = await prisma.eventForm.findMany({ where: { slug: "training-week-registration-2026" } });
+  // Every version of the registration, not only v1: a schedule change
+  // has to reach the form people are actually filling in.
+  const rows = (await prisma.eventForm.findMany({ where: REGISTRATION_FORM_WHERE }))
+    .filter((f) => versionRoot(f.slug) === REGISTRATION_FORM_SLUG);
   for (const f of rows) {
     /*
      * v1 is FROZEN. People have registered on it and it has to stay
@@ -231,10 +251,6 @@ async function form() {
      * it would rewrite v1's option string — which is the stored answer —
      * and its session help. The schedule keeps v1's old string resolving
      * to the right Workshop through previousOptions instead.
-     *
-     * v2 is not targeted either: its session help is the coordinators'
-     * wording, and this step would overwrite it with the code template.
-     * The workshops and event-window steps are unaffected.
      */
     // The one list every form-writing script shares, not a copy of it.
     if (FROZEN_FORM_SLUGS.has(f.slug)) {
@@ -248,6 +264,30 @@ async function form() {
     const got = mapOptions((field.options as string[]) ?? []);
     if ("why" in got) { skip(`form ${f.slug}: ${got.why} — left untouched`); continue; }
 
+    /*
+     * The help stays theirs, minus lines the schedule has falsified.
+     *
+     * Overwriting it with the code template is what kept this step away
+     * from v2 in the first place: the wording there was written by the
+     * coordinators and signed off, and a script that replaces it loses
+     * work nobody asked it to touch.
+     */
+    const lines = String(field.help ?? "").split("\n");
+    const kept = lines.filter((l) => !STALE_HELP_LINES.includes(l.trim()));
+    const help = kept.join("\n");
+    const droppedLines = lines.length - kept.length;
+
+    /*
+     * A "cannot combine" rule names two options AND says why, in a
+     * sentence about the old times. When the schedule moves either
+     * option the sentence is no longer true, and a script cannot write
+     * the coordinators a new one — so the rule goes rather than being
+     * carried over with wording that has stopped matching the week.
+     */
+    const moved = new Set([...got.map].filter(([was, now]) => was !== now).map(([was]) => was));
+    const rules = (field.cannotCombine as { options: string[]; reason: string }[] | undefined) ?? [];
+    const keptRules = rules.filter((r) => !r.options.some((o) => moved.has(o)));
+
     // Compared on exactly the keys that get written, and canonically,
     // because the database reorders object keys. Comparing fewer keys
     // than you assign means a changed cap reports "nothing to change"
@@ -255,15 +295,21 @@ async function form() {
     const same =
       canon(field.options) === canon(template.options) &&
       canon(field.slots) === canon(template.slots) &&
-      canon(field.help ?? null) === canon(template.help ?? null);
+      canon(field.cannotCombine ?? []) === canon(keptRules) &&
+      canon(field.help ?? "") === canon(help);
     if (same) continue;
 
     backup("forms", `before-schedule-2026-${f.slug}`, f);
-    note(`form ${f.slug}: session options, times and hint refreshed (${got.map.size} options)`);
+    note(
+      `form ${f.slug}: session options, times and room sizes refreshed (${got.map.size} options)` +
+      (droppedLines > 0 ? `, ${droppedLines} stale help line(s) dropped` : "") +
+      (keptRules.length !== rules.length ? `, ${rules.length - keptRules.length} "cannot combine" rule(s) dropped` : ""),
+    );
     if (FORCE) {
       field.options = template.options;
       field.slots = template.slots;
-      field.help = template.help;
+      field.help = help;
+      if (rules.length > 0) field.cannotCombine = keptRules;
       await prisma.eventForm.update({ where: { id: f.id }, data: { fields: doc as object } });
     }
   }
