@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Admin dashboard: LinkedIn + biohubnet.ca
+  {
+    title: "Dashboard: LinkedIn and biohubnet.ca numbers",
+    body: "Under the event registrations, the admin **Dashboard** now shows:\n\n- **LinkedIn** \u2014 followers, posts in the last 30 days, and the reactions and comments on them, with the most-liked post. Read from BioHubNet\u2019s public page, at most every 30 minutes. Impressions and page visitors need LinkedIn\u2019s own API and are not included.\n- **biohubnet.ca** \u2014 visitors, visits and page views for the last 7 days against the week before, and the most-viewed pages, from Google Analytics. Until Google Analytics is connected, the card shows the three steps to connect it.\n\nThe card refreshes every 10 minutes while the page is open, and has a **Refresh** button.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Admin dashboard: event registration totals
   {
     title: "Dashboard: registration totals for the upcoming events",

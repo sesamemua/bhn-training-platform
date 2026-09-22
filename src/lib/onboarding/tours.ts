@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16j";
+export const TOUR_VERSION = "2026.10.16k";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.marketing-metrics",
+    title: "LinkedIn and website at a glance",
+    body: "The **Dashboard** shows LinkedIn followers and how recent posts did, and biohubnet.ca visitors from Google Analytics. Connect Google Analytics once, using the steps on the card, to switch the website numbers on.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the Dashboard", href: "/dashboard" },
+    since: "2026.10.16k",
+  },
   {
     id: "dashboard.registration-counts",
     title: "Registrations at a glance",

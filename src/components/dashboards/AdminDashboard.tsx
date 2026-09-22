@@ -7,6 +7,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 import { RegistrationCounts } from "@/components/dashboards/RegistrationCounts";
+import { MarketingMetrics } from "@/components/dashboards/MarketingMetrics";
 
 /**
  * Admin / superadmin dashboard.
@@ -306,6 +307,7 @@ export async function AdminDashboard({
 
       {/* Registrations for the events coming up — under the cover, never above it. */}
       <RegistrationCounts />
+      <MarketingMetrics />
 
       {/* ════ SIDEBAR RIGHT — content LEFT, quick-action rail RIGHT ═ */}
       <article className="aero-frame">
