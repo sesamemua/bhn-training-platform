@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Page review: a pasted document is served as a document
+  {
+    title: "Page review: a pasted newsletter renders as itself again",
+    body: "A review of a **pasted page** — the September newsletter, for instance — came out about 1,800 pixels wide and barely a screen and a half tall, with its sections beside one another and most of them off to the right. It read as *“the page will not scroll”*: there was hardly anything to scroll.\n\nWhat was pasted is a whole HTML document, and it was being dropped inside another page’s body. A browser will not have that — it throws away the inner **html**, **head** and **body** tags, and anything that lands inside a **table** without belonging there gets moved out in front of it. A newsletter is forty nested tables, so it came apart.\n\nA pasted document is now served **as the document**, with the review overlay added before its closing tag. Comments, rounds and share links are unchanged, and the paste still runs with no access to the platform — the sandbox header that guarantees that has not moved. A pasted **fragment** is still wrapped, as before.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── EQUIP: the round rolls over by itself, and drafts get their own list
   {
     title: "EQUIP: the funding round rolls over on its own",

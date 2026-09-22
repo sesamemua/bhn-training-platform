@@ -29,18 +29,9 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pasteDocument } from "@/lib/page-review/paste-document";
 
 export const dynamic = "force-dynamic";
-
-/** The paste cannot run scripts of its own choosing anyway — the
- *  opaque origin sees to what they could reach — but email exports do
- *  not need them, and stripping keeps the preview honest about what a
- *  recipient sees. */
-function stripScripts(html: string): string {
-  return html
-    .replace(/<script\b[\s\S]*?<\/script\s*>/gi, "")
-    .replace(/<script\b[^>]*\/?>/gi, "");
-}
 
 export async function GET(req: Request, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params;
@@ -56,25 +47,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const origin = new URL(req.url).origin;
   const overlay = `${origin}/api/public/page-review/${encodeURIComponent(token)}/overlay.js`;
 
-  const body = stripScripts(review.pastedHtml);
-  const title = review.title.replace(/[<>&"]/g, "");
-
-  /* The overlay goes in last so it runs against a finished document,
-     and it is the only <script> in here — everything the paste brought
-     was stripped above. */
-  const doc = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>${title}</title>
-</head>
-<body>
-${body}
-<script src="${overlay}" defer></script>
-</body>
-</html>`;
+  /*
+   * A pasted document is served AS the document.
+   *
+   * Nesting one inside a wrapper's <body> is what the first version
+   * did, and the parser will not have it: the inner html/head/body
+   * tags go, and whatever lands inside a <table> gets foster-parented
+   * out in front of it. A forty-table newsletter came out 1,800px wide
+   * with its sections side by side — a page with nothing to scroll.
+   */
+  const doc = pasteDocument(review.pastedHtml, overlay, review.title);
 
   return new NextResponse(doc, {
     headers: {

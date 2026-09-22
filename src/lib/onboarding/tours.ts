@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16q";
+export const TOUR_VERSION = "2026.10.16r";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "website-review.paste-renders",
+    title: "A pasted page reviews as itself",
+    body: "A paste that is a whole HTML document — a newsletter export, say — is now served as the document rather than dropped inside another page, so it lays out and scrolls the way the recipient will see it. The overlay, the comments and the share link are unchanged.",
+    path: "/admin/workspace/website-review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Website review", href: "/admin/workspace/website-review" },
+    since: "2026.10.16r",
+  },
   {
     id: "admin.equip-drafts-and-rounds",
     title: "Drafts have their own list, and the round rolls over",
