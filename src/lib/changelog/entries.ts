@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Eligibility: EQUIP applicants on the platform, read live
+  {
+    title: "Eligibility: EQUIP applicants here count without an import",
+    body: "**Anyone who has started a VentureConnect or VentureLift application on this platform** can now register for Training Week. **Admin → Eligibility lists** shows a fourth list, *EQUIP — applications on this platform*, which is read **live** from the applications themselves: there is no Import button, and somebody who applies this afternoon counts this afternoon. **15 people** qualify that way today.\n\nThe three imported lists were refreshed at the same time: **ENGAGE and EXPERIENCE** 355 → **382** (27 people accepted since the 4 September export, every one of whom would have been turned away), and both EQUIP workbooks unchanged at 63 and 60. The roster holds **505 people** and is no longer flagged stale.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Training Week: October's planning grid
   {
     title: "Training Week: the registration follows October’s grid",

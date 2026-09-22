@@ -16,7 +16,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DSPageHeader } from "@/components/design-system/DSPageHeader";
 import { EligibilityManager, type EligibilityState } from "@/components/admin/eligibility/EligibilityManager";
-import { rosterState } from "@/lib/eligibility/check";
+import { platformApplicantCount, rosterState } from "@/lib/eligibility/check";
 import { eligibilityGate } from "@/lib/eligibility/gate";
 import { ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
 
@@ -27,7 +27,8 @@ export default async function EligibilityPage() {
   if (!session) redirect("/dashboard");
 
   const state = await rosterState();
-  const [perSource, imports] = await Promise.all([
+  const [applicants, perSource, imports] = await Promise.all([
+    platformApplicantCount(),
     prisma.eligibilityEntry.groupBy({ by: ["sourceId"], _count: { _all: true } }),
     prisma.eligibilityImport.findMany({
       orderBy: { createdAt: "desc" },
@@ -45,8 +46,10 @@ export default async function EligibilityPage() {
     gate: eligibilityGate(state, new Date()),
     total: state.total,
     sources: ELIGIBILITY_SOURCES.map((s) => ({
-      id: s.id, name: s.name, note: s.note, url: s.url,
-      programmes: [...s.programmes], count: counts[s.id] ?? 0,
+      id: s.id, name: s.name, note: s.note, url: s.url, access: s.access,
+      programmes: [...s.programmes],
+      // The live list is counted where it lives, not in the entries table.
+      count: s.access === "platform" ? applicants : counts[s.id] ?? 0,
     })),
     imports: imports.map((i) => ({ ...i, createdAt: i.createdAt.toISOString() })),
   };

@@ -19,7 +19,7 @@ import { emailKey } from "@/lib/eligibility/email-key";
 import { parseRoster } from "@/lib/eligibility/import";
 import { eligibilitySource, ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
 import { eligibilityGate } from "@/lib/eligibility/gate";
-import { rosterState } from "@/lib/eligibility/check";
+import { platformApplicantCount, rosterState } from "@/lib/eligibility/check";
 
 export const runtime = "nodejs";
 
@@ -41,7 +41,8 @@ export async function GET() {
   if (!(await admin())) return DENIED();
 
   const state = await rosterState();
-  const [perSource, imports] = await Promise.all([
+  const [applicants, perSource, imports] = await Promise.all([
+    platformApplicantCount(),
     prisma.eligibilityEntry.groupBy({ by: ["sourceId"], _count: { _all: true } }),
     prisma.eligibilityImport.findMany({
       orderBy: { createdAt: "desc" },
@@ -61,7 +62,10 @@ export async function GET() {
     gate: eligibilityGate(state, new Date()),
     total: state.total,
     lastImportAt: state.lastImportAt,
-    sources: ELIGIBILITY_SOURCES.map((s) => ({ ...s, count: counts[s.id] ?? 0 })),
+    sources: ELIGIBILITY_SOURCES.map((s) => ({
+      ...s,
+      count: s.access === "platform" ? applicants : counts[s.id] ?? 0,
+    })),
     imports,
   });
 }

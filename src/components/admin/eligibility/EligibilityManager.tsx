@@ -20,6 +20,8 @@ import { Loader2, ShieldCheck, ShieldAlert, Upload, AlertTriangle, ExternalLink,
 interface Source {
   id: string; name: string; note: string; url: string;
   programmes: string[]; count: number;
+  /** "platform" is read live from this database — there is nothing to import. */
+  access: string;
 }
 interface Gate { enforcing: boolean; reason: string; stale: boolean }
 interface ImportRow {
@@ -46,7 +48,7 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
   const [addOpen, setAddOpen] = useState(false);
   const [addEmail, setAddEmail] = useState("");
   const [addName, setAddName] = useState("");
-  const [addSource, setAddSource] = useState(initial.sources[0]?.id ?? "");
+  const [addSource, setAddSource] = useState(initial.sources.find((s) => s.access !== "platform")?.id ?? "");
 
   /** Re-read after an import. An event, not a render. */
   async function load() {
@@ -170,7 +172,11 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
                 onChange={(e) => setAddSource(e.target.value)}
                 className="mt-1 w-full rounded-md border border-line bg-elevated/40 px-2.5 py-1.5 text-[13px] font-semibold focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
-                {state.sources.map((s2) => <option key={s2.id} value={s2.id}>{s2.name}</option>)}
+                {/* Not the live list: a row added by hand there would be
+                    invisible on a card that counts applications, not rows. */}
+                {state.sources.filter((s2) => s2.access !== "platform").map((s2) => (
+                  <option key={s2.id} value={s2.id}>{s2.name}</option>
+                ))}
               </select>
             </label>
             <button
@@ -201,15 +207,23 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold tabular-nums ${s.count > 0 ? "bg-emerald-100 text-emerald-800" : "bg-elevated text-subtle"}`}>
-                  {s.count} loaded
+                  {s.count} {s.access === "platform" ? "on file" : "loaded"}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => { setOpenId(openId === s.id ? null : s.id); setPaste(""); setResult(null); }}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-brand-700"
-                >
-                  <Upload size={12} /> {s.count > 0 ? "Re-import" : "Import"}
-                </button>
+                {s.access === "platform" ? (
+                  // Nothing to import: these applications are in this
+                  // database already, and a new one counts immediately.
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-muted">
+                    <Check size={12} /> Read live
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setOpenId(openId === s.id ? null : s.id); setPaste(""); setResult(null); }}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-brand-700"
+                  >
+                    <Upload size={12} /> {s.count > 0 ? "Re-import" : "Import"}
+                  </button>
+                )}
               </div>
             </div>
 

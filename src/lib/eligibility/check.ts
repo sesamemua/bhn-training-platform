@@ -31,6 +31,54 @@ export interface EligibilityVerdict {
   blocked: boolean;
 }
 
+/** The list whose members are read live from this database. */
+export const PLATFORM_SOURCE_ID = "equip-application-form";
+
+/** What an application row has to offer: the address it can be reached at. */
+export interface ApplicationRow {
+  applicantEmail: string | null;
+  user: { email: string | null } | null;
+}
+
+/**
+ * The mailboxes a set of EQUIP applications belongs to.
+ *
+ * Both addresses are read, not one: an application made from an
+ * account carries no applicantEmail, and a public one has no account.
+ * Normalised through the same emailKey the roster is keyed on, so the
+ * two halves of "eligible" cannot disagree about what an address is.
+ */
+export function applicationKeys(rows: ApplicationRow[]): Set<string> {
+  const keys = new Set<string>();
+  for (const row of rows) {
+    for (const raw of [row.applicantEmail, row.user?.email]) {
+      const key = raw ? emailKey(raw) : null;
+      if (key) keys.add(key);
+    }
+  }
+  return keys;
+}
+
+/*
+ * Read whole, then matched in memory.
+ *
+ * The key is a normalisation — dots, plus-tags, mail.utoronto.ca — so
+ * there is no column to index and no query that can do this in SQL.
+ * EQUIP applications are in the dozens and grow by a handful a month,
+ * which makes reading two columns of them cheaper than the round trip
+ * it would take to be clever. Worth revisiting past a few thousand
+ * rows: store the key on the application and match on it.
+ */
+const applicationRows = () =>
+  prisma.equipApplication.findMany({
+    select: { applicantEmail: true, user: { select: { email: true } } },
+  });
+
+/** How many people have an application here, for the admin screen. */
+export async function platformApplicantCount(): Promise<number> {
+  return applicationKeys(await applicationRows()).size;
+}
+
 /** The roster's state, for the interlock. One query, two numbers. */
 export async function rosterState() {
   const [total, latest] = await Promise.all([
@@ -62,16 +110,18 @@ export async function checkEligibility(rawEmail: string): Promise<EligibilityVer
     return { gate, key: null, matched: false, sourceIds: [], programmes: [], blocked: gate.enforcing };
   }
 
-  const rows = await prisma.eligibilityEntry.findMany({
-    where: { emailKey: key },
-    select: { sourceId: true },
-  });
+  const [rows, applied] = await Promise.all([
+    prisma.eligibilityEntry.findMany({ where: { emailKey: key }, select: { sourceId: true } }),
+    applicationRows().then((apps) => applicationKeys(apps).has(key)),
+  ]);
 
-  const sourceIds = rows.map((r) => r.sourceId);
+  // An application made here counts like a row on an imported list —
+  // it is the same fact, arriving without anybody exporting it.
+  const sourceIds = [...rows.map((r) => r.sourceId), ...(applied ? [PLATFORM_SOURCE_ID] : [])];
   const programmes = [
     ...new Set(sourceIds.flatMap((id) => eligibilitySource(id)?.programmes ?? [])),
   ];
-  const matched = rows.length > 0;
+  const matched = sourceIds.length > 0;
 
   return { gate, key, matched, sourceIds, programmes, blocked: gate.enforcing && !matched };
 }

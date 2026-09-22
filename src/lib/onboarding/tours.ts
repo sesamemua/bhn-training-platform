@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16m";
+export const TOUR_VERSION = "2026.10.16n";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "admin.eligibility-applications-live",
+    title: "EQUIP applicants count without an import",
+    body: "**Admin → Eligibility lists** has a fourth list: the VentureConnect and VentureLift applications made here. It is read **live** — no Import button, nothing to re-export — so anyone who starts an application can register for Training Week straight away.",
+    path: "/admin/eligibility",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Eligibility lists", href: "/admin/eligibility" },
+    since: "2026.10.16n",
+  },
   {
     id: "training-week.october-grid",
     title: "Training Week follows October’s grid",

@@ -55,9 +55,9 @@ test("the boundary is not off by an hour", () => {
 
 /* ── The register ────────────────────────────────────────────────── */
 
-test("all three lists the organisers named are registered", () => {
-  assert.equal(ELIGIBILITY_SOURCES.length, 3);
-  for (const id of ["engage-experience", "equip-venture-connect", "equip-venturelift"]) {
+test("the lists the organisers named are registered, plus the live one", () => {
+  assert.equal(ELIGIBILITY_SOURCES.length, 4);
+  for (const id of ["engage-experience", "equip-venture-connect", "equip-venturelift", "equip-application-form"]) {
     assert.ok(eligibilitySource(id), `${id} is missing`);
   }
   assert.equal(eligibilitySource("no-such-list"), null);
@@ -65,11 +65,24 @@ test("all three lists the organisers named are registered", () => {
 
 test("every source says where it lives and what it makes you eligible for", () => {
   for (const s of ELIGIBILITY_SOURCES) {
-    assert.ok(s.url.startsWith("https://"), `${s.id} has no usable URL`);
+    // An exported list lives somewhere else; the live one lives here,
+    // so its "source" is the page an admin reads it on.
+    const here = s.access === "platform";
+    assert.ok(here ? s.url.startsWith("/") : s.url.startsWith("https://"), `${s.id} has no usable URL`);
     assert.ok(s.programmes.length > 0, `${s.id} grants no programme`);
     assert.ok(s.note.trim().length > 10, `${s.id} has no explanation`);
-    assert.ok(["manual", "google", "graph"].includes(s.access));
+    assert.ok(["manual", "google", "graph", "platform"].includes(s.access));
   }
+});
+
+test("only one list is read live — the rest are imports that can go stale", () => {
+  // The gate counts imported rows. A second live list would need the
+  // same care taken over the first: counted where it lives, no Import
+  // button, and excluded from the add-by-hand picker.
+  assert.deepEqual(
+    ELIGIBILITY_SOURCES.filter((s) => s.access === "platform").map((s) => s.id),
+    ["equip-application-form"],
+  );
 });
 
 test("between them the sources cover ENGAGE, EXPERIENCE and EQUIP", () => {
