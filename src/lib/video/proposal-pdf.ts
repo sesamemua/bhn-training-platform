@@ -159,7 +159,7 @@ export async function buildProductionProposalPdf(input: ProposalPdfInput): Promi
   one.eyebrow("BioHubNet · Video production")
     .title(`${film} — camera, lens, lighting and sound`)
     .gap(2)
-    .para("Budget proposal. Shoot day Tuesday 6 October 2026, 144 College Street. All amounts in Canadian dollars, HST included.", 9)
+    .para("Budget proposal. Shoot day Tuesday 6 October 2026, 144 College Street. All amounts in Canadian dollars, HST included. Vendor quotes are dated 10 September 2026 and 2D House's is valid for fifteen days, so it lapses on 25 September.", 9)
     .gap(14)
     .headline(
       { label: "Approval requested", value: cad(t.chosen) },
