@@ -1,30 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createVerify, generateKeyPairSync } from "node:crypto";
-import { parseFollowWidget, parseLinkedInPage } from "../../src/lib/metrics/linkedin";
+import { activityDate, parseFollowWidget, parseLinkedInPage } from "../../src/lib/metrics/linkedin";
 import { parseTopPages, parseTotals, serviceAccountJwt } from "../../src/lib/metrics/ga4";
 
-const post = (id: string, date: string, text: string) =>
-  ({ "@type": "DiscussionForumPosting", url: `https://www.linkedin.com/posts/biohubnet_x-activity-${id}-abcd`, datePublished: date, text });
+/** An activity id for a moment: LinkedIn puts the millisecond timestamp in the top bits. */
+const idAt = (iso: string) => (BigInt(Date.parse(iso)) * BigInt(4194304)).toString();
+const card = (iso: string, text: string, social: string, repost = false) =>
+  `<article data-activity-urn="urn:li:activity:${idAt(iso)}">${repost ? "<span>BioHubNet reposted this</span>" : ""}` +
+  `<p data-test-id="main-feed-activity-card__commentary" dir="ltr">${text}</p>${social}</article>`;
 
-const page = `<html><body>
-<p>BioHubNet · 2,305 followers</p>
-<script type="application/ld+json">${JSON.stringify({ "@graph": [
-  post("111", "2026-09-16T21:36:25Z", "Registration is now open for the Symposium"),
-  post("222", "2026-09-08T20:30:22Z", "VentureConnect grant applications are open"),
-  post("333", "2026-07-01T10:00:00Z", "An old post"),
-  { "@type": "Organization", name: "BioHubNet" },
-] })}</script>
-<article data-activity-urn="urn:li:activity:111"><span>36 Reactions</span><span>1 Comment</span></article>
-<article data-activity-urn="urn:li:activity:999"><span>50 Reactions</span></article>
-<article data-activity-urn="urn:li:activity:222"><span>8 Reactions</span></article>
+// No structured posts at all — the copy LinkedIn sends cloud servers.
+const page = `<html><body><p>BioHubNet · 2,305 followers</p>
+${card("2026-09-16T21:36:25Z", "Registration is now open for the <b>Symposium</b> &amp; Training Week", "<span>36 Reactions</span><span>1 Comment</span>")}
+${card("2026-09-17T14:19:00Z", "Someone else's post", "<span>50 Reactions</span>", true)}
+${card("2026-09-08T20:30:22Z", "VentureConnect grant applications are open", "<span>8 Reactions</span>")}
+${card("2026-07-01T10:00:00Z", "An old post", "<span>3 Reactions</span>")}
 </body></html>`;
 
-test("LinkedIn: followers, and the last 30 days of posts with their own reactions", () => {
+test("LinkedIn: followers, and the last 30 days of the page's own posts, from the cards alone", () => {
   const s = parseLinkedInPage(page, new Date("2026-09-22T12:00:00Z"));
   assert.equal(s.followers, 2305);
   assert.deepEqual(s.posts.map((p) => [p.reactions, p.comments]), [[36, 1], [8, 0]]);
-  assert.equal(s.posts[0].text, "Registration is now open for the Symposium");
+  assert.equal(s.posts[0].text, "Registration is now open for the Symposium & Training Week");
+  assert.equal(s.posts[0].published.slice(0, 16), "2026-09-16T21:36");
+  assert.equal(activityDate("7507866972420833281").toISOString().slice(0, 16), "2026-09-21T18:22");
   assert.equal(parseFollowWidget('<div class="follower-count">2,305\n</div>'), 2305);
   assert.equal(parseFollowWidget("<html>sign in</html>"), null);
 });

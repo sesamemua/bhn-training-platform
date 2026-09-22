@@ -36,49 +36,47 @@ export function parseFollowWidget(html: string): number | null {
   return m ? count(m[1]) : null;
 }
 
-/** Followers and recent posts from the public page's HTML. Pure, so it can be tested on a saved page. */
-export function parseLinkedInPage(html: string, now = new Date()): { followers: number | null; posts: LinkedInPost[] } {
-  const followers = html.match(/([\d,]+)\s+followers/);
-
-  // Dates, text and links come from the page's structured data; reactions
-  // and comments only appear in each post's card, keyed by its activity id.
-  const posts: LinkedInPost[] = [];
-  // Any attributes on the tag (LinkedIn adds a nonce to some responses).
-  for (const m of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
-    let graph: unknown[] = [];
-    try {
-      graph = (JSON.parse(m[1]) as { "@graph"?: unknown[] })["@graph"] ?? [];
-    } catch {
-      continue;
-    }
-    for (const item of graph as Record<string, unknown>[]) {
-      if (item["@type"] !== "DiscussionForumPosting" || typeof item.url !== "string") continue;
-      const id = item.url.match(/activity-(\d+)/)?.[1];
-      const card = id ? cardFor(html, id) : "";
-      posts.push({
-        url: item.url,
-        published: String(item.datePublished ?? ""),
-        text: String(item.text ?? item.headline ?? "").replace(/\s+/g, " ").trim().slice(0, 120),
-        reactions: count(card.match(/(\d[\d,]*)\s*Reactions?/)?.[1]),
-        comments: count(card.match(/(\d[\d,]*)\s*Comments?/)?.[1]),
-      });
-    }
-  }
-  const monthAgo = now.getTime() - 30 * 86_400_000;
-  return {
-    followers: followers ? count(followers[1]) : null,
-    posts: posts
-      .filter((p) => new Date(p.published).getTime() >= monthAgo)
-      .sort((a, b) => b.published.localeCompare(a.published)),
-  };
+/** When a post went up, from its activity id: LinkedIn ids carry the millisecond timestamp in their top bits. */
+export function activityDate(id: string): Date {
+  // Number() rounds ids this large, but only in bits the division throws away.
+  return new Date(Math.floor(Number(id) / 4194304));
 }
 
-/** The HTML of one post's card: from its activity id to the next card. */
-function cardFor(html: string, id: string): string {
-  const start = html.indexOf(`urn:li:activity:${id}`);
-  if (start < 0) return "";
-  const next = html.indexOf("data-activity-urn=", start + 30);
-  return html.slice(start, next < 0 ? start + 60_000 : next);
+const decode = (s: string) =>
+  s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+    .replace(/&#39;|&#x27;/g, "'").replace(/&nbsp;/g, " ");
+
+/**
+ * Followers and recent posts from the public page's HTML. Pure, so it can
+ * be tested on a saved page.
+ *
+ * Posts are read from their cards alone. The page's structured data has
+ * dates too, but LinkedIn leaves the posts out of it in the copy it sends
+ * cloud servers — which is where this runs.
+ */
+export function parseLinkedInPage(html: string, now = new Date()): { followers: number | null; posts: LinkedInPost[] } {
+  const followers = html.match(/([\d,]+)\s+followers/);
+  const monthAgo = now.getTime() - 30 * 86_400_000;
+  const starts = [...html.matchAll(/data-activity-urn="urn:li:activity:(\d+)"/g)];
+  const posts: LinkedInPost[] = [];
+  starts.forEach((m, i) => {
+    const card = html.slice(m.index, starts[i + 1]?.index ?? m.index + 60_000);
+    if (/\breposted\b/i.test(card)) return; // someone else's post, shared
+    const published = activityDate(m[1]);
+    if (published.getTime() < monthAgo) return;
+    const commentary = card.match(/main-feed-activity-card__commentary"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "";
+    posts.push({
+      url: `https://www.linkedin.com/feed/update/urn:li:activity:${m[1]}/`,
+      published: published.toISOString(),
+      text: decode(commentary.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim().slice(0, 120),
+      reactions: count(card.match(/(\d[\d,]*)\s*Reactions?/)?.[1]),
+      comments: count(card.match(/(\d[\d,]*)\s*Comments?/)?.[1]),
+    });
+  });
+  return {
+    followers: followers ? count(followers[1]) : null,
+    posts: posts.sort((x, y) => y.published.localeCompare(x.published)),
+  };
 }
 
 async function page(url: string): Promise<string | null> {
@@ -107,7 +105,6 @@ export async function linkedinSnapshot(): Promise<LinkedInSnapshot | null> {
     // What LinkedIn actually sent this server: it can differ from what a browser gets.
     console.info("[metrics] LinkedIn page", {
       bytes: company.length,
-      structuredData: (company.match(/application\/ld\+json/g) ?? []).length,
       postCards: (company.match(/data-activity-urn=/g) ?? []).length,
       postsIn30Days: fromPage?.posts.length ?? 0,
       signInWall: /authwall|join now to see/i.test(company),
