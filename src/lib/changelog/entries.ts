@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Page review: the overlay's CSS stopped styling the page under review
+  {
+    title: "Page review: the page under review scrolls again",
+    body: "A page being reviewed could come out clipped to a single screen with nothing to scroll. The overlay’s own stylesheet was styling the page it sits on: the September newsletter’s outer table is called **bhn-shell**, and so was the review panel’s — our rule (*a column one screen tall, anything past it hidden*) landed on the newsletter and cut 8,000 pixels of it down to 1,100.\n\nEvery class the overlay uses is now **bhn-rv-**, a name nothing else on any BioHubNet page uses, and a test fails the build if one goes back to a name that could collide. Nothing about the panel, the comments or the share links changes.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Page review: a pasted document is served as a document
   {
     title: "Page review: a pasted newsletter renders as itself again",

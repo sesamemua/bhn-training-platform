@@ -94,8 +94,8 @@ test("overlay writes review titles as text and handles SVG class lists", () => {
   assert.doesNotMatch(source, /innerHTML/);
   assert.doesNotMatch(source, /window\.prompt|window\.alert|window\.confirm/);
   assert.match(source, /bhn-review-marker/);
-  assert.match(source, /bhn-root-collapsed/);
-  assert.match(source, /bhn-drag-handle/);
+  assert.match(source, /bhn-rv-root-collapsed/);
+  assert.match(source, /bhn-rv-drag-handle/);
   assert.match(source, /Show me/);
   assert.match(source, /scrollIntoView\(\{ behavior: "smooth", block: "center", inline: "nearest" \}\)/);
   assert.match(source, /focus\(\{ preventScroll: true \}\)/);
@@ -336,7 +336,7 @@ test("a comment reopened after a rollback is exported and flagged as carried ove
 });
 
 test("loader removes the token from the address and injects the matching overlay", () => {
-  const source = loaderSource("https://bhn-training-platform.vercel.app/");
+  const source = loaderSource("https://bhn-rv-training-platform.vercel.app/");
   let cleanUrl = "";
   // Held on an object, not a `let`: the assignment happens inside the
   // appendChild callback, which flow analysis doesn't track, so a bare
@@ -390,4 +390,27 @@ test("review session deletion rejects requests without an admin session", async 
 
   assert.equal(response.status, 403);
   assert.deepEqual(await response.json(), { error: "Forbidden" });
+});
+
+/* ── the overlay's CSS must not reach the page it is reviewing ────── */
+
+test("every class the overlay styles is its own, so a reviewed page cannot be restyled", () => {
+  // The overlay went onto a newsletter whose outer table is also called
+  // "bhn-shell". Our rule — max-height:100vh; overflow:hidden — clipped
+  // the whole email to one screen, which reads as "the page will not
+  // scroll". Anything under .bhn- that is not ours is a collision
+  // waiting for a page that uses the same word.
+  const stray = [...overlaySource("https://bhn.example", "tok").matchAll(/\.bhn-[a-z-]+/g)]
+    .map((m) => m[0])
+    .filter((cls) => !cls.startsWith(".bhn-rv-") && !cls.startsWith(".bhn-review-"));
+  assert.deepEqual([...new Set(stray)], [], "these class names are not scoped to the overlay");
+});
+
+test("the panel's own layout rules are still there under the new names", () => {
+  // The rename is mechanical, so the tripwire is that it renamed rather
+  // than removed: the shell is what makes the panel a column that
+  // scrolls inside itself.
+  assert.match(overlaySource("https://bhn.example", "tok"), /\.bhn-rv-shell\{[^}]*max-height:calc\(100vh - 20px\)/);
+  assert.match(overlaySource("https://bhn.example", "tok"), /\.bhn-rv-body\{overflow:auto/);
+  assert.match(overlaySource("https://bhn.example", "tok"), /bhn-rv-thread-details/);
 });

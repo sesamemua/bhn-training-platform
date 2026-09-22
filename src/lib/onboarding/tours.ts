@@ -39,18 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16r";
+export const TOUR_VERSION = "2026.10.16s";
 
 export const TOUR_STEPS: TourStep[] = [
   {
     id: "website-review.paste-renders",
     title: "A pasted page reviews as itself",
-    body: "A paste that is a whole HTML document — a newsletter export, say — is now served as the document rather than dropped inside another page, so it lays out and scrolls the way the recipient will see it. The overlay, the comments and the share link are unchanged.",
+    body: "Two things stopped a reviewed page scrolling: a pasted document was being dropped inside another page, and the overlay’s own stylesheet was styling the page under it — the newsletter’s outer table and the review panel were both called *bhn-shell*, so the email got clipped to one screen. A paste is now served as the document, and every overlay class is renamed out of the way. The panel, the comments and the share links are unchanged.",
     path: "/admin/workspace/website-review",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open Website review", href: "/admin/workspace/website-review" },
-    since: "2026.10.16r",
+    since: "2026.10.16s",
   },
   {
     id: "admin.equip-drafts-and-rounds",

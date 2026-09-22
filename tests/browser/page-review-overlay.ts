@@ -164,7 +164,7 @@ async function main() {
     const initialPanel = await alex.locator("#bhn-review-overlay").boundingBox();
     assert.ok(initialPanel && initialPanel.width <= 304);
     assert.match(
-      await alex.locator(".bhn-shell").evaluate((shell) => getComputedStyle(shell).backgroundColor),
+      await alex.locator(".bhn-rv-shell").evaluate((shell) => getComputedStyle(shell).backgroundColor),
       /0\.8\)/,
     );
 
@@ -216,7 +216,7 @@ async function main() {
 
     // "Show me" above already expanded this thread — it acts as an accordion
     // now, so there is no Expand button left to click.
-    assert.equal(await priyaThread.locator(".bhn-thread-details").count(), 1);
+    assert.equal(await priyaThread.locator(".bhn-rv-thread-details").count(), 1);
     // A review is a shared workspace: Alex gets both tools on Priya's
     // comment even though he didn't write it. Whoever edits is recorded and
     // shown, so the author's name never stands over someone else's wording.
@@ -224,7 +224,7 @@ async function main() {
     assert.equal(await priyaThread.getByRole("button", { name: "Delete comment by Priya Shah" }).count(), 1);
 
     // ── resize: drag the left grip and the panel widens, right edge fixed
-    const gripBox = await alex.locator(".bhn-resize").boundingBox();
+    const gripBox = await alex.locator(".bhn-rv-resize").boundingBox();
     assert.ok(gripBox);
     const beforeBox = await alex.locator("#bhn-review-overlay").boundingBox();
     assert.ok(beforeBox);
@@ -269,7 +269,7 @@ async function main() {
       composerGrew = Math.round(tallH);
 
       // Quoted page text must never be silently clipped.
-      const quoteOverflow = await alex.locator(".bhn-quote, .bhn-thread-quote").first()
+      const quoteOverflow = await alex.locator(".bhn-rv-quote, .bhn-rv-thread-quote").first()
         .evaluate((el) => getComputedStyle(el).overflowY).catch(() => "auto");
       assert.notEqual(quoteOverflow, "hidden", "quotes must scroll, not hide text");
     }
@@ -290,13 +290,13 @@ async function main() {
           await t.getByRole("button", { name: /^Expand comment/ }).click();
         }
       }
-      const openedAll = await alex.locator(".bhn-thread-details").count();
+      const openedAll = await alex.locator(".bhn-rv-thread-details").count();
       assert.equal(openedAll, count, "expected every thread open before the accordion click");
 
       await threads.first().getByRole("button", { name: /^Show comment 1 on page/ }).click();
       await alex.waitForTimeout(150);
-      assert.equal(await alex.locator(".bhn-thread-details").count(), 1, "only the located thread stays open");
-      assert.equal(await threads.first().locator(".bhn-thread-details").count(), 1, "and it is the one clicked");
+      assert.equal(await alex.locator(".bhn-rv-thread-details").count(), 1, "only the located thread stays open");
+      assert.equal(await threads.first().locator(".bhn-rv-thread-details").count(), 1, "and it is the one clicked");
       accordionChecked = true;
 
       // Leave the panel as the rest of the run expects: the accordion just
@@ -327,12 +327,12 @@ async function main() {
     await jordan.getByText("Agreed. I would mention Canada directly.").waitFor();
 
     await alex.getByText("Agreed. I would mention Canada directly.").waitFor({ timeout: 8_000 });
-    let jordanReply = jordan.locator(".bhn-reply", { hasText: "Agreed. I would mention Canada directly." });
+    let jordanReply = jordan.locator(".bhn-rv-reply", { hasText: "Agreed. I would mention Canada directly." });
     await jordanReply.getByRole("button", { name: "Edit reply by Jordan Lee" }).click();
     await jordan.getByRole("textbox", { name: "Edit reply by Jordan Lee" }).fill("Agreed. Mention Canada directly.");
     await jordan.getByRole("button", { name: "Save", exact: true }).click();
     await alex.getByText("Agreed. Mention Canada directly.").waitFor({ timeout: 8_000 });
-    jordanReply = jordan.locator(".bhn-reply", { hasText: "Agreed. Mention Canada directly." });
+    jordanReply = jordan.locator(".bhn-rv-reply", { hasText: "Agreed. Mention Canada directly." });
     await jordanReply.getByRole("button", { name: "Delete reply by Jordan Lee" }).click();
     await jordanReply.getByText("Delete this reply?").waitFor();
     await jordanReply.getByRole("button", { name: "Delete", exact: true }).click();
@@ -375,7 +375,7 @@ async function main() {
     await jordan.keyboard.press("Escape");
     assert.equal(await jordan.locator("#bhn-review-overlay").count(), 1);
 
-    const dragHandle = await jordan.locator(".bhn-drag-handle").boundingBox();
+    const dragHandle = await jordan.locator(".bhn-rv-drag-handle").boundingBox();
     assert.ok(dragHandle);
     await jordan.mouse.move(dragHandle.x + dragHandle.width / 2, dragHandle.y + dragHandle.height / 2);
     await jordan.mouse.down();
@@ -392,10 +392,10 @@ async function main() {
     await jordan.waitForTimeout(250);
     const collapsedPanel = await jordan.locator("#bhn-review-overlay").boundingBox();
     assert.ok(collapsedPanel && collapsedPanel.width <= 76);
-    assert.equal(await jordan.locator(".bhn-body").isVisible(), false);
+    assert.equal(await jordan.locator(".bhn-rv-body").isVisible(), false);
     await jordan.getByRole("button", { name: "Expand 2 comments" }).click();
     await jordan.waitForTimeout(250);
-    assert.equal(await jordan.locator(".bhn-body").isVisible(), true);
+    assert.equal(await jordan.locator(".bhn-rv-body").isVisible(), true);
     const restoredPanel = await jordan.locator("#bhn-review-overlay").boundingBox();
     assert.ok(restoredPanel);
     assert.ok(Math.abs(restoredPanel.x - draggedPanel.x) < 1);
@@ -404,9 +404,9 @@ async function main() {
     await alex.screenshot({ path: "/tmp/bhn-review-overlay-desktop.png", fullPage: true });
     await jordan.screenshot({ path: "/tmp/bhn-review-overlay-mobile.png", fullPage: true });
     console.log(JSON.stringify({
-      desktopThreads: await alex.locator(".bhn-thread").count(),
+      desktopThreads: await alex.locator(".bhn-rv-thread").count(),
       desktopMarkers: await alex.locator(".bhn-review-marker").count(),
-      mobileThreads: await jordan.locator(".bhn-thread").count(),
+      mobileThreads: await jordan.locator(".bhn-rv-thread").count(),
       sharedCommentEdited: true,
       ownedReplyEditedAndDeleted: true,
       repeatedButtonAnchorResolved: true,
