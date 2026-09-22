@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16i";
+export const TOUR_VERSION = "2026.10.16j";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.registration-counts",
+    title: "Registrations at a glance",
+    body: "The **Dashboard** shows how many people have registered for Industry Insights and the Annual Symposium on Luma, and for Training Week on the form. It refreshes every 2 minutes; **Refresh** updates it now.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the Dashboard", href: "/dashboard" },
+    since: "2026.10.16j",
+  },
   {
     id: "newsletter.top-story",
     title: "Open the newsletter with a top story",

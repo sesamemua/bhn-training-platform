@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Admin dashboard: event registration totals
+  {
+    title: "Dashboard: registration totals for the upcoming events",
+    body: "The admin **Dashboard** now shows how many people have registered for **Industry Insights** and the **Annual Symposium** on Luma, and for **Training Week** on the registration form \u2014 totals only. The numbers are read live, **refresh themselves every 2 minutes** while the page is open, and have a **Refresh** button. Click a total to open its Luma page, or the Training Week registrants.\n\nThe Symposium hides its guest list on Luma, so its total is added up from the ticket types (Trainee / HQP and Professionals). Training Week counts each person once and leaves test registrations out.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Newsletter: Top Story section
   {
     title: "Newsletter: a Top Story section before ENGAGE",

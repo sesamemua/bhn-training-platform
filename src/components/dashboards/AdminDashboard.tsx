@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
+import { RegistrationCounts } from "@/components/dashboards/RegistrationCounts";
 
 /**
  * Admin / superadmin dashboard.
@@ -302,6 +303,9 @@ export async function AdminDashboard({
       </article>
 
       {committeeBadge}
+
+      {/* Registrations for the events coming up — under the cover, never above it. */}
+      <RegistrationCounts />
 
       {/* ════ SIDEBAR RIGHT — content LEFT, quick-action rail RIGHT ═ */}
       <article className="aero-frame">
