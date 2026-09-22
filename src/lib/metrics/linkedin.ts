@@ -43,7 +43,8 @@ export function parseLinkedInPage(html: string, now = new Date()): { followers: 
   // Dates, text and links come from the page's structured data; reactions
   // and comments only appear in each post's card, keyed by its activity id.
   const posts: LinkedInPost[] = [];
-  for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+  // Any attributes on the tag (LinkedIn adds a nonce to some responses).
+  for (const m of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
     let graph: unknown[] = [];
     try {
       graph = (JSON.parse(m[1]) as { "@graph"?: unknown[] })["@graph"] ?? [];
@@ -102,6 +103,16 @@ async function page(url: string): Promise<string | null> {
 export async function linkedinSnapshot(): Promise<LinkedInSnapshot | null> {
   const [widget, company] = await Promise.all([page(LINKEDIN_FOLLOW_WIDGET), page(LINKEDIN_PAGE)]);
   const fromPage = company ? parseLinkedInPage(company) : null;
+  if (company) {
+    // What LinkedIn actually sent this server: it can differ from what a browser gets.
+    console.info("[metrics] LinkedIn page", {
+      bytes: company.length,
+      structuredData: (company.match(/application\/ld\+json/g) ?? []).length,
+      postCards: (company.match(/data-activity-urn=/g) ?? []).length,
+      postsIn30Days: fromPage?.posts.length ?? 0,
+      signInWall: /authwall|join now to see/i.test(company),
+    });
+  }
   const followers = (widget ? parseFollowWidget(widget) : null) ?? fromPage?.followers ?? null;
   const posts = fromPage && fromPage.followers !== null ? fromPage.posts : null;
   return followers === null && posts === null ? null : { followers, posts };
