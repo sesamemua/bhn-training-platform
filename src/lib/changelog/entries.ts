@@ -22,6 +22,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Dashboard: the switch looks like a switch, and polling eased off
+  {
+    title: "Dashboard: the registration switch is a switch, and says what it is holding",
+    body: "**Training Week registration** on the admin Dashboard is now drawn as one control with three positions — **Open**, **Paused**, **Closed** — with a lever that sits on the position the form is actually in and a lamp in the state’s colour. Beside it, what the switch is holding: **people registered**, **how many this week**, **how many were on no programme list** when they filed, and **when the last one came in**. Closing at 4 and closing at 140 are different decisions.\n\nMoving it still asks first, still moves both versions of the form together, and still leaves everyone already registered untouched — the confirmation now says how many that is.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
+    title: "Event registrations: one read of Luma for everybody, every five minutes",
+    body: "The card refreshed itself **every 2 minutes**, and each dashboard left open was its own pair of requests to Luma — a public endpoint meant for their own pages, which we have no key for. Three tabs open all day was a few thousand requests, which is how a courtesy becomes a block.\n\nNow the answer is **held on the server for four minutes and shared**: ten open dashboards cost what one does. The card refreshes every **5 minutes**, and **Refresh** asks the server to read Luma again rather than serve what it holds — rationed to once a minute, so a leaned-on button cannot become a poll of its own.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Video production cost: a one-page proposal to hand to whoever approves it
   {
     title: "Production cost: download the equipment proposal as a PDF",

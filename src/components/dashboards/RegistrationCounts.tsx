@@ -3,15 +3,22 @@
 /**
  * Registration totals for the three upcoming events, on the admin
  * dashboard. Loads after the page (Luma is never allowed to slow the
- * dashboard down), then refreshes itself every two minutes while the tab
- * is visible, and on Refresh.
+ * dashboard down), then refreshes itself every five minutes while the
+ * tab is visible, and on Refresh — which asks the server to read Luma
+ * again rather than serve what it holds.
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, RefreshCw, Users } from "lucide-react";
 import type { RegistrationCount } from "@/lib/events/registrations";
 
-const EVERY_MS = 2 * 60_000;
+/*
+ * Five minutes, and the answer is held on the server for four (see
+ * lib/events/fresh.ts). Every open dashboard used to be its own pair
+ * of requests to Luma every two minutes — an endpoint nobody gave us a
+ * key for, where the way to get blocked is to look like a script.
+ */
+const EVERY_MS = 5 * 60_000;
 
 export function RegistrationCounts() {
   const [events, setEvents] = useState<RegistrationCount[] | null>(null);
@@ -19,10 +26,11 @@ export function RegistrationCounts() {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/registration-counts", { cache: "no-store" });
+      // The poll takes what the server holds; Refresh asks for a fresh read.
+      const res = await fetch(`/api/admin/registration-counts${force ? "?force=1" : ""}`, { cache: "no-store" });
       if (!res.ok) throw new Error();
       const j = (await res.json()) as { at: string; events: RegistrationCount[] };
       setEvents(j.events);
@@ -53,13 +61,13 @@ export function RegistrationCounts() {
               {failed
                 ? "Couldn’t reach the counts just now — they will retry."
                 : at
-                  ? `Updated ${new Date(at).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })} · refreshes every 2 minutes`
+                  ? `Updated ${new Date(at).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })} · refreshes every 5 minutes`
                   : "Reading the counts…"}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={() => void load(true)}
             disabled={busy}
             className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-50"
           >

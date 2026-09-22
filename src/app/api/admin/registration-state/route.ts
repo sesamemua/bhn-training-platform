@@ -19,6 +19,7 @@ import {
   parseSwitch, REGISTRATION_STATE_KEY, REGISTRATION_STATES,
   serialiseSwitch, type RegistrationState, type RegistrationSwitch,
 } from "@/lib/registration/state";
+import { registrationStats, type RegistrationStats } from "@/lib/registration/stats";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +41,14 @@ async function registrationForms() {
   return rows.filter((f) => versionRoot(f.slug) === REGISTRATION_FORM_SLUG);
 }
 
-async function current(): Promise<RegistrationSwitch & { forms: { slug: string; active: boolean }[] }> {
-  const [row, forms] = await Promise.all([
+async function current(): Promise<
+  RegistrationSwitch & { forms: { slug: string; active: boolean }[]; stats: RegistrationStats }
+> {
+  const [row, forms, stats] = await Promise.all([
     prisma.platformSetting.findUnique({ where: { key: REGISTRATION_STATE_KEY } }),
     registrationForms(),
+    // Beside a control that can shut the form: how many are already in.
+    registrationStats(),
   ]);
   // Before the switch has ever been touched, the forms themselves are
   // the answer — anything else would offer to open what is already open.
@@ -51,6 +56,7 @@ async function current(): Promise<RegistrationSwitch & { forms: { slug: string; 
   return {
     ...parseSwitch(row?.value, fallback),
     forms: forms.map((f) => ({ slug: f.slug, active: f.active })),
+    stats,
   };
 }
 

@@ -7,8 +7,9 @@
  * (api2.luma.com/event/get) — no key, since the paid Luma API is not on
  * this calendar. The Symposium hides its guest list, which makes that
  * reply's guest_count 0; the per-ticket counts are still published, and
- * their sum is the total. Read live on every call: a count is only worth
- * showing if it is today's.
+ * their sum is the total. Held for four minutes and shared between
+ * every open dashboard (see fresh.ts): a count is worth showing if it
+ * is today's, and it does not have to be this second's to be that.
  *
  * The Symposium approves each registration, and the published counts are
  * approved guests only. Who is still awaiting approval, or on the
@@ -17,6 +18,7 @@
  * Vercel as LUMA_SESSION_KEY), and shows "—" without one.
  */
 import { prisma } from "@/lib/prisma";
+import { freshly } from "./fresh";
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
 import { versionRoot } from "@/lib/formbuilder/versions";
 
@@ -53,16 +55,31 @@ export function lumaTotal(reply: unknown): number | null {
   return typeof r.guest_count === "number" ? r.guest_count : null;
 }
 
-async function lumaCount(apiId: string): Promise<number | null> {
-  try {
-    const res = await fetch(`https://api2.luma.com/event/get?event_api_id=${apiId}`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-    });
-    return res.ok ? lumaTotal(await res.json()) : null;
-  } catch {
-    return null;
-  }
+/*
+ * Four minutes, shared.
+ *
+ * The card refreshes itself, and every dashboard left open used to be
+ * its own pair of requests to an endpoint Luma publishes for its own
+ * pages and gave us no key for. Held here, ten open tabs cost what one
+ * does. Four minutes is under the refresh the card promises, so a
+ * number on screen is never older than it says.
+ */
+const held = freshly<number | null>({ ttlMs: 4 * 60_000, forceEveryMs: 60_000 });
+/** The host view is a second request to the same people; held on the same terms. */
+const waiting = freshly<LumaWaiting | null>({ ttlMs: 4 * 60_000, forceEveryMs: 60_000 });
+
+async function lumaCount(apiId: string, force = false): Promise<number | null> {
+  return held(apiId, async () => {
+    try {
+      const res = await fetch(`https://api2.luma.com/event/get?event_api_id=${apiId}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+      return res.ok ? lumaTotal(await res.json()) : null;
+    } catch {
+      return null;
+    }
+  }, force);
 }
 
 /** People the hosts haven't approved, in a Luma event/admin/get reply. */
@@ -77,9 +94,10 @@ export function lumaWaiting(reply: unknown): LumaWaiting | null {
   return { approval: people("pending_approval"), waitlist: people("waitlist") };
 }
 
-async function lumaWaitingFor(apiId: string): Promise<LumaWaiting | null> {
+async function lumaWaitingFor(apiId: string, force = false): Promise<LumaWaiting | null> {
   const session = process.env.LUMA_SESSION_KEY?.trim().replace(/^luma\.auth-session-key=/, "");
   if (!session) return null;
+  return waiting(apiId, async () => {
   try {
     const res = await fetch(`https://api.luma.com/event/admin/get?event_api_id=${apiId}`, {
       headers: { cookie: `luma.auth-session-key=${session}` },
@@ -92,6 +110,7 @@ async function lumaWaitingFor(apiId: string): Promise<LumaWaiting | null> {
   } catch {
     return null;
   }
+  }, force);
 }
 
 /** People registered for Training Week on any version of the form: one per address, test rows left out. */
@@ -110,11 +129,12 @@ async function trainingWeekCount(): Promise<number> {
   return people.size;
 }
 
-export async function registrationCounts(): Promise<{ at: string; events: RegistrationCount[] }> {
+/** `force` is the Refresh button: read Luma again rather than serve what is held. */
+export async function registrationCounts(force = false): Promise<{ at: string; events: RegistrationCount[] }> {
   const [insights, symposium, waiting, training] = await Promise.all([
-    lumaCount(LUMA_EVENTS[0].apiId),
-    lumaCount(LUMA_EVENTS[1].apiId),
-    lumaWaitingFor(LUMA_EVENTS[1].apiId),
+    lumaCount(LUMA_EVENTS[0].apiId, force),
+    lumaCount(LUMA_EVENTS[1].apiId, force),
+    lumaWaitingFor(LUMA_EVENTS[1].apiId, force),
     trainingWeekCount().catch(() => null),
   ]);
   const luma = (e: (typeof LUMA_EVENTS)[number], count: number | null): RegistrationCount => ({

@@ -75,12 +75,12 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "dashboard.registration-switch",
     title: "Open, pause or close registration",
-    body: "The **Dashboard** has a **Training Week registration** card: **Open**, **Paused** — the page promises to reopen shortly — or **Closed**. Each press asks first and moves every version of the form together. Registrations already in are untouched.",
+    body: "The **Dashboard** has a **Training Week registration** switch: **Open**, **Paused** — the page promises to reopen shortly — or **Closed**. The lever sits on the position the form is in, and beside it are the numbers the decision turns on: people registered, how many this week, how many were on no programme list, and when the last one arrived. Each move asks first and takes every version of the form with it.",
     path: "/dashboard",
     placement: "center",
     roles: ["admin", "superadmin"],
     cta: { label: "Open the Dashboard", href: "/dashboard" },
-    since: "2026.10.16p",
+    since: "2026.10.16t",
   },
   {
     id: "registration.wider-calendar",
