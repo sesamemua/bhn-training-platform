@@ -69,8 +69,9 @@ test("James quoted sound alone for what CamArt charged for sound and lighting", 
   assert.equal(james.tax, null, "he did not state tax, so the saving is understated not inflated");
 });
 
-test("the PDF renders two pages", async () => {
-  const bytes = await buildProductionProposalPdf({ projectTitle: "BHN Promo Video", preparedBy: "Ruilin Yuan" });
+test("the PDF renders two pages, titled after the film not the project row", async () => {
+  const bytes = await buildProductionProposalPdf({ projectTitle: "BHN Promo Video Project", preparedBy: "Ruilin Yuan" });
+  assert.equal((await PDFDocument.load(bytes)).getTitle(), "BHN Promo Video — camera, lens, lighting and sound");
   assert.ok(bytes.byteLength > 2000, "not an empty document");
   assert.equal((await PDFDocument.load(bytes)).getPageCount(), 2);
 });

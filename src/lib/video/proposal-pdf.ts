@@ -123,6 +123,13 @@ export interface ProposalPdfInput {
   preparedBy?: string | null;
 }
 
+/**
+ * The film's name, not the platform's row for it. Projects are stored as
+ * "BHN Promo Video Project"; a proposal that says "Video Project \u2014 camera,
+ * lens" reads like a database record, so the trailing noun comes off.
+ */
+const filmName = (title: string) => title.replace(/\s+Project$/i, "").trim() || title;
+
 export async function buildProductionProposalPdf(input: ProposalPdfInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const symbol = await doc.embedFont(StandardFonts.Symbol);
@@ -132,14 +139,15 @@ export async function buildProductionProposalPdf(input: ProposalPdfInput): Promi
     bold: { base: await doc.embedFont(StandardFonts.HelveticaBold), symbol, dingbats },
   };
   const t = PROPOSAL_TOTALS;
+  const film = filmName(input.projectTitle);
 
-  doc.setTitle(`${input.projectTitle} — camera, lens, lighting and sound`);
+  doc.setTitle(`${film} — camera, lens, lighting and sound`);
   doc.setSubject("Equipment and crew budget proposal");
 
   // ── Page 1 — the ask ────────────────────────────────────────────────
   const one = new Sheet(doc, fonts);
   one.eyebrow("BioHubNet · Video production")
-    .title(`${input.projectTitle} — camera, lens, lighting and sound`)
+    .title(`${film} — camera, lens, lighting and sound`)
     .gap(2)
     .para("Budget proposal. Shoot day Tuesday 6 October 2026, 144 College Street. All amounts in Canadian dollars, HST included.", 9)
     .gap(14)
@@ -174,7 +182,7 @@ export async function buildProductionProposalPdf(input: ProposalPdfInput): Promi
   one.gap(10).para(
     VENDOR_TOTALS.map((v) => `${v.vendor} ${cad(v.total)}`).join("    ·    "), 8,
   );
-  one.footer(`Page 1 of 2 · ${input.projectTitle}${input.preparedBy ? ` · prepared by ${input.preparedBy}` : ""}`);
+  one.footer(`Page 1 of 2 · ${film}${input.preparedBy ? ` · prepared by ${input.preparedBy}` : ""}`);
 
   // ── Page 2 — the evidence ───────────────────────────────────────────
   const two = new Sheet(doc, fonts);
@@ -201,7 +209,7 @@ export async function buildProductionProposalPdf(input: ProposalPdfInput): Promi
     "The comparison is like for like: the three quotes cover the same camera, lens, lighting and sound as this proposal. Mileage, parking, insurance and catering appear in the full budget on the platform and are not counted on either side here.",
     8.5,
   );
-  two.footer(`Page 2 of 2 · ${input.projectTitle}`);
+  two.footer(`Page 2 of 2 · ${film}`);
 
   return doc.save();
 }
