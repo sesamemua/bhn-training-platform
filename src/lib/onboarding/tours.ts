@@ -39,9 +39,29 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16o";
+export const TOUR_VERSION = "2026.10.16p";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.registration-switch",
+    title: "Open, pause or close registration",
+    body: "The **Dashboard** has a **Training Week registration** card: **Open**, **Paused** — the page promises to reopen shortly — or **Closed**. Each press asks first and moves every version of the form together. Registrations already in are untouched.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the Dashboard", href: "/dashboard" },
+    since: "2026.10.16p",
+  },
+  {
+    id: "registration.wider-calendar",
+    title: "The week has room to be read",
+    body: "The registration page is wider wherever it draws the session calendar, so Tuesday’s three sessions fit side by side with their times, titles and room sizes instead of being cut to *13:00–16…*.",
+    path: "/apply/training-week-registration-2026-v2",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
+    since: "2026.10.16p",
+  },
   {
     id: "registration.unlisted-address-carries-on",
     title: "A stale list no longer stops a registrant",

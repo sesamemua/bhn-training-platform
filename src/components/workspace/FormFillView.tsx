@@ -31,7 +31,7 @@ import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
 import { rankedSessions, sessionField } from "@/lib/formbuilder/submit";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "@/lib/eligibility/messages";
-import { FORM_COLUMN } from "@/lib/formbuilder/layout";
+import { columnFor } from "@/lib/formbuilder/layout";
 import { hasRichLink } from "@/lib/formbuilder/rich-text";
 import { RichText } from "@/components/forms/RichText";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
@@ -299,7 +299,7 @@ export function FormFillView({
   }
 
   return (
-    <div className={`${FORM_COLUMN} mt-5 pb-24${look?.theme === "site" ? " bhn-site" : ""}`}>
+    <div className={`${columnFor(doc)} mt-5 pb-24${look?.theme === "site" ? " bhn-site" : ""}`}>
       {/* Live registrants need the form, not implementation notes. The
           other two modes state their limits once, at the top, where a
           colleague cannot mistake a test for a registration. */}
@@ -1175,7 +1175,7 @@ export function Confirmation({
   );
 
   return (
-    <div className={`${FORM_COLUMN} mt-5 pb-16${look?.theme === "site" ? " bhn-site" : ""}`}>
+    <div className={`${columnFor(doc)} mt-5 pb-16${look?.theme === "site" ? " bhn-site" : ""}`}>
       {/*
         ONE TEXT COLUMN.
         The tick hangs in the margin and everything else — the sentence,

@@ -14,6 +14,7 @@ import {
 } from "../../src/lib/formbuilder/training-week-v2";
 import { missing, visibleFields, type Answers } from "../../src/lib/formbuilder/logic";
 import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "../../src/lib/eligibility/messages";
+import { columnFor, FORM_COLUMN, WIDE_FORM_COLUMN } from "../../src/lib/formbuilder/layout";
 import { parseForm, type BuiltForm, type FormField, type Presentation } from "../../src/lib/formbuilder/types";
 
 /**
@@ -102,11 +103,12 @@ test("theme “site” puts the site skin on the form and on the receipt, and no
   assert.doesNotMatch(paint(V1), /bhn-site/);
   const site = look(V1, { theme: "site" });
   for (const extra of MODES) {
-    assert.match(paint(site, extra), /^<div class="mx-auto w-full max-w-\[760px\] mt-5 pb-24 bhn-site">/);
+    // 1040, not 760: this form has a calendar (see columnFor).
+    assert.match(paint(site, extra), /^<div class="mx-auto w-full max-w-\[1040px\] mt-5 pb-24 bhn-site">/);
   }
   const receipt = (doc: BuiltForm) =>
     renderToStaticMarkup(<Confirmation title="T" doc={doc} answers={{ bhn_status: ACCEPTED }} receipt={undefined} mode="live" />);
-  assert.match(receipt(site), /^<div class="mx-auto w-full max-w-\[760px\] mt-5 pb-16 bhn-site">/);
+  assert.match(receipt(site), /^<div class="mx-auto w-full max-w-\[1040px\] mt-5 pb-16 bhn-site">/);
   assert.doesNotMatch(receipt(V1), /bhn-site/);
 });
 
@@ -561,4 +563,20 @@ test("confirmationNote: the thank-you screen gives the form's own timeline, and 
     // A test entry gives no timeline, note or no note.
     assert.doesNotMatch(receipt(doc, "test"), /last week of September|two to three weeks/);
   }
+});
+
+/* ── the column a form gets ──────────────────────────────────────── */
+
+test("a form with a calendar is given the room to draw it; one without keeps the reading width", () => {
+  // Three Tuesday sessions share a day column. At 760 each lane was
+  // about eighty pixels wide and the cells read "13:00–16…".
+  assert.equal(columnFor(V1), WIDE_FORM_COLUMN);
+  assert.match(WIDE_FORM_COLUMN, /max-w-\[1040px\]/);
+
+  const noCalendar = { ...V1, fields: V1.fields.filter((f) => f.slots.length === 0) };
+  assert.equal(columnFor(noCalendar), FORM_COLUMN);
+  assert.match(FORM_COLUMN, /max-w-\[760px\]/);
+
+  // The page header and the questions share one column, whichever it is.
+  assert.match(paint(only(V1, ["trainee_email"])), /^<div class="mx-auto w-full max-w-\[760px\]/);
 });

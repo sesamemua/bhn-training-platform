@@ -177,11 +177,16 @@ export function SiteHero({
 
 /* ───── The form's section ───── */
 
-export function SiteFormSection({ label, intro, children }: { label: string; intro?: string; children: ReactNode }) {
+export function SiteFormSection({ label, intro, column = FORM_COLUMN, children }: {
+  label: string; intro?: string;
+  /** The column the form inside asked for — a calendar needs the wider one. */
+  column?: string;
+  children: ReactNode;
+}) {
   return (
     <section id={REGISTRATION_ANCHOR} className="bhn-form-section" aria-label={label}>
       <div className="bhn-form-shell">
-        <div className={`${FORM_COLUMN} bhn-form-column`}>
+        <div className={`${column} bhn-form-column`}>
           {intro && <p className="bhn-form-intro"><RichText text={intro} /></p>}
           {children}
         </div>

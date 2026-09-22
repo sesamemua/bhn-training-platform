@@ -7,6 +7,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 import { RegistrationCounts } from "@/components/dashboards/RegistrationCounts";
+import { RegistrationSwitch } from "@/components/dashboards/RegistrationSwitch";
 import { MarketingMetrics } from "@/components/dashboards/MarketingMetrics";
 
 /**
@@ -306,6 +307,7 @@ export async function AdminDashboard({
       {committeeBadge}
 
       {/* Registrations for the events coming up — under the cover, never above it. */}
+      <RegistrationSwitch />
       <RegistrationCounts />
       <MarketingMetrics />
 

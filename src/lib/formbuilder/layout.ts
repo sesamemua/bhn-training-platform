@@ -12,3 +12,23 @@
  * kept in step by good intentions.
  */
 export const FORM_COLUMN = "mx-auto w-full max-w-[760px]";
+
+/**
+ * The column a form with a calendar gets.
+ *
+ * 760 is a reading width, which is right for questions and wrong for a
+ * week: three Tuesday sessions share that day's column, so each lane
+ * had about eighty pixels and the cells were reduced to "13:00–16…".
+ * A calendar is a picture, and a picture that cannot be read is not
+ * one.
+ *
+ * Only the forms that have one — see columnFor. Widening every form
+ * would buy the calendar its room by making every question a
+ * hundred-character line.
+ */
+export const WIDE_FORM_COLUMN = "mx-auto w-full max-w-[1040px]";
+
+/** Which of the two a form gets: a question with time slots is a calendar. */
+export function columnFor(doc: { fields: { slots?: unknown[] }[] }): string {
+  return doc.fields.some((f) => (f.slots?.length ?? 0) > 0) ? WIDE_FORM_COLUMN : FORM_COLUMN;
+}

@@ -22,6 +22,22 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registration: the open/paused/closed switch
+  {
+    title: "Dashboard: a switch for opening, pausing and closing registration",
+    body: "The admin **Dashboard** has a **Training Week registration** card with three positions:\n\n- **Open** — people can fill the form in and submit it.\n- **Paused** — the page says registration is paused and **will reopen shortly**. For an hour while you fix a session, not for the end of the programme.\n- **Closed** — the page says registration has closed, with no promise to reopen.\n\nEach press asks first, and moves **every version** of the registration together, v1 included — a switch that left one version open would not be a switch. Registrations already in are untouched, and the card says who last moved it and when.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  // ── Registration form: a wider column for the calendar
+  {
+    title: "The registration page is wider where it draws the week",
+    body: "**Choose and Rank Your Sessions** is a calendar, and Tuesday now holds three sessions side by side. In a 760-pixel column each got about eighty pixels and the cells read *13:00–16…*. A form that draws a calendar is now given a **1040-pixel** column, so the times, the titles and the room sizes fit.\n\nForms without a calendar keep the reading width — widening those would only make every question a hundred-character line.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Registration: an unlisted address is a flag, not a refusal
   {
     title: "Training Week registration: an unknown address no longer stops anybody",

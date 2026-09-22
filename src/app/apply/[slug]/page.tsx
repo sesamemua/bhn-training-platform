@@ -14,7 +14,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
-import { FORM_COLUMN } from "@/lib/formbuilder/layout";
+import { columnFor } from "@/lib/formbuilder/layout";
 import { PublicForm } from "@/components/forms/PublicForm";
 import { RichText } from "@/components/forms/RichText";
 import { SiteFooter, SiteFormSection, SiteHeader, SiteHero } from "@/components/forms/SiteChrome";
@@ -23,6 +23,8 @@ import { SITE_FONT_VARIABLES } from "./site-fonts";
 // loading it on a route every form shares changes nothing for a form
 // that has not asked for the skin.
 import "./site-theme.css";
+
+import { parseSwitch, publicNotice, REGISTRATION_STATE_KEY } from "@/lib/registration/state";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,24 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
   const doc = parseForm(form.fields);
 
   /*
+   * Closed, or only paused?
+   *
+   * `active` says whether anybody may register; the switch says which
+   * of the two it is, and a registrant told "closed" while somebody
+   * pauses for ten minutes has been told the wrong thing. Read only
+   * when the form is not taking registrations — an open form has
+   * nothing to say about it.
+   */
+  const stop = form.active
+    ? null
+    : publicNotice(
+        parseSwitch(
+          (await prisma.platformSetting.findUnique({ where: { key: REGISTRATION_STATE_KEY } }))?.value,
+          "closed",
+        ).state,
+      ) ?? publicNotice("closed");
+
+  /*
    * How this form looks, as opposed to what it asks.
    *
    * Absent on every form written before it existed — v1 of Training Week
@@ -68,20 +88,17 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
   const heading = look?.heading ?? form.title;
   const intro = look?.intro?.length ? look.intro : undefined;
 
-  const questions = form.active ? (
+  const questions = !stop ? (
     <PublicForm slug={form.slug} title={form.title} doc={doc} />
   ) : (
     /*
-     * Closed is said plainly, and the questions are not drawn.
-     * A form you can fill in and cannot submit wastes somebody's
-     * ten minutes and then tells them.
+     * Said plainly, and the questions are not drawn. A form you can
+     * fill in and cannot submit wastes somebody's ten minutes and then
+     * tells them.
      */
     <div className="mt-6 rounded-2xl border-2 border-line-strong bg-card p-6">
-      <p className="text-[15px] font-semibold text-fg">Registration is closed.</p>
-      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
-        This form is not taking registrations at the moment. If you think it should be,
-        email the BioHubNet team and they will look into it.
-      </p>
+      <p className="text-[15px] font-semibold text-fg">{stop.title}</p>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{stop.body}</p>
     </div>
   );
 
@@ -105,7 +122,7 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
             actions={look?.actions}
             facts={look?.facts}
           />
-          <SiteFormSection label={form.title} intro={look?.formIntro}>
+          <SiteFormSection label={form.title} intro={look?.formIntro} column={columnFor(doc)}>
             {questions}
           </SiteFormSection>
         </main>
@@ -116,7 +133,9 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
 
   return (
     <main className="min-h-screen bg-page px-4 py-10">
-      <div className={FORM_COLUMN}>
+      {/* The header shares the form's column, so the title and the
+          questions keep one left edge. */}
+      <div className={columnFor(doc)}>
         <header className="mb-2">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-500">BioHubNet</p>
           <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight text-fg">{heading}</h1>
