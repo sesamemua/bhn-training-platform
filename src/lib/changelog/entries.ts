@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Admin dashboard: Symposium registrations awaiting approval
+  {
+    title: "Dashboard: Symposium registrations awaiting approval",
+    body: "The **Annual Symposium** tile on the admin **Dashboard** now reads **approved on Luma** \u2014 Luma approves each Symposium registration, and its public count only includes approved guests. Under it, a line shows how many people are **awaiting approval**, and how many are **on the waitlist**.\n\nLuma only shows those to the event\u2019s hosts, so the Dashboard reads them with a host\u2019s Luma sign-in, saved in Vercel as **LUMA_SESSION_KEY**. Until one is saved, or after that host signs out of Luma, the line shows **\u2014**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Admin dashboard: LinkedIn + biohubnet.ca
   {
     title: "Dashboard: LinkedIn and biohubnet.ca numbers",

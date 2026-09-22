@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16k";
+export const TOUR_VERSION = "2026.10.16l";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.symposium-awaiting-approval",
+    title: "Symposium: who is awaiting approval",
+    body: "On the **Dashboard**, the Annual Symposium tile counts guests **approved** on Luma, and the line under it shows how many are **awaiting approval** or on the waitlist \u2014 approve them on Luma.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the Dashboard", href: "/dashboard" },
+    since: "2026.10.16l",
+  },
   {
     id: "dashboard.marketing-metrics",
     title: "LinkedIn and website at a glance",

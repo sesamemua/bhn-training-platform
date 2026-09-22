@@ -82,8 +82,14 @@ export function RegistrationCounts() {
                   {e.count === null ? "—" : e.count.toLocaleString()}
                 </p>
                 <p className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-muted group-hover:text-brand-700">
-                  registered {e.source} {external ? <ArrowUpRight size={11} /> : <ArrowRight size={11} />}
+                  {e.source} {external ? <ArrowUpRight size={11} /> : <ArrowRight size={11} />}
                 </p>
+                {e.waiting !== undefined && (
+                  <p className={`text-[11.5px] ${e.waiting?.approval ? "font-semibold text-amber-700" : "text-muted"}`}>
+                    {e.waiting ? `+${e.waiting.approval}` : "—"} awaiting approval
+                    {e.waiting?.waitlist ? ` · ${e.waiting.waitlist} on the waitlist` : ""}
+                  </p>
+                )}
               </Link>
             );
           })}
@@ -95,7 +101,7 @@ export function RegistrationCounts() {
 
 /** What the tiles say before the first answer arrives. */
 const PLACEHOLDER: RegistrationCount[] = [
-  { key: "insights", title: "Industry Insights", when: "Thu 24 Sep", count: null, source: "on Luma", href: "https://luma.com/413vhu2v" },
-  { key: "symposium", title: "Annual Symposium", when: "Thu 29 Oct", count: null, source: "on Luma", href: "https://luma.com/wh30nh1n" },
-  { key: "training", title: "Training Week", when: "26–28 Oct", count: null, source: "on the registration form", href: "/admin/workspace/training-admin?tab=registrants" },
+  { key: "insights", title: "Industry Insights", when: "Thu 24 Sep", count: null, source: "registered on Luma", href: "https://luma.com/413vhu2v" },
+  { key: "symposium", title: "Annual Symposium", when: "Thu 29 Oct", count: null, source: "approved on Luma", href: "https://luma.com/wh30nh1n", waiting: null },
+  { key: "training", title: "Training Week", when: "26–28 Oct", count: null, source: "registered on the registration form", href: "/admin/workspace/training-admin?tab=registrants" },
 ];
