@@ -182,7 +182,7 @@ export async function buildProductionProposalPdf(input: ProposalPdfInput): Promi
 
   one.gap(8).heading("What the money buys");
   for (const section of PROPOSAL_SECTIONS) {
-    one.row(section.title, cad(section.total), { bold: true });
+    one.row(section.title, cad(section.total), { bold: true, note: section.note });
     for (const line of section.lines) one.row(`   ${line.label}`, cad(line.amount), { size: 8.5, color: MUTED });
     one.row("   HST", cad(section.tax), { size: 8.5, color: MUTED }).gap(4);
   }

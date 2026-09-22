@@ -30,6 +30,8 @@ export interface ProposalSection {
   key: "camera" | "lens" | "sound" | "lighting";
   title: string;
   vendor: string;
+  /** One line under the section heading, where the figure needs explaining. */
+  note?: string;
   lines: ProposalLine[];
   /** Pre-tax, tax and all-in, cents. */
   pre: number;
@@ -84,8 +86,32 @@ export const LIGHTING_LABELS = [
   "Aputure 600x for the softbox",
 ];
 
+/**
+ * 2D House quote 263434 prices every line at its rate and then takes 15% off
+ * the order as a whole. Its totals block: gross $2,671.50, discount $400.71,
+ * sub-total $2,270.79, HST $295.20.
+ *
+ * The budget carries the discounted (Extended) column, because that is the
+ * money that leaves the account \u2014 so the discount is invisible in it. It is
+ * worth showing on a proposal: somebody who opens the quote sees $1,650.00
+ * against a camera package the sheet calls $1,402.50, and has to be told why.
+ *
+ * Kept at list = gross less the one line we dropped, the Atlas Mercury, whose
+ * rate on the quote is $300.00. The discount is then the difference against
+ * the budget's own subtotal rather than a second application of the rate.
+ */
+const CAMERA_QUOTE = { gross: 267150, discount: 40071, pre: 227079, atlasAtList: 30000 };
+
+export const CAMERA_DISCOUNT = (() => {
+  const atList = CAMERA_QUOTE.gross - CAMERA_QUOTE.atlasAtList;
+  return { atList, off: atList - subtotal(camera) };
+})();
+
 export const PROPOSAL_SECTIONS: ProposalSection[] = [
-  wholeGroup(camera, "camera", "Camera package"),
+  {
+    ...wholeGroup(camera, "camera", "Camera package"),
+    note: `Listed at ${cad(CAMERA_DISCOUNT.atList)} on the quote. 2D House takes 15% off the order, so every line below is ${cad(CAMERA_DISCOUNT.off)} lighter before tax.`,
+  },
   wholeGroup(lens, "lens", "Lens"),
   sliceOf(sound, "sound", "Sound", SOUND_LABELS),
   sliceOf(sound, "lighting", "Lighting", LIGHTING_LABELS),

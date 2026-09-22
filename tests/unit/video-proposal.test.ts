@@ -9,7 +9,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COST_GROUPS, groupTotal, subtotal } from "../../src/lib/video/production-cost";
 import {
-  ALTERNATIVES, CAMART_INCIDENTAL, LIGHTING_LABELS, PROPOSAL_SECTIONS, PROPOSAL_TOTALS, SOUND_LABELS,
+  ALTERNATIVES, CAMART_INCIDENTAL, CAMERA_DISCOUNT, LIGHTING_LABELS, PROPOSAL_SECTIONS, PROPOSAL_TOTALS,
+  SOUND_LABELS,
 } from "../../src/lib/video/proposal";
 import { PDFDocument } from "pdf-lib";
 import { buildProductionProposalPdf } from "../../src/lib/video/proposal-pdf";
@@ -74,4 +75,26 @@ test("the PDF renders two pages, titled after the film not the project row", asy
   assert.equal((await PDFDocument.load(bytes)).getTitle(), "BHN Promo Video — camera, lens, lighting and sound");
   assert.ok(bytes.byteLength > 2000, "not an empty document");
   assert.equal((await PDFDocument.load(bytes)).getPageCount(), 2);
+});
+
+/**
+ * The camera figures are 2D House's Extended column, not their Price column.
+ * A reader holding quote 263434 sees $1,650.00 for the package the sheet
+ * calls $1,402.50, so the sheet has to account for the 15% in between.
+ */
+test("the camera section states the discount already taken off it", () => {
+  const camera = section("camera");
+  // Tied to the quote's own totals block: gross - discount = sub-total.
+  assert.equal(267150 - 40071, 227079, "quote 263434 adds up as printed");
+  // Kept lines at list, less what the budget actually pays.
+  assert.equal(CAMERA_DISCOUNT.atList, 237150, "gross less the dropped Atlas lens at its $300 rate");
+  assert.equal(CAMERA_DISCOUNT.off, 35571);
+  assert.equal(CAMERA_DISCOUNT.atList - CAMERA_DISCOUNT.off, camera.pre, "and it lands on the budget figure");
+  // 15% to within a rounding cent, so the note may say "15%".
+  assert.ok(Math.abs(CAMERA_DISCOUNT.off / CAMERA_DISCOUNT.atList - 0.15) < 0.0001);
+  assert.match(camera.note ?? "", /\$2,371\.50.*15%.*\$355\.71/);
+});
+
+test("only the camera section needs explaining", () => {
+  assert.deepEqual(PROPOSAL_SECTIONS.filter((x) => x.note).map((x) => x.key), ["camera"]);
 });
