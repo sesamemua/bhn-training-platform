@@ -45,7 +45,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "dashboard.marketing-metrics",
     title: "LinkedIn and website at a glance",
-    body: "The **Dashboard** shows LinkedIn followers and how recent posts did, and biohubnet.ca visitors from Google Analytics. Connect Google Analytics once, using the steps on the card, to switch the website numbers on.",
+    body: "The **Dashboard** shows LinkedIn followers and how recent posts did, and biohubnet.ca visitors, visits, page views and top pages from Google Analytics \u2014 sign in to Google as info@biohubnet.ca to see the website report.",
     path: "/dashboard",
     placement: "center",
     roles: ["admin", "superadmin"],

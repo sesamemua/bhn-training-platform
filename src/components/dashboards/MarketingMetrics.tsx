@@ -12,6 +12,15 @@ import type { SiteMetrics, SiteTotals } from "@/lib/metrics/ga4";
 
 const EVERY_MS = 10 * 60_000;
 
+/*
+ * The Data Studio report of biohubnet.ca traffic (owned by
+ * info@biohubnet.ca, embedding on), shown while the GA4 Data API is not
+ * connected. Google decides who sees it: whoever is signed in to Google
+ * with access to the report.
+ */
+const SITE_REPORT = "https://datastudio.google.com/reporting/5bb8b6ee-9067-4390-8638-9b28e4a45790/page/TlJ0C";
+const SITE_REPORT_EMBED = "https://datastudio.google.com/embed/reporting/5bb8b6ee-9067-4390-8638-9b28e4a45790/page/TlJ0C";
+
 interface Metrics {
   at: string;
   linkedin: LinkedInSnapshot | null;
@@ -68,7 +77,8 @@ export function MarketingMetrics() {
             <RefreshCw size={12} className={busy ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        {/* Side by side with the native numbers; stacked when the website is the embedded report, which needs the width. */}
+        <div className={`grid gap-3 ${data?.site.connected ? "md:grid-cols-2" : ""}`}>
           <LinkedInPanel data={data} />
           <SitePanel site={data?.site ?? null} />
         </div>
@@ -147,19 +157,26 @@ export function LinkedInPanel({ data }: { data: Metrics | null }) {
 const change = (now: number, before: number) => (before > 0 ? ((now - before) / before) * 100 : null);
 
 export function SitePanel({ site }: { site: SiteMetrics | null }) {
+  if (site && !site.connected) {
+    return (
+      <Panel title="biohubnet.ca · Google Analytics" href={SITE_REPORT}>
+        <iframe
+          title="biohubnet.ca traffic from Google Analytics"
+          src={SITE_REPORT_EMBED}
+          className="block h-[480px] w-full rounded-lg border-0"
+          allowFullScreen
+          sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        />
+        <p className="mt-1 text-[11px] text-muted">
+          Google shows this to anyone signed in to Google as info@biohubnet.ca, or with an account the report is shared with.
+        </p>
+      </Panel>
+    );
+  }
   return (
     <Panel title="biohubnet.ca · last 7 days" href="https://biohubnet.ca">
       {!site ? (
         <p className="text-[12px] text-muted">Reading…</p>
-      ) : !site.connected ? (
-        <div className="text-[12px] leading-relaxed text-muted">
-          <p className="font-semibold text-fg">Connect Google Analytics to see visitors here.</p>
-          <ol className="mt-1 list-decimal space-y-0.5 pl-4">
-            <li>In Google Cloud, create a service account, download its JSON key, and turn on the Google Analytics Data API.</li>
-            <li>In Google Analytics → Admin → Property access management, add the service account’s email as a Viewer.</li>
-            <li>In Vercel → bhn-training-platform → Environment Variables, add <code>GA4_PROPERTY_ID</code> (Admin → Property details) and <code>GA4_SERVICE_ACCOUNT_JSON</code> (the whole key file), then redeploy.</li>
-          </ol>
-        </div>
       ) : site.error ? (
         <p className="text-[12px] text-rose-700">Google Analytics said: {site.error}</p>
       ) : (
