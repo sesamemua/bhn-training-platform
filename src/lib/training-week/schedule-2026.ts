@@ -158,7 +158,7 @@ export interface Session {
  *     to be chosen. The Catalent tour is gone, and the CCRM tour has
  *     moved to Tuesday afternoon.
  *   • Monday's other option is the Pandemic Preparedness workshop and
- *     tour at the THCF, 09:30–14:30 — it used to be "CL3 workshop",
+ *     tour at the THCF, 09:30–14:00 — it used to be "CL3 workshop",
  *     with no facility named and ten places.
  *   • Tuesday now has three options, not two: the CCRM tour runs
  *     15:00–17:00, across the end of both afternoon workshops.
@@ -191,7 +191,7 @@ export const SESSIONS: Session[] = [
     slug: "cl3-workshop-2026",
     title: "Pandemic Preparedness — THCF",
     kind: "workshop",
-    day: "2026-10-26", start: "09:30", end: "14:30", track: 2,
+    day: "2026-10-26", start: "09:30", end: "14:00", track: 2,
     capacity: 20,
     // The grid's venue cell is still blank, but the session names the
     // facility — so it is read as the place without being read as a
@@ -209,11 +209,12 @@ export const SESSIONS: Session[] = [
   {
     slug: "communication-chameleon-2026",
     title: "Communication Chameleon",
-    // Runs to 16:30, not 16:00 — corrected by the coordinators in the
-    // Training Week feedback round. The v1 form still offers the 16:00
-    // string, so it stays resolvable below.
     kind: "workshop",
-    day: "2026-10-27", start: "13:00", end: "16:30", track: 1,
+    // 16:00 again. It was moved to 16:30 in the feedback round and back
+    // to 16:00 on October's grid, so BOTH later strings stay resolvable
+    // below — v1 offered the first and v2 the second, and answers were
+    // stored under each.
+    day: "2026-10-27", start: "13:00", end: "16:00", track: 1,
     capacity: 30,
     venue: { name: "Room 850", status: "booked", note: "Calendar booking done, held 9 AM – 5 PM." },
     partner: "Rainmaker",
@@ -222,13 +223,13 @@ export const SESSIONS: Session[] = [
     summary: "Adapting how you communicate to the room you are in, run by Claudia Ferryman of Rainmaker.",
     notes: ["30 spots", "AV set-up needed", "Pre-assessment form — registration closes 3 weeks before"],
     tentative: false,
-    previousOptions: ["Tue 27 Oct · 13:00–16:00 · Communication Chameleon"],
+    previousOptions: ["Tue 27 Oct · 13:00–16:30 · Communication Chameleon"],
   },
   {
     slug: "negotiation-skills-2026",
     title: "Negotiation Navigator",
     kind: "workshop",
-    day: "2026-10-27", start: "13:00", end: "16:30", track: 2,
+    day: "2026-10-27", start: "13:00", end: "16:00", track: 2,
     capacity: 30,
     venue: { name: "Big pod + 210/310", status: "inquiry", note: "Rooms free 1–5 PM; booking still to be arranged." },
     partner: null,
@@ -238,7 +239,10 @@ export const SESSIONS: Session[] = [
     notes: ["30 spots", "Priority: trainee entrepreneurs"],
     tentative: false,
     previousTitles: ["Negotiation Skills"],
-    previousOptions: ["Tue 27 Oct · 13:00–16:30 · Negotiation Skills"],
+    previousOptions: [
+      "Tue 27 Oct · 13:00–16:30 · Negotiation Skills",
+      "Tue 27 Oct · 13:00–16:30 · Negotiation Navigator",
+    ],
   },
   {
     // Monday's CCRM tour on the September grid. October's grid moves it
@@ -262,7 +266,7 @@ export const SESSIONS: Session[] = [
     slug: "innovation-showcase-2026",
     title: "Innovation Ignited",
     kind: "workshop",
-    day: "2026-10-28", start: "10:00", end: "14:00", track: 1,
+    day: "2026-10-28", start: "10:00", end: "13:30", track: 1,
     capacity: 100,
     venue: {
       name: "MaRS Jewel Box", alternative: "POD220", status: "options",
@@ -275,7 +279,10 @@ export const SESSIONS: Session[] = [
     notes: ["Pitch competition — selected participants", "Venture showcase — three-minute thesis"],
     tentative: false,
     previousTitles: ["BioHubNet innovation showcase", "Innovation showcase"],
-    previousOptions: ["Wed 28 Oct · 10:00–14:00 · BioHubNet innovation showcase"],
+    previousOptions: [
+      "Wed 28 Oct · 10:00–14:00 · BioHubNet innovation showcase",
+      "Wed 28 Oct · 10:00–14:00 · Innovation Ignited",
+    ],
   },
 ];
 

@@ -23,7 +23,7 @@ test("Monday is one company tour against the THCF workshop, and they overlap", (
   const tour = bySlug("catalent-tour-lunch-learn-2026");
   const thcf = bySlug("cl3-workshop-2026");
   assert.deepEqual([tour.day, tour.start, tour.end, tour.capacity], ["2026-10-26", "09:30", "15:30", 20]);
-  assert.deepEqual([thcf.day, thcf.start, thcf.end, thcf.capacity], ["2026-10-26", "09:30", "14:30", 20]);
+  assert.deepEqual([thcf.day, thcf.start, thcf.end, thcf.capacity], ["2026-10-26", "09:30", "14:00", 20]);
   assert.equal(clashes(
     { option: "a", day: tour.day, start: tour.start, end: tour.end },
     { option: "b", day: thcf.day, start: thcf.start, end: thcf.end },
@@ -134,8 +134,8 @@ test("the offset is read, not assumed — November is EST, an hour further back"
 });
 
 test("the week's bounds span the first start to the last end", () => {
-  assert.equal(WEEK_START.toISOString(), "2026-10-26T13:30:00.000Z"); // CL3, 09:30 EDT
-  assert.equal(WEEK_END.toISOString(), "2026-10-28T18:00:00.000Z");   // showcase, 14:00 EDT
+  assert.equal(WEEK_START.toISOString(), "2026-10-26T13:30:00.000Z"); // Monday, 09:30 EDT
+  assert.equal(WEEK_END.toISOString(), "2026-10-28T17:30:00.000Z");   // Innovation Ignited, 13:30 EDT
 });
 
 /* ── what the consumers get ──────────────────────────────────────── */
@@ -151,24 +151,26 @@ test("an option string round-trips back to its session", () => {
   for (const s of SESSIONS) assert.equal(sessionForOption(optionLabel(s))?.slug, s.slug);
 });
 
-/* ── Communication Chameleon, 16:00 → 16:30 ──────────────────────── */
+/* ── Communication Chameleon, 16:00 → 16:30 → 16:00 ──────────────── */
 
 const V1_CHAMELEON = "Tue 27 Oct · 13:00–16:00 · Communication Chameleon";
 const V2_CHAMELEON = "Tue 27 Oct · 13:00–16:30 · Communication Chameleon";
 
-test("Communication Chameleon runs to 16:30", () => {
+test("Communication Chameleon runs to 16:00 again", () => {
+  // The feedback round moved it to 16:30; October's grid moves it back.
   const s = bySlug("communication-chameleon-2026");
   assert.equal(s.start, "13:00");
-  assert.equal(s.end, "16:30");
-  assert.equal(optionLabel(s), V2_CHAMELEON);
-  assert.ok(SESSION_OPTIONS.includes(V2_CHAMELEON));
-  assert.ok(!SESSION_OPTIONS.includes(V1_CHAMELEON), "the old string is an alias, not an offered option");
+  assert.equal(s.end, "16:00");
+  assert.equal(optionLabel(s), V1_CHAMELEON);
+  assert.ok(SESSION_OPTIONS.includes(V1_CHAMELEON));
+  assert.ok(!SESSION_OPTIONS.includes(V2_CHAMELEON), "the 16:30 string is an alias, not an offered option");
 });
 
-test("the frozen v1 form's 16:00 string still makes a Chameleon seat", () => {
-  // Seats are made by EXACT match. The v1 form cannot change, so without
-  // the alias every new v1 registration that picks Chameleon would get
-  // no booking — and nothing would say so.
+test("both strings the form has offered still make a Chameleon seat", () => {
+  // Seats are made by EXACT match, and answers are stored under the
+  // string the registrant was shown — v1's 16:00 and v2's 16:30. Without
+  // the aliases a registration would get no booking, and nothing would
+  // say so.
   assert.equal(sessionForOption(V1_CHAMELEON)?.slug, "communication-chameleon-2026");
   assert.equal(sessionForOption(V2_CHAMELEON)?.slug, "communication-chameleon-2026");
 });
@@ -179,15 +181,15 @@ test("an alias is exact, never a near miss", () => {
   assert.equal(sessionForOption("Communication Chameleon"), undefined);
 });
 
-test("the Chameleon Workshop row ends at 16:30 Toronto, 20:30 UTC", () => {
+test("the Chameleon Workshop row ends at 16:00 Toronto, 20:00 UTC", () => {
   const row = workshopRows().find((r) => r.slug === "communication-chameleon-2026")!;
   assert.equal(row.startDateTime.toISOString(), "2026-10-27T17:00:00.000Z");
-  assert.equal(row.endDateTime.toISOString(), "2026-10-27T20:30:00.000Z");
+  assert.equal(row.endDateTime.toISOString(), "2026-10-27T20:00:00.000Z");
 });
 
 test("the Tuesday clash is now the whole afternoon", () => {
   const tue = clashPairs().find((c) => c.label.startsWith("Tue 27 Oct"))!;
-  assert.equal(tue.label, "Tue 27 Oct · 13:00–16:30");
+  assert.equal(tue.label, "Tue 27 Oct · 13:00–16:00");
 });
 
 test("every slot matches an offered option exactly", () => {

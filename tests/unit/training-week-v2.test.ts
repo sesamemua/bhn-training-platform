@@ -44,6 +44,8 @@ const q = (doc: BuiltForm, key: string) => {
 
 const V1_STATUS = q(v1, "bhn_status").options;
 const sessionsOf = (doc: BuiltForm) => q(doc, "sessions").options;
+/** Chameleon's string today: 16:00 in v1, 16:30 in v2, 16:00 on October's grid. */
+const CHAMELEON_NOW = optionLabel(sessionForOption(V1_CHAMELEON)!);
 
 const deepFreeze = <T>(o: T): T => {
   if (o && typeof o === "object") {
@@ -278,13 +280,13 @@ test("C7: travel time", () => {
   assert.equal(f.help, "If yes, you may be eligible for travel assistance. We will contact you with details about the assistance available.");
 });
 
-test("C8: Communication Chameleon runs until 16:30, everywhere", () => {
+test("C8: Communication Chameleon carries the schedule's hours, everywhere", () => {
   const f = q(v2, "sessions");
-  assert.equal(f.options[3], V2_CHAMELEON);
-  assert.equal(V2_CHAMELEON, "Tue 27 Oct · 13:00–16:30 · Communication Chameleon");
-  assert.deepEqual(f.slots[3], { option: V2_CHAMELEON, day: "2026-10-27", start: "13:00", end: "16:30", capacity: 30 });
-  assert.ok(!JSON.stringify(v2).includes("13:00–16:00"), "the 16:00 string survives somewhere");
-  // Same Workshop either way — v1 keeps producing Chameleon seats.
+  const chameleon = sessionForOption(V1_CHAMELEON)!;
+  assert.equal(f.options[3], CHAMELEON_NOW);
+  assert.deepEqual(f.slots[3], { option: CHAMELEON_NOW, day: "2026-10-27", start: chameleon.start, end: chameleon.end, capacity: 30 });
+  // Same Workshop whichever string a registration was stored under: the
+  // feedback round moved it to 16:30 and October's grid moved it back.
   assert.equal(sessionForOption(V2_CHAMELEON)?.slug, "communication-chameleon-2026");
   assert.equal(sessionForOption(V1_CHAMELEON)?.slug, "communication-chameleon-2026");
   // Every session is the schedule's current string for whatever v1
@@ -412,7 +414,9 @@ test("no v1-only answer survives anywhere in v2", () => {
     ...V1_STATUS,
     "Yes — already signed up", "No — I am not attending the Symposium",
     "Vegetarian", "Gluten-free / coeliac", "Dairy-free / lactose intolerant", "Nut allergy", "Shellfish allergy",
-    "Something else — I will describe it", V1_CHAMELEON,
+    "Something else — I will describe it",
+    // Not V1_CHAMELEON: October's grid puts Chameleon back at 16:00, so
+    // v1's string is the current one and v2 offers it again.
   ]) {
     assert.ok(!text.includes(old), `"${old}" is still in v2`);
   }
@@ -470,7 +474,7 @@ test("the checks catch a rule left pointing at an old answer", () => {
 
 test("the checks catch a slot drawn at the old time", () => {
   const broken = structuredClone(v2);
-  q(broken, "sessions").slots[3].end = "16:00";
+  q(broken, "sessions").slots[3].end = "16:30";
   assert.ok(v2Problems(v1, broken).some((p) => p.includes("the schedule says")));
 });
 
@@ -538,7 +542,7 @@ test("a complete v2 registration passes the server check and makes the right sea
     trainee_email: "Someone@UToronto.ca",
     travel_over_2h: "Yes",
     postcode: "M5V",
-    sessions: [V2_CHAMELEON, sessionsOf(v2)[0]],
+    sessions: [CHAMELEON_NOW, sessionsOf(v2)[0]],
     symposium_signup: V2_SYMPOSIUM_PLANNING,
     dietary: ["Vegan", V2_DIET_OTHER],
     dietary_other: "Severe nut allergy",
@@ -548,7 +552,7 @@ test("a complete v2 registration passes the server check and makes the right sea
   assert.deepEqual(verdict.problems, []);
   assert.equal(emailFrom(v2, verdict.clean), "someone@utoronto.ca");
   const ranked = rankedSessions(v2, verdict.clean);
-  assert.deepEqual(ranked, [V2_CHAMELEON, sessionsOf(v2)[0]]);
+  assert.deepEqual(ranked, [CHAMELEON_NOW, sessionsOf(v2)[0]]);
   assert.deepEqual(ranked.map((o) => sessionForOption(o)?.slug), ["communication-chameleon-2026", "ccrm-tour-lunch-learn-2026"]);
 
   // Symposium is required on v2 (it was not on v1).
@@ -558,9 +562,12 @@ test("a complete v2 registration passes the server check and makes the right sea
 
 test("a row must be read against the form it came in on", () => {
   // Why the registrant sheet keeps one document per form: read through
-  // the other version, a v1 Chameleon pick silently disappears.
-  const v1Answers: Answers = { bhn_status: V1_STATUS[0], sessions: [V1_CHAMELEON] };
-  assert.deepEqual(rankedSessions(v1, v1Answers), [V1_CHAMELEON]);
+  // the other version, a pick only v1 offers silently disappears. The
+  // Monday CCRM tour is the case now — October's grid moved it to
+  // Tuesday, so only the frozen v1 still names it at 11:00.
+  const v1Only = sessionsOf(v1).find((o) => !sessionsOf(v2).includes(o))!;
+  const v1Answers: Answers = { bhn_status: V1_STATUS[0], sessions: [v1Only] };
+  assert.deepEqual(rankedSessions(v1, v1Answers), [v1Only]);
   assert.deepEqual(rankedSessions(v2, v1Answers), []);
-  assert.equal(sessionForOption(rankedSessions(v1, v1Answers)[0])?.slug, "communication-chameleon-2026");
+  assert.ok(sessionForOption(v1Only), "a v1 pick still reaches its session");
 });

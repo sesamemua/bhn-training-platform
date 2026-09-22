@@ -166,12 +166,12 @@ test("a session's height is how long it runs", () => {
   assert.ok(tour > ccrm * 2.5, `the day is ${tour}% and the tour is ${ccrm}% — not to scale`);
 });
 
-test("the Tuesday pair, both 13:00–16:30, are drawn the same height", () => {
-  // The same-length check, on the only pair the week still has.
-  // Communication Chameleon used to end at 16:00; the coordinators
-  // corrected it to 16:30, the same as Negotiation. Equal runs must look
-  // equal — half an hour is a real difference to somebody planning a
-  // train home, so a drawing that still showed one is a wrong answer.
+test("the Tuesday pair, both 13:00–16:00, are drawn the same height", () => {
+  // The same-length check, on the only pair the week still has. The two
+  // workshops have ended at the same hour through two corrections, and
+  // equal runs must look equal — half an hour is a real difference to
+  // somebody planning a train home, so a drawing that showed one where
+  // there is none is a wrong answer.
   assert.equal(boxHeight("Negotiation Navigator"), boxHeight("Communication Chameleon"));
 });
 
