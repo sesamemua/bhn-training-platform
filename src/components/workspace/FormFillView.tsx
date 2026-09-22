@@ -30,7 +30,7 @@ import { hasLink, linkify } from "@/lib/formbuilder/linkify";
 import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
 import { rankedSessions, sessionField } from "@/lib/formbuilder/submit";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
-import { BLOCKED_MESSAGE } from "@/lib/eligibility/messages";
+import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "@/lib/eligibility/messages";
 import { FORM_COLUMN } from "@/lib/formbuilder/layout";
 import { hasRichLink } from "@/lib/formbuilder/rich-text";
 import { RichText } from "@/components/forms/RichText";
@@ -100,11 +100,16 @@ export function FormFillView({
    */
   const [reach, setReach] = useState(1);
   /* The roster verdict on the address they typed. Only ever set from
-     the server; "blocked" ends the form the same way a stopsHere note
-     does. Cleared whenever the address changes, so correcting a typo
-     reopens the form instead of stranding them. */
-  const [gateBlocked, setGateBlocked] = useState(false);
+     the server, and it stops nobody: not being on a list means the
+     lists are behind, so the form says so, offers to tell us, and lets
+     them carry on. Cleared whenever the address changes, so correcting
+     a typo takes the message away with it. */
+  const [gateMissing, setGateMissing] = useState(false);
   const [gateChecking, setGateChecking] = useState(false);
+  /** When the lists were last refreshed, so the message can date itself. */
+  const [gateUpdatedAt, setGateUpdatedAt] = useState<string | null>(null);
+  const [gateTold, setGateTold] = useState(false);
+  const [gateTelling, setGateTelling] = useState(false);
   const [all, setAll] = useState(false);
 
   const answeredAt = (f: FormField) => {
@@ -162,7 +167,10 @@ export function FormFillView({
    * in here rather than adding a second ended-state is what stops the
    * form offering Submit to somebody it has just turned away.
    */
-  const stopped = stoppedByNote || (gateBlocked ? ({ key: "__gate" } as unknown as FormField) : undefined);
+  // Only a stopsHere note ends the form now. The roster used to end it
+  // too, which put "we have not re-exported the sheet yet" and "you are
+  // not in a programme" on the same screen, wearing the same words.
+  const stopped = stoppedByNote;
 
   const more = shown.length - open;
   const last = shown[open - 1];
@@ -185,7 +193,7 @@ export function FormFillView({
     setAnswers({ ...answers, [k]: v });
     setDone(false);
     // Retyping the address is how somebody recovers from a refusal.
-    if (k === ELIGIBILITY_EMAIL_KEY) setGateBlocked(false);
+    if (k === ELIGIBILITY_EMAIL_KEY) { setGateMissing(false); setGateTold(false); }
   };
 
   /*
@@ -212,21 +220,35 @@ export function FormFillView({
       ?.focus();
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+
   /*
-   * A refusal at Submit takes the Submit button away with it, and focus
-   * with it. Sent to the address instead — after the render, so the
-   * field already names the message as its description and a screen
-   * reader reads both. Only for the inline refusal (see refusalPlacement);
-   * the Continue check never sets this.
+   * The button under the message: tell a coordinator, then carry on.
+   *
+   * Failure is silent on purpose. The registration itself is the record
+   * — it lands marked "not on the list" either way — so a network error
+   * here must not read as "your message did not get through" and send
+   * somebody hunting for another way to reach us.
    */
-  const gateFocus = useRef(false);
-  useEffect(() => {
-    if (!gateBlocked || !gateFocus.current) return;
-    gateFocus.current = false;
-    listRef.current
-      ?.querySelector<HTMLElement>(`[data-q="${CSS.escape(ELIGIBILITY_EMAIL_KEY)}"] input`)
-      ?.focus();
-  }, [gateBlocked]);
+  const tellUs = async () => {
+    const typed = answers[ELIGIBILITY_EMAIL_KEY];
+    if (typeof typed !== "string" || !typed.includes("@")) return;
+    setGateTelling(true);
+    try {
+      await fetch("/api/eligibility/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: typed,
+          name: String(answers.full_name ?? answers.trainee_name ?? "").trim() || undefined,
+        }),
+      });
+    } catch {
+      /* Said nothing, changed nothing — the registration still carries it. */
+    } finally {
+      setGateTelling(false);
+      setGateTold(true);
+    }
+  };
 
   const reset = () => {
     setAnswers({}); setTried(false); setDone(false); setSent(false); setRefused([]); setReceipt(undefined);
@@ -373,9 +395,11 @@ export function FormFillView({
       )}
 
       {/* presentation.gateInline draws this under the address instead —
-          see Question. The submit-time refusal below stays up here in
+          see Question. The submit-time notice below stays up here in
           both: by then the address may be several questions away. */}
-      {gateBlocked && !gateInline && <GateRefusal />}
+      {gateMissing && !gateInline && (
+        <GateNotice updatedAt={gateUpdatedAt} told={gateTold} telling={gateTelling} onTell={tellUs} />
+      )}
 
       {stoppedByNote && (
         <p className="mt-4 rounded-lg border border-line bg-elevated/60 p-3 text-[12.5px] leading-relaxed text-muted">
@@ -420,8 +444,12 @@ export function FormFillView({
             answers={answers}
             set={set}
             flagged={tried && gapKeys.has(f.key)}
-            gateBlocked={gateInline && gateBlocked && f.key === ELIGIBILITY_EMAIL_KEY}
-            // Refused at Submit, nothing is left to open: no Continue to press again.
+            gateMissing={gateInline && gateMissing && f.key === ELIGIBILITY_EMAIL_KEY}
+            gateUpdatedAt={gateUpdatedAt}
+            gateTold={gateTold}
+            gateTelling={gateTelling}
+            onTell={tellUs}
+            // Nothing left to open: the hint names Submit rather than Continue.
             gateRetry={more > 0 ? "continue" : "submit"}
           />
         ))}
@@ -465,7 +493,10 @@ export function FormFillView({
                */
               const typed = answers[ELIGIBILITY_EMAIL_KEY];
               const asksHere = shown.slice(0, open).some((f) => f.key === ELIGIBILITY_EMAIL_KEY);
-              if (mode === "live" && asksHere && typeof typed === "string" && typed.includes("@")) {
+              // Not re-checked once the message is up: it has been said,
+              // and pressing Continue again is somebody carrying on,
+              // which is the whole point of not refusing them.
+              if (mode === "live" && asksHere && !gateMissing && typeof typed === "string" && typed.includes("@")) {
                 setGateChecking(true);
                 try {
                   const res = await fetch("/api/eligibility/check", {
@@ -474,8 +505,13 @@ export function FormFillView({
                     body: JSON.stringify({ email: typed }),
                   });
                   if (res.ok) {
-                    const j = (await res.json()) as { blocked?: boolean };
-                    if (j.blocked) { setGateBlocked(true); setGateChecking(false); return; }
+                    const j = await res.json() as { blocked?: boolean; listUpdatedAt?: string | null };
+                    if (j.blocked) {
+                      setGateUpdatedAt(j.listUpdatedAt ?? null);
+                      setGateMissing(true);
+                      setGateChecking(false);
+                      return;
+                    }
                   }
                 } catch {
                   /* Network trouble is not a verdict — carry on. */
@@ -534,14 +570,11 @@ export function FormFillView({
                 await submit(answers).catch(() => ({ ok: false, problems: ["Could not reach the server."] }));
               setSending(false);
               if (r.ok) { setSent(true); setDone(true); setReceipt(r.receipt); }
-              else {
-                const said = refusalPlacement(r.problems, {
-                  gateInline,
-                  emailOnScreen: visible.some((f) => f.key === ELIGIBILITY_EMAIL_KEY),
-                });
-                if (said.gate) { gateFocus.current = true; setGateBlocked(true); }
-                setRefused(said.refused);
-              }
+              // Whatever the server refuses now, it is not the roster:
+              // an address on no list is recorded and let through, so
+              // anything arriving here is a problem with the answers and
+              // belongs in the box above the form.
+              else setRefused(r.problems ?? ["It was not accepted."]);
             }}
           >
             {sending
@@ -580,14 +613,21 @@ export function FormFillView({
  * typed or clicked.
  */
 export function Question({
-  doc, field: f, index, answers, set, flagged, gateBlocked = false, gateRetry = "continue",
+  doc, field: f, index, answers, set, flagged, gateMissing = false, gateRetry = "continue",
+  gateUpdatedAt = null, gateTold = false, gateTelling = false, onTell,
 }: {
   doc: BuiltForm; field: FormField; index: number;
   answers: Answers; set: (k: string, v: Answers[string]) => void; flagged: boolean;
-  /** The roster refused this address, said here rather than above the form (presentation.gateInline). */
-  gateBlocked?: boolean;
-  /** What brings the form back once the address is corrected: Continue, or Submit when nothing is left to open. */
+  /** The address is on no list, said here rather than above the form (presentation.gateInline). */
+  gateMissing?: boolean;
+  /** What to press once the address is corrected: Continue, or Submit when nothing is left to open. */
   gateRetry?: "continue" | "submit";
+  /** When the lists were last refreshed, for the message's own sentence. */
+  gateUpdatedAt?: string | null;
+  gateTold?: boolean;
+  gateTelling?: boolean;
+  /** Tell a coordinator about this address. Absent in a static render. */
+  onTell?: () => void;
 }) {
   const opts = optionsFor(doc, f);
   const rich = doc.presentation?.richText === true;
@@ -826,7 +866,7 @@ export function Question({
             type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "email" ? "email" : f.type === "phone" ? "tel" : "text"}
             maxLength={f.key === "postcode" ? 3 : undefined}
             autoCapitalize={f.key === "postcode" ? "characters" : undefined}
-            aria-describedby={gateBlocked ? GATE_REFUSAL_ID : undefined}
+            aria-describedby={gateMissing ? GATE_REFUSAL_ID : undefined}
             value={none ? "" : String(answers[f.key] ?? "")}
             onChange={(e) => set(f.key, e.target.value)}
           />
@@ -837,7 +877,12 @@ export function Question({
       {/* Under the address it is about, inside this question's own block
           rather than as a row of the list — a sibling there would draw a
           divider and read as a question of its own. */}
-      {gateBlocked && <GateRefusal id={GATE_REFUSAL_ID} className="mt-3" retry={gateRetry} />}
+      {gateMissing && (
+        <GateNotice
+          id={GATE_REFUSAL_ID} className="mt-3" retry={gateRetry}
+          updatedAt={gateUpdatedAt} told={gateTold} telling={gateTelling} onTell={onTell}
+        />
+      )}
     </div>
   );
 }
@@ -873,29 +918,55 @@ function NoneOption({
 const GATE_REFUSAL_ID = "eligibility-refusal";
 
 /**
- * "We can't place you on this list" — one box, wherever it is drawn.
+ * "We can't find that address" — one box, wherever it is drawn.
  *
  * Above the questions on every form that has not said otherwise; under
  * the address on one with presentation.gateInline, because a message
  * about what you typed reads as being about something else when it sits
  * a screen above where you typed it. "The address above" is true in
  * both places.
+ *
+ * It refuses nobody. The lists are exported by hand and are always a
+ * little behind, so a missing address is a fact about our filing, not
+ * about the person reading it: the box dates the lists, offers to tell
+ * a coordinator, and gets out of the way.
  */
-function GateRefusal({
+function GateNotice({
   id, className = "mt-4", retry = "continue",
-}: { id?: string; className?: string; retry?: "continue" | "submit" }) {
+  updatedAt = null, told = false, telling = false, onTell,
+}: {
+  id?: string; className?: string; retry?: "continue" | "submit";
+  updatedAt?: string | null; told?: boolean; telling?: boolean; onTell?: () => void;
+}) {
+  const dated = listUpdatedSentence(updatedAt);
   return (
     <div id={id} role="alert" className={`${className} rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-4`}>
       <p className="flex items-center gap-2 text-[13.5px] font-bold text-amber-600">
-        <AlertTriangle size={15} /> We can&apos;t place you on this list
+        <AlertTriangle size={15} /> We can&apos;t find that address on our lists
       </p>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-amber-700">{BLOCKED_MESSAGE}</p>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-amber-700">{NOT_ON_LIST_MESSAGE}</p>
+      {dated && <p className="mt-1.5 text-[13px] leading-relaxed text-amber-700">{dated}</p>}
+      {told ? (
+        <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-800">
+          <Check size={14} /> Thank you — the team has been told. Carry on and finish registering.
+        </p>
+      ) : (
+        onTell && (
+          <button
+            type="button"
+            onClick={onTell}
+            disabled={telling}
+            className="mt-2.5 inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3.5 py-2 text-[12.5px] font-bold text-white hover:bg-amber-700 disabled:opacity-60"
+          >
+            {telling ? "Telling them…" : "Tell us, and carry on"}
+          </button>
+        )
+      )}
       <p className="mt-2 text-[12.5px] text-amber-700">
         {retry === "submit"
-          // Refused at Submit after "Show all": there is no Continue on
-          // screen, and correcting the address brings Submit back.
-          ? "Correct the address above and submit again if you typed it wrong."
-          : "Correct the address above and press Continue again if you typed it wrong."}
+          // After "Show all" there is no Continue on screen.
+          ? "If you typed it wrong, correct the address above and submit again."
+          : "If you typed it wrong, correct the address above and press Continue again."}
       </p>
     </div>
   );
@@ -958,25 +1029,6 @@ export function progressToSubmit({
   return { done: Math.min(done, Math.max(0, asked.length - 1)), total: asked.length };
 }
 
-/**
- * Where a refusal from the server is said.
- *
- * With presentation.gateInline, "not on the list" goes under the address
- * it is about — where the Continue check puts it. "Show all" skips that
- * check and a failed check lets the person carry on, so the server's
- * refusal at Submit is often the first they hear of it, and it used to
- * land above question one. Only while the address is on screen: a
- * message under a question nobody can see is no message. Anything else
- * the server said stays in the box above the form.
- */
-export function refusalPlacement(
-  problems: string[] | undefined,
-  { gateInline, emailOnScreen }: { gateInline: boolean; emailOnScreen: boolean },
-): { gate: boolean; refused: string[] } {
-  const said = problems ?? ["It was not accepted."];
-  if (!gateInline || !emailOnScreen || !said.includes(BLOCKED_MESSAGE)) return { gate: false, refused: said };
-  return { gate: true, refused: said.filter((p) => p !== BLOCKED_MESSAGE) };
-}
 
 /**
  * How far through, drawn — for a form with presentation.progress "bar".

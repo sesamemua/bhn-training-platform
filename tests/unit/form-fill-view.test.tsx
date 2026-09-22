@@ -286,17 +286,15 @@ test("the trainee email says what is done with it, and what happens if it is not
   assert.match(help, /nothing else on this form/i, "it should say what else the address is used for");
 
   /*
-   * The important half. A non-match now ENDS the form, so this text
-   * must not promise otherwise — it used to read "your registration
-   * still goes through", which was true when the check only enriched
-   * a submission and became a lie the day it started blocking.
-   *
-   * Asserted as an absence as well as a presence, because the failure
-   * mode is somebody restoring the reassuring sentence without
-   * touching the code that refuses people.
+   * The important half, which has now been wrong in both directions.
+   * A non-match blocked for a while and the help said so; it does not
+   * any more, so the help must say THAT — both halves are checked,
+   * because the failure mode is somebody changing the code and leaving
+   * the sentence, in either direction.
    */
-  assert.match(help, /stops here|cannot register|has to add you/i, "it must say the form stops");
-  assert.doesNotMatch(help, /still goes through|goes through anyway/i,
+  assert.match(help, /you can still register/i, "it must say a non-match does not stop them");
+  assert.match(help, /by hand/i, "and who settles it");
+  assert.doesNotMatch(help, /stops here|cannot register|has to add you/i,
     "this promises the opposite of what the form now does");
 });
 
@@ -307,8 +305,14 @@ test("the flowchart's roster step can actually reach the declined end", () => {
   const step = (TRAINING_WEEK_FORM.steps ?? []).find((x) => x.id === "w_roster")!;
   assert.ok(step, "the roster step is missing from the flowchart");
   assert.equal(step.kind, "check");
-  assert.equal(step.otherwise, "w_declined");
-  assert.match(step.note ?? "", /stops the registration/i);
+  // Not "w_declined" any more: an address on no list is flagged and let
+  // through, and a chart that still drew a decline would be a picture
+  // of a process nobody runs.
+  assert.equal(step.otherwise, "w_flagged");
+  assert.match(step.note ?? "", /no longer stops anybody/i);
+  const flagged = (TRAINING_WEEK_FORM.steps ?? []).find((x) => x.id === "w_flagged")!;
+  assert.ok(flagged, "nothing draws what happens to an unlisted address");
+  assert.equal(flagged.next, "w_full", "the registration carries on from there");
   // And it has to say what happens before any list is loaded, because
   // that is the state it is in today.
   assert.match(step.note ?? "", /no list has been imported|passes everybody/i);

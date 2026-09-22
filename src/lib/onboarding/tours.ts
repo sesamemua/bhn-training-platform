@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16n";
+export const TOUR_VERSION = "2026.10.16o";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "registration.unlisted-address-carries-on",
+    title: "A stale list no longer stops a registrant",
+    body: "When an address is on none of the programme lists, the form now says **when the lists were last updated**, offers a **Tell us, and carry on** button that emails the team, and lets the person finish. Their registration arrives marked *not on the list* — settle it here before seat offers go out.",
+    path: "/admin/eligibility",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Eligibility lists", href: "/admin/eligibility" },
+    since: "2026.10.16o",
+  },
   {
     id: "admin.eligibility-applications-live",
     title: "EQUIP applicants count without an import",

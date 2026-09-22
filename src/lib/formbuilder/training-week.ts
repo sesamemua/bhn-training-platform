@@ -168,13 +168,14 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       type: "email", required: true, options: [],
       showWhen: [whenEligible],
       /*
-       * Rewritten when the check became a block. The sentence this
-       * replaced promised the opposite — "if we cannot find it, your
-       * registration still goes through" — and leaving it there while
-       * a non-match ends the form would have made the form lie to the
-       * person reading it.
+       * Rewritten twice, each time to match what the check actually
+       * does. It blocked for a while and the help said so; it does not
+       * any more — an address we cannot find means our exported lists
+       * are behind, so the form says that, offers to tell a
+       * coordinator, and carries on. Help that promises a rule the code
+       * no longer keeps is worse than no help.
        */
-      help: "Your institutional email, or the secondary email registered with us. We check it against the program lists to confirm your place — it is used for nothing else on this form. It has to be the address your program has on file: if we cannot find it, the form stops here and a coordinator has to add you.",
+      help: "Your institutional email, or the secondary email registered with us. We check it against the program lists to confirm your place — it is used for nothing else on this form. Use the address your program has on file: if we cannot find it, you can still register, and we will check it by hand.",
     },
     {
       id: "f_prog", key: "bhn_programs", label: "Which programs are you in?",
@@ -394,8 +395,12 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
     {
       id: "w_roster", kind: "check", label: "On a program list?",
       when: [],
-      next: "w_full", otherwise: "w_declined",
-      note: "Matched by email against the ENGAGE/EXPERIENCE and EQUIP lists. Not being found stops the registration — a coordinator adds the person to the list and they come back. While no list has been imported this step passes everybody, because a roster nobody loaded must not refuse everybody.",
+      next: "w_full", otherwise: "w_flagged",
+      note: "Matched by email against the ENGAGE/EXPERIENCE and EQUIP lists, plus the EQUIP applications made here, which count as soon as they are started. Not being found no longer stops anybody: the lists are exported by hand and are always a little behind. While no list has been imported this step passes everybody, because a roster nobody loaded must not refuse everybody.",
+    },
+    {
+      id: "w_flagged", kind: "action", label: "Marked “not on a list”, coordinator told", when: [], next: "w_full",
+      note: "The registration goes through carrying the verdict, and the form offers a button that emails the team. A coordinator adds them by hand, or re-imports the list, before seat offers go out.",
     },
     {
       id: "w_full", kind: "check", label: "Any chosen session full?",

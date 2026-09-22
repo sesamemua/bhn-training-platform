@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registration: an unlisted address is a flag, not a refusal
+  {
+    title: "Training Week registration: an unknown address no longer stops anybody",
+    body: "The registration used to **end** when the address somebody typed was on none of the programme lists. It does not any more — that address usually means our exported lists are behind, not that the person is ineligible.\n\n- The form says **we can’t find that address on our lists**, and gives the **date and time the lists were last updated**: anyone accepted into ENGAGE or EXPERIENCE, or who submitted an EQUIP application, after that is not on them yet.\n- A **Tell us, and carry on** button emails the team, and they keep registering.\n- The registration lands either way, marked **not on the list**, so it is settled before seat offers go out — **Admin → Eligibility lists**, add them by hand or re-import.\n\nEQUIP applications made on this platform already count the moment they are started, so this mostly catches ENGAGE and EXPERIENCE acceptances that arrive between exports.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Eligibility: EQUIP applicants on the platform, read live
   {
     title: "Eligibility: EQUIP applicants here count without an import",

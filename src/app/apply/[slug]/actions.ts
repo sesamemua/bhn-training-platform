@@ -18,7 +18,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
-import { checkEligibility, BLOCKED_MESSAGE } from "@/lib/eligibility/check";
+import { checkEligibility } from "@/lib/eligibility/check";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
 import { makeSeats } from "@/lib/formbuilder/seats";
@@ -60,10 +60,17 @@ export async function submitPublicForm(
   const registered = typeof verdict.clean[ELIGIBILITY_EMAIL_KEY] === "string"
     ? (verdict.clean[ELIGIBILITY_EMAIL_KEY] as string)
     : null;
+  /*
+   * Recorded, never refused.
+   *
+   * A missing address means the exported lists are behind — they are
+   * refreshed by hand, so anybody accepted since the last export is on
+   * none of them. Turning those people away at the form put the
+   * decision in the one place nobody could see it. The row carries the
+   * verdict instead, the form offers to tell a coordinator, and the
+   * question is settled before seats are offered.
+   */
   const eligibility = registered ? await checkEligibility(registered) : null;
-  if (eligibility?.blocked) {
-    return { ok: false, problems: [BLOCKED_MESSAGE] };
-  }
 
   const row = await prisma.eventFormSubmission.create({
     data: {

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { eligibilityGate, STALE_AFTER_HOURS } from "../../src/lib/eligibility/gate";
 import { ELIGIBILITY_SOURCES, eligibilitySource } from "../../src/lib/eligibility/sources";
-import { BLOCKED_MESSAGE } from "../../src/lib/eligibility/messages";
+import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "../../src/lib/eligibility/messages";
 
 const NOW = new Date("2026-09-01T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3600_000);
@@ -92,18 +92,32 @@ test("between them the sources cover ENGAGE, EXPERIENCE and EQUIP", () => {
 
 /* ── What the registrant is told ─────────────────────────────────── */
 
-test("the refusal never names which list they are missing from", () => {
+test("the message never names which list they are missing from", () => {
   // Naming it would turn the form into a way to find out who applied
   // to EQUIP by typing addresses at it.
-  const msg = BLOCKED_MESSAGE.toLowerCase();
+  const msg = NOT_ON_LIST_MESSAGE.toLowerCase();
   for (const leak of ["engage", "experience", "equip", "venture", "sharepoint", "google", "sheet"]) {
-    assert.ok(!msg.includes(leak), `the refusal mentions ${leak}`);
+    assert.ok(!msg.includes(leak), `the message mentions ${leak}`);
   }
 });
 
-test("the refusal tells them what to do about it", () => {
-  // A dead end with no next step is how a real applicant gives up.
-  assert.match(BLOCKED_MESSAGE, /coordinator/i);
-  assert.match(BLOCKED_MESSAGE, /different email|just been accepted/i);
-  assert.match(BLOCKED_MESSAGE, /nothing you have typed here is lost/i);
+test("the message says they can carry on, and who settles it", () => {
+  // A dead end with no next step is how a real applicant gives up —
+  // and this one is not even a dead end any more.
+  assert.match(NOT_ON_LIST_MESSAGE, /carry on and register/i);
+  assert.match(NOT_ON_LIST_MESSAGE, /coordinator/i);
+  assert.doesNotMatch(NOT_ON_LIST_MESSAGE, /cannot register|not eligible|stops here/i);
+});
+
+test("the dated sentence puts the lists' age in front of the person reading it", () => {
+  const said = listUpdatedSentence("2026-09-22T21:01:34.291Z");
+  assert.ok(said);
+  // Toronto, where the week is: 21:01 UTC is 17:01 the same day.
+  assert.match(said, /September 22, 2026/);
+  assert.match(said, /5:01/);
+  assert.match(said, /ENGAGE or EXPERIENCE/);
+  assert.match(said, /EQUIP application/);
+  // Nothing imported, nothing enforced — a date would only confuse.
+  assert.equal(listUpdatedSentence(null), null);
+  assert.equal(listUpdatedSentence("not a date"), null);
 });

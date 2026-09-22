@@ -10,11 +10,15 @@ import { prisma } from "@/lib/prisma";
 import { emailKey } from "./email-key";
 import { eligibilityGate, type Gate } from "./gate";
 import { eligibilitySource } from "./sources";
-export { BLOCKED_MESSAGE } from "./messages";
+export { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "./messages";
 
 export interface EligibilityVerdict {
   /** Whether the roster is allowed to turn anybody away at all. */
   gate: Gate;
+  /** When the imported lists were last refreshed. What the form tells a
+   *  registrant whose address is missing, so they can judge whether our
+   *  lists could know about them yet. */
+  lastImportAt: Date | null;
   /** null when the address could not be read as an address. */
   key: string | null;
   /** True when this person is on at least one list. */
@@ -101,13 +105,15 @@ export async function rosterState() {
  * wildcard and match somebody else.
  */
 export async function checkEligibility(rawEmail: string): Promise<EligibilityVerdict> {
-  const gate = eligibilityGate(await rosterState(), new Date());
+  const state = await rosterState();
+  const gate = eligibilityGate(state, new Date());
+  const lastImportAt = state.lastImportAt;
   const key = emailKey(rawEmail);
 
   if (!key) {
     // Not an address at all. The form's own email validation catches
     // this first; treated as no match rather than as a match.
-    return { gate, key: null, matched: false, sourceIds: [], programmes: [], blocked: gate.enforcing };
+    return { gate, lastImportAt, key: null, matched: false, sourceIds: [], programmes: [], blocked: gate.enforcing };
   }
 
   const [rows, applied] = await Promise.all([
@@ -123,5 +129,5 @@ export async function checkEligibility(rawEmail: string): Promise<EligibilityVer
   ];
   const matched = sourceIds.length > 0;
 
-  return { gate, key, matched, sourceIds, programmes, blocked: gate.enforcing && !matched };
+  return { gate, lastImportAt, key, matched, sourceIds, programmes, blocked: gate.enforcing && !matched };
 }

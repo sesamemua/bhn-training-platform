@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  Confirmation, FormFillView, gapPrompt, Progress, progressToSubmit, Question, refusalPlacement,
+  Confirmation, FormFillView, gapPrompt, Progress, progressToSubmit, Question,
 } from "../../src/components/workspace/FormFillView";
 import { SessionCalendar } from "../../src/components/workspace/SessionCalendar";
 import { TRAINING_WEEK_FORM } from "../../src/lib/formbuilder/training-week";
@@ -13,7 +13,7 @@ import {
   buildTrainingWeekV2, V2_ACCEPTED, V2_DIET_OTHER, V2_SYMPOSIUM_REGISTERED,
 } from "../../src/lib/formbuilder/training-week-v2";
 import { missing, visibleFields, type Answers } from "../../src/lib/formbuilder/logic";
-import { BLOCKED_MESSAGE } from "../../src/lib/eligibility/messages";
+import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "../../src/lib/eligibility/messages";
 import { parseForm, type BuiltForm, type FormField, type Presentation } from "../../src/lib/formbuilder/types";
 
 /**
@@ -113,15 +113,15 @@ test("theme “site” puts the site skin on the form and on the receipt, and no
 /* ── C2: the refusal sits by the address ─────────────────────────── */
 
 const EMAIL = field(V1, "trainee_email");
-const emailQuestion = (doc: BuiltForm, gateBlocked?: boolean) =>
+const emailQuestion = (doc: BuiltForm, gateMissing?: boolean, extra: Record<string, unknown> = {}) =>
   renderToStaticMarkup(
     <Question
       doc={doc} field={EMAIL} index={2} answers={{ trainee_email: "someone@example.ca" }}
-      set={noop} flagged={false} gateBlocked={gateBlocked}
+      set={noop} flagged={false} gateMissing={gateMissing} onTell={noop} {...extra}
     />,
   );
 
-test("gateInline: “we can't place you” is drawn inside the email question, under the field", () => {
+test("gateInline: “we can't find that address” is drawn inside the email question, under the field", () => {
   const html = emailQuestion(look(V1, { gateInline: true }), true);
   // Question renders one element, the question's own block — so anything
   // in this string is inside it.
@@ -129,13 +129,32 @@ test("gateInline: “we can't place you” is drawn inside the email question, u
   assert.ok(html.indexOf('role="alert"') > html.indexOf("<input"), "the message comes after the field it is about");
   assert.match(html, /<div id="eligibility-refusal" role="alert"/);
   assert.match(html, /<input[^>]*aria-describedby="eligibility-refusal"/, "the field names the message as its description");
-  assert.match(html, /We can(?:&#x27;|')t place you on this list/);
-  assert.match(html, /Correct the address above/);
+  assert.match(html, /We can(?:&#x27;|')t find that address on our lists/);
+  assert.match(html, /correct the address above/i);
+  // Nobody is turned away: the box carries the button that tells a
+  // coordinator, and no sentence that ends the form.
+  assert.match(html, /Tell us, and carry on/);
+  assert.doesNotMatch(html, /cannot register|not eligible/i);
 });
 
-test("gateInline: nothing is said, or pointed at, until the roster refuses — and first paint does not move", () => {
+test("gateInline: the message dates the lists, and says thank you once told", () => {
+  const at = "2026-09-22T21:01:34.291Z";
+  const dated = emailQuestion(look(V1, { gateInline: true }), true, { gateUpdatedAt: at });
+  // The date is the point: accepted last week, lists a fortnight old.
+  assert.match(dated, /September 22, 2026/);
+  assert.match(dated, /approve you by hand/);
+  assert.ok(listUpdatedSentence(at)?.includes("September 22, 2026"));
+  assert.doesNotMatch(listUpdatedSentence(at)!, /\.\./, "the time brings its own full stop");
+  assert.equal(listUpdatedSentence(null), null);
+
+  const told = emailQuestion(look(V1, { gateInline: true }), true, { gateTold: true });
+  assert.match(told, /the team has been told/i);
+  assert.doesNotMatch(told, /Tell us, and carry on/);
+});
+
+test("gateInline: nothing is said, or pointed at, until the roster answers — and first paint does not move", () => {
   const html = emailQuestion(look(V1, { gateInline: true }), false);
-  assert.doesNotMatch(html, /role="alert"|aria-describedby|place you on this list/);
+  assert.doesNotMatch(html, /role="alert"|aria-describedby|find that address/);
   // The refusal is state set by the server's answer, so first paint is
   // the same form with or without the flag. (The box above the list is
   // the other half of the switch; it only exists after a real refusal.)
@@ -500,37 +519,23 @@ test("progress bar: never full while Submit is not on screen", () => {
   assert.equal(behind.progress.done, behind.progress.total - 1);
 });
 
-/* ── C2, when the refusal comes from Submit ───────────────────────── */
+/* ── C2, after "Show all" ─────────────────────────────────────────── */
 
-test("gateInline: a refusal at Submit goes under the address, not above question one", () => {
-  const blocked = [BLOCKED_MESSAGE];
-  assert.deepEqual(refusalPlacement(blocked, { gateInline: true, emailOnScreen: true }), { gate: true, refused: [] });
-  // v1: the box above the form, exactly as before.
-  assert.deepEqual(refusalPlacement(blocked, { gateInline: false, emailOnScreen: true }), { gate: false, refused: blocked });
-  // Under a question nobody can see is nowhere.
-  assert.deepEqual(refusalPlacement(blocked, { gateInline: true, emailOnScreen: false }), { gate: false, refused: blocked });
-  // Anything else the server said is still said, above.
-  assert.deepEqual(
-    refusalPlacement(["Too many registrations.", BLOCKED_MESSAGE], { gateInline: true, emailOnScreen: true }),
-    { gate: true, refused: ["Too many registrations."] },
-  );
-  assert.deepEqual(
-    refusalPlacement(["Could not reach the server."], { gateInline: true, emailOnScreen: true }),
-    { gate: false, refused: ["Could not reach the server."] },
-  );
-  assert.deepEqual(refusalPlacement(undefined, { gateInline: false, emailOnScreen: true }), { gate: false, refused: ["It was not accepted."] });
-
-  // After "Show all" there is no Continue, so the box says how Submit comes back.
-  const fromSubmit = renderToStaticMarkup(
-    <Question
-      doc={look(V1, { gateInline: true })} field={EMAIL} index={2} answers={{ trainee_email: "someone@example.ca" }}
-      set={noop} flagged={false} gateBlocked gateRetry="submit"
-    />,
-  );
+test("gateInline: with nothing left to open, the box names Submit rather than Continue", () => {
+  const fromSubmit = emailQuestion(look(V1, { gateInline: true }), true, { gateRetry: "submit" });
   assert.match(fromSubmit, /<input[^>]*aria-describedby="eligibility-refusal"/);
-  assert.match(fromSubmit, /Correct the address above and submit again if you typed it wrong\./);
-  assert.doesNotMatch(fromSubmit, /Continue/);
+  assert.match(fromSubmit, /correct the address above and submit again\./);
+  assert.doesNotMatch(fromSubmit, /press Continue again/);
   assert.match(emailQuestion(look(V1, { gateInline: true }), true), /press Continue again/, "the Continue check keeps its words");
+});
+
+test("what the registrant is told never names a list, and never says they are refused", () => {
+  const msg = NOT_ON_LIST_MESSAGE.toLowerCase();
+  for (const leak of ["engage", "experience", "equip", "venture", "sharepoint", "google", "sheet"]) {
+    assert.ok(!msg.includes(leak), `the message mentions ${leak}`);
+  }
+  assert.match(NOT_ON_LIST_MESSAGE, /carry on and register/i);
+  assert.match(NOT_ON_LIST_MESSAGE, /coordinator/i);
 });
 
 /* ── the thank-you screen's timeline ─────────────────────────────── */
