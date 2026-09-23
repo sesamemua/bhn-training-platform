@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registration calendar: readable when you have picked something
+  {
+    title: "Registration calendar: readable once you have picked something",
+    body: "Choosing a session used to make its block messy — the hour rules ran straight through the colour, and the facility name was cut off mid-word by the lunch band. The calendar now:\n\n- **Gives each day the width it needs.** A day is as wide as the number of sessions it runs side by side, so Wednesday’s single session no longer takes the room Tuesday’s three need. Every session in the week is drawn the same width.\n- **Draws a chosen block solid**, above the hour rules instead of under them.\n- **Sets the type a size up**, and gives an hour more height, so a block can hold its badge, hours, title, what the title stands for and its room size without any of it running into a meal band.\n- **Says the session picks up again**: under the lunch band on the CL3 workshop it now reads *continues after lunch*.\n- **Spells the facility out**: the Monday workshop is **Pandemic Preparedness**, with *Toronto High Containment Facility (CL3)* underneath.\n\nSeparately, the **Tell us** button on an address we can’t find now copies **engage@biohubnet.ca** as well as info@biohubnet.ca.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Registration calendar: meals inside the sessions, and Tuesday from noon
   {
     title: "Registration: lunch is drawn inside the workshop it belongs to",
