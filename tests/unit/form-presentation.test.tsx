@@ -600,8 +600,12 @@ test("a meal is a band across the session it belongs to, placed by the clock", (
 
   // 12:00–13:00 of a 12:00–16:30 session: the top of it, two ninths tall.
   assert.match(picker, /top:0%;height:22\.2222/);
-  assert.match(picker, /Lunch 12:00–13:00/);
+  assert.match(picker, /Lunch 12:00–13:00/, "the band says what it is");
   assert.match(picker, /bg-amber-400\/25/, "a meal is drawn in its own colour");
+  // And the words start below it — a title drawn over the band is two
+  // texts in one place, measured in the grid's own hour so the strip is
+  // the band rather than a guess.
+  assert.match(picker, /padding-top:calc\(var\(--hour\) \* 1\)/);
   assert.match(picker, /Room 850/, "the subtitle says what the short title stands for");
 
   // Not on the receipt: what you are eating is not a decision being recorded.

@@ -184,32 +184,52 @@ export function SessionCalendar(props: SessionCalendarProps) {
     const blocked = !on && atCap;
 
     /*
-     * Meals, as bands across the block.
+     * Meals, as bands across the block, each saying what it is.
      *
      * Positioned by the share of the session they take, so a lunch in
-     * the middle of an afternoon looks like the middle of it. Drawn
-     * under the text (the text is relative, this is not), and never on
+     * the middle of an afternoon looks like the middle of it. Never on
      * the receipt: what you are eating is not a decision being recorded.
      */
-    const bands = !ro && sl.breaks?.length
-      ? sl.breaks.map((b) => {
-          const from = (toMinutes(b.start) - toMinutes(sl.start)) / minutes;
-          const span = (toMinutes(b.end) - toMinutes(b.start)) / minutes;
-          if (!(span > 0) || from < 0 || from + span > 1.001) return null;
-          return (
-            <span
-              key={`${b.label}-${b.start}`}
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 border-y border-amber-500/45 bg-amber-400/25"
-              style={{ top: `${from * 100}%`, height: `${span * 100}%` }}
-            />
-          );
-        })
-      : null;
+    const meals = ro ? [] : (sl.breaks ?? []).filter((b) => {
+      const from = toMinutes(b.start) - toMinutes(sl.start);
+      const span = toMinutes(b.end) - toMinutes(b.start);
+      return span > 0 && from >= 0 && from + span <= minutes;
+    });
+
+    const bands = meals.map((b) => {
+      const from = (toMinutes(b.start) - toMinutes(sl.start)) / minutes;
+      const span = (toMinutes(b.end) - toMinutes(b.start)) / minutes;
+      const tall = toMinutes(b.end) - toMinutes(b.start) >= 30;
+      return (
+        <span
+          key={`${b.label}-${b.start}`}
+          className="pointer-events-none absolute inset-x-0 overflow-hidden border-y border-amber-500/45 bg-amber-400/25 px-1.5 py-px"
+          style={{ top: `${from * 100}%`, height: `${span * 100}%` }}
+        >
+          <span className="block truncate font-mono text-[9px] font-semibold leading-tight text-amber-900">
+            {tall ? `${b.label} ${b.start}–${b.end}` : b.label}
+          </span>
+        </span>
+      );
+    });
+
+    /*
+     * The words start below any meal the session opens with.
+     *
+     * Measured in the grid's own hour, which is the unit the block's
+     * height is in — so the reserved strip is exactly the band rather
+     * than a guess that drifts when the calendar changes size. Without
+     * it the title is drawn over the band, which is two texts in one
+     * place: the thing this drawing must not do.
+     */
+    const lead = meals
+      .filter((b) => toMinutes(b.start) === toMinutes(sl.start))
+      .reduce((most, b) => Math.max(most, toMinutes(b.end) - toMinutes(sl.start)), 0);
 
     const children = (
       <>
         {bands}
+        {lead > 0 && <span aria-hidden className="block" style={{ paddingTop: `calc(var(--hour) * ${lead / 60})` }} />}
         {/* The ranking leads. Once a session is picked, its position is
             the thing the reader is checking — the hours are already the
             scale it is drawn against. */}
@@ -238,11 +258,6 @@ export function SessionCalendar(props: SessionCalendarProps) {
             Up to {sl.capacity} people
           </span>
         )}
-        {!ro && sl.breaks?.length ? (
-          <span className="relative mt-0.5 block text-[9.5px] leading-tight text-amber-800">
-            {sl.breaks.map((b) => `${b.label} ${b.start}–${b.end}`).join(" · ")}
-          </span>
-        ) : null}
         {/* Only where there is room for it. A hint that overflows its
             own box is not a hint — and on a receipt it is not a hint at
             all: what a session you did not pick ran against is guidance
