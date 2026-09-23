@@ -199,15 +199,18 @@ export function SessionCalendar(props: SessionCalendarProps) {
     const bands = meals.map((b) => {
       const from = (toMinutes(b.start) - toMinutes(sl.start)) / minutes;
       const span = (toMinutes(b.end) - toMinutes(b.start)) / minutes;
-      const tall = toMinutes(b.end) - toMinutes(b.start) >= 30;
       return (
         <span
           key={`${b.label}-${b.start}`}
           className="pointer-events-none absolute inset-x-0 overflow-hidden border-y border-amber-500/45 bg-amber-400/25 px-1.5 py-px"
           style={{ top: `${from * 100}%`, height: `${span * 100}%` }}
         >
-          <span className="block truncate font-mono text-[9px] font-semibold leading-tight text-amber-900">
-            {tall ? `${b.label} ${b.start}–${b.end}` : b.label}
+          {/* The word only: half a Tuesday cell is 85px wide and
+              "Lunch 12:00–13…" is worse than "Lunch" in a band whose
+              own edges say when it is. The hours are still read out. */}
+          <span className="sr-only">{`${b.label} ${b.start}–${b.end}`}</span>
+          <span aria-hidden className="block truncate font-mono text-[9px] font-semibold leading-tight text-amber-900">
+            {b.label}
           </span>
         </span>
       );
