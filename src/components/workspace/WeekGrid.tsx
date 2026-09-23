@@ -62,7 +62,18 @@ import { label as hourLabel, place, type Grid } from "@/lib/allocation/schedule"
  * apart.
  */
 export const HOUR_SCALE = {
-  pick: "[--hour:46px] @xl:[--hour:62px]",
+  /*
+   * 84px an hour in the picker, side by side.
+   *
+   * The hour is the ruler everything inside a block is measured
+   * against, so it decides how much a block can say: at 62px a session
+   * with a meal in the middle of it had 124px between the top of the
+   * block and the band, and a chosen cell — rank badge, hours, title,
+   * what the title stands for, the room size — wanted a third more
+   * than that. A taller hour is a longer calendar and a session that
+   * can be read.
+   */
+  pick: "[--hour:60px] @xl:[--hour:84px]",
   read: "[--hour:30px] @xl:[--hour:62px]",
 } as const;
 

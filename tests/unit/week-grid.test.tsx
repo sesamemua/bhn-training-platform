@@ -86,9 +86,12 @@ test("every session's box is a real position, not a default", () => {
 });
 
 test("both screens measure an hour at the same height", () => {
+  // The picker sets the ruler: a block has to hold a rank badge, the
+  // hours, a title, what the title stands for and a room size between
+  // its own top and a meal band in the middle of it.
   for (const [name, html] of [["form", picker], ["dashboard", admin]] as const) {
-    assert.match(html, /\[--hour:46px\]/, `${name} lost the stacked hour height`);
-    assert.match(html, /@xl:\[--hour:62px\]/, `${name} lost the side-by-side hour height`);
+    assert.match(html, /\[--hour:60px\]/, `${name} lost the stacked hour height`);
+    assert.match(html, /@xl:\[--hour:84px\]/, `${name} lost the side-by-side hour height`);
   }
 });
 
