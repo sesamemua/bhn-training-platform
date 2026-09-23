@@ -276,7 +276,17 @@ export function WeekGrid({
                     left: `${(sl.lane / sl.lanes) * 100}%`,
                     width: `calc(${100 / sl.lanes}% - 2px)`,
                   };
-                  const cls = `absolute overflow-hidden rounded-md border px-1.5 py-1 text-left transition-colors ${cell.className ?? ""}`;
+                  /*
+                    * Top-aligned, explicitly.
+                    *
+                    * A <button> centres its content vertically all by
+                    * itself, which is invisible until something inside
+                    * has to line up with the clock: a strip reserved for
+                    * a meal band slid into the middle of the box and the
+                    * title was drawn over the band anyway. Flex column,
+                    * start — then the first line is the first line.
+                    */
+                  const cls = `absolute flex flex-col justify-start overflow-hidden rounded-md border px-1.5 py-1 text-left transition-colors ${cell.className ?? ""}`;
 
                   return cell.press ? (
                     <button

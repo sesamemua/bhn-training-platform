@@ -225,6 +225,9 @@ export function SessionCalendar(props: SessionCalendarProps) {
     const lead = meals
       .filter((b) => toMinutes(b.start) === toMinutes(sl.start))
       .reduce((most, b) => Math.max(most, toMinutes(b.end) - toMinutes(sl.start)), 0);
+    /* A band further down the block is a floor the words must stay
+     * above, and the "runs against" hint is the line that can go. */
+    const bandBelow = meals.some((b) => toMinutes(b.start) > toMinutes(sl.start));
 
     const children = (
       <>
@@ -262,7 +265,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
             own box is not a hint — and on a receipt it is not a hint at
             all: what a session you did not pick ran against is guidance
             for a decision already made. */}
-        {!ro && against > 0 && minutes >= 120 && (
+        {!ro && against > 0 && minutes >= 120 && !bandBelow && (
           <span className="relative mt-1 block text-[9.5px] text-subtle">
             runs against {against} other{against > 1 ? "s" : ""}
           </span>
