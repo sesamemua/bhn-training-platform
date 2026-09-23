@@ -28,6 +28,9 @@ const ADDR_WINDOW_MS = 86_400_000;
 const ADDR_MAX = 3;
 
 const TEAM = process.env.SMTP_FROM_EMAIL ?? "info@biohubnet.ca";
+/* ENGAGE runs the list most of these people are missing from, so they
+ * are on the message rather than hearing about it second-hand. */
+const ALSO = "engage@biohubnet.ca";
 
 export async function POST(req: NextRequest) {
   const now = Date.now();
@@ -58,6 +61,7 @@ export async function POST(req: NextRequest) {
     }).format(new Date());
     await sendMail({
       to: TEAM,
+      cc: ALSO,
       replyTo: email,
       subject: `Training Week: ${email} is not on the eligibility lists`,
       text:

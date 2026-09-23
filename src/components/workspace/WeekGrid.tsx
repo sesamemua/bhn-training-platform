@@ -202,7 +202,16 @@ export function WeekGrid({
               alongside. Stacked, each day carries its own. */}
           <HourScale grid={grid} height={height} className="hidden @xl:flex" />
 
-          {grid.days.map(({ day, slots }) => (
+          {grid.days.map(({ day, slots }) => {
+            /*
+             * A day is as wide as the number of sessions it runs side
+             * by side, so every lane in the week comes out the same
+             * width. Three equal columns gave Wednesday's one session
+             * the room of Tuesday's three, and squeezed the two days
+             * that actually need it.
+             */
+            const lanes = Math.max(1, ...slots.map((sl) => sl.lanes));
+            return (
             /*
              * Stacked, a day is a two-column grid: the hour scale down
              * the left, the heading and the grid down the right. Side
@@ -211,7 +220,8 @@ export function WeekGrid({
              */
             <div
               key={day}
-              className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 @xl:flex @xl:min-w-0 @xl:flex-1 @xl:flex-col @xl:gap-x-0"
+              className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 @xl:flex @xl:min-w-0 @xl:flex-col @xl:gap-x-0"
+              style={{ ["--lanes" as string]: lanes, flexGrow: lanes, flexBasis: 0 }}
             >
               <HourScale grid={grid} height={height} className="col-start-1 row-start-2 flex @xl:hidden" />
 
@@ -286,7 +296,7 @@ export function WeekGrid({
                     * title was drawn over the band anyway. Flex column,
                     * start — then the first line is the first line.
                     */
-                  const cls = `absolute flex flex-col justify-start overflow-hidden rounded-md border px-1.5 py-1 text-left transition-colors ${cell.className ?? ""}`;
+                  const cls = `absolute z-10 flex flex-col justify-start overflow-hidden rounded-md border px-1.5 py-1 text-left transition-colors ${cell.className ?? ""}`;
 
                   return cell.press ? (
                     <button
@@ -309,7 +319,8 @@ export function WeekGrid({
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

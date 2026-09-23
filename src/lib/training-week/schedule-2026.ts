@@ -208,7 +208,9 @@ export const SESSIONS: Session[] = [
   },
   {
     slug: "cl3-workshop-2026",
-    title: "Pandemic Preparedness — THCF",
+    // The acronym is in the line underneath, spelled out. Carrying it
+    // in the title as well cost the cell a line it did not have.
+    title: "Pandemic Preparedness",
     subtitle: "Toronto High Containment Facility (CL3)",
     kind: "workshop",
     day: "2026-10-26", start: "09:30", end: "14:00", track: 2,
@@ -227,8 +229,12 @@ export const SESSIONS: Session[] = [
     summary: "A containment-level-3 workshop on pandemic preparedness, with a tour of the facility.",
     notes: ["20 spots", "Workshop + tour", "Breakfast 09:30–10:00", "Lunch 11:30–12:30"],
     tentative: false,
-    previousTitles: ["CL3 workshop"],
-    previousOptions: ["Mon 26 Oct · 09:30–17:00 · CL3 workshop"],
+    previousTitles: ["Pandemic Preparedness — THCF", "CL3 workshop"],
+    previousOptions: [
+      "Mon 26 Oct · 09:30–17:00 · CL3 workshop",
+      "Mon 26 Oct · 09:30–14:30 · Pandemic Preparedness — THCF",
+      "Mon 26 Oct · 09:30–14:00 · Pandemic Preparedness — THCF",
+    ],
   },
   {
     slug: "communication-chameleon-2026",

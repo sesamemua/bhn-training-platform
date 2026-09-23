@@ -369,7 +369,7 @@ test("capacity: said on the cell when the slot has one, only in the picker, and 
   for (const option of TUESDAY) {
     const name = option.split(" · ").pop()!;
     // The time line's own scale, so it reads as detail rather than a second name.
-    assert.match(cellOf(picker, name), /<span class="relative mt-0\.5 block text-\[9\.5px\] leading-tight text-subtle">Up to 30 people<\/span>/, name);
+    assert.match(cellOf(picker, name), /<span class="relative mt-0\.5 block text-\[10\.5px\] leading-tight text-subtle">Up to 30 people<\/span>/, name);
   }
   assert.doesNotMatch(cellOf(picker, "CL3 workshop"), /Up to/, "a slot without a capacity says nothing");
 

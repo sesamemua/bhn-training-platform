@@ -209,7 +209,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
               "Lunch 12:00–13…" is worse than "Lunch" in a band whose
               own edges say when it is. The hours are still read out. */}
           <span className="sr-only">{`${b.label} ${b.start}–${b.end}`}</span>
-          <span aria-hidden className="block truncate font-mono text-[9px] font-semibold leading-tight text-amber-900">
+          <span aria-hidden className="block truncate font-mono text-[10px] font-semibold leading-tight text-amber-900">
             {b.label}
           </span>
         </span>
@@ -232,18 +232,45 @@ export function SessionCalendar(props: SessionCalendarProps) {
      * above, and the "runs against" hint is the line that can go. */
     const bandBelow = meals.some((b) => toMinutes(b.start) > toMinutes(sl.start));
 
+    /*
+     * The words stop where the next meal starts.
+     *
+     * Reserving the strip above is not enough once a rank badge joins
+     * them: the lines simply grow past the band. Clipped to the gap, so
+     * the drawing can lose a line before it draws two texts in one
+     * place.
+     */
+    const floor = meals
+      .filter((b) => toMinutes(b.start) > toMinutes(sl.start))
+      .reduce((first, b) => Math.min(first, toMinutes(b.start)), Infinity);
+    const room = Number.isFinite(floor) ? (floor - toMinutes(sl.start) - lead) / 60 : null;
+
+    /*
+     * The fill is a layer, the box is opaque.
+     *
+     * A chosen cell was a 15% wash, and the hour rules behind it read
+     * straight through the colour — a drawing with lines across its own
+     * blocks. bg-card underneath, the state painted on top of it.
+     */
+    const tint = on ? (clashes ? "bg-red-500/15" : "bg-brand-500/15") : null;
+
     const children = (
       <>
+        {tint && <span aria-hidden className={`pointer-events-none absolute inset-0 ${tint}`} />}
         {bands}
-        {lead > 0 && <span aria-hidden className="block" style={{ paddingTop: `calc(var(--hour) * ${lead / 60})` }} />}
+        {lead > 0 && <span aria-hidden className="block shrink-0" style={{ paddingTop: `calc(var(--hour) * ${lead / 60})` }} />}
+        <span
+          className="relative block overflow-hidden"
+          style={room === null ? undefined : { maxHeight: `calc(var(--hour) * ${room})` }}
+        >
         {/* The ranking leads. Once a session is picked, its position is
             the thing the reader is checking — the hours are already the
             scale it is drawn against. */}
         {on && <span className="mb-0.5 block"><RankBadge rank={rank + 1} word /></span>}
-        <span className="relative block truncate font-mono text-[9.5px] text-subtle">
+        <span className="relative block truncate font-mono text-[10.5px] text-subtle">
           {sl.start}–{sl.end}
         </span>
-        <span className={`relative mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
+        <span className={`relative mt-0.5 block text-[12.5px] leading-snug ${on ? "font-semibold text-fg" : "text-muted"}`}>
           {shortLabel(sl.option)}
         </span>
         {/* What the short title stands for. On the cell rather than in
@@ -251,7 +278,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
             line the ranking list reads — a facility's full name belongs
             on the drawing, not in the record of what somebody picked. */}
         {sl.subtitle && (
-          <span className="relative block text-[9.5px] leading-tight text-subtle">{sl.subtitle}</span>
+          <span className="relative block text-[11px] leading-tight text-subtle">{sl.subtitle}</span>
         )}
         {/* The room, where the form says it. From the slot rather than the
             Workshop row, so a form that never set one never shows one.
@@ -260,7 +287,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
             line in a box three and a half hours tall. Not on the receipt
             — how big a room you already asked for is not news. */}
         {!ro && sl.capacity !== undefined && (
-          <span className="relative mt-0.5 block text-[9.5px] leading-tight text-subtle">
+          <span className="relative mt-0.5 block text-[10.5px] leading-tight text-subtle">
             Up to {sl.capacity} people
           </span>
         )}
@@ -269,18 +296,19 @@ export function SessionCalendar(props: SessionCalendarProps) {
             all: what a session you did not pick ran against is guidance
             for a decision already made. */}
         {!ro && against > 0 && minutes >= 120 && !bandBelow && (
-          <span className="relative mt-1 block text-[9.5px] text-subtle">
+          <span className="relative mt-1 block text-[10.5px] text-subtle">
             runs against {against} other{against > 1 ? "s" : ""}
           </span>
         )}
+        </span>
       </>
     );
 
     const className = `${blocked ? "cursor-not-allowed opacity-40 " : ""}${
       on
         ? clashes
-          ? "border-red-500 bg-red-500/15"
-          : "border-brand-500 bg-brand-500/15"
+          ? "border-red-500 bg-card"
+          : "border-brand-500 bg-card"
         // Not chosen, and nothing left to choose: kept on the drawing,
         // faded. The week they picked FROM is the context that makes a
         // rank mean anything, but it must not compete with what they
