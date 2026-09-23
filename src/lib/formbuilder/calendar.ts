@@ -20,6 +20,10 @@ export interface Slot {
   end: string;
   /** How many people the room holds, when the form says so. */
   capacity?: number;
+  /** A second line on the cell: what a short title stands for. */
+  subtitle?: string;
+  /** Meals inside the session's own hours, drawn as bands in its block. */
+  breaks?: { label: string; start: string; end: string }[];
 }
 
 const mins = (hhmm: string) => {

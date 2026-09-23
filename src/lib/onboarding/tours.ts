@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16t";
+export const TOUR_VERSION = "2026.10.16u";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "registration.meals-in-sessions",
+    title: "Meals are drawn inside their session",
+    body: "Tuesday’s two workshops run **12:00–16:30** with **lunch 12:00–13:00** drawn as a band inside each block, and the THCF workshop carries its **breakfast** and **lunch** the same way — a meal that comes with a session is not a second thing to pick. The calendar also says the workshops are **in person, at or near U of T St. George**.",
+    path: "/apply/training-week-registration-2026-v2",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
+    since: "2026.10.16u",
+  },
   {
     id: "workspace.video.proposal-pdf",
     title: "The shoot budget prints as a proposal",

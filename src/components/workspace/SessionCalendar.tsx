@@ -183,18 +183,56 @@ export function SessionCalendar(props: SessionCalendarProps) {
     const minutes = toMinutes(sl.end) - toMinutes(sl.start);
     const blocked = !on && atCap;
 
+    /*
+     * Meals, as bands across the block.
+     *
+     * Positioned by the share of the session they take, so a lunch in
+     * the middle of an afternoon looks like the middle of it. Drawn
+     * under the text (the text is relative, this is not), and never on
+     * the receipt: what you are eating is not a decision being recorded.
+     */
+    const bands = !ro && sl.breaks?.length
+      ? sl.breaks.map((b) => {
+          const from = (toMinutes(b.start) - toMinutes(sl.start)) / minutes;
+          const span = (toMinutes(b.end) - toMinutes(b.start)) / minutes;
+          if (!(span > 0) || from < 0 || from + span > 1.001) return null;
+          return (
+            <span
+              key={`${b.label}-${b.start}`}
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 border-y border-amber-500/45 bg-amber-400/25"
+              style={{ top: `${from * 100}%`, height: `${span * 100}%` }}
+            >
+              {span * minutes >= 30 && (
+                <span className="block px-1.5 pt-0.5 font-mono text-[9px] leading-tight text-amber-800">
+                  {b.label} {b.start}–{b.end}
+                </span>
+              )}
+            </span>
+          );
+        })
+      : null;
+
     const children = (
       <>
+        {bands}
         {/* The ranking leads. Once a session is picked, its position is
             the thing the reader is checking — the hours are already the
             scale it is drawn against. */}
         {on && <span className="mb-0.5 block"><RankBadge rank={rank + 1} word /></span>}
-        <span className="block truncate font-mono text-[9.5px] text-subtle">
+        <span className="relative block truncate font-mono text-[9.5px] text-subtle">
           {sl.start}–{sl.end}
         </span>
-        <span className={`mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
+        <span className={`relative mt-0.5 block text-[11px] leading-tight ${on ? "font-semibold text-fg" : "text-muted"}`}>
           {shortLabel(sl.option)}
         </span>
+        {/* What the short title stands for. On the cell rather than in
+            the option string, which is also the stored answer and the
+            line the ranking list reads — a facility's full name belongs
+            on the drawing, not in the record of what somebody picked. */}
+        {sl.subtitle && (
+          <span className="relative block text-[9.5px] leading-tight text-subtle">{sl.subtitle}</span>
+        )}
         {/* The room, where the form says it. From the slot rather than the
             Workshop row, so a form that never set one never shows one.
             Wraps rather than truncates: half a Tuesday cell is about 85px
@@ -202,7 +240,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
             line in a box three and a half hours tall. Not on the receipt
             — how big a room you already asked for is not news. */}
         {!ro && sl.capacity !== undefined && (
-          <span className="mt-0.5 block text-[9.5px] leading-tight text-subtle">
+          <span className="relative mt-0.5 block text-[9.5px] leading-tight text-subtle">
             Up to {sl.capacity} people
           </span>
         )}
@@ -211,7 +249,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
             all: what a session you did not pick ran against is guidance
             for a decision already made. */}
         {!ro && against > 0 && minutes >= 120 && (
-          <span className="mt-1 block text-[9.5px] text-subtle">
+          <span className="relative mt-1 block text-[9.5px] text-subtle">
             runs against {against} other{against > 1 ? "s" : ""}
           </span>
         )}

@@ -101,6 +101,21 @@ export interface Venue {
   note: string | null;
 }
 
+/**
+ * An hour inside a session that is not the session: a meal.
+ *
+ * Drawn as a band in the session's own block rather than as a separate
+ * row, because that is what it is — somebody choosing the workshop is
+ * choosing the lunch with it, and a lunch drawn beside the workshop
+ * reads as a second thing to pick.
+ */
+export interface Break {
+  /** "Lunch" — what the band says. */
+  label: string;
+  start: string;
+  end: string;
+}
+
 export interface Session {
   /** Stable — it is the Workshop.slug, so it must not change with the title. */
   slug: string;
@@ -120,6 +135,10 @@ export interface Session {
   facilitator: string | null;
   /** The BioHubNet coordinator who owns it. */
   lead: string | null;
+  /** The second line on the calendar cell: what the short title stands for. */
+  subtitle?: string;
+  /** Meals inside the session's own hours. */
+  breaks?: Break[];
   /** One line for the Workshop row and the admin table. */
   summary: string;
   /** Everything else the grid records against it. */
@@ -190,9 +209,14 @@ export const SESSIONS: Session[] = [
   {
     slug: "cl3-workshop-2026",
     title: "Pandemic Preparedness — THCF",
+    subtitle: "Toronto High Containment Facility (CL3)",
     kind: "workshop",
     day: "2026-10-26", start: "09:30", end: "14:00", track: 2,
     capacity: 20,
+    breaks: [
+      { label: "Breakfast", start: "09:30", end: "10:00" },
+      { label: "Lunch", start: "11:30", end: "12:30" },
+    ],
     // The grid's venue cell is still blank, but the session names the
     // facility — so it is read as the place without being read as a
     // room that has been booked.
@@ -201,7 +225,7 @@ export const SESSIONS: Session[] = [
     facilitator: null,
     lead: "Epshita",
     summary: "A containment-level-3 workshop on pandemic preparedness, with a tour of the facility.",
-    notes: ["20 spots", "Workshop + tour"],
+    notes: ["20 spots", "Workshop + tour", "Breakfast 09:30–10:00", "Lunch 11:30–12:30"],
     tentative: false,
     previousTitles: ["CL3 workshop"],
     previousOptions: ["Mon 26 Oct · 09:30–17:00 · CL3 workshop"],
@@ -210,12 +234,16 @@ export const SESSIONS: Session[] = [
     slug: "communication-chameleon-2026",
     title: "Communication Chameleon",
     kind: "workshop",
-    // 16:00 again. It was moved to 16:30 in the feedback round and back
-    // to 16:00 on October's grid, so BOTH later strings stay resolvable
-    // below — v1 offered the first and v2 the second, and answers were
-    // stored under each.
-    day: "2026-10-27", start: "13:00", end: "16:00", track: 1,
+    /*
+     * 12:00–16:30. Lunch is part of the workshop rather than an hour
+     * before it, so the session owns it: somebody choosing this is
+     * choosing to be there from noon. The afternoon has been 16:00 and
+     * 16:30 at different points and answers were stored under each, so
+     * every string it has been offered under stays resolvable below.
+     */
+    day: "2026-10-27", start: "12:00", end: "16:30", track: 1,
     capacity: 30,
+    breaks: [{ label: "Lunch", start: "12:00", end: "13:00" }],
     venue: { name: "Room 850", status: "booked", note: "Calendar booking done, held 9 AM – 5 PM." },
     partner: "Rainmaker",
     facilitator: "Claudia Ferryman",
@@ -223,14 +251,18 @@ export const SESSIONS: Session[] = [
     summary: "Adapting how you communicate to the room you are in, run by Claudia Ferryman of Rainmaker.",
     notes: ["30 spots", "AV set-up needed", "Pre-assessment form — registration closes 3 weeks before"],
     tentative: false,
-    previousOptions: ["Tue 27 Oct · 13:00–16:30 · Communication Chameleon"],
+    previousOptions: [
+      "Tue 27 Oct · 13:00–16:00 · Communication Chameleon",
+      "Tue 27 Oct · 13:00–16:30 · Communication Chameleon",
+    ],
   },
   {
     slug: "negotiation-skills-2026",
     title: "Negotiation Navigator",
     kind: "workshop",
-    day: "2026-10-27", start: "13:00", end: "16:00", track: 2,
+    day: "2026-10-27", start: "12:00", end: "16:30", track: 2,
     capacity: 30,
+    breaks: [{ label: "Lunch", start: "12:00", end: "13:00" }],
     venue: { name: "Big pod + 210/310", status: "inquiry", note: "Rooms free 1–5 PM; booking still to be arranged." },
     partner: null,
     facilitator: "Glen Whyte",
@@ -241,6 +273,7 @@ export const SESSIONS: Session[] = [
     previousTitles: ["Negotiation Skills"],
     previousOptions: [
       "Tue 27 Oct · 13:00–16:30 · Negotiation Skills",
+      "Tue 27 Oct · 13:00–16:00 · Negotiation Navigator",
       "Tue 27 Oct · 13:00–16:30 · Negotiation Navigator",
     ],
   },
@@ -328,6 +361,8 @@ export const SESSION_OPTIONS: string[] = SESSIONS.map(optionLabel);
  */
 export const SESSION_SLOTS: Slot[] = SESSIONS.map((s) => ({
   option: optionLabel(s), day: s.day, start: s.start, end: s.end, capacity: s.capacity,
+  ...(s.subtitle ? { subtitle: s.subtitle } : {}),
+  ...(s.breaks?.length ? { breaks: s.breaks.map((b) => ({ ...b })) } : {}),
 }));
 
 /**

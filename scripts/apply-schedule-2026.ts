@@ -226,6 +226,19 @@ async function eventWindow(eventId: string) {
  * no longer has is worse than no line at all. Exact matches only: once
  * they have reworded it themselves, nothing matches and nothing goes.
  */
+/**
+ * Lines the help must carry, whoever last edited it.
+ *
+ * The counterpart to the stale list: a fact about the week that a
+ * registrant needs before they pick — where they will have to be —
+ * belongs above the calendar, and re-typing it in the builder every
+ * time the wording moves is how it goes missing. Appended once;
+ * matching is exact, so a coordinator who rewords it keeps their words.
+ */
+const HELP_LINES = [
+  "All the workshops are in person, at or close to the University of Toronto St. George (downtown) campus.",
+];
+
 const STALE_HELP_LINES = [
   // October's grid drops the Catalent tour and moves CCRM to Tuesday,
   // so there is no longer a Monday tour to choose between.
@@ -274,7 +287,8 @@ async function form() {
      */
     const lines = String(field.help ?? "").split("\n");
     const kept = lines.filter((l) => !STALE_HELP_LINES.includes(l.trim()));
-    const help = kept.join("\n");
+    const missing = HELP_LINES.filter((l) => !kept.some((k) => k.trim() === l));
+    const help = [...kept, ...missing].join("\n");
     const droppedLines = lines.length - kept.length;
 
     /*
@@ -303,6 +317,7 @@ async function form() {
     note(
       `form ${f.slug}: session options, times and room sizes refreshed (${got.map.size} options)` +
       (droppedLines > 0 ? `, ${droppedLines} stale help line(s) dropped` : "") +
+      (missing.length > 0 ? `, ${missing.length} help line(s) added` : "") +
       (keptRules.length !== rules.length ? `, ${rules.length - keptRules.length} "cannot combine" rule(s) dropped` : ""),
     );
     if (FORCE) {

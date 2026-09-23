@@ -474,7 +474,8 @@ test("the checks catch a rule left pointing at an old answer", () => {
 
 test("the checks catch a slot drawn at the old time", () => {
   const broken = structuredClone(v2);
-  q(broken, "sessions").slots[3].end = "16:30";
+  // 13:00 was the start until lunch became part of the workshop.
+  q(broken, "sessions").slots[3].start = "13:00";
   assert.ok(v2Problems(v1, broken).some((p) => p.includes("the schedule says")));
 });
 

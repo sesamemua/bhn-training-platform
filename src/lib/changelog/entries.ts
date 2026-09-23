@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registration calendar: meals inside the sessions, and Tuesday from noon
+  {
+    title: "Registration: lunch is drawn inside the workshop it belongs to",
+    body: "On the **Choose and Rank Your Sessions** calendar:\n\n- **Tuesday’s Communication Chameleon and Negotiation Navigator** now run **12:00–16:30**. Lunch is part of the workshop, so the session owns it — **12:00–13:00** is drawn as a band inside each block in its own colour rather than as an hour beside it.\n- **Pandemic Preparedness — THCF** says what it stands for underneath: *Toronto High Containment Facility (CL3)*. Its **breakfast 09:30–10:00** and **lunch 11:30–12:30** are drawn the same way.\n- Above the calendar: **all the workshops are in person, at or close to the University of Toronto St. George (downtown) campus.**\n\nAnd the **two duplicate Tuesday entries under the calendar are gone**. They appeared because the option labels had been edited to 16:30 by hand while the calendar still had them at 16:00 — an option the drawing cannot match is drawn beneath it as a plain tick-box. Labels and times now come from one place again.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Dashboard: the switch looks like a switch, and polling eased off
   {
     title: "Dashboard: the registration switch is a switch, and says what it is holding",

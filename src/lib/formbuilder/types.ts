@@ -172,6 +172,20 @@ export const FieldSchema = z.object({
      * form must not start appearing on another because a table changed.
      */
     capacity: z.number().int().min(1).max(1000).optional(),
+    /** What a short title stands for, said under it on the cell. */
+    subtitle: z.string().max(120).optional(),
+    /**
+     * Meals inside the session's own hours.
+     *
+     * A band in the session's block rather than a row of its own:
+     * somebody choosing the workshop is choosing the lunch with it, and
+     * a lunch drawn beside it reads as a second thing to pick.
+     */
+    breaks: z.array(z.object({
+      label: z.string().max(40),
+      start: z.string().max(5),
+      end: z.string().max(5),
+    })).max(4).optional(),
   })).max(200).default([]),
   /** How many of a clashing pair will actually be granted. */
   approveFromClash: z.number().int().min(1).max(10).optional(),

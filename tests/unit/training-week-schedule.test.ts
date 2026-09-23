@@ -151,28 +151,48 @@ test("an option string round-trips back to its session", () => {
   for (const s of SESSIONS) assert.equal(sessionForOption(optionLabel(s))?.slug, s.slug);
 });
 
-/* ── Communication Chameleon, 16:00 → 16:30 → 16:00 ──────────────── */
+/* ── Communication Chameleon: 16:00 → 16:30 → 16:00 → noon–16:30 ─── */
 
 const V1_CHAMELEON = "Tue 27 Oct · 13:00–16:00 · Communication Chameleon";
 const V2_CHAMELEON = "Tue 27 Oct · 13:00–16:30 · Communication Chameleon";
+const NOW_CHAMELEON = "Tue 27 Oct · 12:00–16:30 · Communication Chameleon";
 
-test("Communication Chameleon runs to 16:00 again", () => {
-  // The feedback round moved it to 16:30; October's grid moves it back.
-  const s = bySlug("communication-chameleon-2026");
-  assert.equal(s.start, "13:00");
-  assert.equal(s.end, "16:00");
-  assert.equal(optionLabel(s), V1_CHAMELEON);
-  assert.ok(SESSION_OPTIONS.includes(V1_CHAMELEON));
-  assert.ok(!SESSION_OPTIONS.includes(V2_CHAMELEON), "the 16:30 string is an alias, not an offered option");
+test("the Tuesday workshops own their lunch, so they start at noon", () => {
+  // Lunch is part of the workshop rather than an hour before it: the
+  // session runs 12:00–16:30 with the meal drawn inside it.
+  for (const slug of ["communication-chameleon-2026", "negotiation-skills-2026"]) {
+    const s = bySlug(slug);
+    assert.equal(s.start, "12:00", slug);
+    assert.equal(s.end, "16:30", slug);
+    assert.deepEqual(s.breaks, [{ label: "Lunch", start: "12:00", end: "13:00" }], slug);
+  }
+  assert.ok(SESSION_OPTIONS.includes(NOW_CHAMELEON));
+  assert.ok(!SESSION_OPTIONS.includes(V1_CHAMELEON), "the older strings are aliases, not offered options");
+  assert.ok(!SESSION_OPTIONS.includes(V2_CHAMELEON));
 });
 
-test("both strings the form has offered still make a Chameleon seat", () => {
+test("the THCF workshop spells itself out and carries two meals", () => {
+  const s = bySlug("cl3-workshop-2026");
+  assert.equal(s.subtitle, "Toronto High Containment Facility (CL3)");
+  assert.deepEqual(s.breaks, [
+    { label: "Breakfast", start: "09:30", end: "10:00" },
+    { label: "Lunch", start: "11:30", end: "12:30" },
+  ]);
+  // A meal has to be inside the session it is drawn in, or the band
+  // lands outside the block.
+  for (const b of s.breaks ?? []) {
+    assert.ok(b.start >= s.start && b.end <= s.end, `${b.label} is outside the session`);
+  }
+});
+
+test("every string the form has offered still makes a Chameleon seat", () => {
   // Seats are made by EXACT match, and answers are stored under the
-  // string the registrant was shown — v1's 16:00 and v2's 16:30. Without
-  // the aliases a registration would get no booking, and nothing would
-  // say so.
-  assert.equal(sessionForOption(V1_CHAMELEON)?.slug, "communication-chameleon-2026");
-  assert.equal(sessionForOption(V2_CHAMELEON)?.slug, "communication-chameleon-2026");
+  // string the registrant was shown — 13:00–16:00, 13:00–16:30, and now
+  // noon. Without the aliases a registration would get no booking, and
+  // nothing would say so.
+  for (const said of [V1_CHAMELEON, V2_CHAMELEON, NOW_CHAMELEON]) {
+    assert.equal(sessionForOption(said)?.slug, "communication-chameleon-2026", said);
+  }
 });
 
 test("an alias is exact, never a near miss", () => {
@@ -181,15 +201,15 @@ test("an alias is exact, never a near miss", () => {
   assert.equal(sessionForOption("Communication Chameleon"), undefined);
 });
 
-test("the Chameleon Workshop row ends at 16:00 Toronto, 20:00 UTC", () => {
+test("the Chameleon Workshop row runs noon to 16:30 Toronto, 16:00–20:30 UTC", () => {
   const row = workshopRows().find((r) => r.slug === "communication-chameleon-2026")!;
-  assert.equal(row.startDateTime.toISOString(), "2026-10-27T17:00:00.000Z");
-  assert.equal(row.endDateTime.toISOString(), "2026-10-27T20:00:00.000Z");
+  assert.equal(row.startDateTime.toISOString(), "2026-10-27T16:00:00.000Z");
+  assert.equal(row.endDateTime.toISOString(), "2026-10-27T20:30:00.000Z");
 });
 
 test("the Tuesday clash is now the whole afternoon", () => {
   const tue = clashPairs().find((c) => c.label.startsWith("Tue 27 Oct"))!;
-  assert.equal(tue.label, "Tue 27 Oct · 13:00–16:00");
+  assert.equal(tue.label, "Tue 27 Oct · 12:00–16:30");
 });
 
 test("every slot matches an offered option exactly", () => {
@@ -332,8 +352,8 @@ test("the admin calendar lays the real week out correctly", () => {
 
   // The same hour on two days is the same height — the property that
   // makes the three columns readable across.
-  const tue = at("2026-10-27", "communication-chameleon-2026");   // 13:00
-  assert.equal(place(tue, grid).top, place({ ...tour, start: "13:00" }, grid).top);
+  const tue = at("2026-10-27", "communication-chameleon-2026");   // 12:00
+  assert.equal(place(tue, grid).top, place({ ...tour, start: "12:00" }, grid).top);
 
   // The shared lunch sits inside the grid rather than off the top of it.
   const lunch = SHARED[0];

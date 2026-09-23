@@ -369,7 +369,7 @@ test("capacity: said on the cell when the slot has one, only in the picker, and 
   for (const option of TUESDAY) {
     const name = option.split(" · ").pop()!;
     // The time line's own scale, so it reads as detail rather than a second name.
-    assert.match(cellOf(picker, name), /<span class="mt-0\.5 block text-\[9\.5px\] leading-tight text-subtle">Up to 30 people<\/span>/, name);
+    assert.match(cellOf(picker, name), /<span class="relative mt-0\.5 block text-\[9\.5px\] leading-tight text-subtle">Up to 30 people<\/span>/, name);
   }
   assert.doesNotMatch(cellOf(picker, "CL3 workshop"), /Up to/, "a slot without a capacity says nothing");
 
@@ -579,4 +579,33 @@ test("a form with a calendar is given the room to draw it; one without keeps the
 
   // The page header and the questions share one column, whichever it is.
   assert.match(paint(only(V1, ["trainee_email"])), /^<div class="mx-auto w-full max-w-\[760px\]/);
+});
+
+/* ── meals inside a session ──────────────────────────────────────── */
+
+test("a meal is a band across the session it belongs to, placed by the clock", () => {
+  // Lunch is part of the Tuesday workshops rather than an hour before
+  // them, so the session owns it — drawn inside the block, not beside
+  // it, where it would read as a second thing to pick.
+  const withMeals: FormField = {
+    ...SESSIONS,
+    slots: SESSIONS.slots.map((s) =>
+      s.day === "2026-10-27"
+        ? { ...s, start: "12:00", end: "16:30", subtitle: "Room 850", breaks: [{ label: "Lunch", start: "12:00", end: "13:00" }] }
+        : s,
+    ),
+    options: SESSIONS.options,
+  };
+  const picker = renderToStaticMarkup(<SessionCalendar field={withMeals} chosen={[]} onToggle={noop} />);
+
+  // 12:00–13:00 of a 12:00–16:30 session: the top of it, two ninths tall.
+  assert.match(picker, /top:0%;height:22\.2222/);
+  assert.match(picker, /Lunch 12:00–13:00/);
+  assert.match(picker, /bg-amber-400\/25/, "a meal is drawn in its own colour");
+  assert.match(picker, /Room 850/, "the subtitle says what the short title stands for");
+
+  // Not on the receipt: what you are eating is not a decision being recorded.
+  const receipt = renderToStaticMarkup(<SessionCalendar readOnly field={withMeals} chosen={TUESDAY} />);
+  assert.doesNotMatch(receipt, /bg-amber-400\/25/);
+  assert.doesNotMatch(receipt, /Lunch 12:00/);
 });
