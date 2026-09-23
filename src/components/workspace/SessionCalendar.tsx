@@ -202,13 +202,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
               aria-hidden
               className="pointer-events-none absolute inset-x-0 border-y border-amber-500/45 bg-amber-400/25"
               style={{ top: `${from * 100}%`, height: `${span * 100}%` }}
-            >
-              {span * minutes >= 30 && (
-                <span className="block px-1.5 pt-0.5 font-mono text-[9px] leading-tight text-amber-800">
-                  {b.label} {b.start}–{b.end}
-                </span>
-              )}
-            </span>
+            />
           );
         })
       : null;
@@ -244,6 +238,11 @@ export function SessionCalendar(props: SessionCalendarProps) {
             Up to {sl.capacity} people
           </span>
         )}
+        {!ro && sl.breaks?.length ? (
+          <span className="relative mt-0.5 block text-[9.5px] leading-tight text-amber-800">
+            {sl.breaks.map((b) => `${b.label} ${b.start}–${b.end}`).join(" · ")}
+          </span>
+        ) : null}
         {/* Only where there is room for it. A hint that overflows its
             own box is not a hint — and on a receipt it is not a hint at
             all: what a session you did not pick ran against is guidance
