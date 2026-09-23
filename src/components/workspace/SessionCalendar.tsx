@@ -233,6 +233,17 @@ export function SessionCalendar(props: SessionCalendarProps) {
     const bandBelow = meals.some((b) => toMinutes(b.start) > toMinutes(sl.start));
 
     /*
+     * And the block picks up again underneath.
+     *
+     * Below a meal in the middle of a session there is a stretch of
+     * empty box — the workshop, still running, drawn as nothing. One
+     * line under the band says so, placed where the band ends.
+     */
+    const resumes = meals
+      .filter((b) => toMinutes(b.start) > toMinutes(sl.start) && toMinutes(b.end) < toMinutes(sl.end))
+      .map((b) => ({ at: (toMinutes(b.end) - toMinutes(sl.start)) / minutes, label: b.label.toLowerCase() }));
+
+    /*
      * The words stop where the next meal starts.
      *
      * Reserving the strip above is not enough once a rank badge joins
@@ -258,6 +269,16 @@ export function SessionCalendar(props: SessionCalendarProps) {
       <>
         {tint && <span aria-hidden className={`pointer-events-none absolute inset-0 ${tint}`} />}
         {bands}
+        {resumes.map((r) => (
+          <span
+            key={r.at}
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 truncate px-1.5 pt-0.5 text-[10.5px] leading-tight text-subtle"
+            style={{ top: `${r.at * 100}%` }}
+          >
+            continues after {r.label}
+          </span>
+        ))}
         {lead > 0 && <span aria-hidden className="block shrink-0" style={{ paddingTop: `calc(var(--hour) * ${lead / 60})` }} />}
         <span
           className="relative block overflow-hidden"

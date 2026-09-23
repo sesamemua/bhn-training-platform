@@ -614,3 +614,33 @@ test("a meal is a band across the session it belongs to, placed by the clock", (
   assert.doesNotMatch(receipt, /bg-amber-400\/25/);
   assert.doesNotMatch(receipt, /Lunch 12:00/);
 });
+
+test("a meal in the middle of a session says the session picks up after it", () => {
+  // Below the band there is a stretch of empty box — the workshop,
+  // still running, drawn as nothing.
+  const withLunch: FormField = {
+    ...SESSIONS,
+    slots: SESSIONS.slots.map((s) =>
+      s.day === "2026-10-26"
+        ? { ...s, start: "09:30", end: "14:00", breaks: [{ label: "Lunch", start: "11:30", end: "12:30" }] }
+        : s,
+    ),
+  };
+  const picker = renderToStaticMarkup(<SessionCalendar field={withLunch} chosen={[]} onToggle={noop} />);
+  assert.match(picker, /continues after lunch/);
+
+  // A meal the session opens with needs no such line: the words are
+  // under it already.
+  const opensWith: FormField = {
+    ...SESSIONS,
+    slots: SESSIONS.slots.map((s) =>
+      s.day === "2026-10-27"
+        ? { ...s, start: "12:00", end: "16:30", breaks: [{ label: "Lunch", start: "12:00", end: "13:00" }] }
+        : { ...s, breaks: undefined },
+    ),
+  };
+  assert.doesNotMatch(
+    renderToStaticMarkup(<SessionCalendar field={opensWith} chosen={[]} onToggle={noop} />),
+    /continues after/,
+  );
+});
