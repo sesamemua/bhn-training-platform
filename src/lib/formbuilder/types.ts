@@ -322,7 +322,16 @@ export const PresentationSchema = z.object({
   })).max(2).optional(),
   /** RichText shown directly above the questions ("Questions marked * are required."). */
   formIntro: z.string().max(400).optional(),
-  /** The header's link back to the page this form belongs to. */
+  /**
+   * The one session this whole form registers for.
+   *
+   * A form for a single workshop does not ask which session — it IS
+   * the session — but a registration still has to become a seat in the
+   * same room as everybody else\'s. The option string, so it resolves
+   * through the schedule exactly as a picked one does.
+   */
+  session: z.string().max(120).optional(),
+  /** The header\'s link back to the page this form belongs to. */
   homeLink: z.object({
     label: z.string().min(1).max(40),
     href: z.string().regex(/^https:\/\/\S+$/).max(300),

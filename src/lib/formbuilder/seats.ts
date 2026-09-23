@@ -38,7 +38,18 @@ export async function makeSeats(
   submissionId: string,
   userId: string | null,
 ): Promise<SeatsMade> {
+  /*
+   * A form that asks which sessions, and a form that IS one.
+   *
+   * Innovation Ignited takes its own registrations on its own page,
+   * with no calendar to pick from — presentation.session names the
+   * session instead, and the seat it makes is a seat in the same room
+   * as one picked from the week\'s calendar. Same rank, same pending
+   * state, same table.
+   */
+  const fixed = doc.presentation?.session;
   const wanted = rankedSessions(doc, answers);
+  if (wanted.length === 0 && fixed) wanted.push(fixed);
   if (wanted.length === 0) return { made: 0, unmatched: [] };
 
   const slugs = wanted.map((o) => sessionForOption(o)?.slug).filter((s): s is string => !!s);

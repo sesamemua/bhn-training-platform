@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Innovation Ignited takes its own registrations
+  {
+    title: "Innovation Ignited registers on its own page",
+    body: "The Wednesday session is open to anyone, so it now has its own registration at **/apply/innovation-ignited-2026** — **no programme list is checked**, and there is no calendar to pick from. It asks six things: **full name, email** (any address, it does not have to be institutional), **position title, institution** (type your own), **accessibility requirements** and **dietary requirements**.\n\nFour of those are **the same questions the Training Week form asks** — taken from that document rather than retyped, so a change to their wording reaches both forms.\n\nEvery registration on it books a seat in **the same workshop** as one picked from the week’s calendar, pending as always. Training Week registration still lists Innovation Ignited, so somebody doing the whole week picks it there.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Registration calendar: readable when you have picked something
   {
     title: "Registration calendar: readable once you have picked something",

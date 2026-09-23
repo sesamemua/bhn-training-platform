@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16v";
+export const TOUR_VERSION = "2026.10.16w";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "registration.innovation-ignited",
+    title: "Innovation Ignited has its own registration",
+    body: "**/apply/innovation-ignited-2026** takes registrations from anyone — no programme list, no calendar, six questions, four of them the same ones Training Week asks. Every registration books a seat in the same workshop, so the Wednesday session is one room however people reach it.",
+    path: "/apply/innovation-ignited-2026",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open the registration", href: "/apply/innovation-ignited-2026" },
+    since: "2026.10.16w",
+  },
   {
     id: "registration.meals-in-sessions",
     title: "Meals are drawn inside their session",
