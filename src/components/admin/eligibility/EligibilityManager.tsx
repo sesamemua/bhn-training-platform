@@ -43,10 +43,10 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
   const [paste, setPaste] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  /* Adding one person by hand. The lists are exported periodically, so
-     somebody accepted this week is on no sheet yet and is refused at the
-     email question — this is how a coordinator lets them in without
-     waiting for the next export. Hand-added rows survive a re-import. */
+  /* Adding one person by hand. The EQUIP lists are exported by hand, so
+     somebody accepted this week can be on no sheet yet and registers
+     flagged — this is how a coordinator settles it without waiting for
+     the next export. Hand-added rows survive a re-import. */
   const [addOpen, setAddOpen] = useState(false);
   const [addEmail, setAddEmail] = useState("");
   const [addName, setAddName] = useState("");
@@ -113,17 +113,17 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
 
   return (
     <div className="space-y-4">
-      {/* The single most important fact on this page: is anybody
-          actually being turned away right now? */}
+      {/* The single most important fact on this page: does a
+          registration arriving right now get recognised at all? */}
       <div className={`rounded-xl border-2 p-4 ${g.enforcing ? "border-emerald-500/50 bg-emerald-500/10" : "border-amber-500/50 bg-amber-500/10"}`}>
         <p className={`flex items-center gap-2 text-[14px] font-bold ${g.enforcing ? "text-emerald-700" : "text-amber-700"}`}>
           {g.enforcing ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
-          {g.enforcing ? "The check is ON — people not on a list are refused" : "The check is OFF — nobody is being refused"}
+          {g.enforcing ? "The check is ON — an address on no list is flagged" : "The check is OFF — no registration can be flagged"}
         </p>
         <p className={`mt-1.5 text-[12.5px] leading-relaxed ${g.enforcing ? "text-emerald-800" : "text-amber-800"}`}>{g.reason}</p>
         {g.stale && (
           <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-800">
-            <AlertTriangle size={13} /> Re-import before registration opens — anyone accepted since the last import will be turned away.
+            <AlertTriangle size={13} /> Re-import before registration opens — anyone accepted since the last import arrives flagged as not on a list.
           </p>
         )}
       </div>
@@ -131,7 +131,7 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
       <div className="rounded-xl border border-line bg-card-solid p-3.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-[13px] font-bold text-fg">Someone refused who should not have been?</p>
+            <p className="text-[13px] font-bold text-fg">Somebody flagged who should not have been?</p>
             <p className="mt-0.5 text-[11.5px] text-muted">
               A trainee accepted since the last export is on no sheet yet. Add them here and they can register immediately — a re-import will not remove them.
             </p>

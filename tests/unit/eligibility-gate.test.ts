@@ -8,16 +8,15 @@ const NOW = new Date("2026-09-01T12:00:00Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3600_000);
 
 /**
- * The interlock. Registration blocks on a non-match, so the one thing
- * that must never happen is blocking against a list nobody loaded —
- * that refuses every applicant on the planet, silently, on the morning
- * registration opens.
+ * The interlock. A check against a list nobody loaded matches nobody,
+ * so every registration would arrive flagged — silently, on the morning
+ * registration opens, which is the same as flagging none of them.
  */
 
-test("an empty roster never turns anybody away", () => {
+test("an empty roster flags nobody", () => {
   const g = eligibilityGate({ total: 0, lastImportAt: null }, NOW);
   assert.equal(g.enforcing, false);
-  assert.match(g.reason, /nobody is being turned away/);
+  assert.match(g.reason, /arrives unrecognised/);
 });
 
 test("an empty roster is not enforcing even if an import once ran", () => {
@@ -39,7 +38,7 @@ test("a stale roster still enforces, and says so", () => {
   assert.equal(g.enforcing, true);
   assert.equal(g.stale, true);
   assert.match(g.reason, /more than 72 hours old/);
-  assert.match(g.reason, /accepted since then will be refused/);
+  assert.match(g.reason, /accepted since then arrives flagged/);
 });
 
 test("rows with no import date are treated as stale, not as fresh", () => {
