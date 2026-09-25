@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Which round an EQUIP application landed in
+  {
+    title: "EQUIP applications say which round they landed in",
+    body: "Every submitted application on **Admin → EQUIP** now shows its round under the stream name \u2014 **September 2026** for VentureConnect\u2019s monthly windows, **Round 6** for VentureLift.\n\nIt is worked out rather than stored: the round is the **first published deadline that had not yet passed when they pressed submit**. So extending a deadline moves the boundary for everybody, which is the whole point of extending it \u2014 a number stamped on the row at submission time would be wrong in exactly that case.\n\nVentureLift runs two windows per round, pre-screening and full application; both read as the same round, because which of the two closed first is not the reviewer\u2019s question. VentureConnect\u2019s months carry no number and none is invented \u2014 counting the rows would call May 2026 \u201cround one\u201d when it is simply the oldest window anybody entered. An application filed after the last published deadline says **no round open**, which is a real thing to know.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── The postal-code note stops promising things
   {
     title: "The travel note says what was checked, not what you will get",

@@ -23,6 +23,7 @@ import {
 } from "@/lib/equip/types";
 import { institutionLabel } from "@/lib/equip/institutions";
 import { applicantOf } from "@/lib/equip/applicant";
+import { roundFor } from "@/lib/equip/rounds";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,12 @@ export default async function AdminEquipPage({
   let counts: { status: string; _count: { _all: number } }[] = [];
   let totalFunded: { _sum: { approvedAmount: number | null } } = { _sum: { approvedAmount: 0 } };
   let tableMissing = false;
+  /* The funding windows, so each submitted row can say which round it
+     landed in. Small table, read whole — the queue is capped at 100
+     rows and every one of them needs the same list. */
+  const windows = await prisma.equipDeadline
+    .findMany({ select: { stream: true, deadlineAt: true, cycleLabel: true }, orderBy: { deadlineAt: "asc" } })
+    .catch(() => [] as { stream: string; deadlineAt: Date; cycleLabel: string | null }[]);
   try {
     const columns = {
       id: true, stream: true, status: true,
@@ -307,6 +314,26 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                               : <Beaker size={11} />}
                           {stream.name}
                         </span>
+                        {/* Which round it landed in — the window that was
+                            still open when they pressed submit. Under the
+                            stream because it only means anything with the
+                            stream beside it: Round 6 is VentureLift's, and
+                            September 2026 is VentureConnect's. */}
+                        {a.submittedAt && (() => {
+                          const r = roundFor(a.stream, a.submittedAt, windows);
+                          return r ? (
+                            <span
+                              className="mt-0.5 block text-[10px] font-semibold text-muted"
+                              title={`Judged against the ${r.label} deadline`}
+                            >
+                              {r.label}
+                            </span>
+                          ) : (
+                            <span className="mt-0.5 block text-[10px] text-subtle" title="Submitted after the last published deadline — no round is open for it yet">
+                              no round open
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="hidden @6xl:table-cell px-2.5 py-2 text-muted">
                         {/* truncate needs a block box with a width — on

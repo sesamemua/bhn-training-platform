@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17c";
+export const TOUR_VERSION = "2026.10.17d";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "equip.application-round",
+    title: "Which round each application is in",
+    body: "Submitted applications on **Admin \u2192 EQUIP** show their round under the stream: **September 2026** for VentureConnect, **Round 6** for VentureLift. It is the first published deadline that had not passed when they submitted, so extending a deadline moves it for everybody. One filed after the last published deadline says **no round open**.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open EQUIP applications", href: "/admin/equip" },
+    since: "2026.10.17d",
   },
   {
     id: "training-admin.eligibility-card",
