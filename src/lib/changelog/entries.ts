@@ -22,6 +22,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Ask about a travel claim, and put the lists where the question is
+  {
+    title: "Ask a registrant about a travel claim, in one click",
+    body: "**Travel follow-up** now has an **Ask them to clarify** button on every row whose postal code is under two hours from 144 College Street. It sends a new standing letter, **Travel support \u2014 checking the journey**, which you can edit like any other under the **Email** tab.\n\nIt does not accuse anybody. It says what the postal code works out at, says plainly that **the estimate may be the thing that is wrong** \u2014 it knows nothing about which bus they are on or where they set off from \u2014 and asks them to reply if their journey really is over two hours. It ends by saying their place at the session is not affected either way.\n\nOne at a time, deliberately: there is no send-to-everybody button for a letter that asks a question. Once it has gone the row says **Asked**, and a letter that failed to send stays offered rather than leaving you waiting on a reply nobody was asked for.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
+    title: "The eligibility lists are on the dashboard, not in the menu",
+    body: "**Eligibility lists** has left the left-hand menu. A menu link could tell you the page existed and nothing else \u2014 and the question people actually have is *do these still have to be pasted in by hand, and when did anybody last do it?*\n\nSo the **Training Week dashboard now opens with the answer**: how many people can register without being flagged, when the lists were last read and whether that was by hand or by the nightly job, and a count per list with a **by hand**, **nightly** or **live** tag on each. The card links through to the full page.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── The postal code answers back
   {
     title: "The form works out the travel time while you type",

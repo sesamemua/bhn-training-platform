@@ -51,6 +51,8 @@ export const MERGE_FIELDS: MergeField[] = [
   { key: "session_time", means: "The hours it runs, Toronto time", sample: "11:00–13:30", perSession: true },
   { key: "session_venue", means: "Where it is, or “to be confirmed”", sample: "CCRM (to be confirmed)", perSession: true },
   { key: "reply_by", means: "The date a reply is needed by", sample: "Monday 19 October" },
+  { key: "postcode", means: "The first three characters of the postal code they gave", sample: "M5V" },
+  { key: "travel_time", means: "How long that postal code is from 144 College Street", sample: "about 15\u201345 minutes" },
   { key: "support_form_link", means: "The travel and accommodation form", sample: "https://…" },
   { key: "coordinator", means: "Who signs the message off", sample: "The BioHubNet team" },
 ];
@@ -307,6 +309,30 @@ We are able to support your travel to {{event}}. The details of what is covered,
   TO FILL IN: which receipts we need, and the date we need them by
 
 Please keep your receipts — we cannot reimburse anything we have no record of. If your plans change and you no longer need the support, tell us, because it can go to somebody else.` + SIGN_OFF,
+  },
+  {
+    /*
+     * The one letter here that is asking a question rather than giving
+     * an answer, and the only one where the recipient might feel
+     * accused. So it says what we see, says plainly that the estimate
+     * may be the thing that is wrong, and asks. Nobody is told they
+     * made a mistake, and their seat is never in question.
+     */
+    id: "support_check_postcode",
+    stage: "support",
+    name: "Travel support — checking the journey",
+    when: "When somebody asked for travel support but the postal code they gave is well inside two hours.",
+    subject: "About your travel support request for {{event}}",
+    body:
+      `Hello {{first_name}},
+
+You asked about travel support for {{event}} and told us your one-way journey is more than two hours. The postal code you gave us, {{postcode}}, works out at {{travel_time}} from 144 College Street — under two hours, which is why I am writing rather than simply processing it.
+
+The estimate may well be the thing that is wrong. It is worked out from the first three characters of a postal code, so it knows nothing about where you actually set off from in the morning, which bus or train you are on, or whether you are travelling from somewhere else that week.
+
+So: if your journey really is over two hours each way, reply to this message and tell us the trip you would make — where you would be starting from, and the first service that gets you here in time. We will look at it again.
+
+If it is under two hours, there is nothing you need to do, and nothing has gone wrong. Travel support is only for journeys over two hours each way, so we would not be able to cover this one — but your place at the session is not affected at all, and we will see you there.` + SIGN_OFF,
   },
   {
     id: "support_declined",

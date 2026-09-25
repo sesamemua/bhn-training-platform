@@ -5,14 +5,16 @@
  * to downtown Toronto is over 2 hours: they need a separate follow-up
  * (travel support). Just the list for now — copy it, or download a CSV.
  */
-import { useMemo, useState } from "react";
-import { ClipboardCopy, Download } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { Check, ClipboardCopy, Download, Loader2, Mail } from "lucide-react";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
 import { TRAVEL_HEAD, travellerCells, travellers } from "@/lib/allocation/registrant-views";
 import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { rowsFrom } from "./RegistrantViews";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
+import { loadTravelChecks, sendTravelCheck } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { receiptLine } from "@/lib/formbuilder/receipt";
 
 const TONE: Record<string, string> = {
   confirmed: "bg-emerald-500/12 text-emerald-600",
@@ -28,6 +30,28 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   /* Said over two hours, gave a postal code that is nowhere near it.
      Worth seeing at the top rather than finding at approval time. */
   const doubtful = list.filter((t) => travelFromPostcode(t.postcode)?.band === "local").length;
+
+  /* Who has already been written to. Read once on mount rather than
+     passed down: it is one small query, and it is the only thing on
+     this page that is not derived from the bookings. */
+  const [asked, setAsked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  useEffect(() => { loadTravelChecks().then((rows) => setAsked(new Set(rows))).catch(() => {}); }, []);
+
+  function ask(t: { bookingId: string; name: string; email: string }) {
+    if (!confirm(`Email ${t.name} at ${t.email} to ask about their travel time?\n\nIt says what the postal code works out at, says the estimate may be wrong, and asks them to reply if their journey really is over two hours. Their place is not affected.`)) return;
+    setBusy(t.bookingId);
+    start(async () => {
+      const r = await sendTravelCheck(t.bookingId);
+      setBusy(null);
+      if (!r.ok) { setSaid(r.problem ?? "That did not send."); return; }
+      setSaid(receiptLine(r.receipt));
+      if (r.receipt?.state === "sent" || r.receipt?.state === "sent-to-you") {
+        setAsked((s) => new Set(s).add(t.email.toLowerCase()));
+      }
+    });
+  }
   const [said, setSaid] = useState<string | null>(null);
   const table = [TRAVEL_HEAD, ...list.map(travellerCells)];
 
@@ -66,8 +90,8 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
           <table className="w-full min-w-[760px] border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-elevated text-left">
-                {["Name", "Email", "Postcode", "Travel time", "Sessions", "Registered"].map((h) => (
-                  <th key={h} className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
+                {["Name", "Email", "Postcode", "Travel time", "Sessions", "Registered", "Ask"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h === "Ask" ? "" : h}</th>
                 ))}
               </tr>
             </thead>
@@ -89,6 +113,21 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                     </ul>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-subtle">{new Date(t.appliedAt).toLocaleDateString("en-CA")}</td>
+                  <td className="whitespace-nowrap px-3 py-2">
+                    {/* Offered only where there is a question to ask: the
+                        postal code is well inside two hours and the
+                        registration says otherwise. */}
+                    {travelFromPostcode(t.postcode)?.band === "local" && (
+                      asked.has(t.email.toLowerCase()) ? (
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-muted"><Check size={13} /> Asked</span>
+                      ) : (
+                        <button type="button" onClick={() => ask(t)} disabled={pending}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-50">
+                          {busy === t.bookingId ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />} Ask them to clarify
+                        </button>
+                      )
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

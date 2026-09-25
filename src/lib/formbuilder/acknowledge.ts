@@ -159,6 +159,52 @@ export async function sendDecisionLetter(
 }
 
 /**
+ * A letter about a PERSON rather than about a seat.
+ *
+ * sendDecisionLetter above is built around one booking — it needs a
+ * session, its hours and its room, and it hangs a calendar entry off
+ * them. Some letters are not about a session at all: "the postal code
+ * you gave us is twenty minutes away" is about the registration, and
+ * naming one of their three sessions in it would be noise.
+ *
+ * Same templates, same merge fields, same receipt, no calendar.
+ */
+export async function sendPersonLetter(
+  templateId: string,
+  about: { to: string | null; name: string; vars?: Record<string, string> },
+): Promise<Receipt> {
+  if (!about.to) return { state: "no-address" };
+
+  const stored = await prisma.platformSetting
+    .findUnique({ where: { key: TEMPLATES_KEY } })
+    .catch(() => null);
+  const template = resolveTemplates(parseOverrides(stored?.value)).find((t) => t.id === templateId);
+  if (!template) return { state: "no-template" };
+
+  const vars = {
+    first_name: about.name.split(/\s+/)[0] || "there",
+    name: about.name || "there",
+    event: "BioHubNet Training Week 2026",
+    coordinator: "The BioHubNet team",
+    ...about.vars,
+  };
+  const subject = render(template.subject, vars);
+  const body = render(template.body, vars);
+  if (subject.missing.length > 0 || body.missing.length > 0) {
+    return { state: "unfilled", missing: [...new Set([...subject.missing, ...body.missing])] };
+  }
+
+  const preview = { to: about.to, subject: subject.text.replace(/[\r\n]+/g, " ").trim(), body: body.text };
+  if (!mailConfigured()) return { state: "not-configured", preview };
+  try {
+    await sendMail({ to: about.to, subject: preview.subject, text: preview.body });
+    return { state: "sent", preview };
+  } catch (err) {
+    return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };
+  }
+}
+
+/**
  * The .ics to hang off a decision letter, if any.
  *
  * The UID is the SEAT, so every letter about the same seat updates one

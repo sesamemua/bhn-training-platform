@@ -24,7 +24,8 @@ import { registrantName } from "@/lib/allocation/registrant-name";
 import { EntrySchema, type Snapshot } from "@/lib/allocation/catering";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
-import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
+import { sendDecisionLetter, sendPersonLetter } from "@/lib/formbuilder/acknowledge";
+import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import {
   describe as describeDecision, isDecision, letterDue, type Decision,
 } from "@/lib/allocation/decisions";
@@ -1060,4 +1061,72 @@ export async function sendSeatLetters(
     if (r.ok && r.delivered) sent += 1; else failed += 1;
   }
   return { ok: true, sent, failed };
+}
+
+/**
+ * Ask somebody about a travel claim their postal code does not support.
+ *
+ * The one letter in the set that asks rather than tells, so it is sent
+ * one at a time and deliberately: no bulk button, no "send to everyone
+ * under two hours". A coordinator looks at the row, decides the
+ * question is worth asking, and asks it.
+ *
+ * The postal code and the estimate come from the registration on the
+ * server, never from the page — the address a letter goes to is not
+ * something a browser gets to choose.
+ */
+export async function sendTravelCheck(
+  bookingId: string,
+): Promise<{ ok: boolean; problem?: string; receipt?: Receipt }> {
+  const admin = await requireAdmin();
+  if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
+
+  const booking = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: {
+      submission: { select: { data: true, email: true } },
+      user: { select: { name: true, email: true } },
+    },
+  });
+  if (!booking) return { ok: false, problem: "That registration no longer exists." };
+
+  const answers = (booking.submission?.data ?? {}) as Record<string, unknown>;
+  const postcode = String(answers.postcode ?? "").trim();
+  const estimate = travelFromPostcode(postcode);
+  if (!estimate) return { ok: false, problem: "There is no postal code on that registration to ask about." };
+
+  const to = booking.submission?.email ?? booking.user?.email ?? null;
+  const name = registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(to)) || "";
+  const receipt = await sendPersonLetter("support_check_postcode", {
+    to, name,
+    vars: { postcode: estimate.fsa, travel_time: travelWords(estimate) },
+  });
+
+  await logSend(admin.id, TRAVEL_CHECK, { bookingId, email: to, postcode: estimate.fsa, state: receipt.state });
+  revalidatePath(PAGE);
+  return { ok: true, receipt };
+}
+
+const TRAVEL_CHECK = "training_admin.travel_check";
+
+/** Who has already been asked, so the button does not offer it twice. */
+export async function loadTravelChecks(): Promise<string[]> {
+  await requireAdmin();
+  const rows = await prisma.auditLog.findMany({
+    where: { action: TRAVEL_CHECK },
+    select: { detail: true },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+  const out = new Set<string>();
+  for (const r of rows) {
+    try {
+      const d = JSON.parse(r.detail ?? "{}") as { email?: string; state?: string };
+      // Only a letter that actually went counts as asked. A failed send
+      // has to stay offered, or somebody is waiting on a reply to a
+      // message nobody received.
+      if (d.email && (d.state === "sent" || d.state === "sent-to-you")) out.add(d.email.toLowerCase());
+    } catch { /* a log line we cannot read is not a reason to fail the page */ }
+  }
+  return [...out];
 }

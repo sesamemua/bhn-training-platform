@@ -73,12 +73,21 @@ const seatsOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "con
 const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "waitlist").length;
 const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending").length;
 
+/** The eligibility lists, summarised for the top of the dashboard. */
+export interface EligibilitySummary {
+  total: number;
+  lastImportAt: string | null;
+  lastImportMethod: string | null;
+  sources: { id: string; name: string; count: number; live: boolean; auto: boolean }[];
+}
+
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab,
+  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab, eligibility,
 }: {
   eventId: string; eventTitle: string; rules: Rule[]; views: View[]; catering: Snapshot | null; workshops: AdminWorkshop[];
   /** ?tab=… in the URL — e.g. a link straight to Catering & accessibility. */
   initialTab?: string;
+  eligibility: EligibilitySummary;
 }) {
   // Opens on the dashboard: the first question anybody has here is
   // "how is it going", not "let me change the policy". A link can name a tab.
@@ -106,7 +115,7 @@ export function TrainingAdmin({
 
       <div className="mt-5">
         {tab === "dashboard" && (
-          <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} />
+          <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} eligibility={eligibility} />
         )}
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
@@ -131,8 +140,8 @@ export function TrainingAdmin({
  * something is edited by accident.
  */
 function Dashboard({
-  rules, workshops, onOpen,
-}: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void }) {
+  rules, workshops, onOpen, eligibility,
+}: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void; eligibility: EligibilitySummary }) {
   const live = workshops.filter((w) => w.isActive);
   const active = rules.filter((r) => r.isActive);
   const totals = live.reduce(
@@ -151,6 +160,8 @@ function Dashboard({
 
   return (
     <div className="space-y-5">
+      <EligibilityCard summary={eligibility} />
+
       {/* The policy, in two lines, with a way in. */}
       <section className={`${CARD} max-w-2xl`}>
         <div className="flex items-baseline justify-between gap-3">
@@ -252,6 +263,67 @@ function Dashboard({
         <TrainingWeekCalendar workshops={live} />
       </section>
     </div>
+  );
+}
+
+/**
+ * Who registration is checked against, and when that was last true.
+ *
+ * This used to be a link in the left-hand menu, which could tell you
+ * the page existed and nothing else. The question actually being asked
+ * is "do I still have to re-paste these, and when did anybody last do
+ * it?" — so the answer is on the dashboard, with the date on it.
+ */
+function EligibilityCard({ summary: s }: { summary: EligibilitySummary }) {
+  const when = s.lastImportAt
+    ? new Date(s.lastImportAt).toLocaleString("en-CA", {
+        timeZone: "America/Toronto", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+      })
+    : null;
+  const byHand = s.sources.filter((x) => !x.live && !x.auto).length;
+
+  return (
+    <section className={CARD}>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <p className={LABEL}>Eligibility lists</p>
+        <a href="/admin/eligibility" className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">
+          Open eligibility lists →
+        </a>
+      </div>
+
+      <p className="mt-2 text-[13px] text-fg">
+        <span className="font-bold tabular-nums">{s.total}</span> people can register without being flagged.
+        {when && (
+          <span className="text-muted">
+            {" "}Last read {when}{s.lastImportMethod === "cron" ? " by the nightly job" : " by hand"}.
+          </span>
+        )}
+      </p>
+
+      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        {s.sources.map((x) => (
+          <li key={x.id} className="flex items-baseline gap-1.5 text-[12px]">
+            <span className="font-semibold tabular-nums text-fg">{x.count}</span>
+            <span className="text-muted">{x.name}</span>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+              x.live ? "bg-emerald-500/12 text-emerald-600"
+              : x.auto ? "bg-emerald-500/12 text-emerald-600"
+              : "bg-amber-500/12 text-amber-600"
+            }`}>
+              {x.live ? "live" : x.auto ? "nightly" : "by hand"}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {byHand > 0 && (
+        <p className="mt-2 text-[11.5px] leading-snug text-subtle">
+          {byHand === s.sources.filter((x) => !x.live).length
+            ? "Nothing here refreshes itself yet — every list marked “by hand” is only as current as the last person who pasted it in. Somebody accepted since then registers flagged rather than refused."
+            : "The lists marked “by hand” are only as current as the last paste. Somebody accepted since then registers flagged rather than refused."}
+        </p>
+      )}
+    </section>
   );
 }
 

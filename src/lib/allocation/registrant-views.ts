@@ -233,6 +233,8 @@ export function applyView(rows: RegistrantRow[], view: View): Group[] {
 
 export interface Traveller {
   personKey: string;
+  /** One of their seats — how the server finds the registration again. */
+  bookingId: string;
   name: string;
   email: string;
   postcode: string;
@@ -245,7 +247,7 @@ export function travellers(rows: RegistrantRow[]): Traveller[] {
   const m = new Map<string, Traveller>();
   for (const r of rows) {
     if (r.travel !== "far") continue;
-    const t = m.get(r.personKey) ?? { personKey: r.personKey, name: r.name, email: r.email, postcode: r.postcode, sessions: [], appliedAt: r.appliedAt };
+    const t = m.get(r.personKey) ?? { personKey: r.personKey, bookingId: r.bookingId, name: r.name, email: r.email, postcode: r.postcode, sessions: [], appliedAt: r.appliedAt };
     t.sessions.push({ workshop: r.workshop, dayLabel: r.dayLabel, status: r.status, start: r.workshopStart });
     m.set(r.personKey, t);
   }

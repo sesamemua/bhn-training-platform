@@ -577,18 +577,15 @@ const workspaceKeAwardeesItem: NavItem = {
 // Week heading, directly beneath Registration Form, "Dashboard" is
 // unambiguous and the pair reads as one thing.
 /*
- * Eligibility lists sat under Administration → EQUIP, three groups away
- * from the registration it gates. It is read the same afternoon as the
- * registrants list — when somebody is missing from it — so it lives
- * beside the form and the dashboard now.
+ * Eligibility lists is NOT in this menu on purpose.
+ *
+ * It sat under Administration → EQUIP, three groups from the
+ * registration it gates, then briefly here. Both were wrong for the
+ * same reason: it is not somewhere you navigate to, it is something you
+ * check — how many people are loaded and when the lists were last read
+ * — and that belongs on the Training Week dashboard where the question
+ * comes up. The card at the top of that page links through.
  */
-const eligibilityListsItem: NavItem = {
-  label: "Eligibility lists",
-  href: "/admin/eligibility",
-  icon: ShieldCheck,
-  minRole: "admin",
-  description: "The programme lists Training Week registration is checked against. Somebody not on one can still register — the form says so and tells us — and this is where you add them by hand or re-import a list.",
-};
 
 const workspaceTrainingAdminItem: NavItem = {
   label: "Dashboard",
@@ -2114,7 +2111,6 @@ export function Sidebar({
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Training Week">
               <NavLink item={workspaceTrainingFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={eligibilityListsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

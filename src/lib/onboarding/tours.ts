@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16z";
+export const TOUR_VERSION = "2026.10.17a";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,26 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.eligibility-card",
+    title: "The lists, answered on the dashboard",
+    body: "**Eligibility lists** is no longer in the left-hand menu. The Training Week dashboard opens with it instead: how many people can register without being flagged, **when the lists were last read and whether that was by hand**, and a count per list tagged **by hand**, **nightly** or **live**. The card links through to add somebody or re-import.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the dashboard", href: "/admin/workspace/training-admin" },
+    since: "2026.10.17a",
+  },
+  {
+    id: "training-admin.travel-ask",
+    title: "Ask about a travel claim",
+    body: "Every row in **Travel follow-up** whose postal code is under two hours now has **Ask them to clarify**. It sends a letter that says what the postal code works out at, says the estimate may be wrong, and asks them to reply if their journey really is over two hours \u2014 their place is never in question. Edit the wording under **Email**, as **Travel support \u2014 checking the journey**.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Travel follow-up", href: "/admin/workspace/training-admin?tab=travel" },
+    since: "2026.10.17a",
   },
   {
     id: "training-admin.travel-estimate",

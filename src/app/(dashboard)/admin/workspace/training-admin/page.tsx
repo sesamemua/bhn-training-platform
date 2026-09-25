@@ -23,6 +23,9 @@ import { CATERING_COPY_KEY, REGISTRANT_VIEWS_KEY } from "@/lib/allocation/admin-
 import { parseSnapshot } from "@/lib/allocation/catering";
 import { parseViews } from "@/lib/allocation/registrant-views";
 import { emailKey } from "@/lib/eligibility/email-key";
+import { ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
+import { autoRefreshes } from "@/lib/eligibility/apply";
+import { platformApplicantCount } from "@/lib/eligibility/check";
 
 export const dynamic = "force-dynamic";
 
@@ -111,10 +114,37 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     return (typeof d.trainee_email === "string" && d.trainee_email) || b.submission?.email || b.user?.email || "";
   };
   const keys = [...new Set(all.map((b) => emailKey(emailOf(b))).filter((k): k is string => !!k))];
-  const [rosterSize, entries] = await Promise.all([
+  const [rosterSize, entries, perSource, lastImport, applicants] = await Promise.all([
     prisma.eligibilityEntry.count(),
     prisma.eligibilityEntry.findMany({ where: { emailKey: { in: keys } }, select: { emailKey: true, name: true } }),
+    prisma.eligibilityEntry.groupBy({ by: ["sourceId"], _count: { _all: true } }),
+    prisma.eligibilityImport.findFirst({
+      where: { error: null }, orderBy: { createdAt: "desc" },
+      select: { createdAt: true, method: true },
+    }),
+    platformApplicantCount(),
   ]);
+
+  /*
+   * The eligibility lists, summarised for the top of the dashboard.
+   *
+   * The question this answers is the one that keeps being asked: does
+   * anybody still have to re-paste these, and when were they last read?
+   * A menu link could not answer it; a card with the date on it does.
+   */
+  const counts = Object.fromEntries(perSource.map((r) => [r.sourceId, r._count._all]));
+  const eligibility = {
+    total: rosterSize + applicants,
+    lastImportAt: lastImport ? lastImport.createdAt.toISOString() : null,
+    lastImportMethod: lastImport?.method ?? null,
+    sources: ELIGIBILITY_SOURCES.map((s) => ({
+      id: s.id,
+      name: s.name,
+      count: s.access === "platform" ? applicants : counts[s.id] ?? 0,
+      live: s.access === "platform",
+      auto: autoRefreshes(s.id),
+    })),
+  };
   const onRoster = new Map<string, string | null>(entries.map((e) => [e.emailKey, e.name]));
   // Names from platform accounts with the registrant's email.
   const accounts = await prisma.user.findMany({
@@ -141,6 +171,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         icon={<SlidersHorizontal />}
       />
       <TrainingAdmin
+        eligibility={eligibility}
         eventId={event.id}
         eventTitle={event.title}
         rules={rules}
