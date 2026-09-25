@@ -38,6 +38,7 @@ import {
   STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
 } from "@/lib/allocation/email-templates";
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
+import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { RegistrantViews } from "./RegistrantViews";
 import { CateringTab } from "./CateringTab";
 import { TravelTab } from "./TravelTab";
@@ -213,6 +214,7 @@ function Dashboard({
                 return (
                   <tr key={w.id} className="border-t border-line">
                     <td className="px-3 py-1.5">
+                      <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle ${workshopTone(w.slug).dot}`} aria-hidden />
                       <span className="text-fg">{w.title}</span>
                       <span className="ml-2 text-[11px] text-subtle">
                         {new Date(w.startDateTime).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}

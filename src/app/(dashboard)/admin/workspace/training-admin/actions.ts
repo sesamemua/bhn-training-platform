@@ -1013,3 +1013,51 @@ export async function decideRegistration(
   }
   return { ok: true, said };
 }
+
+/*
+ * One decision, several seats.
+ *
+ * Deciding a workshop's intake is done in one sitting against one list,
+ * and doing it a row at a time is a hundred clicks and a page that
+ * re-renders between each one. The loop is the whole implementation:
+ * every seat still goes through decideSeat, so the audit log, the
+ * letter-owed bookkeeping and the approvedAt stamp are the same as when
+ * a coordinator decides one by hand.
+ *
+ * ponytail: serial, and each decideSeat re-checks the session — around
+ * a second per 10 seats. Batch the auth check if a coordinator ever
+ * needs to move more than a room at a time.
+ */
+const MAX_BULK = 300;
+
+export async function decideSeats(
+  bookingIds: string[],
+  to: string,
+  opts?: { send?: boolean },
+): Promise<{ ok: boolean; problem?: string; done: number; failed: number; sent: number }> {
+  await requireAdmin();
+  if (!isDecision(to)) return { ok: false, problem: "That is not a decision.", done: 0, failed: 0, sent: 0 };
+  const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
+  let done = 0, failed = 0, sent = 0;
+  for (const id of ids) {
+    const r = await decideSeat(id, to, undefined, opts);
+    if (!r.ok) { failed += 1; continue; }
+    done += 1;
+    if (opts?.send && r.receipt && !r.letterOwed) sent += 1;
+  }
+  return { ok: true, done, failed, sent };
+}
+
+/** The letters a set of already-decided seats owes. */
+export async function sendSeatLetters(
+  bookingIds: string[],
+): Promise<{ ok: boolean; sent: number; failed: number }> {
+  await requireAdmin();
+  const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
+  let sent = 0, failed = 0;
+  for (const id of ids) {
+    const r = await sendSeatLetter(id);
+    if (r.ok && r.delivered) sent += 1; else failed += 1;
+  }
+  return { ok: true, sent, failed };
+}

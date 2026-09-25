@@ -22,6 +22,21 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Decide a room in one go, and tell the sessions apart by colour
+  {
+    title: "Tick several registrants and decide them together",
+    body: "**Training admin → Registrants** now has a tick-box on every row and one in each table header for everything in that group. Tick what you want and a bar appears at the top of the list: **Approve**, **Waitlist**, **Decline**, **Back to undecided**, **Send letters owed** and **Copy addresses**.\n\nIt works in either mode. In **Seats** a tick is one session; in **People** a tick is somebody\u2019s whole registration and the bar says how many seats that comes to \u2014 approving three people who asked for three sessions each decides nine seats, and the confirmation says so before anything happens.\n\n**Email them now** is off by default, so a decision is recorded and the letter shows as *not sent* until you send it \u2014 the same as deciding a seat by hand. Every seat still goes through the same decision path, so the audit log and the letter bookkeeping are unchanged.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
+    title: "Every session has its own colour",
+    body: "Three of the seven sessions begin *Company tour + Lunch & Learn*, so telling them apart meant reading to the end of the title. Each session now has **one colour, used everywhere**: the dot in the seats table, the block in the calendar, and the dots beside a registrant\u2019s workshops.\n\nThe calendar keeps saying what it said \u2014 a **full room now keeps its own colour and gains an amber ring**, so *which session* and *is it full* no longer compete for the same signal.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Registrants: newest first, compact, and where each one came from
   {
     title: "Registrants: newest first, and where each one registered",

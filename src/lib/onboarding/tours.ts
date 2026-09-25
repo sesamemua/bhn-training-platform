@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16x";
+export const TOUR_VERSION = "2026.10.16y";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.bulk-decide",
+    title: "Decide a whole room at once",
+    body: "Tick rows in **Registrants** \u2014 or the box in a table header to take the whole group \u2014 and a bar appears with **Approve**, **Waitlist**, **Decline**, **Send letters owed** and **Copy addresses**. In **People** mode one tick is somebody\u2019s whole registration; the bar tells you how many seats that is before you confirm. **Email them now** is off unless you tick it.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.16y",
   },
   {
     id: "training-admin.registrants-newest-first",

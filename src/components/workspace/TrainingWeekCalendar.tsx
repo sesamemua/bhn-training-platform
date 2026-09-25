@@ -23,6 +23,7 @@
  * about it. See tests/unit/week-grid.test.tsx.
  */
 import { useMemo } from "react";
+import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { countsOf, type AdminWorkshop } from "@/lib/allocation/admin-types";
 import { idOf, timeGrid, titleOf } from "@/lib/allocation/schedule";
 import { DAYS, LEARNING_PATHS, SHARED } from "@/lib/training-week/schedule-2026";
@@ -75,7 +76,11 @@ export function TrainingWeekCalendar({ workshops }: { workshops: AdminWorkshop[]
             const full = c.confirmed >= c.capacity && c.capacity > 0;
             return {
               title: `${titleOf(sl.option)} · ${sl.start}–${sl.end}${w.locationName ? ` · ${w.locationName}` : ""}`,
-              className: full ? "border-amber-500/70 bg-amber-500/12" : "border-brand-500/60 bg-brand-500/12",
+              /* The session's own colour, the same one it has in the
+                 seats table and on a registrant's row. A full room keeps
+                 its colour and gains an amber ring, so "which session"
+                 and "is it full" stop competing for the same signal. */
+              className: `${workshopTone(w.slug).block}${full ? " ring-1 ring-amber-500/80" : ""}`,
               children: (
                 <>
                   <p className="truncate font-mono text-[9.5px] text-subtle">{sl.start}–{sl.end}</p>

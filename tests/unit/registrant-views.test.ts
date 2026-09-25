@@ -74,3 +74,18 @@ test("travel follow-up: one row per person who travels over 2 hours, with their 
 test("CSV quotes what needs quoting", () => {
   assert.equal(toCsv([["a", "b,c", 'say "hi"', null, 3]]), 'a,"b,c","say ""hi""",,3');
 });
+
+test("a person's row carries every seat it stands for, so a tick can decide them all", () => {
+  const rows = [
+    row({ bookingId: "b1", personKey: "p1", workshopId: "w1", workshop: "One" }),
+    row({ bookingId: "b2", personKey: "p1", workshopId: "w2", workshop: "Two" }),
+    row({ bookingId: "b3", personKey: "p2", workshopId: "w1", workshop: "One" }),
+  ];
+  const [group] = applyView(rows, { ...BUILT_IN_VIEWS[0], perPerson: true });
+  const mine = group.rows.find((r) => r.personKey === "p1")!;
+  assert.deepEqual(mine.bookingIds, ["b1", "b2"]);
+  assert.deepEqual(mine.workshopIds, ["w1", "w2"]);
+  // A seat row stands for itself and nothing else.
+  const seats = applyView(rows, { ...BUILT_IN_VIEWS[0], perPerson: false })[0];
+  assert.deepEqual(seats.rows.map((r) => r.bookingIds), [["b1"], ["b2"], ["b3"]]);
+});

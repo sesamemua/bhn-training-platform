@@ -8,14 +8,15 @@
  * views are shared by every admin.
  */
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, ClipboardCopy, Download, Loader2, Pencil, Plus, RotateCcw, Save, Trash2, UtensilsCrossed } from "lucide-react";
+import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
-import { saveCateringSnapshot, saveRegistrantViews } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { decideSeats, saveCateringSnapshot, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { changesSince, currentEntries, fullText, updateText, type Snapshot } from "@/lib/allocation/catering";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
 import {
   BUILT_IN_VIEWS, GROUP_BY, GROUP_LABEL, LETTERS, LETTER_LABEL, STATUSES, TRAVELS, TRAVEL_LABEL,
-  applyView, isBuiltIn, type Filters, type RegistrantRow, type View,
+  applyView, isBuiltIn, type Filters, type RegistrantRow, type ShownRow, type View,
 } from "@/lib/allocation/registrant-views";
 
 const STATUS_LABEL: Record<string, string> = { pending: "Not decided", confirmed: "Approved", waitlist: "Waitlisted", cancelled: "Declined" };
@@ -26,6 +27,13 @@ const STATUS_TONE: Record<string, string> = {
   pending: "bg-brand-500/12 text-brand-500",
 };
 const chip = "rounded px-1.5 py-0.5 text-[10.5px] font-bold";
+/** What a selection can be told, in the order a coordinator works. */
+const BULK: { to: string; label: string; className: string }[] = [
+  { to: "confirmed", label: "Approve", className: "bg-emerald-600 text-white hover:bg-emerald-700" },
+  { to: "waitlist", label: "Waitlist", className: "bg-amber-500 text-white hover:bg-amber-600" },
+  { to: "cancelled", label: "Decline", className: "bg-rose-600 text-white hover:bg-rose-700" },
+  { to: "pending", label: "Back to undecided", className: "border border-line text-fg hover:bg-elevated" },
+];
 const pill = (on: boolean) =>
   `rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
     on ? "border-brand-500 bg-brand-500/10 text-fg" : "border-line text-muted hover:bg-elevated hover:text-fg"
@@ -174,6 +182,67 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
 
   const rows = useMemo(() => rowsFrom(workshops), [workshops]);
   const groups = useMemo(() => applyView(rows, draft), [rows, draft]);
+
+  /* A workshop's colour is the same one it has on the dashboard and in
+     the calendar, and it is keyed by slug — the rows carry ids. */
+  const slugOf = useMemo(() => new Map(workshops.map((w) => [w.id, w.slug])), [workshops]);
+  const toneOf = (workshopId: string) => workshopTone(slugOf.get(workshopId) ?? workshopId);
+
+  /*
+   * What is ticked.
+   *
+   * By row key, because that is what a coordinator sees — in People
+   * mode one tick is somebody's whole registration, and the seats it
+   * stands for come off the row. A row shown in two groups (somebody
+   * with two dietary needs) is one key, so it ticks in both places and
+   * is acted on once.
+   */
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const keyOf = (r: ShownRow) => (draft.perPerson ? r.personKey : r.bookingId);
+  const shownRows = useMemo(() => {
+    const m = new Map<string, ShownRow>();
+    for (const g of groups) for (const r of g.rows) m.set(draft.perPerson ? r.personKey : r.bookingId, r);
+    return [...m.values()];
+  }, [groups, draft.perPerson]);
+  // Only what is on screen: a filter changing under a tick must not
+  // decide somebody the coordinator can no longer see.
+  const chosen = shownRows.filter((r) => picked.has(keyOf(r)));
+  const chosenSeats = [...new Set(chosen.flatMap((r) => r.bookingIds))];
+  const [alsoEmail, setAlsoEmail] = useState(false);
+  const clearPick = () => setPicked(new Set());
+  const tick = (k: string) => setPicked((s) => { const n = new Set(s); if (!n.delete(k)) n.add(k); return n; });
+  const tickAll = (rowsHere: ShownRow[], on: boolean) =>
+    setPicked((s) => { const n = new Set(s); for (const r of rowsHere) { const k = keyOf(r); if (on) n.add(k); else n.delete(k); } return n; });
+
+  function runBulk(to: string, label: string) {
+    const seats = chosenSeats.length;
+    const who = `${chosen.length} ${draft.perPerson ? (chosen.length === 1 ? "person" : "people") : chosen.length === 1 ? "seat" : "seats"}`;
+    const what = draft.perPerson && seats !== chosen.length ? ` (${seats} seats)` : "";
+    if (!confirm(`${label} ${who}${what}?${alsoEmail ? " They will be emailed now." : " No email is sent yet — the letters show as not sent."}`)) return;
+    start(async () => {
+      const r = await decideSeats(chosenSeats, to, { send: alsoEmail });
+      if (!r.ok) { setSaid(r.problem ?? "That did not go through."); return; }
+      setSaid(`${label}: ${r.done} seat${r.done === 1 ? "" : "s"}${r.sent ? `, ${r.sent} emailed` : ""}${r.failed ? `, ${r.failed} failed` : ""}.`);
+      clearPick();
+    });
+  }
+  function runLetters() {
+    const owed = chosen.filter((r) => r.letter === "owed").flatMap((r) => r.bookingIds);
+    if (owed.length === 0) { setSaid("None of those owe a letter."); return; }
+    if (!confirm(`Send ${owed.length} letter${owed.length === 1 ? "" : "s"} now?`)) return;
+    start(async () => {
+      const r = await sendSeatLetters(owed);
+      setSaid(`${r.sent} letter${r.sent === 1 ? "" : "s"} sent${r.failed ? `, ${r.failed} failed` : ""}.`);
+      clearPick();
+    });
+  }
+  function copyEmails() {
+    const list = [...new Set(chosen.map((r) => r.email).filter(Boolean))];
+    navigator.clipboard.writeText(list.join(", ")).then(
+      () => setSaid(`${list.length} address${list.length === 1 ? "" : "es"} copied.`),
+      () => setSaid("Could not copy."),
+    );
+  }
   const shownCount = useMemo(() => new Set(groups.flatMap((g) => g.rows.map((r) => (draft.perPerson ? r.personKey : r.bookingId)))).size, [groups, draft.perPerson]);
 
   const days = useMemo(() => [...new Map(rows.map((r) => [r.day, r.dayLabel])).entries()].sort(), [rows]);
@@ -182,7 +251,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   const custom = !isBuiltIn(active.id);
 
   const setF = (patch: Partial<Filters>) => setDraft((d) => ({ ...d, filters: { ...d.filters, ...patch } }));
-  const open = (v: View) => { setActiveId(v.id); setDraft(v); setSaid(null); };
+  const open = (v: View) => { setActiveId(v.id); setDraft(v); setSaid(null); setPicked(new Set()); };
 
   function persist(next: View[], message: string, openId?: string) {
     start(async () => {
@@ -249,8 +318,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
             </select>
           </label>
           <span className="inline-flex items-center gap-1 text-muted">Rows
-            <button type="button" className={pill(!draft.perPerson)} onClick={() => setDraft({ ...draft, perPerson: false })}>Seats</button>
-            <button type="button" className={pill(draft.perPerson)} onClick={() => setDraft({ ...draft, perPerson: true })}>People</button>
+            <button type="button" className={pill(!draft.perPerson)} onClick={() => { setDraft({ ...draft, perPerson: false }); setPicked(new Set()); }}>Seats</button>
+            <button type="button" className={pill(draft.perPerson)} onClick={() => { setDraft({ ...draft, perPerson: true }); setPicked(new Set()); }}>People</button>
           </span>
           <label className="inline-flex items-center gap-1.5 text-muted">Workshop
             <select className={SELECT} value={draft.filters.workshopIds[0] ?? ""} onChange={(e) => setF({ workshopIds: e.target.value ? [e.target.value] : [] })}>
@@ -336,6 +405,42 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
         </div>
       </div>
 
+      {/* What is ticked, and what can be done with it. Sticky, because
+          the decision buttons belong beside the rows being decided. */}
+      {chosen.length > 0 && (
+        <div className="sticky top-2 z-20 mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand-500/40 bg-card-solid px-3 py-2 shadow-sm">
+          <span className="text-[12.5px] font-bold text-fg">
+            {chosen.length} {draft.perPerson ? (chosen.length === 1 ? "person" : "people") : chosen.length === 1 ? "seat" : "seats"} selected
+            {draft.perPerson && chosenSeats.length !== chosen.length && (
+              <span className="ml-1 font-normal text-muted">· {chosenSeats.length} seats</span>
+            )}
+          </span>
+          <span className="h-4 w-px bg-line" aria-hidden />
+          {BULK.map((b) => (
+            <button key={b.to} type="button" disabled={pending} onClick={() => runBulk(b.to, b.label)}
+              className={`rounded-md px-2.5 py-1 text-[12px] font-bold disabled:opacity-50 ${b.className}`}>
+              {b.label}
+            </button>
+          ))}
+          <label className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+            <input type="checkbox" checked={alsoEmail} onChange={(e) => setAlsoEmail(e.target.checked)} className="accent-brand-600" />
+            Email them now
+          </label>
+          <span className="h-4 w-px bg-line" aria-hidden />
+          <button type="button" disabled={pending} onClick={runLetters}
+            className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-50">
+            <Mail size={12} /> Send letters owed
+          </button>
+          <button type="button" onClick={copyEmails}
+            className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated">
+            <ClipboardCopy size={12} /> Copy addresses
+          </button>
+          <button type="button" onClick={clearPick} className="ml-auto inline-flex items-center gap-1 text-[12px] font-semibold text-muted hover:text-fg">
+            <X size={12} /> Clear
+          </button>
+        </div>
+      )}
+
       {/* Results */}
       <div className="mt-4 space-y-4">
         <LatestRegistrants rows={rows} />
@@ -347,7 +452,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
         {groups.map((g) => (
           <div key={g.key}>
             {draft.groupBy !== "none" && (
-              <h4 className="mb-1.5 flex items-baseline gap-2 text-[13px] font-bold text-fg">
+              <h4 className="mb-1.5 flex items-center gap-2 text-[13px] font-bold text-fg">
+                {draft.groupBy === "workshop" && <span className={`h-2.5 w-2.5 rounded-full ${toneOf(g.key).dot}`} aria-hidden />}
                 {g.label} <span className="text-[11.5px] font-normal text-muted">{g.rows.length}</span>
               </h4>
             )}
@@ -355,6 +461,15 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               <table className="w-full min-w-[720px] border-collapse text-[12px]">
                 <thead>
                   <tr className="bg-elevated text-left">
+                    <th className="w-8 px-2 py-1.5">
+                      <input
+                        type="checkbox"
+                        className="accent-brand-600"
+                        aria-label={`Select every row in ${g.label}`}
+                        checked={g.rows.every((r) => picked.has(keyOf(r)))}
+                        onChange={(e) => tickAll(g.rows, e.target.checked)}
+                      />
+                    </th>
                     {(draft.perPerson
                       ? ["Name", "Workshops", "Distance", "Dietary", "Accessibility"]
                       : ["Name", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"]
@@ -365,7 +480,17 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                 </thead>
                 <tbody>
                   {g.rows.map((r) => (
-                    <tr key={draft.perPerson ? r.personKey : r.bookingId} className="border-t border-line align-top">
+                    <tr key={draft.perPerson ? r.personKey : r.bookingId}
+                      className={`border-t border-line align-top ${picked.has(keyOf(r)) ? "bg-brand-500/[0.06]" : ""}`}>
+                      <td className="px-2 py-1">
+                        <input
+                          type="checkbox"
+                          className="accent-brand-600"
+                          aria-label={`Select ${r.name}`}
+                          checked={picked.has(keyOf(r))}
+                          onChange={() => tick(keyOf(r))}
+                        />
+                      </td>
                       <td className="px-2 py-1">
                         {/* Name, address and when they registered on one
                             line each at most: the column used to be three
@@ -384,10 +509,22 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         </div>
                       </td>
                       {draft.perPerson ? (
-                        <td className="px-2 py-1 text-muted">{r.workshops.join(" · ")}</td>
+                        <td className="px-2 py-1 text-muted">
+                          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+                            {r.workshops.map((w, i) => (
+                              <span key={`${r.bookingIds[i]}`} className="inline-flex items-center gap-1.5">
+                                <span className={`h-2 w-2 shrink-0 rounded-full ${toneOf(r.workshopIds[i]).dot}`} aria-hidden />{w}
+                              </span>
+                            ))}
+                          </span>
+                        </td>
                       ) : (
                         <>
-                          <td className="px-2 py-1 text-muted">{r.workshop}</td>
+                          <td className="px-2 py-1 text-muted">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className={`h-2 w-2 shrink-0 rounded-full ${toneOf(r.workshopId).dot}`} aria-hidden />{r.workshop}
+                            </span>
+                          </td>
                           <td className="whitespace-nowrap px-2 py-1 text-muted">{r.dayLabel}</td>
                           <td className="px-2 py-1"><span className={`${chip} ${STATUS_TONE[r.status] ?? "bg-elevated text-subtle"}`}>{STATUS_LABEL[r.status] ?? r.status}</span></td>
                           <td className="whitespace-nowrap px-2 py-1">
