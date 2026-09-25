@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── The postal code answers back
+  {
+    title: "The form works out the travel time while you type",
+    body: "Travel support is for a one-way trip of over two hours, and the form asked people to judge that themselves \u2014 so the follow-up list has carried registrants with **downtown Toronto postal codes**, who were never going to be approved and found out late.\n\nType the first three characters of a postal code and the form now says what that means: *Toronto \u2014 about 15\u201345 minutes to 144 College Street, one way. Travel support is for journeys over two hours each way, so we would not be able to offer it for this address.* Close to the line \u2014 Oshawa, Barrie, Kitchener, Peterborough \u2014 it says so and invites them to ask for a review. Clearly over, it says the journey qualifies.\n\n**Nobody is blocked and no answer is changed.** A new optional box, **Tell us about your journey**, is where somebody says the estimate is wrong for their address \u2014 a ninety-minute trip with one transfer that runs twice an hour is a real case an estimate cannot see.\n\nIn **Travel follow-up**, each row now shows where the postal code is and the estimated time, and the header counts how many people on the list gave a postal code that is **under two hours** from 144 College Street. It is an estimate from the postal code, not a route \u2014 enough to tell downtown from Barrie, which is the question this list was getting wrong.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Decide a room in one go, and tell the sessions apart by colour
   {
     title: "Tick several registrants and decide them together",

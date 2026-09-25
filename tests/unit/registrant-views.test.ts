@@ -68,7 +68,20 @@ test("travel follow-up: one row per person who travels over 2 hours, with their 
   const t = travellers(rows);
   assert.deepEqual(t.map((x) => x.name), ["Ana"]);
   assert.equal(t[0].sessions.length, 2);
-  assert.match(travellerCells(t[0])[3], /GMP \(approved\); Tue 27 Oct RA 101 \(waitlisted\)/);
+  assert.match(travellerCells(t[0])[5], /GMP \(approved\); Tue 27 Oct RA 101 \(waitlisted\)/);
+});
+
+test("the travel list says what the postal code implies, so a downtown claim is visible", () => {
+  const cells = travellerCells({
+    personKey: "p1", name: "Ana", email: "a@x.ca", postcode: "M5S",
+    sessions: [], appliedAt: new Date().toISOString(),
+  });
+  assert.equal(cells[3], "Toronto");
+  assert.match(String(cells[4]), /under two hours/);
+  // Nothing invented when they did not give one.
+  const blank = travellerCells({ personKey: "p2", name: "Bo", email: "b@x.ca", postcode: "", sessions: [], appliedAt: new Date().toISOString() });
+  assert.equal(blank[3], "");
+  assert.equal(blank[4], "");
 });
 
 test("CSV quotes what needs quoting", () => {

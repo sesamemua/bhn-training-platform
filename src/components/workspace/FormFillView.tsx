@@ -32,6 +32,7 @@ import { rankedSessions, sessionField } from "@/lib/formbuilder/submit";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "@/lib/eligibility/messages";
 import { columnFor } from "@/lib/formbuilder/layout";
+import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import { hasRichLink } from "@/lib/formbuilder/rich-text";
 import { RichText } from "@/components/forms/RichText";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
@@ -871,6 +872,7 @@ export function Question({
             onChange={(e) => set(f.key, e.target.value)}
           />
           <NoneOption field={f} answers={answers} set={set} />
+          {f.key === "postcode" && <TravelNote value={String(answers[f.key] ?? "")} />}
         </>
       )}
 
@@ -884,6 +886,38 @@ export function Question({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * What that postal code means for travel support, while they type.
+ *
+ * Travel support is for a one-way journey of more than two hours, and
+ * the form asks people to judge that themselves — so the follow-up list
+ * has carried registrants with downtown Toronto postal codes, who were
+ * never going to be approved and found out weeks later.
+ *
+ * It says what it thinks and then gets out of the way: nothing is
+ * blocked, no answer is changed, and the wording invites the person to
+ * say the table is wrong about their morning, because for a ninety
+ * minute journey with a transfer that runs twice an hour, it is.
+ */
+function TravelNote({ value }: { value: string }) {
+  const e = travelFromPostcode(value);
+  if (!e) return null;
+  const tone =
+    e.band === "far" ? "border-emerald-500/40 bg-emerald-500/[0.07] text-emerald-800"
+    : e.band === "borderline" ? "border-amber-500/40 bg-amber-500/[0.07] text-amber-800"
+    : "border-line bg-elevated/60 text-muted";
+  return (
+    <p role="status" className={`mt-2.5 rounded-lg border px-3 py-2 text-[12.5px] leading-relaxed ${tone}`}>
+      <strong className="font-semibold">{e.place}</strong> — {travelWords(e)} to 144 College Street, one way.{" "}
+      {e.band === "far"
+        ? "That is over two hours, so your journey qualifies. We will be in touch about what we can cover."
+        : e.band === "borderline"
+        ? "That is close to the two-hour line. Describe your journey in the next box and we will look at it — we cannot promise anything in advance."
+        : "Travel support is for journeys over two hours each way, so we would not be able to offer it for this address. If your actual trip is longer than this, tell us in the next box."}
+    </p>
   );
 }
 

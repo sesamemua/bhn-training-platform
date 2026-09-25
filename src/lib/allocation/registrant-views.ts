@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import type { Travel } from "./applicants";
+import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 
 /** One seat, with what the registration said about the person. */
 export interface RegistrantRow {
@@ -252,10 +253,16 @@ export function travellers(rows: RegistrantRow[]): Traveller[] {
   return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export const TRAVEL_HEAD = ["Name", "Email", "Postcode", "Sessions", "Registered"];
+export const TRAVEL_HEAD = ["Name", "Email", "Postcode", "From", "Travel time", "Sessions", "Registered"];
 const DECISION: Record<string, string> = { pending: "not decided", confirmed: "approved", waitlist: "waitlisted", cancelled: "declined" };
 export const travellerCells = (t: Traveller) => [
   t.name, t.email, t.postcode,
+  travelFromPostcode(t.postcode)?.place ?? "",
+  (() => {
+    const e = travelFromPostcode(t.postcode);
+    if (!e) return "";
+    return `${travelWords(e)}${e.band === "local" ? " — under two hours" : e.band === "borderline" ? " — close to two hours" : ""}`;
+  })(),
   t.sessions.map((s) => `${s.dayLabel} ${s.workshop} (${DECISION[s.status] ?? s.status})`).join("; "),
   new Date(t.appliedAt).toLocaleDateString("en-CA"),
 ];

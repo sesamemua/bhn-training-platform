@@ -12,6 +12,7 @@ import { TRAVEL_HEAD, travellerCells, travellers } from "@/lib/allocation/regist
 import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { rowsFrom } from "./RegistrantViews";
+import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 
 const TONE: Record<string, string> = {
   confirmed: "bg-emerald-500/12 text-emerald-600",
@@ -24,6 +25,9 @@ const BTN = "inline-flex items-center gap-1.5 rounded-lg border border-line px-3
 
 export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   const list = useMemo(() => travellers(rowsFrom(workshops)), [workshops]);
+  /* Said over two hours, gave a postal code that is nowhere near it.
+     Worth seeing at the top rather than finding at approval time. */
+  const doubtful = list.filter((t) => travelFromPostcode(t.postcode)?.band === "local").length;
   const [said, setSaid] = useState<string | null>(null);
   const table = [TRAVEL_HEAD, ...list.map(travellerCells)];
 
@@ -40,6 +44,11 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-bold text-fg">Travelling more than 2 hours · {list.length}</p>
           <p className="text-[12.5px] text-muted">Everyone who said their one-way trip to downtown Toronto is over 2 hours. They need a separate follow-up about travel.</p>
+          {doubtful > 0 && (
+            <p className="mt-1 text-[12.5px] font-semibold text-amber-700">
+              {doubtful} of them gave a postal code that is under two hours from 144 College Street — check the travel time column before approving support.
+            </p>
+          )}
         </div>
         <button type="button" onClick={copy} disabled={!list.length} className={BTN}><ClipboardCopy size={14} /> Copy list</button>
         <button type="button" onClick={() => downloadText(`training-week-travel-follow-up-${fileDate()}.csv`, toCsv(table))} disabled={!list.length} className={BTN}>
@@ -57,7 +66,7 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
           <table className="w-full min-w-[760px] border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-elevated text-left">
-                {["Name", "Email", "Postcode", "Sessions", "Registered"].map((h) => (
+                {["Name", "Email", "Postcode", "Travel time", "Sessions", "Registered"].map((h) => (
                   <th key={h} className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
                 ))}
               </tr>
@@ -68,6 +77,7 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                   <td className="px-3 py-2 font-semibold text-fg">{t.name}</td>
                   <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.email}</td>
                   <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.postcode || "—"}</td>
+                  <td className="px-3 py-2"><TravelCell postcode={t.postcode} /></td>
                   <td className="px-3 py-2">
                     <ul className="space-y-1">
                       {t.sessions.map((s, i) => (
@@ -86,5 +96,28 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * What the postal code says about the journey they claimed.
+ *
+ * An estimate from the Forward Sortation Area, not a route — good
+ * enough to separate "downtown" from "Barrie", which is the question
+ * this list has actually been getting wrong.
+ */
+function TravelCell({ postcode }: { postcode: string }) {
+  const e = travelFromPostcode(postcode);
+  if (!e) return <span className="text-subtle">—</span>;
+  const tone =
+    e.band === "far" ? "bg-emerald-500/12 text-emerald-700"
+    : e.band === "borderline" ? "bg-amber-500/12 text-amber-700"
+    : "bg-rose-500/10 text-rose-700";
+  const note = e.band === "far" ? "over 2 h" : e.band === "borderline" ? "close to 2 h" : "under 2 h";
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${tone}`}>{note}</span>
+      <span className="text-muted">{e.place} · {travelWords(e)}</span>
+    </span>
   );
 }
