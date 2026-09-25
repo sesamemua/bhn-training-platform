@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17b";
+export const TOUR_VERSION = "2026.10.17c";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -135,7 +135,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "training-admin.travel-estimate",
     title: "The travel list checks the postal code",
-    body: "Every row in **Travel follow-up** now says where the postal code is and roughly how long the journey takes, and the header counts anybody whose postal code is **under two hours** from 144 College Street \u2014 the claim that used to be found at approval time. Registrants see the same estimate as they type it, with a box to tell you the estimate is wrong for them.",
+    body: "Every row in **Travel follow-up** now says where the postal code is and roughly how long the journey takes, and the header counts anybody whose postal code is **under two hours** from 144 College Street \u2014 the claim that used to be found at approval time. Registrants see the same estimate as they type it: under two hours they can **change their answer to No** on the spot, or say **my journey is longer than that**, which opens a box for them to explain. The note promises nothing about what support covers.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],

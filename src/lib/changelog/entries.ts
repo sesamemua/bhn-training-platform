@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── The postal-code note stops promising things
+  {
+    title: "The travel note says what was checked, not what you will get",
+    body: "On the registration form, a postal code over two hours away used to answer *\u201cyour journey qualifies \u2014 we will be in touch about what we can cover\u201d*. That is a promise made by a lookup table about a decision people make later. It now says only what has actually been checked: **\u201cBased on your postal code that is more than two hours. Carry on with the rest of your registration \u2014 we will be in touch about travel support.\u201d**\n\nA postal code **under** two hours says so plainly \u2014 *based on your postal code we would not be able to provide travel support* \u2014 and offers two ways out, right there in the note rather than back up at a question they have already answered:\n\n- **That is right \u2014 change my answer to No**, which switches the answer above and clears the postal code.\n- **My journey is longer than that**, in amber, which is the only thing that now opens the **Tell us about your journey** box.\n\nThat box used to sit open under every travel answer, asking an open-ended question of people who had nothing to add. It appears when somebody says the estimate is wrong for them, and not before.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Nothing is sent from a table row
   {
     title: "The travel letter opens before it sends",

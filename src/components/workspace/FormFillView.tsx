@@ -33,6 +33,13 @@ import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "@/lib/eligibility/messages";
 import { columnFor } from "@/lib/formbuilder/layout";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
+/*
+ * Not a question — an answer the travel note sets when somebody says
+ * the estimate is wrong for them. The "Tell us about your journey" box
+ * is shown by a condition on this key, so the box appears only for
+ * somebody who asked for it. See scripts/reveal-travel-note.ts.
+ */
+const EXPLAIN_KEY = "travel_explain";
 import { hasRichLink } from "@/lib/formbuilder/rich-text";
 import { RichText } from "@/components/forms/RichText";
 import { missing, optionsFor, settled, visibleFields, type Answers } from "@/lib/formbuilder/logic";
@@ -872,7 +879,7 @@ export function Question({
             onChange={(e) => set(f.key, e.target.value)}
           />
           <NoneOption field={f} answers={answers} set={set} />
-          {f.key === "postcode" && <TravelNote value={String(answers[f.key] ?? "")} />}
+          {f.key === "postcode" && <TravelNote value={String(answers[f.key] ?? "")} answers={answers} set={set} />}
         </>
       )}
 
@@ -902,22 +909,76 @@ export function Question({
  * say the table is wrong about their morning, because for a ninety
  * minute journey with a transfer that runs twice an hour, it is.
  */
-function TravelNote({ value }: { value: string }) {
+function TravelNote({
+  value, answers, set,
+}: { value: string; answers: Answers; set: (k: string, v: Answers[string]) => void }) {
   const e = travelFromPostcode(value);
   if (!e) return null;
+  const asked = answers[EXPLAIN_KEY] === "Yes";
+
   const tone =
     e.band === "far" ? "border-emerald-500/40 bg-emerald-500/[0.07] text-emerald-800"
     : e.band === "borderline" ? "border-amber-500/40 bg-amber-500/[0.07] text-amber-800"
     : "border-line bg-elevated/60 text-muted";
+
+  /* Says it is longer than that — which opens the box. Amber, because
+     it is the one thing here that changes what happens next. */
+  const longer = (
+    <button
+      type="button"
+      onClick={() => set(EXPLAIN_KEY, "Yes")}
+      className="rounded-md border border-amber-500/60 bg-amber-500/10 px-2.5 py-1 text-[12px] font-semibold text-amber-800 hover:bg-amber-500/20"
+    >
+      My journey is longer than that
+    </button>
+  );
+
   return (
-    <p role="status" className={`mt-2.5 rounded-lg border px-3 py-2 text-[12.5px] leading-relaxed ${tone}`}>
-      <strong className="font-semibold">{e.place}</strong> — {travelWords(e)} to 144 College Street, one way.{" "}
-      {e.band === "far"
-        ? "That is over two hours, so your journey qualifies. We will be in touch about what we can cover."
-        : e.band === "borderline"
-        ? "That is close to the two-hour line. Describe your journey in the next box and we will look at it — we cannot promise anything in advance."
-        : "Travel support is for journeys over two hours each way, so we would not be able to offer it for this address. If your actual trip is longer than this, tell us in the next box."}
-    </p>
+    <div role="status" className={`mt-2.5 rounded-lg border px-3 py-2.5 text-[12.5px] leading-relaxed ${tone}`}>
+      <p>
+        <strong className="font-semibold">{e.place}</strong> — {travelWords(e)} to 144 College Street, one way.{" "}
+        {e.band === "far"
+          /*
+           * What the postal code says, and nothing else.
+           *
+           * It used to read "your journey qualifies… what we can
+           * cover", which is a promise made by a lookup table. Whether
+           * support is offered is decided by people, later, so this
+           * says only what has been checked so far.
+           */
+          ? "Based on your postal code that is more than two hours. Carry on with the rest of your registration — we will be in touch about travel support."
+          : e.band === "borderline"
+          ? "That is close to the two-hour line, so somebody will look at it rather than the estimate deciding."
+          : "Based on your postal code we would not be able to provide travel support, which is only for journeys of more than two hours each way."}
+      </p>
+
+      {e.band !== "far" && !asked && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {longer}
+          {e.band === "local" && (
+            /*
+             * The Yes/No question is above this note, already answered,
+             * and somebody who reads "we would not be able to provide
+             * support" has no obvious way back to it — so the way back
+             * is here, saying what it does.
+             */
+            <button
+              type="button"
+              onClick={() => { set("travel_over_2h", "No"); set("postcode", ""); set(EXPLAIN_KEY, ""); }}
+              className="rounded-md border border-line bg-card px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated"
+            >
+              That is right — change my answer to No
+            </button>
+          )}
+        </div>
+      )}
+
+      {asked && (
+        <p className="mt-2 text-[12px]">
+          Tell us about it in the next box — where you would be starting from, and the first service that gets you here.
+        </p>
+      )}
+    </div>
   );
 }
 
