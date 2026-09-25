@@ -121,7 +121,13 @@ export function LatestRegistrants({ rows }: { rows: RegistrantRow[] }) {
               <span className="font-semibold text-fg">{r.name}</span>
               <SourceBadge formSlug={r.formSlug} />
               <span className="truncate font-mono text-[10.5px] text-subtle">{r.email}</span>
-              <span className="text-[10.5px] text-muted">{shortStamp(r.appliedAt)}</span>
+              {/* "registered", spelled out. "ENGAGE / EXPERIENCE · Youchen
+                  Song · 24 Sep, 3:56 p.m." reads as somebody being ADDED
+                  to the programme list that afternoon, which sent a
+                  coordinator looking for an import that never happened.
+                  She was on that list since the last import; what
+                  happened at 3:56 was that she registered. */}
+              <span className="text-[10.5px] text-muted">registered {shortStamp(r.appliedAt)}</span>
             </li>
           ))}
         </ul>
@@ -131,8 +137,8 @@ export function LatestRegistrants({ rows }: { rows: RegistrantRow[] }) {
 
   return (
     <div className="mb-3 grid gap-3 rounded-lg border border-line bg-elevated/40 px-3 py-2 sm:grid-cols-2">
-      {column("Latest — ENGAGE / EXPERIENCE", newest.roster, "None yet")}
-      {column("Latest — EQUIP", newest.equip, "None yet")}
+      {column("Latest registrations — ENGAGE / EXPERIENCE", newest.roster, "None yet")}
+      {column("Latest registrations — EQUIP", newest.equip, "None yet")}
     </div>
   );
 }
