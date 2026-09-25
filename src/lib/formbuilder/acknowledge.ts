@@ -17,7 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseOverrides, render, resolveTemplates, TEMPLATES_KEY } from "@/lib/allocation/email-templates";
 import type { Answers } from "./logic";
-import type { Receipt } from "./receipt";
+import type { Receipt, SentMail } from "./receipt";
 import type { BuiltForm } from "./types";
 import { buildIcs } from "@/lib/events/ics";
 
@@ -173,13 +173,29 @@ export async function sendPersonLetter(
   templateId: string,
   about: { to: string | null; name: string; vars?: Record<string, string> },
 ): Promise<Receipt> {
-  if (!about.to) return { state: "no-address" };
+  const draft = await personLetterDraft(templateId, about);
+  return draft.ok ? sendComposed(draft.mail) : draft.receipt;
+}
+
+/**
+ * The letter this template makes for this person, WITHOUT sending it.
+ *
+ * Separate from the send because some letters are shown to the
+ * coordinator first — a message that asks somebody to justify their
+ * travel claim is one a person should read, and be able to reword,
+ * before it goes out with their name on it.
+ */
+export async function personLetterDraft(
+  templateId: string,
+  about: { to: string | null; name: string; vars?: Record<string, string> },
+): Promise<{ ok: true; mail: SentMail } | { ok: false; receipt: Receipt }> {
+  if (!about.to) return { ok: false, receipt: { state: "no-address" } };
 
   const stored = await prisma.platformSetting
     .findUnique({ where: { key: TEMPLATES_KEY } })
     .catch(() => null);
   const template = resolveTemplates(parseOverrides(stored?.value)).find((t) => t.id === templateId);
-  if (!template) return { state: "no-template" };
+  if (!template) return { ok: false, receipt: { state: "no-template" } };
 
   const vars = {
     first_name: about.name.split(/\s+/)[0] || "there",
@@ -191,16 +207,20 @@ export async function sendPersonLetter(
   const subject = render(template.subject, vars);
   const body = render(template.body, vars);
   if (subject.missing.length > 0 || body.missing.length > 0) {
-    return { state: "unfilled", missing: [...new Set([...subject.missing, ...body.missing])] };
+    return { ok: false, receipt: { state: "unfilled", missing: [...new Set([...subject.missing, ...body.missing])] } };
   }
 
-  const preview = { to: about.to, subject: subject.text.replace(/[\r\n]+/g, " ").trim(), body: body.text };
-  if (!mailConfigured()) return { state: "not-configured", preview };
+  return { ok: true, mail: { to: about.to, subject: subject.text.replace(/[\r\n]+/g, " ").trim(), body: body.text } };
+}
+
+/** Post a letter that is already written — the draft, or what the coordinator made of it. */
+export async function sendComposed(mail: SentMail): Promise<Receipt> {
+  if (!mailConfigured()) return { state: "not-configured", preview: mail };
   try {
-    await sendMail({ to: about.to, subject: preview.subject, text: preview.body });
-    return { state: "sent", preview };
+    await sendMail({ to: mail.to, subject: mail.subject, text: mail.body });
+    return { state: "sent", preview: mail };
   } catch (err) {
-    return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };
+    return { state: "failed", why: (err as Error)?.message ?? "unknown", preview: mail };
   }
 }
 

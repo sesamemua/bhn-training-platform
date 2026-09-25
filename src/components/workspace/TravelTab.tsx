@@ -3,17 +3,26 @@
 /**
  * Training admin → Travel follow-up. Everyone who said their one-way trip
  * to downtown Toronto is over 2 hours: they need a separate follow-up
- * (travel support). Just the list for now — copy it, or download a CSV.
+ * about travel support. Copy the list, download it as a CSV, or — where
+ * the postal code they gave is nowhere near two hours away — write to
+ * them about it.
+ *
+ * That last one never sends from the row. It opens the letter, filled
+ * in and editable, and the send sits behind a confirmation a
+ * coordinator can switch off once they trust it: a one-click send on a
+ * table row is a message to a real person, in their name, posted by a
+ * mis-click.
  */
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Check, ClipboardCopy, Download, Loader2, Mail } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCopy, Download, Loader2, Mail, Send } from "lucide-react";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
-import { TRAVEL_HEAD, travellerCells, travellers } from "@/lib/allocation/registrant-views";
+import { TRAVEL_HEAD, travellerCells, travellers, type Traveller } from "@/lib/allocation/registrant-views";
 import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { rowsFrom } from "./RegistrantViews";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
-import { loadTravelChecks, sendTravelCheck } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { draftTravelCheck, loadTravelChecks, sendTravelCheck } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { Modal } from "@/components/ui/Modal";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 
 const TONE: Record<string, string> = {
@@ -25,6 +34,12 @@ const TONE: Record<string, string> = {
 const LABEL: Record<string, string> = { pending: "Not decided", confirmed: "Approved", waitlist: "Waitlisted", cancelled: "Declined" };
 const BTN = "inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[13px] font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 
+/** The letter, open on screen and not yet sent. */
+interface Draft { bookingId: string; to: string; name: string; subject: string; body: string }
+
+/** Per-browser, per-person: whether Send asks again first. On unless turned off. */
+const CONFIRM_KEY = "bhn.travelCheck.confirmBeforeSend";
+
 export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   const list = useMemo(() => travellers(rowsFrom(workshops)), [workshops]);
   /* Said over two hours, gave a postal code that is nowhere near it.
@@ -35,24 +50,8 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
      passed down: it is one small query, and it is the only thing on
      this page that is not derived from the bookings. */
   const [asked, setAsked] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  useEffect(() => { loadTravelChecks().then((rows) => setAsked(new Set(rows))).catch(() => {}); }, []);
-
-  function ask(t: { bookingId: string; name: string; email: string }) {
-    if (!confirm(`Email ${t.name} at ${t.email} to ask about their travel time?\n\nIt says what the postal code works out at, says the estimate may be wrong, and asks them to reply if their journey really is over two hours. Their place is not affected.`)) return;
-    setBusy(t.bookingId);
-    start(async () => {
-      const r = await sendTravelCheck(t.bookingId);
-      setBusy(null);
-      if (!r.ok) { setSaid(r.problem ?? "That did not send."); return; }
-      setSaid(receiptLine(r.receipt));
-      if (r.receipt?.state === "sent" || r.receipt?.state === "sent-to-you") {
-        setAsked((s) => new Set(s).add(t.email.toLowerCase()));
-      }
-    });
-  }
   const [said, setSaid] = useState<string | null>(null);
+  const [pending, start] = useTransition();
   const table = [TRAVEL_HEAD, ...list.map(travellerCells)];
 
   async function copy() {
@@ -60,6 +59,59 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
     const text = table.map((r) => r.join("\t")).join("\n");
     try { await navigator.clipboard.writeText(text); setSaid(`Copied ${list.length} ${list.length === 1 ? "person" : "people"}.`); }
     catch { setSaid("Your browser blocked copying — use Download CSV instead."); }
+  }
+  useEffect(() => { loadTravelChecks().then((rows) => setAsked(new Set(rows))).catch(() => {}); }, []);
+
+  /*
+   * Nothing is sent from the row.
+   *
+   * The button opens the letter — the real one, filled in, editable —
+   * and the send lives in there behind a confirmation that a
+   * coordinator can switch off once they trust it. A one-click send on
+   * a row is a message to a real person, in their name, posted by a
+   * mis-click.
+   */
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
+  const [sure, setSure] = useState(false);
+  const [confirmFirst, setConfirmFirst] = useState(true);
+  useEffect(() => {
+    // Read after mount: the server has no idea what this browser
+    // remembers, and rendering the box differently would not match.
+    try { setConfirmFirst(localStorage.getItem(CONFIRM_KEY) !== "off"); } catch { /* private window */ }
+  }, []);
+  function rememberConfirm(on: boolean) {
+    setConfirmFirst(on);
+    if (!on) setSure(false);
+    try { localStorage.setItem(CONFIRM_KEY, on ? "on" : "off"); } catch { /* nothing to do about it */ }
+  }
+
+  function open(t: Traveller) {
+    setOpening(t.bookingId);
+    setSaid(null);
+    start(async () => {
+      const r = await draftTravelCheck(t.bookingId);
+      setOpening(null);
+      if (!r.ok) { setSaid(r.problem ?? "That letter could not be written."); return; }
+      setSure(false);
+      setDraft({ bookingId: t.bookingId, to: r.to ?? "", name: r.name ?? t.name, subject: r.subject ?? "", body: r.body ?? "" });
+    });
+  }
+
+  function send() {
+    if (!draft) return;
+    if (confirmFirst && !sure) { setSure(true); return; }
+    const d = draft;
+    start(async () => {
+      const r = await sendTravelCheck(d.bookingId, { subject: d.subject, body: d.body });
+      if (!r.ok) { setSaid(r.problem ?? "That did not send."); return; }
+      setSaid(receiptLine(r.receipt));
+      if (r.receipt?.state === "sent" || r.receipt?.state === "sent-to-you") {
+        setAsked((s) => new Set(s).add(d.to.toLowerCase()));
+      }
+      setDraft(null);
+      setSure(false);
+    });
   }
 
   return (
@@ -121,9 +173,9 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                       asked.has(t.email.toLowerCase()) ? (
                         <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-muted"><Check size={13} /> Asked</span>
                       ) : (
-                        <button type="button" onClick={() => ask(t)} disabled={pending}
+                        <button type="button" onClick={() => open(t)} disabled={pending}
                           className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-50">
-                          {busy === t.bookingId ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />} Ask them to clarify
+                          {opening === t.bookingId ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />} Write to them
                         </button>
                       )
                     )}
@@ -134,6 +186,76 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
           </table>
         </div>
       )}
+
+      {/* The letter, before it is a letter. Editable, because a
+          coordinator knows things about this person that a template
+          cannot, and because the words go out over their name. */}
+      <Modal
+        open={Boolean(draft)}
+        onClose={() => { setDraft(null); setSure(false); }}
+        size="lg"
+        title="Ask about their travel time"
+        description={draft ? `To ${draft.name || "them"} · ${draft.to}` : undefined}
+        footer={
+          <div className="flex w-full flex-wrap items-center gap-3">
+            <label className="mr-auto inline-flex items-center gap-2 text-[12.5px] text-muted">
+              <input type="checkbox" className="accent-brand-600" checked={confirmFirst} onChange={(e) => rememberConfirm(e.target.checked)} />
+              Ask me to confirm before sending
+            </label>
+            {sure ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700">
+                  <AlertTriangle size={13} /> Send this to {draft?.to} now?
+                </span>
+                <button type="button" onClick={() => setSure(false)} className="px-3 py-2 text-[12.5px] font-semibold text-muted hover:text-fg">
+                  Not yet
+                </button>
+                <button type="button" onClick={send} disabled={pending}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-brand-700 disabled:opacity-50">
+                  {pending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Yes, send it
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={() => setDraft(null)} className="px-3 py-2 text-[12.5px] font-semibold text-muted hover:text-fg">
+                  Cancel
+                </button>
+                <button type="button" onClick={send} disabled={pending}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-brand-700 disabled:opacity-50">
+                  {pending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Send
+                </button>
+              </>
+            )}
+          </div>
+        }
+      >
+        {draft && (
+          <div className="space-y-3">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-subtle">Subject</span>
+              <input
+                value={draft.subject}
+                onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-line bg-elevated/40 px-3 py-2 text-[13.5px] text-fg focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-subtle">Message</span>
+              <textarea
+                rows={16}
+                value={draft.body}
+                onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                className="mt-1 w-full rounded-lg border border-line bg-elevated/40 px-3 py-2 text-[13px] leading-relaxed text-fg focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+            </label>
+            <p className="text-[11.5px] leading-snug text-subtle">
+              Already filled in for this person — the merge fields are gone, so what you see is what they get.
+              Edits here go to this one message only; to change the wording for everybody, edit
+              <strong className="text-muted"> Travel support — checking the journey</strong> under the Email tab.
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

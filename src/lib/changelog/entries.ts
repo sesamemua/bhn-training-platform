@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Nothing is sent from a table row
+  {
+    title: "The travel letter opens before it sends",
+    body: "**Travel follow-up** no longer sends anything from the row. **Write to them** opens the letter itself \u2014 filled in for that person, merge fields already resolved, **subject and message editable** \u2014 and the send is in there.\n\n**Send** then asks once more: *Send this to name@example.com now?* with **Yes, send it** beside it. If you would rather not be asked, untick **Ask me to confirm before sending** at the bottom of the window and Send goes straight out from then on. That choice is remembered in your browser, so it is yours rather than everybody\u2019s.\n\nEdits in the window apply to that one message. To change the wording for everybody, edit **Travel support \u2014 checking the journey** under the **Email** tab as before.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Ask about a travel claim, and put the lists where the question is
   {
     title: "Ask a registrant about a travel claim, in one click",

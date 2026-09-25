@@ -24,12 +24,12 @@ import { registrantName } from "@/lib/allocation/registrant-name";
 import { EntrySchema, type Snapshot } from "@/lib/allocation/catering";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
-import { sendDecisionLetter, sendPersonLetter } from "@/lib/formbuilder/acknowledge";
+import { personLetterDraft, sendComposed, sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import {
   describe as describeDecision, isDecision, letterDue, type Decision,
 } from "@/lib/allocation/decisions";
-import type { Receipt } from "@/lib/formbuilder/receipt";
+import type { Receipt, SentMail } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
 import {
   isEdit, OverrideSchema, parseOverrides, problemsWith, refusesMultiSession, render,
@@ -1077,9 +1077,48 @@ export async function sendSeatLetters(
  */
 export async function sendTravelCheck(
   bookingId: string,
+  edited?: { subject: string; body: string },
 ): Promise<{ ok: boolean; problem?: string; receipt?: Receipt }> {
   const admin = await requireAdmin();
-  if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
+  const made = await travelCheckFor(bookingId);
+  if ("problem" in made) return { ok: false, problem: made.problem };
+
+  /*
+   * The coordinator's wording, if they changed it — but never their
+   * idea of the address. `to` comes off the registration every time,
+   * so an edited draft cannot be redirected by whatever the page sent
+   * back.
+   */
+  const subject = edited?.subject.trim().replace(/[\r\n]+/g, " ").slice(0, 300);
+  const body = edited?.body.trim().slice(0, 20_000);
+  if (edited && (!subject || !body)) return { ok: false, problem: "An empty letter is not a letter." };
+
+  const receipt = await sendComposed(
+    edited ? { to: made.mail.to, subject: subject!, body: body! } : made.mail,
+  );
+
+  await logSend(admin.id, TRAVEL_CHECK, {
+    bookingId, email: made.mail.to, postcode: made.fsa, state: receipt.state, edited: Boolean(edited),
+  });
+  revalidatePath(PAGE);
+  return { ok: true, receipt };
+}
+
+/** The same letter, shown rather than sent — what the compose box opens with. */
+export async function draftTravelCheck(
+  bookingId: string,
+): Promise<{ ok: boolean; problem?: string; to?: string; name?: string; subject?: string; body?: string }> {
+  await requireAdmin();
+  const made = await travelCheckFor(bookingId);
+  if ("problem" in made) return { ok: false, problem: made.problem };
+  return { ok: true, to: made.mail.to, name: made.name, subject: made.mail.subject, body: made.mail.body };
+}
+
+/** Everything both of those need: who, where they said they were, and the letter. */
+async function travelCheckFor(
+  bookingId: string,
+): Promise<{ mail: SentMail; name: string; fsa: string } | { problem: string }> {
+  if (!isId(bookingId)) return { problem: "That is not a seat." };
 
   const booking = await prisma.workshopBooking.findUnique({
     where: { id: bookingId },
@@ -1088,23 +1127,30 @@ export async function sendTravelCheck(
       user: { select: { name: true, email: true } },
     },
   });
-  if (!booking) return { ok: false, problem: "That registration no longer exists." };
+  if (!booking) return { problem: "That registration no longer exists." };
 
   const answers = (booking.submission?.data ?? {}) as Record<string, unknown>;
-  const postcode = String(answers.postcode ?? "").trim();
-  const estimate = travelFromPostcode(postcode);
-  if (!estimate) return { ok: false, problem: "There is no postal code on that registration to ask about." };
+  const estimate = travelFromPostcode(String(answers.postcode ?? "").trim());
+  if (!estimate) return { problem: "There is no postal code on that registration to ask about." };
 
   const to = booking.submission?.email ?? booking.user?.email ?? null;
   const name = registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(to)) || "";
-  const receipt = await sendPersonLetter("support_check_postcode", {
+  const draft = await personLetterDraft("support_check_postcode", {
     to, name,
     vars: { postcode: estimate.fsa, travel_time: travelWords(estimate) },
   });
+  if (!draft.ok) return { problem: receiptProblem(draft.receipt) };
+  return { mail: draft.mail, name, fsa: estimate.fsa };
+}
 
-  await logSend(admin.id, TRAVEL_CHECK, { bookingId, email: to, postcode: estimate.fsa, state: receipt.state });
-  revalidatePath(PAGE);
-  return { ok: true, receipt };
+/** Why a letter could not even be written, in words a coordinator can act on. */
+function receiptProblem(r: Receipt): string {
+  switch (r.state) {
+    case "no-address": return "There is no email address on that registration.";
+    case "no-template": return "The “Travel support — checking the journey” letter has been deleted from the standing letters.";
+    case "unfilled": return `The letter has nothing to put in ${r.missing.map((m) => `{{${m}}}`).join(", ")}.`;
+    default: return "That letter could not be written.";
+  }
 }
 
 const TRAVEL_CHECK = "training_admin.travel_check";

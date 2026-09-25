@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17a";
+export const TOUR_VERSION = "2026.10.17b";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -125,7 +125,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "training-admin.travel-ask",
     title: "Ask about a travel claim",
-    body: "Every row in **Travel follow-up** whose postal code is under two hours now has **Ask them to clarify**. It sends a letter that says what the postal code works out at, says the estimate may be wrong, and asks them to reply if their journey really is over two hours \u2014 their place is never in question. Edit the wording under **Email**, as **Travel support \u2014 checking the journey**.",
+    body: "Every row in **Travel follow-up** whose postal code is under two hours has **Write to them**. It opens the letter \u2014 filled in, editable \u2014 which says what the postal code works out at, says the estimate may be wrong, and asks them to reply if their journey really is over two hours; their place is never in question. **Send** asks you to confirm once more, and you can untick that if you would rather it did not. Change the wording for everybody under **Email**, as **Travel support \u2014 checking the journey**.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],
