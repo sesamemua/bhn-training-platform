@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17e";
+export const TOUR_VERSION = "2026.10.17f";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "admin.eligibility-on-miss",
+    title: "A miss re-reads the list",
+    body: "When a registrant\u2019s address is on none of the lists, the platform **re-reads the ENGAGE and EXPERIENCE sheet and asks again** before telling them. That is the only moment it matters, so it is the only time it looks \u2014 no polling, and at most one read every ten minutes however many people miss. Needs `ELIGIBILITY_SHEET_CSV` set; the dashboard card says whether it is.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the dashboard", href: "/admin/workspace/training-admin" },
+    since: "2026.10.17f",
   },
   {
     id: "admin.registration-backups",

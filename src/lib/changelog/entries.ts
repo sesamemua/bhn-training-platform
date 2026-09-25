@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── A miss is the signal that the list is behind
+  {
+    title: "A registrant who is not on the list makes us re-read it",
+    body: "The programme lists go stale the moment a programme accepts somebody, and the only way anybody found out was a person being told they are not on one. That miss is now the trigger: **when an address matches none of the lists, the platform re-reads the ENGAGE and EXPERIENCE sheet before believing it**, and asks again. Somebody accepted this morning is on the list by the time they finish typing their address.\n\nNo polling, nothing running every few minutes \u2014 the sheet is read **when a miss happens and not otherwise**, at most **once every ten minutes** however many people miss in that time. A failed read counts towards that too, so a link that has stopped working is not retried by every registrant in turn. A list pasted in by hand in the last ten minutes is already current, so it is left alone.\n\nIt still needs `ELIGIBILITY_SHEET_CSV` set; without it nothing happens, exactly as before. The nightly job stays as the floor under it, for a week when nobody registers.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Registrations are copied out of the database as they arrive
   {
     title: "Every registration is backed up the moment it arrives",

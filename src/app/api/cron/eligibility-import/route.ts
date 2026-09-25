@@ -8,6 +8,11 @@
  * stopped turning people away: somebody accepted this morning is on none
  * of them. This reads the sheet on its own instead.
  *
+ * The same read also happens on demand: when a registrant's address is
+ * on none of the lists, the check re-reads the sheet before believing
+ * it (refreshOnMiss). This job is the floor under that — the list stays
+ * current even in a week when nobody registers.
+ *
  * It needs one thing: `ELIGIBILITY_SHEET_CSV`, a URL this server can
  * fetch without signing in — the sheet's own CSV export with link
  * sharing on, or a File → Share → Publish to web CSV link. Unset, the
@@ -19,52 +24,27 @@
  * made on this platform already count live, with no import at all.
  */
 import { NextResponse } from "next/server";
-import { applyRoster, AUTO_SOURCE_ID, recordFailedImport } from "@/lib/eligibility/apply";
-import { looksLikeSignInPage } from "@/lib/eligibility/import";
+import { importFromSheet } from "@/lib/eligibility/apply";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const SOURCE_ID = AUTO_SOURCE_ID;
-const METHOD = "cron";
 
 export async function GET(req: Request) {
   const expected = process.env.CRON_SECRET;
   if (expected && req.headers.get("authorization") !== `Bearer ${expected}`) {
     return NextResponse.json({ error: "Not authorised." }, { status: 401 });
   }
-
-  const url = process.env.ELIGIBILITY_SHEET_CSV;
-  if (!url) {
+  if (!process.env.ELIGIBILITY_SHEET_CSV) {
     return NextResponse.json({
       ok: false,
       reason: "ELIGIBILITY_SHEET_CSV is not set, so this list is still pasted in by hand.",
     });
   }
 
-  let text = "";
-  try {
-    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) throw new Error(`the sheet answered ${res.status}`);
-    text = await res.text();
-    if (looksLikeSignInPage(text)) {
-      throw new Error("that link wants a sign-in — share the sheet, or publish it to the web as CSV");
-    }
-  } catch (err) {
-    const error = (err as Error).message || "the sheet could not be read";
-    await recordFailedImport(SOURCE_ID, METHOD, error);
-    return NextResponse.json({ ok: false, error });
-  }
-
-  const done = await applyRoster({ sourceId: SOURCE_ID, text, method: METHOD });
-  if (!done.ok) {
-    const error = "no addresses in what came back — the list was left alone";
-    await recordFailedImport(SOURCE_ID, METHOD, error);
-    return NextResponse.json({ ok: false, error });
-  }
-
-  return NextResponse.json({
-    ok: true, imported: done.rows, skipped: done.skipped,
-    added: done.added.length, removed: done.removed.length,
-  });
+  const done = await importFromSheet({ method: "cron" });
+  return NextResponse.json(
+    done.ok
+      ? { ok: true, imported: done.rows, added: done.added, removed: done.removed }
+      : { ok: false, error: done.error },
+  );
 }

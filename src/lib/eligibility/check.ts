@@ -7,6 +7,7 @@
  * there is one definition of "eligible" rather than three that drift.
  */
 import { prisma } from "@/lib/prisma";
+import { refreshOnMiss } from "./apply";
 import { emailKey } from "./email-key";
 import { eligibilityGate, type Gate } from "./gate";
 import { eligibilitySource } from "./sources";
@@ -116,18 +117,42 @@ export async function checkEligibility(rawEmail: string): Promise<EligibilityVer
     return { gate, lastImportAt, key: null, matched: false, sourceIds: [], programmes: [], blocked: gate.enforcing };
   }
 
-  const [rows, applied] = await Promise.all([
-    prisma.eligibilityEntry.findMany({ where: { emailKey: key }, select: { sourceId: true } }),
-    applicationRows().then((apps) => applicationKeys(apps).has(key)),
-  ]);
+  const look = async () => {
+    const [rows, applied] = await Promise.all([
+      prisma.eligibilityEntry.findMany({ where: { emailKey: key }, select: { sourceId: true } }),
+      applicationRows().then((apps) => applicationKeys(apps).has(key)),
+    ]);
+    return [...rows.map((r) => r.sourceId), ...(applied ? [PLATFORM_SOURCE_ID] : [])];
+  };
+
+  let found = await look();
+  let state2 = state;
+
+  /*
+   * Not on any list — so look at the sheet again before saying so.
+   *
+   * A miss is the one signal that the exported lists have fallen
+   * behind, and it arrives at exactly the moment it matters: somebody
+   * accepted this morning is standing in front of the form. Rate
+   * limited to one read every ten minutes however many people miss, and
+   * a no-op unless a CSV link is configured — see refreshOnMiss.
+   */
+  if (found.length === 0 && (await refreshOnMiss())) {
+    found = await look();
+    state2 = await rosterState();
+  }
 
   // An application made here counts like a row on an imported list —
   // it is the same fact, arriving without anybody exporting it.
-  const sourceIds = [...rows.map((r) => r.sourceId), ...(applied ? [PLATFORM_SOURCE_ID] : [])];
+  const sourceIds = found;
   const programmes = [
     ...new Set(sourceIds.flatMap((id) => eligibilitySource(id)?.programmes ?? [])),
   ];
   const matched = sourceIds.length > 0;
+  const gate2 = state2 === state ? gate : eligibilityGate(state2, new Date());
 
-  return { gate, lastImportAt, key, matched, sourceIds, programmes, blocked: gate.enforcing && !matched };
+  return {
+    gate: gate2, lastImportAt: state2.lastImportAt, key, matched, sourceIds, programmes,
+    blocked: gate2.enforcing && !matched,
+  };
 }
