@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/cron/eligibility-import",
+      "schedule": "0 7 * * *"
+    }
+  ]
 }

@@ -19,6 +19,7 @@
  *
  * Pure module: no React, no Prisma, no I/O.
  */
+import { eligibilitySource } from "@/lib/eligibility/sources";
 import type { Applicant, Ranked } from "./model";
 import { registrantName } from "./registrant-name";
 
@@ -29,6 +30,16 @@ export interface ApplicantInfo extends Applicant {
   email: string;
   travel: Travel;
   roster: RosterMatch;
+  /** The form they registered on — a session with its own page is not the week's form. */
+  formSlug: string | null;
+  /**
+   * Which programme the registration was recognised under, written on
+   * the row when it was filed: "ENGAGE", "EXPERIENCE", "EQUIP", or
+   * nothing when the address was on no list. Read from the submission
+   * rather than looked up now — it answers "who came in today, and from
+   * where", which is a question about the day they registered.
+   */
+  programmes: string[];
   /** Their own ranking of this session: 1 is their first choice. */
   preference: number | null;
   /** Current state of the seat: pending | confirmed | waitlist | cancelled. */
@@ -42,7 +53,7 @@ export interface BookingFacts {
   preference: number | null;
   seatsHeld: number;
   user?: { name: string | null; email: string | null; organization: string | null; country: string | null } | null;
-  submission?: { data: Record<string, unknown>; email: string | null; createdAt: string } | null;
+  submission?: { data: Record<string, unknown>; email: string | null; createdAt: string; formSlug?: string | null } | null;
   /**
    * The roster entry for an email: `{ name }` on it, `null` not on it,
    * `undefined` when there is no roster to check against.
@@ -76,6 +87,12 @@ export function applicantFor(f: BookingFacts): ApplicantInfo {
   const entry = email ? f.roster(email) : undefined;
   const roster: RosterMatch = entry === undefined ? "unknown" : entry ? "on" : "off";
 
+  // The lists that matched when they registered, as programmes.
+  const sourceIds = Array.isArray(a.__eligibilitySources) ? (a.__eligibilitySources as unknown[]) : [];
+  const programmes = [...new Set(
+    sourceIds.flatMap((id) => (typeof id === "string" ? eligibilitySource(id)?.programmes ?? [] : [])),
+  )];
+
   // What the person told us, else an account with their email, else the address.
   const name = registrantName(a) || str(f.user?.name) || str(f.accountName) || email || "Unnamed";
 
@@ -87,6 +104,8 @@ export function applicantFor(f: BookingFacts): ApplicantInfo {
     roster,
     preference: f.preference,
     status: f.status,
+    formSlug: f.submission?.formSlug ?? null,
+    programmes,
     isOutOfTown: travel === "far" ? true : travel === "near" ? false : undefined,
     isCurrentTrainee: roster === "on",
     organizationType: f.user?.organization ?? null,

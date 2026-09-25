@@ -576,6 +576,20 @@ const workspaceKeAwardeesItem: NavItem = {
 // two rows under a form it is the dashboard FOR. Under the Training
 // Week heading, directly beneath Registration Form, "Dashboard" is
 // unambiguous and the pair reads as one thing.
+/*
+ * Eligibility lists sat under Administration → EQUIP, three groups away
+ * from the registration it gates. It is read the same afternoon as the
+ * registrants list — when somebody is missing from it — so it lives
+ * beside the form and the dashboard now.
+ */
+const eligibilityListsItem: NavItem = {
+  label: "Eligibility lists",
+  href: "/admin/eligibility",
+  icon: ShieldCheck,
+  minRole: "admin",
+  description: "The programme lists Training Week registration is checked against. Somebody not on one can still register — the form says so and tells us — and this is where you add them by hand or re-import a list.",
+};
+
 const workspaceTrainingAdminItem: NavItem = {
   label: "Dashboard",
   href: "/admin/workspace/training-admin",
@@ -694,8 +708,6 @@ const adminEquipItems: NavItem[] = [
     description: "Program-management dashboard for the EQUIP pillar — apps in flight, approved this quarter, $ funded YTD, stalled-app alerts, per-stream funnel, open windows, recent activity. Renders in Studio." },
   { label: "EQUIP review",         href: "/admin/equip",               icon: Rocket,        minRole: "admin", badgeKey: "equip-review",
     description: "Review queue for the EQUIP funding pillar — VentureConnect (≤$5K) + VentureLift (≤$25K). Claim, approve / reject with a note + amount, mark funded. Mirrors the credit-applications shape." },
-  { label: "Eligibility lists",    href: "/admin/eligibility",         icon: ShieldCheck,   minRole: "admin",
-    description: "The programme lists Training Week registration is checked against. Someone not on a list is refused at the email question. Nothing is enforced until a list is imported, so load them before registration opens." },
   { label: "EQUIP email templates", href: "/admin/equip/email-templates", icon: Mail,        minRole: "admin",
     description: "Every email an EQUIP applicant can receive, for both streams — view, hand-edit, or AI-rewrite the copy. Sending itself always happens from the review page as an explicit reviewer action, never automatically." },
   { label: "EQUIP deadlines",      href: "/admin/equip/deadlines",     icon: ClipboardList, minRole: "admin",
@@ -2102,6 +2114,7 @@ export function Sidebar({
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Training Week">
               <NavLink item={workspaceTrainingFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={eligibilityListsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

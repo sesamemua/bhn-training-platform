@@ -1,7 +1,7 @@
 /** Roster import: every address, and a name only from a column headed as one. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseRoster } from "../../src/lib/eligibility/import";
+import { looksLikeSignInPage, parseRoster } from "../../src/lib/eligibility/import";
 
 test("the institution is never taken as the name (the Hospital for Sick Children bug)", () => {
   const sheet = [
@@ -29,4 +29,12 @@ test("duplicates collapse, quotes are stripped", () => {
   const { rows } = parseRoster('Name,Email\n"Ana Diaz","ana@utoronto.ca"\nAna D,ANA@utoronto.ca');
   assert.equal(rows.length, 1);
   assert.equal(rows[0].name, "Ana Diaz");
+});
+
+test("a sign-in page is not mistaken for a sheet", () => {
+  assert.equal(looksLikeSignInPage('<!DOCTYPE html><html><head><title>Sign in'), true);
+  assert.equal(looksLikeSignInPage("\n  <html lang=\"en\">"), true);
+  assert.equal(looksLikeSignInPage("Name,Email\nAna Diaz,ana@utoronto.ca"), false);
+  // A sheet whose first cell happens to hold a tag is still a sheet.
+  assert.equal(looksLikeSignInPage("Name,Email\n<b>Ana</b>,ana@utoronto.ca"), false);
 });

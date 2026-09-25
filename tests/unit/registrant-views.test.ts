@@ -9,7 +9,7 @@ import { toCsv } from "../../src/lib/formbuilder/csv";
 const row = (o: Partial<RegistrantRow>): RegistrantRow => ({
   bookingId: "b", personKey: "p", name: "N", email: "n@x.ca", workshopId: "w1", workshop: "GMP", day: "2026-10-26",
   dayLabel: "Mon 26 Oct", status: "pending", letter: "none", travel: "unknown", postcode: "", dietary: [],
-  dietaryOther: "", accessibility: "", preference: 1, appliedAt: "2026-09-20T10:00:00Z",
+  dietaryOther: "", accessibility: "", preference: 1, appliedAt: "2026-09-20T10:00:00Z", programmes: [], formSlug: null,
   workshopStart: "2026-10-26T13:00:00Z", workshopEnd: "2026-10-26T16:00:00Z", ...o,
 });
 const rows = [

@@ -19,6 +19,7 @@ import { EligibilityManager, type EligibilityState } from "@/components/admin/el
 import { platformApplicantCount, rosterState } from "@/lib/eligibility/check";
 import { eligibilityGate } from "@/lib/eligibility/gate";
 import { ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
+import { autoRefreshes } from "@/lib/eligibility/apply";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function EligibilityPage() {
       orderBy: { createdAt: "desc" },
       take: 12,
       select: {
-        id: true, sourceId: true, rowsRead: true, rowsAccepted: true,
+        id: true, sourceId: true, method: true, rowsRead: true, rowsAccepted: true,
         rowsSkipped: true, addedEmails: true, removedEmails: true,
         error: true, createdAt: true,
       },
@@ -50,6 +51,8 @@ export default async function EligibilityPage() {
       programmes: [...s.programmes],
       // The live list is counted where it lives, not in the entries table.
       count: s.access === "platform" ? applicants : counts[s.id] ?? 0,
+      // Whether anybody still has to remember to re-paste this one.
+      auto: autoRefreshes(s.id),
     })),
     imports: imports.map((i) => ({ ...i, createdAt: i.createdAt.toISOString() })),
   };
@@ -59,7 +62,7 @@ export default async function EligibilityPage() {
       <DSPageHeader
         eyebrow={<><ShieldCheck size={11} /> Admin · Eligibility</>}
         title="Eligibility lists"
-        description="Who is allowed to register for Training Week. Registration checks the address somebody types against these lists the moment they enter it — and refuses anyone who is not on one. With no list loaded nothing is enforced and everybody gets in, so import before registration opens."
+        description="Who is allowed to register for Training Week. Registration checks the address somebody types against these lists the moment they enter it. Nobody is turned away any more — an address on no list can still register, and is flagged here for a coordinator to settle. The ENGAGE and EXPERIENCE sheet is re-read every night; the EQUIP workbooks are still pasted in."
       />
       <EligibilityManager initial={initial} />
     </div>

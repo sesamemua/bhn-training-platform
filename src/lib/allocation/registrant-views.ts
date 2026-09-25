@@ -31,6 +31,10 @@ export interface RegistrantRow {
   accessibility: string;
   preference: number | null;
   appliedAt: string;
+  /** Programmes the registration matched when it was filed. Empty = on no list. */
+  programmes: string[];
+  /** The form it came in on: a session with its own page registers separately. */
+  formSlug: string | null;
   /** The session's start and end (ISO) — catering skips sessions that are over. */
   workshopStart: string;
   workshopEnd: string;
@@ -85,7 +89,10 @@ const v = (id: string, name: string, over: Partial<Omit<View, "filters">> & { fi
 
 /** Built in: always there, never saved over or deleted. */
 export const BUILT_IN_VIEWS: View[] = [
-  v("all", "All"),
+  // One row per person: somebody who asked for three sessions is one
+  // registration, and three rows of the same name is three times the
+  // scrolling for the same fact. The Rows toggle still says Seats.
+  v("all", "All", { perPerson: true }),
   v("by-workshop", "By workshop", { groupBy: "workshop" }),
   v("by-day", "By day", { groupBy: "day" }),
   v("dietary", "Dietary & accessibility", { groupBy: "dietary", perPerson: true }),
@@ -197,7 +204,18 @@ export function applyView(rows: RegistrantRow[], view: View): Group[] {
   }
   return [...groups.values()]
     .sort((a, b) => a.order.localeCompare(b.order))
-    .map(({ key, label, rows }) => ({ key, label, rows: rows.sort((x, y) => x.name.localeCompare(y.name)) }));
+    /*
+     * Newest registration first, not A to Z.
+     *
+     * The question a coordinator opens this page with is "who came in
+     * since I last looked" — an alphabetical list answers a question
+     * nobody asks and buries today's registrations in the middle of it.
+     * Name breaks the tie so the order is stable.
+     */
+    .map(({ key, label, rows }) => ({
+      key, label,
+      rows: rows.sort((x, y) => y.appliedAt.localeCompare(x.appliedAt) || x.name.localeCompare(y.name)),
+    }));
 }
 
 

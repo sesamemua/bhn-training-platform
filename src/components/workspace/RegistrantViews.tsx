@@ -33,6 +33,101 @@ const pill = (on: boolean) =>
 const SELECT = "rounded-md border border-line bg-elevated px-2 py-1 text-[12.5px] text-fg";
 
 const tz = "America/Toronto";
+
+/** "24 Sep, 2:41 p.m." — short enough to sit beside a name. */
+const shortStamp = (iso: string) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: tz, day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
+    .format(new Date(iso));
+
+/**
+ * Where the registration came in.
+ *
+ * Innovation Ignited takes its own registrations from its own page —
+ * linked at the bottom of biohubnet.ca/training-week-2026 — and those
+ * people never saw the week\'s form. Same seat, same room, different
+ * front door, so the row says which.
+ */
+const FRONT_DOORS: Record<string, { label: string; className: string; title: string }> = {
+  "innovation-ignited-2026": {
+    label: "via Innovation Ignited",
+    className: "bg-teal-500/12 text-teal-700",
+    title: "Registered on the Innovation Ignited page, not the Training Week form",
+  },
+};
+
+function SourceBadge({ formSlug }: { formSlug: string | null }) {
+  const door = formSlug ? FRONT_DOORS[formSlug] : undefined;
+  if (!door) return null;
+  return <span className={`${chip} ${door.className}`} title={door.title}>{door.label}</span>;
+}
+
+/** Which programme let them in, in two letters of colour. */
+function ProgrammeBadge({ programmes }: { programmes: string[] }) {
+  if (programmes.length === 0) {
+    return <span className={`${chip} bg-amber-500/12 text-amber-700`} title="On no programme list when they registered">Not on a list</span>;
+  }
+  const equip = programmes.includes("EQUIP");
+  return (
+    <span
+      className={`${chip} ${equip ? "bg-violet-500/12 text-violet-700" : "bg-brand-500/12 text-brand-600"}`}
+      title={`Recognised under ${programmes.join(", ")}`}
+    >
+      {equip ? "EQUIP" : "ENGAGE / EXPERIENCE"}
+    </span>
+  );
+}
+
+/**
+ * Who came in last, by where they came from.
+ *
+ * Two short lists rather than one: the newest three off the
+ * ENGAGE/EXPERIENCE roster and the newest two from EQUIP, because
+ * "anything new today?" is usually asked about one programme or the
+ * other. One line each — this sits above a table, not instead of it.
+ */
+export function LatestRegistrants({ rows }: { rows: RegistrantRow[] }) {
+  const newest = useMemo(() => {
+    const people = new Map<string, RegistrantRow>();
+    for (const r of [...rows].sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))) {
+      if (!people.has(r.personKey)) people.set(r.personKey, r);
+    }
+    const all = [...people.values()];
+    const equip = (r: RegistrantRow) => r.programmes.includes("EQUIP");
+    return {
+      roster: all.filter((r) => !equip(r)).slice(0, 3),
+      equip: all.filter(equip).slice(0, 2),
+    };
+  }, [rows]);
+
+  if (rows.length === 0) return null;
+
+  const column = (title: string, list: RegistrantRow[], empty: string) => (
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-subtle">{title}</p>
+      {list.length === 0 ? (
+        <p className="text-[12px] text-subtle">{empty}</p>
+      ) : (
+        <ul className="mt-0.5 space-y-0.5">
+          {list.map((r) => (
+            <li key={r.personKey} className="flex flex-wrap items-baseline gap-x-1.5 text-[12px] leading-tight">
+              <span className="font-semibold text-fg">{r.name}</span>
+              <SourceBadge formSlug={r.formSlug} />
+              <span className="truncate font-mono text-[10.5px] text-subtle">{r.email}</span>
+              <span className="text-[10.5px] text-muted">{shortStamp(r.appliedAt)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="mb-3 grid gap-3 rounded-lg border border-line bg-elevated/40 px-3 py-2 sm:grid-cols-2">
+      {column("Latest — ENGAGE / EXPERIENCE", newest.roster, "None yet")}
+      {column("Latest — EQUIP", newest.equip, "None yet")}
+    </div>
+  );
+}
 const dayKey = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 const dayLabel = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, weekday: "short", day: "numeric", month: "short" }).format(new Date(iso));
 
@@ -57,6 +152,8 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       accessibility: b.registrant.accessibility,
       preference: b.applicant.preference,
       appliedAt: String(b.applicant.appliedAt),
+      programmes: b.applicant.programmes ?? [],
+      formSlug: b.applicant.formSlug ?? null,
       workshopStart: w.startDateTime,
       workshopEnd: w.endDateTime,
     })),
@@ -241,6 +338,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
 
       {/* Results */}
       <div className="mt-4 space-y-4">
+        <LatestRegistrants rows={rows} />
         {groups.length === 0 && (
           <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">
             {rows.length === 0 ? "Nobody has registered yet." : "Nobody matches this view."}
@@ -254,44 +352,53 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               </h4>
             )}
             <div className="overflow-x-auto rounded-lg border border-line">
-              <table className="w-full min-w-[900px] border-collapse text-[12.5px]">
+              <table className="w-full min-w-[720px] border-collapse text-[12px]">
                 <thead>
                   <tr className="bg-elevated text-left">
                     {(draft.perPerson
                       ? ["Name", "Workshops", "Distance", "Dietary", "Accessibility"]
                       : ["Name", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"]
                     ).map((h) => (
-                      <th key={h} className="whitespace-nowrap px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
+                      <th key={h} className="whitespace-nowrap px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-subtle">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {g.rows.map((r) => (
                     <tr key={draft.perPerson ? r.personKey : r.bookingId} className="border-t border-line align-top">
-                      <td className="px-3 py-1.5">
-                        <div className="font-semibold text-fg">{r.name}</div>
-                        {r.email && r.email !== r.name && <div className="font-mono text-[11px] text-subtle">{r.email}</div>}
+                      <td className="px-2 py-1">
+                        {/* Name, address and when they registered on one
+                            line each at most: the column used to be three
+                            deep for every seat, and the page was a scroll
+                            through the same names. */}
+                        <div className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
+                          <span className="font-semibold text-fg">{r.name}</span>
+                          <ProgrammeBadge programmes={r.programmes} />
+                          <SourceBadge formSlug={r.formSlug} />
+                          <span className="text-[10.5px] text-subtle">{shortStamp(r.appliedAt)}</span>
+                        </div>
+                        {r.email && r.email !== r.name && <div className="font-mono text-[10.5px] leading-tight text-subtle">{r.email}</div>}
                       </td>
                       {draft.perPerson ? (
-                        <td className="px-3 py-1.5 text-muted">{r.workshops.join(" · ")}</td>
+                        <td className="px-2 py-1 text-muted">{r.workshops.join(" · ")}</td>
                       ) : (
                         <>
-                          <td className="px-3 py-1.5 text-muted">{r.workshop}</td>
-                          <td className="whitespace-nowrap px-3 py-1.5 text-muted">{r.dayLabel}</td>
-                          <td className="px-3 py-1.5"><span className={`${chip} ${STATUS_TONE[r.status] ?? "bg-elevated text-subtle"}`}>{STATUS_LABEL[r.status] ?? r.status}</span></td>
-                          <td className="whitespace-nowrap px-3 py-1.5">
+                          <td className="px-2 py-1 text-muted">{r.workshop}</td>
+                          <td className="whitespace-nowrap px-2 py-1 text-muted">{r.dayLabel}</td>
+                          <td className="px-2 py-1"><span className={`${chip} ${STATUS_TONE[r.status] ?? "bg-elevated text-subtle"}`}>{STATUS_LABEL[r.status] ?? r.status}</span></td>
+                          <td className="whitespace-nowrap px-2 py-1">
                             {r.letter === "owed" ? <span className={`${chip} bg-amber-500/12 text-amber-600`}>Not sent</span> : <span className="text-[11.5px] text-subtle">{r.letter === "sent" ? "Sent" : "—"}</span>}
                           </td>
                         </>
                       )}
-                      <td className="whitespace-nowrap px-3 py-1.5 text-muted">
+                      <td className="whitespace-nowrap px-2 py-1 text-muted">
                         {r.travel === "far" ? "Over 2 h" : r.travel === "near" ? "Local" : "—"}{r.postcode && <span className="ml-1 font-mono text-[11px] text-subtle">{r.postcode}</span>}
                       </td>
-                      <td className="px-3 py-1.5 text-muted">
+                      <td className="px-2 py-1 text-muted">
                         {[...r.dietary.filter((d) => !/^other/i.test(d)), r.dietaryOther && `Other: ${r.dietaryOther}`].filter(Boolean).join(" · ") || <span className="text-subtle">—</span>}
                       </td>
-                      <td className="px-3 py-1.5 text-muted">{r.accessibility === "none" ? "None" : r.accessibility || <span className="text-subtle">—</span>}</td>
-                      {!draft.perPerson && <td className="whitespace-nowrap px-3 py-1.5 text-subtle">{r.preference ? `#${r.preference}` : "—"}</td>}
+                      <td className="px-2 py-1 text-muted">{r.accessibility === "none" ? "None" : r.accessibility || <span className="text-subtle">—</span>}</td>
+                      {!draft.perPerson && <td className="whitespace-nowrap px-2 py-1 text-subtle">{r.preference ? `#${r.preference}` : "—"}</td>}
                     </tr>
                   ))}
                 </tbody>

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.16w";
+export const TOUR_VERSION = "2026.10.16x";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,26 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.registrants-newest-first",
+    title: "Registrants open newest first",
+    body: "**Latest registrants** at the top shows the **three newest from ENGAGE and EXPERIENCE** and the **two newest from EQUIP**. The table below is newest first and one line per person, with a badge for the programme that listed them, **Not on a list** in amber when nothing matched, and *via Innovation Ignited* in teal for the people who registered on that session\u2019s own page.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.16x",
+  },
+  {
+    id: "admin.eligibility-nightly",
+    title: "One list now refreshes itself",
+    body: "The **ENGAGE and EXPERIENCE** sheet is re-read at **3am** and the list replaced \u2014 those runs are marked **automatic** in the history, and anyone you added by hand survives them. It only happens once a CSV link to the sheet is set as `ELIGIBILITY_SHEET_CSV`; until then the card says **Pasted in by hand**. The EQUIP workbooks still need a paste, and EQUIP applications made here count live.",
+    path: "/admin/eligibility",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Eligibility lists", href: "/admin/eligibility" },
+    since: "2026.10.16x",
   },
   {
     id: "registration.unlisted-address-carries-on",

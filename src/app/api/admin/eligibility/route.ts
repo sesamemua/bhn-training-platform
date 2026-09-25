@@ -6,17 +6,18 @@
  *   PUT    /api/admin/eligibility            import a pasted CSV for one source
  *   DELETE /api/admin/eligibility?id=…       remove one person
  *
- * The add-by-hand path is not a convenience. Registration blocks on a
- * non-match, and every list here is a manual export until the Google
- * and Graph credentials exist — so somebody accepted this morning is
- * guaranteed to be missing, and this is how a coordinator fixes it in
- * the ten seconds they have while that person is on the phone.
+ * The add-by-hand path is not a convenience. The ENGAGE / EXPERIENCE
+ * sheet is re-read nightly by /api/cron/eligibility-import, but the two
+ * EQUIP workbooks are manual exports until somebody issues the Graph
+ * credentials — so somebody accepted this morning can still be missing,
+ * and this is how a coordinator fixes it in the ten seconds they have
+ * while that person is on the phone.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { emailKey } from "@/lib/eligibility/email-key";
-import { parseRoster } from "@/lib/eligibility/import";
+import { applyRoster, autoRefreshes } from "@/lib/eligibility/apply";
 import { eligibilitySource, ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
 import { eligibilityGate } from "@/lib/eligibility/gate";
 import { platformApplicantCount, rosterState } from "@/lib/eligibility/check";
@@ -25,7 +26,6 @@ export const runtime = "nodejs";
 
 /** A pasted sheet, not a database. Past this it is a file upload. */
 const MAX_IMPORT_CHARS = 2_000_000;
-const MAX_IMPORT_ROWS = 20_000;
 
 async function admin() {
   try {
@@ -65,6 +65,8 @@ export async function GET() {
     sources: ELIGIBILITY_SOURCES.map((s) => ({
       ...s,
       count: s.access === "platform" ? applicants : counts[s.id] ?? 0,
+      // Whether anybody still has to remember to re-paste this one.
+      auto: autoRefreshes(s.id),
     })),
     imports,
   });
@@ -114,72 +116,28 @@ export async function PUT(req: NextRequest) {
   }
 
   // Every address in the paste; the name only from a column headed as one.
-  const { rows, skipped } = parseRoster(text, MAX_IMPORT_ROWS);
-
-  if (rows.length === 0) {
+  // Same path the nightly cron takes, so both leave the same audit trail.
+  const done = await applyRoster({
+    sourceId,
+    text,
+    method: "upload",
+    filename: String(body.filename ?? "") || null,
+    byId: me.user.id ?? null,
+  });
+  if (!done.ok) {
     return NextResponse.json(
       { error: "No email addresses found in that. Paste the sheet including the column that has them." },
       { status: 400 },
     );
   }
 
-  /*
-   * What this import changes, worked out BEFORE the rows are replaced.
-   *
-   * Compared against the whole source, hand-added rows included: an
-   * admin who added somebody by hand last week does not want them
-   * reported as "new" every time the sheet is re-imported. Removals are
-   * only the rows an import owns — somebody added by hand survives the
-   * replace below, so calling them removed would be a lie.
-   */
-  const before = await prisma.eligibilityEntry.findMany({
-    where: { sourceId },
-    select: { emailKey: true, email: true, addedById: true },
-  });
-  const beforeKeys = new Set(before.map((r) => r.emailKey));
-  const incomingKeys = new Set(rows.map((r) => r.emailKey));
-  const addedEmails = rows.filter((r) => !beforeKeys.has(r.emailKey)).map((r) => r.email);
-  const removedEmails = before
-    .filter((r) => r.addedById === null && !incomingKeys.has(r.emailKey))
-    .map((r) => r.email);
-
-  const record = await prisma.eligibilityImport.create({
-    data: {
-      sourceId,
-      addedEmails,
-      removedEmails,
-      method: "upload",
-      filename: String(body.filename ?? "").slice(0, 200) || null,
-      rowsRead: text.split(/\r?\n/).slice(0, MAX_IMPORT_ROWS).filter((l) => l.trim()).length,
-      rowsAccepted: rows.length,
-      rowsSkipped: skipped,
-      byId: me.user.id ?? null,
-    },
-    select: { id: true },
-  });
-
-  /*
-   * Replace this list's rows, leave the other lists alone. An import is
-   * the list as it stands now — somebody removed from the programme
-   * should stop being eligible, which a merge would never notice.
-   * Anyone added by hand survives: they were added precisely because
-   * the export was wrong.
-   */
-  await prisma.$transaction([
-    prisma.eligibilityEntry.deleteMany({ where: { sourceId, addedById: null } }),
-    prisma.eligibilityEntry.createMany({
-      data: rows.map((r) => ({ ...r, sourceId, importId: record.id })),
-      skipDuplicates: true,
-    }),
-  ]);
-
   const state = await rosterState();
   return NextResponse.json({
     ok: true,
-    imported: rows.length,
-    skipped,
-    added: addedEmails,
-    removed: removedEmails,
+    imported: done.rows,
+    skipped: done.skipped,
+    added: done.added,
+    removed: done.removed,
     gate: eligibilityGate(state, new Date()),
     total: state.total,
   });

@@ -15,19 +15,21 @@
  * break an import.
  */
 import { useState } from "react";
-import { Loader2, ShieldCheck, ShieldAlert, Upload, AlertTriangle, ExternalLink, Check, UserPlus } from "lucide-react";
+import { Loader2, ShieldCheck, ShieldAlert, Upload, AlertTriangle, ExternalLink, Check, UserPlus, Clock } from "lucide-react";
 
 interface Source {
   id: string; name: string; note: string; url: string;
   programmes: string[]; count: number;
   /** "platform" is read live from this database — there is nothing to import. */
   access: string;
+  /** True when the nightly refresh reads this one on its own. */
+  auto?: boolean;
 }
 interface Gate { enforcing: boolean; reason: string; stale: boolean }
 interface ImportRow {
   id: string; sourceId: string; rowsRead: number; rowsAccepted: number;
   rowsSkipped: number; addedEmails: string[]; removedEmails: string[];
-  error: string | null; createdAt: string;
+  error: string | null; createdAt: string; method?: string;
 }
 export interface EligibilityState {
   gate: Gate; total: number;
@@ -201,9 +203,16 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
               <div className="min-w-0">
                 <p className="text-[13.5px] font-bold text-fg">{s.name}</p>
                 <p className="mt-0.5 text-[12px] text-muted">{s.note}</p>
-                <a href={s.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[11.5px] font-semibold text-brand-700 hover:underline">
-                  <ExternalLink size={11} /> Open the source
-                </a>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <a href={s.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-brand-700 hover:underline">
+                    <ExternalLink size={11} /> Open the source
+                  </a>
+                  {s.access !== "platform" && (
+                    <span className={`inline-flex items-center gap-1 text-[11.5px] font-semibold ${s.auto ? "text-emerald-700" : "text-subtle"}`}>
+                      <Clock size={11} /> {s.auto ? "Re-read every night at 3am" : "Pasted in by hand"}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold tabular-nums ${s.count > 0 ? "bg-emerald-100 text-emerald-800" : "bg-elevated text-subtle"}`}>
@@ -274,6 +283,7 @@ export function EligibilityManager({ initial }: { initial: EligibilityState }) {
                   <div className="flex flex-wrap items-center gap-x-3 text-[11.5px]">
                     <span className="tabular-nums text-muted">{new Date(im.createdAt).toLocaleString()}</span>
                     <span className="font-semibold text-fg">{im.sourceId}</span>
+                    {im.method === "cron" && <span className="rounded bg-elevated px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-subtle">automatic</span>}
                     {im.error ? (
                       <span className="font-semibold text-rose-700">failed — {im.error}</span>
                     ) : (

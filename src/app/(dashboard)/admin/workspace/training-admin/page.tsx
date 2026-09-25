@@ -72,7 +72,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
             userId: true, submissionId: true,
             user: { select: { id: true, name: true, email: true, organization: true, country: true } },
             // The registration behind a public-form seat: what the model reads.
-            submission: { select: { data: true, email: true, createdAt: true } },
+            submission: { select: { data: true, email: true, createdAt: true, form: { select: { slug: true, title: true } } } },
           },
           orderBy: { bookedAt: "asc" },
         },
@@ -169,7 +169,14 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
               seatsHeld: (held.get(personOf(b)) ?? 0) - (b.status === "confirmed" ? 1 : 0),
               user: b.user,
               submission: b.submission
-                ? { data: (b.submission.data ?? {}) as Record<string, unknown>, email: b.submission.email, createdAt: b.submission.createdAt.toISOString() }
+                ? {
+                    data: (b.submission.data ?? {}) as Record<string, unknown>,
+                    email: b.submission.email,
+                    createdAt: b.submission.createdAt.toISOString(),
+                    // Which page they registered on: the week's own form,
+                    // or a session that takes its own registrations.
+                    formSlug: b.submission.form?.slug ?? null,
+                  }
                 : null,
               roster,
               accountName: accountName.get(emailOf(b).toLowerCase()) ?? null,

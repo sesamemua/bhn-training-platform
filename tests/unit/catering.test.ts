@@ -7,7 +7,7 @@ import type { RegistrantRow } from "../../src/lib/allocation/registrant-views";
 const NOW = new Date("2026-10-26T20:00:00Z"); // Monday evening: Monday's session is over
 const row = (o: Partial<RegistrantRow>): RegistrantRow => ({
   bookingId: "b", personKey: "p", name: "N", email: "n@x.ca", workshopId: "tue", workshop: "RA 101", day: "2026-10-27",
-  dayLabel: "Tue 27 Oct", status: "confirmed", letter: "sent", travel: "near", postcode: "", dietary: [], dietaryOther: "",
+  dayLabel: "Tue 27 Oct", status: "confirmed", letter: "sent", travel: "near", postcode: "", dietary: [], programmes: [], formSlug: null, dietaryOther: "",
   accessibility: "", preference: 1, appliedAt: "2026-09-20T10:00:00Z",
   workshopStart: "2026-10-27T16:00:00Z", workshopEnd: "2026-10-27T19:00:00Z", ...o,
 });

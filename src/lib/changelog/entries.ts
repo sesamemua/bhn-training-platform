@@ -22,6 +22,22 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registrants: newest first, compact, and where each one came from
+  {
+    title: "Registrants: newest first, and where each one registered",
+    body: "**Training admin → Registrants** used to open in alphabetical order, which buries the person who signed up five minutes ago. It now opens **newest first**, and:\n\n- **Latest registrants** sits at the top: the **three newest from ENGAGE and EXPERIENCE** and the **two newest from EQUIP**, so you can see who arrived without reading the table.\n- **One line per person.** Name, badges and the time they filed all sit on the same row, so a screenful is a screenful of registrants rather than three of them.\n- **A badge says which programme put them on a list** — EQUIP, ENGAGE/EXPERIENCE — or **Not on a list** in amber when their address matched none, which is the row to settle before seat offers go out.\n- **Innovation Ignited registrations are marked** *via Innovation Ignited* in teal. That session takes registrations on its own page, so those people never saw the Training Week form.\n\n**Eligibility lists** has also moved in the left menu: it now sits with **Training Week**, under the registration dashboard, instead of down under Administration → EQUIP.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  // ── The one list that can read itself, does
+  {
+    title: "The ENGAGE and EXPERIENCE list re-reads itself every night",
+    body: "Somebody had to remember to copy that sheet in. **At 3am the platform now reads it for itself** and replaces the list, leaving the same record of what changed as a paste does — marked **automatic** in the history. Anyone added by hand still survives it, and the other lists are untouched.\n\nIt needs **one** thing: a CSV link to that sheet the server can open without signing in, set as `ELIGIBILITY_SHEET_CSV`. Until it is set the card says **Pasted in by hand** and nothing changes. If the link ever stops working, the run is recorded as failed and **the list is left exactly as it was** — an unshared Google Sheet answers a CSV request with a sign-in page, and importing that would empty the list.\n\nThe **two EQUIP workbooks stay a paste**: they are on SharePoint, which needs Microsoft credentials U of T has to issue. **EQUIP applications made here already count live**, with no import at all.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Innovation Ignited takes its own registrations
   {
     title: "Innovation Ignited registers on its own page",

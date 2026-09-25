@@ -48,3 +48,15 @@ export function parseRoster(text: string, maxRows = 20_000): { rows: RosterRow[]
   }
   return { rows, skipped };
 }
+
+/**
+ * Is this an HTML page rather than a sheet?
+ *
+ * A Google Sheet that is not shared answers a CSV request with a
+ * sign-in page — cheerfully, at 200. It parses to zero addresses, and
+ * an import of zero addresses is how a list gets silently emptied, so
+ * the automatic refresh checks before it parses.
+ */
+export function looksLikeSignInPage(text: string): boolean {
+  return /^\s*(?:<!doctype|<html|<\?xml)/i.test(text);
+}
