@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/eligibility-import",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/registration-backup",
+      "schedule": "30 7 * * *"
     }
   ]
 }

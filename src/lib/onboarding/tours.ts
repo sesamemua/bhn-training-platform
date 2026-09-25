@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17d";
+export const TOUR_VERSION = "2026.10.17e";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "admin.registration-backups",
+    title: "Registrations are copied out as they arrive",
+    body: "Every registration is emailed out the moment it lands \u2014 readable in the message, attached as JSON \u2014 and once a night one message carries **all of them in a single file**. The mailbox is the backup: it needs nothing set up, it survives this platform, and a Training Week is about a megabyte. Set `REGISTRATION_BACKUP_EMAIL` to send them somewhere other than the team address.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.17e",
   },
   {
     id: "equip.application-round",

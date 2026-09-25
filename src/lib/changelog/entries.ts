@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Registrations are copied out of the database as they arrive
+  {
+    title: "Every registration is backed up the moment it arrives",
+    body: "Training Week registrations are the one thing on this platform that cannot be recreated. A capacity can be retyped and a letter can be resent, but nobody can reconstruct what two hundred people chose, ranked and told us about their diet.\n\nSo each registration is now **emailed out as it lands** \u2014 the answers written out in the message so a person can read them, and the whole registration attached as JSON so it can be put back. At roughly 3 KB each, a full Training Week is about a megabyte.\n\nOn top of that, a **nightly message carries every registration in one file**, because restoring from two hundred separate emails is not restoring. Yesterday\u2019s copy stays in the mailbox if today\u2019s is wrong.\n\nThey go to the team address unless `REGISTRATION_BACKUP_EMAIL` says otherwise. None of it can affect somebody registering: the copy is taken after the seat is booked, and a mail server having a bad morning is swallowed rather than shown to them.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Which round an EQUIP application landed in
   {
     title: "EQUIP applications say which round they landed in",

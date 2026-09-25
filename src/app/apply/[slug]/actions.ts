@@ -21,6 +21,7 @@ import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
 import { checkEligibility } from "@/lib/eligibility/check";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
+import { backupRegistration } from "@/lib/events/registration-backup";
 import { makeSeats } from "@/lib/formbuilder/seats";
 import { since, tooMany } from "@/lib/formbuilder/throttle";
 import type { Receipt } from "@/lib/formbuilder/receipt";
@@ -105,6 +106,16 @@ export async function submitPublicForm(
   // is not being given one.
   await makeSeats(doc, verdict.clean, row.id, null);
   revalidatePath("/admin/workspace/training-admin");
+
+  /*
+   * A copy of the registration, out of this database and into a
+   * mailbox, before anything else can go wrong with it. Awaited so it
+   * runs inside the request rather than after the response — a
+   * serverless function is frozen the moment it replies — but it never
+   * throws, so a mail server having a bad morning cannot turn somebody
+   * else's registration into an error.
+   */
+  await backupRegistration(row.id);
 
   const receipt = await sendAcknowledgement(doc, verdict.clean, { to: email });
   return { ok: true, receipt };
