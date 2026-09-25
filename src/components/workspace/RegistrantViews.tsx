@@ -375,9 +375,13 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           <span className="font-semibold text-fg">{r.name}</span>
                           <ProgrammeBadge programmes={r.programmes} />
                           <SourceBadge formSlug={r.formSlug} />
-                          <span className="text-[10.5px] text-subtle">{shortStamp(r.appliedAt)}</span>
                         </div>
-                        {r.email && r.email !== r.name && <div className="font-mono text-[10.5px] leading-tight text-subtle">{r.email}</div>}
+                        {/* Address and time share the second line, so a row
+                            with two badges is still two lines and not three. */}
+                        <div className="flex flex-wrap items-baseline gap-x-1.5 text-[10.5px] leading-tight text-subtle">
+                          {r.email && r.email !== r.name && <span className="font-mono">{r.email}</span>}
+                          <span>{shortStamp(r.appliedAt)}</span>
+                        </div>
                       </td>
                       {draft.perPerson ? (
                         <td className="px-2 py-1 text-muted">{r.workshops.join(" · ")}</td>
