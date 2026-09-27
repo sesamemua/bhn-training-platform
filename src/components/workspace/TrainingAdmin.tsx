@@ -1261,6 +1261,11 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
           </button>
         ))}
       </div>
+      {/* Where people edit letters is where they wonder how they end. */}
+      <p className="mb-4 -mt-2 text-[12px] text-muted">
+        Every letter ends with the BioHubNet signature — address, website, email, newsletter and LinkedIn.{" "}
+        <a href="/admin/email-signature" className="font-semibold text-brand-400 hover:text-brand-200">Edit the signature →</a>
+      </p>
 
       {/* Both rendered, one hidden — not a ternary.
           Compose holds the half-written message in local state, and the

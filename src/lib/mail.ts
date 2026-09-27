@@ -1,4 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { prisma } from "@/lib/prisma";
+import { cleanSignature, DEFAULT_SIGNATURE, SIGNATURE_KEY, withHtmlSignature, withSignature } from "@/lib/mail-signature";
 
 const HOST = process.env.SMTP_HOST;
 const PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
@@ -24,36 +26,26 @@ export function senderFrom(smtpFrom: string | undefined, user: string | undefine
 
 const FROM = senderFrom(process.env.SMTP_FROM, USER);
 
-/** Links the signature carries — the same ones biohubnet.ca's footer does. */
-export const SIGNATURE_LINKS = {
-  email: "info@biohubnet.ca",
-  newsletter: "https://biohubnet.ca/newsletter/",
-  linkedin: "https://www.linkedin.com/company/biohubnet",
-};
-
 /*
- * The standard "-- " delimiter (dash, dash, SPACE): mail clients know
- * it, fold what follows, and leave it out of replies.
+ * The signature every message ends with. Edited at /admin/email-signature
+ * and kept as a PlatformSetting; read once a minute per server rather
+ * than once per email, so a batch of letters costs one query, and a
+ * saved change reaches every instance within that minute.
  */
-export function withSignature(text: string): string {
-  return (
-    `${text.replace(/\s+$/, "")}\n\n-- \n${SENDER_NAME}\n${SIGNATURE_LINKS.email}\n` +
-    `Newsletter: ${SIGNATURE_LINKS.newsletter}\nLinkedIn: ${SIGNATURE_LINKS.linkedin}\n`
-  );
+const SIGNATURE_TTL_MS = 60_000;
+let signatureCache: { text: string; at: number } | null = null;
+
+export async function currentSignature(now = Date.now()): Promise<string> {
+  if (signatureCache && now - signatureCache.at < SIGNATURE_TTL_MS) return signatureCache.text;
+  const row = await prisma.platformSetting.findUnique({ where: { key: SIGNATURE_KEY } }).catch(() => null);
+  const text = row?.value ? cleanSignature(row.value) : "";
+  signatureCache = { text: text || DEFAULT_SIGNATURE, at: now };
+  return signatureCache.text;
 }
 
-export function withHtmlSignature(html: string): string {
-  const { email, newsletter, linkedin } = SIGNATURE_LINKS;
-  const block =
-    `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font:13px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#4b5563">` +
-    `<strong style="color:#111827">${SENDER_NAME}</strong><br>` +
-    `<a href="mailto:${email}" style="color:#1f4b5b">${email}</a><br>` +
-    `<a href="${newsletter}" style="color:#1f4b5b">Newsletter</a> &middot; ` +
-    `<a href="${linkedin}" style="color:#1f4b5b">LinkedIn</a>` +
-    `</div>`;
-  // A whole document (the EQUIP letters are one) takes it inside <body>;
-  // after </html> it would sit outside the page, where some clients drop it.
-  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${block}</body>`) : html + block;
+/** The editor calls this after saving, so its own next email uses the new one. */
+export function forgetSignature() {
+  signatureCache = null;
 }
 
 let cached: Transporter | null = null;
@@ -122,6 +114,7 @@ export async function sendMail(opts: {
   replyTo?: string;
 }) {
   const t = transporter();
+  const signature = opts.signature === false ? null : await currentSignature();
   const cc = normaliseMailRecipients(opts.cc);
   const bcc = normaliseMailRecipients(opts.bcc);
   await t.sendMail({
@@ -131,8 +124,8 @@ export async function sendMail(opts: {
     bcc: bcc.length ? bcc : undefined,
     replyTo: opts.replyTo,
     subject: opts.subject,
-    text: opts.signature === false ? opts.text : withSignature(opts.text),
-    html: opts.html === undefined || opts.signature === false ? opts.html : withHtmlSignature(opts.html),
+    text: signature ? withSignature(opts.text, signature) : opts.text,
+    html: signature && opts.html !== undefined ? withHtmlSignature(opts.html, signature) : opts.html,
     attachments: opts.attachments,
   });
 }

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── The signature is editable, and carries the address
+  {
+    title: "Edit the email signature yourself",
+    body: "The signature every email ends with now has **the full address** and **the website** above the email address:\n\nBioHubNet\nBiomanufacturing Hub Network\nLeslie Dan Faculty of Pharmacy, University of Toronto\n144 College Street, Toronto, Ontario M5S 3M2, Canada\nhttps://biohubnet.ca\ninfo@biohubnet.ca\nNewsletter \u00b7 LinkedIn\n\nAnd it is no longer fixed in code: **Administration \u2192 Email signature** lets any admin change it, with a live preview of how it will look in an email app and as plain text. Type it as plain lines \u2014 web and email addresses become links on their own, the first line goes bold. Saving changes every email sent from then on, within a minute. **Put back the original** undoes it, and every change is written to the audit log with the wording it replaced.\n\nThe Training Week **Email** tab links straight to it, since that is where people wonder how their letters end.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Mail is from BioHubNet, and signs off like it
   {
     title: "Every email is from BioHubNet, with a proper signature",

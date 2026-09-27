@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17g";
+export const TOUR_VERSION = "2026.10.17h";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "admin.email-signature",
+    title: "The email signature is yours to edit",
+    body: "**Administration \u2192 Email signature** holds the block every email ends with \u2014 name, address, website, email, newsletter and LinkedIn. Type plain lines; links make themselves. The preview shows it as recipients will see it, and **Put back the original** is always there.",
+    path: "/admin/email-signature",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Email signature", href: "/admin/email-signature" },
+    since: "2026.10.17h",
   },
   {
     id: "workspace.past-events",

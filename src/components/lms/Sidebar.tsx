@@ -73,7 +73,9 @@ import {
   BookUser,
   Radar,
   Search,
-  CalendarClock, MessageSquareText, Images, Speaker, ExternalLink, Brain} from "lucide-react";
+  CalendarClock, MessageSquareText, Images, Speaker, ExternalLink, Brain,
+  Signature,
+} from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
 import { isPausedPath, pausedPillarsActive, withoutPaused } from "@/lib/deploy/paused";
@@ -824,6 +826,8 @@ const adminPlatformItems: NavItem[] = [
     description: "Lightweight CMS — publish announcements, policy pages, and standalone content to /p/[slug] without a code deploy. Markdown body, draft / publish status, audience gating." },
   { label: "Newsletter exports",  href: "/admin/newsletter",          icon: Mail,        minRole: "admin",
     description: "New newsletter opt-ins ready to export to BioHubNet's mailing list." },
+  { label: "Email signature",     href: "/admin/email-signature",     icon: Signature,   minRole: "admin",
+    description: "The block every email the platform sends ends with — name, address, website, email, newsletter and LinkedIn. Edit it once and it changes everywhere." },
   { label: "Editable copy",       href: "/admin/copy",                icon: FileText,    minRole: "admin",
     description: "Every editable page string in one place — change headlines, subtitles, hero copy. Live pages also have inline pencils." },
   { label: "Theme proposals",     href: "/admin/theme-proposals",     icon: Palette,     minRole: "admin",
