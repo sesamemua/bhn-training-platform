@@ -109,7 +109,6 @@ export function RegistrationCounts() {
 
 /** What the tiles say before the first answer arrives. */
 const PLACEHOLDER: RegistrationCount[] = [
-  { key: "insights", title: "Industry Insights", when: "Thu 24 Sep", count: null, source: "registered on Luma", href: "https://luma.com/413vhu2v" },
   { key: "symposium", title: "Annual Symposium", when: "Thu 29 Oct", count: null, source: "approved on Luma", href: "https://luma.com/wh30nh1n", waiting: null },
   { key: "training", title: "Training Week", when: "26–28 Oct", count: null, source: "registered on the registration form", href: "/admin/workspace/training-admin?tab=registrants" },
 ];

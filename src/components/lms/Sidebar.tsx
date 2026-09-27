@@ -544,11 +544,12 @@ const workspaceAv2026Item: NavItem = {
 // One subgroup for all of them, after the events still being run, so
 // the menu reads upcoming then past and a finished event stops sitting
 // among the live ones as if it still needed doing. Industry Insights
-// (24 September) is the first; each item names its event, because
-// "Headshots & Bios" under a heading that covers several events would
-// not say whose.
+// (24 September) is the first. Each event gets a caption and short
+// items under it: "Industry Insights · 24 Sep" and "Industry Insights ·
+// Speakers" both truncated to "Industry Insights · …" in a sidebar this
+// narrow, which made the two links look identical.
 const pastInsightsStatsItem: NavItem = {
-  label: "Industry Insights · 24 Sep",
+  label: "Statistics",
   href: "/admin/events/2026-industry-insights",
   icon: BarChart3,
   minRole: "admin",
@@ -557,7 +558,7 @@ const pastInsightsStatsItem: NavItem = {
 };
 
 const workspaceInsightsSpeakersItem: NavItem = {
-  label: "Industry Insights · Speakers",
+  label: "Speakers",
   href: "/admin/events/2026-industry-insights/speakers",
   icon: Mic,
   minRole: "admin",
@@ -1286,6 +1287,11 @@ type AdminSubgroupTone = (typeof ADMIN_SUBGROUP_TONES)[keyof typeof ADMIN_SUBGRO
  *    • `z-10` keeps the bar above NavLink hover / active backgrounds.
  *    • Bar is `w-0.5` (2 px) to hold its weight against the bolder
  *      heading without feeling fussy. */
+/** One past event's name, above its links — the links themselves stay short. */
+function PastEventCaption({ children }: { children: React.ReactNode }) {
+  return <p className="truncate px-3 pb-0.5 pt-1 text-[11px] font-semibold text-muted">{children}</p>;
+}
+
 function AdminSubgroup({
   tone,
   label,
@@ -2133,6 +2139,7 @@ export function Sidebar({
                 past. Neutral tone, because nothing in it is waiting on
                 anybody. */}
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Past events">
+              <PastEventCaption>Industry Insights · 24 Sep</PastEventCaption>
               <NavLink item={pastInsightsStatsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceInsightsSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>

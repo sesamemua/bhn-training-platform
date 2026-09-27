@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { lumaRegistrationsFor } from "@/lib/events/registrations";
 import { EventBasicsEditor } from "@/components/admin/events/EventBasicsEditor";
 
 /**
@@ -49,9 +50,12 @@ export default async function AdminEventDetailPage({
 
   // Cheap secondary aggregate — count checked-in attendees so the
   // dashboard surfaces day-of progress at a glance.
-  const checkedInCount = await prisma.registration.count({
-    where: { eventId: event.id, checkedInAt: { not: null } },
-  });
+  const [checkedInCount, onLuma] = await Promise.all([
+    prisma.registration.count({ where: { eventId: event.id, checkedInAt: { not: null } } }),
+    // An event that registered people on Luma has none in the table
+    // above; its real count is Luma's.
+    lumaRegistrationsFor(event.slug).catch(() => null),
+  ]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -76,12 +80,22 @@ export default async function AdminEventDetailPage({
 
       {/* Stats strip */}
       <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard
-          icon={Users}
-          label="Registered"
-          value={event._count.registrations}
-          sub={`${checkedInCount} checked in`}
-        />
+        {onLuma ? (
+          <StatCard
+            icon={Users}
+            label="Registered"
+            value={onLuma.count ?? event._count.registrations}
+            sub={onLuma.count === null ? "Luma could not be read just now" : onLuma.source}
+            href={onLuma.href}
+          />
+        ) : (
+          <StatCard
+            icon={Users}
+            label="Registered"
+            value={event._count.registrations}
+            sub={`${checkedInCount} checked in`}
+          />
+        )}
         <StatCard icon={Calendar} label="Workshops" value={event._count.workshops} />
         <StatCard icon={ListChecks} label="Sessions" value={event._count.symposiumSessions} />
         <StatCard icon={Mic2} label="Speakers" value={event._count.speakers} />
@@ -190,12 +204,14 @@ function toLocalInput(d: Date | null | undefined): string {
 }
 
 function StatCard({
-  icon: Icon, label, value, sub,
+  icon: Icon, label, value, sub, href,
 }: {
   icon: React.ElementType;
   label: string;
   value: number;
   sub?: string;
+  /** Where the number comes from, when that is somewhere else. */
+  href?: string;
 }) {
   return (
     <div className="rounded-2xl border border-line bg-card p-4 surface-shadow">
@@ -204,7 +220,11 @@ function StatCard({
         {label}
       </div>
       <p className="text-2xl font-bold text-fg font-mono tabular-nums mt-1">{value}</p>
-      {sub && <p className="text-[11px] text-muted mt-0.5">{sub}</p>}
+      {sub && (
+        <p className="text-[11px] text-muted mt-0.5">
+          {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted hover:text-fg">{sub}</a> : sub}
+        </p>
+      )}
     </div>
   );
 }

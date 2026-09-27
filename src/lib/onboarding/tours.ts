@@ -115,7 +115,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "workspace.past-events",
     title: "Past events",
-    body: "Finished events now live under **Past events** in the Workspace menu, after the ones still being run. **Industry Insights \u00b7 24 Sep** opens its numbers \u2014 registrations, check-ins, speakers \u2014 and **Industry Insights \u00b7 Speakers** is the headshots and bios page.",
+    body: "Finished events now live under **Past events** in the Workspace menu, after the ones still being run. Under **Industry Insights \u00b7 24 Sep**, **Statistics** opens its numbers \u2014 registrations, check-ins, speakers \u2014 and **Speakers** is the headshots and bios page.",
     path: "/admin/events/2026-industry-insights",
     placement: "center",
     roles: ["admin", "superadmin"],

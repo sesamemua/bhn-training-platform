@@ -41,9 +41,23 @@ export interface LumaWaiting {
 }
 
 const LUMA_EVENTS = [
-  { key: "insights", title: "Industry Insights", when: "Thu 24 Sep", apiId: "evt-mkgN5TBGw4fnk7l", href: "https://luma.com/413vhu2v", source: "registered on Luma" },
-  { key: "symposium", title: "Annual Symposium", when: "Thu 29 Oct", apiId: "evt-az4yQOZR33DBiid", href: "https://luma.com/wh30nh1n", source: "approved on Luma" },
+  { key: "insights", slug: "2026-industry-insights", title: "Industry Insights", when: "Thu 24 Sep", apiId: "evt-mkgN5TBGw4fnk7l", href: "https://luma.com/413vhu2v", source: "registered on Luma" },
+  { key: "symposium", slug: "2026-annual-symposium", title: "Annual Symposium", when: "Thu 29 Oct", apiId: "evt-az4yQOZR33DBiid", href: "https://luma.com/wh30nh1n", source: "approved on Luma" },
 ] as const;
+
+/**
+ * Registrations for an event that took them on Luma, by the event's
+ * slug here. Null when it did not use Luma.
+ *
+ * The platform's own registration table is empty for these — people
+ * registered on Luma — so an event page counting only its own rows
+ * reports "0 registered" for an event two hundred people signed up to.
+ */
+export async function lumaRegistrationsFor(slug: string): Promise<{ count: number | null; source: string; href: string } | null> {
+  const e = LUMA_EVENTS.find((x) => x.slug === slug);
+  if (!e) return null;
+  return { count: await lumaCount(e.apiId), source: e.source, href: e.href };
+}
 
 /** Registered guests in a Luma event/get reply: the ticket counts, else guest_count. */
 export function lumaTotal(reply: unknown): number | null {
@@ -131,8 +145,9 @@ async function trainingWeekCount(): Promise<number> {
 
 /** `force` is the Refresh button: read Luma again rather than serve what is held. */
 export async function registrationCounts(force = false): Promise<{ at: string; events: RegistrationCount[] }> {
-  const [insights, symposium, waiting, training] = await Promise.all([
-    lumaCount(LUMA_EVENTS[0].apiId, force),
+  // Industry Insights (24 Sep) is over; its number now lives on its own
+  // page under Past events rather than on a card about live registration.
+  const [symposium, waiting, training] = await Promise.all([
     lumaCount(LUMA_EVENTS[1].apiId, force),
     lumaWaitingFor(LUMA_EVENTS[1].apiId, force),
     trainingWeekCount().catch(() => null),
@@ -143,7 +158,6 @@ export async function registrationCounts(force = false): Promise<{ at: string; e
   return {
     at: new Date().toISOString(),
     events: [
-      luma(LUMA_EVENTS[0], insights),
       { ...luma(LUMA_EVENTS[1], symposium), waiting },
       {
         key: "training",
