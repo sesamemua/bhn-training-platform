@@ -22,6 +22,22 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Mail is from BioHubNet, and signs off like it
+  {
+    title: "Every email is from BioHubNet, with a proper signature",
+    body: "Messages the platform sends now arrive **from \u201cBioHubNet\u201d** rather than \u201cBHN Training\u201d \u2014 recipients know the organisation, not this platform, and the old name sat next to an address that plainly belongs to BioHubNet.\n\nEvery message also ends with the same signature:\n\n**BioHubNet**\ninfo@biohubnet.ca\nNewsletter: biohubnet.ca/newsletter\nLinkedIn: linkedin.com/company/biohubnet\n\nIt is added in one place for everything \u2014 registration letters, seat decisions, EQUIP updates, the travel letter \u2014 so it cannot drift between them. The Training Week letters and the EQUIP letters no longer sign off with their own \u201cBioHubNet\u201d line, which would have printed the name twice. Mail the platform sends to the team itself (registration backups, *not on the list* alerts) goes without it.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  // ── Finished events get their own place
+  {
+    title: "Past events have their own section in the menu",
+    body: "The Workspace menu now has **Past events**, straight after the events still being run \u2014 upcoming first, then past \u2014 so a finished event stops sitting among the live ones as if it still needed doing.\n\n**Industry Insights (24 September)** is the first one in it:\n\n- **Industry Insights \u00b7 24 Sep** \u2014 the event\u2019s numbers: registrations and check-ins, speakers and sessions, with the registrations list one click on.\n- **Industry Insights \u00b7 Speakers** \u2014 the headshots and bios page that used to be the whole of its old menu group.\n\nEach entry names its event, because \u201cHeadshots & Bios\u201d under a heading that will cover several events would not say whose.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── A miss is the signal that the list is behind
   {
     title: "A registrant who is not on the list makes us re-read it",

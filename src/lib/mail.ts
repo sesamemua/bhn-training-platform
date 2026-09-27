@@ -5,14 +5,56 @@ const PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
 const USER = process.env.SMTP_USER;
 const PASS = process.env.SMTP_PASS;
 /**
- * Display name shown to recipients, when SMTP_FROM isn't set explicitly.
- * info@biohubnet.ca is BioHubNet's own address, not this platform's — a
- * "BHN Training" sender name on mail sent from it reads as the wrong
- * organization signing someone else's inbox. Every other configured
- * mailbox keeps the platform's own name.
+ * Who every message says it is from: BioHubNet.
+ *
+ * Recipients know the organisation, not this platform — "BHN Training"
+ * in an inbox is a sender nobody signed up to hear from, next to an
+ * address that plainly belongs to BioHubNet. So the display name is
+ * fixed here rather than trusted to SMTP_FROM, which is an env var that
+ * has carried the old name; only the ADDRESS is taken from it.
  */
-const SENDER_NAME = USER === "info@biohubnet.ca" ? "BioHubNet" : "BHN Training";
-const FROM = process.env.SMTP_FROM ?? (USER ? `${SENDER_NAME} <${USER}>` : "");
+export const SENDER_NAME = "BioHubNet";
+
+/** "BioHubNet <addr>", whatever shape SMTP_FROM arrived in. */
+export function senderFrom(smtpFrom: string | undefined, user: string | undefined): string {
+  const fromEnv = smtpFrom?.match(/<([^>]+)>/)?.[1] ?? smtpFrom?.trim();
+  const address = fromEnv || user;
+  return address ? `${SENDER_NAME} <${address}>` : "";
+}
+
+const FROM = senderFrom(process.env.SMTP_FROM, USER);
+
+/** Links the signature carries — the same ones biohubnet.ca's footer does. */
+export const SIGNATURE_LINKS = {
+  email: "info@biohubnet.ca",
+  newsletter: "https://biohubnet.ca/newsletter/",
+  linkedin: "https://www.linkedin.com/company/biohubnet",
+};
+
+/*
+ * The standard "-- " delimiter (dash, dash, SPACE): mail clients know
+ * it, fold what follows, and leave it out of replies.
+ */
+export function withSignature(text: string): string {
+  return (
+    `${text.replace(/\s+$/, "")}\n\n-- \n${SENDER_NAME}\n${SIGNATURE_LINKS.email}\n` +
+    `Newsletter: ${SIGNATURE_LINKS.newsletter}\nLinkedIn: ${SIGNATURE_LINKS.linkedin}\n`
+  );
+}
+
+export function withHtmlSignature(html: string): string {
+  const { email, newsletter, linkedin } = SIGNATURE_LINKS;
+  const block =
+    `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font:13px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#4b5563">` +
+    `<strong style="color:#111827">${SENDER_NAME}</strong><br>` +
+    `<a href="mailto:${email}" style="color:#1f4b5b">${email}</a><br>` +
+    `<a href="${newsletter}" style="color:#1f4b5b">Newsletter</a> &middot; ` +
+    `<a href="${linkedin}" style="color:#1f4b5b">LinkedIn</a>` +
+    `</div>`;
+  // A whole document (the EQUIP letters are one) takes it inside <body>;
+  // after </html> it would sit outside the page, where some clients drop it.
+  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${block}</body>`) : html + block;
+}
 
 let cached: Transporter | null = null;
 
@@ -70,6 +112,9 @@ export async function sendMail(opts: {
    *  by the registration-confirmation flow to ship a .ics calendar
    *  invite alongside the HTML body. */
   attachments?: MailAttachment[];
+  /** False for mail to ourselves (backups, "somebody pressed Tell us"):
+   *  a newsletter link in the team's own archive is noise. */
+  signature?: boolean;
   /** Where replies should land. From stays fixed to SMTP_FROM — Gmail
    *  rewrites an unverified From, so overriding it would silently send as
    *  the mailbox anyway. Reply-To is the supported way to route an answer
@@ -86,8 +131,8 @@ export async function sendMail(opts: {
     bcc: bcc.length ? bcc : undefined,
     replyTo: opts.replyTo,
     subject: opts.subject,
-    text: opts.text,
-    html: opts.html,
+    text: opts.signature === false ? opts.text : withSignature(opts.text),
+    html: opts.html === undefined || opts.signature === false ? opts.html : withHtmlSignature(opts.html),
     attachments: opts.attachments,
   });
 }

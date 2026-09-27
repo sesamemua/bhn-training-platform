@@ -62,6 +62,7 @@ export async function GET(req: Request) {
 
   await sendMail({
     to: TO(),
+    signature: false,
     subject: `Registration backup · everything as at ${day} · ${rows.length} registrations`,
     text:
       `Every registration on the platform, as at ${day}.\n\n` +

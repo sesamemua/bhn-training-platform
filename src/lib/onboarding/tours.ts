@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17f";
+export const TOUR_VERSION = "2026.10.17g";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "workspace.past-events",
+    title: "Past events",
+    body: "Finished events now live under **Past events** in the Workspace menu, after the ones still being run. **Industry Insights \u00b7 24 Sep** opens its numbers \u2014 registrations, check-ins, speakers \u2014 and **Industry Insights \u00b7 Speakers** is the headshots and bios page.",
+    path: "/admin/events/2026-industry-insights",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Industry Insights", href: "/admin/events/2026-industry-insights" },
+    since: "2026.10.17g",
   },
   {
     id: "admin.eligibility-on-miss",

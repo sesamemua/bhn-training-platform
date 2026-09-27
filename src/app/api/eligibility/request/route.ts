@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       to: TEAM,
       cc: ALSO,
       replyTo: email,
+      signature: false,
       subject: `Training Week: ${email} is not on the eligibility lists`,
       text:
         `${name || "Someone"} registered for Training Week with ${email}, which is not on any programme list.\n\n` +

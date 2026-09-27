@@ -67,6 +67,7 @@ export async function backupRegistration(submissionId: string): Promise<void> {
 
     await sendMail({
       to: TO(),
+      signature: false,
       subject: `Registration backup · ${row.form.title} · ${who}`,
       text:
         `${who} registered for ${row.form.title} at ${row.createdAt.toISOString()}.\n` +

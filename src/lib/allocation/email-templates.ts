@@ -139,7 +139,10 @@ export interface EmailTemplate {
   body: string;
 }
 
-const SIGN_OFF = "\n\n{{coordinator}}\nBioHubNet";
+/* Just the team's name: every message now ends with the BioHubNet
+   signature (name, address, newsletter, LinkedIn) added by sendMail, and
+   "BioHubNet" on its own line above it said the same thing twice. */
+const SIGN_OFF = "\n\n{{coordinator}}";
 
 /**
  * The starting wording.

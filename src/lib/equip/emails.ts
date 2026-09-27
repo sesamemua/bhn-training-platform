@@ -209,7 +209,9 @@ function textVersion(opts: {
   }
   if (ctaLabel && ctaUrl) parts.push("", `${ctaLabel}: ${ctaUrl}`);
   if (footnote) parts.push("", footnote);
-  parts.push("", "—", "BioHubNet · EQUIP", "Questions? info@biohubnet.ca");
+  // No sign-off of its own: sendMail ends every message with the
+  // BioHubNet signature, and "BioHubNet · EQUIP / info@…" above it
+  // printed the address twice.
   return parts.join("\n");
 }
 

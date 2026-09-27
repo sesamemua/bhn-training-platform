@@ -539,25 +539,35 @@ const workspaceAv2026Item: NavItem = {
     "Livecast's round-3 quote: what the room costs, what the stream adds, and the total — laid out for deciding whether to stream. What the stream actually buys, and every page of the document.",
 };
 
-// WORKSPACE → Industry Insights. A different event on a different day,
-// so its own subgroup rather than a fifth item under 2026 Symposium —
-// filing it there would be the same mistake as speakers living under
-// Events, one level down.
+// WORKSPACE → Past events. Events that have happened, kept for their
+// numbers — who registered, who came, who spoke — rather than as work.
+// One subgroup for all of them, after the events still being run, so
+// the menu reads upcoming then past and a finished event stops sitting
+// among the live ones as if it still needed doing. Industry Insights
+// (24 September) is the first; each item names its event, because
+// "Headshots & Bios" under a heading that covers several events would
+// not say whose.
+const pastInsightsStatsItem: NavItem = {
+  label: "Industry Insights · 24 Sep",
+  href: "/admin/events/2026-industry-insights",
+  icon: BarChart3,
+  minRole: "admin",
+  description:
+    "Industry Insights, 24 September — registrations and check-ins, speakers and sessions, with the registrations list one click on.",
+};
+
 const workspaceInsightsSpeakersItem: NavItem = {
-  // Same job, same label. Two identical features under two different
-  // names is a worse inconsistency than renaming one the user did not
-  // point at.
-  label: "Headshots & Bios",
+  label: "Industry Insights · Speakers",
   href: "/admin/events/2026-industry-insights/speakers",
   icon: Mic,
   minRole: "admin",
   badgeKey: "speakers-new-insights",
   description:
-    "Industry Insights, 24 September. Hand the invited hiring professionals one link and they fill in their own headshot, bio, LinkedIn and what their session will cover — no account needed.",
+    "The hiring professionals who spoke at Industry Insights on 24 September — headshots, bios, LinkedIn and what each session covered.",
 };
 
-// WORKSPACE → Knowledge Exchange → Awardee Intake. Its own subgroup, like
-// Industry Insights: a programme, not an event or a discipline. In the
+// WORKSPACE → Knowledge Exchange → Awardee Intake. Its own subgroup: a
+// programme, not an event or a discipline. In the
 // Workspace because Administration → Experience is paused in production.
 const workspaceKeAwardeesItem: NavItem = {
   label: "Awardee Intake",
@@ -2100,9 +2110,8 @@ export function Sidebar({
                 Process for the form and the seats — three subgroups for
                 one job, none of which was about the symposium. */}
             {/* Training Week (26–28 Oct) before the Symposium (29 Oct) —
-                chronological, and its own subgroup for the reason
-                Industry Insights has one: a different event on
-                different days. The form and the dashboard that runs it
+                chronological, and its own subgroup because it is a
+                different event on different days. The form and the dashboard that runs it
                 were filed under "2026 Symposium", where "Registration
                 Form" did not say which registration and "Admin
                 Dashboard" did not say which admin. Under this heading
@@ -2120,7 +2129,11 @@ export function Sidebar({
               <NavLink item={workspaceAv2025Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
-            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Industry Insights">
+            {/* Straight after the events still being run: upcoming, then
+                past. Neutral tone, because nothing in it is waiting on
+                anybody. */}
+            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Past events">
+              <NavLink item={pastInsightsStatsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceInsightsSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Knowledge Exchange">
