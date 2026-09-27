@@ -11,6 +11,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import type { EquipStream } from "@/lib/equip/types";
+import { ResumeByEmail } from "./ResumeByEmail";
 import { appendCampaignAttribution } from "@/lib/campaign/attribution";
 import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
 
@@ -83,8 +84,8 @@ export function PublicEquipStart({
         </label>
       </div>
       <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
-        We use the address to identify your application, send your submission receipt,
-        and reply about it.
+        We email the link to your application to this address straight away — it is the only
+        way back into it — then use it for your submission receipt and to reply about it.
       </p>
       {error && <p className="mt-2 text-[12.5px] text-rose-700">{error}</p>}
       <button
@@ -95,6 +96,7 @@ export function PublicEquipStart({
         {busy ? <Loader2 size={14} className="animate-spin" /> : null}
         Start the application <ArrowRight size={14} />
       </button>
+      <ResumeByEmail />
     </div>
   );
 }

@@ -12,6 +12,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { DraftLinkBar } from "@/components/equip/DraftLinkBar";
+import { draftExpiresAt } from "@/lib/equip/draft-expiry";
 import { ConnectForm } from "@/components/equip/ConnectForm";
 import { isEditable, type EquipDocument, type EquipStatus, type VentureConnectFormData } from "@/lib/equip/types";
 
@@ -33,7 +35,7 @@ export default async function PublicVentureConnectFormPage({
     where: { publicToken: token },
     select: {
       id: true, stream: true, status: true, formData: true, documents: true, submittedAt: true,
-      applicantName: true, applicantEmail: true, reviewerNote: true,
+      applicantName: true, applicantEmail: true, reviewerNote: true, draftNoticeSentAt: true,
     },
   });
   if (!app || app.stream !== "venture_connect") notFound();
@@ -60,6 +62,15 @@ export default async function PublicVentureConnectFormPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      {/* Only while it is a draft: one sent back for more information is in a
+          reviewer's hands and does not expire. */}
+      {app.status === "draft" && (
+        <DraftLinkBar
+          token={token}
+          email={app.applicantEmail ?? ""}
+          expiresAt={app.draftNoticeSentAt ? draftExpiresAt(app.draftNoticeSentAt).toISOString() : null}
+        />
+      )}
       <ConnectForm
         applicationId={token}
         initial={(app.formData ?? {}) as VentureConnectFormData}

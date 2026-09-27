@@ -4051,6 +4051,13 @@ model EquipApplication {
   /// not necessarily the one STATUS_TO_TEMPLATE would suggest, since
   /// the reviewer can pick a different template on the send panel.
   lastEmailTemplateId    String?
+  /// When the applicant was first emailed the link to their draft, with
+  /// the two-week notice. The draft is removed two weeks after THIS, not
+  /// after it was started: a draft nobody was ever told about is never
+  /// removed, because the promise was never made to them. Sending the
+  /// link again does not move it — the deadline is the one they were
+  /// given. Null on anything that is not a public draft.
+  draftNoticeSentAt      DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 

@@ -24,6 +24,8 @@ import {
 import { institutionLabel } from "@/lib/equip/institutions";
 import { applicantOf } from "@/lib/equip/applicant";
 import { roundFor } from "@/lib/equip/rounds";
+import { draftExpiresAt } from "@/lib/equip/draft-expiry";
+import { NotifyDraftsButton } from "@/components/admin/equip/NotifyDraftsButton";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +82,7 @@ export default async function AdminEquipPage({
     applicantName?: string | null;
     applicantEmail?: string | null;
     reviewer: { id: string; name: string | null } | null;
+    draftNoticeSentAt?: Date | null;
   };
   let apps: QueueRow[] = [];
   let drafts: QueueRow[] = [];
@@ -103,6 +106,7 @@ export default async function AdminEquipPage({
       user: { select: { id: true, name: true, email: true } },
       applicantName: true, applicantEmail: true,
       reviewer: { select: { id: true, name: true } },
+      draftNoticeSentAt: true,
     } as const;
     [apps, drafts, counts] = await Promise.all([
       prisma.equipApplication.findMany({
@@ -405,10 +409,14 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
           title={`Drafts — ${drafts.length} started, none submitted`}
           icon={<PencilLine size={14} className="text-amber-600" />}
         >
-          <p className="mb-2 text-[12px] text-muted">
-            Nobody is waiting on a reviewer for these: the applicant has started one and not sent it.
-            Shown newest change first, so the ones that stopped are at the bottom.
-          </p>
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-prose text-[12px] text-muted">
+              Nobody is waiting on a reviewer for these: the applicant has started one and not sent it.
+              Each is emailed its link when it is started, and <strong className="text-fg">removed two weeks after that email</strong> if
+              still unsubmitted. A draft that was never told is never removed.
+            </p>
+            <NotifyDraftsButton untold={drafts.filter((d) => !d.user && !d.draftNoticeSentAt).length} />
+          </div>
           <div className="@container rounded-xl border border-line overflow-x-auto">
             <table className="w-full text-xs">
               <thead className="bg-elevated text-subtle">
@@ -417,6 +425,7 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                   <th className="text-left px-2.5 py-2">Stream</th>
                   <th className="hidden @4xl:table-cell text-left px-2.5 py-2">Started</th>
                   <th className="text-left px-2.5 py-2">Last changed</th>
+                  <th className="text-left px-2.5 py-2">Removed</th>
                   <th className="text-right px-2.5 py-2"></th>
                 </tr>
               </thead>
@@ -436,6 +445,20 @@ WHERE migration_name = '20260620000000_equip_application_pipeline';`}
                       <td className="px-2.5 py-2 font-mono text-[10px] text-subtle whitespace-nowrap">
                         {day(d.updatedAt)}
                         <span className="block text-subtle/80">{sinceWords(d.updatedAt)}</span>
+                      </td>
+                      <td className="px-2.5 py-2 whitespace-nowrap">
+                        {d.draftNoticeSentAt ? (() => {
+                          const at = draftExpiresAt(d.draftNoticeSentAt);
+                          const left = Math.ceil((at.getTime() - Date.now()) / 86_400_000);
+                          return (
+                            <span className={`font-mono text-[10px] ${left <= 3 ? "font-bold text-amber-700" : "text-subtle"}`}>
+                              {day(at)}
+                              <span className="block font-sans text-subtle/80">{left <= 0 ? "tonight" : `in ${left} day${left === 1 ? "" : "s"}`}</span>
+                            </span>
+                          );
+                        })() : (
+                          <span className="text-[10px] text-subtle" title="Never emailed its link, so it is not removed">not told · kept</span>
+                        )}
                       </td>
                       <td className="px-2.5 py-2 text-right">
                         <DeleteApplicationButton

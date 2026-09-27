@@ -2,12 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/eligibility-import",
+      "path": "/api/cron/nightly",
       "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/registration-backup",
-      "schedule": "30 7 * * *"
     }
   ]
 }

@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { NOTICE_SELECT, sendDraftLink } from "@/lib/equip/draft-notice";
 import {
   sanitizeCampaignAttribution,
   withCampaignAttribution,
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   const token = randomBytes(24).toString("base64url");
-  await prisma.equipApplication.create({
+  const app = await prisma.equipApplication.create({
     data: {
       userId: null,
       applicantName: name,
@@ -97,8 +98,16 @@ export async function POST(req: NextRequest) {
         attribution,
       ),
     },
-    select: { id: true },
+    select: NOTICE_SELECT,
   });
 
-  return NextResponse.json({ ok: true, token });
+  /*
+   * The link, by email, now — before anything else can happen to the
+   * tab it is sitting in. Until this, the URL bar was the only copy of
+   * it, and people who closed the tab started again from nothing.
+   * Never fails the start: they have the page open either way.
+   */
+  const told = await sendDraftLink(app).catch(() => ({ sent: false, expiresAt: null }));
+
+  return NextResponse.json({ ok: true, token, emailed: told.sent });
 }

@@ -93,3 +93,60 @@ export async function backupRegistration(submissionId: string): Promise<void> {
      */
   }
 }
+
+/** Everything registered through a public form. */
+const MAX_ROWS = 5_000;
+
+/**
+ * One file with every registration in it — what the nightly job sends.
+ *
+ * The per-registration copies above are the real safety net; this is
+ * the other half, because restoring from two hundred separate emails is
+ * not restoring. Throws on a mail failure: the nightly job reports it.
+ */
+export async function backupAllRegistrations(): Promise<{ registrations: number; bytes: number } | null> {
+  if (!mailConfigured()) return null;
+  const rows = await prisma.eventFormSubmission.findMany({
+    orderBy: { createdAt: "asc" },
+    take: MAX_ROWS,
+    select: {
+      id: true, email: true, createdAt: true, data: true,
+      form: { select: { slug: true, title: true } },
+      bookings: {
+        select: {
+          id: true, status: true, rank: true, bookedAt: true, approvedAt: true,
+          workshop: { select: { slug: true, title: true, startDateTime: true } },
+        },
+        orderBy: { rank: "asc" },
+      },
+    },
+  });
+
+  const day = new Date().toISOString().slice(0, 10);
+  const body = JSON.stringify({ takenAt: new Date().toISOString(), count: rows.length, registrations: rows }, null, 2);
+
+  /* Per form, so the subject line says what is in it without opening it. */
+  const perForm = rows.reduce<Record<string, number>>((acc, r) => {
+    acc[r.form.title] = (acc[r.form.title] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  await sendMail({
+    to: TO(),
+    signature: false,
+    subject: `Registration backup · everything as at ${day} · ${rows.length} registrations`,
+    text:
+      `Every registration on the platform, as at ${day}.\n\n` +
+      Object.entries(perForm).map(([title, n]) => `  ${n}  ${title}`).join("\n") +
+      `\n\nThe attachment is the whole thing: answers, the sessions each person asked for, ` +
+      `and where each seat stands. Keep the most recent few; each one replaces the last.\n` +
+      `This message is a backup — nothing is expected of you.\n`,
+    attachments: [{
+      filename: `registrations-${day}.json`,
+      content: body,
+      contentType: "application/json",
+    }],
+  });
+
+  return { registrations: rows.length, bytes: body.length };
+}

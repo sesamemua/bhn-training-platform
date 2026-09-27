@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Public EQUIP drafts: the link is emailed, and drafts expire
+  {
+    title: "EQUIP applicants are emailed the link to their draft, and drafts expire after two weeks",
+    body: "**Why drafts were being abandoned.** Every unsubmitted EQUIP draft on the platform was a *public* one \u2014 no account, no login to expire. The only way back into one was its link, and that link lived only in the browser tab it was started in: nobody was ever sent it. Close the tab or switch computers and the draft was gone for good. The drafts show it \u2014 people with two or three applications, one of them abandoned at 20 of 21 fields and started again from nothing.\n\n**What happens now**\n\n- **The link is emailed the moment an application is started**, with a plain deadline: *Please submit by Sunday 11 October. Applications that have not been submitted by then are removed, along with anything uploaded.*\n- **The draft itself says so** in a blue bar at the top \u2014 the link has been emailed to them, the date to submit by, and **Email me the link again**.\n- **Lost the email too?** The start page has **Already started an application? \u2014 Email me my link**. It never says whether an address has a draft, so it cannot be used to find out who has applied.\n- **Drafts are removed two weeks after that email**, every night, uploaded files included. The two weeks run from the email, not from when the draft was started, and sending the link again repeats the same date rather than granting a new one. **A draft whose owner was never told is never removed.**\n\n**The drafts already there.** None of them was ever sent its link, so none of them will be removed. In **Admin \u2192 EQUIP \u2192 Drafts**, each draft now shows when it will be removed \u2014 or *not told \u00b7 kept* \u2014 and **Email the link to N drafts never told** sends them the same letter, which starts their two weeks. It asks before sending.\n\nThe three nightly jobs \u2014 eligibility refresh, registration backup and draft clean-up \u2014 now run from one schedule.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
   // ── Submitted registrations: compact, and honest about email
   {
     title: "Submitted registrations: half the height, and clear that deciding sends nothing",

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17i";
+export const TOUR_VERSION = "2026.10.17j";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "equip.draft-links",
+    title: "Drafts get their link, and two weeks",
+    body: "Public EQUIP applicants are now emailed the link to their draft the moment they start, with a date two weeks later to submit by. **Drafts** shows each one\u2019s removal date. The drafts started before this were never told, so they are kept \u2014 **Email the link to N drafts never told** sends them the letter and starts their two weeks.",
+    path: "/admin/equip",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open EQUIP drafts", href: "/admin/equip" },
+    since: "2026.10.17j",
   },
   {
     id: "training-admin.decide-no-mail",

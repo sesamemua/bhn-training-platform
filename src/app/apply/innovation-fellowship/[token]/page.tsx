@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { InnovationFellowshipForm } from "@/components/equip/InnovationFellowshipForm";
 import { prisma } from "@/lib/prisma";
+import { DraftLinkBar } from "@/components/equip/DraftLinkBar";
+import { draftExpiresAt } from "@/lib/equip/draft-expiry";
 import type { EquipDocument, InnovationFellowshipFormData } from "@/lib/equip/types";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +30,8 @@ export default async function InnovationFellowshipApplicationPage({
       formData: true,
       documents: true,
       submittedAt: true,
+      applicantEmail: true,
+      draftNoticeSentAt: true,
     },
   });
   if (!application || application.stream !== "innovation_fellowship") notFound();
@@ -53,6 +57,11 @@ export default async function InnovationFellowshipApplicationPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <DraftLinkBar
+        token={token}
+        email={application.applicantEmail ?? ""}
+        expiresAt={application.draftNoticeSentAt ? draftExpiresAt(application.draftNoticeSentAt).toISOString() : null}
+      />
       <InnovationFellowshipForm
         applicationId={token}
         initial={(application.formData ?? {}) as InnovationFellowshipFormData}
