@@ -15,7 +15,8 @@ import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { SocialQueue, type QueuePost } from "@/components/workspace/SocialQueue";
 import { openCycles } from "@/lib/social/cycles";
-import { REMINDER_LADDER } from "@/lib/social/types";
+import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
+import { SYMPOSIUM_SOCIAL_STREAM, syncSpeakerHighlights } from "@/lib/social/speakers";
 
 export const dynamic = "force-dynamic";
 
@@ -27,25 +28,48 @@ export default async function SocialPage() {
   const cycles = await openCycles(prisma, now);
   const byId = new Map(cycles.map((c) => [c.deadlineId, c]));
 
+  const event = await prisma.bhnEvent.findUnique({
+    where: { slug: EVENT_SLUG },
+    select: { id: true },
+  });
+  const speakers = event
+    ? await prisma.speaker.findMany({
+        where: { eventId: event.id },
+        orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true, fullName: true, title: true, organization: true,
+          bio: true, photoUrl: true, sessionTitle: true, updatedAt: true,
+        },
+      })
+    : [];
+  await syncSpeakerHighlights(prisma, speakers, now);
+  const speakersById = new Map(speakers.map((speaker) => [speaker.id, speaker]));
+
   const rows = await prisma.socialPost.findMany({
     where: { status: { in: ["draft", "approved", "scheduled"] } },
     orderBy: [{ scheduledFor: "asc" }],
-    take: 60,
+    take: 200,
   });
 
-  const posts: QueuePost[] = rows.map((r) => {
+  const posts: QueuePost[] = rows
+    .filter((r) => r.stream !== SYMPOSIUM_SOCIAL_STREAM || speakersById.has(r.deadlineId))
+    .map((r) => {
     const cycle = byId.get(r.deadlineId);
+    const speaker = r.stream === SYMPOSIUM_SOCIAL_STREAM
+      ? speakersById.get(r.deadlineId)
+      : undefined;
     return {
       id: r.id,
+      stream: r.stream,
       kind: r.kind,
       status: r.status,
-      cycleLabel: cycle?.cycleLabel ?? "Closed cycle",
+      cycleLabel: speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
       daysBefore: r.daysBefore,
       body: r.body,
-      assetUrl: r.assetUrl,
+      assetUrl: speaker?.photoUrl ? `/api/admin/social/posts/${r.id}/image` : r.assetUrl,
       assetSpec: r.assetSpec,
       scheduledFor: r.scheduledFor.toISOString(),
-      overdue: r.scheduledFor.getTime() < now.getTime(),
+      overdue: r.stream !== SYMPOSIUM_SOCIAL_STREAM && r.scheduledFor.getTime() < now.getTime(),
       /*
        * The one thing the queue knows that the post does not.
        *
@@ -54,13 +78,14 @@ export default async function SocialPage() {
        * moved, the date inside it is wrong and only this comparison can
        * say so.
        */
-      stale:
-        r.status === "approved" &&
-        cycle !== undefined &&
-        r.kind === "reminder" &&
-        Math.abs(
-          cycle.deadlineAt.getTime() - r.daysBefore * 86_400_000 - r.scheduledFor.getTime(),
-        ) > 36 * 3_600_000,
+      stale: speaker
+        ? speaker.updatedAt.getTime() > (r.approvedAt ?? r.updatedAt).getTime()
+        : r.status === "approved" &&
+          cycle !== undefined &&
+          r.kind === "reminder" &&
+          Math.abs(
+            cycle.deadlineAt.getTime() - r.daysBefore * 86_400_000 - r.scheduledFor.getTime(),
+          ) > 36 * 3_600_000,
     };
   });
 
@@ -70,7 +95,7 @@ export default async function SocialPage() {
       <PageHero
         eyebrow="Workspace · Marketing"
         title="Social"
-        description={`Posts drafted from live EQUIP cycles — a launch, a ${REMINDER_LADDER.join("/")}-day reminder ladder, and the recipients announcement. Nothing has a date typed into it, so extending a deadline moves every unsent reminder with it. Approve a post, copy it, post it, mark it done.`}
+        description="Draft, review and prepare social posts for VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."
         icon={<Megaphone />}
       />
       <div className="mt-6">

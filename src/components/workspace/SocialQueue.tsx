@@ -12,11 +12,12 @@
  * in the UI would be the worst of both.
  */
 import { useState } from "react";
-import { Check, Copy, Clock, RefreshCw, X, Image as ImageIcon } from "lucide-react";
+import { Check, Copy, Clock, Download, RefreshCw, X, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface QueuePost {
   id: string;
+  stream: string;
   kind: string;
   status: string;
   cycleLabel: string;
@@ -34,6 +35,7 @@ const KIND_LABEL: Record<string, string> = {
   launch: "Launch",
   reminder: "Reminder",
   recipients: "Recipients",
+  speaker: "Speaker highlight",
 };
 
 const STATUS_TONE: Record<string, string> = {
@@ -46,6 +48,7 @@ const STATUS_TONE: Record<string, string> = {
 
 export function SocialQueue({ initial }: { initial: QueuePost[] }) {
   const [posts, setPosts] = useState(initial);
+  const [group, setGroup] = useState<"symposium_2026" | "venture_connect">("symposium_2026");
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -94,20 +97,44 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
     }
   }
 
-  if (posts.length === 0) {
-    return (
-      <p className="rounded-xl border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
-        Nothing drafted yet. Posts appear here once a VentureConnect cycle is open —
-        the daily job drafts a launch and a reminder ladder from the cycle&apos;s own
-        deadline, so nothing here has a date typed into it.
-      </p>
-    );
-  }
+  const visible = posts.filter((post) => post.stream === group);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
+        {([
+          ["symposium_2026", "2026 Symposium speakers"],
+          ["venture_connect", "VentureConnect"],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={group === key}
+            onClick={() => setGroup(key)}
+            className={cn(
+              "border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors",
+              group === key ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-fg",
+            )}
+          >
+            {label} <span className="ml-1 text-subtle">{posts.filter((post) => post.stream === key).length}</span>
+          </button>
+        ))}
+      </div>
+      <p className="text-[12.5px] text-muted">
+        {group === "symposium_2026"
+          ? "Drafts use the speaker bios and headshots saved for the symposium. Review each person's details and permission before posting."
+          : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
+      </p>
       {note && <p className="text-[12.5px] text-rose-700">{note}</p>}
-      {posts.map((p) => (
+      {visible.length === 0 && (
+        <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
+          {group === "symposium_2026"
+            ? "No speaker highlights are ready yet. Add a bio and headshot in 2026 Symposium → Speakers; the draft will appear here."
+            : "No VentureConnect drafts yet. They appear when a cycle opens."}
+        </p>
+      )}
+      {visible.map((p) => (
         <article key={p.id} className="rounded-xl border-2 border-line-strong bg-card">
           <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line px-4 py-2.5">
             <span className="text-[13px] font-bold text-fg">
@@ -137,15 +164,32 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                 these words, so the date in them is out of date. */}
             {p.stale && (
               <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-rose-700">
-                <RefreshCw size={12} /> the deadline moved since this was approved
+                <RefreshCw size={12} /> {p.stream === "symposium_2026"
+                  ? "Speaker details changed; review this draft and graphic again"
+                  : "the deadline moved since this was approved"}
               </span>
             )}
-            <span className="ml-auto text-[11px] tabular-nums text-subtle">
-              {new Date(p.scheduledFor).toLocaleDateString("en-CA")}
-            </span>
+            {p.stream !== "symposium_2026" && (
+              <span className="ml-auto text-[11px] tabular-nums text-subtle">
+                {new Date(p.scheduledFor).toLocaleDateString("en-CA")}
+              </span>
+            )}
           </header>
 
           <div className="px-4 py-3">
+            {p.stream === "symposium_2026" && p.assetUrl && (
+              <div className="mb-3 flex flex-wrap items-end gap-3">
+                {/* The same protected PNG endpoint supplies the preview and download. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.assetUrl} alt={`Speaker graphic for ${p.cycleLabel}`} className="aspect-square w-48 max-w-full border border-line object-cover" />
+                <a
+                  href={`${p.assetUrl}?download=1`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] font-semibold text-fg hover:bg-elevated"
+                >
+                  <Download size={13} /> Download PNG
+                </a>
+              </div>
+            )}
             <textarea
               defaultValue={p.body}
               rows={Math.min(14, p.body.split("\n").length + 2)}
