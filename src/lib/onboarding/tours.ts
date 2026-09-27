@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17h";
+export const TOUR_VERSION = "2026.10.17i";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.decide-no-mail",
+    title: "Deciding never emails anyone",
+    body: "In **Submitted registrations**, Approve, Waitlist, Decline and Not decided only **save** a decision \u2014 the seat then shows **Letter not sent**. Nobody is emailed until you press **Send letter**, which asks you first. Closed rows show each person\u2019s seats beside them in colour; open ones put their answers on the left and the decisions on the right.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.17i",
   },
   {
     id: "admin.email-signature",

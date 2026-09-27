@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Submitted registrations: compact, and honest about email
+  {
+    title: "Submitted registrations: half the height, and clear that deciding sends nothing",
+    body: "**Training admin \u2192 Registrants \u2192 Submitted registrations** used every row badly: each person was four lines tall with the right half empty, and opening one stacked everything down the page.\n\n- **Closed**, a person is one row: name, a coloured programme tag (**ENGAGE / EXPERIENCE**, **EQUIP**, *Account only*, *No programme*) instead of their answer as a sentence, then address, time and form on one small line \u2014 and **their seats beside them on the right**, colour-coded, with a small envelope on any seat whose letter has not been sent.\n- **Open**, their answers sit on the left and the decisions on the right, so you read one and act on the other without scrolling.\n- Each seat is **two lines**: the session with its four decisions as one colour-coded control, then the letter status and the optional note side by side. **+ Add a line to the letter** opens the note only when you want one \u2014 it used to take a whole line on every seat.\n\n**And it now says plainly what the buttons do.** A blue note above the decisions: *These buttons never email anyone.* A decision is saved and shows **Letter not sent** until you press **Send letter**, which now asks you first and names the person and the letter. Each button says what it means for them \u2014 *gets a place*, *first in line if a place opens*, *no place in this session*, *back to waiting* \u2014 and after you press one it confirms: *saved. Nobody has been emailed.*\n\nThe old line under these buttons said approving, waitlisting or declining *writes to them*. It did not \u2014 the letter has always waited for Send \u2014 and that sentence is gone.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── The signature is editable, and carries the address
   {
     title: "Edit the email signature yourself",
