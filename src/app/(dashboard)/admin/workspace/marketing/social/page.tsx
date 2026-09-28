@@ -16,6 +16,7 @@ import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenColl
 import { SocialQueue, type QueuePost } from "@/components/workspace/SocialQueue";
 import { openCycles } from "@/lib/social/cycles";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
+import { findCompanyLogo, logoOverride } from "@/lib/social/company-logo";
 import { SYMPOSIUM_SOCIAL_STREAM, syncSpeakerHighlights } from "@/lib/social/speakers";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,10 @@ export default async function SocialPage() {
     : [];
   await syncSpeakerHighlights(prisma, speakers, now);
   const speakersById = new Map(speakers.map((speaker) => [speaker.id, speaker]));
+  const organizations = [...new Set(speakers.map((speaker) => speaker.organization).filter((name): name is string => !!name))];
+  const companyLogos = new Map(event
+    ? await Promise.all(organizations.map(async (name) => [name, await findCompanyLogo(prisma, event.id, name)] as const))
+    : []);
 
   const rows = await prisma.socialPost.findMany({
     where: { status: { in: ["draft", "approved", "scheduled"] } },
@@ -67,6 +72,8 @@ export default async function SocialPage() {
       daysBefore: r.daysBefore,
       body: r.body,
       assetUrl: speaker?.photoUrl ? `/api/admin/social/posts/${r.id}/image` : r.assetUrl,
+      organization: speaker?.organization ?? null,
+      companyLogoUrl: logoOverride(r.assetSpec) ?? (speaker?.organization ? companyLogos.get(speaker.organization) ?? null : null),
       assetSpec: r.assetSpec,
       scheduledFor: r.scheduledFor.toISOString(),
       overdue: r.stream !== SYMPOSIUM_SOCIAL_STREAM && r.scheduledFor.getTime() < now.getTime(),

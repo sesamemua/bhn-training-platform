@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { REMINDER_LADDER, postKey, type CycleFacts, type Recipient } from "../../src/lib/social/types";
 import { daysBetween, isOverdue, planCycle, planRecipients, readableDate, sendTimeFor } from "../../src/lib/social/plan";
 import { draftPost } from "../../src/lib/social/copy";
+import { SOCIAL_MENTIONS } from "../../src/lib/social/tags";
 
 const facts: CycleFacts = {
   stream: "venture_connect",
@@ -92,6 +93,7 @@ test("day counting follows Toronto, not the server's UTC", () => {
 
 test("the launch post carries the amount, the close date and the link", () => {
   const { body } = draftPost({ kind: "launch", facts });
+  for (const mention of SOCIAL_MENTIONS) assert.ok(body.includes(mention));
   assert.match(body, /\$5,000/);
   assert.match(body, new RegExp(readableDate(facts.deadlineAt)));
   assert.match(body, /\/apply\/venture-connect/);

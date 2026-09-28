@@ -12,7 +12,9 @@
  * in the UI would be the worst of both.
  */
 import { useState } from "react";
-import { Check, Copy, Clock, Download, RefreshCw, X, Image as ImageIcon } from "lucide-react";
+import { Check, Copy, Clock, Download, Pencil, RefreshCw, Save, X, Image as ImageIcon } from "lucide-react";
+import { LogoMark } from "@/components/ui/Logo";
+import { withSocialTags } from "@/lib/social/tags";
 import { cn } from "@/lib/utils";
 
 export interface QueuePost {
@@ -24,6 +26,8 @@ export interface QueuePost {
   daysBefore: number;
   body: string;
   assetUrl: string | null;
+  organization: string | null;
+  companyLogoUrl: string | null;
   assetSpec: unknown;
   scheduledFor: string;
   overdue: boolean;
@@ -52,8 +56,10 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
 
-  async function act(id: string, action: string, extra: Record<string, unknown> = {}) {
+  async function act(id: string, action: string, extra: Record<string, unknown> = {}): Promise<boolean> {
     setBusy(id);
     setNote(null);
     try {
@@ -80,8 +86,35 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             : p,
         ),
       );
+      return true;
     } catch (e) {
       setNote(e instanceof Error ? e.message : "Couldn't save.");
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function uploadLogo(post: QueuePost, file: File) {
+    if (file.size > 3_000_000) {
+      setNote("Choose a logo under 3 MB.");
+      return;
+    }
+    setBusy(post.id);
+    setNote(null);
+    try {
+      const form = new FormData();
+      form.set("logo", file);
+      const response = await fetch(`/api/admin/social/posts/${post.id}/company-logo`, {
+        method: "POST", body: form,
+      });
+      const result = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !result.url) throw new Error(result.error ?? "Couldn't upload the logo.");
+      setPosts((all) => all.map((item) => item.id === post.id
+        ? { ...item, companyLogoUrl: result.url!, assetUrl: post.assetUrl ? `${post.assetUrl.split("?")[0]}?v=${Date.now()}` : null }
+        : item));
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : "Couldn't upload the logo.");
     } finally {
       setBusy(null);
     }
@@ -89,11 +122,11 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
 
   async function copy(p: QueuePost) {
     try {
-      await navigator.clipboard.writeText(p.body);
+      await navigator.clipboard.writeText(withSocialTags(p.body));
       setCopied(p.id);
       setTimeout(() => setCopied(null), 1800);
     } catch {
-      window.prompt("Copy the post:", p.body);
+      window.prompt("Copy the post:", withSocialTags(p.body));
     }
   }
 
@@ -113,7 +146,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             aria-selected={group === key}
             onClick={() => setGroup(key)}
             className={cn(
-              "border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors",
+              "border-b-2 px-4 py-3 text-[16px] font-semibold transition-colors",
               group === key ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-fg",
             )}
           >
@@ -121,7 +154,10 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
           </button>
         ))}
       </div>
-      <p className="text-[12.5px] text-muted">
+      <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
+        {group === "symposium_2026" ? "2026 Annual Symposium" : "VentureConnect"}
+      </h2>
+      <p className="text-[14px] text-muted">
         {group === "symposium_2026"
           ? "Drafts use the speaker bios and headshots saved for the symposium. Review each person's details and permission before posting."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
@@ -135,9 +171,9 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
         </p>
       )}
       {visible.map((p) => (
-        <article key={p.id} className="rounded-xl border-2 border-line-strong bg-card">
-          <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line px-4 py-2.5">
-            <span className="text-[13px] font-bold text-fg">
+        <article key={p.id} className="mx-auto w-full max-w-[860px] overflow-hidden rounded-[8px] border border-line-strong bg-card-solid text-fg shadow-sm">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line bg-elevated px-5 py-3">
+            <span className="text-[14px] font-bold">
               {KIND_LABEL[p.kind] ?? p.kind}
               {p.kind === "reminder" && (
                 <span className="ml-1.5 font-normal text-muted">
@@ -145,7 +181,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                 </span>
               )}
             </span>
-            <span className="text-[11.5px] text-subtle">{p.cycleLabel}</span>
+            <span className="text-[13px] text-muted">{p.cycleLabel}</span>
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-inset",
@@ -155,7 +191,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
               {p.status}
             </span>
             {p.overdue && p.status === "draft" && (
-              <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-amber-700">
+              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-amber-700">
                 <Clock size={12} /> due {new Date(p.scheduledFor).toLocaleDateString("en-CA")}
               </span>
             )}
@@ -163,65 +199,116 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                 tell you itself: the cycle moved after somebody approved
                 these words, so the date in them is out of date. */}
             {p.stale && (
-              <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-rose-700">
+              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-rose-700">
                 <RefreshCw size={12} /> {p.stream === "symposium_2026"
                   ? "Speaker details changed; review this draft and graphic again"
                   : "the deadline moved since this was approved"}
               </span>
             )}
             {p.stream !== "symposium_2026" && (
-              <span className="ml-auto text-[11px] tabular-nums text-subtle">
+              <span className="ml-auto text-[12px] tabular-nums text-muted">
                 {new Date(p.scheduledFor).toLocaleDateString("en-CA")}
               </span>
             )}
-          </header>
-
-          <div className="px-4 py-3">
-            {p.stream === "symposium_2026" && p.assetUrl && (
-              <div className="mb-3 flex flex-wrap items-end gap-3">
-                {/* The same protected PNG endpoint supplies the preview and download. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.assetUrl} alt={`Speaker graphic for ${p.cycleLabel}`} className="aspect-square w-48 max-w-full border border-line object-cover" />
-                <a
-                  href={`${p.assetUrl}?download=1`}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] font-semibold text-fg hover:bg-elevated"
-                >
-                  <Download size={13} /> Download PNG
-                </a>
-              </div>
-            )}
-            <textarea
-              defaultValue={p.body}
-              rows={Math.min(14, p.body.split("\n").length + 2)}
-              disabled={p.status === "published" || p.status === "skipped"}
-              onBlur={(e) => {
-                if (e.target.value.trim() && e.target.value !== p.body) {
-                  void act(p.id, "edit", { body: e.target.value });
-                }
-              }}
-              className="w-full resize-y rounded-lg border border-line bg-elevated/40 px-3 py-2 font-mono text-[12.5px] leading-relaxed text-fg outline-none focus:border-brand-500 disabled:opacity-60"
-            />
-            <p className="mt-1 text-[11px] text-subtle">
-              {p.assetUrl ? (
-                <span className="inline-flex items-center gap-1 text-emerald-700">
-                  <ImageIcon size={11} /> image ready
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1">
-                  <ImageIcon size={11} /> no image yet — the renderer writes one back from the asset spec
-                </span>
-              )}
-            </p>
           </div>
 
-          <footer className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-2.5">
+          <div className="flex items-center gap-3 px-5 pb-2 pt-5">
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-full border border-line bg-card-solid">
+              <LogoMark size={40} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[17px] font-bold leading-tight">BioHubNet</p>
+              <p className="text-[13px] text-muted">LinkedIn post preview</p>
+            </div>
+          </div>
+
+          <div className="px-5 pb-5 pt-3">
+            {editingId === p.id ? (
+              <div className="space-y-3">
+                <textarea
+                  value={editBody}
+                  onChange={(event) => setEditBody(event.target.value)}
+                  rows={Math.max(12, editBody.split("\n").length + Math.ceil(editBody.length / 65))}
+                  maxLength={6000}
+                  className="w-full resize-y rounded-[6px] border border-line bg-card-solid p-3 text-[16px] leading-[1.55] text-fg outline-none focus:ring-2 focus:ring-brand-500"
+                  aria-label="Edit LinkedIn post"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={busy === p.id || !editBody.trim()}
+                    onClick={async () => {
+                      if (await act(p.id, "edit", { body: editBody })) setEditingId(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-600 px-3 py-2 text-[14px] font-semibold text-white disabled:opacity-40"
+                  >
+                    <Save size={16} /> Save copy
+                  </button>
+                  <button type="button" onClick={() => setEditingId(null)} className="px-3 py-2 text-[14px] font-semibold text-muted">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <p className="whitespace-pre-wrap break-words text-[16px] leading-[1.55]">{withSocialTags(p.body)}</p>
+            )}
+          </div>
+
+          {p.assetUrl && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-y border-line object-contain" />
+          )}
+
+          {p.stream === "symposium_2026" && (
+            <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
+              {p.companyLogoUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={p.companyLogoUrl} alt={`${p.organization ?? "Organization"} logo`} className="h-12 w-28 object-contain" />
+              ) : <span className="text-[13px] text-muted">No organization logo selected</span>}
+              {p.status !== "published" && p.status !== "skipped" && (
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50">
+                  <ImageIcon size={16} /> {p.companyLogoUrl ? "Replace organization logo" : "Upload organization logo"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    disabled={busy === p.id}
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      if (file) void uploadLogo(p, file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          )}
+
+          <footer className="flex flex-wrap items-center gap-2 px-5 py-4">
             <button
               type="button"
               onClick={() => void copy(p)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-semibold text-fg transition-colors hover:bg-elevated"
+              className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
             >
-              <Copy size={12} /> {copied === p.id ? "Copied" : "Copy text"}
+              <Copy size={16} /> {copied === p.id ? "Copied" : "Copy post"}
             </button>
+
+            {p.stream === "symposium_2026" && p.assetUrl && (
+              <a
+                href={`${p.assetUrl}${p.assetUrl.includes("?") ? "&" : "?"}download=1`}
+                className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
+              >
+                <Download size={16} /> Download graphic
+              </a>
+            )}
+
+            {p.status !== "published" && p.status !== "skipped" && editingId !== p.id && (
+              <button
+                type="button"
+                onClick={() => { setEditingId(p.id); setEditBody(withSocialTags(p.body)); }}
+                className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
+              >
+                <Pencil size={16} /> Edit post
+              </button>
+            )}
 
             {p.status === "draft" && (
               <button

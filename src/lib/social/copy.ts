@@ -16,6 +16,7 @@
  * Pure module: no Prisma, no clock.
  */
 import { readableDate } from "./plan";
+import { withSocialTags } from "./tags";
 import type { AssetSpec, CycleFacts, Recipient, SocialKind } from "./types";
 
 const money = (n: number) =>
@@ -45,11 +46,13 @@ export interface Draft {
 }
 
 export function draftPost(input: DraftInput): Draft {
+  let draft: Draft;
   switch (input.kind) {
-    case "launch": return launch(input.facts);
-    case "reminder": return reminder(input.facts, input.daysLeft ?? 0);
-    case "recipients": return recipients(input.facts, input.recipients ?? [], input.showAmounts !== false);
+    case "launch": draft = launch(input.facts); break;
+    case "reminder": draft = reminder(input.facts, input.daysLeft ?? 0); break;
+    case "recipients": draft = recipients(input.facts, input.recipients ?? [], input.showAmounts !== false); break;
   }
+  return { ...draft, body: withSocialTags(draft.body) };
 }
 
 function launch(f: CycleFacts): Draft {

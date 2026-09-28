@@ -8,6 +8,7 @@ import {
   SYMPOSIUM_REGISTRATION_URL,
   type HighlightSpeaker,
 } from "../../src/lib/social/speakers";
+import { SOCIAL_MENTIONS, withSocialTags } from "../../src/lib/social/tags";
 
 const speaker: HighlightSpeaker = {
   id: "speaker-1",
@@ -21,11 +22,19 @@ const speaker: HighlightSpeaker = {
 
 test("speaker highlight uses submitted facts and the live registration link", () => {
   const body = draftSpeakerPost(speaker);
-  assert.match(body, /Alex Chen, Director of Training at Example Labs/);
+  assert.match(body, /@Alex Chen, Director of Training at Example Labs/);
   assert.match(body, /Building practical skills/);
   assert.match(body, /applied bioprocess training/);
   assert.ok(body.includes(SYMPOSIUM_REGISTRATION_URL));
   assert.ok(!body.includes(speaker.photoUrl!));
+  for (const mention of SOCIAL_MENTIONS) assert.ok(body.includes(mention));
+  assert.ok(body.endsWith(SOCIAL_MENTIONS.join(", ")));
+  assert.equal(withSocialTags(body), body);
+});
+
+test("speaker biography stays complete instead of ending mid-sentence", () => {
+  const bio = "A full first sentence. ".repeat(25) + "The closing sentence is still here.";
+  assert.ok(draftSpeakerPost({ ...speaker, bio }).includes("The closing sentence is still here."));
 });
 
 test("only speakers with both a bio and headshot become drafts", async () => {
@@ -37,6 +46,7 @@ test("only speakers with both a bio and headshot become drafts", async () => {
         created = data;
         return { count: data.length };
       },
+      findMany: async () => [],
     },
   } as unknown as PrismaClient;
   const count = await syncSpeakerHighlights(prisma, [
@@ -65,6 +75,6 @@ test("speaker graphic renders a downloadable square PNG with the BioHubNet logo"
   assert.equal(response.headers.get("content-type"), "image/png");
   assert.match(response.headers.get("content-disposition") ?? "", /^attachment;/);
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
-  assert.equal(png.readUInt32BE(16), 1200);
-  assert.equal(png.readUInt32BE(20), 1200);
+  assert.equal(png.readUInt32BE(16), 1600);
+  assert.equal(png.readUInt32BE(20), 1600);
 });
