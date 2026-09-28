@@ -121,7 +121,7 @@ export function renderSpeakerGraphic({
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
             {companyLogo && (
-              <div style={{ display: "flex", width: 500, height: 200, alignItems: "center", justifyContent: "center", background: "#ffffff", padding: 20, marginBottom: 35 }}>
+              <div style={{ display: "flex", width: 500, height: 200, alignItems: "center", justifyContent: "center", padding: 20, marginBottom: 35 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={companyLogo} alt={organization ?? "Organization"} width={460} height={160} style={{ objectFit: "contain" }} />
               </div>

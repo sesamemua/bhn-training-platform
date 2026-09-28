@@ -60,11 +60,12 @@ test("only speakers with both a bio and headshot become drafts", async () => {
   assert.deepEqual(created[0].assetSpec, { version: 1, template: "symposium-speaker" });
 });
 
-test("speaker graphic renders a downloadable square PNG with the BioHubNet logo", async () => {
+test("speaker graphic renders a downloadable square PNG with BioHubNet and organization logos", async () => {
   const logo = `data:image/png;base64,${(await readFile("public/biohubnet-logo.png")).toString("base64")}`;
   const response = renderSpeakerGraphic({
     logo,
     photo: logo,
+    companyLogo: logo,
     fullName: speaker.fullName,
     title: speaker.title,
     organization: speaker.organization,
