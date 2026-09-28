@@ -181,7 +181,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                 </span>
               )}
             </span>
-            <span className="text-[13px] text-muted">{p.cycleLabel}</span>
+            <span className="text-[17px] font-semibold text-fg">{p.cycleLabel}</span>
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-inset",
@@ -252,16 +252,22 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             )}
           </div>
 
-          {p.assetUrl && (
+          {p.assetUrl && (p.stream !== "symposium_2026" || p.companyLogoUrl) && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-y border-line object-contain" />
+          )}
+
+          {p.stream === "symposium_2026" && !p.companyLogoUrl && (
+            <p className="border-y border-line bg-brand-50 px-5 py-5 text-[15px] font-semibold text-brand-800">
+              Add the {p.organization ?? "organization"} logo to complete this speaker graphic.
+            </p>
           )}
 
           {p.stream === "symposium_2026" && (
             <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
               {p.companyLogoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={p.companyLogoUrl} alt={`${p.organization ?? "Organization"} logo`} className="h-12 w-28 object-contain" />
+                <img src={p.companyLogoUrl} alt={`${p.organization ?? "Organization"} logo`} className="h-16 w-40 object-contain" />
               ) : <span className="text-[13px] text-muted">No organization logo selected</span>}
               {p.status !== "published" && p.status !== "skipped" && (
                 <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50">
@@ -291,7 +297,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
               <Copy size={16} /> {copied === p.id ? "Copied" : "Copy post"}
             </button>
 
-            {p.stream === "symposium_2026" && p.assetUrl && (
+            {p.stream === "symposium_2026" && p.assetUrl && p.companyLogoUrl && (
               <a
                 href={`${p.assetUrl}${p.assetUrl.includes("?") ? "&" : "?"}download=1`}
                 className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
@@ -313,7 +319,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             {p.status === "draft" && (
               <button
                 type="button"
-                disabled={busy === p.id}
+                disabled={busy === p.id || (p.stream === "symposium_2026" && !p.companyLogoUrl)}
                 onClick={() => void act(p.id, "approve")}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[12px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-40"
               >
