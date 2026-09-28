@@ -26,6 +26,7 @@ test("a missing logo keeps the picture and actions available", () => {
   assert.match(html, /Alex Chen/);
   assert.match(html, /Upload organization logo/);
   assert.match(html, /alt="Social graphic for Alex Chen"/);
+  assert.match(html, /max-w-\[555px\]/);
   assert.match(html, /Download graphic/);
   assert.doesNotMatch(html, /disabled=""[^>]*>.*Approve/);
 });

@@ -171,9 +171,9 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
         </p>
       )}
       {visible.map((p) => (
-        <article key={p.id} className="mx-auto w-full max-w-[860px] overflow-hidden rounded-[8px] border border-line-strong bg-card-solid text-fg shadow-sm">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line bg-elevated px-5 py-3">
-            <span className="text-[14px] font-bold">
+        <section key={p.id} className="mx-auto w-full max-w-[555px] space-y-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-1 py-1">
+            <span className="text-[12px] font-bold text-muted">
               {KIND_LABEL[p.kind] ?? p.kind}
               {p.kind === "reminder" && (
                 <span className="ml-1.5 font-normal text-muted">
@@ -181,7 +181,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                 </span>
               )}
             </span>
-            <span className="text-[17px] font-semibold text-fg">{p.cycleLabel}</span>
+            <span className="text-[14px] font-semibold text-fg">{p.cycleLabel}</span>
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-inset",
@@ -212,53 +212,55 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             )}
           </div>
 
-          <div className="flex items-center gap-3 px-5 pb-2 pt-5">
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-full border border-line bg-card-solid">
-              <LogoMark size={40} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[17px] font-bold leading-tight">BioHubNet</p>
-              <p className="text-[13px] text-muted">LinkedIn post preview</p>
-            </div>
-          </div>
-
-          <div className="px-5 pb-5 pt-3">
-            {editingId === p.id ? (
-              <div className="space-y-3">
-                <textarea
-                  value={editBody}
-                  onChange={(event) => setEditBody(event.target.value)}
-                  rows={Math.max(12, editBody.split("\n").length + Math.ceil(editBody.length / 65))}
-                  maxLength={6000}
-                  className="w-full resize-y rounded-[6px] border border-line bg-card-solid p-3 text-[16px] leading-[1.55] text-fg outline-none focus:ring-2 focus:ring-brand-500"
-                  aria-label="Edit LinkedIn post"
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={busy === p.id || !editBody.trim()}
-                    onClick={async () => {
-                      if (await act(p.id, "edit", { body: editBody })) setEditingId(null);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-600 px-3 py-2 text-[14px] font-semibold text-white disabled:opacity-40"
-                  >
-                    <Save size={16} /> Save copy
-                  </button>
-                  <button type="button" onClick={() => setEditingId(null)} className="px-3 py-2 text-[14px] font-semibold text-muted">Cancel</button>
-                </div>
+          <article className="overflow-hidden rounded-[8px] border border-line-strong bg-card-solid text-fg shadow-sm">
+            <div className="flex items-center gap-2.5 px-4 pb-1 pt-3">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-full border border-line bg-card-solid">
+                <LogoMark size={34} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold leading-tight">BioHubNet</p>
+                <p className="text-[12px] text-muted">LinkedIn post preview</p>
               </div>
-            ) : (
-              <p className="whitespace-pre-wrap break-words text-[16px] leading-[1.55]">{withSocialTags(p.body)}</p>
-            )}
-          </div>
+            </div>
 
-          {p.assetUrl && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-y border-line object-contain" />
-          )}
+            <div className="px-4 pb-3 pt-2">
+              {editingId === p.id ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={editBody}
+                    onChange={(event) => setEditBody(event.target.value)}
+                    rows={Math.max(12, editBody.split("\n").length + Math.ceil(editBody.length / 65))}
+                    maxLength={6000}
+                    className="w-full resize-y rounded-[6px] border border-line bg-card-solid p-3 text-[16px] leading-[1.55] text-fg outline-none focus:ring-2 focus:ring-brand-500"
+                    aria-label="Edit LinkedIn post"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busy === p.id || !editBody.trim()}
+                      onClick={async () => {
+                        if (await act(p.id, "edit", { body: editBody })) setEditingId(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-600 px-3 py-2 text-[14px] font-semibold text-white disabled:opacity-40"
+                    >
+                      <Save size={16} /> Save copy
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)} className="px-3 py-2 text-[14px] font-semibold text-muted">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.5]">{withSocialTags(p.body)}</p>
+              )}
+            </div>
+
+            {p.assetUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-t border-line object-contain" />
+            )}
+          </article>
 
           {p.stream === "symposium_2026" && (
-            <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
+            <div className="flex flex-wrap items-center gap-3 px-1 py-2">
               {p.companyLogoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={p.companyLogoUrl} alt={`${p.organization ?? "Organization"} logo`} className="h-16 w-40 object-contain" />
@@ -282,7 +284,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             </div>
           )}
 
-          <footer className="flex flex-wrap items-center gap-2 px-5 py-4">
+          <footer className="flex flex-wrap items-center gap-2 px-1 pb-6 pt-1">
             <button
               type="button"
               onClick={() => void copy(p)}
@@ -352,7 +354,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
               </button>
             )}
           </footer>
-        </article>
+        </section>
       ))}
     </div>
   );
