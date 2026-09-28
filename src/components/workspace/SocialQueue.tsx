@@ -252,7 +252,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             )}
           </div>
 
-          {p.assetUrl && (p.stream !== "symposium_2026" || p.companyLogoUrl) && (
+          {p.assetUrl && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-y border-line object-contain" />
           )}
