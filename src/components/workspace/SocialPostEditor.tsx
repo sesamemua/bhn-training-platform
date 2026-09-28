@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { diffWordsWithSpace } from "diff";
 import { Check, History, LoaderCircle, RotateCcw } from "lucide-react";
 import type { SavedSocialText, SocialEditResponse, SocialTextChange } from "@/lib/social/edit-history";
+import { SocialMarkedText } from "./SocialMarkedText";
 
 function TextChanges({ before, after }: { before: string; after: string }) {
   return <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">
@@ -30,6 +31,8 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [showChanges, setShowChanges] = useState(false);
+  const [markupBase, setMarkupBase] = useState(post.body);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const saved = useRef(post);
   const latest = useRef({ body: post.body, trackChanges: post.trackChanges });
@@ -48,7 +51,7 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
     const observer = new ResizeObserver(resize);
     if (el.parentElement) observer.observe(el.parentElement);
     return () => observer.disconnect();
-  }, [value]);
+  }, [value, showChanges]);
 
   const save = useCallback((): Promise<void> => {
     if (inFlight.current) return inFlight.current;
@@ -105,18 +108,24 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
   }, [state]);
 
   useEffect(() => {
-    if (!historyOpen) return;
+    if (!historyOpen && !showChanges) return;
     let active = true;
+    const bodyAtLoad = saved.current.body;
     fetch(`/api/admin/social/posts/${post.id}/history`, { cache: "no-store" })
       .then(async (response) => {
         const result = await response.json() as { changes?: SocialTextChange[]; error?: string };
         if (!response.ok) throw new Error(result.error ?? "Couldn't load changes.");
-        if (active) setChanges((current) => [...new Map([...current, ...(result.changes ?? [])].map((item) => [item.id, item])).values()].sort((a, b) => b.version - a.version).slice(0, 50));
+        if (active) {
+          setChanges((current) => [...new Map([...current, ...(result.changes ?? [])].map((item) => [item.id, item])).values()].sort((a, b) => b.version - a.version).slice(0, 50));
+          if (showChanges && latest.current.body === bodyAtLoad) {
+            setMarkupBase(result.changes?.find((change) => change.after === bodyAtLoad)?.before ?? bodyAtLoad);
+          }
+        }
       })
       .catch((e) => { if (active) setHistoryError(e instanceof Error ? e.message : "Couldn't load changes."); })
       .finally(() => { if (active) setHistoryLoading(false); });
     return () => { active = false; };
-  }, [historyOpen, post.id]);
+  }, [historyOpen, showChanges, post.id]);
 
   function changeText(body: string) {
     latest.current.body = body; setValue(body);
@@ -136,7 +145,7 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
   }
 
   return <div>
-    <textarea
+    {showChanges ? <SocialMarkedText value={value} before={markupBase} label={label} readOnly={readOnly} onChange={changeText} onBlur={() => { void save(); }} /> : <textarea
       ref={textarea}
       value={value}
       onChange={(event) => changeText(event.target.value)}
@@ -147,7 +156,7 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
       aria-label={`Post text for ${label}`}
       spellCheck
       className="block min-h-20 w-full resize-none overflow-hidden rounded-[2px] border-0 bg-transparent p-0 text-[16px] leading-[1.5] text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:text-[14px]"
-    />
+    />}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-[12px]">
       <label className="inline-flex cursor-pointer items-center gap-2 text-muted">
         <input type="checkbox" role="switch" checked={tracking} disabled={readOnly || !!conflict} onChange={(event) => {
@@ -156,10 +165,21 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
         }} className="size-4 accent-brand-600" />
         Track changes
       </label>
+      <label className="inline-flex cursor-pointer items-center gap-2 text-muted">
+        <input type="checkbox" role="switch" checked={showChanges} onChange={(event) => {
+          setShowChanges(event.target.checked);
+          if (event.target.checked) {
+            setMarkupBase(changes.find((change) => change.after === saved.current.body)?.before ?? saved.current.body);
+            setHistoryLoading(true); setHistoryError(null);
+          }
+        }} className="size-4 accent-brand-600" />
+        Show changes in post
+      </label>
       <span role="status" className="inline-flex items-center gap-1 text-muted">
         {state === "saving" ? <><LoaderCircle size={13} className="animate-spin" /> Saving...</> : state === "saved" ? <><Check size={13} /> Saved</> : state === "pending" ? "Unsaved changes" : "Not saved"}
       </span>
     </div>
+    {showChanges && historyError && <p role="alert" className="mt-2 text-[13px] text-rose-800">{historyError}</p>}
     {error && <div role="alert" className="mt-2 space-y-2 text-[13px] text-rose-800">
       <p>{error}</p>
       {!conflict && <button type="button" onClick={() => void save()} className="inline-flex items-center gap-1 font-semibold underline"><RotateCcw size={14} /> Retry save</button>}
