@@ -12,13 +12,14 @@ import { prisma } from "@/lib/prisma";
 import { consentingRecipients, cycleById } from "@/lib/social/cycles";
 import { syncCycle, syncRecipients } from "@/lib/social/sync";
 import { TERMINAL_STATUSES, type SocialStatus } from "@/lib/social/types";
+import { editSocialPost } from "@/lib/social/edit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const Body = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("edit"), id: z.string().min(1), body: z.string().trim().min(1).max(6000) }),
-  z.object({ action: z.literal("approve"), id: z.string().min(1) }),
+  z.object({ action: z.literal("edit"), id: z.string().min(1), body: z.string().trim().min(1).max(6000), expectedVersion: z.number().int().nonnegative(), trackChanges: z.boolean() }),
+  z.object({ action: z.literal("approve"), id: z.string().min(1), expectedVersion: z.number().int().nonnegative() }),
   /* Back to draft. The words stay — an unapprove is "I want to change
      this", not "throw it away". */
   z.object({ action: z.literal("unapprove"), id: z.string().min(1) }),
@@ -42,6 +43,12 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   const data = parsed.data;
+
+  if (data.action === "edit") {
+    if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const outcome = await prisma.$transaction((tx) => editSocialPost(tx, actorId, data));
+    return NextResponse.json(outcome.result, { status: outcome.status });
+  }
 
   if (data.action === "regenerate") {
     const cycle = await cycleById(prisma, data.deadlineId);
@@ -76,19 +83,17 @@ export async function POST(req: NextRequest) {
   }
 
   switch (data.action) {
-    case "edit": {
+    case "approve": {
       if (TERMINAL_STATUSES.includes(post.status as SocialStatus)) {
-        return NextResponse.json({ error: "That post can no longer be edited." }, { status: 409 });
+        return NextResponse.json({ error: "That post can no longer be approved." }, { status: 409 });
       }
-      await prisma.socialPost.update({ where: { id: post.id }, data: { body: data.body } });
-      break;
-    }
-    case "approve":
-      await prisma.socialPost.update({
-        where: { id: post.id },
+      const approved = await prisma.socialPost.updateMany({
+        where: { id: post.id, editVersion: data.expectedVersion, status: post.status },
         data: { status: "approved", approvedAt: new Date(), approvedById: actorId },
       });
+      if (!approved.count) return NextResponse.json({ error: "The post changed. Refresh before approving." }, { status: 409 });
       break;
+    }
     case "unapprove":
       await prisma.socialPost.update({
         where: { id: post.id },

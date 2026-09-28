@@ -49,7 +49,7 @@ export async function syncCycle(
   const keys = planned.map(postKey);
   const existing = await prisma.socialPost.findMany({
     where: { key: { in: keys } },
-    select: { key: true, status: true, createdAt: true, updatedAt: true },
+    select: { key: true, status: true, createdAt: true, updatedAt: true, editVersion: true },
   });
   const byKey = new Map(existing.map((e) => [e.key, e]));
 
@@ -101,15 +101,16 @@ export async function syncCycle(
     }
 
     if (mayRegenerate(found.status as SocialStatus, found.updatedAt, found.createdAt)) {
-      await prisma.socialPost.update({
-        where: { key },
+      const updated = await prisma.socialPost.updateMany({
+        where: { key, status: "draft", updatedAt: found.updatedAt, editVersion: found.editVersion },
         data: {
           body: draft.body,
+          editVersion: { increment: 1 },
           assetSpec: draft.asset as unknown as object,
           scheduledFor: p.scheduledFor,
         },
       });
-      result.refreshed.push(key);
+      (updated.count ? result.refreshed : result.keptAsIs).push(key);
     } else {
       result.keptAsIs.push(key);
     }

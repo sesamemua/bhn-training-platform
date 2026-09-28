@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { withSocialTags } from "./tags";
 
 export const SYMPOSIUM_SOCIAL_STREAM = "symposium_2026";
-export const SYMPOSIUM_REGISTRATION_URL = "https://luma.com/wh30nh1n";
+export const SYMPOSIUM_REGISTRATION_URL = "https://biohubnet.ca/2026-annual-symposium";
 
 export interface HighlightSpeaker {
   id: string;
@@ -95,7 +95,7 @@ export async function syncSpeakerHighlights(
     if (!speaker || post.body !== previousSpeakerPost(speaker)) continue;
     await prisma.socialPost.updateMany({
       where: { id: post.id, status: "draft", body: post.body },
-      data: { body: draftSpeakerPost(speaker) },
+      data: { body: draftSpeakerPost(speaker), editVersion: { increment: 1 } },
     });
   }
   return result.count;

@@ -11,9 +11,11 @@
  * do — there is no LinkedIn app behind this, and pretending otherwise
  * in the UI would be the worst of both.
  */
-import { useState } from "react";
-import { Check, Copy, Clock, Download, Pencil, RefreshCw, Save, X, Image as ImageIcon } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Check, Copy, Clock, Download, RefreshCw, X, Image as ImageIcon } from "lucide-react";
 import { LogoMark } from "@/components/ui/Logo";
+import { SocialPostEditor } from "./SocialPostEditor";
+import type { SavedSocialText } from "@/lib/social/edit-history";
 import { withSocialTags } from "@/lib/social/tags";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +27,8 @@ export interface QueuePost {
   cycleLabel: string;
   daysBefore: number;
   body: string;
+  editVersion: number;
+  trackChanges: boolean;
   assetUrl: string | null;
   organization: string | null;
   companyLogoUrl: string | null;
@@ -56,8 +60,14 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editBody, setEditBody] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, { body: string; pending: boolean }>>({});
+  const onSaved = useCallback((saved: SavedSocialText) => {
+    setPosts((all) => all.map((post) => post.id === saved.id ? { ...post, ...saved } : post));
+  }, []);
+  const onDraftState = useCallback((id: string, body: string, pending: boolean) => {
+    setDrafts((all) => ({ ...all, [id]: { body, pending } }));
+  }, []);
+  const hasUnsavedChanges = Object.values(drafts).some((draft) => draft.pending);
 
   async function act(id: string, action: string, extra: Record<string, unknown> = {}): Promise<boolean> {
     setBusy(id);
@@ -66,7 +76,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
       const res = await fetch("/api/admin/social/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, id, ...extra }),
+        body: JSON.stringify({ action, id, expectedVersion: posts.find((post) => post.id === id)?.editVersion, ...extra }),
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(j.error ?? "Couldn't save.");
@@ -81,7 +91,6 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                   : action === "skip" ? "skipped"
                   : action === "markPublished" ? "published"
                   : p.status,
-                ...(action === "edit" ? { body: String(extra.body ?? p.body) } : {}),
               }
             : p,
         ),
@@ -121,12 +130,13 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
   }
 
   async function copy(p: QueuePost) {
+    const body = withSocialTags(drafts[p.id]?.body ?? p.body);
     try {
-      await navigator.clipboard.writeText(withSocialTags(p.body));
+      await navigator.clipboard.writeText(body);
       setCopied(p.id);
       setTimeout(() => setCopied(null), 1800);
     } catch {
-      window.prompt("Copy the post:", withSocialTags(p.body));
+      window.prompt("Copy the post:", body);
     }
   }
 
@@ -144,6 +154,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             type="button"
             role="tab"
             aria-selected={group === key}
+            disabled={hasUnsavedChanges && group !== key}
             onClick={() => setGroup(key)}
             className={cn(
               "border-b-2 px-4 py-3 text-[16px] font-semibold transition-colors",
@@ -224,33 +235,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             </div>
 
             <div className="px-4 pb-3 pt-2">
-              {editingId === p.id ? (
-                <div className="space-y-3">
-                  <textarea
-                    value={editBody}
-                    onChange={(event) => setEditBody(event.target.value)}
-                    rows={Math.max(12, editBody.split("\n").length + Math.ceil(editBody.length / 65))}
-                    maxLength={6000}
-                    className="w-full resize-y rounded-[6px] border border-line bg-card-solid p-3 text-[16px] leading-[1.55] text-fg outline-none focus:ring-2 focus:ring-brand-500"
-                    aria-label="Edit LinkedIn post"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={busy === p.id || !editBody.trim()}
-                      onClick={async () => {
-                        if (await act(p.id, "edit", { body: editBody })) setEditingId(null);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-[6px] bg-brand-600 px-3 py-2 text-[14px] font-semibold text-white disabled:opacity-40"
-                    >
-                      <Save size={16} /> Save copy
-                    </button>
-                    <button type="button" onClick={() => setEditingId(null)} className="px-3 py-2 text-[14px] font-semibold text-muted">Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap break-words text-[14px] leading-[1.5]">{withSocialTags(p.body)}</p>
-              )}
+              <SocialPostEditor post={{ ...p, body: withSocialTags(p.body) }} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
             </div>
 
             {p.assetUrl && (
@@ -284,7 +269,8 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
             </div>
           )}
 
-          <footer className="flex flex-wrap items-center gap-2 px-1 pb-6 pt-1">
+          <footer className="flex flex-col gap-2 px-1 pb-6 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => void copy(p)}
@@ -302,22 +288,25 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
               </a>
             )}
 
-            {p.status !== "published" && p.status !== "skipped" && editingId !== p.id && (
+            </div>
+            <div className="flex items-center justify-end gap-2">
+            {p.status !== "published" && p.status !== "skipped" && (
               <button
                 type="button"
-                onClick={() => { setEditingId(p.id); setEditBody(withSocialTags(p.body)); }}
-                className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
+                disabled={busy === p.id || drafts[p.id]?.pending}
+                onClick={() => void act(p.id, "skip")}
+                className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:bg-elevated disabled:opacity-40"
+                title="Decline this post"
               >
-                <Pencil size={16} /> Edit post
+                <X size={12} /> Not this one
               </button>
             )}
-
             {p.status === "draft" && (
               <button
                 type="button"
-                disabled={busy === p.id}
+                disabled={busy === p.id || drafts[p.id]?.pending}
                 onClick={() => void act(p.id, "approve")}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[12px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-40"
+                className="ml-auto inline-flex items-center gap-1.5 rounded-[6px] bg-emerald-700 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-40"
               >
                 <Check size={12} /> Approve
               </button>
@@ -326,7 +315,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
               <>
                 <button
                   type="button"
-                  disabled={busy === p.id}
+                  disabled={busy === p.id || drafts[p.id]?.pending}
                   onClick={() => void act(p.id, "markPublished")}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-[12px] font-bold text-white transition hover:brightness-110 disabled:opacity-40"
                 >
@@ -334,7 +323,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                 </button>
                 <button
                   type="button"
-                  disabled={busy === p.id}
+                  disabled={busy === p.id || drafts[p.id]?.pending}
                   onClick={() => void act(p.id, "unapprove")}
                   className="rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:bg-elevated"
                 >
@@ -342,17 +331,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
                 </button>
               </>
             )}
-            {p.status !== "published" && p.status !== "skipped" && (
-              <button
-                type="button"
-                disabled={busy === p.id}
-                onClick={() => void act(p.id, "skip")}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:bg-elevated"
-                title="Decline this post — it will not be drafted again"
-              >
-                <X size={12} /> Not this one
-              </button>
-            )}
+            </div>
           </footer>
         </section>
       ))}

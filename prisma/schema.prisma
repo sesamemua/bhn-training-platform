@@ -4259,6 +4259,8 @@ model SocialPost {
   /// The generated copy, as edited. Regenerating overwrites this ONLY
   /// while the post is still a draft.
   body      String
+  trackChanges Boolean @default(true)
+  editVersion Int @default(0)
   /// The contract with the image renderer, which a separate agent
   /// builds. Shape in lib/social/types.ts — deliberately free of
   /// database ids and of anything the body does not also say.

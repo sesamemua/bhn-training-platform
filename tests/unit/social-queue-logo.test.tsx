@@ -12,6 +12,8 @@ const post: QueuePost = {
   cycleLabel: "Alex Chen",
   daysBefore: 0,
   body: "Meet @Alex Chen.",
+  editVersion: 0,
+  trackChanges: true,
   assetUrl: "/api/admin/social/posts/post-1/image",
   organization: "Example Labs",
   companyLogoUrl: null,

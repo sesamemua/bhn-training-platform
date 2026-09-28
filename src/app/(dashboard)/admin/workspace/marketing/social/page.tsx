@@ -71,6 +71,8 @@ export default async function SocialPage() {
       cycleLabel: speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
       daysBefore: r.daysBefore,
       body: r.body,
+      editVersion: r.editVersion,
+      trackChanges: r.trackChanges,
       assetUrl: speaker?.photoUrl ? `/api/admin/social/posts/${r.id}/image` : r.assetUrl,
       organization: speaker?.organization ?? null,
       companyLogoUrl: logoOverride(r.assetSpec) ?? (speaker?.organization ? companyLogos.get(speaker.organization) ?? null : null),

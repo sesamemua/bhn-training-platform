@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { REMINDER_LADDER, postKey, type CycleFacts, type Recipient } from "../../src/lib/social/types";
 import { daysBetween, isOverdue, planCycle, planRecipients, readableDate, sendTimeFor } from "../../src/lib/social/plan";
 import { draftPost } from "../../src/lib/social/copy";
@@ -177,7 +178,30 @@ test("planRecipients is scheduled from now, because decisions land when they lan
 
 /* ── Regeneration: adds only, never undoes somebody's work ───────── */
 
-import { mayRegenerate } from "../../src/lib/social/sync";
+import { mayRegenerate, syncCycle } from "../../src/lib/social/sync";
+
+test("automatic refresh does not overwrite a concurrent edit", async () => {
+  const rows = planCycle(facts, NOW).map((planned) => ({
+    key: postKey(planned), status: "draft", createdAt: NOW, updatedAt: NOW, editVersion: 3,
+  }));
+  let refreshed = 0;
+  const db = { socialPost: {
+    findMany: async () => rows,
+    updateMany: async ({ where, data }: Prisma.SocialPostUpdateManyArgs) => {
+      assert.equal(where?.status, "draft");
+      assert.equal(where?.updatedAt, NOW);
+      assert.equal(where?.editVersion, 3);
+      assert.deepEqual(data.editVersion, { increment: 1 });
+      return { count: refreshed };
+    },
+  } } as unknown as PrismaClient;
+  const blocked = await syncCycle(db, facts, NOW);
+  assert.equal(blocked.refreshed.length, 0);
+  assert.equal(blocked.keptAsIs.length, rows.length);
+  refreshed = 1;
+  const successful = await syncCycle(db, facts, NOW);
+  assert.equal(successful.refreshed.length, rows.length);
+});
 
 test("an untouched draft may be regenerated when the deadline moves", () => {
   const made = new Date("2026-10-01T13:00:00.000Z");
