@@ -21,13 +21,13 @@ const post: QueuePost = {
   stale: false,
 };
 
-test("a missing logo keeps the picture visible while approval waits", () => {
+test("a missing logo keeps the picture and actions available", () => {
   const html = renderToStaticMarkup(createElement(SocialQueue, { initial: [post] }));
   assert.match(html, /Alex Chen/);
-  assert.match(html, /Add the Example Labs logo/);
   assert.match(html, /Upload organization logo/);
   assert.match(html, /alt="Social graphic for Alex Chen"/);
-  assert.match(html, /disabled=""[^>]*>.*Approve/);
+  assert.match(html, /Download graphic/);
+  assert.doesNotMatch(html, /disabled=""[^>]*>.*Approve/);
 });
 
 test("a speaker post with a logo displays the graphic and permits approval", () => {
@@ -37,5 +37,4 @@ test("a speaker post with a logo displays the graphic and permits approval", () 
   assert.match(html, /alt="Social graphic for Alex Chen"/);
   assert.match(html, /alt="Example Labs logo"/);
   assert.match(html, /Download graphic/);
-  assert.doesNotMatch(html, /Add the Example Labs logo/);
 });
