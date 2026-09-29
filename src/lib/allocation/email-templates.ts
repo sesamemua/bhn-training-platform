@@ -51,6 +51,7 @@ export const MERGE_FIELDS: MergeField[] = [
   { key: "session_time", means: "The hours it runs, Toronto time", sample: "11:00–13:30", perSession: true },
   { key: "session_venue", means: "Where it is, or “to be confirmed”", sample: "CCRM (to be confirmed)", perSession: true },
   { key: "reply_by", means: "The date a reply is needed by", sample: "Monday 19 October" },
+  { key: "cant_attend_link", means: "Where they tell us they can't make this session, with a reason", sample: "https://…/training-week/pass/…/cant-attend/…", perSession: true },
   { key: "pass_link", means: "Their Training Week pass — the QR they show at the door of every session", sample: "https://…/training-week/pass/…" },
   { key: "postcode", means: "The first three characters of the postal code they gave", sample: "M5V" },
   { key: "travel_time", means: "How long that postal code is from 144 College Street", sample: "about 15\u201345 minutes" },
@@ -189,7 +190,10 @@ Your pass — show its QR code at the door of every session you attend:
 
 Please put it in your calendar now. About ${CONFIRM_DAYS_BEFORE} days before the session we will write once more to ask whether you can still make it — a reply to that message is what holds your seat, and no reply releases it to the next person on the waitlist.
 
-If you already know you cannot come, tell us now rather than later. Somebody else can have the place and will be glad of it.` + SIGN_OFF,
+Can't make it after all? Tell us here, with the reason, so the place can go to somebody else:
+{{cant_attend_link}}
+
+Please tell us rather than not turning up: a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
   },
   {
     id: "declined",
@@ -279,9 +283,9 @@ If we do not hear from you by {{reply_by}} we will treat it as a no and give you
     body:
       `Hello {{first_name}},
 
-Your place at {{session}} has been released and offered to somebody on the waitlist. Thank you for letting us know — telling us is genuinely useful and it is what makes the waitlist work.
+Your place at {{session}} has been released, so it can go to somebody who is waiting for one. Thank you for letting us know, and for telling us why — that is what makes the waitlist work.
 
-Nothing else is affected. Any other sessions you were given a place at still stand, and you are welcome to register again next year.` + SIGN_OFF,
+Nothing else is affected: any other sessions you have a place at still stand, and your pass still works for them.` + SIGN_OFF,
   },
   {
     id: "support_invite",
@@ -373,7 +377,10 @@ A reminder that {{session}} is in three days.
 Please arrive ten minutes early, with your pass ready to show at the door:
 {{pass_link}}
 
-If something has changed and you cannot come, reply today. At this notice we can usually still fill the place.` + SIGN_OFF,
+If something has changed and you can't come, tell us today, with the reason — at this notice we can usually still fill the place:
+{{cant_attend_link}}
+
+Please tell us rather than not turning up: a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
   },
   {
     id: "reminder_same_day",
@@ -392,7 +399,10 @@ If something has changed and you cannot come, reply today. At this notice we can
 Your pass — have it open on your phone at the door:
 {{pass_link}}
 
-Please arrive ten minutes early. If you are running late or cannot make it after all, reply to this message and we will let the room know.
+Please arrive ten minutes early. If you are running late, reply to this message and we will let the room know.
+
+If you can't make it after all, tell us here, with the reason:
+{{cant_attend_link}}
 
 See you there.` + SIGN_OFF,
   },

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17k";
+export const TOUR_VERSION = "2026.10.17l";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-week.cant-attend",
+    title: "\u201cI can\u2019t make it\u201d, with a reason",
+    body: "Passes now show **approved sessions only** and fit any phone. Each approved session \u2014 on the pass and in the approval and reminder letters \u2014 has **I can\u2019t make it**, which asks for a reason, releases the seat and emails you why. A released seat reads **Can\u2019t attend** in Training admin, with their reason.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.17l",
   },
   {
     id: "training-week.check-in",

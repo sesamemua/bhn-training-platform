@@ -71,7 +71,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         partnerOrganization: true, shortDescription: true,
         bookings: {
           select: {
-            id: true, status: true, bookedAt: true, waitlistPosition: true, approvedAt: true, rank: true, notifiedStatus: true,
+            id: true, status: true, bookedAt: true, waitlistPosition: true, approvedAt: true, rank: true, notifiedStatus: true, withdrawnAt: true,
             userId: true, submissionId: true,
             user: { select: { id: true, name: true, email: true, organization: true, country: true } },
             // The registration behind a public-form seat: what the model reads.
@@ -190,6 +190,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
             approvedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
             user: b.user ?? null,
             letterOwed: !!letterDue(b.notifiedStatus, b.status),
+            withdrawn: Boolean(b.withdrawnAt),
             registrant: { personKey: personOf(b), ...said(b.submission?.data) },
             applicant: applicantFor({
               bookingId: b.id,

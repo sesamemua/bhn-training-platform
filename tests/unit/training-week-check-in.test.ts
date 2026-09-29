@@ -1,7 +1,7 @@
 /** What the door says about a person, and which session is "now". */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { doorVerdict, passQrContent, sessionNow, tokenFromScan } from "../../src/lib/training-week/check-in";
+import { doorVerdict, passQrContent, sessionNow, tokenFromScan, withdrawProblem } from "../../src/lib/training-week/check-in";
 
 const TOKEN = "Abc123_-xyzABCDEFGH12";
 const room = (capacity: number, checkedIn: number) => ({ capacity, checkedIn });
@@ -44,4 +44,11 @@ test("the door opens on the session running now, else the next one, else the las
   assert.equal(sessionNow(s, new Date("2026-10-27T08:00:00Z")), "tue-pm");
   assert.equal(sessionNow(s, new Date("2026-11-01T00:00:00Z")), "tue-pm");
   assert.equal(sessionNow([], new Date()), null);
+});
+
+test("\"I can't make it\" needs an actual reason", () => {
+  assert.match(withdrawProblem("") ?? "", /tell us why/);
+  assert.match(withdrawProblem("busy") ?? "", /say a little more/);
+  assert.equal(withdrawProblem("I have a thesis committee meeting that was moved to that morning."), null);
+  assert.match(withdrawProblem("x".repeat(2001)) ?? "", /under 2000/);
 });

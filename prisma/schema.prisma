@@ -2951,6 +2951,12 @@ model WorkshopBooking {
   /// phone, or "manual" from the list on a laptop.
   checkedInById    String?
   checkInMethod    String?
+  /// The registrant said they can't make it, from the link in their
+  /// letter or on their pass. The seat is released (status "cancelled")
+  /// and these say it was their doing and why — a reason is required —
+  /// so it never reads as a place we declined.
+  withdrawnAt      DateTime?
+  withdrawReason   String?
 
   workshop   Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   user       User?                @relation(fields: [userId], references: [id], onDelete: Restrict)

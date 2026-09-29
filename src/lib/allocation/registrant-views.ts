@@ -21,6 +21,8 @@ export interface RegistrantRow {
   day: string;
   dayLabel: string;
   status: string;
+  /** Released by them ("I can't make it") rather than declined by us. */
+  withdrawn?: boolean;
   /** "owed" = decided but not emailed; "sent" = emailed; "none" = nothing to send. */
   letter: "owed" | "sent" | "none";
   travel: Travel;

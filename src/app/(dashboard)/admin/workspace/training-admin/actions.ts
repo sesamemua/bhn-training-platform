@@ -21,7 +21,7 @@ import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocatio
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
-import { passTokenFor, passUrl } from "@/lib/training-week/pass";
+import { cantAttendUrl, passTokenFor, passUrl } from "@/lib/training-week/pass";
 import { EntrySchema, type Snapshot } from "@/lib/allocation/catering";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
@@ -249,6 +249,7 @@ export async function previewAudience(eventId: string, audience: Audience, works
       ...(who === "all" ? { status: { not: "cancelled" } } : { status: who }),
     },
     select: {
+      id: true,
       status: true,
       user: { select: { email: true, name: true } },
       submission: { select: { id: true, email: true, data: true } },
@@ -275,6 +276,7 @@ export async function previewAudience(eventId: string, audience: Audience, works
     recipients.push({
       email,
       submissionId: b.submission?.id ?? null,
+      bookingId: b.id,
       name: registrantName((b.submission?.data ?? {}) as Record<string, unknown>) || b.user?.name || "",
       status: b.status,
       workshop: v.session,
@@ -432,9 +434,17 @@ export async function sendToAudience(input: {
         session_venue: r.sessionVenue,
         // Their own pass, made on first use. Only looked up when the
         // letter asks for it: a pass nobody is sent is a pass nobody needs.
-        pass_link: r.submissionId && /\{\{\s*pass_link\s*\}\}/.test(`${input.subject}\n${input.body}`)
-          ? passUrl(await passTokenFor(r.submissionId))
-          : undefined,
+        ...(await (async () => {
+          const text = `${input.subject}\n${input.body}`;
+          const wantsPass = /\{\{\s*pass_link\s*\}\}/.test(text);
+          const wantsCant = /\{\{\s*cant_attend_link\s*\}\}/.test(text);
+          if (!r.submissionId || (!wantsPass && !wantsCant)) return {};
+          const token = await passTokenFor(r.submissionId);
+          return {
+            pass_link: wantsPass ? passUrl(token) : undefined,
+            cant_attend_link: wantsCant && r.bookingId ? cantAttendUrl(token, r.bookingId) : undefined,
+          };
+        })()),
       };
       const rendered = render(input.body, vars);
       const renderedSubject = render(input.subject, vars);
@@ -678,6 +688,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
         orderBy: { rank: "asc" },
         select: {
           id: true, status: true, rank: true, decisionNote: true, approvedAt: true, notifiedStatus: true, notifiedAt: true,
+          withdrawnAt: true, withdrawReason: true,
           workshop: { select: { title: true, capacity: true } },
         },
       },
@@ -718,6 +729,8 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
         decidedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
         letterOwed: !!letterDue(b.notifiedStatus, b.status),
         toldAt: b.notifiedAt ? b.notifiedAt.toISOString() : null,
+        withdrawnAt: b.withdrawnAt ? b.withdrawnAt.toISOString() : null,
+        withdrawReason: b.withdrawReason ?? null,
       })),
       answers: Object.fromEntries(
         doc.fields
@@ -960,8 +973,13 @@ export async function sendSeatLetter(bookingId: string): Promise<{ ok: boolean; 
     bookedAt: booking.bookedAt,
     decidedAt: booking.approvedAt ?? new Date(),
     calendar,
-    // The pass that gets them through the door — made on first use.
-    passLink: booking.submission ? passUrl(await passTokenFor(booking.submission.id)) : undefined,
+    // The pass that gets them through the door — made on first use —
+    // and, for this seat, where they tell us they can't make it.
+    ...(await (async () => {
+      if (!booking.submission) return {};
+      const token = await passTokenFor(booking.submission.id);
+      return { passLink: passUrl(token), cantAttendLink: cantAttendUrl(token, booking.id) };
+    })()),
   });
 
   if (delivered(receipt)) {

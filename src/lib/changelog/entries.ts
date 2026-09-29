@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── The pass shows only what gets you in; "I can't make it" asks why
+  {
+    title: "Passes show approved sessions only, fit any phone, and \u201cI can\u2019t make it\u201d asks why",
+    body: "**Approved sessions only.** A registrant\u2019s pass no longer lists waitlisted or undecided seats \u2014 the pass is not an invitation to turn up and hope. With nothing approved there is no QR at all, just a line saying we will email if that changes.\n\n**Made to be held up on a phone.** The QR takes most of the screen width on a small phone and stops growing on a large one; names and addresses wrap instead of running off the edge. It still prints on one page.\n\n**\u201cI can\u2019t make it\u201d, with a reason.** Each approved session on the pass has the link, and so do the **Place approved**, **Three days before** and **On the day** letters, through a new per-session field, `{{cant_attend_link}}`. It is not a cancel button: it asks why they can\u2019t come (a couple of sentences at least), asks once more before releasing the place, then frees the seat for somebody waiting, emails the team the reason (info@ and engage@), and sends the registrant the **Place released** letter as their receipt \u2014 which also takes the session out of their calendar.\n\n**A word about no-shows** sits on the pass, the \u201cI can\u2019t make it\u201d page and the letters: *a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.*\n\nIn **Training admin**, a released seat reads **Can\u2019t attend** \u2014 never *Declined* \u2014 with the date and their reason on the seat, and no \u201cdeclined\u201d letter is ever owed on it.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Training Week check-in
   {
     title: "Training Week check-in: passes, a door scanner, and a laptop list",

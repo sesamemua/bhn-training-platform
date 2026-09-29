@@ -158,6 +158,7 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       day: dayKey(w.startDateTime),
       dayLabel: dayLabel(w.startDateTime),
       status: b.status,
+      withdrawn: b.withdrawn ?? false,
       letter: b.letterOwed ? "owed" as const : b.status === "pending" ? "none" as const : "sent" as const,
       travel: b.applicant.travel,
       postcode: b.registrant.postcode,
@@ -532,7 +533,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-2 py-1 text-muted">{r.dayLabel}</td>
-                          <td className="px-2 py-1"><span className={`${chip} ${STATUS_TONE[r.status] ?? "bg-elevated text-subtle"}`}>{STATUS_LABEL[r.status] ?? r.status}</span></td>
+                          <td className="px-2 py-1"><span className={`${chip} ${STATUS_TONE[r.status] ?? "bg-elevated text-subtle"}`}>{r.withdrawn ? "Can't attend" : STATUS_LABEL[r.status] ?? r.status}</span></td>
                           <td className="whitespace-nowrap px-2 py-1">
                             {r.letter === "owed" ? <span className={`${chip} bg-amber-500/12 text-amber-600`}>Not sent</span> : <span className="text-[11.5px] text-subtle">{r.letter === "sent" ? "Sent" : "—"}</span>}
                           </td>

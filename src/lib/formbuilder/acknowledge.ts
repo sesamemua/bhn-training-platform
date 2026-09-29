@@ -106,6 +106,8 @@ export async function sendDecisionLetter(
     calendar?: "add" | "remove";
     /** Their Training Week pass, for letters that carry {{pass_link}}. */
     passLink?: string;
+    /** "I can't make it" for this seat, for letters that carry {{cant_attend_link}}. */
+    cantAttendLink?: string;
   },
 ): Promise<Receipt> {
   if (!about.to) return { state: "no-address" };
@@ -132,6 +134,7 @@ export async function sendDecisionLetter(
     session_venue: about.venue || "to be confirmed",
     coordinator: "The BioHubNet team",
     pass_link: about.passLink,
+    cant_attend_link: about.cantAttendLink,
   };
   const subject = render(template.subject, vars);
   const body = render(template.body, vars);

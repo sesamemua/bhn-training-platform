@@ -1022,7 +1022,7 @@ function Submissions() {
                         >
                           <span className="font-bold">{s.rank}</span>
                           {s.workshop}
-                          <span className="opacity-75">· {DECISION_LABEL[s.status as Decision] ?? s.status}</span>
+                          <span className="opacity-75">· {s.withdrawnAt ? "Can't attend" : DECISION_LABEL[s.status as Decision] ?? s.status}</span>
                           {s.letterOwed && <Mail size={10} className="text-amber-600" aria-label="letter not sent" />}
                         </span>
                       ))}
@@ -1204,6 +1204,17 @@ function Seat({ seat, who, onDone }: { seat: SubmissionRow["seats"][number]; who
           })}
         </span>
       </div>
+
+      {seat.withdrawnAt && (
+        /* Their own doing, not ours — and the reason they gave, which is
+           what a coordinator needs to judge a later no-show fairly. */
+        <div className="mt-1.5 rounded-md border border-rose-400/40 bg-rose-500/[0.06] px-2 py-1.5 text-[11.5px] leading-snug text-rose-800">
+          <p className="font-bold">
+            Can&apos;t make it — told us {new Date(seat.withdrawnAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}. The seat is free again.
+          </p>
+          {seat.withdrawReason && <p className="mt-0.5 whitespace-pre-wrap text-rose-900">&ldquo;{seat.withdrawReason}&rdquo;</p>}
+        </div>
+      )}
 
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
         {seat.letterOwed ? (

@@ -11,10 +11,16 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { absolute } from "@/lib/notify/email";
 import { registrantName } from "@/lib/allocation/registrant-name";
-import { doorVerdict, hasSpace, type DoorVerdict } from "./check-in";
+import { doorVerdict, hasSpace, withdrawProblem, type DoorVerdict } from "./check-in";
+import { mailConfigured, sendMail } from "@/lib/mail";
+import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
 
 /** The pass page for a code. */
 export const passUrl = (token: string) => absolute(`/training-week/pass/${token}`);
+
+/** "I can't make it" for one seat — the pass code says who, the seat says which session. */
+export const cantAttendUrl = (token: string, bookingId: string) =>
+  absolute(`/training-week/pass/${token}/cant-attend/${bookingId}`);
 
 /**
  * The pass code for a registration, made the first time it is needed.
@@ -218,4 +224,90 @@ export async function sessionRoster(workshopId: string): Promise<{ rows: RosterR
   }));
   rows.sort((a, b) => a.name.localeCompare(b.name));
   return { rows, room };
+}
+
+/* ── "I can't make it" ──────────────────────────────────────────── */
+
+const TEAM = () => process.env.SMTP_FROM_EMAIL ?? "info@biohubnet.ca";
+const ALSO = "engage@biohubnet.ca";
+
+/**
+ * A registrant releases their own seat, with a reason.
+ *
+ * The seat is freed at once (status "cancelled") so the room count and
+ * the waitlist see it, and it is marked as told — the "declined" letter
+ * a cancelled seat would otherwise owe is not what happened, and must
+ * never go out on top of this. The team is emailed the reason so
+ * somebody can offer the place on; the registrant gets the "place
+ * released" letter as their receipt, which also takes the session back
+ * out of their calendar.
+ */
+export async function withdrawSeat(input: { token: string; bookingId: string; reason: string }): Promise<
+  { ok: true } | { ok: false; problem: string }
+> {
+  const problem = withdrawProblem(input.reason);
+  if (problem) return { ok: false, problem };
+  const reason = input.reason.trim();
+
+  const sub = await prisma.eventFormSubmission.findUnique({
+    where: { checkInToken: input.token },
+    select: { id: true, data: true, email: true },
+  });
+  if (!sub) return { ok: false, problem: "This link is no longer active." };
+
+  const seat = await prisma.workshopBooking.findFirst({
+    where: { id: input.bookingId, submissionId: sub.id },
+    select: {
+      id: true, status: true, withdrawnAt: true, bookedAt: true,
+      workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true } },
+    },
+  });
+  if (!seat) return { ok: false, problem: "That session is not on your registration." };
+  if (seat.withdrawnAt) return { ok: true }; // said twice is still said once
+  if (seat.status === "cancelled") return { ok: false, problem: "You no longer have a place in this session." };
+
+  const now = new Date();
+  await prisma.workshopBooking.update({
+    where: { id: seat.id },
+    data: {
+      status: "cancelled",
+      withdrawnAt: now,
+      withdrawReason: reason.slice(0, 2000),
+      // Told — by themselves. Nothing further is owed on this seat.
+      notifiedStatus: "cancelled",
+      notifiedAt: now,
+    },
+  });
+
+  const name = registrantName((sub.data ?? {}) as Record<string, unknown>) || sub.email || "A registrant";
+  if (mailConfigured()) {
+    await sendMail({
+      to: TEAM(),
+      cc: ALSO,
+      replyTo: sub.email ?? undefined,
+      signature: false,
+      subject: `Training Week: ${name} can't make ${seat.workshop.title}`,
+      text:
+        `${name} (${sub.email ?? "no address"}) has released their place at ${seat.workshop.title}, ${when(seat.workshop.startDateTime)}.\n\n` +
+        `Their reason:\n${reason}\n\n` +
+        `The seat is free again. If somebody is waiting for it, offer it from Training admin → Registrants:\n` +
+        `${absolute("/admin/workspace/training-admin?tab=registrants")}\n`,
+    }).catch(() => { /* the seat is released either way; the admin page shows it */ });
+  }
+
+  await sendDecisionLetter("seat_released", {
+    to: sub.email,
+    name,
+    session: seat.workshop.title,
+    start: seat.workshop.startDateTime,
+    end: seat.workshop.endDateTime,
+    venue: seat.workshop.locationName,
+    note: null,
+    bookingId: seat.id,
+    bookedAt: seat.bookedAt,
+    decidedAt: now,
+    calendar: "remove",
+  }).catch(() => null);
+
+  return { ok: true };
 }

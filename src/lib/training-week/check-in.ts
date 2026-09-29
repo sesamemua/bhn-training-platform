@@ -109,3 +109,28 @@ export function sessionNow(sessions: SessionWindow[], now: Date = new Date()): s
   if (upcoming.length > 0) return upcoming[0].id;
   return [...sessions].sort((a, b) => at(b.end) - at(a.end))[0].id;
 }
+
+/* ── "I can't make it" ──────────────────────────────────────────── */
+
+/** A reason has to be a reason: a couple of sentences, not "busy". */
+export const WITHDRAW_MIN_CHARS = 40;
+export const WITHDRAW_MAX_CHARS = 2000;
+
+/** Why a reason cannot be accepted yet, or null when it can. */
+export function withdrawProblem(raw: string): string | null {
+  const r = raw.trim();
+  if (r.length === 0) return "Please tell us why you can't make it.";
+  if (r.length < WITHDRAW_MIN_CHARS) {
+    return `Please say a little more — at least ${WITHDRAW_MIN_CHARS} characters (${WITHDRAW_MIN_CHARS - r.length} to go).`;
+  }
+  if (r.length > WITHDRAW_MAX_CHARS) return `Please keep it under ${WITHDRAW_MAX_CHARS} characters.`;
+  return null;
+}
+
+/**
+ * Said wherever somebody might decide not to come: on the pass, on the
+ * "I can't make it" page and in the letters. Not a threat — the point is
+ * that telling us is always fine, and silence is what costs.
+ */
+export const NO_SHOW_NOTE =
+  "Please tell us if you can't come. A no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.";

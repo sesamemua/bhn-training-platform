@@ -27,6 +27,8 @@ export interface AdminBooking {
   applicant: ApplicantInfo;
   /** The latest decision has not been emailed to them yet. */
   letterOwed: boolean;
+  /** They released the seat themselves ("I can't make it"). */
+  withdrawn?: boolean;
   /** Said on the registration: what the Registrants views read. */
   registrant: {
     /** One person: their registration, or their account. */
@@ -123,6 +125,8 @@ export interface EmailPlan {
     sessionDate: string; sessionTime: string; sessionVenue: string;
     /** The registration behind the seat — where their pass comes from. */
     submissionId?: string | null;
+    /** The seat itself — where "I can't make it" points. */
+    bookingId?: string | null;
   }[];
   configured: boolean;
   /**
@@ -183,6 +187,9 @@ export interface SubmissionRow {
     letterOwed: boolean;
     /** When they were last emailed about this seat. */
     toldAt: string | null;
+    /** They told us they can't make it — when, and why. */
+    withdrawnAt?: string | null;
+    withdrawReason?: string | null;
   }[];
   /** Everything else, by question label, for the expanded view. */
   answers: Record<string, string>;
