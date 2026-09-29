@@ -338,15 +338,6 @@ export const SHARED = [
   },
 ];
 
-/**
- * Courses that run alongside the week rather than at an hour on it.
- * No seats and no clash — they are listed so the week reads complete.
- */
-export const LEARNING_PATHS = [
-  { title: "ENGAGE LP: CATTI Biomanufacturing course", days: ["2026-10-26", "2026-10-27", "2026-10-28"], note: null },
-  { title: "ENGAGE LP: BioZone", days: ["2026-10-27", "2026-10-28"], note: "Biomanufacturing course + VR session (full module completion)." },
-];
-
 /* ── derived ─────────────────────────────────────────────────────── */
 
 const dayOf = (date: string) => DAYS.find((d) => d.date === date);

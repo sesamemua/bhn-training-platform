@@ -8,9 +8,10 @@
  * views are shared by every admin.
  */
 import { useMemo, useState, useTransition } from "react";
-import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
-import { decideSeats, saveCateringSnapshot, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { addHighlight, decideSeats, removeHighlight, saveCateringSnapshot, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import type { Highlight } from "@/lib/allocation/highlights";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { changesSince, currentEntries, fullText, updateText, type Snapshot } from "@/lib/allocation/catering";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
@@ -172,6 +173,7 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       internal: b.internal ?? false,
       falseOot: b.applicant.falseOot ?? false,
       ootAccepted: b.applicant.ootAccepted ?? false,
+      highlights: b.highlights ?? [],
       letter: b.letterOwed ? "owed" as const : b.status === "pending" ? "none" as const : "sent" as const,
       travel: b.applicant.travel,
       postcode: b.registrant.postcode,
@@ -201,7 +203,31 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   const [said, setSaid] = useState<string | null>(null);
 
   const rows = useMemo(() => rowsFrom(workshops), [workshops]);
-  const groups = useMemo(() => applyView(rows, draft), [rows, draft]);
+  const [onlyHighlighted, setOnlyHighlighted] = useState(false);
+  const groups = useMemo(() => {
+    const all = applyView(rows, draft);
+    // "Highlighted only" narrows whatever view is open, rather than being
+    // a view of its own: highlighted AND dietary, highlighted AND waitlisted.
+    if (!onlyHighlighted) return all;
+    return all.map((g) => ({ ...g, rows: g.rows.filter((r) => (r.highlights ?? []).length > 0) })).filter((g) => g.rows.length > 0);
+  }, [rows, draft, onlyHighlighted]);
+  const highlightedPeople = useMemo(() => new Set(rows.filter((r) => (r.highlights ?? []).length).map((r) => r.personKey)).size, [rows]);
+
+  function highlight(r: ShownRow) {
+    const reason = prompt(`Why highlight ${r.name}? Everybody on the team will see your name and this reason.`)?.trim();
+    if (!reason) return;
+    start(async () => {
+      const res = await addHighlight(r.bookingIds[0] ?? r.bookingId, reason);
+      setSaid(res.ok ? `${r.name} highlighted.` : res.problem ?? "Could not save.");
+    });
+  }
+  function unhighlight(r: ShownRow, h: Highlight) {
+    if (!confirm(`Remove ${h.byName}'s highlight on ${r.name}?\n\n“${h.reason}”`)) return;
+    start(async () => {
+      const res = await removeHighlight(r.bookingIds[0] ?? r.bookingId, h.id);
+      setSaid(res.ok ? "Highlight removed." : res.problem ?? "Could not save.");
+    });
+  }
 
   /* A workshop's colour is the same one it has on the dashboard and in
      the calendar, and it is keyed by slug — the rows carry ids. */
@@ -421,6 +447,11 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
           )}
           {pending && <Loader2 size={13} className="animate-spin text-muted" />}
           {said && <span role="status" className="text-[12px] text-fg">{said}</span>}
+          {highlightedPeople > 0 && (
+            <button type="button" className={pill(onlyHighlighted)} onClick={() => setOnlyHighlighted((v) => !v)}>
+              <Star size={11} className="-mt-0.5 mr-1 inline text-amber-500" />Highlighted only · {highlightedPeople}
+            </button>
+          )}
           <span className="ml-auto text-[12px] text-muted">{shownCount} {draft.perPerson ? "people" : "seats"}</span>
         </div>
       </div>
@@ -501,7 +532,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                 <tbody>
                   {g.rows.map((r) => (
                     <tr key={draft.perPerson ? r.personKey : r.bookingId}
-                      className={`border-t border-line align-top ${picked.has(keyOf(r)) ? "bg-brand-500/[0.06]" : ""}`}>
+                      className={`border-t border-line align-top ${picked.has(keyOf(r)) ? "bg-brand-500/[0.06]" : (r.highlights ?? []).length ? "bg-amber-400/[0.08]" : ""}`}>
                       <td className="px-2 py-1">
                         <input
                           type="checkbox"
@@ -520,6 +551,16 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           <span className="font-semibold text-fg">{r.name}</span>
                           {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
                           <SourceBadge formSlug={r.formSlug} />
+                          <button
+                            type="button"
+                            onClick={() => highlight(r)}
+                            disabled={pending}
+                            aria-label={`Highlight ${r.name}`}
+                            title="Highlight — with a reason everybody can see"
+                            className={`self-center rounded p-0.5 disabled:opacity-40 ${(r.highlights ?? []).length ? "text-amber-500" : "text-subtle/60 hover:text-amber-500"}`}
+                          >
+                            <Star size={12} className={(r.highlights ?? []).length ? "fill-amber-400" : ""} />
+                          </button>
                         </div>
                         {/* Address and time share the second line, so a row
                             with two badges is still two lines and not three. */}
@@ -527,6 +568,18 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           {r.email && r.email !== r.name && <span className="font-mono">{r.email}</span>}
                           <span>{shortStamp(r.appliedAt)}</span>
                         </div>
+                        {/* Who highlighted them and why — each admin's note its own line. */}
+                        {(r.highlights ?? []).map((h) => (
+                          <div key={h.id} className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-amber-800">
+                            <Star size={10} className="mt-[3px] shrink-0 fill-amber-400 text-amber-500" />
+                            <span className="min-w-0">
+                              <span className="font-semibold">{h.byName}</span>
+                              <span className="text-amber-700/80"> · {shortStamp(h.at)}</span>: {h.reason}
+                            </span>
+                            <button type="button" onClick={() => unhighlight(r, h)} aria-label="Remove this highlight"
+                              className="shrink-0 rounded px-0.5 text-amber-700/60 hover:text-rose-600">×</button>
+                          </div>
+                        ))}
                       </td>
                       {draft.perPerson ? (
                         <td className="px-2 py-1 text-muted">

@@ -15,6 +15,8 @@
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import type { ApplicantInfo } from "./applicants";
 
+import type { Highlight } from "./highlights";
+
 export interface AdminBooking {
   id: string;
   status: string;
@@ -34,6 +36,8 @@ export interface AdminBooking {
   internal?: boolean;
   /** Made from the Internal list (not registered through the form). */
   internalMade?: boolean;
+  /** Admins' highlights on this person, with who and why. */
+  highlights?: Highlight[];
   /** Said on the registration: what the Registrants views read. */
   registrant: {
     /** One person: their registration, or their account. */

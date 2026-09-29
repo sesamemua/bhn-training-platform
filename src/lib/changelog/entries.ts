@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Highlight registrants, with who and why",
+    body: "On **Registrants**, the \u2606 beside a name highlights that person. You say why, and the reason shows under their name with **who highlighted them** and when \u2014 so the whole team has the same context (\u201csponsor\u2019s student\u201d, \u201casked about step-free access\u201d). More than one admin can highlight the same person; each note stays their own, and \u00d7 removes one. Highlighted rows are tinted amber, and **Highlighted only** narrows whichever view is open to just them.\n\nThe old **ENGAGE learning paths** list (CATTI Biomanufacturing course, BioZone) is gone from the calendar key.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "False out-of-town claims are marked, and lose their priority",
     body: "The decision model puts **out-of-town applicants first** \u2014 so somebody who said their journey is over two hours from a downtown postal code was being moved up the queue for a seat they had no claim to.\n\nThose registrations are now **False OOT**: said over two hours, and the postal code they gave is well inside that. The decision model ranks them as **local**, and the tag shows in the **decision model** preview, **Registrants** (with its own group under *By distance*, and the CSV), and **Travel follow-up**. Only a postal code *clearly* under two hours counts \u2014 one close to the line, or no postal code at all, leaves the claim standing.\n\nThey stay on **Travel follow-up**, where **Write to them** still asks for their journey. If the explanation holds up \u2014 travelling from somewhere else that week \u2014 **Accept claim** gives them their out-of-town priority back; **Undo** takes it away again.",
     kind: "improvement",

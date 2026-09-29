@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import type { Travel } from "./applicants";
+import type { Highlight } from "./highlights";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 
 /** One seat, with what the registration said about the person. */
@@ -29,6 +30,8 @@ export interface RegistrantRow {
   falseOot?: boolean;
   /** An admin accepted their travel claim anyway. */
   ootAccepted?: boolean;
+  /** Admins' highlights on this person. */
+  highlights?: Highlight[];
   /** "owed" = decided but not emailed; "sent" = emailed; "none" = nothing to send. */
   letter: "owed" | "sent" | "none";
   travel: Travel;

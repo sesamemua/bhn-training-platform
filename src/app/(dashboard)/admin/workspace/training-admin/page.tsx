@@ -24,6 +24,7 @@ import { parseSnapshot } from "@/lib/allocation/catering";
 import { parseViews } from "@/lib/allocation/registrant-views";
 import { emailKey } from "@/lib/eligibility/email-key";
 import { isInternal } from "@/lib/training-week/internal";
+import { highlightsOf } from "@/lib/allocation/highlights";
 import { loadInternalSet } from "@/lib/training-week/internal-server";
 import { ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
 import { autoRefreshes } from "@/lib/eligibility/apply";
@@ -208,6 +209,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
             withdrawn: Boolean(b.withdrawnAt),
             internal: internalOf(b),
             internalMade: ((b.submission?.data ?? {}) as Record<string, unknown>).__internal === true,
+            highlights: highlightsOf(b.submission?.data),
             registrant: { personKey: personOf(b), ...said(b.submission?.data) },
             applicant: applicantFor({
               bookingId: b.id,

@@ -9,6 +9,7 @@
  * to it.
  */
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
@@ -20,6 +21,7 @@ import {
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
 import { INTERNAL_KEY, InternalPersonSchema, isInternal, parseInternal, type InternalPerson } from "@/lib/training-week/internal";
 import { loadInternalSet } from "@/lib/training-week/internal-server";
+import { HIGHLIGHTS_KEY, highlightProblem, highlightsOf, type Highlight } from "@/lib/allocation/highlights";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
@@ -1371,6 +1373,64 @@ export async function setOotAccepted(bookingId: string, accepted: boolean): Prom
   if (accepted) data.__ootAccepted = true; else delete data.__ootAccepted;
   await prisma.eventFormSubmission.update({ where: { id: booking.submission.id }, data: { data: data as object } });
   await logSend(admin.id, "training_admin.oot_accepted", { bookingId, accepted });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+/* ── highlights ──────────────────────────────────────────────────── */
+
+/** The registration behind a seat, with its data — where highlights live. */
+async function registrationOf(bookingId: string) {
+  if (!isId(bookingId)) return null;
+  const b = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: { submission: { select: { id: true, data: true } } },
+  });
+  return b?.submission ?? null;
+}
+
+/**
+ * Highlight a registrant, with the reason. Who did it is taken from the
+ * session, never from the page, so a highlight always says truthfully
+ * whose it is.
+ */
+export async function addHighlight(bookingId: string, reason: string): Promise<{ ok: boolean; problem?: string }> {
+  const admin = await requireAdmin();
+  const problem = highlightProblem(String(reason ?? ""));
+  if (problem) return { ok: false, problem };
+  const reg = await registrationOf(bookingId);
+  if (!reg) return { ok: false, problem: "That registration no longer exists." };
+
+  const data = { ...((reg.data ?? {}) as Record<string, unknown>) };
+  const byName = admin.name?.trim()
+    || (admin.id ? (await prisma.user.findUnique({ where: { id: admin.id }, select: { name: true } }))?.name?.trim() : null)
+    || admin.email || "An admin";
+  const next: Highlight = {
+    id: randomUUID().slice(0, 12),
+    byId: admin.id ?? null,
+    byName,
+    reason: reason.trim(),
+    at: new Date().toISOString(),
+  };
+  data[HIGHLIGHTS_KEY] = [...highlightsOf(data), next];
+  await prisma.eventFormSubmission.update({ where: { id: reg.id }, data: { data: data as object } });
+  await logSend(admin.id, "training_admin.highlighted", { bookingId, reason: next.reason });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+/** Take a highlight off. Written to the audit log with what it said. */
+export async function removeHighlight(bookingId: string, highlightId: string): Promise<{ ok: boolean; problem?: string }> {
+  const admin = await requireAdmin();
+  const reg = await registrationOf(bookingId);
+  if (!reg) return { ok: false, problem: "That registration no longer exists." };
+  const data = { ...((reg.data ?? {}) as Record<string, unknown>) };
+  const all = highlightsOf(data);
+  const going = all.find((h) => h.id === highlightId);
+  if (!going) return { ok: true };
+  data[HIGHLIGHTS_KEY] = all.filter((h) => h.id !== highlightId);
+  await prisma.eventFormSubmission.update({ where: { id: reg.id }, data: { data: data as object } });
+  await logSend(admin.id, "training_admin.highlight_removed", { bookingId, by: going.byName, reason: going.reason });
   revalidatePath(PAGE);
   return { ok: true };
 }

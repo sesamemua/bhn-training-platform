@@ -26,7 +26,7 @@ import { useMemo } from "react";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { countsOf, type AdminWorkshop } from "@/lib/allocation/admin-types";
 import { idOf, timeGrid, titleOf } from "@/lib/allocation/schedule";
-import { DAYS, LEARNING_PATHS, SHARED } from "@/lib/training-week/schedule-2026";
+import { DAYS, SHARED } from "@/lib/training-week/schedule-2026";
 import { dayLabel, WeekGrid } from "./WeekGrid";
 
 export function TrainingWeekCalendar({ workshops }: { workshops: AdminWorkshop[] }) {
@@ -97,27 +97,10 @@ export function TrainingWeekCalendar({ workshops }: { workshops: AdminWorkshop[]
           }}
         />
       </div>
-      {/* Courses that run alongside the week rather than at an hour on
-          it. No seats and no clash, so they belong under the grid
-          rather than in it — but leaving them out entirely makes the
-          week look emptier than it is. */}
-      {LEARNING_PATHS.length > 0 && (
-        <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-elevated/40">
-          {LEARNING_PATHS.map((lp) => (
-            <li key={lp.title} className="flex flex-wrap items-baseline gap-x-2 px-2.5 py-1.5">
-              <span className="text-[11px] font-semibold text-fg">{lp.title}</span>
-              <span className="font-mono text-[10px] text-subtle">
-                {lp.days.map((d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" })).join(" · ")}
-              </span>
-              {lp.note && <span className="text-[10.5px] text-muted">{lp.note}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
       <p className="mt-1.5 text-[11px] text-subtle">
         All three days share one scale, so sessions level with each other run
-        at the same time. Amber means the room is full. Dashed blocks are for
-        everyone on the day and are not booked.
+        at the same time. Each session keeps its own colour; an amber ring means
+        the room is full. Dashed blocks are for everyone on the day and are not booked.
       </p>
     </>
   );
