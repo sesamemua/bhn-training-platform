@@ -78,6 +78,9 @@ export interface MailAttachment {
   content: string | Buffer;
   /** e.g. "text/calendar; charset=utf-8; method=REQUEST" for .ics. */
   contentType?: string;
+  /** Content-id: set it and the HTML can show the file inline with
+   *  <img src="cid:…">, which is how the pass QR sits in the letter. */
+  cid?: string;
 }
 
 export function normaliseMailRecipients(value?: string | string[]): string[] {

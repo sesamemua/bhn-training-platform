@@ -22,6 +22,7 @@ import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
 import { cantAttendUrl, passTokenFor, passUrl } from "@/lib/training-week/pass";
+import { withPassQr } from "@/lib/training-week/pass-qr";
 import { EntrySchema, type Snapshot } from "@/lib/allocation/catering";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
@@ -424,6 +425,7 @@ export async function sendToAudience(input: {
   const errors: string[] = [];
   try {
     for (const r of plan.recipients) {
+      let passToken: string | null = null;
       const vars = {
         ...globals,
         name: r.name || "there",
@@ -440,6 +442,7 @@ export async function sendToAudience(input: {
           const wantsCant = /\{\{\s*cant_attend_link\s*\}\}/.test(text);
           if (!r.submissionId || (!wantsPass && !wantsCant)) return {};
           const token = await passTokenFor(r.submissionId);
+          passToken = token;
           return {
             pass_link: wantsPass ? passUrl(token) : undefined,
             cant_attend_link: wantsCant && r.bookingId ? cantAttendUrl(token, r.bookingId) : undefined,
@@ -477,7 +480,9 @@ export async function sendToAudience(input: {
       // message as failed — and an admin told "0 sent, 240 failed" sends
       // the whole thing again.
       try {
-        await sendMail({ to: r.email, subject, text });
+        // With a pass link in it, the QR goes in too — under the link.
+        const qr = passToken && vars.pass_link ? withPassQr(text, vars.pass_link, passToken) : null;
+        await sendMail({ to: r.email, subject, text, html: qr?.html, attachments: qr ? [qr.attachment] : undefined });
         sent += 1;
       } catch (err) {
         failed += 1;
@@ -978,7 +983,7 @@ export async function sendSeatLetter(bookingId: string): Promise<{ ok: boolean; 
     ...(await (async () => {
       if (!booking.submission) return {};
       const token = await passTokenFor(booking.submission.id);
-      return { passLink: passUrl(token), cantAttendLink: cantAttendUrl(token, booking.id) };
+      return { passLink: passUrl(token), passToken: token, cantAttendLink: cantAttendUrl(token, booking.id) };
     })()),
   });
 

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17l";
+export const TOUR_VERSION = "2026.10.17m";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-week.qr-in-email",
+    title: "The QR is in the email",
+    body: "Approval and reminder emails now show each person\u2019s **pass QR right under the link**, so it can be shown from the inbox at the door. Same QR as on their pass page \u2014 one code per person, made the first time their pass is sent.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open the Email tab", href: "/admin/workspace/training-admin?tab=email" },
+    since: "2026.10.17m",
   },
   {
     id: "training-week.cant-attend",

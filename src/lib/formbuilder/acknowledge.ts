@@ -20,6 +20,7 @@ import type { Answers } from "./logic";
 import type { Receipt, SentMail } from "./receipt";
 import type { BuiltForm } from "./types";
 import { buildIcs } from "@/lib/events/ics";
+import { withPassQr } from "@/lib/training-week/pass-qr";
 
 export async function sendAcknowledgement(
   doc: BuiltForm,
@@ -108,6 +109,8 @@ export async function sendDecisionLetter(
     passLink?: string;
     /** "I can't make it" for this seat, for letters that carry {{cant_attend_link}}. */
     cantAttendLink?: string;
+    /** The pass code behind passLink: with it, the QR itself goes in the letter. */
+    passToken?: string;
   },
 ): Promise<Receipt> {
   if (!about.to) return { state: "no-address" };
@@ -151,12 +154,18 @@ export async function sendDecisionLetter(
   };
   if (!mailConfigured()) return { state: "not-configured", preview };
 
+  // A letter carrying the pass link carries the QR too, under the link,
+  // so it can be shown straight from the inbox.
+  const qr = about.passLink && about.passToken ? withPassQr(preview.body, about.passLink, about.passToken) : null;
+  const attachments = [...(calendarFor(about) ?? []), ...(qr ? [qr.attachment] : [])];
+
   try {
     await sendMail({
       to: about.to,
       subject: preview.subject,
       text: preview.body,
-      attachments: calendarFor(about),
+      html: qr?.html,
+      attachments: attachments.length ? attachments : undefined,
     });
     return { state: "sent", preview };
   } catch (err) {

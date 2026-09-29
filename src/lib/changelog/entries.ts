@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── The QR itself goes in the letter
+  {
+    title: "The pass QR is in the email itself, not only behind a link",
+    body: "The **Place approved**, **Three days before** and **On the day** emails carried the pass as a link, and the QR only appeared once somebody opened it. They now show **the QR right under the link**, in the message itself \u2014 so it can be held up straight from the inbox, with no signal needed at the door. It comes as a small image attached to the email (*training-week-pass.png*), which also means it can be saved to a phone\u2019s photos.\n\nThe link stays, for anyone whose email shows plain text only. And it is the same QR everywhere: each person\u2019s pass code is made once, the first time an email with their pass goes out, and the QR in every later email and on the pass page is drawn from that same code.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── The pass shows only what gets you in; "I can't make it" asks why
   {
     title: "Passes show approved sessions only, fit any phone, and \u201cI can\u2019t make it\u201d asks why",
