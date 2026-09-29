@@ -1310,6 +1310,23 @@ export async function setInternalAttendance(
   if (!formId) return { ok: false, problem: "The Training Week registration form is missing." };
   let reg = rows.find((r) => samePerson(p, r));
 
+  /*
+   * Never a second seat in one room. If they asked for this session
+   * through the form themselves, that request is their seat — decided
+   * like anyone's — and a seat made here beside it would count them twice.
+   */
+  if (attending && p.email) {
+    const theirOwn = await prisma.workshopBooking.findFirst({
+      where: {
+        workshopId,
+        status: { not: "cancelled" },
+        submission: { email: { equals: p.email, mode: "insensitive" }, NOT: { data: { path: ["__internal"], equals: true } } },
+      },
+      select: { id: true },
+    });
+    if (theirOwn) return { ok: false, problem: `${p.name} already asked for this session through the form — decide that seat in Registrants.` };
+  }
+
   if (!attending) {
     if (reg) await prisma.workshopBooking.deleteMany({ where: { submissionId: reg.id, workshopId } });
   } else {

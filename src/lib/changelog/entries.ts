@@ -22,6 +22,13 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  {
+    title: "Internal people: a request still waiting is recognised, and never doubled",
+    body: "The **Internal people** grid now recognises a session somebody asked for through the form **at any stage** \u2014 *asked*, *waitlisted* or *registered* \u2014 not only once it was approved. Before, a staff member whose request was still undecided showed an empty tick box, and ticking it would have given them a second seat in the same room. Ticking a session they already asked for is now refused with a note to decide their own request in **Registrants** instead.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Internal people, and the Email tab opens on the letters
   {
     title: "Internal people: in the room and at lunch, never in a student seat",

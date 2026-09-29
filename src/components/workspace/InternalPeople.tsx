@@ -31,10 +31,15 @@ export function InternalPeople({ initial, workshops }: { initial: InternalPerson
 
   const live = useMemo(() => workshops.filter((w) => w.isActive), [workshops]);
 
-  /** Their seat in a session, if any: made here, or registered themselves. */
+  /**
+   * Their seat in a session, if any: made here, or asked for themselves
+   * through the form — at any stage, not only once approved. Missing a
+   * request that is still "not decided" is how a person ends up with two
+   * seats in one room.
+   */
   const seatOf = (p: InternalPerson, w: AdminWorkshop) =>
     w.bookings.find((b) => {
-      if (!b.internal || b.status !== "confirmed") return false;
+      if (!b.internal || b.status === "cancelled") return false;
       const e = b.applicant.email ?? "";
       return p.email ? emailKey(e) === emailKey(p.email) : b.internalMade && b.applicant.name === p.name;
     }) ?? null;
@@ -143,7 +148,12 @@ export function InternalPeople({ initial, workshops }: { initial: InternalPerson
                           onChange={(e) => toggle(p, w, e.target.checked)}
                         />
                       ) : (
-                        <span className="text-[10.5px] font-semibold text-indigo-600" title="Registered through the form">registered</span>
+                        <span
+                          className="text-[10.5px] font-semibold text-indigo-600"
+                          title="They asked for this session through the registration form — decide it in Registrants"
+                        >
+                          {seat!.status === "confirmed" ? "registered" : seat!.status === "waitlist" ? "waitlisted" : "asked"}
+                        </span>
                       )}
                     </td>
                   );
