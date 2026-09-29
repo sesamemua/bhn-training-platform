@@ -29,13 +29,23 @@ export const SITE_THEME = "bhnsite";
 /** Every other public form, whatever the visitor's OS or saved choice says. */
 export const PUBLIC_FORM_THEME = "hitech";
 
-export type ForcedTheme = typeof SITE_THEME | typeof PUBLIC_FORM_THEME;
+/**
+ * The Training Week pass and its "I can't make it" page: held up on a
+ * phone at a door, so always the plain light theme — dark text on white,
+ * whatever the phone or a saved preference says. In the dark theme the
+ * name came out nearly invisible, which is the one thing a pass must not do.
+ */
+export const PASS_THEME = "light";
+const PASS_PREFIX = "/training-week/pass/";
+
+export type ForcedTheme = typeof SITE_THEME | typeof PUBLIC_FORM_THEME | typeof PASS_THEME;
 
 /** The theme a path is pinned to, or null for a path that follows the visitor. */
 export function forcedThemeFor(pathname: string): ForcedTheme | null {
   // location.pathname never carries these, but a path handed over from a
   // router or a test might, and "…-v2?utm=luma" is still the v2 page.
   const path = pathname.split(/[?#]/)[0];
+  if (path.startsWith(PASS_PREFIX)) return PASS_THEME;
   if (!path.startsWith("/apply/")) return null;
   const slug = path.slice("/apply/".length).split("/")[0];
   return (SITE_THEMED_FORM_SLUGS as readonly string[]).includes(slug) ? SITE_THEME : PUBLIC_FORM_THEME;
@@ -51,6 +61,6 @@ export function forcedThemeFor(pathname: string): ForcedTheme | null {
  * the same paths and fails the moment they disagree.
  */
 export const FORCED_THEME_SCRIPT =
-  `function(p){p=String(p).split(/[?#]/)[0];if(p.indexOf('/apply/')!==0)return null;` +
+  `function(p){p=String(p).split(/[?#]/)[0];if(p.indexOf('${PASS_PREFIX}')===0)return '${PASS_THEME}';if(p.indexOf('/apply/')!==0)return null;` +
   `var s=${JSON.stringify(SITE_THEMED_FORM_SLUGS)};` +
   `return s.indexOf(p.slice(7).split('/')[0])>=0?'${SITE_THEME}':'${PUBLIC_FORM_THEME}';}`;

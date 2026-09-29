@@ -34,6 +34,11 @@ const PATHS: [string, string | null][] = [
   ["/dashboard", null],
   ["/applying/x", null],
   [`/events/x${V2}`, null],
+  // The Training Week pass is always light: it is held up at a door.
+  ["/training-week/pass/Abc123_-xyzABCDEFGH12", "light"],
+  ["/training-week/pass/Abc123_-xyzABCDEFGH12/cant-attend/cmabc123def456", "light"],
+  ["/training-week/pass/Abc123_-xyzABCDEFGH12?from=email", "light"],
+  ["/training-week", null],
 ];
 
 test("v2 is pinned to the site skin; every other public form stays Voltage; the rest follow the visitor", () => {
