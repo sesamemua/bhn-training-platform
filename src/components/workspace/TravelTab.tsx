@@ -21,7 +21,7 @@ import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { rowsFrom } from "./RegistrantViews";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
-import { draftTravelCheck, loadTravelChecks, sendTravelCheck } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { draftTravelCheck, loadTravelChecks, sendTravelCheck, setOotAccepted } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { Modal } from "@/components/ui/Modal";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 
@@ -44,7 +44,7 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   const list = useMemo(() => travellers(rowsFrom(workshops)), [workshops]);
   /* Said over two hours, gave a postal code that is nowhere near it.
      Worth seeing at the top rather than finding at approval time. */
-  const doubtful = list.filter((t) => travelFromPostcode(t.postcode)?.band === "local").length;
+  const doubtful = list.filter((t) => t.falseOot).length;
 
   /* Who has already been written to. Read once on mount rather than
      passed down: it is one small query, and it is the only thing on
@@ -98,6 +98,16 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
     });
   }
 
+  /* Their explanation holds up (travelling from elsewhere that week):
+     give them back the out-of-town priority — or take it away again. */
+  function accept(t: Traveller, on: boolean) {
+    if (on && !confirm(`Accept ${t.name}'s out-of-town claim? They get out-of-town priority in the decision model again.`)) return;
+    start(async () => {
+      const r = await setOotAccepted(t.bookingId, on);
+      setSaid(r.ok ? (on ? `${t.name}'s claim accepted.` : `${t.name} is marked False OOT again.`) : r.problem ?? "Could not save.");
+    });
+  }
+
   function send() {
     if (!draft) return;
     if (confirmFirst && !sure) { setSure(true); return; }
@@ -122,7 +132,7 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
           <p className="text-[12.5px] text-muted">Everyone who said their one-way trip to downtown Toronto is over 2 hours. They need a separate follow-up about travel.</p>
           {doubtful > 0 && (
             <p className="mt-1 text-[12.5px] font-semibold text-amber-700">
-              {doubtful} of them gave a postal code that is under two hours from 144 College Street — check the travel time column before approving support.
+              {doubtful} of them gave a postal code that is under two hours from 144 College Street — marked False OOT, and ranked as local until you accept their claim.
             </p>
           )}
         </div>
@@ -153,7 +163,26 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                   <td className="px-3 py-2 font-semibold text-fg">{t.name}</td>
                   <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.email}</td>
                   <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.postcode || "—"}</td>
-                  <td className="px-3 py-2"><TravelCell postcode={t.postcode} /></td>
+                  <td className="px-3 py-2">
+                    <TravelCell postcode={t.postcode} />
+                    {(t.falseOot || t.ootAccepted) && (
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        {t.falseOot ? (
+                          <span className="rounded bg-rose-500/10 px-1.5 py-0.5 font-bold text-rose-700" title="Ranked as local by the decision model">False OOT</span>
+                        ) : (
+                          <span className="rounded bg-emerald-500/12 px-1.5 py-0.5 font-bold text-emerald-700">Claim accepted</span>
+                        )}
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => accept(t, !t.ootAccepted)}
+                          className="font-semibold text-muted underline underline-offset-2 hover:text-fg disabled:opacity-50"
+                        >
+                          {t.ootAccepted ? "Undo" : "Accept claim"}
+                        </button>
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <ul className="space-y-1">
                       {t.sessions.map((s, i) => (
@@ -169,7 +198,8 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                     {/* Offered only where there is a question to ask: the
                         postal code is well inside two hours and the
                         registration says otherwise. */}
-                    {travelFromPostcode(t.postcode)?.band === "local" && (
+                    {/* Only while the claim stands unexplained: once accepted there is nothing to ask. */}
+                    {t.falseOot && (
                       asked.has(t.email.toLowerCase()) ? (
                         <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-muted"><Check size={13} /> Asked</span>
                       ) : (

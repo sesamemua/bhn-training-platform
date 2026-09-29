@@ -170,6 +170,8 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       status: b.status,
       withdrawn: b.withdrawn ?? false,
       internal: b.internal ?? false,
+      falseOot: b.applicant.falseOot ?? false,
+      ootAccepted: b.applicant.ootAccepted ?? false,
       letter: b.letterOwed ? "owed" as const : b.status === "pending" ? "none" as const : "sent" as const,
       travel: b.applicant.travel,
       postcode: b.registrant.postcode,
@@ -305,7 +307,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
     const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
     const lines = groups.flatMap((g) => g.rows.map((r) => [
       g.label, r.name, r.email, r.workshops.join("; "), r.dayLabel, STATUS_LABEL[r.status] ?? r.status, LETTER_LABEL[r.letter],
-      TRAVEL_LABEL[r.travel], r.postcode, [...r.dietary, r.dietaryOther].filter(Boolean).join("; "), r.accessibility,
+      r.falseOot ? "Claimed out of town — postal code is local" : TRAVEL_LABEL[r.travel], r.postcode, [...r.dietary, r.dietaryOther].filter(Boolean).join("; "), r.accessibility,
     ]));
     return [head, ...lines].map((l) => l.map((c) => esc(String(c))).join(",")).join("\n");
   }, [groups, draft.perPerson]);
@@ -551,7 +553,11 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         </>
                       )}
                       <td className="whitespace-nowrap px-2 py-1 text-muted">
-                        {r.travel === "far" ? "Over 2 h" : r.travel === "near" ? "Local" : "—"}{r.postcode && <span className="ml-1 font-mono text-[11px] text-subtle">{r.postcode}</span>}
+                        {r.falseOot ? (
+                          /* Claimed over two hours; the postal code says otherwise. */
+                          <span className={`${chip} bg-rose-500/10 text-rose-700`} title="Said over 2 hours, but the postal code is well inside that — no out-of-town priority">False OOT</span>
+                        ) : r.travel === "far" ? "Over 2 h" : r.travel === "near" ? "Local" : "—"}
+                        {r.postcode && <span className="ml-1 font-mono text-[11px] text-subtle">{r.postcode}</span>}
                       </td>
                       <td className="px-2 py-1 text-muted">
                         {[...r.dietary.filter((d) => !/^other/i.test(d)), r.dietaryOther && `Other: ${r.dietaryOther}`].filter(Boolean).join(" · ") || <span className="text-subtle">—</span>}

@@ -720,7 +720,13 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
                     <div className="font-semibold text-fg">{a.name}</div>
                     {a.email && a.email !== a.name && <div className="font-mono text-[11px] text-subtle">{a.email}</div>}
                   </td>
-                  <td className="px-3 py-1.5"><span className={`${chip} ${TRAVEL_CHIP[a.travel][1]}`}>{TRAVEL_CHIP[a.travel][0]}</span></td>
+                  <td className="px-3 py-1.5">
+                    {a.falseOot ? (
+                      <span className={`${chip} bg-rose-500/10 text-rose-700`} title="Said over 2 hours, but the postal code is well inside that — ranked as local">False OOT</span>
+                    ) : (
+                      <span className={`${chip} ${TRAVEL_CHIP[a.travel][1]}`}>{TRAVEL_CHIP[a.travel][0]}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-1.5"><span className={`${chip} ${ROSTER_CHIP[a.roster][1]}`}>{ROSTER_CHIP[a.roster][0]}</span></td>
                   <td className="px-3 py-1.5 text-muted">{a.preference ? `${ordinal(a.preference)} choice` : "—"}</td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-subtle">

@@ -66,3 +66,47 @@ test("the name: the form's Full name, then an account with that email, then the 
   assert.equal(applicantFor({ ...base, accountName: "Ruilin Y." }).name, "Ruilin Y.", "no Full name: the account's name");
   assert.equal(applicantFor(base).name, "ruilin.yuan@utoronto.ca", "neither: the email, never the roster's institution");
 });
+
+/* ── false out-of-town claims ─────────────────────────────────────── */
+
+const claim = (postcode: string | undefined, extra: Record<string, unknown> = {}): BookingFacts => ({
+  bookingId: "x", status: "pending", bookedAt: "2026-09-20T10:00:00Z", preference: 1, seatsHeld: 0, roster: lookup,
+  submission: {
+    data: { trainee_email: "x@utoronto.ca", travel_over_2h: "Yes", ...(postcode ? { postcode } : {}), ...extra },
+    email: "x@utoronto.ca", createdAt: "2026-09-20T10:00:00Z",
+  },
+});
+
+test("an over-two-hours claim from a downtown postal code is false OOT and earns no priority", () => {
+  const a = applicantFor(claim("M5V"));
+  assert.equal(a.falseOot, true);
+  assert.equal(a.isOutOfTown, false);
+  // The claim itself is kept, so travel follow-up still reaches them.
+  assert.equal(a.travel, "far");
+});
+
+test("close to two hours, clearly over, or no postal code: the claim stands", () => {
+  for (const pc of ["L4N", "K1A", undefined]) {
+    const a = applicantFor(claim(pc));
+    assert.equal(a.falseOot, false, String(pc));
+    assert.equal(a.isOutOfTown, true, String(pc));
+  }
+});
+
+test("an admin who accepts the explanation restores the priority", () => {
+  const a = applicantFor(claim("M5V", { __ootAccepted: true }));
+  assert.equal(a.falseOot, false);
+  assert.equal(a.ootAccepted, true);
+  assert.equal(a.isOutOfTown, true);
+});
+
+test("a false claim ranks behind a real out-of-towner under 'out of town first'", () => {
+  const rules: Rule[] = [
+    { id: "o", kind: "out_of_town", label: "Out-of-town applicants first", isActive: true },
+    { id: "f", kind: "first_come", label: "First come", isActive: true },
+  ] as Rule[];
+  const fake = { ...applicantFor(claim("M5V")), id: "fake", appliedAt: "2026-09-01T00:00:00Z" };
+  const real = { ...applicantFor(claim("K1A")), id: "real", appliedAt: "2026-09-20T00:00:00Z" };
+  const ranked = rankApplicants([fake, real], rules, 1);
+  assert.equal(ranked[0].applicant.id, "real");
+});

@@ -22,6 +22,7 @@
 import { eligibilitySource } from "@/lib/eligibility/sources";
 import type { Applicant, Ranked } from "./model";
 import { registrantName } from "./registrant-name";
+import { travelFromPostcode } from "@/lib/travel/from-postcode";
 
 export type Travel = "far" | "near" | "unknown";
 export type RosterMatch = "on" | "off" | "unknown";
@@ -29,6 +30,16 @@ export type RosterMatch = "on" | "off" | "unknown";
 export interface ApplicantInfo extends Applicant {
   email: string;
   travel: Travel;
+  /**
+   * Said they travel over two hours, and their postal code is well inside
+   * that — "false OOT". They keep the claim (travel stays "far", so the
+   * travel follow-up can still write to them) but not its priority: the
+   * decision model reads them as local. False once an admin has accepted
+   * their explanation.
+   */
+  falseOot: boolean;
+  /** An admin accepted their travel claim despite the postal code. */
+  ootAccepted: boolean;
   roster: RosterMatch;
   /** The form they registered on — a session with its own page is not the week's form. */
   formSlug: string | null;
@@ -84,6 +95,15 @@ export function applicantFor(f: BookingFacts): ApplicantInfo {
     : byCountry === false ? "near"
     : "unknown";
 
+  /*
+   * The claim checked against the postal code they gave. Only a code
+   * clearly inside two hours contradicts it — "close to two hours" is a
+   * real case, and no code means nothing to check against.
+   */
+  const ootAccepted = a.__ootAccepted === true;
+  const falseOot =
+    travelAnswer === "yes" && !ootAccepted && travelFromPostcode(str(a.postcode))?.band === "local";
+
   const entry = email ? f.roster(email) : undefined;
   const roster: RosterMatch = entry === undefined ? "unknown" : entry ? "on" : "off";
 
@@ -101,12 +121,15 @@ export function applicantFor(f: BookingFacts): ApplicantInfo {
     name,
     email,
     travel,
+    falseOot,
+    ootAccepted,
     roster,
     preference: f.preference,
     status: f.status,
     formSlug: f.submission?.formSlug ?? null,
     programmes,
-    isOutOfTown: travel === "far" ? true : travel === "near" ? false : undefined,
+    // A false claim earns no out-of-town priority.
+    isOutOfTown: falseOot ? false : travel === "far" ? true : travel === "near" ? false : undefined,
     isCurrentTrainee: roster === "on",
     organizationType: f.user?.organization ?? null,
     appliedAt: f.submission?.createdAt ?? f.bookedAt,

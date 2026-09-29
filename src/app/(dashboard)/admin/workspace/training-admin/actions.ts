@@ -1351,3 +1351,26 @@ export async function setInternalAttendance(
   revalidatePath(PAGE);
   return { ok: true };
 }
+
+/**
+ * Accept somebody's out-of-town claim despite their postal code — they
+ * explained (travelling from elsewhere that week, a second home) — or
+ * take the acceptance back. Written on the registration as
+ * __ootAccepted, so every seat they hold follows it and the decision
+ * model gives them their out-of-town priority again.
+ */
+export async function setOotAccepted(bookingId: string, accepted: boolean): Promise<{ ok: boolean; problem?: string }> {
+  const admin = await requireAdmin();
+  if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
+  const booking = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: { submission: { select: { id: true, data: true } } },
+  });
+  if (!booking?.submission) return { ok: false, problem: "That registration no longer exists." };
+  const data = { ...((booking.submission.data ?? {}) as Record<string, unknown>) };
+  if (accepted) data.__ootAccepted = true; else delete data.__ootAccepted;
+  await prisma.eventFormSubmission.update({ where: { id: booking.submission.id }, data: { data: data as object } });
+  await logSend(admin.id, "training_admin.oot_accepted", { bookingId, accepted });
+  revalidatePath(PAGE);
+  return { ok: true };
+}

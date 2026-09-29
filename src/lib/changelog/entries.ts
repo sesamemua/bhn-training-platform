@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "False out-of-town claims are marked, and lose their priority",
+    body: "The decision model puts **out-of-town applicants first** \u2014 so somebody who said their journey is over two hours from a downtown postal code was being moved up the queue for a seat they had no claim to.\n\nThose registrations are now **False OOT**: said over two hours, and the postal code they gave is well inside that. The decision model ranks them as **local**, and the tag shows in the **decision model** preview, **Registrants** (with its own group under *By distance*, and the CSV), and **Travel follow-up**. Only a postal code *clearly* under two hours counts \u2014 one close to the line, or no postal code at all, leaves the claim standing.\n\nThey stay on **Travel follow-up**, where **Write to them** still asks for their journey. If the explanation holds up \u2014 travelling from somewhere else that week \u2014 **Accept claim** gives them their out-of-town priority back; **Undo** takes it away again.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Every staff account is always internal",
     body: "Staff no longer have to be put on the **Internal people** list. Every **admin and superadmin account** counts as internal automatically \u2014 the moment the account exists, and no longer once it goes \u2014 so a staff member who registers for a session is never counted in a student seat or ranked against a student. Demo accounts are left out.\n\nThe **Internal people** section now lists who is covered this way. The list itself is for everybody else: guests like Darius and Gilbert, and staff who register with an address other than their account\u2019s \u2014 Yeseul Lee, who registered with her Gmail, is on it for that reason.",
     kind: "improvement",

@@ -25,6 +25,10 @@ export interface RegistrantRow {
   withdrawn?: boolean;
   /** BioHubNet's own people: in the room, never in a student seat. */
   internal?: boolean;
+  /** Said over two hours; the postal code says well inside it. */
+  falseOot?: boolean;
+  /** An admin accepted their travel claim anyway. */
+  ootAccepted?: boolean;
   /** "owed" = decided but not emailed; "sent" = emailed; "none" = nothing to send. */
   letter: "owed" | "sent" | "none";
   travel: Travel;
@@ -130,7 +134,7 @@ const hasDiet = (r: RegistrantRow) => r.dietary.some((d) => !NO_DIET.test(d)) ||
 export function matches(r: RegistrantRow, f: Filters): boolean {
   if (f.status.length && !f.status.includes(r.status as (typeof STATUSES)[number])) return false;
   if (f.letter.length && !f.letter.includes(r.letter)) return false;
-  if (f.travel.length && !f.travel.includes(r.travel)) return false;
+  if (f.travel.length && !f.travel.includes(r.falseOot ? "near" : r.travel)) return false;
   if (f.workshopIds.length && !f.workshopIds.includes(r.workshopId)) return false;
   if (f.days.length && !f.days.includes(r.day)) return false;
   if (f.dietary) {
@@ -174,7 +178,10 @@ function groupsOf(r: RegistrantRow, by: GroupBy): { key: string; label: string; 
     case "day": return [{ key: r.day, label: r.dayLabel, order: r.day }];
     case "status": return [{ key: r.status, label: STATUS_LABEL[r.status] ?? r.status, order: String(STATUSES.indexOf(r.status as never)) }];
     case "letter": return [{ key: r.letter, label: LETTER_LABEL[r.letter], order: String(LETTERS.indexOf(r.letter)) }];
-    case "distance": return [{ key: r.travel, label: TRAVEL_LABEL[r.travel], order: String(TRAVELS.indexOf(r.travel)) }];
+    case "distance":
+      // Their own group, next to the real out-of-towners they claimed to be.
+      if (r.falseOot) return [{ key: "false_oot", label: "Claimed out of town — postal code is local", order: "0b" }];
+      return [{ key: r.travel, label: TRAVEL_LABEL[r.travel], order: String(TRAVELS.indexOf(r.travel)) }];
     case "accessibility": {
       const a = r.accessibility;
       return [a && a !== "none"
@@ -244,6 +251,8 @@ export interface Traveller {
   postcode: string;
   sessions: { workshop: string; dayLabel: string; status: string; start: string }[];
   appliedAt: string;
+  falseOot: boolean;
+  ootAccepted: boolean;
 }
 
 /** Everyone who said their one-way trip is over 2 hours — one row per person. */
@@ -251,7 +260,10 @@ export function travellers(rows: RegistrantRow[]): Traveller[] {
   const m = new Map<string, Traveller>();
   for (const r of rows) {
     if (r.travel !== "far") continue;
-    const t = m.get(r.personKey) ?? { personKey: r.personKey, bookingId: r.bookingId, name: r.name, email: r.email, postcode: r.postcode, sessions: [], appliedAt: r.appliedAt };
+    const t = m.get(r.personKey) ?? {
+      personKey: r.personKey, bookingId: r.bookingId, name: r.name, email: r.email, postcode: r.postcode,
+      sessions: [], appliedAt: r.appliedAt, falseOot: Boolean(r.falseOot), ootAccepted: Boolean(r.ootAccepted),
+    };
     t.sessions.push({ workshop: r.workshop, dayLabel: r.dayLabel, status: r.status, start: r.workshopStart });
     m.set(r.personKey, t);
   }

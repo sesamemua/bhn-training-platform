@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17n";
+export const TOUR_VERSION = "2026.10.17o";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.false-oot",
+    title: "False out-of-town claims",
+    body: "Somebody who said their journey is over two hours from a postal code well inside that is marked **False OOT** and ranked as **local** \u2014 no out-of-town priority. On **Travel follow-up**, write to them, and if their explanation holds up, **Accept claim**.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Travel follow-up", href: "/admin/workspace/training-admin?tab=travel" },
+    since: "2026.10.17o",
   },
   {
     id: "training-admin.internal-people",
