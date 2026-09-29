@@ -1308,6 +1308,12 @@ model EventFormSubmission {
   ///                  "approved" but flagged for audit
   ///   rejected    — admin reviewed + declined
   reviewStatus          String    @default("pending")
+  /// The code on this person's Training Week pass — the QR shown at the
+  /// door. One per registration, not per seat: the door says which
+  /// session is running, the code says who. Unguessable, and the only
+  /// key to the pass page, so it is made when first needed and never
+  /// derived from anything a stranger could know.
+  checkInToken          String?   @unique
   reviewedBy            String?
   reviewedAt            DateTime?
   /// Free-text reviewer note shown to the applicant when status
@@ -2937,6 +2943,14 @@ model WorkshopBooking {
   /// sending costs one letter with the final answer, not two.
   notifiedStatus   String?
   notifiedAt       DateTime?
+  /// When they were checked in at the door for THIS session. Per seat,
+  /// because Training Week runs sessions in different rooms on different
+  /// days, and attending Monday says nothing about Tuesday.
+  checkedInAt      DateTime?
+  /// The admin who checked them in, and how: "scan" at the door with a
+  /// phone, or "manual" from the list on a laptop.
+  checkedInById    String?
+  checkInMethod    String?
 
   workshop   Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   user       User?                @relation(fields: [userId], references: [id], onDelete: Restrict)

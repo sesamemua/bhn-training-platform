@@ -51,6 +51,7 @@ export const MERGE_FIELDS: MergeField[] = [
   { key: "session_time", means: "The hours it runs, Toronto time", sample: "11:00–13:30", perSession: true },
   { key: "session_venue", means: "Where it is, or “to be confirmed”", sample: "CCRM (to be confirmed)", perSession: true },
   { key: "reply_by", means: "The date a reply is needed by", sample: "Monday 19 October" },
+  { key: "pass_link", means: "Their Training Week pass — the QR they show at the door of every session", sample: "https://…/training-week/pass/…" },
   { key: "postcode", means: "The first three characters of the postal code they gave", sample: "M5V" },
   { key: "travel_time", means: "How long that postal code is from 144 College Street", sample: "about 15\u201345 minutes" },
   { key: "support_form_link", means: "The travel and accommodation form", sample: "https://…" },
@@ -182,6 +183,9 @@ You have a place at {{session}}.
 
   When:  {{session_date}}, {{session_time}}
   Where: {{session_venue}}
+
+Your pass — show its QR code at the door of every session you attend:
+{{pass_link}}
 
 Please put it in your calendar now. About ${CONFIRM_DAYS_BEFORE} days before the session we will write once more to ask whether you can still make it — a reply to that message is what holds your seat, and no reply releases it to the next person on the waitlist.
 
@@ -366,7 +370,8 @@ A reminder that {{session}} is in three days.
   When:  {{session_date}}, {{session_time}}
   Where: {{session_venue}}
 
-Please arrive ten minutes early. Bring photo ID if the venue asks for it at reception.
+Please arrive ten minutes early, with your pass ready to show at the door:
+{{pass_link}}
 
 If something has changed and you cannot come, reply today. At this notice we can usually still fill the place.` + SIGN_OFF,
   },
@@ -383,6 +388,9 @@ If something has changed and you cannot come, reply today. At this notice we can
 
   Time:  {{session_time}}
   Where: {{session_venue}}
+
+Your pass — have it open on your phone at the door:
+{{pass_link}}
 
 Please arrive ten minutes early. If you are running late or cannot make it after all, reply to this message and we will let the room know.
 

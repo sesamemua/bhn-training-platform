@@ -104,6 +104,8 @@ export async function sendDecisionLetter(
      *   undefined — no calendar entry either way.
      */
     calendar?: "add" | "remove";
+    /** Their Training Week pass, for letters that carry {{pass_link}}. */
+    passLink?: string;
   },
 ): Promise<Receipt> {
   if (!about.to) return { state: "no-address" };
@@ -129,6 +131,7 @@ export async function sendDecisionLetter(
     session_time: `${clock(about.start)}–${clock(about.end)}`,
     session_venue: about.venue || "to be confirmed",
     coordinator: "The BioHubNet team",
+    pass_link: about.passLink,
   };
   const subject = render(template.subject, vars);
   const body = render(template.body, vars);

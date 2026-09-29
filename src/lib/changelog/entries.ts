@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Training Week check-in
+  {
+    title: "Training Week check-in: passes, a door scanner, and a laptop list",
+    body: "**Every registrant gets a pass.** A page of their own with their name, a QR code, and their sessions with times and rooms \u2014 what each seat means (*You have a place*, *Waitlisted \u2014 come to the door*), and a tick once they are checked in. It prints on one page for anybody who would rather bring paper. The link goes out in the **Place approved**, **Three days before** and **On the day** letters, through a new merge field, `{{pass_link}}`.\n\n**At the door: Training Week \u2192 Check-in.** Pick the session you are running \u2014 it opens on the one running now \u2014 and either:\n\n- **Scan passes** with a phone\u2019s camera, in the browser, nothing to install. Each scan answers in colour, with a sound: **green** checked in; **grey** already in (nothing recorded twice); **amber** waitlisted or undecided with space in the room \u2014 **Let in**; **red** room full, declined, or not registered for this session, with the sessions they *do* have so they can be sent to the right door. A pass that will not scan can be pasted.\n- **Use the list on a laptop** \u2014 the fail-safe. Everybody with a seat in the session, searchable by name or email; **Check in**, **Let in** while there is space, **Undo** for a wrong click. With a single match in the search, **Enter** checks them in.\n\nThe rules are the ones agreed: **approved** people are checked in on the spot; **waitlisted** people are let in only while the room has space, counted again at the moment of letting in; check-in is **per session**, because each session is its own room. Phones and laptops work at the same time on the same session and stay in step, and a room count sits at the top.\n\n**Also fixed:** **Email \u2192 Write one now** was reading addresses only from platform accounts. Training Week registers people through a public form, so a letter to *everyone confirmed* reached almost nobody. It now writes to the address on the registration.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── Public EQUIP drafts: the link is emailed, and drafts expire
   {
     title: "EQUIP applicants are emailed the link to their draft, and drafts expire after two weeks",

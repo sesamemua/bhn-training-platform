@@ -121,6 +121,8 @@ export interface EmailPlan {
     email: string; name: string; status: string; workshop: string;
     /** Filled in so the preview shows the letter people will actually get. */
     sessionDate: string; sessionTime: string; sessionVenue: string;
+    /** The registration behind the seat — where their pass comes from. */
+    submissionId?: string | null;
   }[];
   configured: boolean;
   /**

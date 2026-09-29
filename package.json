@@ -81,6 +81,7 @@
     "inngest": "^4.5.1",
     "jose": "^6.2.3",
     "jspdf": "^4.2.1",
+    "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.14.0",
     "mammoth": "^1.12.0",

@@ -21,6 +21,7 @@ import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocatio
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
+import { passTokenFor, passUrl } from "@/lib/training-week/pass";
 import { EntrySchema, type Snapshot } from "@/lib/allocation/catering";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
@@ -250,6 +251,7 @@ export async function previewAudience(eventId: string, audience: Audience, works
     select: {
       status: true,
       user: { select: { email: true, name: true } },
+      submission: { select: { id: true, email: true, data: true } },
       workshop: { select: { id: true, title: true, startDateTime: true, endDateTime: true, locationName: true } },
     },
     orderBy: { bookedAt: "asc" },
@@ -259,14 +261,21 @@ export async function previewAudience(eventId: string, audience: Audience, works
   const workshopsSeen = new Set<string>();
   const recipients: EmailPlan["recipients"] = [];
   for (const b of bookings) {
-    const email = b.user?.email;
+    /*
+     * The registration's address first. Training Week registers people
+     * through a public form, so almost no seat has an account behind it —
+     * reading only the account's address meant a letter to "everyone
+     * confirmed" reached nobody who had registered that way.
+     */
+    const email = b.submission?.email ?? b.user?.email;
     workshopsSeen.add(b.workshop.id);
-    if (!email || seen.has(email)) continue;
-    seen.add(email);
+    if (!email || seen.has(email.toLowerCase())) continue;
+    seen.add(email.toLowerCase());
     const v = sessionVars(b.workshop);
     recipients.push({
       email,
-      name: b.user?.name ?? "",
+      submissionId: b.submission?.id ?? null,
+      name: registrantName((b.submission?.data ?? {}) as Record<string, unknown>) || b.user?.name || "",
       status: b.status,
       workshop: v.session,
       sessionDate: v.sessionDate,
@@ -421,6 +430,11 @@ export async function sendToAudience(input: {
         session_date: r.sessionDate,
         session_time: r.sessionTime,
         session_venue: r.sessionVenue,
+        // Their own pass, made on first use. Only looked up when the
+        // letter asks for it: a pass nobody is sent is a pass nobody needs.
+        pass_link: r.submissionId && /\{\{\s*pass_link\s*\}\}/.test(`${input.subject}\n${input.body}`)
+          ? passUrl(await passTokenFor(r.submissionId))
+          : undefined,
       };
       const rendered = render(input.body, vars);
       const renderedSubject = render(input.subject, vars);
@@ -914,7 +928,7 @@ export async function sendSeatLetter(bookingId: string): Promise<{ ok: boolean; 
       id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true,
       workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true } },
       user: { select: { name: true, email: true } },
-      submission: { select: { data: true, email: true } },
+      submission: { select: { id: true, data: true, email: true } },
     },
   });
   if (!booking) return { ok: false, delivered: false, problem: "That seat no longer exists." };
@@ -946,6 +960,8 @@ export async function sendSeatLetter(bookingId: string): Promise<{ ok: boolean; 
     bookedAt: booking.bookedAt,
     decidedAt: booking.approvedAt ?? new Date(),
     calendar,
+    // The pass that gets them through the door — made on first use.
+    passLink: booking.submission ? passUrl(await passTokenFor(booking.submission.id)) : undefined,
   });
 
   if (delivered(receipt)) {

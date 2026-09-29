@@ -75,6 +75,7 @@ import {
   Search,
   CalendarClock, MessageSquareText, Images, Speaker, ExternalLink, Brain,
   Signature,
+  ScanLine,
 } from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationInbox";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
@@ -600,9 +601,24 @@ const workspaceKeAwardeesItem: NavItem = {
  * comes up. The card at the top of that page links through.
  */
 
+// WORKSPACE → Training Week → Check-in. The page an admin opens at a
+// session's door: a phone scans passes, a laptop checks people in from
+// the list. Under the event it is for, beside the dashboard that shows
+// who is expected.
+const workspaceTrainingCheckInItem: NavItem = {
+  label: "Check-in",
+  href: "/admin/workspace/training-admin/check-in",
+  icon: ScanLine,
+  minRole: "admin",
+  description: "At the door: scan attendees' passes with a phone, or check them in from the list on a laptop. Waitlisted people are let in while the room has space.",
+};
+
 const workspaceTrainingAdminItem: NavItem = {
   label: "Dashboard",
   href: "/admin/workspace/training-admin",
+  // Exact: Check-in lives under this path, and both lighting up at the
+  // door would say you are in two places at once.
+  exact: true,
   icon: SlidersHorizontal,
   minRole: "admin",
   badgeKey: "training-bookings-pending",
@@ -2130,6 +2146,7 @@ export function Sidebar({
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Training Week">
               <NavLink item={workspaceTrainingFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceTrainingCheckInItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
