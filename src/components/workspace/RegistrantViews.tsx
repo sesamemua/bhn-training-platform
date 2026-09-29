@@ -548,19 +548,21 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                             deep for every seat, and the page was a scroll
                             through the same names. */}
                         <div className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
-                          <span className="font-semibold text-fg">{r.name}</span>
-                          {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
-                          <SourceBadge formSlug={r.formSlug} />
+                          {/* The star leads the name so it sits in the same
+                              place on every row, however many badges follow. */}
                           <button
                             type="button"
                             onClick={() => highlight(r)}
                             disabled={pending}
                             aria-label={`Highlight ${r.name}`}
-                            title="Highlight — with a reason everybody can see"
-                            className={`self-center rounded p-0.5 disabled:opacity-40 ${(r.highlights ?? []).length ? "text-amber-500" : "text-subtle/60 hover:text-amber-500"}`}
+                            title="Highlight this person, with a reason everybody can see"
+                            className={`-ml-0.5 self-center rounded p-0.5 disabled:opacity-40 ${(r.highlights ?? []).length ? "text-amber-400" : "text-fg/55 hover:bg-amber-400/15 hover:text-amber-400"}`}
                           >
-                            <Star size={12} className={(r.highlights ?? []).length ? "fill-amber-400" : ""} />
+                            <Star size={15} strokeWidth={2} className={(r.highlights ?? []).length ? "fill-amber-400" : ""} />
                           </button>
+                          <span className="font-semibold text-fg">{r.name}</span>
+                          {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
+                          <SourceBadge formSlug={r.formSlug} />
                         </div>
                         {/* Address and time share the second line, so a row
                             with two badges is still two lines and not three. */}

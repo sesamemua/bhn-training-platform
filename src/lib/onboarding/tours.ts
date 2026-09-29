@@ -115,7 +115,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "training-admin.highlights",
     title: "Highlight a registrant",
-    body: "On **Registrants**, the \u2606 beside a name highlights that person, with a reason. Everybody on the team sees who highlighted them and why, under the name. **Highlighted only** shows just those people; \u00d7 removes a highlight.",
+    body: "On **Registrants**, the \u2606 in front of each name highlights that person, with a reason. Everybody on the team sees who highlighted them and why, under the name. **Highlighted only** shows just those people; \u00d7 removes a highlight.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],

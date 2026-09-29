@@ -24,7 +24,7 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     title: "Highlight registrants, with who and why",
-    body: "On **Registrants**, the \u2606 beside a name highlights that person. You say why, and the reason shows under their name with **who highlighted them** and when \u2014 so the whole team has the same context (\u201csponsor\u2019s student\u201d, \u201casked about step-free access\u201d). More than one admin can highlight the same person; each note stays their own, and \u00d7 removes one. Highlighted rows are tinted amber, and **Highlighted only** narrows whichever view is open to just them.\n\nThe old **ENGAGE learning paths** list (CATTI Biomanufacturing course, BioZone) is gone from the calendar key.",
+    body: "On **Registrants**, the \u2606 in front of each name highlights that person. You say why, and the reason shows under their name with **who highlighted them** and when \u2014 so the whole team has the same context (\u201csponsor\u2019s student\u201d, \u201casked about step-free access\u201d). More than one admin can highlight the same person; each note stays their own, and \u00d7 removes one. Highlighted rows are tinted amber, and **Highlighted only** narrows whichever view is open to just them.\n\nThe old **ENGAGE learning paths** list (CATTI Biomanufacturing course, BioZone) is gone from the calendar key.",
     kind: "feature",
     visibleTo: STAFF,
     daysAgo: 0,
