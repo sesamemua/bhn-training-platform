@@ -838,7 +838,7 @@ function StarPopover({ name, top, left, reasons, onSave, onClose }: {
           value={text}
           maxLength={HIGHLIGHT_REASON_MAX}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Why? Everybody on the team will see it"
+          placeholder="Why? The team sees this"
           className="min-w-0 flex-1 rounded border border-line bg-transparent px-2 py-1 text-[12px] text-fg placeholder:text-subtle focus:border-amber-400 focus:outline-none"
         />
         <button type="submit" className="rounded bg-amber-500 px-2 py-1 text-[12px] font-semibold text-white hover:bg-amber-600">
