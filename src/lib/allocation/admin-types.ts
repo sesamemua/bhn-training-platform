@@ -29,6 +29,11 @@ export interface AdminBooking {
   letterOwed: boolean;
   /** They released the seat themselves ("I can't make it"). */
   withdrawn?: boolean;
+  /** BioHubNet's own people (see lib/training-week/internal.ts): in the
+   *  room and at lunch, never in a student seat. */
+  internal?: boolean;
+  /** Made from the Internal list (not registered through the form). */
+  internalMade?: boolean;
   /** Said on the registration: what the Registrants views read. */
   registrant: {
     /** One person: their registration, or their account. */
@@ -67,7 +72,14 @@ export interface AdminWorkshop {
 export const CUT_OFF_DAYS = CONFIRM_DAYS_BEFORE;
 
 export function countsOf(w: AdminWorkshop) {
-  const live = w.bookings.filter((b) => b.status !== "cancelled");
+  /*
+   * Students only. Capacity is the seats a room offers trainees, so
+   * internal people — staff and guests — are counted beside it, never
+   * against it: a room of 20 with two staff in it still has 20 seats to
+   * give. They are still people at lunch, which is why catering reads
+   * the seats directly and sees them.
+   */
+  const live = w.bookings.filter((b) => b.status !== "cancelled" && !b.internal);
   const cutOff = new Date(w.startDateTime).getTime() - CUT_OFF_DAYS * 86400_000;
   const confirmed = live.filter((b) => b.status === "confirmed");
   return {
@@ -76,6 +88,7 @@ export function countsOf(w: AdminWorkshop) {
     byCutOff: confirmed.filter((b) => b.approvedAt && new Date(b.approvedAt).getTime() <= cutOff).length,
     waitlisted: live.filter((b) => b.status === "waitlist").length,
     capacity: w.capacity,
+    internal: w.bookings.filter((b) => b.internal && b.status === "confirmed").length,
   };
 }
 
@@ -153,6 +166,8 @@ export interface SubmissionRow {
   at: string;
   /** Filed from the admin preview rather than by a registrant. */
   isTest: boolean;
+  /** BioHubNet staff or a listed guest — never in a student seat. */
+  internal?: boolean;
   /**
    * Which version of the registration form it came in on.
    *

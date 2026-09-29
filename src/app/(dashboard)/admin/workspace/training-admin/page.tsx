@@ -23,6 +23,7 @@ import { CATERING_COPY_KEY, REGISTRANT_VIEWS_KEY } from "@/lib/allocation/admin-
 import { parseSnapshot } from "@/lib/allocation/catering";
 import { parseViews } from "@/lib/allocation/registrant-views";
 import { emailKey } from "@/lib/eligibility/email-key";
+import { INTERNAL_KEY, internalKeys, isInternal, parseInternal } from "@/lib/training-week/internal";
 import { ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
 import { autoRefreshes } from "@/lib/eligibility/apply";
 import { platformApplicantCount } from "@/lib/eligibility/check";
@@ -59,7 +60,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     );
   }
 
-  const [rules, workshops, forms, savedViews, cateringCopy] = await Promise.all([
+  const [rules, workshops, forms, savedViews, cateringCopy, internalRow] = await Promise.all([
     loadRules(),
     prisma.workshop.findMany({
       where: { eventId: event.id },
@@ -86,6 +87,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     prisma.eventForm.findMany({ where: REGISTRATION_FORM_WHERE, select: { fields: true } }),
     prisma.platformSetting.findUnique({ where: { key: REGISTRANT_VIEWS_KEY }, select: { value: true } }),
     prisma.platformSetting.findUnique({ where: { key: CATERING_COPY_KEY }, select: { value: true } }),
+    prisma.platformSetting.findUnique({ where: { key: INTERNAL_KEY }, select: { value: true } }),
   ]);
   const accessKeys = new Set(
     forms.flatMap((f) => ((f.fields as { fields?: { key?: string; label?: string }[] } | null)?.fields ?? []))
@@ -114,6 +116,15 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     return (typeof d.trainee_email === "string" && d.trainee_email) || b.submission?.email || b.user?.email || "";
   };
   const keys = [...new Set(all.map((b) => emailKey(emailOf(b))).filter((k): k is string => !!k))];
+  /* BioHubNet's own people: in the room, not in a student seat. */
+  const internalPeople = parseInternal(internalRow?.value);
+  const internalSet = internalKeys(internalPeople);
+  const internalOf = (b: (typeof all)[number]) =>
+    isInternal(
+      [emailOf(b), b.submission?.email, b.user?.email],
+      (b.submission?.data ?? null) as Record<string, unknown> | null,
+      internalSet,
+    );
   const [rosterSize, entries, perSource, lastImport, applicants] = await Promise.all([
     prisma.eligibilityEntry.count(),
     prisma.eligibilityEntry.findMany({ where: { emailKey: { in: keys } }, select: { emailKey: true, name: true } }),
@@ -172,6 +183,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
       />
       <TrainingAdmin
         eligibility={eligibility}
+        internalPeople={internalPeople}
         eventId={event.id}
         eventTitle={event.title}
         rules={rules}
@@ -191,6 +203,8 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
             user: b.user ?? null,
             letterOwed: !!letterDue(b.notifiedStatus, b.status),
             withdrawn: Boolean(b.withdrawnAt),
+            internal: internalOf(b),
+            internalMade: ((b.submission?.data ?? {}) as Record<string, unknown>).__internal === true,
             registrant: { personKey: personOf(b), ...said(b.submission?.data) },
             applicant: applicantFor({
               bookingId: b.id,

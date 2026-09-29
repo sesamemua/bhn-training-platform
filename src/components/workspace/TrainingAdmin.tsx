@@ -38,6 +38,8 @@ import {
   STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
 } from "@/lib/allocation/email-templates";
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
+import { InternalPeople } from "./InternalPeople";
+import type { InternalPerson } from "@/lib/training-week/internal";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { RegistrantViews } from "./RegistrantViews";
 import { CateringTab } from "./CateringTab";
@@ -69,9 +71,12 @@ const BTN =
 const PRIMARY =
   "inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-[12.5px] font-bold text-white hover:brightness-110 disabled:opacity-40";
 
-const seatsOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "confirmed").length;
-const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "waitlist").length;
-const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending").length;
+/* Students only — internal people never hold or wait for a student seat. */
+const seatsOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "confirmed" && !b.internal).length;
+const waitOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "waitlist" && !b.internal).length;
+const pendingOf = (w: AdminWorkshop) => w.bookings.filter((b) => b.status === "pending" && !b.internal).length;
+/** Who competes for a seat: every live student booking. */
+const contenders = (w: AdminWorkshop) => w.bookings.filter((b) => b.status !== "cancelled" && !b.internal);
 
 /** The eligibility lists, summarised for the top of the dashboard. */
 export interface EligibilitySummary {
@@ -82,12 +87,13 @@ export interface EligibilitySummary {
 }
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab, eligibility,
+  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab, eligibility, internalPeople,
 }: {
   eventId: string; eventTitle: string; rules: Rule[]; views: View[]; catering: Snapshot | null; workshops: AdminWorkshop[];
   /** ?tab=… in the URL — e.g. a link straight to Catering & accessibility. */
   initialTab?: string;
   eligibility: EligibilitySummary;
+  internalPeople: InternalPerson[];
 }) {
   // Opens on the dashboard: the first question anybody has here is
   // "how is it going", not "let me change the policy". A link can name a tab.
@@ -119,7 +125,12 @@ export function TrainingAdmin({
         )}
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
-        {tab === "capacity" && <Capacity eventId={eventId} workshops={workshops} />}
+        {tab === "capacity" && (
+          <>
+            <Capacity eventId={eventId} workshops={workshops} />
+            <InternalPeople initial={internalPeople} workshops={workshops} />
+          </>
+        )}
         {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
         {tab === "catering" && <CateringTab workshops={workshops} catering={catering} />}
         {tab === "travel" && <TravelTab workshops={workshops} />}
@@ -153,9 +164,10 @@ function Dashboard({
         byCutOff: acc.byCutOff + c.byCutOff,
         waitlisted: acc.waitlisted + c.waitlisted,
         capacity: acc.capacity + c.capacity,
+        internal: acc.internal + c.internal,
       };
     },
-    { approved: 0, confirmed: 0, byCutOff: 0, waitlisted: 0, capacity: 0 },
+    { approved: 0, confirmed: 0, byCutOff: 0, waitlisted: 0, capacity: 0, internal: 0 },
   );
 
   return (
@@ -213,7 +225,7 @@ function Dashboard({
             <thead>
               <tr className="bg-elevated text-left">
                 <th className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">Workshop</th>
-                {["Approved", "Confirmed", "By cut-off", "Waitlisted", "Capacity"].map((h) => (
+                {["Approved", "Confirmed", "By cut-off", "Waitlisted", "Capacity", "Internal"].map((h) => (
                   <th key={h} className="whitespace-nowrap px-3 py-2 text-right text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
                 ))}
               </tr>
@@ -236,6 +248,9 @@ function Dashboard({
                     <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.byCutOff}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.waitlisted}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{c.capacity}</td>
+                    {/* Beside capacity, never inside it: staff and guests are
+                        extra people in the room and at lunch, not students. */}
+                    <td className={`px-3 py-1.5 text-right tabular-nums ${c.internal ? "font-semibold text-indigo-600" : "text-subtle"}`}>{c.internal ? `+${c.internal}` : "—"}</td>
                   </tr>
                 );
               })}
@@ -246,6 +261,7 @@ function Dashboard({
                 <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.byCutOff}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.waitlisted}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{totals.capacity}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-indigo-600">{totals.internal ? `+${totals.internal}` : "—"}</td>
               </tr>
             </tbody>
           </table>
@@ -499,14 +515,14 @@ function RankPreview({ rules, workshops }: { rules: Rule[]; workshops: AdminWork
   // The facts come from the registration form and the trainee roster
   // (applicantFor, on the server) — the same ones Seat suggestions uses.
   const ranked = useMemo(
-    () => (busiest ? rankApplicants(busiest.bookings.filter((b) => b.status !== "cancelled").map((b) => b.applicant), rules, busiest.capacity) : []),
+    () => (busiest ? rankApplicants(contenders(busiest).map((b) => b.applicant), rules, busiest.capacity) : []),
     [busiest, rules],
   );
 
   // Which active rules have nothing to read for anyone in this room.
   const starved = useMemo(() => {
     if (!busiest) return [];
-    const people = busiest.bookings.filter((b) => b.status !== "cancelled").map((b) => b.applicant);
+    const people = contenders(busiest).map((b) => b.applicant);
     const none = (f: (a: ApplicantInfo) => boolean) => people.length > 0 && people.every(f);
     return rules
       .filter((r) => r.isActive)
@@ -642,7 +658,7 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
   const [pending, start] = useTransition();
   const [said, setSaid] = useState<string | null>(null);
   const ranked = useMemo(
-    () => rankApplicants(w.bookings.filter((b) => b.status !== "cancelled").map((b) => b.applicant), rules, w.capacity),
+    () => rankApplicants(contenders(w).map((b) => b.applicant), rules, w.capacity),
     [w, rules],
   );
   const suggestion = useMemo(() => suggestSeats(ranked, w.capacity), [ranked, w.capacity]);
@@ -995,7 +1011,9 @@ function Submissions() {
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[13px] font-semibold text-fg">{r.name || r.email || "No name given"}</span>
-                      {prog && (
+                      {r.internal ? (
+                        <span className="rounded bg-indigo-500/12 px-1.5 py-px text-[10px] font-bold text-indigo-700" title="BioHubNet staff or guest — not in a student seat">Internal</span>
+                      ) : prog && (
                         <span className={`rounded px-1.5 py-px text-[10px] font-bold ${prog.tone}`} title={r.status}>{prog.label}</span>
                       )}
                       {r.isTest && (
@@ -1332,7 +1350,9 @@ function Registrants({ workshops, views }: { workshops: AdminWorkshop[]; views: 
  * the moment somebody has to send it.
  */
 function EmailSection({ eventId, workshops }: { eventId: string; workshops: AdminWorkshop[] }) {
-  const [half, setHalf] = useState<"compose" | "templates">("compose");
+  // Standing letters first: most sends are one of them, and a one-off
+  // message is the exception, not where the tab should open.
+  const [half, setHalf] = useState<"compose" | "templates">("templates");
   const [bundle, setBundle] = useState<{ templates: ResolvedTemplate[]; supportFormUrl: string } | null>(null);
   const [loading, startLoad] = useTransition();
 
@@ -1345,7 +1365,7 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
   return (
     <div>
       <div className="mb-4 inline-flex rounded-lg border border-line bg-elevated p-0.5">
-        {([["compose", "Write one now", Mail], ["templates", "Standing letters", FileText]] as const).map(([id, text, Icon]) => (
+        {([["templates", "Standing letters", FileText], ["compose", "Write one now", Mail]] as const).map(([id, text, Icon]) => (
           <button
             key={id}
             aria-pressed={half === id}

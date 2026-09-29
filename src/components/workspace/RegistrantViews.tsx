@@ -70,6 +70,15 @@ function SourceBadge({ formSlug }: { formSlug: string | null }) {
 }
 
 /** Which programme let them in, in two letters of colour. */
+/** Staff and guests: counted beside capacity, never in it. */
+function InternalBadge() {
+  return (
+    <span className="rounded bg-indigo-500/12 px-1.5 py-px text-[10px] font-bold text-indigo-700" title="BioHubNet staff or guest — not in a student seat">
+      Internal
+    </span>
+  );
+}
+
 function ProgrammeBadge({ programmes }: { programmes: string[] }) {
   if (programmes.length === 0) {
     return <span className={`${chip} bg-amber-500/12 text-amber-700`} title="On no programme list when they registered">Not on a list</span>;
@@ -99,7 +108,8 @@ export function LatestRegistrants({ rows }: { rows: RegistrantRow[] }) {
     for (const r of [...rows].sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))) {
       if (!people.has(r.personKey)) people.set(r.personKey, r);
     }
-    const all = [...people.values()];
+    // Trainees only: staff sitting in are not who this strip is watching for.
+    const all = [...people.values()].filter((r) => !r.internal);
     const equip = (r: RegistrantRow) => r.programmes.includes("EQUIP");
     return {
       roster: all.filter((r) => !equip(r)).slice(0, 3),
@@ -159,6 +169,7 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       dayLabel: dayLabel(w.startDateTime),
       status: b.status,
       withdrawn: b.withdrawn ?? false,
+      internal: b.internal ?? false,
       letter: b.letterOwed ? "owed" as const : b.status === "pending" ? "none" as const : "sent" as const,
       travel: b.applicant.travel,
       postcode: b.registrant.postcode,
@@ -505,7 +516,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                             through the same names. */}
                         <div className="flex flex-wrap items-baseline gap-x-1.5 leading-tight">
                           <span className="font-semibold text-fg">{r.name}</span>
-                          <ProgrammeBadge programmes={r.programmes} />
+                          {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
                           <SourceBadge formSlug={r.formSlug} />
                         </div>
                         {/* Address and time share the second line, so a row

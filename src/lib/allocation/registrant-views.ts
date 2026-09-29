@@ -23,6 +23,8 @@ export interface RegistrantRow {
   status: string;
   /** Released by them ("I can't make it") rather than declined by us. */
   withdrawn?: boolean;
+  /** BioHubNet's own people: in the room, never in a student seat. */
+  internal?: boolean;
   /** "owed" = decided but not emailed; "sent" = emailed; "none" = nothing to send. */
   letter: "owed" | "sent" | "none";
   travel: Travel;

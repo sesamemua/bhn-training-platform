@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ── Internal people, and the Email tab opens on the letters
+  {
+    title: "Internal people: in the room and at lunch, never in a student seat",
+    body: "BioHubNet staff and guests who sit in on a session \u2014 Darius and Gilbert among them \u2014 are now **Internal**. They are counted **beside** a room\u2019s capacity, never in it: a room of 20 with two staff in it still has 20 seats for students. They are **never ranked against a student** in the decision model or the seat suggestions. They **are** in the caterer\u2019s numbers and on the check-in list.\n\n**Who counts as internal:**\n\n- anyone with a **@biohubnet.ca** address, automatically;\n- anyone on the new **Internal people** list \u2014 *Training admin \u2192 Capacity*, under the rooms \u2014 so a guest who fills in the public form is recognised without anybody doing anything;\n- anyone put in a session from that list.\n\n**Internal people** takes a name, an address (optional) and dietary needs, and a tick per session. A tick gives them a seat outside the student count, already marked as told, so no letter is owed on it; their dietary note goes to the caterer, and changing it later updates the caterer\u2019s list. Somebody who registered through the form keeps the seat they asked for, shown as *registered*.\n\nThey read **Internal** in Registrants, Submitted registrations and at the door; the dashboard\u2019s seats table has an **Internal** column (*+2*); the check-in count reads *14 / 20 students in the room + 2 internal*, and waitlisted students are let in against the student count alone.\n\nAnd **Email** now opens on **Standing letters**, listed first, with **Write one now** beside it.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
   // ── The QR itself goes in the letter
   {
     title: "The pass QR is in the email itself, not only behind a link",

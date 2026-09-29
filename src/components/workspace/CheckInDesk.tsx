@@ -32,7 +32,8 @@ interface Card {
   checkedInAt: string | null;
   bookingId: string | null;
   otherSessions: { title: string; when: string; status: string }[];
-  room: { checkedIn: number; capacity: number };
+  room: { checkedIn: number; capacity: number; internalIn?: number };
+  internal?: boolean;
 }
 
 interface Row {
@@ -42,6 +43,7 @@ interface Row {
   status: string;
   checkedInAt: string | null;
   method: string | null;
+  internal?: boolean;
 }
 
 const tz = "America/Toronto";
@@ -82,7 +84,7 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
   const [sessionId, setSessionId] = useState(initialId ?? sessions[0]?.id ?? "");
   const [mode, setMode] = useState<"scan" | "list">("list");
   const [rows, setRows] = useState<Row[] | null>(null);
-  const [room, setRoom] = useState<{ checkedIn: number; capacity: number } | null>(null);
+  const [room, setRoom] = useState<{ checkedIn: number; capacity: number; internalIn?: number } | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -98,7 +100,7 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
   const load = useCallback(async () => {
     if (!sessionId) return;
     const r = await fetch(`/api/admin/training-week/check-in?workshopId=${encodeURIComponent(sessionId)}`, { cache: "no-store" });
-    const j = (await r.json().catch(() => ({}))) as { rows?: Row[]; room?: { checkedIn: number; capacity: number }; error?: string };
+    const j = (await r.json().catch(() => ({}))) as { rows?: Row[]; room?: { checkedIn: number; capacity: number; internalIn?: number }; error?: string };
     if (!r.ok) { setProblem(j.error ?? "Could not load the list."); return; }
     setRows(j.rows ?? []);
     setRoom(j.room ?? null);
@@ -122,7 +124,7 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workshopId: sessionId, ...body }),
       });
-      const j = (await r.json().catch(() => ({}))) as { card?: Card; room?: { checkedIn: number; capacity: number }; error?: string };
+      const j = (await r.json().catch(() => ({}))) as { card?: Card; room?: { checkedIn: number; capacity: number; internalIn?: number }; error?: string };
       if (!r.ok) { setProblem(j.error ?? "That did not go through — check the connection."); signal(false); return null; }
       setProblem(null);
       if (j.room) setRoom(j.room);
@@ -210,16 +212,17 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
   );
 }
 
-function RoomBar({ session, room, rows }: { session: DeskSession; room: { checkedIn: number; capacity: number }; rows: Row[] | null }) {
-  const approved = (rows ?? []).filter((r) => r.status === "confirmed").length;
-  const approvedIn = (rows ?? []).filter((r) => r.status === "confirmed" && r.checkedInAt).length;
+function RoomBar({ session, room, rows }: { session: DeskSession; room: { checkedIn: number; capacity: number; internalIn?: number }; rows: Row[] | null }) {
+  const approved = (rows ?? []).filter((r) => r.status === "confirmed" && !r.internal).length;
+  const approvedIn = (rows ?? []).filter((r) => r.status === "confirmed" && !r.internal && r.checkedInAt).length;
   const pct = room.capacity > 0 ? Math.min(100, Math.round((room.checkedIn / room.capacity) * 100)) : 0;
   return (
     <div className="rounded-xl border border-line bg-card px-3 py-2.5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[14px] font-bold text-fg">
           <span className="tabular-nums">{room.checkedIn}</span>
-          {room.capacity > 0 && <span className="text-muted"> / {room.capacity}</span>} in the room
+          {room.capacity > 0 && <span className="text-muted"> / {room.capacity}</span>} students in the room
+          {room.internalIn ? <span className="ml-1.5 text-[12px] font-semibold text-indigo-600">+ {room.internalIn} internal</span> : null}
         </p>
         <p className="text-[12px] text-muted">
           {approvedIn} of {approved} approved here · {Math.max(0, approved - approvedIn)} still expected
@@ -254,7 +257,12 @@ function ResultCard({ card, busy, onLetIn, onClose }: { card: Card; busy: boolea
         <X size={16} />
       </button>
       <p className="text-[12px] font-bold uppercase tracking-wide">{copy.title}</p>
-      {card.name && <p className="mt-0.5 text-[22px] font-bold leading-tight">{card.name}</p>}
+      {card.name && (
+        <p className="mt-0.5 text-[22px] font-bold leading-tight">
+          {card.name}
+          {card.internal && <span className="ml-2 rounded bg-indigo-500/15 px-1.5 py-0.5 align-middle text-[11px] font-bold text-indigo-700">Internal</span>}
+        </p>
+      )}
       {card.email && <p className="text-[12.5px] opacity-80">{card.email}</p>}
       <p className="mt-1 text-[13px]">
         {card.verdict === "checked_in" && card.checkedInAt && `Checked in at ${clock(card.checkedInAt)}.`}
@@ -405,7 +413,7 @@ function RosterList({
   rows, room, busy, onCheckIn, onUndo,
 }: {
   rows: Row[] | null;
-  room: { checkedIn: number; capacity: number } | null;
+  room: { checkedIn: number; capacity: number; internalIn?: number } | null;
   busy: string | null;
   onCheckIn: (r: Row, letIn: boolean) => void;
   onUndo: (r: Row) => void;
@@ -469,7 +477,11 @@ function RosterList({
                 <p className="truncate text-[14px] font-semibold text-fg">{r.name}</p>
                 <p className="truncate text-[11.5px] text-subtle">{r.email}</p>
               </div>
-              <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${SEAT_TONE[r.status] ?? SEAT_TONE.pending}`}>{SEAT_LABEL[r.status] ?? r.status}</span>
+              {r.internal ? (
+                <span className="rounded bg-indigo-500/12 px-1.5 py-0.5 text-[11px] font-bold text-indigo-700" title="BioHubNet staff or guest — not in a student seat">Internal</span>
+              ) : (
+                <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${SEAT_TONE[r.status] ?? SEAT_TONE.pending}`}>{SEAT_LABEL[r.status] ?? r.status}</span>
+              )}
               {r.checkedInAt ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-emerald-700">

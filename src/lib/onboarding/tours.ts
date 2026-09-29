@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17m";
+export const TOUR_VERSION = "2026.10.17n";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.internal-people",
+    title: "Internal people",
+    body: "Staff and guests go on **Capacity \u2192 Internal people**: name, address, dietary needs, and a tick per session. They sit **beside** capacity, never in it, are never ranked against students, and are in the caterer\u2019s numbers. Anyone @biohubnet.ca counts automatically.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Capacity", href: "/admin/workspace/training-admin?tab=capacity" },
+    since: "2026.10.17n",
   },
   {
     id: "training-week.qr-in-email",

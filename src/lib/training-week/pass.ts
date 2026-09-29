@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { absolute } from "@/lib/notify/email";
 import { registrantName } from "@/lib/allocation/registrant-name";
 import { doorVerdict, hasSpace, withdrawProblem, type DoorVerdict } from "./check-in";
+import { INTERNAL_KEY, internalKeys, isInternal, parseInternal } from "./internal";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
 
@@ -61,15 +62,40 @@ export interface DoorCard {
   bookingId: string | null;
   /** Where they do have seats, so somebody at the wrong door can be sent to the right one. */
   otherSessions: { title: string; when: string; status: string }[];
-  room: { checkedIn: number; capacity: number };
+  room: { checkedIn: number; capacity: number; internalIn: number };
+  /** BioHubNet staff or a listed guest. */
+  internal: boolean;
 }
 
+/** Who is internal, for this request: the list read once. */
+async function internalTest() {
+  const keys = internalKeys(parseInternal((await prisma.platformSetting.findUnique({ where: { key: INTERNAL_KEY } }))?.value));
+  return (b: { submission: { email: string | null; data: unknown } | null; user: { email: string } | null }) => {
+    const data = (b.submission?.data ?? {}) as Record<string, unknown>;
+    return isInternal(
+      [typeof data.trainee_email === "string" ? data.trainee_email : null, b.submission?.email, b.user?.email],
+      data, keys,
+    );
+  };
+}
+
+/**
+ * Who is in the room. `checkedIn` is students only — it is what the
+ * room's capacity is measured against, so staff sitting in never cost a
+ * waitlisted student their chance of a chair. Internal people are
+ * counted beside it.
+ */
 async function roomFacts(workshopId: string) {
-  const [w, checkedIn] = await Promise.all([
+  const [w, inRoom, internal] = await Promise.all([
     prisma.workshop.findUnique({ where: { id: workshopId }, select: { capacity: true } }),
-    prisma.workshopBooking.count({ where: { workshopId, checkedInAt: { not: null } } }),
+    prisma.workshopBooking.findMany({
+      where: { workshopId, checkedInAt: { not: null } },
+      select: { submission: { select: { email: true, data: true } }, user: { select: { email: true } } },
+    }),
+    internalTest(),
   ]);
-  return { capacity: w?.capacity ?? 0, checkedIn };
+  const staff = inRoom.filter(internal).length;
+  return { capacity: w?.capacity ?? 0, checkedIn: inRoom.length - staff, internalIn: staff };
 }
 
 /**
@@ -90,7 +116,7 @@ export async function checkInAtDoor(input: {
 }): Promise<DoorCard> {
   const room = await roomFacts(input.workshopId);
   const blank: DoorCard = {
-    verdict: "unknown", name: "", email: "", status: null, checkedInAt: null, bookingId: null, otherSessions: [], room,
+    verdict: "unknown", name: "", email: "", status: null, checkedInAt: null, bookingId: null, otherSessions: [], room, internal: false,
   };
 
   // Who: the registration behind the code, or behind the chosen seat.
@@ -112,7 +138,7 @@ export async function checkInAtDoor(input: {
     return blank;
   }
 
-  const [submission, seats] = await Promise.all([
+  const [submission, seats, internalOf] = await Promise.all([
     submissionId
       ? prisma.eventFormSubmission.findUnique({ where: { id: submissionId }, select: { data: true, email: true } })
       : Promise.resolve(null),
@@ -125,7 +151,9 @@ export async function checkInAtDoor(input: {
           },
         })
       : Promise.resolve([]),
+    internalTest(),
   ]);
+  const internal = internalOf({ submission: submission ?? null, user: bookingInRoom?.user ?? null });
 
   const here = bookingInRoom
     ? { id: bookingInRoom.id, status: bookingInRoom.status, checkedInAt: bookingInRoom.checkedInAt }
@@ -142,7 +170,7 @@ export async function checkInAtDoor(input: {
     .map((s) => ({ title: s.workshop.title, when: when(s.workshop.startDateTime), status: s.status }));
 
   const card = (verdict: DoorVerdict, checkedInAt: Date | null, r = room): DoorCard => ({
-    verdict, name, email,
+    verdict, name, email, internal,
     status: here?.status ?? null,
     checkedInAt: checkedInAt ? checkedInAt.toISOString() : null,
     bookingId: here?.id ?? null,
@@ -197,11 +225,12 @@ export interface RosterRow {
   status: string;
   checkedInAt: string | null;
   method: string | null;
+  internal: boolean;
 }
 
 /** Everybody with a seat in one session, for the laptop list. */
-export async function sessionRoster(workshopId: string): Promise<{ rows: RosterRow[]; room: { capacity: number; checkedIn: number } }> {
-  const [bookings, room] = await Promise.all([
+export async function sessionRoster(workshopId: string): Promise<{ rows: RosterRow[]; room: { capacity: number; checkedIn: number; internalIn: number } }> {
+  const [bookings, room, internalOf] = await Promise.all([
     prisma.workshopBooking.findMany({
       where: { workshopId },
       select: {
@@ -211,8 +240,10 @@ export async function sessionRoster(workshopId: string): Promise<{ rows: RosterR
       },
     }),
     roomFacts(workshopId),
+    internalTest(),
   ]);
   const rows = bookings.map((b) => ({
+    internal: internalOf({ submission: b.submission ?? null, user: b.user ?? null }),
     bookingId: b.id,
     name:
       registrantName((b.submission?.data ?? {}) as Record<string, unknown>) ||

@@ -17,7 +17,8 @@ import {
   CATERING_COPY_KEY, isAudience, isId, REGISTRANT_VIEWS_KEY, RULES_KEY,
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
-import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
+import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
+import { INTERNAL_KEY, InternalPersonSchema, internalKeys, isInternal, parseInternal, type InternalPerson } from "@/lib/training-week/internal";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
@@ -709,6 +710,8 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
     })).map((u) => [u.email.toLowerCase(), u.name as string]),
   );
 
+  const internalSet = internalKeys(parseInternal((await prisma.platformSetting.findUnique({ where: { key: INTERNAL_KEY } }))?.value));
+
   return rows.flatMap((r) => {
     const own = byForm.get(r.formId);
     if (!own) return [];
@@ -720,6 +723,10 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
       // Submitted timestamp: what first-come-first-served is decided on.
       at: r.createdAt.toISOString(),
       isTest: data.__test === true,
+      internal: isInternal(
+        [typeof data.trainee_email === "string" ? data.trainee_email : null, r.email, r.user?.email],
+        data, internalSet,
+      ),
       form: own.form,
       name: registrantName(answers) || r.user?.name || accountNames.get((r.email ?? "").toLowerCase()) || "",
       email: r.email ?? r.user?.email ?? "",
@@ -1214,4 +1221,115 @@ export async function loadTravelChecks(): Promise<string[]> {
     } catch { /* a log line we cannot read is not a reason to fail the page */ }
   }
   return [...out];
+}
+
+/* ── internal people ─────────────────────────────────────────────── */
+
+/** What an internal person's registration says — what catering reads. */
+function internalData(p: InternalPerson) {
+  return {
+    full_name: p.name,
+    trainee_email: p.email || undefined,
+    dietary: p.dietary ? ["Other — please describe"] : ["No dietary requirements"],
+    dietary_other: p.dietary || undefined,
+    // The mark that makes it internal whatever address it carries.
+    __internal: true,
+  };
+}
+
+/** The registrations made for internal people, with who they are for. */
+async function internalRegistrations() {
+  const form = await prisma.eventForm.findUnique({ where: { slug: REGISTRATION_FORM_SLUG_V2 }, select: { id: true } });
+  if (!form) return { formId: null, rows: [] as { id: string; name: string; email: string }[] };
+  const subs = await prisma.eventFormSubmission.findMany({
+    where: { formId: form.id, data: { path: ["__internal"], equals: true } },
+    select: { id: true, email: true, data: true },
+  });
+  const rows = subs.map((s) => {
+    const d = (s.data ?? {}) as Record<string, unknown>;
+    return { id: s.id, name: String(d.full_name ?? ""), email: s.email ?? "" };
+  });
+  return { formId: form.id, rows };
+}
+
+/** The same person: by address when there is one, by name otherwise. */
+const samePerson = (p: { name: string; email: string }, r: { name: string; email: string }) =>
+  p.email ? r.email.toLowerCase() === p.email.toLowerCase() : !r.email && r.name === p.name;
+
+/**
+ * Save the Internal list.
+ *
+ * Their dietary needs are copied onto the registrations already made
+ * for them, so a change reaches the caterer's list without anybody
+ * removing and re-adding them to a session.
+ */
+export async function saveInternalPeople(raw: unknown): Promise<{ ok: boolean; people?: InternalPerson[]; problem?: string }> {
+  const admin = await requireAdmin();
+  const parsed = InternalPersonSchema.array().max(200).safeParse(raw);
+  if (!parsed.success) return { ok: false, problem: "Every person needs a name; addresses and dietary notes must be short." };
+  const people = parsed.data;
+
+  await prisma.platformSetting.upsert({
+    where: { key: INTERNAL_KEY },
+    create: { key: INTERNAL_KEY, value: JSON.stringify(people) },
+    update: { value: JSON.stringify(people) },
+  });
+  const { rows } = await internalRegistrations();
+  for (const p of people) {
+    for (const r of rows.filter((x) => samePerson(p, x))) {
+      await prisma.eventFormSubmission.update({ where: { id: r.id }, data: { data: internalData(p) } });
+    }
+  }
+  await logSend(admin.id, "training_admin.internal_saved", { count: people.length });
+  revalidatePath(PAGE);
+  return { ok: true, people };
+}
+
+/**
+ * Put an internal person in a session, or take them out.
+ *
+ * Their seat is made confirmed and marked told, so no letter is ever
+ * owed on it and no reminder rota counts them twice — it exists so the
+ * room count, the check-in list and the caterer know they are coming.
+ * Only seats made here are touched: somebody who registered through the
+ * form keeps the seat they asked for.
+ */
+export async function setInternalAttendance(
+  person: unknown,
+  workshopId: string,
+  attending: boolean,
+): Promise<{ ok: boolean; problem?: string }> {
+  const admin = await requireAdmin();
+  const parsed = InternalPersonSchema.safeParse(person);
+  if (!parsed.success || !isId(workshopId)) return { ok: false, problem: "That is not a person and a session." };
+  const p = parsed.data;
+  const list = parseInternal((await prisma.platformSetting.findUnique({ where: { key: INTERNAL_KEY } }))?.value);
+  if (!list.some((x) => samePerson(p, x))) return { ok: false, problem: "Add them to the Internal list first." };
+
+  const { formId, rows } = await internalRegistrations();
+  if (!formId) return { ok: false, problem: "The Training Week registration form is missing." };
+  let reg = rows.find((r) => samePerson(p, r));
+
+  if (!attending) {
+    if (reg) await prisma.workshopBooking.deleteMany({ where: { submissionId: reg.id, workshopId } });
+  } else {
+    if (!reg) {
+      const made = await prisma.eventFormSubmission.create({
+        data: { formId, email: p.email || null, userId: null, data: internalData(p) },
+        select: { id: true },
+      });
+      reg = { id: made.id, name: p.name, email: p.email };
+    }
+    const existing = await prisma.workshopBooking.findFirst({ where: { submissionId: reg.id, workshopId }, select: { id: true } });
+    const now = new Date();
+    const seat = { status: "confirmed", notifiedStatus: "confirmed", notifiedAt: now, approvedAt: now, approvedById: admin.id ?? null };
+    if (existing) {
+      await prisma.workshopBooking.update({ where: { id: existing.id }, data: seat });
+    } else {
+      await prisma.workshopBooking.create({ data: { workshopId, submissionId: reg.id, rank: 1, ...seat } });
+    }
+  }
+  await logSend(admin.id, "training_admin.internal_attendance", { name: p.name, workshopId, attending });
+  revalidatePath(PAGE);
+  return { ok: true };
 }
