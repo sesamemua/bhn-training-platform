@@ -8,6 +8,8 @@
  * capacity, then write to the people it just let in — and a navigation
  * between each of those is four chances to lose your place.
  */
+import { CapacityMonitor } from "@/components/training-week/CapacityMonitor";
+import { sessionCapacity } from "@/lib/training-week/capacity";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowUp, Check, ChevronDown, Eye, FileText, Loader2, Mail,
@@ -173,6 +175,15 @@ function Dashboard({
 
   return (
     <div className="space-y-5">
+      <CapacityMonitor
+        sessions={live.map((w) => ({ id: w.id, slug: w.slug, title: w.title, start: w.startDateTime, cap: sessionCapacity(w.capacity, w.bookings) }))}
+        action={
+          <button onClick={() => onOpen("capacity")} className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">
+            Change capacity →
+          </button>
+        }
+      />
+
       <EligibilityCard summary={eligibility} />
 
       {/* The policy, in two lines, with a way in. */}

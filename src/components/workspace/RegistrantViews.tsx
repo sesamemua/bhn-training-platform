@@ -7,11 +7,11 @@
  * filters, save it as a new view, update, rename or delete it. Saved
  * views are shared by every admin.
  */
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, removeHighlight, saveCateringSnapshot, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
-import type { Highlight } from "@/lib/allocation/highlights";
+import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/allocation/highlights";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { changesSince, currentEntries, fullText, updateText, type Snapshot } from "@/lib/allocation/catering";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
@@ -213,16 +213,23 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   }, [rows, draft, onlyHighlighted]);
   const highlightedPeople = useMemo(() => new Set(rows.filter((r) => (r.highlights ?? []).length).map((r) => r.personKey)).size, [rows]);
 
-  function highlight(r: ShownRow) {
-    const reason = prompt(`Why highlight ${r.name}? Everybody on the team will see your name and this reason.`)?.trim();
-    if (!reason) return;
+  // The reason box opens beside the star, not as a browser prompt; reasons
+  // used before are offered again as pills.
+  const [starFor, setStarFor] = useState<{ row: ShownRow; top: number; left: number } | null>(null);
+  const usedReasons = useMemo(() => reusableReasons(rows.flatMap((r) => r.highlights ?? [])), [rows]);
+
+  function openStar(r: ShownRow, e: React.MouseEvent<HTMLButtonElement>) {
+    const box = e.currentTarget.getBoundingClientRect();
+    setStarFor({ row: r, top: box.bottom + 4, left: Math.min(box.left, window.innerWidth - 336) });
+  }
+  function highlight(r: ShownRow, reason: string) {
+    setStarFor(null);
     start(async () => {
       const res = await addHighlight(r.bookingIds[0] ?? r.bookingId, reason);
       setSaid(res.ok ? `${r.name} highlighted.` : res.problem ?? "Could not save.");
     });
   }
   function unhighlight(r: ShownRow, h: Highlight) {
-    if (!confirm(`Remove ${h.byName}'s highlight on ${r.name}?\n\n“${h.reason}”`)) return;
     start(async () => {
       const res = await removeHighlight(r.bookingIds[0] ?? r.bookingId, h.id);
       setSaid(res.ok ? "Highlight removed." : res.problem ?? "Could not save.");
@@ -447,6 +454,17 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
           )}
           {pending && <Loader2 size={13} className="animate-spin text-muted" />}
           {said && <span role="status" className="text-[12px] text-fg">{said}</span>}
+          {starFor && (
+            <StarPopover
+              key={starFor.row.personKey}
+              name={starFor.row.name}
+              top={starFor.top}
+              left={starFor.left}
+              reasons={usedReasons}
+              onSave={(reason) => highlight(starFor.row, reason)}
+              onClose={() => setStarFor(null)}
+            />
+          )}
           {highlightedPeople > 0 && (
             <button type="button" className={pill(onlyHighlighted)} onClick={() => setOnlyHighlighted((v) => !v)}>
               <Star size={11} className="-mt-0.5 mr-1 inline text-amber-500" />Highlighted only · {highlightedPeople}
@@ -552,7 +570,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                               place on every row, however many badges follow. */}
                           <button
                             type="button"
-                            onClick={() => highlight(r)}
+                            onClick={(e) => openStar(r, e)}
                             disabled={pending}
                             aria-label={`Highlight ${r.name}`}
                             title="Highlight this person, with a reason everybody can see"
@@ -572,14 +590,14 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         </div>
                         {/* Who highlighted them and why — each admin's note its own line. */}
                         {(r.highlights ?? []).map((h) => (
-                          <div key={h.id} className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-amber-800">
+                          <div key={h.id} className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-fg/85">
                             <Star size={10} className="mt-[3px] shrink-0 fill-amber-400 text-amber-500" />
                             <span className="min-w-0">
-                              <span className="font-semibold">{h.byName}</span>
-                              <span className="text-amber-700/80"> · {shortStamp(h.at)}</span>: {h.reason}
+                              <span className="font-semibold text-amber-500">{h.byName}</span>
+                              <span className="text-subtle"> · {shortStamp(h.at)}</span>{h.reason ? `: ${h.reason}` : ""}
                             </span>
                             <button type="button" onClick={() => unhighlight(r, h)} aria-label="Remove this highlight"
-                              className="shrink-0 rounded px-0.5 text-amber-700/60 hover:text-rose-600">×</button>
+                              className="shrink-0 rounded px-0.5 text-subtle hover:text-rose-500">×</button>
                           </div>
                         ))}
                       </td>
@@ -752,6 +770,94 @@ export function CateringPanel({ rows, initial }: { rows: RegistrantRow[]; initia
             {snap && <button type="button" className={pill(preview === "update")} onClick={() => setPreview("update")}>Only what changed</button>}
           </div>
           <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md border border-line bg-card p-3 font-mono text-[11.5px] leading-relaxed text-fg">{textFor(preview)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The reason box beside a star. Enter or Highlight saves with the typed
+ * reason, a pill saves with that reason, ✕ highlights with no reason at
+ * all. Esc, a click elsewhere or scrolling closes it without saving.
+ */
+function StarPopover({ name, top, left, reasons, onSave, onClose }: {
+  name: string;
+  top: number;
+  left: number;
+  reasons: string[];
+  onSave: (reason: string) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const away = (e: Event) => { if (!box.current?.contains(e.target as Node)) onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    // Fixed to where the star was: once the page moves it would point at the wrong row.
+    const moved = (e: Event) => { if (!box.current?.contains(e.target as Node)) onClose(); };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    window.addEventListener("scroll", moved, true);
+    window.addEventListener("resize", onClose);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+      window.removeEventListener("scroll", moved, true);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={box}
+      role="dialog"
+      aria-label={`Highlight ${name}`}
+      style={{ top, left }}
+      className="fixed z-50 w-80 rounded-lg border border-amber-400/50 bg-card-solid p-2.5 shadow-lg"
+    >
+      <div className="mb-1.5 flex items-center gap-1.5 text-[12px]">
+        <Star size={13} className="fill-amber-400 text-amber-500" />
+        <span className="min-w-0 flex-1 truncate font-semibold text-fg">Highlight {name}</span>
+        <button
+          type="button"
+          onClick={() => onSave("")}
+          title="Highlight without a reason"
+          className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[11px] text-muted hover:border-amber-400 hover:text-fg"
+        >
+          <X size={11} /> No reason
+        </button>
+      </div>
+      <form
+        onSubmit={(e) => { e.preventDefault(); onSave(text.trim()); }}
+        className="flex gap-1.5"
+      >
+        <input
+          id="highlight-reason"
+          autoFocus
+          value={text}
+          maxLength={HIGHLIGHT_REASON_MAX}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Why? Everybody on the team will see it"
+          className="min-w-0 flex-1 rounded border border-line bg-transparent px-2 py-1 text-[12px] text-fg placeholder:text-subtle focus:border-amber-400 focus:outline-none"
+        />
+        <button type="submit" className="rounded bg-amber-500 px-2 py-1 text-[12px] font-semibold text-white hover:bg-amber-600">
+          Highlight
+        </button>
+      </form>
+      {reasons.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {reasons.map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => onSave(r)}
+              title="Highlight with this reason"
+              className="max-w-full truncate rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[11px] text-fg hover:border-amber-400 hover:bg-amber-400/20"
+            >
+              {r}
+            </button>
+          ))}
         </div>
       )}
     </div>

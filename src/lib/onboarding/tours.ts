@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17p";
+export const TOUR_VERSION = "2026.10.17q";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -113,9 +113,19 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.10.16p",
   },
   {
+    id: "training-admin.capacity-monitor",
+    title: "Capacity monitor",
+    body: "Each Training Week session as a bar of **requests against student seats**, pending included. Red means oversubscribed, amber full or nearly full. It is here and on your home dashboard.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open the dashboard", href: "/admin/workspace/training-admin" },
+    since: "2026.10.17q",
+  },
+  {
     id: "training-admin.highlights",
     title: "Highlight a registrant",
-    body: "On **Registrants**, the \u2606 in front of each name highlights that person, with a reason. Everybody on the team sees who highlighted them and why, under the name. **Highlighted only** shows just those people; \u00d7 removes a highlight.",
+    body: "On **Registrants**, the \u2606 in front of each name highlights that person, with a reason typed, one used before, or none. Everybody on the team sees who highlighted them and why, under the name. **Highlighted only** shows just those people; \u00d7 removes a highlight.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],

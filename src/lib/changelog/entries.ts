@@ -23,8 +23,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Capacity monitor for Training Week",
+    body: "Every Training Week session as a bar: **requests against student seats**, pending ones included \u2014 the seats table only counted approved and confirmed seats, so it showed nothing until somebody was approved. Each session says **Oversubscribed +N**, **Full**, or how many seats are left; the capacity line marks where the overflow starts. Staff and guests are not counted.\n\nIt sits at the top of the **Training Week dashboard** and on the **admin home dashboard**.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Highlight registrants, with who and why",
-    body: "On **Registrants**, the \u2606 in front of each name highlights that person. You say why, and the reason shows under their name with **who highlighted them** and when \u2014 so the whole team has the same context (\u201csponsor\u2019s student\u201d, \u201casked about step-free access\u201d). More than one admin can highlight the same person; each note stays their own, and \u00d7 removes one. Highlighted rows are tinted amber, and **Highlighted only** narrows whichever view is open to just them.\n\nThe old **ENGAGE learning paths** list (CATTI Biomanufacturing course, BioZone) is gone from the calendar key.",
+    body: "On **Registrants**, the \u2606 in front of each name highlights that person. A small box opens beside the star: type a reason and press **Highlight**, click a reason used before (they come back as pills), or **\u2715 No reason** to just star them. The reason shows under their name with **who highlighted them** and when, so the whole team has the same context. More than one admin can highlight the same person; \u00d7 removes a highlight straight away. Highlighted rows are tinted amber, and **Highlighted only** narrows whichever view is open to just them.\n\nThe old **ENGAGE learning paths** list (CATTI Biomanufacturing course, BioZone) is gone from the calendar key.",
     kind: "feature",
     visibleTo: STAFF,
     daysAgo: 0,

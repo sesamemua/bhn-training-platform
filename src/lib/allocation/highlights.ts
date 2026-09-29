@@ -1,6 +1,6 @@
 /**
- * Highlights: an admin flags a registrant for a reason, and everybody
- * else can see who flagged them and why.
+ * Highlights: an admin flags a registrant, usually with a reason, and
+ * everybody else can see who flagged them and why.
  *
  * "Keep an eye on this one", "sponsor's student", "asked about
  * accessibility on the phone" — context that belongs to a person rather
@@ -25,7 +25,8 @@ export const HighlightSchema = z.object({
   /** Who highlighted them — kept as a name so the note still reads if the account goes. */
   byId: z.string().max(40).nullable(),
   byName: z.string().max(120),
-  reason: z.string().trim().min(1).max(HIGHLIGHT_REASON_MAX),
+  /** May be empty: a star with no reason is still a highlight. */
+  reason: z.string().trim().max(HIGHLIGHT_REASON_MAX),
   at: z.string(),
 });
 export type Highlight = z.infer<typeof HighlightSchema>;
@@ -43,7 +44,20 @@ export function highlightsOf(data: unknown): Highlight[] {
 /** Why a reason cannot be saved, or null. */
 export function highlightProblem(reason: string): string | null {
   const r = reason.trim();
-  if (!r) return "Say why — the reason is what the highlight is for.";
   if (r.length > HIGHLIGHT_REASON_MAX) return `Keep it under ${HIGHLIGHT_REASON_MAX} characters.`;
   return null;
+}
+
+/** Reasons already used on any registrant, most used first — offered again as one-click pills. */
+export function reusableReasons(all: Highlight[], limit = 8): string[] {
+  const count = new Map<string, { text: string; n: number }>();
+  for (const h of all) {
+    const text = h.reason.trim();
+    if (!text) continue;
+    const key = text.toLowerCase();
+    const c = count.get(key);
+    if (c) c.n++;
+    else count.set(key, { text, n: 1 });
+  }
+  return [...count.values()].sort((a, b) => b.n - a.n).slice(0, limit).map((c) => c.text);
 }
