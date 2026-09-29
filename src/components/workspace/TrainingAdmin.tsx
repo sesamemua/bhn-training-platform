@@ -87,13 +87,14 @@ export interface EligibilitySummary {
 }
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab, eligibility, internalPeople,
+  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab, eligibility, internalPeople, internalStaff,
 }: {
   eventId: string; eventTitle: string; rules: Rule[]; views: View[]; catering: Snapshot | null; workshops: AdminWorkshop[];
   /** ?tab=… in the URL — e.g. a link straight to Catering & accessibility. */
   initialTab?: string;
   eligibility: EligibilitySummary;
   internalPeople: InternalPerson[];
+  internalStaff: { name: string; email: string }[];
 }) {
   // Opens on the dashboard: the first question anybody has here is
   // "how is it going", not "let me change the policy". A link can name a tab.
@@ -128,7 +129,7 @@ export function TrainingAdmin({
         {tab === "capacity" && (
           <>
             <Capacity eventId={eventId} workshops={workshops} />
-            <InternalPeople initial={internalPeople} workshops={workshops} />
+            <InternalPeople initial={internalPeople} staff={internalStaff} workshops={workshops} />
           </>
         )}
         {tab === "registrants" && <Registrants workshops={workshops} views={views} />}

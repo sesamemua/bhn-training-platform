@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Every staff account is always internal",
+    body: "Staff no longer have to be put on the **Internal people** list. Every **admin and superadmin account** counts as internal automatically \u2014 the moment the account exists, and no longer once it goes \u2014 so a staff member who registers for a session is never counted in a student seat or ranked against a student. Demo accounts are left out.\n\nThe **Internal people** section now lists who is covered this way. The list itself is for everybody else: guests like Darius and Gilbert, and staff who register with an address other than their account\u2019s \u2014 Yeseul Lee, who registered with her Gmail, is on it for that reason.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Internal people: a request still waiting is recognised, and never doubled",
     body: "The **Internal people** grid now recognises a session somebody asked for through the form **at any stage** \u2014 *asked*, *waitlisted* or *registered* \u2014 not only once it was approved. Before, a staff member whose request was still undecided showed an empty tick box, and ticking it would have given them a second seat in the same room. Ticking a session they already asked for is now refused with a note to decide their own request in **Registrants** instead.",
     kind: "fix",

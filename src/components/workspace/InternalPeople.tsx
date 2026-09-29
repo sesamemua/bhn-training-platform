@@ -22,7 +22,9 @@ const tz = "America/Toronto";
 const day = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, weekday: "short" }).format(new Date(iso));
 const INPUT = "w-full rounded-md border border-line bg-elevated px-2 py-1 text-[12.5px] text-fg outline-none focus-visible:border-brand-500";
 
-export function InternalPeople({ initial, workshops }: { initial: InternalPerson[]; workshops: AdminWorkshop[] }) {
+export function InternalPeople({
+  initial, staff, workshops,
+}: { initial: InternalPerson[]; staff: { name: string; email: string }[]; workshops: AdminWorkshop[] }) {
   const [people, setPeople] = useState<InternalPerson[]>(initial);
   const [draft, setDraft] = useState<InternalPerson>({ name: "", email: "", dietary: "" });
   const [said, setSaid] = useState<string | null>(null);
@@ -93,9 +95,17 @@ export function InternalPeople({ initial, workshops }: { initial: InternalPerson
       <p className="mt-1 max-w-prose text-[12px] leading-snug text-muted">
         BioHubNet staff and guests who sit in on a session. They are counted <strong className="text-fg">beside</strong> a
         room&apos;s capacity, never in it, and are never ranked against a student — but they are in the check-in list and the
-        caterer&apos;s numbers. Anyone with a <span className="font-mono">@biohubnet.ca</span> address counts automatically;
-        add anyone else here, with their address so they are recognised if they register themselves.
+        caterer&apos;s numbers. Staff accounts and any <span className="font-mono">@biohubnet.ca</span> address count
+        automatically; add anyone else here, with their address so they are recognised if they register themselves.
       </p>
+      {staff.length > 0 && (
+        /* Staff are internal by rule, not by being listed: shown so nobody
+           adds them twice or wonders whether they are covered. */
+        <p className="mt-2 text-[12px] leading-snug text-muted">
+          <span className="font-semibold text-fg">Always internal — every staff account:</span>{" "}
+          {staff.map((x) => x.name).join(", ")}. If one of them registers with another address, add them below with that address.
+        </p>
+      )}
 
       <div className="mt-3 overflow-x-auto rounded-lg border border-line">
         <table className="w-full min-w-[640px] border-collapse text-[12.5px]">

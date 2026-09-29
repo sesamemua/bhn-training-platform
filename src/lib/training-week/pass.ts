@@ -12,7 +12,8 @@ import { prisma } from "@/lib/prisma";
 import { absolute } from "@/lib/notify/email";
 import { registrantName } from "@/lib/allocation/registrant-name";
 import { doorVerdict, hasSpace, withdrawProblem, type DoorVerdict } from "./check-in";
-import { INTERNAL_KEY, internalKeys, isInternal, parseInternal } from "./internal";
+import { isInternal } from "./internal";
+import { loadInternalSet } from "./internal-server";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
 
@@ -69,7 +70,7 @@ export interface DoorCard {
 
 /** Who is internal, for this request: the list read once. */
 async function internalTest() {
-  const keys = internalKeys(parseInternal((await prisma.platformSetting.findUnique({ where: { key: INTERNAL_KEY } }))?.value));
+  const { keys } = await loadInternalSet();
   return (b: { submission: { email: string | null; data: unknown } | null; user: { email: string } | null }) => {
     const data = (b.submission?.data ?? {}) as Record<string, unknown>;
     return isInternal(

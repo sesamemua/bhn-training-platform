@@ -23,7 +23,8 @@ import { CATERING_COPY_KEY, REGISTRANT_VIEWS_KEY } from "@/lib/allocation/admin-
 import { parseSnapshot } from "@/lib/allocation/catering";
 import { parseViews } from "@/lib/allocation/registrant-views";
 import { emailKey } from "@/lib/eligibility/email-key";
-import { INTERNAL_KEY, internalKeys, isInternal, parseInternal } from "@/lib/training-week/internal";
+import { isInternal } from "@/lib/training-week/internal";
+import { loadInternalSet } from "@/lib/training-week/internal-server";
 import { ELIGIBILITY_SOURCES } from "@/lib/eligibility/sources";
 import { autoRefreshes } from "@/lib/eligibility/apply";
 import { platformApplicantCount } from "@/lib/eligibility/check";
@@ -60,7 +61,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     );
   }
 
-  const [rules, workshops, forms, savedViews, cateringCopy, internalRow] = await Promise.all([
+  const [rules, workshops, forms, savedViews, cateringCopy] = await Promise.all([
     loadRules(),
     prisma.workshop.findMany({
       where: { eventId: event.id },
@@ -87,7 +88,6 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     prisma.eventForm.findMany({ where: REGISTRATION_FORM_WHERE, select: { fields: true } }),
     prisma.platformSetting.findUnique({ where: { key: REGISTRANT_VIEWS_KEY }, select: { value: true } }),
     prisma.platformSetting.findUnique({ where: { key: CATERING_COPY_KEY }, select: { value: true } }),
-    prisma.platformSetting.findUnique({ where: { key: INTERNAL_KEY }, select: { value: true } }),
   ]);
   const accessKeys = new Set(
     forms.flatMap((f) => ((f.fields as { fields?: { key?: string; label?: string }[] } | null)?.fields ?? []))
@@ -117,8 +117,10 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
   };
   const keys = [...new Set(all.map((b) => emailKey(emailOf(b))).filter((k): k is string => !!k))];
   /* BioHubNet's own people: in the room, not in a student seat. */
-  const internalPeople = parseInternal(internalRow?.value);
-  const internalSet = internalKeys(internalPeople);
+  // Staff accounts count automatically; the list covers everybody else.
+  const internalLoaded = await loadInternalSet();
+  const internalPeople = internalLoaded.list;
+  const internalSet = internalLoaded.keys;
   const internalOf = (b: (typeof all)[number]) =>
     isInternal(
       [emailOf(b), b.submission?.email, b.user?.email],
@@ -184,6 +186,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
       <TrainingAdmin
         eligibility={eligibility}
         internalPeople={internalPeople}
+        internalStaff={internalLoaded.staff}
         eventId={event.id}
         eventTitle={event.title}
         rules={rules}

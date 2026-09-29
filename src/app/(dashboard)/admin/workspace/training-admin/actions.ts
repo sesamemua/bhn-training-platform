@@ -18,7 +18,8 @@ import {
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
-import { INTERNAL_KEY, InternalPersonSchema, internalKeys, isInternal, parseInternal, type InternalPerson } from "@/lib/training-week/internal";
+import { INTERNAL_KEY, InternalPersonSchema, isInternal, parseInternal, type InternalPerson } from "@/lib/training-week/internal";
+import { loadInternalSet } from "@/lib/training-week/internal-server";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
@@ -710,7 +711,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
     })).map((u) => [u.email.toLowerCase(), u.name as string]),
   );
 
-  const internalSet = internalKeys(parseInternal((await prisma.platformSetting.findUnique({ where: { key: INTERNAL_KEY } }))?.value));
+  const internalSet = (await loadInternalSet()).keys;
 
   return rows.flatMap((r) => {
     const own = byForm.get(r.formId);
