@@ -24,7 +24,7 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     title: "Capacity monitor for Training Week",
-    body: "Every Training Week session as a bar: **requests against student seats**, pending ones included \u2014 the seats table only counted approved and confirmed seats, so it showed nothing until somebody was approved. Each session says **Oversubscribed +N**, **Full**, or how many seats are left; the capacity line marks where the overflow starts. Staff and guests are not counted.\n\nIt sits at the top of the **Training Week dashboard** and on the **admin home dashboard**.",
+    body: "Every Training Week session as a bar: **requests against student seats**, pending ones included \u2014 the seats table only counted approved and confirmed seats, so it showed nothing until somebody was approved. Each session says **Oversubscribed +N**, **Full**, or how many seats are left; the capacity line marks where the overflow starts. Staff and guests are not counted.\n\nIt sits at the top of the **Training Week dashboard**, and on the **admin home dashboard** just above the Training Week registration switch.",
     kind: "feature",
     visibleTo: STAFF,
     daysAgo: 0,

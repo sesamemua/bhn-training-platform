@@ -311,7 +311,22 @@ export async function AdminDashboard({
 
       {committeeBadge}
 
-      {/* Registrations for the events coming up — under the cover, never above it. */}
+      {/* Registrations for the events coming up — under the cover, never above it.
+          How full the week is comes first, above the switch that closes it. */}
+      {capacity.length > 0 && (
+        <article className="aero-frame">
+          <div className="aero-card">
+            <CapacityMonitor
+              sessions={capacity}
+              action={
+                <Link href="/admin/workspace/training-admin?tab=capacity" className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">
+                  Open Training Week →
+                </Link>
+              }
+            />
+          </div>
+        </article>
+      )}
       <RegistrationSwitch />
       <RegistrationCounts />
       <MarketingMetrics />
@@ -321,19 +336,6 @@ export async function AdminDashboard({
         <div className="sr-layout">
           <div className="sr-body">
             {/* TRIAGE — what needs me NOW */}
-            {capacity.length > 0 && (
-              <div className="aero-card">
-                <CapacityMonitor
-                  sessions={capacity}
-                  action={
-                    <Link href="/admin/workspace/training-admin?tab=capacity" className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">
-                      Open Training Week →
-                    </Link>
-                  }
-                />
-              </div>
-            )}
-
             <div className="aero-card">
               <h3 className="aero-h"><ClipboardList size={14} /> Triage queue</h3>
               <p className="aero-gloss">What needs you right now.</p>
