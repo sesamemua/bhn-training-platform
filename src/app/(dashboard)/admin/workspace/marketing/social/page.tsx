@@ -18,12 +18,17 @@ import { openCycles } from "@/lib/social/cycles";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
 import { findCompanyLogo, logoOverride } from "@/lib/social/company-logo";
 import { SYMPOSIUM_SOCIAL_STREAM, syncSpeakerHighlights } from "@/lib/social/speakers";
+import { CRS_EVENT_POST } from "@/lib/social/events";
 
 export const dynamic = "force-dynamic";
 
-export default async function SocialPage() {
+export default async function SocialPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect("/dashboard");
+
+  const { tab } = await searchParams;
+  // Create once; revisiting the page must never overwrite someone's draft or graphic.
+  await prisma.socialPost.createMany({ data: [CRS_EVENT_POST], skipDuplicates: true });
 
   const now = new Date();
   const cycles = await openCycles(prisma, now);
@@ -68,7 +73,9 @@ export default async function SocialPage() {
       stream: r.stream,
       kind: r.kind,
       status: r.status,
-      cycleLabel: speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
+      cycleLabel: r.stream === "events"
+        ? (r.assetSpec as { title?: string } | null)?.title ?? "Event"
+        : speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
       daysBefore: r.daysBefore,
       body: r.body,
       editVersion: r.editVersion,
@@ -78,7 +85,7 @@ export default async function SocialPage() {
       companyLogoUrl: logoOverride(r.assetSpec) ?? (speaker?.organization ? companyLogos.get(speaker.organization) ?? null : null),
       assetSpec: r.assetSpec,
       scheduledFor: r.scheduledFor.toISOString(),
-      overdue: r.stream !== SYMPOSIUM_SOCIAL_STREAM && r.scheduledFor.getTime() < now.getTime(),
+      overdue: r.stream === "venture_connect" && r.scheduledFor.getTime() < now.getTime(),
       /*
        * The one thing the queue knows that the post does not.
        *
@@ -104,11 +111,11 @@ export default async function SocialPage() {
       <PageHero
         eyebrow="Workspace · Marketing"
         title="Social"
-        description="Draft, review and prepare social posts for VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."
+        description="Draft, review and prepare social posts for events, VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue initial={posts} />
+        <SocialQueue initial={posts} initialGroup={tab === "events" ? "events" : "symposium_2026"} />
       </div>
     </>
   );

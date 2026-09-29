@@ -44,6 +44,7 @@ const KIND_LABEL: Record<string, string> = {
   reminder: "Reminder",
   recipients: "Recipients",
   speaker: "Speaker highlight",
+  event: "Event support",
 };
 
 const STATUS_TONE: Record<string, string> = {
@@ -54,9 +55,12 @@ const STATUS_TONE: Record<string, string> = {
   skipped: "bg-elevated text-subtle ring-line",
 };
 
-export function SocialQueue({ initial }: { initial: QueuePost[] }) {
+export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
+  initial: QueuePost[];
+  initialGroup?: "symposium_2026" | "venture_connect" | "events";
+}) {
   const [posts, setPosts] = useState(initial);
-  const [group, setGroup] = useState<"symposium_2026" | "venture_connect">("symposium_2026");
+  const [group, setGroup] = useState(initialGroup);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -140,6 +144,28 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
     }
   }
 
+  async function uploadGraphic(post: QueuePost, file: File) {
+    if (file.size > 3_000_000) {
+      setNote("Choose a graphic under 3 MB.");
+      return;
+    }
+    setBusy(post.id);
+    setNote(null);
+    try {
+      const form = new FormData();
+      form.set("graphic", file);
+      const response = await fetch(`/api/admin/social/posts/${post.id}/graphic`, { method: "POST", body: form });
+      const result = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !result.url) throw new Error(result.error ?? "Couldn't upload the graphic.");
+      setPosts((all) => all.map((item) => item.id === post.id ? { ...item, assetUrl: result.url!, status: "draft" } : item));
+      setNote("Graphic saved.");
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : "Couldn't upload the graphic.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const visible = posts.filter((post) => post.stream === group);
 
   return (
@@ -148,6 +174,7 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
         {([
           ["symposium_2026", "2026 Symposium speakers"],
           ["venture_connect", "VentureConnect"],
+          ["events", "Events"],
         ] as const).map(([key, label]) => (
           <button
             key={key}
@@ -166,17 +193,21 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
         ))}
       </div>
       <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
-        {group === "symposium_2026" ? "2026 Annual Symposium" : "VentureConnect"}
+        {group === "events" ? "Events" : group === "symposium_2026" ? "2026 Annual Symposium" : "VentureConnect"}
       </h2>
       <p className="text-[14px] text-muted">
-        {group === "symposium_2026"
+        {group === "events"
+          ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
+          : group === "symposium_2026"
           ? "Drafts use the speaker bios and headshots saved for the symposium. Review each person's details and permission before posting."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
       </p>
-      {note && <p className="text-[12.5px] text-rose-700">{note}</p>}
+      {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
-          {group === "symposium_2026"
+          {group === "events"
+            ? "No event drafts are waiting for review."
+            : group === "symposium_2026"
             ? "No speaker highlights are ready yet. Add a bio and headshot in 2026 Symposium → Speakers; the draft will appear here."
             : "No VentureConnect drafts yet. They appear when a cycle opens."}
         </p>
@@ -243,6 +274,28 @@ export function SocialQueue({ initial }: { initial: QueuePost[] }) {
               <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-t border-line object-contain" />
             )}
           </article>
+
+          {p.stream === "events" && p.status !== "published" && p.status !== "skipped" && (
+            <div className="flex flex-wrap items-center gap-3 px-1 py-2">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50 focus-within:ring-2 focus-within:ring-brand-500">
+                <ImageIcon size={16} /> {busy === p.id ? "Uploading…" : p.assetUrl ? "Replace graphic" : "Upload graphic"}
+                <input
+                  type="file"
+                  aria-label={`Upload graphic for ${p.cycleLabel}`}
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="sr-only"
+                  disabled={busy === p.id}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) void uploadGraphic(p, file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <span className="text-[12px] text-muted">PNG, JPEG, WebP or GIF · under 3 MB</span>
+              {p.assetUrl && <a href={p.assetUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-brand-700 underline">Open graphic</a>}
+            </div>
+          )}
 
           {p.stream === "symposium_2026" && (
             <div className="flex flex-wrap items-center gap-3 px-1 py-2">
