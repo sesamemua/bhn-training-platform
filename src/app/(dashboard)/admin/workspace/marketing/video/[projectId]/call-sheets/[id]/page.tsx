@@ -18,7 +18,18 @@ export default async function CallSheetPage({ params }: Props) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect("/dashboard");
   const { projectId, id } = await params;
-  const row = await prisma.callSheet.findUnique({ where: { id }, include: { project: { select: { title: true } } } });
+  const row = await prisma.callSheet.findUnique({
+    where: { id },
+    include: {
+      project: {
+        select: {
+          title: true,
+          // The Filming day plan, for "Rebuild from Filming day".
+          filming: { select: { location: true, opensAt: true, closesAt: true, notes: true, people: { orderBy: { createdAt: "asc" } }, blocks: { orderBy: { start: "asc" } } } },
+        },
+      },
+    },
+  });
   if (!row || row.projectId !== projectId) notFound();
 
   return (
@@ -39,6 +50,14 @@ export default async function CallSheetPage({ params }: Props) {
           data: parseCallSheetData(row.data),
         }}
         updatedAt={row.updatedAt.toISOString()}
+        filming={row.project?.filming ? {
+          day: { location: row.project.filming.location, opensAt: row.project.filming.opensAt, closesAt: row.project.filming.closesAt, notes: row.project.filming.notes },
+          people: row.project.filming.people.map((p) => ({ id: p.id, name: p.name, group: p.group, role: p.role, email: p.email })),
+          blocks: row.project.filming.blocks.map((b) => ({
+            id: b.id, kind: b.kind, title: b.title, notes: b.notes, start: b.start.toISOString(), end: b.end.toISOString(),
+            prepMinutes: b.prepMinutes, locked: b.locked, flexible: b.flexible, people: b.people, facilitators: b.facilitators, done: b.done,
+          })),
+        } : null}
       />
     </div>
   );

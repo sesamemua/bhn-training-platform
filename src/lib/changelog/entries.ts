@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Call sheet: rebuild it from the Filming day plan; Roshni's safety list",
+    body: "A call sheet in a project with a **Filming day** plan has a **Rebuild from Filming day** button. It fills in the **people and their call times** (each person's first task, facilitating included), the **running order** (with prep and filming times for each interview), the **general call, wrap and location** \u2014 and the **emergency information**: 911 then U of T Campus Safety 416-978-2222, the nearest ER (Mount Sinai, 600 University Ave, about 6 minutes' walk; Toronto General, 190 Elizabeth St) and the nearest AED (C. David Naylor Building, 1st floor by the elevators). Parking, meals, notes and phone numbers stay as they were. It fills the editor; nothing is saved until you press **Save**.\n\nOn **Logistics**, **Roshni** has a new **Safety** card: the first-aid kit, finding the AED, walking the emergency exits at 8:30, knowing the nearest ER, and who to call.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: a floating mailbox, and one letter per person",
     body: "Decisions still email nobody. Now, when you **approve, waitlist or decline** a seat \u2014 one at a time, in bulk, or from seat suggestions \u2014 an envelope flies into the **mailbox** floating at the top of the page, and its count goes up.\n\nOpen the mailbox to see **one row per person**: what their letter will say (Approved \u00b7 Waitlisted \u00b7 Declined, by session) and a **preview** of the email. **Send\u2026** one, or **Send all**, each asking once more before anything goes.\n\nEvery letter is now **one email per person**, covering every session of theirs with news \u2014 somebody approved for three sessions gets one email with all three, their pass and QR code, a calendar entry for each, and an *I can\u2019t make it* link per session \u2014 instead of three emails a minute apart. **Send their letter** on a registration, the bulk **Send letters owed**, and **Email them now** all send it the same way. Letters later on, such as *Can you still make it?* before a session, stay one per session.\n\nThe small *Letters \u00b7 Send 0 letters* bar is gone; the mailbox replaces it.",
     kind: "feature",

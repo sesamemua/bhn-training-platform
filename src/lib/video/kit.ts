@@ -41,7 +41,7 @@ export const DEFAULT_OWNERS = ["Alison", "Ruilin", "Roshni", "Yoo Jin", "Epshita
 const OWNERS_ADDED: Record<number, string[]> = { 2: ["Roshni", "Yoo Jin", "Epshita", "Yeseul"] };
 export const KIT_VERSION = 2;
 
-export const KIT_GROUPS = ["Hair & make-up", "Paper & printing", "Camera & sound", "People & comfort", "Wardrobe", "Loading & parking"] as const;
+export const KIT_GROUPS = ["Hair & make-up", "Paper & printing", "Camera & sound", "People & comfort", "Safety", "Wardrobe", "Loading & parking"] as const;
 
 // Ids come from the group and position, so a starting list is only ever appended to.
 const start = (group: string, labels: string[], suggested = false, owner = "", tag = suggested ? "s" : "a") =>
@@ -58,12 +58,21 @@ export const DEFAULT_KIT: KitItem[] = [
   ...start("Paper & printing", ["Release forms — one per person, plus spares", "Clipboards", "The day's schedule, printed", "Sticky notes"], true),
   ...start("Camera & sound", ["Camera batteries — charged, plus spares", "Memory cards — formatted, plus spares", "Chargers and a power bar", "Extension cords", "Gaffer tape (for cables)", "Laptop, card reader and a backup drive", "Headphones", "Lens cloth"], true),
   // (Snacks moved from the suggestions to Alison's list, below.)
-  ...start("People & comfort", ["Water and cups", "Snacks", "Hand sanitizer", "First-aid kit", "Phone chargers", "Garbage bags"], true).filter((i) => i.label !== "Snacks"),
+  // (Snacks moved to Alison's list and the first-aid kit to Roshni's safety list, below.)
+  ...start("People & comfort", ["Water and cups", "Snacks", "Hand sanitizer", "First-aid kit", "Phone chargers", "Garbage bags"], true).filter((i) => i.label !== "Snacks" && i.label !== "First-aid kit"),
   ...start("Wardrobe", ["Garment steamer", "A spare plain top — no busy patterns or logos"], true),
   ...start("Loading & parking", ["Cart or dolly for the gear", "The contractor's loading-dock details"], true),
   // Asked for later, with who is doing them.
   ...start("People & comfort", ["Lunch", "Coffee — morning, and a second box with lunch", "Snacks"], false, "Alison", "b"),
   ...start("Paper & printing", ["Print the signs and put them up"], false, "Roshni", "b"),
+  // Roshni looks after safety on the day (researched 30 Sep 2026 — see the call sheet).
+  ...start("Safety", [
+    "First-aid kit — bring it, and keep it where everyone can see it",
+    "Find the nearest AED: C. David Naylor Building (6 Queen's Park Cres W), 1st floor by the elevators — FitzGerald has none listed",
+    "Walk the emergency exits at 8:30 and tell the team where they are",
+    "Know the nearest ER: Mount Sinai, 600 University Ave (about 6 min walk); Toronto General, 190 Elizabeth St",
+    "Emergency: 911 first, then U of T Campus Safety 416-978-2222 (non-emergency 416-978-2323)",
+  ], false, "Roshni", "c"),
 ];
 
 /**

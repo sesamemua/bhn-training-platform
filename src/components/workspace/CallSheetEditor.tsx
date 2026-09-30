@@ -11,9 +11,11 @@
  *
  * Everything is local until Save; leaving with unsaved changes asks first.
  */
+import { sheetFromFilming } from "@/lib/video/call-sheet-from-filming";
+import type { Block as FilmingBlock, Person as FilmingPerson } from "@/lib/video/filming";
 import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Copy, Loader2, Plus, Printer, Save, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Loader2, Plus, Printer, Save, Trash2, X , RefreshCw } from "lucide-react";
 import {
   blankPerson, blankScheduleRow, GROUP_LABEL, SHEET_GROUPS,
   type CallSheetData, type CallSheetInput, type Person, type PersonGroup, type ScheduleRow,
@@ -295,8 +297,10 @@ function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
 
 // ── The page ───────────────────────────────────────────────────────────────
 
-export function CallSheetEditor({ id, projectId, initial, updatedAt }: {
+export function CallSheetEditor({ id, projectId, initial, updatedAt, filming }: {
   id: string; projectId: string; initial: CallSheetInput; updatedAt: string;
+  /** The project's Filming day plan, when it has one — the source for a rebuild. */
+  filming?: { day: Parameters<typeof sheetFromFilming>[1]; people: FilmingPerson[]; blocks: FilmingBlock[] } | null;
 }) {
   const router = useRouter();
   const LIST = callSheetsPath(projectId);
@@ -375,6 +379,17 @@ export function CallSheetEditor({ id, projectId, initial, updatedAt }: {
       router.push(LIST);
     });
   }
+  /** Calls, running order and location from the Filming day — into the editor, not saved until Save. */
+  async function rebuild() {
+    if (!filming) return;
+    if (!(await confirmDialog({
+      title: "Rebuild from the Filming day plan?",
+      description: "People and call times, the running order, general call, wrap and location are replaced from the plan. Parking, meals, notes and phone numbers stay. Nothing is saved until you press Save.",
+      confirmLabel: "Rebuild",
+      tone: "warning",
+    }))) return;
+    setSheet((s) => ({ ...s, data: sheetFromFilming(s.data, filming.day, filming.people, filming.blocks) }));
+  }
   function print() {
     const w = window.open("", "_blank", "width=1000,height=1200");
     if (!w || !printRef.current) return;
@@ -406,6 +421,11 @@ export function CallSheetEditor({ id, projectId, initial, updatedAt }: {
         <button type="button" onClick={save} disabled={pending || !dirty} className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-1.5 text-[13px] font-semibold text-white hover:bg-brand-700 disabled:opacity-50">
           {pending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save
         </button>
+        {filming && (
+          <button type="button" onClick={rebuild} disabled={pending} title="Rebuild from the Filming day plan" className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated disabled:opacity-50">
+            <RefreshCw size={13} /> Rebuild from Filming day
+          </button>
+        )}
         <button type="button" onClick={print} title="Print" aria-label="Print" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-elevated hover:text-fg"><Printer size={15} /></button>
         <button type="button" onClick={duplicate} disabled={pending} title="Duplicate" aria-label="Duplicate" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-elevated hover:text-fg"><Copy size={15} /></button>
         <button type="button" onClick={remove} disabled={pending} title="Delete" aria-label="Delete" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-rose-500/10 hover:text-rose-600"><Trash2 size={15} /></button>
