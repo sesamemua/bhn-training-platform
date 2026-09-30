@@ -55,10 +55,10 @@ const isTab = (v: unknown): v is Tab =>
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "registrants", label: "Registrants" },
   { id: "model", label: "Decision model" },
   { id: "suggest", label: "Seat suggestions" },
   { id: "capacity", label: "Capacity" },
-  { id: "registrants", label: "Registrants" },
   { id: "catering", label: "Catering & accessibility" },
   { id: "travel", label: "Travel follow-up" },
   { id: "email", label: "Email" },

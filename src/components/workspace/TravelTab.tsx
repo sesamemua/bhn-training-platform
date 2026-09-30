@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { AlertTriangle, Check, ClipboardCopy, Download, Loader2, Mail, Send } from "lucide-react";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
-import { TRAVEL_HEAD, travellerCells, travellers, type Traveller } from "@/lib/allocation/registrant-views";
+import { TRAVEL_HEAD, travellerCells, travellers, worthChecking, type Traveller } from "@/lib/allocation/registrant-views";
 import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { rowsFrom } from "./RegistrantViews";
@@ -41,7 +41,11 @@ interface Draft { bookingId: string; to: string; name: string; subject: string; 
 const CONFIRM_KEY = "bhn.travelCheck.confirmBeforeSend";
 
 export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
-  const list = useMemo(() => travellers(rowsFrom(workshops)), [workshops]);
+  const rows = useMemo(() => rowsFrom(workshops), [workshops]);
+  const list = useMemo(() => travellers(rows), [rows]);
+  /* The other way round: said local (or nothing), from a university over
+     two hours away. Not a finding — a prompt to look. */
+  const unsure = useMemo(() => worthChecking(rows), [rows]);
   /* Said over two hours, gave a postal code that is nowhere near it.
      Worth seeing at the top rather than finding at approval time. */
   const doubtful = list.filter((t) => t.falseOot).length;
@@ -142,6 +146,29 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
         </button>
         {said && <p role="status" className="basis-full text-[12px] text-fg">{said}</p>}
       </div>
+
+      {unsure.length > 0 && (
+        <section className="rounded-lg border border-amber-500/40 bg-amber-500/[0.06] p-3">
+          <p className="flex items-center gap-2 text-[13.5px] font-bold text-fg">
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-500/20 text-[12px] font-extrabold text-amber-700" aria-hidden>?</span>
+            Worth checking · {unsure.length}
+          </p>
+          <p className="mt-0.5 text-[12px] text-muted">
+            Said they are local (or didn&apos;t say), but registered with a university address over two hours away. It may be nothing — students often live near campus in Toronto — but it may change whether they need travel support, or whether they can make it.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {unsure.map((u) => (
+              <li key={u.personKey} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12.5px]">
+                <strong className="text-fg">{u.name}</strong>
+                <span className="font-mono text-[11.5px] text-muted">{u.email}</span>
+                <span className="rounded bg-amber-500/15 px-1.5 py-px text-[11px] font-semibold text-amber-700">{u.school.school} · {u.school.city}</span>
+                <span className="text-[11.5px] text-subtle">said {u.said === "near" ? "local" : "nothing about distance"}{u.postcode ? ` · postal code ${u.postcode}` : ""}</span>
+                <span className="text-[11.5px] text-subtle">· {u.sessions.join("; ")}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {list.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">

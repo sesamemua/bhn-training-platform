@@ -13,6 +13,7 @@ import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plu
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
+import { farSchoolOf } from "@/lib/travel/far-email";
 import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/allocation/highlights";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import type { AdminWorkshop, SubmissionRow } from "@/lib/allocation/admin-types";
@@ -175,6 +176,7 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       falseOot: b.applicant.falseOot ?? false,
       ootAccepted: b.applicant.ootAccepted ?? false,
       highlights: b.highlights ?? [],
+      emailFar: farSchoolOf(b.applicant.email),
       letter: b.letterOwed ? "owed" as const : b.status === "pending" ? "none" as const : "sent" as const,
       travel: b.applicant.travel,
       postcode: b.registrant.postcode,
@@ -559,8 +561,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                       />
                     </th>
                     {(draft.perPerson
-                      ? ["Name", "Workshops", "Distance", "Dietary", "Accessibility"]
-                      : ["Name", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"]
+                      ? ["Name", "", "Workshops", "Distance", "Dietary", "Accessibility"]
+                      : ["Name", "", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"]
                     ).map((h) => (
                       <th key={h} className="whitespace-nowrap px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-subtle">{h}</th>
                     ))}
@@ -605,11 +607,9 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           <button
                             type="button"
                             onClick={() => setOpenRow(open ? null : rowKey)}
-                            aria-expanded={open}
                             title={open ? "Close the registration" : "Open the whole registration — answers and decisions"}
-                            className="inline-flex items-center gap-0.5 font-semibold text-fg hover:text-brand-400"
+                            className="font-semibold text-fg hover:text-brand-400"
                           >
-                            <ChevronDown size={13} className={`shrink-0 text-subtle transition-transform ${open ? "rotate-180" : ""}`} />
                             {r.name}
                           </button>
                           {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
@@ -633,6 +633,21 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                               className="shrink-0 rounded px-0.5 text-subtle hover:text-rose-500">×</button>
                           </div>
                         ))}
+                      </td>
+                      {/* A big target of its own, right before the workshops: opens the whole registration. */}
+                      <td className="px-1 py-1 align-middle">
+                        <button
+                          type="button"
+                          onClick={() => setOpenRow(open ? null : rowKey)}
+                          aria-expanded={open}
+                          aria-label={open ? `Close ${r.name}'s registration` : `Open ${r.name}'s registration`}
+                          title={open ? "Close the registration" : "Open the whole registration — answers and decisions"}
+                          className={`grid h-8 w-8 place-items-center rounded-lg border transition-colors ${
+                            open ? "border-brand-400 bg-brand-500/15 text-fg" : "border-line bg-card-solid text-muted hover:border-brand-400 hover:text-fg"
+                          }`}
+                        >
+                          <ChevronDown size={18} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+                        </button>
                       </td>
                       {draft.perPerson ? (
                         <td className="px-2 py-1 text-muted">
@@ -663,6 +678,13 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           /* Claimed over two hours; the postal code says otherwise. */
                           <span className={`${chip} bg-rose-500/10 text-rose-700`} title="Said over 2 hours, but the postal code is well inside that — no out-of-town priority">False OOT</span>
                         ) : r.travel === "far" ? "Over 2 h" : r.travel === "near" ? "Local" : "—"}
+                        {r.travel !== "far" && r.emailFar && !r.internal && (
+                          <span
+                            className={`${chip} ml-1 cursor-help bg-amber-500/15 font-bold text-amber-700`}
+                            title={`${r.emailFar.school} email — ${r.emailFar.city} is over two hours from 144 College Street. They said ${r.travel === "near" ? "local" : "nothing about distance"}; worth checking.`}
+                            aria-label={`Worth checking: ${r.emailFar.school} email`}
+                          >?</span>
+                        )}
                         {r.postcode && <span className="ml-1 font-mono text-[11px] text-subtle">{r.postcode}</span>}
                       </td>
                       <td className="px-2 py-1 text-muted">
@@ -673,7 +695,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                     </tr>
                     {open && (
                       <tr className="border-t border-line">
-                        <td colSpan={draft.perPerson ? 6 : 10} className="p-0">
+                        <td colSpan={draft.perPerson ? 7 : 11} className="p-0">
                           {sub ? (
                             <RegistrationDetail sub={sub} onChanged={afterDecision} />
                           ) : (

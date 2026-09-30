@@ -7,7 +7,8 @@
  * all (so have no row in that table) are listed on their own below it.
  */
 import { useEffect, useState, useTransition } from "react";
-import { Check, ChevronDown, Mail, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Mail } from "lucide-react";
+import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
 import { decideSeat, deleteSubmission, loadSubmissions, sendSeatLetter } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import type { SubmissionRow } from "@/lib/allocation/admin-types";
 import { DECISION_LABEL, type Decision } from "@/lib/allocation/decisions";
@@ -16,7 +17,7 @@ import { ordinal } from "./SessionCalendar";
 
 /** Their answers beside the decisions on their seats — read one, act on the other. */
 export function RegistrationDetail({ sub, onChanged }: { sub: SubmissionRow; onChanged: () => void }) {
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
   const who = sub.name || sub.email || "them";
   return (
     <div className="grid gap-4 bg-elevated/30 px-3 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
@@ -35,16 +36,18 @@ export function RegistrationDetail({ sub, onChanged }: { sub: SubmissionRow; onC
             </div>
           ))}
         </dl>
-        <button
-          className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-subtle hover:text-red-500 disabled:opacity-40"
-          disabled={pending}
-          onClick={() => {
-            if (!confirm(`Delete ${sub.isTest ? "the test registration from" : "the registration from"} ${who}?\n\nTheir ${sub.seats.length} seat request${sub.seats.length === 1 ? "" : "s"} go with it. This can't be undone.`)) return;
-            start(async () => { await deleteSubmission(sub.id); onChanged(); });
-          }}
-        >
-          <Trash2 size={11} /> Delete this {sub.isTest ? "test " : ""}registration
-        </button>
+        {/* The same protected switch as deleting an EQUIP application: lift the
+            cover, press, and a countdown that can still be stopped. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <LaunchSwitch
+            label="DELETE"
+            ariaLabel={`Delete ${who}'s ${sub.isTest ? "test " : ""}registration and its ${sub.seats.length} seat request${sub.seats.length === 1 ? "" : "s"} — protected switch with a countdown`}
+            onFire={() => start(async () => { await deleteSubmission(sub.id); onChanged(); })}
+          />
+          <span className="text-[10.5px] leading-snug text-subtle">
+            Deletes the registration{sub.seats.length ? ` and its ${sub.seats.length} seat request${sub.seats.length === 1 ? "" : "s"}` : ""}. Can&apos;t be undone.
+          </span>
+        </div>
       </div>
 
       {sub.seats.length > 0 && (

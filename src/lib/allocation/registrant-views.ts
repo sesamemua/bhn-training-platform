@@ -7,6 +7,7 @@
 import { z } from "zod";
 import type { Travel } from "./applicants";
 import type { Highlight } from "./highlights";
+import type { FarSchool } from "@/lib/travel/far-email";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 
 /** One seat, with what the registration said about the person. */
@@ -32,6 +33,8 @@ export interface RegistrantRow {
   ootAccepted?: boolean;
   /** Admins' highlights on this person. */
   highlights?: Highlight[];
+  /** Their address is at a university over two hours away — worth a look if they said local. */
+  emailFar?: FarSchool | null;
   /** "owed" = decided but not emailed; "sent" = emailed; "none" = nothing to send. */
   letter: "owed" | "sent" | "none";
   travel: Travel;
@@ -271,6 +274,27 @@ export function travellers(rows: RegistrantRow[]): Traveller[] {
     m.set(r.personKey, t);
   }
   for (const t of m.values()) t.sessions.sort((a, b) => a.start.localeCompare(b.start));
+  return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Worth a second look: said local (or nothing) from a university address over two hours away. */
+export interface WorthChecking {
+  personKey: string;
+  name: string;
+  email: string;
+  school: FarSchool;
+  said: RegistrantRow["travel"];
+  postcode: string;
+  sessions: string[];
+}
+export function worthChecking(rows: RegistrantRow[]): WorthChecking[] {
+  const m = new Map<string, WorthChecking>();
+  for (const r of rows) {
+    if (r.travel === "far" || !r.emailFar || r.internal) continue;
+    const w = m.get(r.personKey) ?? { personKey: r.personKey, name: r.name, email: r.email, school: r.emailFar, said: r.travel, postcode: r.postcode, sessions: [] };
+    w.sessions.push(`${r.dayLabel} ${r.workshop}`);
+    m.set(r.personKey, w);
+  }
   return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registrants: a “?” when a university address says otherwise, and a bigger open button",
+    body: "Somebody who said they are **local** (or didn\u2019t say) but registered with an address at a **university over two hours away** \u2014 Queen\u2019s, Ottawa, Carleton, McGill and the like \u2014 now has an amber **?** beside their distance. Hover it for why. It never changes anybody\u2019s ranking; it is a prompt to look. **Travel follow-up** lists them too, under **Worth checking**.\n\nEach row has a **big open button** of its own, right before the workshops, for the whole registration. Deleting a registration uses the same **protected switch** as deleting an EQUIP application \u2014 lift the cover, press, and a countdown you can still stop. **Registrants** is now the tab right after **Dashboard**.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Filming day: a People box on the chart, and drag people between tasks",
     body: "The people are now in a **People box on the chart itself**, in the empty afternoon corner above the midday rows, kept clear of every task's label. Drag a name from the box onto a task to put them on it, **drag a name from one task to another to move them**, or **drag it back into the box to take them off** that task.\n\nThe BHN Promo day has **three student interviews** (TBD 1\u20133): 15 minutes of prep, then 20 minutes each on camera, back to back from 9:30 \u2014 marked as not fixed, since they could also go after 5.",
     kind: "improvement",
