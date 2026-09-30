@@ -63,7 +63,7 @@ export default async function ScriptEditorPage({ params }: Props) {
       />
       <ProjectNav projectId={projectId} />
       {isHtml ? (
-        <HtmlScriptEditor scriptId={script.id} initialHtml={rc?.html ?? ""} css={rc?.css ?? ""} meId={meId} meName={meName} />
+        <HtmlScriptEditor scriptId={script.id} initialHtml={rc?.html ?? ""} css={rc?.css ?? ""} meId={meId} meName={meName} directionsToggle />
       ) : (
         <ScriptStudio
           scriptId={script.id}

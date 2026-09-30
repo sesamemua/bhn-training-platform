@@ -10,7 +10,8 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Printer, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, FileText, Printer, RefreshCw } from "lucide-react";
+import { HIDE_DIRECTIONS_CSS } from "@/lib/scripts/directions";
 
 export interface PrintableScript { id: string; title: string; updatedAt: string; html: string; css: string }
 interface Part { key: string; script: string; label: string; html: string }
@@ -34,7 +35,7 @@ function partsOf(s: PrintableScript): Part[] {
   });
 }
 
-function bookHtml(title: string, parts: Part[], css: string, print: boolean): string {
+function bookHtml(title: string, parts: Part[], css: string, print: boolean, directions = false): string {
   const printed = new Date().toLocaleString("en-CA", { day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit" });
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} — scripts</title>
 <style>${css}</style>
@@ -60,6 +61,7 @@ body { font: 12pt/1.6 Georgia, "Times New Roman", serif; margin: 0; padding: ${p
 .part .script-lines p, .part .script-copy p, .part .full-script p { font-size: 13.5pt; line-height: 1.75; margin: 0 0 .12in }
 .part .speaker { font: 700 10pt "Helvetica Neue", Helvetica, Arial, sans-serif; text-transform: uppercase; letter-spacing: .06em }
 .part p, .part li { orphans: 3; widows: 3 }
+${directions ? "" : HIDE_DIRECTIONS_CSS}
 </style></head><body>
 <section class="cover"><h1>${esc(title)}</h1><p>Scripts · printed ${esc(printed)} · the current version from the Scripts page</p>
 <ol>${parts.map((p) => `<li>${esc(p.label)}</li>`).join("")}</ol></section>
@@ -73,18 +75,20 @@ export function ScriptPrint({ projectTitle, scripts }: { projectTitle: string; s
   const [parts, setParts] = useState<Part[]>([]);
   const [off, setOff] = useState<Set<string>>(new Set());
   const [blocked, setBlocked] = useState(false);
+  // Just the script unless asked: visuals, notes and cues left off the paper.
+  const [directions, setDirections] = useState(false);
   useEffect(() => { setParts(scripts.flatMap(partsOf)); }, [scripts]);
 
   const chosen = parts.filter((p) => !off.has(p.key));
   const css = scripts.map((s) => s.css).join("\n");
-  const preview = useMemo(() => bookHtml(projectTitle, chosen, css, false), [projectTitle, chosen, css]);
+  const preview = useMemo(() => bookHtml(projectTitle, chosen, css, false, directions), [projectTitle, chosen, css, directions]);
   const newest = scripts.map((s) => s.updatedAt).sort().at(-1);
 
   function print() {
     const w = window.open("", "_blank");
     if (!w) return setBlocked(true);
     setBlocked(false);
-    w.document.write(bookHtml(projectTitle, chosen, css, true));
+    w.document.write(bookHtml(projectTitle, chosen, css, true, directions));
     w.document.close();
   }
   const toggle = (k: string) => setOff((s) => { const n = new Set(s); if (!n.delete(k)) n.add(k); return n; });
@@ -114,6 +118,9 @@ export function ScriptPrint({ projectTitle, scripts }: { projectTitle: string; s
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={print} disabled={!chosen.length} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-brand-700 disabled:opacity-50">
             <Printer size={14} /> Print or save as PDF
+          </button>
+          <button type="button" onClick={() => setDirections((v) => !v)} aria-pressed={directions} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[12.5px] font-semibold ${directions ? "border-brand-500 bg-brand-500/10 text-fg" : "border-line text-muted hover:bg-elevated hover:text-fg"}`}>
+            {directions ? <Eye size={13} /> : <EyeOff size={13} />} {directions ? "Visuals & notes shown" : "Just the script"}
           </button>
           <button type="button" onClick={() => router.refresh()} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-semibold text-fg hover:bg-elevated">
             <RefreshCw size={13} /> Pull the latest

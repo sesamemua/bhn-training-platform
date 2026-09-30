@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18p";
+export const TOUR_VERSION = "2026.10.18q";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.script-directions",
+    title: "Just the script",
+    body: "Video scripts open showing only what is said. Press the **eye button** in the script's toolbar to show the visuals, notes and cues again — Print job has the same switch.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18q",
   },
   {
     id: "video.filming-tray-move",

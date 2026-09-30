@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video scripts show just the script; an eye button brings back the visuals",
+    body: "Video scripts now open showing **just the script** \u2014 the words people say. Visual and on-screen notes, editor\u2019s notes, interviewer cues and Picture / Sound lines are hidden until you press the **eye button** in the script\u2019s toolbar (**Just the script** / **Visuals & notes shown**). **Print job** has the same switch, so printed scripts leave them off unless you turn them on. Nothing is removed \u2014 it is only hidden from view.\n\nThe **EQUIP** pillar script now includes the new **Innovation Fellowship** (Trainee Entrepreneur Fellowship): $20,333 for master\u2019s and PhD students and $30,000 for postdoctoral fellows, over six months.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Filming day: move the People box anywhere; a bigger Add task",
     body: "On **Filming day**, drag the **People** box by its header to anywhere on the chart \u2014 it stays where you leave it (in your browser), and **Reset** puts it back. The **Add task** button is now a solid button at the top right, easy to find.",
     kind: "improvement",

@@ -19,8 +19,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Save, Loader2, CheckCircle2, AlertCircle, Code2, Pencil, History, ListTree,
   Plus, ChevronUp, ChevronDown, Trash2, RotateCcw, User as UserIcon, MessageSquare,
-  Table2,
+  Table2, Eye, EyeOff,
 } from "lucide-react";
+import { HIDE_DIRECTIONS_CSS } from "@/lib/scripts/directions";
 import { cn } from "@/lib/utils";
 import { colorForKey, type PresencePeer } from "@/lib/scripts/presence";
 import { AccountOfferModal } from "./AccountOfferModal";
@@ -150,6 +151,7 @@ export function HtmlScriptEditor({
   scriptUrl,
   offerAccount = false,
   showStructureTabs = true,
+  directionsToggle = false,
 }: {
   scriptId: string;
   initialHtml: string;
@@ -175,12 +177,20 @@ export function HtmlScriptEditor({
    *  structural editing (e.g. the Symposium plan, edited on-page + on-chart),
    *  leaving just Comments + History. Defaults on (interview guide etc.). */
   showStructureTabs?: boolean;
+  /** Video scripts: hide visuals, notes and cues by default, with an eye button to show them. */
+  directionsToggle?: boolean;
 }) {
   const myColor = useMemo(() => colorForKey(meId), [meId]);
   const base = apiBase ?? `/api/workspace/scripts/${scriptId}`;
 
   const hostRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  // Video scripts: directions (visuals, notes, cues) hidden until the eye button shows them.
+  const directionsStyleRef = useRef<HTMLStyleElement | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
+  useEffect(() => {
+    if (directionsStyleRef.current) directionsStyleRef.current.textContent = directionsToggle && !showDirections ? HIDE_DIRECTIONS_CSS : "";
+  }, [directionsToggle, showDirections]);
   // Read by the typing shield, which is wired once at mount but must
   // follow the current read-only state rather than the first one.
   const readOnlyRef = useRef(readOnly);
@@ -484,6 +494,10 @@ export function HtmlScriptEditor({
       + `\n:host .gantt .bar.hf-dragging{filter:brightness(1.08);box-shadow:0 0 0 2px rgba(0,0,0,0.18);z-index:6}`;
     const presenceStyle = document.createElement("style");
     presenceStyleRef.current = presenceStyle;
+    // Outside the content, so hiding directions never touches what is saved.
+    const directionsStyle = document.createElement("style");
+    directionsStyleRef.current = directionsStyle;
+    directionsStyle.textContent = directionsToggle ? HIDE_DIRECTIONS_CSS : "";
 
     const content = document.createElement("div");
     content.innerHTML = initialHtml;
@@ -491,7 +505,7 @@ export function HtmlScriptEditor({
     content.spellcheck = true;
     content.style.outline = "none";
     contentRef.current = content;
-    shadow.append(style, presenceStyle, content);
+    shadow.append(style, presenceStyle, directionsStyle, content);
 
     findSections(content).forEach((b, i) => { if (!b.getAttribute("data-sid")) b.setAttribute("data-sid", `s${i}`); });
     // A tabbed doc always opens on its first tab (Overview), not wherever
@@ -1212,6 +1226,20 @@ export function HtmlScriptEditor({
               : peers.length > 0 ? `${peers.length + 1} editing live` : "Click in the document to edit"}
           </span>
         </div>
+        {directionsToggle && (
+          <button
+            type="button"
+            onClick={() => setShowDirections((v) => !v)}
+            aria-pressed={showDirections}
+            title={showDirections ? "Hide visuals, notes and cues — just the script" : "Show visuals, notes and cues"}
+            className={cn(
+              "ml-auto inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold",
+              showDirections ? "border-brand-500 bg-brand-500/10 text-fg" : "border-line bg-card-solid text-muted hover:bg-elevated hover:text-fg",
+            )}
+          >
+            {showDirections ? <Eye size={13} /> : <EyeOff size={13} />} {showDirections ? "Visuals & notes shown" : "Just the script"}
+          </button>
+        )}
         {!readOnly && (
           <button
             type="button"
