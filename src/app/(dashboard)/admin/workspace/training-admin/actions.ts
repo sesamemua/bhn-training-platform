@@ -8,6 +8,7 @@
  * page guard says who may SEE the tab and has no bearing on who may POST
  * to it.
  */
+import { emailKey } from "@/lib/eligibility/email-key";
 import { personLetter, letterSummary, type LetterSeat } from "@/lib/allocation/person-letter";
 import { institutionOf } from "@/lib/travel/far-email";
 import { revalidatePath } from "next/cache";
@@ -925,8 +926,8 @@ export async function decideSeat(
   revalidatePath(PAGE);
 
   if (opts?.send) {
-    const seat = await prisma.workshopBooking.findUnique({ where: { id: bookingId }, select: { id: true, submissionId: true, userId: true } });
-    const sent = seat ? await sendPersonLetterFor(keyOf(seat)) : { delivered: false, receipt: undefined };
+    const key = await personKeyForSeat(bookingId);
+    const sent = key ? await sendPersonLetterFor(key) : { delivered: false, receipt: undefined };
     return { ok: true, said, letterOwed: !sent.delivered && !!sent.receipt, receipt: sent.receipt };
   }
   return { ok: true, said, letterOwed: !!letterDue(booking.notifiedStatus, decision) };
@@ -945,10 +946,20 @@ const delivered = (r: Receipt) => r.state === "sent" || r.state === "sent-to-you
 /* ── one letter per person ───────────────────────────────────────── */
 
 const PERSON_LETTER = "training_admin.person_letter";
+/** Seats taken out of this round of letters, with the decision they were taken out at. */
+const HELD_KEY = "trainingWeek.lettersHeld";
 
-/** Who a seat belongs to: the registration, or the account for a seat booked without one. */
-const keyOf = (b: { submissionId: string | null; userId: string | null; id: string }) =>
-  b.submissionId ?? (b.userId ? `u:${b.userId}` : `b:${b.id}`);
+/**
+ * Who a seat belongs to, for letters: the PERSON, by email address — so
+ * somebody who registered twice still gets one email. A seat with no
+ * address falls back to its registration, then its account.
+ */
+function personKeyOf(b: { id: string; submissionId: string | null; userId: string | null; submission: { email: string | null; data: unknown } | null; user: { email: string } | null }) {
+  const answers = (b.submission?.data ?? {}) as Record<string, unknown>;
+  const trainee = typeof answers.trainee_email === "string" ? answers.trainee_email : null;
+  const k = emailKey(b.submission?.email ?? b.user?.email ?? trainee ?? "");
+  return k ? `e:${k}` : b.submissionId ?? (b.userId ? `u:${b.userId}` : `b:${b.id}`);
+}
 
 const SEAT_SELECT = {
   id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true,
@@ -958,27 +969,59 @@ const SEAT_SELECT = {
   submission: { select: { id: true, data: true, email: true, checkInToken: true } },
 } as const;
 
-type SeatRow = Awaited<ReturnType<typeof seatsOf>>[number];
-async function seatsOf(where: object) {
-  return prisma.workshopBooking.findMany({ where, select: SEAT_SELECT, orderBy: { bookedAt: "asc" } });
+type SeatRow = Awaited<ReturnType<typeof twSeats>>[number];
+async function twSeats() {
+  const eventId = await trainingWeekEventId();
+  if (!eventId) return [];
+  return prisma.workshopBooking.findMany({ where: { workshop: { eventId } }, select: SEAT_SELECT, orderBy: { bookedAt: "asc" } });
 }
 
-/** A person's seats as the letter reads them — with their pass links when the pass exists (or `makePass`). */
-async function letterFor(rows: SeatRow[], makePass: boolean) {
-  const b = rows[0];
+async function heldSeats(): Promise<Map<string, string>> {
+  const row = await prisma.platformSetting.findUnique({ where: { key: HELD_KEY }, select: { value: true } });
+  try {
+    const list = JSON.parse(row?.value ?? "[]") as { bookingId: string; status: string }[];
+    return new Map(Array.isArray(list) ? list.filter((h) => h && typeof h.bookingId === "string").map((h) => [h.bookingId, h.status]) : []);
+  } catch { return new Map(); }
+}
+/** A hold lasts while the decision it was made at stands; a new decision brings the seat back. */
+const isHeld = (held: Map<string, string>, r: { id: string; status: string }) => held.get(r.id) === r.status;
+
+/** Everyone's seats, one list per person. */
+function byPerson(rows: SeatRow[]) {
+  const m = new Map<string, SeatRow[]>();
+  for (const r of rows) m.set(personKeyOf(r), [...(m.get(personKeyOf(r)) ?? []), r]);
+  return m;
+}
+
+/**
+ * A person's seats as the letter reads them. Each seat's "I can't make it"
+ * link is its own registration's; the pass is the one of the registration
+ * holding their first place. `makePass` creates pass codes where missing
+ * (only when actually sending).
+ */
+async function letterFor(rows: SeatRow[], makePass: boolean, skip: (r: SeatRow) => boolean = () => false) {
+  const b = rows.find((r) => r.submission) ?? rows[0];
   const answers = ((b.submission?.data ?? {}) as Record<string, unknown>) as Answers;
   const to = b.submission?.email ?? b.user?.email ?? null;
   const name = registrantName(answers) || b.user?.name?.trim() || (await accountNameFor(to)) || "";
-  const token = b.submission ? (makePass ? await passTokenFor(b.submission.id) : b.submission.checkInToken) : null;
-  const seats: LetterSeat[] = rows.map((r) => ({
+  const tokens = new Map<string, string | null>();
+  for (const r of rows) {
+    if (!r.submission || tokens.has(r.submission.id)) continue;
+    tokens.set(r.submission.id, makePass ? await passTokenFor(r.submission.id) : r.submission.checkInToken);
+  }
+  const tokenOf = (r: SeatRow) => (r.submission ? tokens.get(r.submission.id) ?? null : null);
+  const seats: LetterSeat[] = rows.filter((r) => !skip(r)).map((r) => ({
     bookingId: r.id, session: r.workshop.title, start: r.workshop.startDateTime, end: r.workshop.endDateTime,
     venue: r.workshop.locationName, status: r.status, told: r.notifiedStatus, note: r.decisionNote,
-    cantAttendLink: token ? cantAttendUrl(token, r.id) : undefined, bookedAt: r.bookedAt, decidedAt: r.approvedAt ?? new Date(),
+    cantAttendLink: tokenOf(r) ? cantAttendUrl(tokenOf(r)!, r.id) : undefined, bookedAt: r.bookedAt, decidedAt: r.approvedAt ?? new Date(),
   }));
+  const placed = rows.find((r) => r.status === "confirmed" && tokenOf(r)) ?? rows.find((r) => tokenOf(r));
+  const token = placed ? tokenOf(placed) : null;
   const passLink = token ? passUrl(token) : "(their pass link — made when the letter is sent)";
   return { to, name, token, seats, letter: personLetter({ name, seats, passLink }) };
 }
 
+export interface OwedSeat { bookingId: string; session: string; change: string }
 export interface OwedLetter {
   key: string;
   name: string;
@@ -986,37 +1029,56 @@ export interface OwedLetter {
   summary: { label: string; sessions: string[] }[];
   subject: string;
   body: string;
+  /** The seats this letter is about, each removable on its own. */
+  seats: OwedSeat[];
+  /** Seats of theirs taken out of this round. */
+  removed: OwedSeat[];
 }
+
+const CHANGE: Record<string, string> = { confirmed: "Approved", waitlist: "Waitlisted", cancelled: "Declined" };
+const changeOf = (r: SeatRow) => (r.status === "cancelled" && r.notifiedStatus === "confirmed" ? "Released" : CHANGE[r.status] ?? r.status);
 
 /** Everybody a letter is waiting for, one entry per person — for the mailbox. Writes nothing. */
 export async function lettersOwed(): Promise<OwedLetter[]> {
   await requireAdmin();
-  const eventId = await trainingWeekEventId();
-  if (!eventId) return [];
-  const rows = await seatsOf({ workshop: { eventId } });
-  const byPerson = new Map<string, SeatRow[]>();
-  for (const r of rows) byPerson.set(keyOf(r), [...(byPerson.get(keyOf(r)) ?? []), r]);
+  const [rows, held] = await Promise.all([twSeats(), heldSeats()]);
   const out: OwedLetter[] = [];
-  for (const [key, list] of byPerson) {
-    if (!list.some((r) => letterDue(r.notifiedStatus, r.status))) continue;
-    const made = await letterFor(list, false);
-    if (!made.letter) continue;
-    out.push({ key, name: made.name || made.to || "No name given", email: made.to ?? "", summary: letterSummary(made.seats), subject: made.letter.subject, body: made.letter.body });
+  for (const [key, list] of byPerson(rows)) {
+    const due = list.filter((r) => letterDue(r.notifiedStatus, r.status));
+    if (!due.length) continue;
+    const made = await letterFor(list, false, (r) => isHeld(held, r));
+    const owedSeat = (r: SeatRow): OwedSeat => ({ bookingId: r.id, session: r.workshop.title, change: changeOf(r) });
+    out.push({
+      key, name: made.name || made.to || "No name given", email: made.to ?? "",
+      summary: letterSummary(made.seats), subject: made.letter?.subject ?? "", body: made.letter?.body ?? "",
+      seats: due.filter((r) => !isHeld(held, r)).map(owedSeat),
+      removed: due.filter((r) => isHeld(held, r)).map(owedSeat),
+    });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Send one person their letter — everything owed on all their seats, in one email. */
+/** Take seats out of this round of letters (or put them back). A new decision on a seat brings it back on its own. */
+export async function holdLetters(bookingIds: string[], hold: boolean): Promise<{ ok: boolean }> {
+  const admin = await requireAdmin();
+  const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
+  const rows = await prisma.workshopBooking.findMany({ where: { id: { in: ids } }, select: { id: true, status: true } });
+  const held = await heldSeats();
+  for (const r of rows) { if (hold) held.set(r.id, r.status); else held.delete(r.id); }
+  const value = JSON.stringify([...held].map(([bookingId, status]) => ({ bookingId, status })).slice(-2000));
+  await prisma.platformSetting.upsert({ where: { key: HELD_KEY }, create: { key: HELD_KEY, value }, update: { value } });
+  await logSend(admin.id, hold ? "training_admin.letter_held" : "training_admin.letter_unheld", { bookingIds: rows.map((r) => r.id) });
+  return { ok: true };
+}
+
+/** Send one person their letter — everything owed on all their seats (bar any taken out), in one email. */
 export async function sendPersonLetterFor(key: string): Promise<{ ok: boolean; delivered: boolean; receipt?: Receipt; problem?: string }> {
   const admin = await requireAdmin();
-  const where = key.startsWith("u:") ? { userId: key.slice(2), submissionId: null }
-    : key.startsWith("b:") ? { id: key.slice(2) }
-    : { submissionId: key };
-  if (!isId(key.replace(/^[ub]:/, ""))) return { ok: false, delivered: false, problem: "That is not a registration." };
-  const eventId = await trainingWeekEventId();
-  const rows = await seatsOf({ ...where, ...(eventId ? { workshop: { eventId } } : {}) });
-  if (!rows.length) return { ok: false, delivered: false, problem: "That registration no longer exists." };
-  const made = await letterFor(rows, true);
+  if (typeof key !== "string" || key.length > 300) return { ok: false, delivered: false, problem: "That is not a person." };
+  const [rows, held] = await Promise.all([twSeats(), heldSeats()]);
+  const list = byPerson(rows).get(key);
+  if (!list?.length) return { ok: false, delivered: false, problem: "That registration no longer exists." };
+  const made = await letterFor(list, true, (r) => isHeld(held, r));
   if (!made.letter) return { ok: true, delivered: false };
   const receipt = await sendPersonCombined({
     to: made.to, name: made.name, subject: made.letter.subject, body: made.letter.body,
@@ -1025,7 +1087,7 @@ export async function sendPersonLetterFor(key: string): Promise<{ ok: boolean; d
     calendar: made.letter.calendar,
   });
   if (delivered(receipt)) {
-    // Told about each seat as it stands now.
+    // Told about each seat in the letter as it stands now.
     await prisma.$transaction(made.letter.seats.map((s) => prisma.workshopBooking.update({
       where: { id: s.bookingId }, data: { notifiedStatus: s.status, notifiedAt: new Date() },
     })));
@@ -1035,10 +1097,10 @@ export async function sendPersonLetterFor(key: string): Promise<{ ok: boolean; d
   return { ok: true, delivered: delivered(receipt), receipt };
 }
 
-/** Every letter waiting, one per person. Sequential; one failure never stops the rest. */
+/** Every letter in the mailbox, one per person. Sequential; one failure never stops the rest. */
 export async function sendAllPersonLetters(): Promise<{ ok: boolean; sent: number; notSent: number }> {
   await requireAdmin();
-  const owed = await lettersOwed();
+  const owed = (await lettersOwed()).filter((o) => o.seats.length);
   let sent = 0, notSent = 0;
   for (const o of owed) {
     const r = await sendPersonLetterFor(o.key);
@@ -1050,14 +1112,24 @@ export async function sendAllPersonLetters(): Promise<{ ok: boolean; sent: numbe
 /** The letters for the people behind these seats — each person once, with everything they are owed. */
 export async function sendLettersForBookings(bookingIds: string[]): Promise<{ ok: boolean; sent: number; failed: number }> {
   await requireAdmin();
-  const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
-  const rows = await prisma.workshopBooking.findMany({ where: { id: { in: ids } }, select: { id: true, submissionId: true, userId: true } });
+  const ids = new Set([...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK));
+  const rows = await twSeats();
+  const keys = new Set(rows.filter((r) => ids.has(r.id)).map(personKeyOf));
   let sent = 0, failed = 0;
-  for (const key of new Set(rows.map(keyOf))) {
+  for (const key of keys) {
     const r = await sendPersonLetterFor(key);
     if (r.delivered) sent++; else if (r.receipt) failed++;
   }
   return { ok: true, sent, failed };
+}
+
+/** The mailbox key for the person behind one seat. */
+async function personKeyForSeat(bookingId: string): Promise<string | null> {
+  const row = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, submissionId: true, userId: true, submission: { select: { email: true, data: true } }, user: { select: { email: true } } },
+  });
+  return row ? personKeyOf(row) : null;
 }
 
 /** The Training Week event — the one carrying the most workshops, as the page picks it. */
@@ -1510,4 +1582,13 @@ export async function removeHighlight(bookingId: string, highlightId: string): P
   await logSend(admin.id, "training_admin.highlight_removed", { bookingId, by: going.byName, reason: going.reason });
   revalidatePath(PAGE);
   return { ok: true };
+}
+
+/** Send the letter of the person behind a registration — keyed by person, so it covers all of theirs. */
+export async function sendLetterForRegistration(submissionId: string): Promise<{ ok: boolean; delivered: boolean; receipt?: Receipt; problem?: string }> {
+  await requireAdmin();
+  if (!isId(submissionId)) return { ok: false, delivered: false, problem: "That is not a registration." };
+  const seat = await prisma.workshopBooking.findFirst({ where: { submissionId }, select: { id: true } });
+  const key = seat ? await personKeyForSeat(seat.id) : null;
+  return key ? sendPersonLetterFor(key) : { ok: false, delivered: false, problem: "That registration has no seats." };
 }

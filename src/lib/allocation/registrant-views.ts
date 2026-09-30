@@ -171,6 +171,8 @@ export interface ShownRow extends RegistrantRow {
    * has to mean all three of their sessions, not the first one. */
   workshopIds: string[];
   bookingIds: string[];
+  /** Each seat's decision, alongside workshops. */
+  statuses: string[];
 }
 
 export interface Group { key: string; label: string; rows: ShownRow[] }
@@ -210,12 +212,12 @@ function groupsOf(r: RegistrantRow, by: GroupBy): { key: string; label: string; 
 export function applyView(rows: RegistrantRow[], view: View): Group[] {
   const kept = rows.filter((r) => matches(r, view.filters));
   const one = (r: RegistrantRow): ShownRow => ({
-    ...r, workshops: [r.workshop], workshopIds: [r.workshopId], bookingIds: [r.bookingId], seats: 1,
+    ...r, workshops: [r.workshop], workshopIds: [r.workshopId], bookingIds: [r.bookingId], statuses: [r.status], seats: 1,
   });
   const shown: ShownRow[] = view.perPerson
     ? [...kept.reduce((m, r) => {
         const p = m.get(r.personKey);
-        if (p) { p.workshops.push(r.workshop); p.workshopIds.push(r.workshopId); p.bookingIds.push(r.bookingId); p.seats++; }
+        if (p) { p.workshops.push(r.workshop); p.workshopIds.push(r.workshopId); p.bookingIds.push(r.bookingId); p.statuses.push(r.status); p.seats++; }
         else m.set(r.personKey, one(r));
         return m;
       }, new Map<string, ShownRow>()).values()]

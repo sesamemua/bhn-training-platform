@@ -11,8 +11,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Loader2, Mail, Send } from "lucide-react";
-import { lettersOwed, sendAllPersonLetters, sendPersonLetterFor, type OwedLetter } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { Check, ChevronDown, Loader2, Mail, RotateCcw, Send, X } from "lucide-react";
+import { holdLetters, lettersOwed, sendAllPersonLetters, sendPersonLetterFor, type OwedLetter } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { AnchoredCard, currentAnchor } from "@/components/ui/AnchoredCard";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 
@@ -83,7 +83,16 @@ export function LetterMailbox() {
     return () => { window.removeEventListener(QUEUED, fly); window.removeEventListener(CHANGED, changed); };
   }, [load]);
 
-  const count = owed?.length ?? 0;
+  // In the box: people with something left to tell them. Taken out: seats removed from this round.
+  const waiting = (owed ?? []).filter((o) => o.seats.length);
+  const removed = (owed ?? []).filter((o) => o.removed.length);
+  const count = waiting.length;
+  async function hold(ids: string[], on: boolean) {
+    setBusy("hold");
+    await holdLetters(ids, on);
+    setBusy(null);
+    load();
+  }
 
   async function sendOne(o: OwedLetter) {
     setBusy(o.key); setSaid(null);
@@ -139,14 +148,17 @@ export function LetterMailbox() {
               <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-emerald-700"><Check size={14} /> Everybody has been told where they stand.</p>
             ) : (
               <ul className="mt-2 divide-y divide-line rounded-lg border border-line">
-                {owed!.map((o) => (
+                {waiting.map((o) => (
                   <li key={o.key} className="px-2.5 py-2">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-[13px] font-semibold text-fg">{o.name}</span>
                       <span className="font-mono text-[11px] text-subtle">{o.email || "no email address"}</span>
                       <span className="ml-auto flex items-center gap-1.5">
-                        <button type="button" onClick={() => setPreview(preview === o.key ? null : o.key)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-semibold text-muted hover:bg-elevated hover:text-fg">
-                          <ChevronDown size={12} className={preview === o.key ? "rotate-180" : ""} /> Preview
+                        <button type="button" onClick={() => setPreview(preview === o.key ? null : o.key)} aria-expanded={preview === o.key} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-semibold text-muted hover:bg-elevated hover:text-fg">
+                          <ChevronDown size={12} className={preview === o.key ? "rotate-180" : ""} /> {preview === o.key ? "Hide email" : "Show email"}
+                        </button>
+                        <button type="button" disabled={!!busy} onClick={() => hold(o.seats.map((x) => x.bookingId), true)} title="Take their letter out of this round — nothing is sent to them" className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-semibold text-muted hover:bg-rose-500/10 hover:text-rose-600 disabled:opacity-40">
+                          <X size={12} /> Remove
                         </button>
                         {sure === o.key ? (
                           <>
@@ -162,10 +174,16 @@ export function LetterMailbox() {
                         )}
                       </span>
                     </div>
+                    {/* What their one email covers — each session removable on its own. */}
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {o.summary.map((g) => (
-                        <span key={g.label} className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${TONE[g.label] ?? "bg-elevated text-fg"}`}>
-                          {g.label}: {g.sessions.join(", ")}
+                      {o.seats.map((x) => (
+                        <span key={x.bookingId} className={`inline-flex items-center gap-1 rounded py-0.5 pl-1.5 pr-0.5 text-[11px] font-semibold ${TONE[x.change] ?? "bg-elevated text-fg"}`}>
+                          {x.change}: {x.session}
+                          {o.seats.length > 1 && (
+                            <button type="button" disabled={!!busy} onClick={() => hold([x.bookingId], true)} aria-label={`Leave ${x.session} out of ${o.name}'s letter`} title="Leave this session out of the letter" className="rounded px-0.5 opacity-60 hover:opacity-100 disabled:opacity-30">
+                              <X size={11} />
+                            </button>
+                          )}
                         </span>
                       ))}
                     </div>
@@ -178,6 +196,23 @@ export function LetterMailbox() {
                   </li>
                 ))}
               </ul>
+            )}
+            {removed.length > 0 && (
+              <details className="mt-3 rounded-lg border border-dashed border-line px-2.5 py-2">
+                <summary className="cursor-pointer text-[12px] font-semibold text-muted">Taken out of this round · {removed.reduce((n, o) => n + o.removed.length, 0)}</summary>
+                <p className="mt-1 text-[11px] text-subtle">Not in any letter. A new decision on one of these seats puts it back in the mailbox by itself.</p>
+                <ul className="mt-1.5 space-y-1">
+                  {removed.map((o) => (
+                    <li key={o.key} className="flex flex-wrap items-center gap-1.5 text-[12px]">
+                      <span className="font-semibold text-fg">{o.name}</span>
+                      {o.removed.map((x) => <span key={x.bookingId} className="rounded bg-elevated px-1.5 py-0.5 text-[11px] text-muted">{x.change}: {x.session}</span>)}
+                      <button type="button" disabled={!!busy} onClick={() => hold(o.removed.map((x) => x.bookingId), false)} className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] font-semibold text-muted hover:bg-elevated hover:text-fg disabled:opacity-40">
+                        <RotateCcw size={11} /> Put back
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
             {count > 1 && (
               <div className="mt-3 flex flex-wrap items-center justify-end gap-2">

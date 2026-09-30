@@ -10,7 +10,7 @@ import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useState, useTransition } from "react";
 import { Check, ChevronDown, Loader2, Mail } from "lucide-react";
 import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
-import { decideSeat, deleteSubmission, draftDistanceCheck, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendPersonLetterFor } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { decideSeat, deleteSubmission, draftDistanceCheck, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendLetterForRegistration } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { AnchoredCard } from "@/components/ui/AnchoredCard";
 import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import type { SubmissionRow } from "@/lib/allocation/admin-types";
@@ -257,7 +257,7 @@ function Seat({ seat, who, registrationId, onDone }: { seat: SubmissionRow["seat
   const send = () => {
     start(async () => {
       // Their ONE letter: every session of theirs with news, not just this one.
-      const r = await sendPersonLetterFor(registrationId);
+      const r = await sendLetterForRegistration(registrationId);
       lettersChanged();
       // What happened to the letter, said out loud. A coordinator told
       // it went out when it did not will never follow up.

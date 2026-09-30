@@ -320,6 +320,13 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   const subOf = (r: ShownRow) => [r.bookingId, ...(r.bookingIds ?? [])].map((id) => subByBooking.get(id)).find(Boolean) ?? null;
   const afterDecision = () => { reloadSubs(); router.refresh(); };
 
+  // Seats each person still has to have decided — across all of theirs, whatever the view shows.
+  const toDecide = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(r.personKey, (m.get(r.personKey) ?? 0) + (r.status === "pending" && !r.withdrawn ? 1 : 0));
+    return m;
+  }, [rows]);
+
   const shownCount = useMemo(() => new Set(groups.flatMap((g) => g.rows.map((r) => (draft.perPerson ? r.personKey : r.bookingId)))).size, [groups, draft.perPerson]);
 
   const days = useMemo(() => [...new Map(rows.map((r) => [r.day, r.dayLabel])).entries()].sort(), [rows]);
@@ -650,6 +657,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           >
                             {r.name}
                           </button>
+                          <DecidedBadge left={toDecide.get(r.personKey) ?? 0} />
                           {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
                           <SourceBadge formSlug={r.formSlug} />
                         </div>
@@ -691,8 +699,13 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         <td className="px-2 py-1 text-muted">
                           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
                             {r.workshops.map((w, i) => (
-                              <span key={`${r.bookingIds[i]}`} className="inline-flex items-center gap-1.5">
+                              <span key={`${r.bookingIds[i]}`} className="inline-flex flex-wrap items-center gap-x-1.5">
                                 <span className={`h-2 w-2 shrink-0 rounded-full ${toneOf(r.workshopIds[i]).dot}`} aria-hidden />{w}
+                                {/* Where this seat stands: seen at a glance, per workshop. */}
+                                <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold ${DECIDED[r.statuses[i]]?.text ?? "text-subtle"}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${DECIDED[r.statuses[i]]?.dot ?? "bg-slate-400"}`} aria-hidden />
+                                  {DECIDED[r.statuses[i]]?.label ?? r.statuses[i]}
+                                </span>
                               </span>
                             ))}
                           </span>
@@ -865,5 +878,26 @@ function StarPopover({ name, top, left, reasons, onSave, onClose }: {
         </div>
       )}
     </div>
+  );
+}
+
+/** How each decision reads next to a workshop. */
+const DECIDED: Record<string, { label: string; dot: string; text: string }> = {
+  confirmed: { label: "Approved", dot: "bg-emerald-500", text: "text-emerald-600" },
+  waitlist: { label: "Waitlisted", dot: "bg-amber-500", text: "text-amber-600" },
+  cancelled: { label: "Declined", dot: "bg-rose-500", text: "text-rose-600" },
+  pending: { label: "Not decided", dot: "bg-slate-400", text: "text-subtle" },
+};
+
+/** Done with this person, or how many of their seats are still to decide. */
+function DecidedBadge({ left }: { left: number }) {
+  return left === 0 ? (
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-px text-[10px] font-bold text-emerald-700" title="Every workshop they asked for has a decision">
+      <Check size={10} strokeWidth={3} /> All decided
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-px text-[10px] font-bold text-amber-700" title="Workshops of theirs still without a decision">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden /> {left} to decide
+    </span>
   );
 }

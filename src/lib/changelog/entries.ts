@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registrants: see who is fully decided; take letters out of the mailbox",
+    body: "In **Registrants**, each workshop in a person\u2019s row now shows where it stands \u2014 a green **Approved**, amber **Waitlisted**, red **Declined** or grey **Not decided** \u2014 and each person has a badge: **\u2713 All decided** once every workshop they asked for has a decision, or **N to decide** until then. The badge counts all their workshops, even ones the current view hides.\n\nIn the **mailbox**, **Remove** takes a person\u2019s letter out of this round, and the \u00d7 on a session leaves just that session out of their letter. Removed ones go under **Taken out of this round**, with **Put back**; a new decision on a seat brings it back by itself. The email text is folded away behind **Show email**. Letters are now grouped by the person\u2019s **email address**, so somebody who registered twice still gets **one email** covering all their workshops.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: a Before the shoot tab",
     body: "A new **Before the shoot** tab lists what has to be done in the days ahead, with **who is on it** and **when it is due** (overdue dates turn red). The BHN Promo list starts with the team\u2019s own: the **camera rental account form**, **confirming the rental**, and **insurance** (Ruilin); **finalising each pillar script** (Epshita, Yeseul, Roshni) and **Yoo Jin\u2019s script**; **sending the call sheets**; **contacting and confirming the students**. Suggestions are marked and can be deleted: the **filming permit** (Campus Events takes up to 15 business days \u2014 ask today), the room booking and access, parking and the loading dock, confirming Darek, ordering lunch and coffee, Molly\u2019s lab, and printing the release forms.\n\nThe **Prep day** list has due dates too.",
     kind: "feature",
