@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: trainees can sign up for a filming slot",
+    body: "A new **Sign-ups** tab (after Logistics) makes a **public link** for extra trainees to join the shoot. They give their **name and email**, see the day as a **chart**, pick a start time \u2014 each slot is **preparation first, then time on camera** \u2014 and say whether they **need parking**. Any time is open unless its camera time would clash with a **locked** task on the Filming day; preparation can overlap. Each sign-up lands on the **Filming day** as a locked interview, so nobody else can take it (unlock it there to move it).\n\nOn the tab: open or close sign-ups, copy the link or make a new one, set the slot length, the preparation time and the hours people can pick from, and see who signed up and who needs parking. **No email goes out** \u2014 you confirm people yourselves.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: a By person tab",
     body: "A new **By person** tab, first in every video project, shows one person everything that is theirs, pulled from all the other tabs: **when to arrive** and each thing they are on during the shoot (**on camera**, **facilitating**, or on the task), with when the camera turns; what they have to do **before the shoot** and on the **prep day**; what they **bring** from Logistics; and links straight to **their scripts**. Each person has their own link to send them. If the call sheet gives a different arrival time from the Filming day, it says so.\n\nThe **EQUIP** pillar script now reads like ENGAGE and EXPERIENCE: timecoded sections with the voice-over in quotes, and the visual and on-screen text kept as notes under each section.",
     kind: "feature",

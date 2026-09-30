@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18n";
+export const TOUR_VERSION = "2026.10.18o";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,16 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.signups",
+    title: "Let trainees book their own filming slot",
+    body: "The **Sign-ups** tab in a video project makes a link for trainees: they see the day's chart, pick a slot (preparation, then camera) that doesn't clash with anything locked, and say if they need parking. Their slot lands on the Filming day, locked.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.18o",
   },
   {
     id: "video.by-person",

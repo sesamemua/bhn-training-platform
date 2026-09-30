@@ -13,3 +13,4 @@ export const logisticsPath = (projectId: string) => `${projectPath(projectId)}/l
 export const prepPath = (projectId: string) => `${projectPath(projectId)}/prep`;
 export const beforePath = (projectId: string) => `${projectPath(projectId)}/before`;
 export const peoplePath = (projectId: string) => `${projectPath(projectId)}/people`;
+export const signupsPath = (projectId: string) => `${projectPath(projectId)}/signups`;

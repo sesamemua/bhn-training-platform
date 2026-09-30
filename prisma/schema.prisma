@@ -6787,6 +6787,10 @@ model FilmingPerson {
   /// What they do on the day, in words: "Camera & B-roll", "Interviewee · support".
   role       String          @default("")
   email      String          @default("")
+  /// Signed up through the public link and needs a parking spot.
+  parking    Boolean         @default(false)
+  /// When they signed up through the public link; NULL for people added by the team.
+  signedUpAt DateTime?
   createdAt  DateTime        @default(now())
 
   @@index([scheduleId])
