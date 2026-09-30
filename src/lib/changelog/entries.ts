@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Filming day: what prep means, on hover; facilitators for every interview",
+    body: "Hover the paler **prep** part of an interview's bar and it says what it is for: getting familiar with the script, and make-up \u2014 with its times. Hover the filming part for the filming times.\n\nThe BHN Promo day now has a facilitator on every interview: **Roshni** for the three student interviews, **Yoo Jin and Yeseul** for Roshni, **Yoo Jin and Epshita** for Molly.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Registrants: a “?” when a university address says otherwise, and a bigger open button",
     body: "Somebody who said they are **local** (or didn\u2019t say) but registered with an address at a **university over two hours away** \u2014 Queen\u2019s, Ottawa, Carleton, McGill and the like \u2014 now has an amber **?** beside their distance. Hover it for why. It never changes anybody\u2019s ranking; it is a prompt to look. **Travel follow-up** lists them too, under **Worth checking**.\n\nEach row has a **big open button** of its own, right before the workshops, for the whole registration. Deleting a registration uses the same **protected switch** as deleting an EQUIP application \u2014 lift the cover, press, and a countdown you can still stop. **Registrants** is now the tab right after **Dashboard**.",
     kind: "improvement",

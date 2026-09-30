@@ -428,11 +428,18 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                       title={`${b.title} · ${clockOf(s)}–${clockOf(en)}${prep ? ` · prep & make-up ${minutes(prep)}, then filming ${minutes(en - film)}` : ""}${b.notes ? `\n${b.notes}` : ""}`}
                     >
                       {prep > 0 && (
-                        <div className={`flex h-full shrink-0 flex-col items-center justify-center overflow-hidden text-center leading-tight ${t.prep} text-muted rounded-l`} style={{ width: `${prepPct}%` }}>
+                        <div
+                          className={`flex h-full shrink-0 flex-col items-center justify-center overflow-hidden text-center leading-tight ${t.prep} text-muted rounded-l`}
+                          style={{ width: `${prepPct}%` }}
+                          title={`Prep, ${clockOf(s)}–${clockOf(film)} (${minutes(prep)}): get familiar with the script, and make-up.`}
+                        >
                           {prep >= 20 && <><span className="text-[9px] font-semibold">Prep</span><span className="text-[8.5px] tabular-nums opacity-80">{minutes(prep)}</span></>}
                         </div>
                       )}
-                      <div className={`flex h-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden px-1 text-center leading-tight ${t.bar} ${t.text}`}>
+                      <div
+                        className={`flex h-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden px-1 text-center leading-tight ${t.bar} ${t.text}`}
+                        title={prep > 0 ? `${ON_CAMERA.has(b.kind) ? "Filming" : b.title}, ${clockOf(film)}–${clockOf(en)} (${minutes(en - film)})${b.notes ? `\n${b.notes}` : ""}` : undefined}
+                      >
                         {en - film >= 25 && (
                           <>
                             {ON_CAMERA.has(b.kind) && <span className="whitespace-nowrap text-[9px] font-semibold">Filming</span>}
@@ -491,7 +498,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
           {KINDS.map((k) => (
             <span key={k} className="inline-flex items-center gap-1"><span className={`inline-block h-2.5 w-4 rounded-sm ${tone(k).bar}`} /> {KIND_LABEL[k]}</span>
           ))}
-          <span>· Drag a bar to move it, its right end to change its length, an interview's left end to change its prep (5 min steps) · lighter lead-in: prep & make-up · dashed outline: time not fixed · <Lock size={10} className="inline" /> pinned · dashed chip: facilitator · click a task's name to edit it</span>
+          <span>· Drag a bar to move it, its right end to change its length, an interview's left end to change its prep (5 min steps) · lighter lead-in: prep — the script and make-up · dashed outline: time not fixed · <Lock size={10} className="inline" /> pinned · dashed chip: facilitator · click a task's name to edit it</span>
         </p>
       </div>
       <div className="h-[70vh]" aria-hidden />
