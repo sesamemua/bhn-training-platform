@@ -59,6 +59,13 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   const [people, setPeople] = useState(initialPeople);
   useEffect(() => setBlocks(initialBlocks), [initialBlocks]);
   useEffect(() => setPeople(initialPeople), [initialPeople]);
+  // The page scrollbar's width, for the edge-to-edge chart (0 with overlay scrollbars).
+  useEffect(() => {
+    const set = () => document.documentElement.style.setProperty("--sbw", `${window.innerWidth - document.documentElement.clientWidth}px`);
+    set();
+    window.addEventListener("resize", set);
+    return () => window.removeEventListener("resize", set);
+  }, []);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -176,7 +183,15 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
       <IssueList issues={found} />
 
       {/* Edge to edge: the day needs every pixel of width it can get. */}
-      <div className="full-bleed border-y border-line bg-card">
+      <div
+        className="border-y border-line bg-card"
+        style={{
+          // .full-bleed, less the page's scrollbar (100vw counts it): without
+          // this the chart's right edge sits under a classic scrollbar.
+          marginLeft: "calc(50% - 50vw + var(--sbw, 0px) / 2 + var(--full-bleed-inset, 0px) / 2)",
+          width: "calc(100vw - var(--sbw, 0px) - var(--full-bleed-inset, 0px))",
+        }}
+      >
         {/* People: a strip above the chart, dragged down onto a task. */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-line px-3 py-2">
           <span className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People — drag onto a task</span>
@@ -250,7 +265,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               const prepPct = b.prepMinutes > 0 ? Math.min(100, (b.prepMinutes / (en - s)) * 100) : 0;
               const focused = focusPerson && b.people.includes(focusPerson);
               // Late in the day the label goes before the bar, so it never runs off the edge.
-              const labelLeft = (s - from) / span > 0.62;
+              const labelLeft = (s - from) / span > 0.5;
               const onIt = b.people.map((id) => byId.get(id)).filter((p): p is Person => !!p);
               return (
                 <div key={b.id}>
@@ -292,7 +307,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
 
                     {/* What and who, right beside the bar. */}
                     <div
-                      className={`absolute top-0 flex h-full items-center gap-1 whitespace-nowrap ${labelLeft ? "flex-row-reverse pr-1.5" : "pl-1.5"}`}
+                      className={`absolute top-0 flex h-full items-center gap-1 whitespace-nowrap ${labelLeft ? "pr-1.5" : "pl-1.5"}`}
                       style={labelLeft ? { right: `calc(100% - ${pct(s)})` } : { left: pct(en) }}
                     >
                       <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-fg hover:underline">
