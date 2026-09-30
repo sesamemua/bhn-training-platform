@@ -1,8 +1,8 @@
 /**
- * The notice for the door on a filming day: filming in progress, the
- * hours, and a polite request to keep the noise down. One letter-size
- * page, built as a standalone HTML document so the preview on screen is
- * exactly what prints.
+ * Printouts for a filming day, each one letter-size page built as a
+ * standalone HTML document so the preview on screen is exactly what
+ * prints: signs (quiet please, area closed, the windshield loading
+ * notice…) and the photo & video release form people sign.
  *
  * Pure module: no React, no Prisma.
  */
@@ -14,6 +14,8 @@ export interface Notice {
   where: string;
   message: string;
   thanks: string;
+  /** A labelled blank line to fill in by hand — "Call or text:" on the windshield notice. */
+  writeIn?: string;
   /** Absolute URL of the logo, printed as it is. */
   logoUrl: string;
 }
@@ -38,6 +40,8 @@ h2 { font-size: 28pt; font-weight: 600; margin-top: .2in; color: #333 }
 .message { font-size: 17pt; line-height: 1.45; margin: .55in auto 0; max-width: 6.2in; color: #222; text-wrap: pretty }
 .thanks { font-size: 20pt; font-weight: 700; margin-top: .4in; color: #1f4b5b }
 .foot { margin-top: auto; display: flex; justify-content: center }
+.writein { display: flex; align-items: flex-end; gap: .15in; margin: .45in auto 0; width: 6.4in; font-size: 22pt; font-weight: 700 }
+.writein .rule { flex: 1; height: .75in; border-bottom: 3px solid #111 }
 .foot img { height: .7in; width: auto }
 ${opts.preview ? "" : "@media screen { body { padding: .25in 0; background: #e6e6e6 } .page { box-shadow: 0 1px 8px rgba(0,0,0,.2); background: #fff } }"}
 </style></head><body><div class="page">
@@ -46,6 +50,7 @@ ${opts.preview ? "" : "@media screen { body { padding: .25in 0; background: #e6e
 <p class="when">${esc(n.when)}</p>
 <p class="where">${esc(n.where)}</p>
 <p class="message">${lines(n.message)}</p>
+${n.writeIn ? `<div class="writein"><span>${esc(n.writeIn)}</span><span class="rule"></span></div>` : ""}
 <p class="thanks">${esc(n.thanks)}</p>
 <div class="foot"><img src="${esc(n.logoUrl)}" alt="BioHubNet"></div>
 </div>${opts.print ? `<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 300); });</script>` : ""}</body></html>`;
@@ -60,15 +65,18 @@ export const printoutsKey = (projectId: string) => `video.printouts.${projectId}
 export const SignSchema = z.object({
   id: z.string().min(1).max(40),
   label: z.string().trim().min(1).max(60),
-  /** Made here rather than one of the built-in three — can be deleted. */
+  /** Made here rather than one of the built-in ones — can be deleted. */
   custom: z.boolean(),
+  /** "sign" (a poster) or "release" (the form people sign). */
+  kind: z.enum(["sign", "release"]).default("sign"),
   fields: z.object({
     subhead: z.string().max(80),
     headline: z.string().max(120),
     when: z.string().max(120),
     where: z.string().max(160),
-    message: z.string().max(1000),
-    thanks: z.string().max(120),
+    message: z.string().max(2000),
+    thanks: z.string().max(200),
+    writeIn: z.string().max(60).default(""),
   }),
 });
 export type Sign = z.infer<typeof SignSchema>;
@@ -91,6 +99,64 @@ export function mergeSigns(builtIn: Sign[], saved: Sign[]): Sign[] {
   const byId = new Map(saved.map((s) => [s.id, s]));
   return [
     ...builtIn.map((b) => { const s = byId.get(b.id); return s && !s.custom ? { ...b, fields: s.fields, label: s.label } : b; }),
+    // (kind always comes from the built-in: a saved copy cannot turn a sign into a form)
     ...saved.filter((s) => s.custom),
   ];
 }
+
+/**
+ * The photo, video & audio release, one per person. The consent wording,
+ * project, date, place and contact line are editable; the tick boxes, the
+ * lines to sign and the privacy notice are fixed.
+ */
+export function releaseHtml(n: Notice, opts: { print?: boolean; preview?: boolean } = {}): string {
+  const line = (label: string, wide = false) => `<div class="f${wide ? " wide" : ""}"><span class="rule"></span><span class="lab">${esc(label)}</span></div>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(n.headline)}</title><style>
+@page { size: letter portrait; margin: 0 }
+* { box-sizing: border-box; margin: 0 }
+html, body { background: #fff; color: #111; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+.page { width: 8.5in; height: 11in; padding: .6in .7in; display: flex; flex-direction: column; margin: 0 auto; font-size: 10.5pt; line-height: 1.45 }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: .3in }
+.top img { height: .55in; width: auto }
+h1 { font-size: 20pt; line-height: 1.1; font-weight: 800; color: #1f4b5b }
+.meta { margin-top: .08in; color: #333 }
+.meta strong { color: #111 }
+.consent { margin-top: .22in; text-wrap: pretty }
+.ticks { margin-top: .18in; display: grid; gap: .07in }
+.tick { display: flex; gap: .12in; align-items: baseline }
+.box { display: inline-block; width: .17in; height: .17in; border: 1.5px solid #111; flex-shrink: 0; transform: translateY(.03in) }
+.fields { margin-top: .25in; display: grid; grid-template-columns: 1fr 1fr; gap: .28in .35in }
+.f { display: flex; flex-direction: column }
+.f.wide { grid-column: span 2 }
+.f .rule { height: .32in; border-bottom: 1.2px solid #111 }
+.f .lab { font-size: 8.5pt; color: #555; margin-top: .03in }
+.minor { margin-top: .25in; padding: .12in .15in; border: 1px solid #bbb; border-radius: .06in }
+.minor h2 { font-size: 10pt; font-weight: 700 }
+.minor .fields { margin-top: .12in }
+.contact { margin-top: .2in; font-weight: 600; color: #1f4b5b }
+.privacy { margin-top: auto; font-size: 7.5pt; line-height: 1.4; color: #555 }
+${opts.preview ? "" : "@media screen { body { padding: .25in 0; background: #e6e6e6 } .page { box-shadow: 0 1px 8px rgba(0,0,0,.2); background: #fff } }"}
+</style></head><body><div class="page">
+<div class="top"><div><h1>${esc(n.headline)}</h1>
+<p class="meta"><strong>${esc(n.subhead)}</strong>${n.when ? ` · ${esc(n.when)}` : ""}${n.where ? `<br>${esc(n.where)}` : ""}</p></div>
+<img src="${esc(n.logoUrl)}" alt="BioHubNet"></div>
+<p class="consent">${lines(n.message)}</p>
+<div class="ticks">
+<p class="tick"><span class="box"></span><span>I agree to be <strong>photographed</strong> and <strong>filmed</strong>, including my <strong>voice</strong>.</span></p>
+<p class="tick"><span class="box"></span><span>You may show my <strong>name and role or programme</strong> with my image.</span></p>
+</div>
+<div class="fields">
+${line("Full name (please print)")}${line("Email")}
+${line("Programme, organisation or role")}${line("Date")}
+${line("Signature", true)}
+</div>
+<div class="minor"><h2>If you are under 18 — a parent or guardian signs too</h2>
+<div class="fields">${line("Parent or guardian's name")}${line("Date")}${line("Parent or guardian's signature", true)}</div></div>
+<p class="contact">${esc(n.thanks)}</p>
+<p class="privacy">The personal information on this form is collected under the authority of the University of Toronto Act, 1971, to keep a record of your consent and to contact you about it. It is protected in accordance with Ontario's Freedom of Information and Protection of Privacy Act. Questions about it can go to the contact above.</p>
+</div>${opts.print ? `<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 300); });</script>` : ""}</body></html>`;
+}
+
+/** Whichever layout a printout uses. */
+export const printableHtml = (kind: string | undefined, n: Notice, opts: { print?: boolean; preview?: boolean } = {}) =>
+  kind === "release" ? releaseHtml(n, opts) : noticeHtml(n, opts);

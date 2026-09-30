@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Tabs inside one video project: Scripts, Production cost, Call sheets, Filming day, Printout.
+ * Tabs inside one video project: Scripts, Production cost, Call sheets, Filming day, Printout, Logistics.
  * Same underline idiom as MerchNav, directly under the PageHero. Rendered
  * by ProjectNav, which works out where Scripts should land.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarClock, ClipboardList, FileText, Printer, Receipt } from "lucide-react";
-import { callSheetsPath, filmingPath, printoutPath, productionCostPath } from "@/lib/video/paths";
+import { Backpack, CalendarClock, ClipboardList, FileText, Printer, Receipt } from "lucide-react";
+import { callSheetsPath, filmingPath, logisticsPath, printoutPath, productionCostPath } from "@/lib/video/paths";
 
 export function ProjectNavTabs({ projectId, scriptsHref }: { projectId: string; scriptsHref: string }) {
   const pathname = usePathname();
@@ -16,12 +16,14 @@ export function ProjectNavTabs({ projectId, scriptsHref }: { projectId: string; 
   const cost = productionCostPath(projectId);
   const filming = filmingPath(projectId);
   const printout = printoutPath(projectId);
+  const logistics = logisticsPath(projectId);
   const tabs = [
-    { key: "scripts", label: "Scripts", href: scriptsHref, icon: FileText, active: ![calls, cost, filming, printout].some((p) => pathname.startsWith(p)) },
+    { key: "scripts", label: "Scripts", href: scriptsHref, icon: FileText, active: ![calls, cost, filming, printout, logistics].some((p) => pathname.startsWith(p)) },
     { key: "cost", label: "Production cost", href: cost, icon: Receipt, active: pathname.startsWith(cost) },
     { key: "calls", label: "Call sheets", href: calls, icon: ClipboardList, active: pathname.startsWith(calls) },
     { key: "filming", label: "Filming day", href: filming, icon: CalendarClock, active: pathname.startsWith(filming) },
     { key: "printout", label: "Printout", href: printout, icon: Printer, active: pathname.startsWith(printout) },
+    { key: "logistics", label: "Logistics", href: logistics, icon: Backpack, active: pathname.startsWith(logistics) },
   ];
   return (
     <nav aria-label="Project" className="flex w-fit max-w-full flex-wrap items-center gap-x-6 gap-y-2 border-b border-line">

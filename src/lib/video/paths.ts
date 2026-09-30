@@ -9,3 +9,4 @@ export const scriptsHref = (projectId: string, scriptIds: string[]) =>
   scriptIds.length === 1 ? scriptPath(projectId, scriptIds[0]) : projectPath(projectId);
 export const filmingPath = (projectId: string) => `${projectPath(projectId)}/filming`;
 export const printoutPath = (projectId: string) => `${projectPath(projectId)}/printout`;
+export const logisticsPath = (projectId: string) => `${projectPath(projectId)}/logistics`;

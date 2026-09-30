@@ -16,3 +16,11 @@ test("nearby schools, lookalikes and junk are not flagged", () => {
   assert.equal(farSchoolOf("queensu.ca"), null);
   assert.equal(farSchoolOf(""), null);
 });
+
+test("every institution is placed with a band: local, borderline or far", async () => {
+  const { institutionOf } = await import("../../src/lib/travel/far-email");
+  assert.equal(institutionOf("a@mail.utoronto.ca")?.band, "local");
+  assert.equal(institutionOf("a@uwaterloo.ca")?.band, "borderline");
+  assert.equal(institutionOf("a@queensu.ca")?.band, "far");
+  assert.equal(institutionOf("a@gmail.com"), null);
+});

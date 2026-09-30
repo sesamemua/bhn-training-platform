@@ -159,7 +159,7 @@ const PROVINCES: Record<string, string> = {
 const CLEARLY_UNDER = 105;
 const TWO_HOURS = 120;
 
-function bandOf(low: number, high: number): TravelBand {
+export function bandOf(low: number, high: number): TravelBand {
   if (high < CLEARLY_UNDER) return "local";
   if (low >= TWO_HOURS) return "far";
   return "borderline";

@@ -8,8 +8,9 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, Plus, Printer, X } from "lucide-react";
-import { noticeHtml, type Sign } from "@/lib/video/filming-notice";
+import { printableHtml, type Sign } from "@/lib/video/filming-notice";
 import { savePrintouts } from "@/lib/video/printout-actions";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 
 type Fields = Sign["fields"];
 const INPUT = "w-full rounded-md border border-line bg-card px-2 py-1.5 text-[13px] text-fg focus:border-brand-400 focus:outline-none";
@@ -17,8 +18,8 @@ const INPUT = "w-full rounded-md border border-line bg-card px-2 py-1.5 text-[13
 const LOGO = "/biohubnet-logo.png";
 
 /** A page at 96 dpi is 816 × 1056; `w` is the width it is shown at. */
-function Page({ fields, w }: { fields: Fields; w: number }) {
-  const html = useMemo(() => noticeHtml({ ...fields, logoUrl: LOGO }, { preview: true }), [fields]);
+function Page({ kind, fields, w }: { kind: Sign["kind"]; fields: Fields; w: number }) {
+  const html = useMemo(() => printableHtml(kind, { ...fields, logoUrl: LOGO }, { preview: true }), [kind, fields]);
   const scale = w / 816;
   return (
     <div className="relative overflow-hidden rounded bg-white" style={{ width: w, height: Math.round(1056 * scale) }}>
@@ -65,12 +66,12 @@ export function FilmingNoticeEditor({ projectId, builtIn, initial }: { projectId
       where: base?.where ?? "",
       message: "",
       thanks: "Thank you!",
+      writeIn: "",
     };
-    setSigns((all) => [...all, { id, label: "New sign", custom: true, fields }]);
+    setSigns((all) => [...all, { id, label: "New sign", custom: true, kind: "sign", fields }]);
     setWhich(id);
   }
   function removeSign(s: Sign) {
-    if (!confirm(`Delete the sign “${s.label}”?`)) return;
     setSigns((all) => all.filter((x) => x.id !== s.id));
     if (which === s.id) setWhich(signs[0]?.id ?? "");
   }
@@ -78,7 +79,7 @@ export function FilmingNoticeEditor({ projectId, builtIn, initial }: { projectId
     const w = window.open("", "_blank");
     if (!w) return setBlocked(true);
     setBlocked(false);
-    w.document.write(noticeHtml({ ...sign.fields, logoUrl: LOGO }, { print: true }));
+    w.document.write(printableHtml(sign.kind, { ...sign.fields, logoUrl: LOGO }, { print: true }));
     w.document.close();
   }
 
@@ -120,18 +121,24 @@ export function FilmingNoticeEditor({ projectId, builtIn, initial }: { projectId
                   s.id === sign.id ? "border-brand-500 bg-brand-500/10" : "border-line hover:border-brand-400/60"
                 }`}
               >
-                <Page fields={s.fields} w={132} />
+                <Page kind={s.kind} fields={s.fields} w={132} />
                 <span className="max-w-[132px] truncate text-[12px] font-semibold text-fg">{s.label}</span>
               </button>
               {s.custom && (
-                <button
-                  type="button"
-                  onClick={() => removeSign(s)}
-                  aria-label={`Delete the sign ${s.label}`}
-                  className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full border border-line bg-card-solid text-subtle hover:text-rose-500"
-                >
-                  <X size={12} />
-                </button>
+                <span className="absolute right-1 top-1">
+                  <ConfirmPopover message={`Delete the sign “${s.label}”?`} confirmLabel="Delete" tone="danger" align="start" onConfirm={() => removeSign(s)}>
+                    {(open, isOpen) => (
+                      <button
+                        type="button"
+                        onClick={open}
+                        aria-label={`Delete the sign ${s.label}`}
+                        className={`grid h-6 w-6 place-items-center rounded-full border bg-card-solid hover:text-rose-500 ${isOpen ? "border-rose-400 text-rose-500" : "border-line text-subtle"}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </ConfirmPopover>
+                </span>
               )}
             </div>
           ))}
@@ -153,12 +160,30 @@ export function FilmingNoticeEditor({ projectId, builtIn, initial }: { projectId
             Name of this sign
             <input id={`sign-${sign.id}-label`} className={INPUT} value={sign.label} maxLength={60} onChange={(e) => update({ label: e.target.value })} />
           </label>
-          {field("subhead", "Small heading")}
-          {field("headline", "Big heading")}
-          {field("when", "When")}
-          {field("where", "Where")}
-          {field("message", "Message", 4)}
-          {field("thanks", "Sign-off")}
+          {sign.kind === "release" ? (
+            <>
+              <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[11.5px] leading-snug text-fg">
+                Draft wording in the shape of U of T&apos;s divisional release forms — there is no single university-wide one. Check it with Pharmacy
+                communications or U of T&apos;s privacy office before relying on it. Print one per person.
+              </p>
+              {field("headline", "Form title")}
+              {field("subhead", "Project")}
+              {field("when", "Date")}
+              {field("where", "Location")}
+              {field("message", "Consent wording", 8)}
+              {field("thanks", "Contact line")}
+            </>
+          ) : (
+            <>
+              {field("subhead", "Small heading")}
+              {field("headline", "Big heading")}
+              {field("when", "When")}
+              {field("where", "Where")}
+              {field("message", "Message", 4)}
+              {field("writeIn", "Line to fill in by hand (optional)")}
+              {field("thanks", "Sign-off")}
+            </>
+          )}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <button type="button" onClick={print} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-brand-700">
               <Printer size={14} /> Print
@@ -173,7 +198,7 @@ export function FilmingNoticeEditor({ projectId, builtIn, initial }: { projectId
           <p className="text-[11.5px] text-subtle">Letter paper, portrait. Changes save on their own.</p>
         </div>
         <div className="rounded-xl border border-line bg-elevated/40 p-4">
-          <div className="mx-auto w-fit shadow-md"><Page fields={sign.fields} w={530} /></div>
+          <div className="mx-auto w-fit shadow-md"><Page kind={sign.kind} fields={sign.fields} w={530} /></div>
         </div>
       </section>
     </div>

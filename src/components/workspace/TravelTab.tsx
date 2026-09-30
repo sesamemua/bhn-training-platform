@@ -13,6 +13,7 @@
  * table row is a message to a real person, in their name, posted by a
  * mis-click.
  */
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { AlertTriangle, Check, ClipboardCopy, Download, Loader2, Mail, Send } from "lucide-react";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
@@ -105,7 +106,6 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   /* Their explanation holds up (travelling from elsewhere that week):
      give them back the out-of-town priority — or take it away again. */
   function accept(t: Traveller, on: boolean) {
-    if (on && !confirm(`Accept ${t.name}'s out-of-town claim? They get out-of-town priority in the decision model again.`)) return;
     start(async () => {
       const r = await setOotAccepted(t.bookingId, on);
       setSaid(r.ok ? (on ? `${t.name}'s claim accepted.` : `${t.name} is marked False OOT again.`) : r.problem ?? "Could not save.");
@@ -199,14 +199,25 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                         ) : (
                           <span className="rounded bg-emerald-500/12 px-1.5 py-0.5 font-bold text-emerald-700">Claim accepted</span>
                         )}
-                        <button
-                          type="button"
-                          disabled={pending}
-                          onClick={() => accept(t, !t.ootAccepted)}
-                          className="font-semibold text-muted underline underline-offset-2 hover:text-fg disabled:opacity-50"
-                        >
-                          {t.ootAccepted ? "Undo" : "Accept claim"}
-                        </button>
+                        {t.ootAccepted ? (
+                          <button type="button" disabled={pending} onClick={() => accept(t, false)} className="font-semibold text-muted underline underline-offset-2 hover:text-fg disabled:opacity-50">
+                            Undo
+                          </button>
+                        ) : (
+                          <ConfirmPopover
+                            message={`Accept ${t.name}'s out-of-town claim?`}
+                            detail="They get out-of-town priority in the decision model again."
+                            confirmLabel="Accept claim"
+                            align="start"
+                            onConfirm={() => accept(t, true)}
+                          >
+                            {(open) => (
+                              <button type="button" disabled={pending} onClick={open} className="font-semibold text-muted underline underline-offset-2 hover:text-fg disabled:opacity-50">
+                                Accept claim
+                              </button>
+                            )}
+                          </ConfirmPopover>
+                        )}
                       </span>
                     )}
                   </td>

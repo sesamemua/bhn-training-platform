@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, DoorOpen, Lock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import {
   GROUP_LABEL, GROUPS, KIND_LABEL, KINDS, ON_CAMERA, atMinute, clockOf, hhmmToMinutes, issues, longDate, minuteOfDay, minutesToHhmm,
   type Block, type Issue, type Person,
@@ -276,7 +277,6 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               onClose={() => setEditingPerson(null)}
               onSave={(v) => { setPeople((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...v } : x))); run(() => updateFilmingPerson(p.id, v)); setEditingPerson(null); }}
               onDelete={() => {
-                if (!confirm(`Take ${p.name} off the day, and off every task they are on?`)) return;
                 setPeople((ps) => ps.filter((x) => x.id !== p.id));
                 setBlocks((bs) => bs.map((b) => ({ ...b, people: b.people.filter((x) => x !== p.id), facilitators: b.facilitators.filter((x) => x !== p.id) })));
                 run(() => deleteFilmingPerson(p.id));
@@ -481,7 +481,6 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                       pending={pending}
                       onSave={(nb) => { saveBlock(nb); setEditing(null); }}
                       onDelete={() => {
-                        if (!confirm(`Delete “${b.title}”?`)) return;
                         setBlocks((bs) => bs.filter((x) => x.id !== b.id));
                         run(() => deleteFilmingBlock(b.id));
                         setEditing(null);
@@ -574,7 +573,9 @@ function TaskForm({ block, date, pending, onSave, onDelete, onClose }: {
         <label className="inline-flex items-center gap-1.5"><input id={`t-flex-${block.id}`} type="checkbox" checked={f.flexible} onChange={(e) => setF({ ...f, flexible: e.target.checked })} /> Time not fixed (others may overlap it)</label>
         <label className="inline-flex items-center gap-1.5"><input id={`t-lock-${block.id}`} type="checkbox" checked={f.locked} onChange={(e) => setF({ ...f, locked: e.target.checked })} /> Pinned (can't be dragged)</label>
         <span className="ml-auto flex gap-1.5">
-          <button type="button" className={`${BTN} text-rose-600`} onClick={onDelete} disabled={pending}><Trash2 size={12} /> Delete</button>
+          <ConfirmPopover message={`Delete “${block.title}”?`} confirmLabel="Delete" tone="danger" align="start" onConfirm={onDelete}>
+            {(open) => <button type="button" className={`${BTN} text-rose-600`} onClick={open} disabled={pending}><Trash2 size={12} /> Delete</button>}
+          </ConfirmPopover>
           <button type="button" className={BTN} onClick={onClose}>Cancel</button>
           <button type="submit" className={`${BTN} border-brand-500 bg-brand-600 text-white hover:bg-brand-700`} disabled={pending}>Save</button>
         </span>
@@ -598,7 +599,9 @@ function PersonForm({ person, pending, onSave, onDelete, onClose }: {
       <label className="min-w-[14rem] flex-1 text-[11px] text-muted">Role on the day<input id={`p-role-${person.id}`} className={INPUT} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} maxLength={200} /></label>
       <label className="w-56 text-[11px] text-muted">Email (optional)<input id={`p-email-${person.id}`} className={INPUT} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} maxLength={200} /></label>
       <span className="flex gap-1.5">
-        <button type="button" className={`${BTN} text-rose-600`} onClick={onDelete} disabled={pending}><Trash2 size={11} /> Remove</button>
+        <ConfirmPopover message={`Take ${person.name} off the day?`} detail="They come off every task they are on, too." confirmLabel="Remove" tone="danger" align="start" onConfirm={onDelete}>
+          {(open) => <button type="button" className={`${BTN} text-rose-600`} onClick={open} disabled={pending}><Trash2 size={11} /> Remove</button>}
+        </ConfirmPopover>
         <button type="button" className={BTN} onClick={onClose}>Cancel</button>
         <button type="submit" className={`${BTN} border-brand-500 bg-brand-600 text-white hover:bg-brand-700`} disabled={pending}>Save</button>
       </span>

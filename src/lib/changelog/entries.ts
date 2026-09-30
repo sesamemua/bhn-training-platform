@@ -23,6 +23,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: release form, windshield loading notice, and a Logistics packing list",
+    body: "**Printout** now has a **photo, video & audio release form** (one per person: consent wording, two tick boxes, name, email, programme, signature and date, a parent-or-guardian section for under-18s, and a privacy notice) \u2014 draft wording in the shape of U of T\u2019s divisional release forms, to be checked with Pharmacy communications before use. There is also a **windshield notice** for the contractor\u2019s car at the loading dock: *Loading \u2014 back shortly*, with a line to write a phone number on. Any sign can have that write-in line.\n\nA new **Logistics** tab is the **packing list** for the day \u2014 hair & make-up, paper & printing, camera & sound, people & comfort, wardrobe, loading & parking. Tick things off as they are packed (with a progress bar), add anything missing under any heading, take off what is not needed, and print the list. Items the team did not ask for are marked **suggested**. It saves as you go.\n\nConfirmations on these pages \u2014 deleting a sign, a task or a person, sending a letter, accepting a travel claim, bulk decisions, naming a saved view \u2014 now open **beside the button** instead of as a browser pop-up.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
+    title: "Registrants: how far they are coming from, in the open registration",
+    body: "Open a registration and a **Getting here** line shows how far they are coming from three ways: the **postal code** they gave (green \u201cLocal\u201d with the minutes, or how many hours when it is further), the **institution in their email address** and how far that is (highlighted when it is two hours or more), and **what they said**. The amber **?** beside a distance now opens a card explaining itself: based on their email address, this person may be over two hours away.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Printout: signs as thumbnails, make your own, and they save",
     body: "On a video project's **Printout** tab the signs are now **thumbnails of the real pages** \u2014 click one to edit it beside a large preview. **New sign** makes one from scratch (give it a name, write the words); signs you make can be deleted with the \u00d7 on their thumbnail. Every change **saves on its own** a moment after you stop typing, so the signs \u2014 edited or new \u2014 are there next time. **Reset the words** puts a built-in sign back as it was.",
     kind: "improvement",

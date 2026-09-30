@@ -6,6 +6,7 @@
  * table opens this under a row; registrations that asked for no seat at
  * all (so have no row in that table) are listed on their own below it.
  */
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useState, useTransition } from "react";
 import { Check, ChevronDown, Mail } from "lucide-react";
 import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
@@ -14,14 +15,60 @@ import type { SubmissionRow } from "@/lib/allocation/admin-types";
 import { DECISION_LABEL, type Decision } from "@/lib/allocation/decisions";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 import { ordinal } from "./SessionCalendar";
+import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
+import { institutionOf } from "@/lib/travel/far-email";
+
+const BAND_TONE: Record<string, string> = {
+  local: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700",
+  borderline: "border-amber-500/40 bg-amber-500/10 text-amber-700",
+  far: "border-orange-500/60 bg-orange-500/15 text-orange-700 font-bold",
+};
+
+/**
+ * How far they are coming from, three ways: the postal code they gave,
+ * the institution their email address belongs to, and what they said.
+ * Local reads green; over two hours says how many.
+ */
+function GettingHere({ postcode, email, said }: { postcode: string; email: string; said: string }) {
+  const byPostcode = postcode ? travelFromPostcode(postcode) : null;
+  const byEmail = institutionOf(email);
+  const say = (band: string, words: string) => (band === "local" ? `Local · ${words}` : words);
+  return (
+    <div className="mb-2.5 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+      <span className="font-semibold text-subtle">Getting here</span>
+      {byPostcode ? (
+        <span className={`rounded-md border px-2 py-0.5 ${BAND_TONE[byPostcode.band]}`} title={`${byPostcode.place} — typical one-way travel to 144 College Street`}>
+          <span className="font-mono">{postcode}</span> · {say(byPostcode.band, travelWords(byPostcode))}
+        </span>
+      ) : (
+        <span className="rounded-md border border-line px-2 py-0.5 text-subtle">{postcode ? `${postcode} · not a postal code we know` : "No postal code"}</span>
+      )}
+      {byEmail && (
+        <span
+          className={`rounded-md border px-2 py-0.5 ${BAND_TONE[byEmail.band]} ${byEmail.band !== "local" ? "ring-2 ring-orange-400/40" : ""}`}
+          title="Where the institution in their email address is — a hint, not proof of where they live"
+        >
+          Email: {byEmail.school}, {byEmail.city} · {say(byEmail.band, travelWords({ fsa: "", place: byEmail.city, ...byEmail }))}
+        </span>
+      )}
+      <span className="text-subtle">· they said {said === "far" ? "over two hours" : said === "near" ? "local" : "nothing"}</span>
+    </div>
+  );
+}
 
 /** Their answers beside the decisions on their seats — read one, act on the other. */
-export function RegistrationDetail({ sub, onChanged }: { sub: SubmissionRow; onChanged: () => void }) {
+export function RegistrationDetail({ sub, onChanged, where }: {
+  sub: SubmissionRow;
+  onChanged: () => void;
+  /** From the Registrants row: what to work out how far they are coming from. */
+  where?: { postcode: string; email: string; said: string };
+}) {
   const [, start] = useTransition();
   const who = sub.name || sub.email || "them";
   return (
     <div className="grid gap-4 bg-elevated/30 px-3 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="min-w-0">
+        {where && <GettingHere {...where} />}
         <p className="mb-1.5 text-[11px] text-subtle">
           Registered {new Date(sub.at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
           {" · "}
@@ -194,9 +241,8 @@ function Seat({ seat, who, onDone }: { seat: SubmissionRow["seats"][number]; who
       setMail(null);
       onDone();
     });
+  const letterLabel = seat.status === "pending" ? "Not decided" : DECISION_LABEL[seat.status as Decision] ?? seat.status;
   const send = () => {
-    const label = seat.status === "pending" ? "Not decided" : DECISION_LABEL[seat.status as Decision] ?? seat.status;
-    if (!confirm(`Email ${who} now?\n\nThey will get the “${label}” letter for ${seat.workshop}.`)) return;
     start(async () => {
       const r = await sendSeatLetter(seat.id);
       // What happened to the letter, said out loud. A coordinator told
@@ -248,10 +294,14 @@ function Seat({ seat, who, onDone }: { seat: SubmissionRow["seats"][number]; who
         {seat.letterOwed ? (
           <span className="inline-flex items-center gap-1.5">
             <span className="rounded bg-amber-500/12 px-1.5 py-0.5 font-bold text-amber-600">Letter not sent</span>
-            <button type="button" onClick={send} disabled={pending}
-              className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 font-semibold text-fg hover:bg-elevated disabled:opacity-40">
-              <Mail size={11} /> Send letter
-            </button>
+            <ConfirmPopover message={`Email ${who} now?`} detail={`They get the “${letterLabel}” letter for ${seat.workshop}.`} confirmLabel="Send" align="start" onConfirm={send}>
+              {(open) => (
+                <button type="button" onClick={open} disabled={pending}
+                  className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 font-semibold text-fg hover:bg-elevated disabled:opacity-40">
+                  <Mail size={11} /> Send letter
+                </button>
+              )}
+            </ConfirmPopover>
           </span>
         ) : seat.toldAt ? (
           <span className="inline-flex items-center gap-1 text-emerald-700">

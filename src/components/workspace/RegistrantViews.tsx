@@ -7,6 +7,7 @@
  * filters, save it as a new view, update, rename or delete it. Saved
  * views are shared by every admin.
  */
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
@@ -14,6 +15,7 @@ import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
 import { farSchoolOf } from "@/lib/travel/far-email";
+import { travelWords } from "@/lib/travel/from-postcode";
 import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/allocation/highlights";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import type { AdminWorkshop, SubmissionRow } from "@/lib/allocation/admin-types";
@@ -270,11 +272,10 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   const tickAll = (rowsHere: ShownRow[], on: boolean) =>
     setPicked((s) => { const n = new Set(s); for (const r of rowsHere) { const k = keyOf(r); if (on) n.add(k); else n.delete(k); } return n; });
 
+  const bulkWho = `${chosen.length} ${draft.perPerson ? (chosen.length === 1 ? "person" : "people") : chosen.length === 1 ? "seat" : "seats"}${
+    draft.perPerson && chosenSeats.length !== chosen.length ? ` (${chosenSeats.length} seats)` : ""}`;
+  const owedLetters = chosen.filter((r) => r.letter === "owed").flatMap((r) => r.bookingIds);
   function runBulk(to: string, label: string) {
-    const seats = chosenSeats.length;
-    const who = `${chosen.length} ${draft.perPerson ? (chosen.length === 1 ? "person" : "people") : chosen.length === 1 ? "seat" : "seats"}`;
-    const what = draft.perPerson && seats !== chosen.length ? ` (${seats} seats)` : "";
-    if (!confirm(`${label} ${who}${what}?${alsoEmail ? " They will be emailed now." : " No email is sent yet — the letters show as not sent."}`)) return;
     start(async () => {
       const r = await decideSeats(chosenSeats, to, { send: alsoEmail });
       if (!r.ok) { setSaid(r.problem ?? "That did not go through."); return; }
@@ -283,9 +284,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
     });
   }
   function runLetters() {
-    const owed = chosen.filter((r) => r.letter === "owed").flatMap((r) => r.bookingIds);
+    const owed = owedLetters;
     if (owed.length === 0) { setSaid("None of those owe a letter."); return; }
-    if (!confirm(`Send ${owed.length} letter${owed.length === 1 ? "" : "s"} now?`)) return;
     start(async () => {
       const r = await sendSeatLetters(owed);
       setSaid(`${r.sent} letter${r.sent === 1 ? "" : "s"} sent${r.failed ? `, ${r.failed} failed` : ""}.`);
@@ -334,8 +334,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
       setSaid(message);
     });
   }
-  function saveAsNew() {
-    const name = prompt("Name this view", custom ? `${active.name} (copy)` : changed ? "My view" : `${active.name} (copy)`)?.trim();
+  const suggestedName = custom ? `${active.name} (copy)` : changed ? "My view" : `${active.name} (copy)`;
+  function saveAsNew(name: string) {
     if (!name) return;
     const id = `v-${Date.now().toString(36)}`;
     persist([...saved, { ...draft, id, name: name.slice(0, 60) }], `Saved “${name}”.`, id);
@@ -343,13 +343,11 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   function update() {
     persist(saved.map((v) => (v.id === active.id ? { ...draft, id: v.id, name: v.name } : v)), `Updated “${active.name}”.`);
   }
-  function rename() {
-    const name = prompt("Rename this view", active.name)?.trim();
+  function rename(name: string) {
     if (!name || name === active.name) return;
     persist(saved.map((v) => (v.id === active.id ? { ...v, name: name.slice(0, 60) } : v)), `Renamed to “${name}”.`);
   }
   function remove() {
-    if (!confirm(`Delete the view “${active.name}”? The registrations themselves are not affected.`)) return;
     persist(saved.filter((v) => v.id !== active.id), `Deleted “${active.name}”.`, "all");
   }
 
@@ -449,20 +447,32 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
 
         {/* Saved views: create, update, rename, delete */}
         <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2.5">
-          <button type="button" onClick={saveAsNew} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40">
-            <Plus size={12} /> Save as new view
-          </button>
+          <ConfirmPopover message="Name this view" input={{ initial: suggestedName, maxLength: 60 }} confirmLabel="Save" align="start" onConfirm={saveAsNew}>
+            {(open) => (
+              <button type="button" onClick={open} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40">
+                <Plus size={12} /> Save as new view
+              </button>
+            )}
+          </ConfirmPopover>
           {custom && (
             <>
               <button type="button" onClick={update} disabled={pending || !changed} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40">
                 <Save size={12} /> Save changes
               </button>
-              <button type="button" onClick={rename} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40">
-                <Pencil size={12} /> Rename
-              </button>
-              <button type="button" onClick={remove} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-muted hover:border-rose-500/50 hover:text-rose-600 disabled:opacity-40">
-                <Trash2 size={12} /> Delete view
-              </button>
+              <ConfirmPopover message="Rename this view" input={{ initial: active.name, maxLength: 60 }} confirmLabel="Rename" align="start" onConfirm={rename}>
+                {(open) => (
+                  <button type="button" onClick={open} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40">
+                    <Pencil size={12} /> Rename
+                  </button>
+                )}
+              </ConfirmPopover>
+              <ConfirmPopover message={`Delete the view “${active.name}”?`} detail="The registrations themselves are not affected." confirmLabel="Delete" tone="danger" align="start" onConfirm={remove}>
+                {(open) => (
+                  <button type="button" onClick={open} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-muted hover:border-rose-500/50 hover:text-rose-600 disabled:opacity-40">
+                    <Trash2 size={12} /> Delete view
+                  </button>
+                )}
+              </ConfirmPopover>
             </>
           )}
           {changed && (
@@ -507,20 +517,42 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
           </span>
           <span className="h-4 w-px bg-line" aria-hidden />
           {BULK.map((b) => (
-            <button key={b.to} type="button" disabled={pending} onClick={() => runBulk(b.to, b.label)}
-              className={`rounded-md px-2.5 py-1 text-[12px] font-bold disabled:opacity-50 ${b.className}`}>
-              {b.label}
-            </button>
+            <ConfirmPopover
+              key={b.to}
+              message={`${b.label} ${bulkWho}?`}
+              detail={alsoEmail ? "They will be emailed now." : "No email is sent yet — the letters show as not sent."}
+              confirmLabel={b.label}
+              tone={b.to === "cancelled" ? "danger" : "default"}
+              align="start"
+              onConfirm={() => runBulk(b.to, b.label)}
+            >
+              {(open) => (
+                <button type="button" disabled={pending} onClick={open}
+                  className={`rounded-md px-2.5 py-1 text-[12px] font-bold disabled:opacity-50 ${b.className}`}>
+                  {b.label}
+                </button>
+              )}
+            </ConfirmPopover>
           ))}
           <label className="inline-flex items-center gap-1.5 text-[12px] text-muted">
             <input type="checkbox" checked={alsoEmail} onChange={(e) => setAlsoEmail(e.target.checked)} className="accent-brand-600" />
             Email them now
           </label>
           <span className="h-4 w-px bg-line" aria-hidden />
-          <button type="button" disabled={pending} onClick={runLetters}
-            className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-50">
-            <Mail size={12} /> Send letters owed
-          </button>
+          <ConfirmPopover
+            message={owedLetters.length ? `Send ${owedLetters.length} letter${owedLetters.length === 1 ? "" : "s"} now?` : "None of those owe a letter."}
+            detail={owedLetters.length ? "Each person gets the letter for their seat's current decision." : undefined}
+            confirmLabel={owedLetters.length ? "Send" : "OK"}
+            align="start"
+            onConfirm={runLetters}
+          >
+            {(open) => (
+              <button type="button" disabled={pending} onClick={open}
+                className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-50">
+                <Mail size={12} /> Send letters owed
+              </button>
+            )}
+          </ConfirmPopover>
           <button type="button" onClick={copyEmails}
             className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated">
             <ClipboardCopy size={12} /> Copy addresses
@@ -679,11 +711,23 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           <span className={`${chip} bg-rose-500/10 text-rose-700`} title="Said over 2 hours, but the postal code is well inside that — no out-of-town priority">False OOT</span>
                         ) : r.travel === "far" ? "Over 2 h" : r.travel === "near" ? "Local" : "—"}
                         {r.travel !== "far" && r.emailFar && !r.internal && (
-                          <span
-                            className={`${chip} ml-1 cursor-help bg-amber-500/15 font-bold text-amber-700`}
-                            title={`${r.emailFar.school} email — ${r.emailFar.city} is over two hours from 144 College Street. They said ${r.travel === "near" ? "local" : "nothing about distance"}; worth checking.`}
-                            aria-label={`Worth checking: ${r.emailFar.school} email`}
-                          >?</span>
+                          /* A card on hover or focus, not a browser tooltip: it has to be read. */
+                          <span className="group/why relative ml-1 inline-flex align-middle">
+                            <span
+                              tabIndex={0}
+                              className={`${chip} cursor-help bg-amber-500/15 font-bold text-amber-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-400`}
+                              aria-describedby={`why-${r.bookingId}`}
+                            >?</span>
+                            <span
+                              id={`why-${r.bookingId}`}
+                              role="tooltip"
+                              className="pointer-events-none absolute left-0 top-full z-30 mt-1 w-72 whitespace-normal rounded-lg border border-amber-500/40 bg-card-solid px-3 py-2 text-[11.5px] leading-snug text-fg opacity-0 shadow-lg transition-opacity group-hover/why:opacity-100 group-focus-within/why:opacity-100"
+                            >
+                              <strong className="block text-amber-700">May be over two hours away</strong>
+                              Based on their email address — {r.emailFar.school}, in {r.emailFar.city} — this person may live {travelWords({ fsa: "", place: r.emailFar.city, ...r.emailFar })} from 144 College Street.
+                              They said {r.travel === "near" ? "they are local" : "nothing about distance"}. Worth checking; it does not change their ranking.
+                            </span>
+                          </span>
                         )}
                         {r.postcode && <span className="ml-1 font-mono text-[11px] text-subtle">{r.postcode}</span>}
                       </td>
@@ -697,7 +741,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                       <tr className="border-t border-line">
                         <td colSpan={draft.perPerson ? 7 : 11} className="p-0">
                           {sub ? (
-                            <RegistrationDetail sub={sub} onChanged={afterDecision} />
+                            <RegistrationDetail sub={sub} onChanged={afterDecision} where={{ postcode: r.postcode, email: r.email, said: r.travel }} />
                           ) : (
                             <p className="bg-elevated/30 px-3 py-3 text-[12px] text-muted">
                               {subs === null ? "Loading the registration…" : "No registration form behind this seat — it was booked another way, so there are no answers to show."}

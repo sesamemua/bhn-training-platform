@@ -35,6 +35,7 @@ export default async function PrintoutPage({ params }: Props) {
     {
       id: "quiet",
       custom: false,
+      kind: "sign",
       label: "Quiet please",
       fields: {
         subhead: "Filming in progress",
@@ -43,11 +44,13 @@ export default async function PrintoutPage({ params }: Props) {
         where: f?.location ?? "",
         message: "We're filming interviews here today. Please keep your voice down and take phone calls elsewhere as you pass by — thank you for bearing with us!",
         thanks: "Thank you!",
+        writeIn: "",
       },
     },
     {
       id: "closed",
       custom: false,
+      kind: "sign",
       label: "Area closed",
       fields: {
         subhead: "Filming in progress",
@@ -56,11 +59,13 @@ export default async function PrintoutPage({ params }: Props) {
         where: f?.location ?? "",
         message: "Please don't walk through while we're filming. We're sorry for the detour, and we'll be out of your way as soon as we can.",
         thanks: "Thank you for understanding!",
+        writeIn: "",
       },
     },
     {
       id: "entrance",
       custom: false,
+      kind: "sign",
       label: "Use the other entrance",
       fields: {
         subhead: "Filming in progress",
@@ -69,6 +74,38 @@ export default async function PrintoutPage({ params }: Props) {
         where: "The entrance on College Street is open",
         message: "This door is closed while we film inside. Please go around to the College Street entrance — thank you for helping us keep the shot quiet.",
         thanks: "Thank you!",
+        writeIn: "",
+      },
+    },
+    {
+      id: "loading",
+      custom: false,
+      kind: "sign",
+      label: "Windshield — loading",
+      fields: {
+        subhead: "Loading film equipment",
+        headline: "Loading — back shortly",
+        when,
+        where: f?.location ?? "",
+        message: "We're unloading equipment for a filming day in the building and will move this car as soon as we're done. Need it moved sooner? Please give us a call — we'll come right out.",
+        thanks: "Thank you for your patience!",
+        writeIn: "Call or text:",
+      },
+    },
+    {
+      id: "release",
+      custom: false,
+      kind: "release",
+      label: "Release form",
+      fields: {
+        subhead: project.title.replace(/ Project$/, ""),
+        headline: "Photo, video & audio release",
+        when: f ? longDate(f.date.toISOString().slice(0, 10)) : "",
+        where: f?.location ?? "",
+        message:
+          "I give BioHubNet (Biomanufacturing Hub Network), at the Leslie Dan Faculty of Pharmacy, University of Toronto, permission to photograph me and record me on video and audio at the shoot above, and to use, edit, copy and share those recordings to describe and promote BioHubNet and the University of Toronto — on websites and social media, in videos, presentations, reports and printed material, now and later. I will not be paid for this, and I do not need to approve the final edit. I can ask BioHubNet at any time to stop using my image in anything new; material already published or printed may not be withdrawn.",
+        thanks: "Questions, or to stop future use of your image: info@biohubnet.ca",
+        writeIn: "",
       },
     },
   ];
@@ -79,7 +116,7 @@ export default async function PrintoutPage({ params }: Props) {
       <PageHero
         eyebrow={<><Printer size={11} /> Video Production · Printout</>}
         title={project.title}
-        description="Signs for the shoot day — quiet please, area closed, use the other entrance, and any you make. Pick one, edit the words, check the preview, print on letter paper."
+        description="Everything to print for the shoot day — door signs, the windshield loading notice, the release form, and any you make. Pick one, edit the words, check the preview, print on letter paper."
         actions={<ProjectBackLink />}
       />
       <ProjectNav projectId={project.id} />

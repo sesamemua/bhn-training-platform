@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18a";
+export const TOUR_VERSION = "2026.10.18b";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,26 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "video.logistics",
+    title: "Packing list for the shoot",
+    body: "The **Logistics** tab in a video project is the list of what to bring \u2014 tick things off as they are packed, add what is missing, print it. **Printout** also has the release form and a windshield loading notice.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.18b",
+  },
+  {
+    id: "training-admin.getting-here",
+    title: "How far they are coming from",
+    body: "Open a registration: **Getting here** shows the travel time from their postal code, where their email's institution is and how far, and what they said.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.18b",
   },
   {
     id: "training-admin.email-worth-checking",

@@ -63,6 +63,7 @@ export function CateringTab({ workshops, sent: initialSent }: { workshops: Admin
   const [planning, setPlanning] = useState(noneApproved);
   const [copied, setCopied] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
+  const [manual, setManual] = useState<string | null>(null);
   const [sent, setSent] = useState(initialSent);
   const [, start] = useTransition();
 
@@ -94,7 +95,8 @@ export function CateringTab({ workshops, sent: initialSent }: { workshops: Admin
       setCopied(id);
       setTimeout(() => setCopied((c) => (c === id ? null : c)), 2000);
     } catch {
-      window.prompt("Copy this text:", text);
+      // No clipboard access: show the text to copy by hand, not a browser prompt.
+      setManual(text);
     }
     remember(list, "copy");
   }
@@ -166,6 +168,15 @@ export function CateringTab({ workshops, sent: initialSent }: { workshops: Admin
           <span className="text-subtle"> — for planning{noneApproved ? "; nobody is approved yet" : ""}. Copies say the numbers are not final.</span>
         </span>
       </label>
+      {manual && (
+        <div className="rounded-lg border border-line bg-card p-3">
+          <p className="flex items-center justify-between text-[12.5px] font-semibold text-fg">
+            Your browser blocked copying — select this and copy it by hand
+            <button type="button" onClick={() => setManual(null)} className="text-[11.5px] text-muted hover:text-fg">Close</button>
+          </p>
+          <textarea readOnly autoFocus onFocus={(e) => e.currentTarget.select()} value={manual} rows={8} className="mt-2 w-full rounded-md border border-line bg-elevated p-2 font-mono text-[11.5px] text-fg" />
+        </div>
+      )}
       {blocked && (
         <p role="alert" className="text-[12.5px] font-semibold text-amber-600">
           Your browser blocked the print window. Allow pop-ups for this site, then press the button again.
