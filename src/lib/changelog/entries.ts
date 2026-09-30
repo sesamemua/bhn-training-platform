@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: a Before the shoot tab",
+    body: "A new **Before the shoot** tab lists what has to be done in the days ahead, with **who is on it** and **when it is due** (overdue dates turn red). The BHN Promo list starts with the team\u2019s own: the **camera rental account form**, **confirming the rental**, and **insurance** (Ruilin); **finalising each pillar script** (Epshita, Yeseul, Roshni) and **Yoo Jin\u2019s script**; **sending the call sheets**; **contacting and confirming the students**. Suggestions are marked and can be deleted: the **filming permit** (Campus Events takes up to 15 business days \u2014 ask today), the room booking and access, parking and the loading dock, confirming Darek, ordering lunch and coffee, Molly\u2019s lab, and printing the release forms.\n\nThe **Prep day** list has due dates too.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Logistics saves again",
     body: "Moving items between people on **Logistics** was not being saved: one of the new safety items was longer than the list allowed, and that made every save fail. Items can now be longer, that line is shorter, and if a save ever fails the board says so in a red line \u2014 with the reason \u2014 instead of a small grey word.",
     kind: "fix",

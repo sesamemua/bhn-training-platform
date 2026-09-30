@@ -8,14 +8,19 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Plus, X } from "lucide-react";
-import type { PrepTask } from "@/lib/video/prep";
+import type { PrepList, PrepTask } from "@/lib/video/prep";
 import { savePrep } from "@/lib/video/printout-actions";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 
 type Person = { id: string; name: string; group: string };
 const INPUT = "min-w-0 rounded-md border border-line bg-card-solid px-2 py-1 text-[12.5px] text-fg focus:border-brand-400 focus:outline-none";
 
-export function PrepDay({ projectId, when, people, initial }: { projectId: string; when: string; people: Person[]; initial: PrepTask[] }) {
+export function PrepDay({ projectId, when, people, initial, list = "prep", heading = "Prep day" }: {
+  projectId: string; when: string; people: Person[]; initial: PrepTask[];
+  /** Which list this is: the day before, or the weeks before. */
+  list?: PrepList;
+  heading?: string;
+}) {
   const [tasks, setTasks] = useState(initial);
   const [status, setStatus] = useState<"saved" | "saving" | "error">("saved");
   const [newTask, setNewTask] = useState("");
@@ -27,20 +32,21 @@ export function PrepDay({ projectId, when, people, initial }: { projectId: strin
     if (first.current) { first.current = false; return; }
     setStatus("saving");
     const t = setTimeout(() => {
-      savePrep(projectId, tasks).then((r) => setStatus(r.ok ? "saved" : "error")).catch(() => setStatus("error"));
+      savePrep(projectId, tasks, list).then((r) => setStatus(r.ok ? "saved" : "error")).catch(() => setStatus("error"));
     }, 600);
     return () => clearTimeout(t);
   }, [tasks, projectId]);
 
   const set = (id: string, patch: Partial<PrepTask>) => setTasks((all) => all.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   const live = tasks.filter((t) => !t.removed);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date());
   const done = live.filter((t) => t.done).length;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-card p-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-bold text-fg">Prep day</p>
+          <p className="text-[15px] font-bold text-fg">{heading}</p>
           <p className="text-[12.5px] text-muted">{when} · <strong className="text-fg">{done}</strong> of {live.length} done</p>
         </div>
         <span className="inline-flex items-center gap-1 text-[11.5px] text-subtle" role="status">
@@ -77,6 +83,21 @@ export function PrepDay({ projectId, when, people, initial }: { projectId: strin
                     aria-label="Task"
                     className={`w-full bg-transparent text-[14px] font-bold text-fg outline-none focus:underline ${t.done ? "line-through decoration-2" : ""}`}
                   />
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11.5px]">
+                    <label className={`inline-flex items-center gap-1 ${!t.done && t.due && t.due < today ? "font-semibold text-rose-600" : "text-muted"}`}>
+                      Due
+                      <input
+                        id={`prep-due-${t.id}`}
+                        type="date"
+                        value={t.due}
+                        onChange={(e) => set(t.id, { due: e.target.value })}
+                        className="rounded border border-line bg-transparent px-1 py-0.5 text-[11.5px] text-fg"
+                      />
+                      {!t.done && t.due && t.due < today && <span>· overdue</span>}
+                      {!t.done && t.due === today && <span className="font-semibold text-amber-600">· today</span>}
+                    </label>
+                    {t.suggested && <span className="rounded bg-sky-500/12 px-1.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">suggested</span>}
+                  </div>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {t.people.map((id) => byId.get(id)).filter((p): p is Person => !!p).map((p) => (
                       <span key={p.id} className="inline-flex items-center gap-0.5 rounded-full bg-brand-500/12 py-0.5 pl-2 pr-1 text-[11.5px] font-semibold text-fg">
@@ -163,11 +184,11 @@ export function PrepDay({ projectId, when, people, initial }: { projectId: strin
           e.preventDefault();
           const title = newTask.trim();
           if (!title) return;
-          setTasks((all) => [...all, { id: `c-${Date.now().toString(36)}`, title, people: [], done: false, notes: "", items: [], removed: false, custom: true }]);
+          setTasks((all) => [...all, { id: `c-${Date.now().toString(36)}`, title, people: [], done: false, notes: "", items: [], removed: false, custom: true, due: "", suggested: false }]);
           setNewTask("");
         }}
       >
-        <input id="prep-new-task" value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Add a task for the prep day…" maxLength={160} className={`${INPUT} w-full max-w-md py-1.5`} />
+        <input id="prep-new-task" value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder={list === "preshoot" ? "Add something to do before the shoot…" : "Add a task for the prep day…"} maxLength={160} className={`${INPUT} w-full max-w-md py-1.5`} />
         <button type="submit" disabled={!newTask.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-brand-700 disabled:opacity-40"><Plus size={13} /> Add task</button>
       </form>
       {tasks.some((t) => t.removed) && (

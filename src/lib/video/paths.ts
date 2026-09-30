@@ -11,3 +11,4 @@ export const filmingPath = (projectId: string) => `${projectPath(projectId)}/fil
 export const printoutPath = (projectId: string) => `${projectPath(projectId)}/printout`;
 export const logisticsPath = (projectId: string) => `${projectPath(projectId)}/logistics`;
 export const prepPath = (projectId: string) => `${projectPath(projectId)}/prep`;
+export const beforePath = (projectId: string) => `${projectPath(projectId)}/before`;

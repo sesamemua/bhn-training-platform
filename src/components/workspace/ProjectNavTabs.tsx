@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Tabs inside one video project: Scripts, Production cost, Call sheets, Filming day, Prep day, Print job, Logistics.
+ * Tabs inside one video project: Scripts, Production cost, Call sheets, Before the shoot, Filming day, Prep day, Print job, Logistics.
  * Same underline idiom as MerchNav, directly under the PageHero. Rendered
  * by ProjectNav, which works out where Scripts should land.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Backpack, CalendarClock, ClipboardList, FileText, ListTodo, Printer, Receipt } from "lucide-react";
-import { callSheetsPath, filmingPath, logisticsPath, prepPath, printoutPath, productionCostPath } from "@/lib/video/paths";
+import { Backpack, CalendarClock, ClipboardCheck, ClipboardList, FileText, ListTodo, Printer, Receipt } from "lucide-react";
+import { beforePath, callSheetsPath, filmingPath, logisticsPath, prepPath, printoutPath, productionCostPath } from "@/lib/video/paths";
 
 export function ProjectNavTabs({ projectId, scriptsHref }: { projectId: string; scriptsHref: string }) {
   const pathname = usePathname();
@@ -18,10 +18,12 @@ export function ProjectNavTabs({ projectId, scriptsHref }: { projectId: string; 
   const printout = printoutPath(projectId);
   const logistics = logisticsPath(projectId);
   const prep = prepPath(projectId);
+  const before = beforePath(projectId);
   const tabs = [
-    { key: "scripts", label: "Scripts", href: scriptsHref, icon: FileText, active: ![calls, cost, filming, prep, printout, logistics].some((p) => pathname.startsWith(p)) },
+    { key: "scripts", label: "Scripts", href: scriptsHref, icon: FileText, active: ![calls, cost, before, filming, prep, printout, logistics].some((p) => pathname.startsWith(p)) },
     { key: "cost", label: "Production cost", href: cost, icon: Receipt, active: pathname.startsWith(cost) },
     { key: "calls", label: "Call sheets", href: calls, icon: ClipboardList, active: pathname.startsWith(calls) },
+    { key: "before", label: "Before the shoot", href: before, icon: ClipboardCheck, active: pathname.startsWith(before) },
     { key: "filming", label: "Filming day", href: filming, icon: CalendarClock, active: pathname.startsWith(filming) },
     { key: "prep", label: "Prep day", href: prep, icon: ListTodo, active: pathname.startsWith(prep) },
     { key: "printout", label: "Print job", href: printout, icon: Printer, active: pathname.startsWith(printout) },

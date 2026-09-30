@@ -31,3 +31,14 @@ test("the starting prep tasks pass the save's own check", async () => {
   const r = PrepSchema.safeParse(mergePrep(null, [{ id: "fp_ruilin", name: "Ruilin" }]));
   assert.ok(r.success, r.success ? "" : JSON.stringify(r.error.issues[0]));
 });
+
+test("before the shoot: the team's tasks with their owners and dates; suggestions marked; saves", async () => {
+  const { DEFAULT_PRESHOOT, PrepSchema } = await import("../../src/lib/video/prep");
+  const people = [{ id: "r", name: "Ruilin" }, { id: "e", name: "Epshita" }];
+  const tasks = mergePrep(null, people, DEFAULT_PRESHOOT);
+  assert.deepEqual(tasks.find((t) => t.id === "pre-insurance")?.people, ["r"]);
+  assert.deepEqual(tasks.find((t) => t.id === "pre-script-engage")?.people, ["e"]);
+  assert.equal(tasks.find((t) => t.id === "pre-permit")?.suggested, true);
+  assert.equal(tasks.find((t) => t.id === "pre-rental-form")?.due, "2026-10-01");
+  assert.ok(PrepSchema.safeParse(tasks).success);
+});

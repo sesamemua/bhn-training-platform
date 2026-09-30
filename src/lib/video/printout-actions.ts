@@ -9,7 +9,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SignsSchema, printoutsKey } from "@/lib/video/filming-notice";
 import { KitStateSchema, kitKey } from "@/lib/video/kit";
-import { PrepSchema, prepKey } from "@/lib/video/prep";
+import { PREP_LISTS, PrepSchema, keyFor, type PrepList } from "@/lib/video/prep";
 
 export async function savePrintouts(projectId: string, signs: unknown): Promise<{ ok: boolean; error?: string }> {
   await requireRole("admin");
@@ -36,14 +36,15 @@ export async function saveKit(projectId: string, state: unknown): Promise<{ ok: 
   return { ok: true };
 }
 
-/** Save a project's prep-day tasks. */
-export async function savePrep(projectId: string, tasks: unknown): Promise<{ ok: boolean; error?: string }> {
+/** Save a project's task list — the Prep day, or Before the shoot. */
+export async function savePrep(projectId: string, tasks: unknown, list: PrepList = "prep"): Promise<{ ok: boolean; error?: string }> {
   await requireRole("admin");
+  if (!PREP_LISTS.includes(list)) return { ok: false, error: "That is not a list." };
   const p = PrepSchema.safeParse(tasks);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Those tasks could not be saved." };
   const project = await prisma.videoProject.findUnique({ where: { id: projectId }, select: { id: true } });
   if (!project) return { ok: false, error: "That project no longer exists." };
-  const key = prepKey(projectId);
+  const key = keyFor(list, projectId);
   const value = JSON.stringify(p.data);
   await prisma.platformSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
   return { ok: true };
