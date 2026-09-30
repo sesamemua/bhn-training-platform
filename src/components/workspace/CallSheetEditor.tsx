@@ -140,7 +140,7 @@ function SheetView({ sheet, ops }: { sheet: CallSheetInput; ops: Ops | null }) {
   const byRole = (role: RegExp) => d.people.find((p) => role.test(p.role));
   const contacts = [
     // "Director" alone would catch the Scientific Directors.
-    ["Producer & director", byRole(/producer/i)],
+    ["Producer & DP", byRole(/producer/i)],
     ["Sound & lighting", byRole(/sound|lighting/i)],
   ] as const;
 

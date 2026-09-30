@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "BHN Promo call sheet: Ruilin is producer and DP; Darek's call is 10:30",
+    body: "On the BHN Promo shoot-day call sheet and the Filming day list, Ruilin\u2019s title is now **Producer & DP**, and the call sheet\u2019s contact line says the same. **Darek**\u2019s call time is **10:30**, and his crew-call row in the schedule moves with it.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Registrants: a next step when an address says “far” — a clarification email, ready to send",
     body: "Open a registration where somebody said they are local but registered with a university address over two hours away, and a warning now sits **right under their travel answer**: which school, how far it is, and the **next step** \u2014 a short email asking where they will travel from.\n\n**See sample email** opens the letter beside the button, filled in and ready to edit (it is also a standing letter, *Travel \u2014 checking where they are coming from*, under **Email**). **Send\u2026** asks once more before it goes; nothing is sent without you pressing it. Once asked, the warning says when.\n\nThe **?** card beside their distance no longer runs out of its box.",
     kind: "improvement",

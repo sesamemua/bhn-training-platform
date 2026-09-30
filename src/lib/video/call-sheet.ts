@@ -118,8 +118,8 @@ export const BHN_PROMO_CALL_SHEET: CallSheetInput = {
       { name: "Gilbert", role: "Scientific Director — homepage video; Year in Review", group: "talent", call: "12:45", notes: "13:00–13:30" },
       { name: "Darius", role: "Scientific Director — homepage video; Year in Review", group: "talent", call: "13:15", notes: "13:30–14:00" },
       { name: "Yoo Jin", role: "Homepage video — the three pillars", group: "talent", call: "13:45", notes: "14:00–14:30" },
-      { name: "Ruilin Yuan", role: "Producer & Director — BHN Marketing & Communications", group: "crew", call: "07:30", email: "ruilin.yuan@utoronto.ca", notes: "Parking, coffee, releases" },
-      { name: "Darek Zdzienicki", role: "Sound & lighting — CamArt Productions", group: "crew", call: "08:00", notes: "Truck parks at Landmark Garage" },
+      { name: "Ruilin Yuan", role: "Producer & DP — BHN Marketing & Communications", group: "crew", call: "07:30", email: "ruilin.yuan@utoronto.ca", notes: "Parking, coffee, releases" },
+      { name: "Darek Zdzienicki", role: "Sound & lighting — CamArt Productions", group: "crew", call: "10:30", notes: "Truck parks at Landmark Garage" },
       { name: "Alison", role: "BHN team", group: "team", call: "12:15", notes: "Lunch" },
     ].map((p) => PersonSchema.parse(p)),
     schedule: [
