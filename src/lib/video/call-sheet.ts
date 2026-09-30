@@ -124,7 +124,7 @@ export const BHN_PROMO_CALL_SHEET: CallSheetInput = {
     ].map((p) => PersonSchema.parse(p)),
     schedule: [
       { time: "07:30", end: "08:00", item: "Producer on site — parking, coffee, releases", who: "Ruilin" },
-      { time: "08:00", end: "08:15", item: "Crew call — load in from Landmark Garage", who: "Darek" },
+      { time: "10:30", end: "10:45", item: "Crew call — load in from Landmark Garage", who: "Darek" },
       { time: "08:15", end: "09:30", item: "Set lights, sound and camera; test shots", who: "Ruilin, Darek" },
       { time: "09:30", end: "10:15", item: "Molly — homepage video interview", who: "Molly", notes: "Guide → Molly tab" },
       { time: "10:15", end: "10:40", item: "Molly — Year in Review lines", who: "Molly", notes: "Guide → Year in Review tab" },
