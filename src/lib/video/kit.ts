@@ -65,6 +65,12 @@ export const DEFAULT_KIT: KitItem[] = [
   // Asked for later, with who is doing them.
   ...start("People & comfort", ["Lunch", "Coffee — morning, and a second box with lunch", "Snacks"], false, "Alison", "b"),
   ...start("Paper & printing", ["Print the signs and put them up"], false, "Roshni", "b"),
+  // Footage storage (Prep day → Storage has the sizes and the shopping list).
+  ...start("Camera & sound", [
+    "Footage drives — SSD for the day's copies, plus the backup drive",
+    "Codex Compact Drive reader and USB-C cable (from the rental)",
+    "Laptop with the offload app, and its charger",
+  ], false, "Ruilin", "d"),
   // Roshni looks after safety on the day (researched 30 Sep 2026 — see the call sheet).
   ...start("Safety", [
     "First-aid kit — bring it, and keep it where everyone can see it",

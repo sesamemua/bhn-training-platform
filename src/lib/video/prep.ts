@@ -50,6 +50,14 @@ export const DEFAULT_PREP: Starting[] = [
       "Boom microphone", "Wireless lavalier microphones", "Headphones", "Slate", "Spotlight with Fresnel lens", "Make-up kits",
     ]),
   },
+  {
+    id: "prep-storage", title: "Get the footage drives ready", who: ["Ruilin"], done: false, removed: false, custom: false,
+    notes: "Sizes, when to copy and what to buy: the Storage card below.",
+    items: items("storage", [
+      "Buy the drives (Staples, 375 University Ave)", "Plug in and test each drive; name them", "Format them (exFAT, or APFS if Mac only)",
+      "Offload app with checksum copy installed and tried on a test clip", "Rental: Codex reader and how many 1 TB mags", "Laptop charged; a USB-C port for the reader and each drive",
+    ]),
+  },
   { id: "prep-students-confirm", title: "Final confirmation with the students", who: [], done: false, notes: "Whoever has been in touch with the students confirms they are coming, and when.", items: [], removed: false, custom: false },
   { id: "prep-dietary", title: "Collect dietary requirements", who: [], done: false, notes: "Everybody on the day — for lunch and the coffee.", items: [], removed: false, custom: false },
 ];
@@ -91,6 +99,8 @@ export const DEFAULT_PRESHOOT: Starting[] = [
   task("pre-permit", "Filming permit from Campus Events & Conference Services", ["Ruilin"], "2026-09-30",
     "Required for filming in St. George buildings; they take up to 15 business days — ask today. campusevents@utoronto.ca", true),
   task("pre-room", "Confirm the FitzGerald Atrium booking and access, 8:30–5", [], "2026-10-01", "", true),
+  task("pre-mags", "Ask the rental house for a second 1 TB Compact Drive and the Codex reader", ["Ruilin"], "2026-10-02",
+    "With one mag the camera stops for about 45 minutes while it is copied (Prep day → Storage).", true),
   task("pre-parking", "Confirm parking and loading-dock access for Darek's truck", ["Ruilin"], "2026-10-02", "", true),
   task("pre-darek", "Confirm Darek: 10:30 call, the loading dock, what he brings", ["Ruilin"], "2026-10-02", "", true),
   task("pre-lunch", "Order lunch and coffee (dietary needs from the Prep day list)", ["Alison"], "2026-10-02", "", true),

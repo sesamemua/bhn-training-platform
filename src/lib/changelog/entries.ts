@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: a Storage card on Prep day, and a tighter task list",
+    body: "**Prep day** has a new **Storage** card. It reads the on-camera time from the **Filming day** and works out the footage for the ALEXA Mini LF (recommended: LF Open Gate 4.5K, ProRes 422 HQ, 23.976 fps), the sound (3 tracks), **when each 1 TB mag has to be copied off and how long it takes**, whether the camera has to wait, and **which drives to buy** at Staples on University Ave, with prices and HST. Change the format, frame rate, how much the camera rolls, the number of mags, or SSD vs hard drive and everything recalculates. A table compares every format, and the recommended settings for open gate with anamorphic lenses are underneath.\n\nThe task list is now **one line per task**; open a task for its notes and checklist. New: **Get the footage drives ready** (Prep day), **ask the rental house for a second mag and the reader** (Before the shoot), and the drives, reader and offload laptop on Ruilin's **Logistics** list.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Registrants: see who is fully decided; take letters out of the mailbox",
     body: "In **Registrants**, each workshop in a person\u2019s row now shows where it stands \u2014 a green **Approved**, amber **Waitlisted**, red **Declined** or grey **Not decided** \u2014 and each person has a badge: **\u2713 All decided** once every workshop they asked for has a decision, or **N to decide** until then. The badge counts all their workshops, even ones the current view hides.\n\nIn the **mailbox**, **Remove** takes a person\u2019s letter out of this round, and the \u00d7 on a session leaves just that session out of their letter. Removed ones go under **Taken out of this round**, with **Put back**; a new decision on a seat brings it back by itself. The email text is folded away behind **Show email**. Letters are now grouped by the person\u2019s **email address**, so somebody who registered twice still gets **one email** covering all their workshops.",
     kind: "improvement",

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18j";
+export const TOUR_VERSION = "2026.10.18k";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,16 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.storage",
+    title: "How much drive space the shoot needs",
+    body: "**Prep day** now ends with a **Storage** card: the footage the Filming day will record on the ALEXA Mini LF, when to copy each 1 TB mag off and how long it takes, whether the camera has to wait, and which drives to buy at Staples with prices. Change the format, frame rate, number of mags or the drive type and it all recalculates. The tasks above are one line each now — open one for its notes and checklist.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.18k",
   },
   {
     id: "video.prep-day",
