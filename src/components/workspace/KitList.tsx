@@ -26,6 +26,7 @@ export function KitList({ projectId, initial }: { projectId: string; initial: Ki
   const [items, setItems] = useState(initial.items);
   const [owners, setOwners] = useState(initial.owners);
   const [status, setStatus] = useState<"saved" | "saving" | "error">("saved");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [newOwner, setNewOwner] = useState("");
   const [blocked, setBlocked] = useState(false);
@@ -35,7 +36,9 @@ export function KitList({ projectId, initial }: { projectId: string; initial: Ki
     if (first.current) { first.current = false; return; }
     setStatus("saving");
     const t = setTimeout(() => {
-      saveKit(projectId, { items, owners, v: KIT_VERSION }).then((r) => setStatus(r.ok ? "saved" : "error")).catch(() => setStatus("error"));
+      saveKit(projectId, { items, owners, v: KIT_VERSION })
+        .then((r) => { setStatus(r.ok ? "saved" : "error"); setSaveError(r.ok ? null : r.error ?? "The list could not be saved."); })
+        .catch(() => { setStatus("error"); setSaveError("The list could not be saved — check your connection."); });
     }, 600);
     return () => clearTimeout(t);
   }, [items, owners, projectId]);
@@ -124,6 +127,11 @@ ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; pa
           </button>
         )}
         {blocked && <p role="alert" className="basis-full text-[12px] font-semibold text-amber-600">Your browser blocked the print window. Allow pop-ups for this site, then try again.</p>}
+        {saveError && (
+          <p role="alert" className="basis-full rounded-lg border border-rose-500/50 bg-rose-500/10 px-3 py-2 text-[12.5px] font-semibold text-rose-700">
+            Your changes are not saved: {saveError} They will be tried again on your next change.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2">

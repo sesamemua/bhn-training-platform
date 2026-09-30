@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Logistics saves again",
+    body: "Moving items between people on **Logistics** was not being saved: one of the new safety items was longer than the list allowed, and that made every save fail. Items can now be longer, that line is shorter, and if a save ever fails the board says so in a red line \u2014 with the reason \u2014 instead of a small grey word.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Call sheet: rebuild it from the Filming day plan; Roshni's safety list",
     body: "A call sheet in a project with a **Filming day** plan has a **Rebuild from Filming day** button. It fills in the **people and their call times** (each person's first task, facilitating included), the **running order** (with prep and filming times for each interview), the **general call, wrap and location** \u2014 and the **emergency information**: 911 then U of T Campus Safety 416-978-2222, the nearest ER (Mount Sinai, 600 University Ave, about 6 minutes' walk; Toronto General, 190 Elizabeth St) and the nearest AED (C. David Naylor Building, 1st floor by the elevators). Parking, meals, notes and phone numbers stay as they were. It fills the editor; nothing is saved until you press **Save**.\n\nOn **Logistics**, **Roshni** has a new **Safety** card: the first-aid kit, finding the AED, walking the emergency exits at 8:30, knowing the nearest ER, and who to call.",
     kind: "feature",

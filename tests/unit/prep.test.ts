@@ -25,3 +25,9 @@ test("saved state wins, custom tasks follow, junk is dropped", () => {
   assert.equal(tasks.at(-1)?.title, "Charge the batteries");
   assert.equal(tasks.length, DEFAULT_PREP.length + 1);
 });
+
+test("the starting prep tasks pass the save's own check", async () => {
+  const { PrepSchema } = await import("../../src/lib/video/prep");
+  const r = PrepSchema.safeParse(mergePrep(null, [{ id: "fp_ruilin", name: "Ruilin" }]));
+  assert.ok(r.success, r.success ? "" : JSON.stringify(r.error.issues[0]));
+});

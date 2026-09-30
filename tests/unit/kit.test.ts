@@ -40,3 +40,11 @@ test("asked-for items start with the person doing them", () => {
   assert.deepEqual(items.filter((i) => i.owner === "Alison").map((i) => i.label), ["Lunch", "Coffee — morning, and a second box with lunch", "Snacks"]);
   assert.equal(items.filter((i) => i.label === "Snacks").length, 1);
 });
+
+test("the starting list, as the page saves it, passes the save's own check", async () => {
+  // A starting item too long for the schema once made every save fail.
+  const { KitStateSchema, KIT_VERSION } = await import("../../src/lib/video/kit");
+  const state = mergeKit(null);
+  const r = KitStateSchema.safeParse({ items: state.items, owners: state.owners, v: KIT_VERSION });
+  assert.ok(r.success, r.success ? "" : JSON.stringify(r.error.issues[0]));
+});

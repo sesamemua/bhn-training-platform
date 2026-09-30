@@ -13,7 +13,7 @@ export const kitKey = (projectId: string) => `video.kit.${projectId}`;
 export const KitItemSchema = z.object({
   id: z.string().min(1).max(40),
   group: z.string().min(1).max(40),
-  label: z.string().trim().min(1).max(120),
+  label: z.string().trim().min(1).max(240),
   checked: z.boolean(),
   /** Added here rather than on the starting list. */
   custom: z.boolean(),
@@ -68,7 +68,7 @@ export const DEFAULT_KIT: KitItem[] = [
   // Roshni looks after safety on the day (researched 30 Sep 2026 — see the call sheet).
   ...start("Safety", [
     "First-aid kit — bring it, and keep it where everyone can see it",
-    "Find the nearest AED: C. David Naylor Building (6 Queen's Park Cres W), 1st floor by the elevators — FitzGerald has none listed",
+    "Find the nearest AED: C. David Naylor Building, 1st floor by the elevators (none listed in FitzGerald)",
     "Walk the emergency exits at 8:30 and tell the team where they are",
     "Know the nearest ER: Mount Sinai, 600 University Ave (about 6 min walk); Toronto General, 190 Elizabeth St",
     "Emergency: 911 first, then U of T Campus Safety 416-978-2222 (non-emergency 416-978-2323)",
