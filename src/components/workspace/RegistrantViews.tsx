@@ -7,13 +7,15 @@
  * filters, save it as a new view, update, rename or delete it. Saved
  * views are shared by every admin.
  */
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
-import { addHighlight, decideSeats, removeHighlight, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { RegistrationDetail } from "./RegistrationDetail";
 import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/allocation/highlights";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
-import type { AdminWorkshop } from "@/lib/allocation/admin-types";
+import type { AdminWorkshop, SubmissionRow } from "@/lib/allocation/admin-types";
 import {
   BUILT_IN_VIEWS, GROUP_BY, GROUP_LABEL, LETTERS, LETTER_LABEL, STATUSES, TRAVELS, TRAVEL_LABEL,
   applyView, isBuiltIn, type Filters, type RegistrantRow, type ShownRow, type View,
@@ -295,6 +297,21 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
       () => setSaid("Could not copy."),
     );
   }
+  // Open a row to see the whole registration and decide its seats — what
+  // the separate "Submitted registrations" list used to be for.
+  const router = useRouter();
+  const [subs, setSubs] = useState<SubmissionRow[] | null>(null);
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  const reloadSubs = () => { void loadSubmissions().then(setSubs); };
+  useEffect(() => { reloadSubs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const subByBooking = useMemo(() => {
+    const m = new Map<string, SubmissionRow>();
+    for (const sub of subs ?? []) for (const seat of sub.seats) m.set(seat.id, sub);
+    return m;
+  }, [subs]);
+  const subOf = (r: ShownRow) => [r.bookingId, ...(r.bookingIds ?? [])].map((id) => subByBooking.get(id)).find(Boolean) ?? null;
+  const afterDecision = () => { reloadSubs(); router.refresh(); };
+
   const shownCount = useMemo(() => new Set(groups.flatMap((g) => g.rows.map((r) => (draft.perPerson ? r.personKey : r.bookingId)))).size, [groups, draft.perPerson]);
 
   const days = useMemo(() => [...new Map(rows.map((r) => [r.day, r.dayLabel])).entries()].sort(), [rows]);
@@ -469,7 +486,10 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               <Star size={11} className="-mt-0.5 mr-1 inline text-amber-500" />Highlighted only · {highlightedPeople}
             </button>
           )}
-          <span className="ml-auto text-[12px] text-muted">{shownCount} {draft.perPerson ? "people" : "seats"}</span>
+          <span className="ml-auto inline-flex items-baseline gap-1.5 rounded-lg bg-brand-500/12 px-3 py-1">
+            <span className="text-[26px] font-extrabold leading-none tabular-nums text-brand-400">{shownCount}</span>
+            <span className="text-[13px] font-semibold text-fg">{draft.perPerson ? (shownCount === 1 ? "person" : "people") : shownCount === 1 ? "seat" : "seats"}</span>
+          </span>
         </div>
       </div>
 
@@ -547,9 +567,14 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                   </tr>
                 </thead>
                 <tbody>
-                  {g.rows.map((r) => (
-                    <tr key={draft.perPerson ? r.personKey : r.bookingId}
-                      className={`border-t border-line align-top ${picked.has(keyOf(r)) ? "bg-brand-500/[0.06]" : (r.highlights ?? []).length ? "bg-amber-400/[0.08]" : ""}`}>
+                  {g.rows.map((r) => {
+                    const rowKey = draft.perPerson ? r.personKey : r.bookingId;
+                    const open = openRow === rowKey;
+                    const sub = open ? subOf(r) : null;
+                    return (
+                    <Fragment key={rowKey}>
+                    <tr
+                      className={`border-t border-line align-top ${open ? "bg-brand-500/[0.05]" : ""} ${picked.has(keyOf(r)) ? "bg-brand-500/[0.06]" : (r.highlights ?? []).length ? "bg-amber-400/[0.08]" : ""}`}>
                       <td className="px-2 py-1">
                         <input
                           type="checkbox"
@@ -577,7 +602,16 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           >
                             <Star size={15} strokeWidth={2} className={(r.highlights ?? []).length ? "fill-amber-400" : ""} />
                           </button>
-                          <span className="font-semibold text-fg">{r.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setOpenRow(open ? null : rowKey)}
+                            aria-expanded={open}
+                            title={open ? "Close the registration" : "Open the whole registration — answers and decisions"}
+                            className="inline-flex items-center gap-0.5 font-semibold text-fg hover:text-brand-400"
+                          >
+                            <ChevronDown size={13} className={`shrink-0 text-subtle transition-transform ${open ? "rotate-180" : ""}`} />
+                            {r.name}
+                          </button>
                           {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
                           <SourceBadge formSlug={r.formSlug} />
                         </div>
@@ -632,12 +666,27 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         {r.postcode && <span className="ml-1 font-mono text-[11px] text-subtle">{r.postcode}</span>}
                       </td>
                       <td className="px-2 py-1 text-muted">
-                        {[...r.dietary.filter((d) => !/^other/i.test(d)), r.dietaryOther && `Other: ${r.dietaryOther}`].filter(Boolean).join(" · ") || <span className="text-subtle">—</span>}
+                        {[...r.dietary.filter((d) => !/^(other|no dietary)/i.test(d)), r.dietaryOther && `Other: ${r.dietaryOther}`].filter(Boolean).join(" · ")}
                       </td>
-                      <td className="px-2 py-1 text-muted">{r.accessibility === "none" ? "None" : r.accessibility || <span className="text-subtle">—</span>}</td>
+                      <td className="px-2 py-1 text-muted">{r.accessibility === "none" ? "" : r.accessibility}</td>
                       {!draft.perPerson && <td className="whitespace-nowrap px-2 py-1 text-subtle">{r.preference ? `#${r.preference}` : "—"}</td>}
                     </tr>
-                  ))}
+                    {open && (
+                      <tr className="border-t border-line">
+                        <td colSpan={draft.perPerson ? 6 : 10} className="p-0">
+                          {sub ? (
+                            <RegistrationDetail sub={sub} onChanged={afterDecision} />
+                          ) : (
+                            <p className="bg-elevated/30 px-3 py-3 text-[12px] text-muted">
+                              {subs === null ? "Loading the registration…" : "No registration form behind this seat — it was booked another way, so there are no answers to show."}
+                            </p>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

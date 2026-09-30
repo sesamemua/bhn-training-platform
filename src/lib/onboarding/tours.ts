@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17v";
+export const TOUR_VERSION = "2026.10.17w";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.registrant-expand",
+    title: "Open a registrant",
+    body: "Click a name on **Registrants** to open the whole registration under the row \u2014 their answers, and each seat with its decisions and letter.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.17w",
   },
   {
     id: "video.printout",

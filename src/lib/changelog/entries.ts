@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registrants: open any row for the whole registration; one list instead of two",
+    body: "Click a name in the **Registrants** table to open that person's whole registration right under the row: every answer they gave, which form they used, and each seat they asked for with its **four decisions**, the letter and the line to add to it \u2014 what the separate **Submitted registrations** list below used to show. That list is gone; the only registrations it still lists are the rare ones that asked for **no session** at all, which have no row in the table.\n\nThe count of people (or seats) in the view is now **big and bright**. **No dietary requirements** and **no accessibility needs** are left blank instead of spelled out, so the needs that matter stand out.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: a Printout tab with a filming notice for the door",
     body: "Each video project has a **Printout** tab. Its first printout is the **filming notice** for the door: *Quiet please \u2014 filming in progress*, the day and hours (8:30 a.m. \u2013 5:00 p.m. for the BHN Promo shoot), where, and a polite request to keep voices down and take calls elsewhere, with the BioHubNet logo. Every line can be changed before printing; the preview beside it is exactly what prints, on letter paper.\n\nOn the **Filming day** chart: it now starts at the building's opening time (8:30), a short task sorts above the long one starting with it (morning coffee above Darius), and the prep lead-ins are paler. The BHN Promo day has **TBD 1\u20133** for the lab-shot trainees (rename them when you know), **Ruilin setting up** at 8:30, the second box of coffee folded into **lunch**, and Epshita and Roshni moved up \u2014 each preps while the one before is filmed, then films straight after. Roshni and Yeseul facilitate Epshita.",
     kind: "feature",
