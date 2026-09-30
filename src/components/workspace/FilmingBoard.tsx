@@ -59,9 +59,19 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   const [people, setPeople] = useState(initialPeople);
   useEffect(() => setBlocks(initialBlocks), [initialBlocks]);
   useEffect(() => setPeople(initialPeople), [initialPeople]);
-  // The page scrollbar's width, for the edge-to-edge chart (0 with overlay scrollbars).
+  // Edge to edge: measured against the scrolling <main> it sits in, so it
+  // meets the sidebar on the left and stops at main's scrollbar on the right.
+  const bleedRef = useRef<HTMLDivElement>(null);
+  const [bleed, setBleed] = useState<{ ml: number; w: number } | null>(null);
   useEffect(() => {
-    const set = () => document.documentElement.style.setProperty("--sbw", `${window.innerWidth - document.documentElement.clientWidth}px`);
+    const el = bleedRef.current;
+    const main = el?.closest("main");
+    if (!el?.parentElement || !main) return;
+    const set = () => {
+      const m = main.getBoundingClientRect();
+      const parent = el.parentElement!.getBoundingClientRect();
+      setBleed({ ml: m.left + main.clientLeft - parent.left, w: main.clientWidth });
+    };
     set();
     window.addEventListener("resize", set);
     return () => window.removeEventListener("resize", set);
@@ -184,13 +194,9 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
 
       {/* Edge to edge: the day needs every pixel of width it can get. */}
       <div
-        className="border-y border-line bg-card"
-        style={{
-          // .full-bleed, less the page's scrollbar (100vw counts it): without
-          // this the chart's right edge sits under a classic scrollbar.
-          marginLeft: "calc(50% - 50vw + var(--sbw, 0px) / 2 + var(--full-bleed-inset, 0px) / 2)",
-          width: "calc(100vw - var(--sbw, 0px) - var(--full-bleed-inset, 0px))",
-        }}
+        ref={bleedRef}
+        className={`border-y border-line bg-card ${bleed ? "" : "rounded-xl border-x"}`}
+        style={bleed ? { marginLeft: bleed.ml, width: bleed.w } : undefined}
       >
         {/* People: a strip above the chart, dragged down onto a task. */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-line px-3 py-2">
