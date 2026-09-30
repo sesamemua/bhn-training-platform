@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18f";
+export const TOUR_VERSION = "2026.10.18g";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -203,13 +203,13 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "video.printout",
-    title: "Print the filming notice",
-    body: "The **Printout** tab in a video project has signs for the door as thumbnails \u2014 quiet please, area closed, use the other entrance. Click one to edit it, or **New sign** to make your own; changes save on their own. Print on letter paper.",
+    title: "Print job: signs, forms and scripts",
+    body: "The **Print job** tab in a video project has the scripts, pulled live for printing, and signs for the door as thumbnails \u2014 quiet please, area closed, use the other entrance. Click one to edit it, or **New sign** to make your own; changes save on their own. Print on letter paper.",
     path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
-    since: "2026.10.18a",
+    since: "2026.10.18g",
   },
   {
     id: "video.filming-facilitators",

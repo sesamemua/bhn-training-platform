@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Tabs inside one video project: Scripts, Production cost, Call sheets, Filming day, Prep day, Printout, Logistics.
+ * Tabs inside one video project: Scripts, Production cost, Call sheets, Filming day, Prep day, Print job, Logistics.
  * Same underline idiom as MerchNav, directly under the PageHero. Rendered
  * by ProjectNav, which works out where Scripts should land.
  */
@@ -24,7 +24,7 @@ export function ProjectNavTabs({ projectId, scriptsHref }: { projectId: string; 
     { key: "calls", label: "Call sheets", href: calls, icon: ClipboardList, active: pathname.startsWith(calls) },
     { key: "filming", label: "Filming day", href: filming, icon: CalendarClock, active: pathname.startsWith(filming) },
     { key: "prep", label: "Prep day", href: prep, icon: ListTodo, active: pathname.startsWith(prep) },
-    { key: "printout", label: "Printout", href: printout, icon: Printer, active: pathname.startsWith(printout) },
+    { key: "printout", label: "Print job", href: printout, icon: Printer, active: pathname.startsWith(printout) },
     { key: "logistics", label: "Logistics", href: logistics, icon: Backpack, active: pathname.startsWith(logistics) },
   ];
   return (

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: Print job, with the scripts pulled live",
+    body: "The **Printout** tab is now **Print job**. Below the signs and forms there is a **Scripts** printout: every tab of the project's scripts \u2014 Overview, Molly, Gilbert, Darius, each pillar lead, Year in Review \u2014 pulled **live from the Scripts page** each time you open it, laid out for reading on paper (a contents page, then each part on its own pages, the lines large and well spaced). Tick which parts to include, check the preview, and **Print or save as PDF**. Nothing is frozen: change a script, press **Pull the latest**, and the printout follows.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Logistics: group cards are back, inside each person's column",
     body: "The **Logistics** board keeps a column per person, and inside each the things are grouped again as cards \u2014 hair & make-up, paper & printing, camera & sound\u2026 **Drag a whole group card** onto someone to hand them all of it, or **drag a single item** to hand them just that.\n\n**Roshni, Yoo Jin, Epshita and Yeseul** are on the board with Alison and Ruilin. **Print the signs and put them up** starts with Roshni; **lunch, coffee** (morning, and a second box with lunch) and **snacks** start with Alison.\n\nThe travel letters now give the address in full: **144 College Street, Toronto (BioHubNet)**.",
     kind: "improvement",

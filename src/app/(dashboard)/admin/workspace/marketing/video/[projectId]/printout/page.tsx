@@ -10,6 +10,7 @@ import { PageHero } from "@/components/ui/PageHero";
 import { ProjectNav } from "@/components/workspace/ProjectNav";
 import { ProjectBackLink } from "@/components/workspace/ProjectBackLink";
 import { FilmingNoticeEditor } from "@/components/workspace/FilmingNoticeEditor";
+import { ScriptPrint } from "@/components/workspace/ScriptPrint";
 import { clockOf, hhmmToMinutes, longDate } from "@/lib/video/filming";
 import { mergeSigns, parseSigns, printoutsKey, type Sign } from "@/lib/video/filming-notice";
 
@@ -22,7 +23,12 @@ export default async function PrintoutPage({ params }: Props) {
   const { projectId } = await params;
   const project = await prisma.videoProject.findUnique({
     where: { id: projectId },
-    select: { id: true, title: true, filming: { select: { date: true, location: true, opensAt: true, closesAt: true } } },
+    select: {
+      id: true, title: true,
+      filming: { select: { date: true, location: true, opensAt: true, closesAt: true } },
+      // Read fresh on every visit: the printout is never a frozen copy.
+      scripts: { where: { isArchived: false }, orderBy: { order: "asc" }, select: { id: true, title: true, format: true, richContent: true, updatedAt: true } },
+    },
   });
   if (!project) notFound();
   const f = project.filming;
@@ -114,9 +120,9 @@ export default async function PrintoutPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <PageHero
-        eyebrow={<><Printer size={11} /> Video Production · Printout</>}
+        eyebrow={<><Printer size={11} /> Video Production · Print job</>}
         title={project.title}
-        description="Everything to print for the shoot day — door signs, the windshield loading notice, the release form, and any you make. Pick one, edit the words, check the preview, print on letter paper."
+        description="Everything to print for the shoot day — door signs, the windshield loading notice, the release form, any you make, and the scripts, pulled live. Check the preview, print on letter paper."
         actions={<ProjectBackLink />}
       />
       <ProjectNav projectId={project.id} />
@@ -124,6 +130,13 @@ export default async function PrintoutPage({ params }: Props) {
         projectId={project.id}
         builtIn={builtIn}
         initial={mergeSigns(builtIn, parseSigns(saved?.value))}
+      />
+      <ScriptPrint
+        projectTitle={project.title}
+        scripts={project.scripts.flatMap((s) => {
+          const rc = (s.richContent ?? null) as { html?: string; css?: string } | null;
+          return s.format === "html" && rc?.html ? [{ id: s.id, title: s.title, updatedAt: s.updatedAt.toISOString(), html: rc.html, css: rc.css ?? "" }] : [];
+        })}
       />
     </div>
   );
