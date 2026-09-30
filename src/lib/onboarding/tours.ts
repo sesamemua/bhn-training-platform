@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18m";
+export const TOUR_VERSION = "2026.10.18n";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,16 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.by-person",
+    title: "Everything for one person, on one page",
+    body: "The new **By person** tab in a video project pulls together what is someone's across every tab — when to arrive, what they are on during the shoot, their tasks before the shoot and on the prep day, what to bring, and their scripts. Pick a name; send them the link.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.18n",
   },
   {
     id: "platform.scroll-room",

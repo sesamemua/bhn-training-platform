@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: a By person tab",
+    body: "A new **By person** tab, first in every video project, shows one person everything that is theirs, pulled from all the other tabs: **when to arrive** and each thing they are on during the shoot (**on camera**, **facilitating**, or on the task), with when the camera turns; what they have to do **before the shoot** and on the **prep day**; what they **bring** from Logistics; and links straight to **their scripts**. Each person has their own link to send them. If the call sheet gives a different arrival time from the Filming day, it says so.\n\nThe **EQUIP** pillar script now reads like ENGAGE and EXPERIENCE: timecoded sections with the voice-over in quotes, and the visual and on-screen text kept as notes under each section.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Every page scrolls its last section to the top",
     body: "Every page on the platform now has room below its last section, so whatever is at the bottom can be scrolled up to the top of the screen \u2014 even on a large display where a page used to fit exactly and could not scroll at all.",
     kind: "improvement",

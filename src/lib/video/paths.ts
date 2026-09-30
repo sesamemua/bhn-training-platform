@@ -12,3 +12,4 @@ export const printoutPath = (projectId: string) => `${projectPath(projectId)}/pr
 export const logisticsPath = (projectId: string) => `${projectPath(projectId)}/logistics`;
 export const prepPath = (projectId: string) => `${projectPath(projectId)}/prep`;
 export const beforePath = (projectId: string) => `${projectPath(projectId)}/before`;
+export const peoplePath = (projectId: string) => `${projectPath(projectId)}/people`;

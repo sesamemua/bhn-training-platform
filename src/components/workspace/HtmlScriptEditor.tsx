@@ -338,6 +338,15 @@ export function HtmlScriptEditor({
     if (host && host.getBoundingClientRect().top < 0) host.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [refreshSections, refreshTables]);
 
+  // A link can open a given tab: ?tab=<data-tab> (the By person page uses it).
+  const linkedTab = useRef(false);
+  useEffect(() => {
+    if (linkedTab.current || !docTabs.length) return;
+    linkedTab.current = true;
+    const want = new URLSearchParams(window.location.search).get("tab");
+    if (want && docTabs.some((t) => t.key === want)) showDocTab(want);
+  }, [docTabs, showDocTab]);
+
   // Live body-row list for a table index (prefers tbody; falls back to
   // non-header rows). Re-queried per op so it always reflects the DOM.
   const rowsOf = useCallback((ti: number): HTMLTableRowElement[] => {
