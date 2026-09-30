@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Logistics: group cards are back, inside each person's column",
+    body: "The **Logistics** board keeps a column per person, and inside each the things are grouped again as cards \u2014 hair & make-up, paper & printing, camera & sound\u2026 **Drag a whole group card** onto someone to hand them all of it, or **drag a single item** to hand them just that.\n\n**Roshni, Yoo Jin, Epshita and Yeseul** are on the board with Alison and Ruilin. **Print the signs and put them up** starts with Roshni; **lunch, coffee** (morning, and a second box with lunch) and **snacks** start with Alison.\n\nThe travel letters now give the address in full: **144 College Street, Toronto (BioHubNet)**.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "BHN Promo call sheet: Ruilin is producer and DP; Darek's call is 10:30",
     body: "On the BHN Promo shoot-day call sheet and the Filming day list, Ruilin\u2019s title is now **Producer & DP**, and the call sheet\u2019s contact line says the same. **Darek**\u2019s call time is **10:30**, and his crew-call row in the schedule moves with it.",
     kind: "fix",

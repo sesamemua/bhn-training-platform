@@ -340,7 +340,7 @@ Please keep your receipts — we cannot reimburse anything we have no record of.
     body:
       `Hello {{first_name}},
 
-You asked about travel support for {{event}} and told us your one-way journey is more than two hours. The postal code you gave us, {{postcode}}, works out at {{travel_time}} from 144 College Street — under two hours, which is why I am writing rather than simply processing it.
+You asked about travel support for {{event}} and told us your one-way journey is more than two hours. The postal code you gave us, {{postcode}}, works out at {{travel_time}} from 144 College Street, Toronto (BioHubNet) — under two hours, which is why I am writing rather than simply processing it.
 
 The estimate may well be the thing that is wrong. It is worked out from the first three characters of a postal code, so it knows nothing about where you actually set off from in the morning, which bus or train you are on, or whether you are travelling from somewhere else that week.
 
@@ -366,7 +366,7 @@ If it is under two hours, there is nothing you need to do, and nothing has gone 
 
 Thank you for registering for {{event}}. A quick question before we plan the sessions.
 
-You registered with your {{school}} address, and {{school_city}} is {{school_travel_time}} from 144 College Street. Where will you be travelling from on the day?
+You registered with your {{school}} address, and {{school_city}} is {{school_travel_time}} from 144 College Street, Toronto (BioHubNet). Where will you be travelling from on the day?
 
 If you are staying in Toronto that week, there is nothing to do — just let us know and we will see you there.
 

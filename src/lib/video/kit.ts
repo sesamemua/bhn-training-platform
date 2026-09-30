@@ -28,17 +28,26 @@ export type KitItem = z.infer<typeof KitItemSchema>;
 export const KitSchema = z.array(KitItemSchema).max(300);
 
 /** The list, and the people things are handed to. */
-export const KitStateSchema = z.object({ items: KitSchema, owners: z.array(z.string().trim().min(1).max(60)).max(20) });
+export const KitStateSchema = z.object({
+  items: KitSchema,
+  owners: z.array(z.string().trim().min(1).max(60)).max(20),
+  /** Which version of the starting people this list has seen — so people added later join once, and stay gone if removed. */
+  v: z.number().int().optional(),
+});
 export type KitState = z.infer<typeof KitStateSchema>;
 /** Who brings things, to start with. */
-export const DEFAULT_OWNERS = ["Alison", "Ruilin"];
+export const DEFAULT_OWNERS = ["Alison", "Ruilin", "Roshni", "Yoo Jin", "Epshita", "Yeseul"];
+/** People added to the starting list after version 1, by the version that added them. */
+const OWNERS_ADDED: Record<number, string[]> = { 2: ["Roshni", "Yoo Jin", "Epshita", "Yeseul"] };
+export const KIT_VERSION = 2;
 
 export const KIT_GROUPS = ["Hair & make-up", "Paper & printing", "Camera & sound", "People & comfort", "Wardrobe", "Loading & parking"] as const;
 
-const start = (group: string, labels: string[], suggested = false) =>
+// Ids come from the group and position, so a starting list is only ever appended to.
+const start = (group: string, labels: string[], suggested = false, owner = "", tag = suggested ? "s" : "a") =>
   labels.map((label, i) => ({
-    id: `${group.toLowerCase().replace(/[^a-z]+/g, "-")}-${suggested ? "s" : "a"}${i}`,
-    group, label, checked: false, custom: false, removed: false, suggested, owner: "",
+    id: `${group.toLowerCase().replace(/[^a-z]+/g, "-")}-${tag}${i}`,
+    group, label, checked: false, custom: false, removed: false, suggested, owner,
   }));
 
 /** The starting list: what was asked for, then suggestions. */
@@ -48,9 +57,13 @@ export const DEFAULT_KIT: KitItem[] = [
   ...start("Paper & printing", ["Tape", "Printouts — door signs and the windshield notice", "Pens", "Markers", "Extra copies of everybody's scripts"]),
   ...start("Paper & printing", ["Release forms — one per person, plus spares", "Clipboards", "The day's schedule, printed", "Sticky notes"], true),
   ...start("Camera & sound", ["Camera batteries — charged, plus spares", "Memory cards — formatted, plus spares", "Chargers and a power bar", "Extension cords", "Gaffer tape (for cables)", "Laptop, card reader and a backup drive", "Headphones", "Lens cloth"], true),
-  ...start("People & comfort", ["Water and cups", "Snacks", "Hand sanitizer", "First-aid kit", "Phone chargers", "Garbage bags"], true),
+  // (Snacks moved from the suggestions to Alison's list, below.)
+  ...start("People & comfort", ["Water and cups", "Snacks", "Hand sanitizer", "First-aid kit", "Phone chargers", "Garbage bags"], true).filter((i) => i.label !== "Snacks"),
   ...start("Wardrobe", ["Garment steamer", "A spare plain top — no busy patterns or logos"], true),
   ...start("Loading & parking", ["Cart or dolly for the gear", "The contractor's loading-dock details"], true),
+  // Asked for later, with who is doing them.
+  ...start("People & comfort", ["Lunch", "Coffee — morning, and a second box with lunch", "Snacks"], false, "Alison", "b"),
+  ...start("Paper & printing", ["Print the signs and put them up"], false, "Roshni", "b"),
 ];
 
 /**
@@ -61,17 +74,24 @@ export const DEFAULT_KIT: KitItem[] = [
 export function mergeKit(raw: string | null | undefined): KitState {
   let saved: KitItem[] = [];
   let owners = DEFAULT_OWNERS;
+  let seen = KIT_VERSION;
   try {
     const parsed = raw ? JSON.parse(raw) : [];
     const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
     saved = list.flatMap((x: unknown) => { const r = KitItemSchema.safeParse(x); return r.success ? [r.data] : []; });
     if (!Array.isArray(parsed) && Array.isArray(parsed?.owners)) {
       owners = parsed.owners.filter((o: unknown): o is string => typeof o === "string" && o.trim().length > 0).slice(0, 20);
+      seen = typeof parsed.v === "number" ? parsed.v : 1;
+    } else if (raw) seen = 1;
+    // People added to the starting list since this one was saved join it once.
+    for (let v = seen + 1; v <= KIT_VERSION; v++) {
+      for (const name of OWNERS_ADDED[v] ?? []) if (!owners.includes(name)) owners = [...owners, name];
     }
   } catch { /* nothing saved that can be read */ }
   const byId = new Map(saved.map((i) => [i.id, i]));
   return {
     owners,
+    v: KIT_VERSION,
     items: [
       ...DEFAULT_KIT.map((d) => { const s = byId.get(d.id); return s ? { ...d, checked: s.checked, removed: s.removed, label: s.label, owner: s.owner } : d; }),
       ...saved.filter((s) => s.custom),

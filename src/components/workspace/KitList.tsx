@@ -2,19 +2,22 @@
 
 /**
  * The packing list for a shoot day, as a board: one column per person
- * bringing things, and one for what nobody has taken yet. Drag an item
- * card onto a person to hand it to them; drag a person's name onto
- * another to reorder the columns. Tick an item as it goes in the bag,
+ * bringing things, and one for what nobody has taken yet. Inside each,
+ * the things are grouped as cards — hair & make-up, paper & printing…
+ * Drag a whole group card onto a person to hand them all of it, or a
+ * single item to hand them just that; drag a person's name onto another
+ * to reorder the columns. Tick an item as it goes in the bag,
  * add what is missing, take off what is not needed — suggestions
  * included. Saves on its own a moment after each change.
  */
 import { useEffect, useRef, useState } from "react";
 import { Check, GripVertical, Loader2, Plus, Printer, RotateCcw, UserPlus, X } from "lucide-react";
-import { KIT_GROUPS, type KitItem, type KitState } from "@/lib/video/kit";
+import { KIT_GROUPS, KIT_VERSION, type KitItem, type KitState } from "@/lib/video/kit";
 import { saveKit } from "@/lib/video/printout-actions";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 
 const ITEM = "application/x-kit-item";
+const GROUP = "application/x-kit-group";
 const OWNER = "application/x-kit-owner";
 const NOBODY = "";
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -32,7 +35,7 @@ export function KitList({ projectId, initial }: { projectId: string; initial: Ki
     if (first.current) { first.current = false; return; }
     setStatus("saving");
     const t = setTimeout(() => {
-      saveKit(projectId, { items, owners }).then((r) => setStatus(r.ok ? "saved" : "error")).catch(() => setStatus("error"));
+      saveKit(projectId, { items, owners, v: KIT_VERSION }).then((r) => setStatus(r.ok ? "saved" : "error")).catch(() => setStatus("error"));
     }, 600);
     return () => clearTimeout(t);
   }, [items, owners, projectId]);
@@ -51,6 +54,13 @@ export function KitList({ projectId, initial }: { projectId: string; initial: Ki
     setOver(null);
     const itemId = e.dataTransfer.getData(ITEM);
     if (itemId) { set(itemId, { owner }); return; }
+    const group = e.dataTransfer.getData(GROUP);
+    if (group) {
+      // A whole group card: everything of that kind the column it came from holds.
+      const { name, from } = JSON.parse(group) as { name: string; from: string };
+      setItems((all) => all.map((i) => (i.group === name && i.owner === from && !i.removed ? { ...i, owner } : i)));
+      return;
+    }
     const moving = e.dataTransfer.getData(OWNER);
     if (moving && owner && moving !== owner) {
       setOwners((all) => { const rest = all.filter((o) => o !== moving); const at = rest.indexOf(owner); rest.splice(at, 0, moving); return rest; });
@@ -93,7 +103,7 @@ ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; pa
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-bold text-fg">What to bring</p>
           <p className="text-[12.5px] text-muted">
-            <strong className="text-fg">{packed}</strong> of {total} packed · drag a card onto a person to hand it to them
+            <strong className="text-fg">{packed}</strong> of {total} packed · drag a group, or a single item, onto a person to hand it to them
             {takenOff > 0 && <> · {takenOff} taken off</>}
           </p>
           <div className="mt-1.5 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-elevated">
@@ -123,7 +133,7 @@ ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; pa
           return (
             <section
               key={o || "nobody"}
-              onDragOver={(e) => { if (e.dataTransfer.types.includes(ITEM) || (o && e.dataTransfer.types.includes(OWNER))) { e.preventDefault(); setOver(o || "nobody"); } }}
+              onDragOver={(e) => { if (e.dataTransfer.types.includes(ITEM) || e.dataTransfer.types.includes(GROUP) || (o && e.dataTransfer.types.includes(OWNER))) { e.preventDefault(); setOver(o || "nobody"); } }}
               onDragLeave={() => setOver((x) => (x === (o || "nobody") ? null : x))}
               onDrop={(e) => dropOn(e, o)}
               className={`flex w-72 shrink-0 flex-col rounded-xl border p-2.5 transition-colors ${
@@ -144,35 +154,52 @@ ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; pa
                   </ConfirmPopover>
                 )}
               </div>
-              <ul className="mt-2 flex-1 space-y-1">
-                {list.map((i) => (
-                  <li
-                    key={i.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData(ITEM, i.id); e.dataTransfer.effectAllowed = "move"; }}
-                    className="group flex cursor-grab items-start gap-2 rounded-lg border border-line bg-card-solid px-2 py-1.5 active:cursor-grabbing"
-                  >
-                    <input
-                      id={`kit-${i.id}`}
-                      type="checkbox"
-                      checked={i.checked}
-                      onChange={(e) => set(i.id, { checked: e.target.checked })}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
-                    />
-                    <label htmlFor={`kit-${i.id}`} className="min-w-0 flex-1 cursor-pointer leading-snug">
-                      <span className={`text-[12.5px] ${i.checked ? "text-subtle line-through" : "text-fg"}`}>{i.label}</span>
-                      <span className="mt-0.5 flex flex-wrap gap-1 text-[9.5px]">
-                        <span className="rounded bg-elevated px-1 text-subtle">{i.group}</span>
-                        {i.suggested && <span className="rounded bg-sky-500/12 px-1 font-semibold uppercase tracking-wide text-sky-700">suggested</span>}
-                      </span>
-                    </label>
-                    <button type="button" onClick={() => remove(i)} aria-label={`Take “${i.label}” off the list`} className="shrink-0 rounded p-0.5 text-subtle opacity-0 hover:text-rose-500 group-hover:opacity-100 focus:opacity-100">
-                      <X size={12} />
-                    </button>
-                  </li>
-                ))}
-                {list.length === 0 && <li className="rounded-lg border border-dashed border-line px-2 py-4 text-center text-[11.5px] text-subtle">Drag items here</li>}
-              </ul>
+              <div className="mt-2 flex-1 space-y-2">
+                {[...new Set([...KIT_GROUPS, ...list.map((i) => i.group)])].map((g) => {
+                  const inGroup = list.filter((i) => i.group === g);
+                  if (!inGroup.length) return null;
+                  return (
+                    <div key={g} className="rounded-lg border border-line bg-card-solid">
+                      <div
+                        draggable
+                        onDragStart={(e) => { e.dataTransfer.setData(GROUP, JSON.stringify({ name: g, from: o })); e.dataTransfer.effectAllowed = "move"; }}
+                        title="Drag the whole group to someone"
+                        className="flex cursor-grab items-center gap-1.5 border-b border-line px-2 py-1.5 active:cursor-grabbing"
+                      >
+                        <GripVertical size={12} className="text-subtle" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-fg">{g}</span>
+                        <span className="text-[10.5px] tabular-nums text-subtle">{inGroup.filter((i) => i.checked).length}/{inGroup.length}</span>
+                      </div>
+                      <ul className="space-y-0.5 p-1">
+                        {inGroup.map((i) => (
+                          <li
+                            key={i.id}
+                            draggable
+                            onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData(ITEM, i.id); e.dataTransfer.effectAllowed = "move"; }}
+                            className="group flex cursor-grab items-start gap-2 rounded-md px-1.5 py-1 hover:bg-elevated/60 active:cursor-grabbing"
+                          >
+                            <input
+                              id={`kit-${i.id}`}
+                              type="checkbox"
+                              checked={i.checked}
+                              onChange={(e) => set(i.id, { checked: e.target.checked })}
+                              className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
+                            />
+                            <label htmlFor={`kit-${i.id}`} className="min-w-0 flex-1 cursor-pointer leading-snug">
+                              <span className={`text-[12.5px] ${i.checked ? "text-subtle line-through" : "text-fg"}`}>{i.label}</span>
+                              {i.suggested && <span className="ml-1.5 rounded bg-sky-500/12 px-1 text-[9.5px] font-semibold uppercase tracking-wide text-sky-700">suggested</span>}
+                            </label>
+                            <button type="button" onClick={() => remove(i)} aria-label={`Take “${i.label}” off the list`} className="shrink-0 rounded p-0.5 text-subtle opacity-0 hover:text-rose-500 group-hover:opacity-100 focus:opacity-100">
+                              <X size={12} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+                {list.length === 0 && <p className="rounded-lg border border-dashed border-line px-2 py-4 text-center text-[11.5px] text-subtle">Drag a group or an item here</p>}
+              </div>
               <AddItem onAdd={(label, group) => setItems((all) => [...all, { id: `c-${Date.now().toString(36)}`, group, label, checked: false, custom: true, removed: false, suggested: false, owner: o }])} />
             </section>
           );

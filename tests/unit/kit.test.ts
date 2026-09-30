@@ -27,7 +27,16 @@ test("the starting list keeps what was asked for, and marks suggestions", () => 
 test("owners: the new shape keeps who brings what; the old shape gets the default people", () => {
   const first = DEFAULT_KIT[0];
   const state = mergeKit(JSON.stringify({ items: [{ ...first, owner: "Alison" }], owners: ["Alison", "Ruilin", "Darek"] }));
-  assert.deepEqual(state.owners, ["Alison", "Ruilin", "Darek"]);
+  assert.deepEqual(state.owners, ["Alison", "Ruilin", "Darek", "Roshni", "Yoo Jin", "Epshita", "Yeseul"], "people added since join once");
   assert.equal(state.items[0].owner, "Alison");
-  assert.deepEqual(mergeKit(JSON.stringify([first])).owners, ["Alison", "Ruilin"]);
+  assert.deepEqual(mergeKit(JSON.stringify([first])).owners, ["Alison", "Ruilin", "Roshni", "Yoo Jin", "Epshita", "Yeseul"]);
+  // Removed after they joined: they stay removed.
+  assert.deepEqual(mergeKit(JSON.stringify({ items: [], owners: ["Alison"], v: 2 })).owners, ["Alison"]);
+});
+
+test("asked-for items start with the person doing them", () => {
+  const items = mergeKit(null).items;
+  assert.equal(items.find((i) => i.label === "Print the signs and put them up")?.owner, "Roshni");
+  assert.deepEqual(items.filter((i) => i.owner === "Alison").map((i) => i.label), ["Lunch", "Coffee — morning, and a second box with lunch", "Snacks"]);
+  assert.equal(items.filter((i) => i.label === "Snacks").length, 1);
 });
