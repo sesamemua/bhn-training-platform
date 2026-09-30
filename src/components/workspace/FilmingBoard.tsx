@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, DoorOpen, Lock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
 import {
-  GROUP_LABEL, GROUPS, KIND_LABEL, KINDS, atMinute, clockOf, hhmmToMinutes, issues, longDate, minuteOfDay, minutesToHhmm,
+  GROUP_LABEL, GROUPS, KIND_LABEL, KINDS, ON_CAMERA, atMinute, clockOf, hhmmToMinutes, issues, longDate, minuteOfDay, minutesToHhmm,
   type Block, type Issue, type Person,
 } from "@/lib/video/filming";
 import {
@@ -38,12 +38,17 @@ const SNAP = 5;
 const VIEW_UNTIL = 19 * 60;
 const short = (min: number) => `${((Math.floor(min / 60) + 11) % 12) + 1}:${String(min % 60).padStart(2, "0")}`;
 
-const KIND_TONE: Record<string, { bar: string; prep: string; chip: string }> = {
-  setup: { bar: "bg-slate-500", prep: "bg-slate-500/40", chip: "bg-slate-500/15 text-fg" },
-  logistics: { bar: "bg-amber-500", prep: "bg-amber-500/40", chip: "bg-amber-500/15 text-amber-700" },
-  interview: { bar: "bg-sky-600", prep: "bg-sky-500/35", chip: "bg-sky-500/15 text-sky-700" },
-  lab: { bar: "bg-violet-600", prep: "bg-violet-500/35", chip: "bg-violet-500/15 text-violet-700" },
-  broll: { bar: "bg-emerald-600", prep: "bg-emerald-500/35", chip: "bg-emerald-500/15 text-emerald-700" },
+/*
+ * Set-up and errands are see-through: a tint and an outline, so the
+ * filming reads first. Coffee and lunch get a colour of their own. An
+ * interview's prep & make-up is the same colour, lighter, leading in.
+ */
+const KIND_TONE: Record<string, { bar: string; prep: string; chip: string; text: string }> = {
+  setup: { bar: "bg-slate-400/20 border border-slate-400/60", prep: "bg-slate-400/10", chip: "bg-slate-500/15 text-fg", text: "text-fg" },
+  logistics: { bar: "bg-slate-400/15 border border-dashed border-slate-400/60", prep: "bg-slate-400/10", chip: "bg-slate-500/15 text-fg", text: "text-fg" },
+  meal: { bar: "bg-amber-500", prep: "bg-amber-500/35", chip: "bg-amber-500/15 text-amber-700", text: "text-white" },
+  interview: { bar: "bg-sky-600", prep: "bg-sky-500/35", chip: "bg-sky-500/15 text-sky-700", text: "text-white" },
+  lab: { bar: "bg-violet-600", prep: "bg-violet-500/35", chip: "bg-violet-500/15 text-violet-700", text: "text-white" },
 };
 const tone = (k: string) => KIND_TONE[k] ?? KIND_TONE.logistics;
 
@@ -52,9 +57,9 @@ const BTN = "inline-flex items-center gap-1.5 rounded-lg border border-line px-2
 
 const payload = (b: Block) => ({
   kind: b.kind, title: b.title, notes: b.notes, start: b.start, end: b.end,
-  prepMinutes: b.prepMinutes, locked: b.locked, flexible: b.flexible, people: b.people,
+  prepMinutes: b.prepMinutes, locked: b.locked, flexible: b.flexible, people: b.people, facilitators: b.facilitators,
 });
-const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+const minutes = (n: number) => (n >= 60 && n % 60 === 0 ? `${n / 60} h` : n > 60 ? `${Math.floor(n / 60)} h ${n % 60} min` : `${n} min`);
 
 export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks }: { day: FilmingDayProps; people: Person[]; blocks: Block[] }) {
   const router = useRouter();
@@ -88,7 +93,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   const [focusPerson, setFocusPerson] = useState<string | null>(null);
 
   const sorted = useMemo(() => [...blocks].sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title)), [blocks]);
-  const found = useMemo(() => issues(day, blocks, people), [day, blocks, people]);
+  const found = useMemo(() => issues(day, blocks), [day, blocks]);
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
   // The visible range: building hours with a margin, widened to fit any task outside them.
@@ -118,14 +123,14 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   };
 
   // ── dragging a bar ─────────────────────────────────────────────────
-  const drag = useRef<{ id: string; mode: "move" | "start" | "end"; x0: number; width: number; s0: number; e0: number; moved: boolean } | null>(null);
+  const drag = useRef<{ id: string; mode: "move" | "start" | "end"; x0: number; width: number; s0: number; e0: number; p0: number; moved: boolean } | null>(null);
   function onBarDown(e: React.PointerEvent<HTMLDivElement>, b: Block) {
     if (b.locked || e.button !== 0) return;
     const track = e.currentTarget.parentElement!.getBoundingClientRect();
     const bar = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - bar.left;
     const mode = x < 8 ? "start" : x > bar.width - 8 ? "end" : "move";
-    drag.current = { id: b.id, mode, x0: e.clientX, width: track.width, s0: minuteOfDay(b.start), e0: minuteOfDay(b.end), moved: false };
+    drag.current = { id: b.id, mode, x0: e.clientX, width: track.width, s0: minuteOfDay(b.start), e0: minuteOfDay(b.end), p0: b.prepMinutes, moved: false };
     e.currentTarget.setPointerCapture(e.pointerId);
   }
   function onBarMove(e: React.PointerEvent<HTMLDivElement>) {
@@ -138,10 +143,16 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
       if (b.id !== d.id) return b;
       let s = d.s0, en = d.e0;
       if (d.mode === "move") { s += dm; en += dm; }
-      if (d.mode === "start") s = Math.min(d.s0 + dm, en - Math.max(SNAP, b.prepMinutes + SNAP));
-      if (d.mode === "end") en = Math.max(d.e0 + dm, s + Math.max(SNAP, b.prepMinutes + SNAP));
+      let prep = d.p0;
+      if (d.mode === "start" && d.p0 > 0) {
+        // The lead-in grows or shrinks; the filming stays put.
+        const film = d.s0 + d.p0;
+        s = Math.min(d.s0 + dm, film);
+        prep = film - s;
+      } else if (d.mode === "start") s = Math.min(d.s0 + dm, en - SNAP);
+      if (d.mode === "end") en = Math.max(d.e0 + dm, s + prep + SNAP);
       s = Math.max(0, s); en = Math.min(24 * 60 - 1, en);
-      return { ...b, start: atMinute(day.date, s), end: atMinute(day.date, en) };
+      return { ...b, start: atMinute(day.date, s), end: atMinute(day.date, en), prepMinutes: prep };
     }));
   }
   function onBarUp() {
@@ -157,19 +168,21 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
     e.preventDefault();
     setDropOn(null);
     const id = e.dataTransfer.getData(DRAG_TYPE);
-    if (!id || b.people.includes(id)) return;
-    saveBlock({ ...b, people: [...b.people, id] });
+    if (!id || b.people.includes(id) || b.facilitators.includes(id)) return;
+    if (asFacilitator(b)) saveBlock({ ...b, facilitators: [...b.facilitators, id] });
+    else saveBlock({ ...b, people: [...b.people, id] });
   }
+  const asFacilitator = (b: Block) => b.kind === "interview" && b.people.length > 0;
   const acceptsPerson = (e: React.DragEvent) => e.dataTransfer.types.includes(DRAG_TYPE);
 
   function addTask() {
     run(() => addFilmingBlock(day.id, {
-      kind: "logistics", title: "New task", notes: "", prepMinutes: 0, locked: false, flexible: false, people: [],
+      kind: "logistics", title: "New task", notes: "", prepMinutes: 0, locked: false, flexible: false, people: [], facilitators: [],
       start: atMinute(day.date, opens), end: atMinute(day.date, opens + 30),
     }).then((r) => { if (r.ok && r.id) setEditing(r.id); return r; }), true);
   }
 
-  const tasksOf = (personId: string) => blocks.filter((b) => b.people.includes(personId)).length;
+  const tasksOf = (personId: string) => blocks.filter((b) => b.people.includes(personId) || b.facilitators.includes(personId)).length;
 
   return (
     <div className="space-y-4">
@@ -252,7 +265,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               onDelete={() => {
                 if (!confirm(`Take ${p.name} off the day, and off every task they are on?`)) return;
                 setPeople((ps) => ps.filter((x) => x.id !== p.id));
-                setBlocks((bs) => bs.map((b) => ({ ...b, people: b.people.filter((x) => x !== p.id) })));
+                setBlocks((bs) => bs.map((b) => ({ ...b, people: b.people.filter((x) => x !== p.id), facilitators: b.facilitators.filter((x) => x !== p.id) })));
                 run(() => deleteFilmingPerson(p.id));
                 setEditingPerson(null);
               }}
@@ -291,26 +304,41 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
             {sorted.map((b, i) => {
               const s = minuteOfDay(b.start), en = minuteOfDay(b.end);
               const t = tone(b.kind);
-              const prepPct = b.prepMinutes > 0 ? Math.min(100, (b.prepMinutes / (en - s)) * 100) : 0;
-              const focused = focusPerson && b.people.includes(focusPerson);
-              // Late in the day the label goes before the bar, so it never runs off the edge.
-              const labelLeft = (s - from) / span > 0.5;
+              const prep = Math.min(b.prepMinutes, en - s);
+              const film = s + prep;
+              const prepPct = prep > 0 ? (prep / (en - s)) * 100 : 0;
+              const focused = focusPerson && (b.people.includes(focusPerson) || b.facilitators.includes(focusPerson));
               const onIt = b.people.map((id) => byId.get(id)).filter((p): p is Person => !!p);
+              const facs = b.facilitators.map((id) => byId.get(id)).filter((p): p is Person => !!p);
+              const chip = (p: Person, from: "people" | "facilitators") => (
+                <span key={`${from}${p.id}`} className={`group/chip inline-flex items-center rounded-full py-px pl-1.5 pr-0.5 text-[11px] font-medium ${
+                  from === "facilitators" ? "border border-dashed border-line bg-card-solid text-fg" : t.chip
+                }`}>
+                  {p.name}
+                  <button
+                    type="button"
+                    aria-label={`Take ${p.name} off ${b.title}`}
+                    onClick={() => saveBlock({ ...b, [from]: b[from].filter((x) => x !== p.id) })}
+                    className="ml-0.5 rounded-full text-subtle opacity-40 hover:text-rose-500 hover:opacity-100 group-hover/chip:opacity-100"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              );
               return (
                 <div key={b.id}>
                   <div
-                    className={`relative h-12 border-b border-line/60 transition-colors ${
+                    className={`relative h-16 border-b border-line/60 transition-colors ${
                       dropOn === b.id ? "bg-brand-500/15" : focused ? "bg-amber-400/10" : i % 2 ? "bg-elevated/20" : ""
                     }`}
                     onDragOver={(e) => { if (acceptsPerson(e)) { e.preventDefault(); setDropOn(b.id); } }}
                     onDragLeave={() => setDropOn((x) => (x === b.id ? null : x))}
                     onDrop={(e) => onDrop(e, b)}
                   >
-                    {/* Outside building hours, shaded; hour lines; the closing line. */}
+                    {/* Before the building opens, shaded; quarter-hour lines; the closing line. After closing stays open. */}
                     <div className="absolute inset-y-0 bg-elevated/60" style={{ left: 0, width: pct(opens) }} aria-hidden />
-                    <div className="absolute inset-y-0 right-0 bg-elevated/60" style={{ left: pct(closes) }} aria-hidden />
                     {quarters.map((q) => <div key={q} className={`absolute inset-y-0 w-px ${QUARTER[q % 60]}`} style={{ left: pct(q) }} aria-hidden />)}
-                    <div className="absolute inset-y-0 w-0.5 bg-rose-500/70" style={{ left: pct(closes) }} aria-hidden />
+                    <div className="absolute inset-y-0 w-0.5 bg-rose-500/50" style={{ left: pct(closes) }} aria-hidden />
 
                     <div
                       role="button"
@@ -322,42 +350,44 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                       onPointerCancel={onBarUp}
                       onDoubleClick={() => setEditing(b.id)}
                       onKeyDown={(e) => { if (e.key === "Enter") setEditing(b.id); }}
-                      className={`absolute top-2 bottom-2 flex touch-none select-none overflow-hidden rounded ${
+                      className={`absolute top-2.5 bottom-2.5 flex touch-none select-none overflow-hidden rounded ${
                         b.locked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
                       } ${b.flexible ? "outline-2 outline-dashed outline-offset-1 outline-amber-500" : ""} ${focused ? "ring-2 ring-amber-400" : ""}`}
                       style={{ left: pct(s), width: `calc(${pct(en)} - ${pct(s)})` }}
-                      title={`${b.title} · ${clockOf(s)}–${clockOf(en)}${b.prepMinutes ? ` · ${b.prepMinutes} min preparation, then filming` : ""}${b.notes ? `\n${b.notes}` : ""}`}
+                      title={`${b.title} · ${clockOf(s)}–${clockOf(en)}${prep ? ` · prep & make-up ${minutes(prep)}, then filming ${minutes(en - film)}` : ""}${b.notes ? `\n${b.notes}` : ""}`}
                     >
-                      {prepPct > 0 && (
-                        <div className={`h-full shrink-0 ${t.prep}`} style={{ width: `${prepPct}%`, backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.2) 5px 10px)" }} />
+                      {prep > 0 && (
+                        <div className={`flex h-full shrink-0 flex-col items-center justify-center overflow-hidden text-center leading-tight ${t.prep} ${t.text === "text-white" ? "text-fg" : t.text}`} style={{ width: `${prepPct}%` }}>
+                          {prep >= 20 && <><span className="text-[9.5px] font-semibold">Prep</span><span className="text-[9px] tabular-nums opacity-80">{minutes(prep)}</span></>}
+                        </div>
                       )}
-                      <div className={`h-full min-w-0 flex-1 ${t.bar}`} />
+                      <div className={`flex h-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden px-1 text-center leading-tight ${t.bar} ${t.text}`}>
+                        {en - film >= 25 && (
+                          <>
+                            <span className="whitespace-nowrap text-[9.5px] font-semibold tabular-nums">{short(film)}–{short(en)}</span>
+                            <span className="whitespace-nowrap text-[9px] tabular-nums opacity-85">{ON_CAMERA.has(b.kind) ? `Filming ${minutes(en - film)}` : minutes(en - film)}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {/* What and who, right beside the bar. */}
-                    <div
-                      className={`absolute top-0 flex h-full items-center gap-1 whitespace-nowrap ${labelLeft ? "pr-1.5" : "pl-1.5"}`}
-                      style={labelLeft ? { right: `calc(100% - ${pct(s)})` } : { left: pct(en) }}
-                    >
-                      <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-fg hover:underline">
-                        {b.locked && <Lock size={10} className="text-subtle" aria-label="Pinned" />}
-                        {b.title}
-                      </button>
-                      <span className="text-[10.5px] tabular-nums text-subtle">{clockOf(s)}–{clockOf(en)}</span>
-                      {onIt.map((p) => (
-                        <span key={p.id} className={`group/chip inline-flex items-center rounded-full py-px pl-1.5 pr-0.5 text-[11px] font-medium ${t.chip}`}>
-                          {p.name}
-                          <button
-                            type="button"
-                            aria-label={`Take ${p.name} off ${b.title}`}
-                            onClick={() => saveBlock({ ...b, people: b.people.filter((x) => x !== p.id) })}
-                            className="ml-0.5 rounded-full text-subtle opacity-40 hover:text-rose-500 hover:opacity-100 group-hover/chip:opacity-100"
-                          >
-                            <X size={10} />
-                          </button>
-                        </span>
-                      ))}
-                      {onIt.length === 0 && <span className="text-[11px] italic text-amber-600">drop someone here</span>}
+                    {/* What and who, always to the right of the bar. */}
+                    <div className="absolute top-0 flex h-full max-w-[34rem] flex-col justify-center gap-0.5 pl-2" style={{ left: pct(en) }}>
+                      <span className="flex items-center gap-1.5 whitespace-nowrap">
+                        <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-fg hover:underline">
+                          {b.locked && <Lock size={10} className="text-subtle" aria-label="Pinned" />}
+                          {b.title}
+                        </button>
+                        {/* Short bars cannot hold their times, so they sit here. */}
+                        {en - film < 25 && <span className="text-[10.5px] tabular-nums text-subtle">{clockOf(s)}–{clockOf(en)}</span>}
+                      </span>
+                      <span className="flex flex-wrap items-center gap-1">
+                        {onIt.map((p) => chip(p, "people"))}
+                        {facs.length > 0 && <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-subtle">Facilitator{facs.length > 1 ? "s" : ""}</span>}
+                        {facs.map((p) => chip(p, "facilitators"))}
+                        {onIt.length + facs.length === 0 && <span className="text-[11px] italic text-amber-600">drop someone here</span>}
+                        {b.kind === "interview" && onIt.length > 0 && facs.length === 0 && <span className="text-[11px] italic text-amber-600">drop a facilitator here</span>}
+                      </span>
                     </div>
                   </div>
 
@@ -385,7 +415,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
           {KINDS.map((k) => (
             <span key={k} className="inline-flex items-center gap-1"><span className={`inline-block h-2.5 w-4 rounded-sm ${tone(k).bar}`} /> {KIND_LABEL[k]}</span>
           ))}
-          <span>· Drag a bar to move it, its ends to resize (5 min) · striped: preparation · dashed: time not fixed · <Lock size={10} className="inline" /> pinned · click a task's name to edit it</span>
+          <span>· Drag a bar to move it, its right end to change its length, an interview's left end to change its prep (5 min steps) · lighter lead-in: prep & make-up · dashed outline: time not fixed · <Lock size={10} className="inline" /> pinned · dashed chip: facilitator · click a task's name to edit it</span>
         </p>
       </div>
       <div className="h-[70vh]" aria-hidden />
@@ -395,16 +425,14 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
 
 function IssueList({ issues: list }: { issues: Issue[] }) {
   if (!list.length) {
-    return <p className="text-[12.5px] font-semibold text-emerald-600">No clashes: nobody is in two places, one thing is filmed at a time, and everything is inside building hours.</p>;
+    return <p className="text-[12.5px] font-semibold text-emerald-600">All clear: one thing filmed at a time, every task has somebody on it, and every interview has a facilitator.</p>;
   }
   const say = (i: Issue) => {
     switch (i.kind) {
       case "camera": return <><strong>Filmed at the same time:</strong> {i.a.title} and {i.b.title}.</>;
-      case "person": return <><strong>{i.person.name}</strong> is on two things at once: {i.a.title} and {i.b.title}.</>;
-      case "hours": return i.when === "after"
-        ? <><strong>{i.block.title}</strong> runs past closing — keep one person inside to open the door for anyone who steps out.</>
-        : <><strong>{i.block.title}</strong> starts before the building opens.</>;
+      case "early": return <><strong>{i.block.title}</strong> starts before the building opens.</>;
       case "nobody": return <><strong>{i.block.title}</strong> has nobody on it.</>;
+      case "facilitator": return <><strong>{i.block.title}</strong> has no facilitator.</>;
     }
   };
   return (
@@ -456,7 +484,7 @@ function TaskForm({ block, date, pending, onSave, onDelete, onClose }: {
       <label className="text-[11px] text-muted sm:col-span-4">Notes
         <input id={`t-notes-${block.id}`} className={INPUT} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} maxLength={1000} />
       </label>
-      <label className="text-[11px] text-muted sm:col-span-2">Preparation first (minutes)
+      <label className="text-[11px] text-muted sm:col-span-2">Prep & make-up first (minutes)
         <input id={`t-prep-${block.id}`} type="number" min={0} max={240} step={5} className={INPUT} value={f.prepMinutes} onChange={(e) => setF({ ...f, prepMinutes: Number(e.target.value) || 0 })} />
       </label>
       <div className="flex flex-wrap items-center gap-4 text-[12px] text-fg sm:col-span-6">

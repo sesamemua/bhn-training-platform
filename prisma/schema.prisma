@@ -6798,7 +6798,7 @@ model FilmingBlock {
   id          String          @id @default(cuid())
   scheduleId  String
   schedule    FilmingSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  /// "setup" | "logistics" | "interview" | "lab" | "broll"
+  /// "setup" | "logistics" | "meal" | "interview" | "lab"
   kind        String          @default("logistics")
   title       String
   notes       String          @default("")
@@ -6809,8 +6809,10 @@ model FilmingBlock {
   locked      Boolean         @default(false)
   /// Time not certain: others' filming may overlap it, and nobody on it counts as double-booked.
   flexible    Boolean         @default(false)
-  /// FilmingPerson ids dragged onto it.
-  people      String[]        @default([])
+  /// FilmingPerson ids dragged onto it: the interviewee, the crew, whoever does it.
+  people       String[]        @default([])
+  /// Interviews: FilmingPerson ids who run the prep and sit in on the filming.
+  facilitators String[]        @default([])
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 

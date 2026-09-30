@@ -94,9 +94,15 @@ export async function deleteFilmingPerson(personId: string): Promise<Result> {
   await requireAdmin();
   const row = await prisma.filmingPerson.findUnique({ where: { id: personId }, select: { scheduleId: true, schedule: { select: { projectId: true } } } });
   if (!row) return { ok: false, error: "That person is no longer on the day." };
-  const onTasks = await prisma.filmingBlock.findMany({ where: { scheduleId: row.scheduleId, people: { has: personId } }, select: { id: true, people: true } });
+  const onTasks = await prisma.filmingBlock.findMany({
+    where: { scheduleId: row.scheduleId, OR: [{ people: { has: personId } }, { facilitators: { has: personId } }] },
+    select: { id: true, people: true, facilitators: true },
+  });
   await prisma.$transaction([
-    ...onTasks.map((b) => prisma.filmingBlock.update({ where: { id: b.id }, data: { people: b.people.filter((x) => x !== personId) } })),
+    ...onTasks.map((b) => prisma.filmingBlock.update({
+      where: { id: b.id },
+      data: { people: b.people.filter((x) => x !== personId), facilitators: b.facilitators.filter((x) => x !== personId) },
+    })),
     prisma.filmingPerson.delete({ where: { id: personId } }),
   ]);
   return done(row.schedule.projectId);
@@ -114,6 +120,7 @@ const BlockEdit = z.object({
   locked: z.boolean(),
   flexible: z.boolean(),
   people: z.array(z.string().max(40)).max(50),
+  facilitators: z.array(z.string().max(40)).max(20).default([]),
 }).refine((v) => new Date(v.start) < new Date(v.end), { message: "A task must end after it starts." })
   .refine((v) => v.prepMinutes * 60_000 < new Date(v.end).getTime() - new Date(v.start).getTime(), { message: "Preparation must be shorter than the task." });
 
@@ -131,7 +138,10 @@ export async function addFilmingBlock(scheduleId: string, input: unknown): Promi
   const projectId = await projectOf(scheduleId);
   if (!projectId) return { ok: false, error: "That filming day no longer exists." };
   const row = await prisma.filmingBlock.create({
-    data: { ...p.data, scheduleId, start: new Date(p.data.start), end: new Date(p.data.end), people: await knownPeople(scheduleId, p.data.people) },
+    data: {
+      ...p.data, scheduleId, start: new Date(p.data.start), end: new Date(p.data.end),
+      people: await knownPeople(scheduleId, p.data.people), facilitators: await knownPeople(scheduleId, p.data.facilitators),
+    },
     select: { id: true },
   });
   return done(projectId, row.id);
@@ -146,7 +156,10 @@ export async function updateFilmingBlock(blockId: string, input: unknown): Promi
   if (!row) return { ok: false, error: "That task no longer exists." };
   await prisma.filmingBlock.update({
     where: { id: blockId },
-    data: { ...p.data, start: new Date(p.data.start), end: new Date(p.data.end), people: await knownPeople(row.scheduleId, p.data.people) },
+    data: {
+      ...p.data, start: new Date(p.data.start), end: new Date(p.data.end),
+      people: await knownPeople(row.scheduleId, p.data.people), facilitators: await knownPeople(row.scheduleId, p.data.facilitators),
+    },
   });
   return done(row.schedule.projectId);
 }

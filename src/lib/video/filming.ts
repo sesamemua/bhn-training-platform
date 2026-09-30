@@ -4,14 +4,18 @@
  * hour is half an hour with their programme lead going through the
  * questions, then half an hour on camera.
  *
+ * An interview also has facilitators: the people who run the prep and
+ * sit in on the filming, kept apart from the person on camera.
+ *
  * What the timeline checks, so the plan can be trusted on the day:
  *   - two things are never FILMED at once — there is one camera
- *     (preparation overlaps anything);
- *   - nobody is on two tasks at the same time;
- *   - nothing runs outside the building's hours;
- *   - no task is left with nobody on it.
- * A task marked flexible (Molly, whose time is not certain yet) is left
- * out of the first two: its time is a placeholder, not a promise.
+ *     (preparation, make-up, set-up and errands overlap anything);
+ *   - nothing starts before the building opens (running past closing is
+ *     allowed — the lockout rule covers it);
+ *   - no task is left with nobody on it, and no interview without a
+ *     facilitator.
+ * A task marked flexible (its time not certain yet) is left out of the
+ * camera check: its time is a placeholder, not a promise.
  *
  * Pure module: no Prisma, no React.
  */
@@ -19,13 +23,13 @@ import { torontoToUtc } from "@/lib/training-week/schedule-2026";
 
 export const TZ = "America/Toronto";
 
-export const KINDS = ["setup", "logistics", "interview", "lab", "broll"] as const;
+export const KINDS = ["setup", "logistics", "meal", "interview", "lab"] as const;
 export type Kind = (typeof KINDS)[number];
 export const KIND_LABEL: Record<Kind, string> = {
-  setup: "Set-up", logistics: "Logistics", interview: "Interview", lab: "Lab session", broll: "B-roll",
+  setup: "Set-up", logistics: "Logistics", meal: "Coffee & lunch", interview: "Interview", lab: "Lab shots",
 };
 /** Kinds that need the camera for their filming part. */
-const ON_CAMERA = new Set<string>(["interview", "lab"]);
+export const ON_CAMERA = new Set<string>(["interview", "lab"]);
 
 export const GROUPS = ["team", "crew", "interviewee", "trainee"] as const;
 export type Group = (typeof GROUPS)[number];
@@ -50,7 +54,10 @@ export interface Block {
   prepMinutes: number;
   locked: boolean;
   flexible: boolean;
+  /** On it: the interviewee, the crew, whoever does the task. */
   people: string[];
+  /** Interviews: who runs the prep and sits in on the filming. */
+  facilitators: string[];
 }
 
 export interface Day {
@@ -71,32 +78,23 @@ const overlap = (a0: number, a1: number, b0: number, b1: number) => a0 < b1 && b
 
 export type Issue =
   | { kind: "camera"; a: Block; b: Block }
-  | { kind: "person"; person: Person; a: Block; b: Block }
-  | { kind: "hours"; block: Block; when: "before" | "after" }
-  | { kind: "nobody"; block: Block };
+  | { kind: "early"; block: Block }
+  | { kind: "nobody"; block: Block }
+  | { kind: "facilitator"; block: Block };
 
-export function issues(day: Day, blocks: Block[], people: Person[]): Issue[] {
+export function issues(day: Day, blocks: Block[]): Issue[] {
   const out: Issue[] = [];
-  const firm = blocks.filter((b) => !b.flexible);
+  const firm = blocks.filter((b) => !b.flexible && ON_CAMERA.has(b.kind));
   for (let i = 0; i < firm.length; i++)
     for (let j = i + 1; j < firm.length; j++) {
       const a = firm[i], b = firm[j];
-      if (ON_CAMERA.has(a.kind) && ON_CAMERA.has(b.kind) && overlap(filmStart(a), ms(a.end), filmStart(b), ms(b.end))) {
-        out.push({ kind: "camera", a, b });
-      }
-      if (overlap(ms(a.start), ms(a.end), ms(b.start), ms(b.end))) {
-        for (const id of a.people.filter((p) => b.people.includes(p))) {
-          const person = people.find((p) => p.id === id);
-          if (person) out.push({ kind: "person", person, a, b });
-        }
-      }
+      if (overlap(filmStart(a), ms(a.end), filmStart(b), ms(b.end))) out.push({ kind: "camera", a, b });
     }
   const opens = torontoToUtc(day.date, day.opensAt).getTime();
-  const closes = torontoToUtc(day.date, day.closesAt).getTime();
   for (const b of blocks) {
-    if (ms(b.start) < opens) out.push({ kind: "hours", block: b, when: "before" });
-    if (ms(b.end) > closes) out.push({ kind: "hours", block: b, when: "after" });
-    if (b.people.length === 0) out.push({ kind: "nobody", block: b });
+    if (ms(b.start) < opens) out.push({ kind: "early", block: b });
+    if (b.people.length + b.facilitators.length === 0) out.push({ kind: "nobody", block: b });
+    else if (b.kind === "interview" && b.facilitators.length === 0) out.push({ kind: "facilitator", block: b });
   }
   return out;
 }
