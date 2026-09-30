@@ -45,13 +45,20 @@ export function parseSnapshot(raw: string | null | undefined): Snapshot | null {
 
 const NOT_A_NEED = /^(no dietary|other\b)/i;
 
-/** The caterer's list right now: approved seats in sessions that have not ended. */
+/**
+ * The caterer's list right now: approved seats in sessions that have not
+ * ended. With `includePending`, requests still waiting for a decision are
+ * counted too — for planning before anybody is approved, never as the list
+ * the caterer is told is final.
+ */
 export function currentEntries(
   rows: (RegistrantRow & { workshopStart: string; workshopEnd: string })[],
   now: Date = new Date(),
+  opts: { includePending?: boolean } = {},
 ): Entry[] {
+  const counts = (status: string) => status === "confirmed" || (!!opts.includePending && status === "pending");
   return rows
-    .filter((r) => r.status === "confirmed" && new Date(r.workshopEnd).getTime() > now.getTime())
+    .filter((r) => counts(r.status) && !r.withdrawn && new Date(r.workshopEnd).getTime() > now.getTime())
     .map((r) => ({
       workshopId: r.workshopId,
       workshop: r.workshop,
@@ -120,11 +127,21 @@ function sessionBlock(list: Entry[]): string[] {
   return lines;
 }
 
-/** Everything the caterer needs, for every session still to come. */
-export function fullText(entries: Entry[], asOf: string): string {
+/** One session's block, as it appears in the caterer's text. */
+export const sessionText = (list: Entry[]) => sessionBlock(list).join("\n");
+
+/** Toronto calendar day of a start time, for grouping sessions by day. */
+export const dayKey = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+export const dayLabel = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
+
+/**
+ * Everything the caterer needs, for every session still to come — or,
+ * with `scope`, for the day or session the entries were narrowed to.
+ */
+export function fullText(entries: Entry[], asOf: string, opts: { scope?: string; pending?: boolean } = {}): string {
   const head = [
-    "BioHubNet Training Week — dietary & accessibility",
-    `As of ${stamp(asOf)} · approved attendees · upcoming sessions only`,
+    `BioHubNet Training Week — dietary & accessibility${opts.scope ? ` — ${opts.scope}` : ""}`,
+    `As of ${stamp(asOf)} · ${opts.pending ? "all requests, NOT YET APPROVED — numbers will change" : "approved attendees"} · upcoming sessions only`,
     "",
   ];
   if (!entries.length) return [...head, "No approved attendees for upcoming sessions yet."].join("\n");

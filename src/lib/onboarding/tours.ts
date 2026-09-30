@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.17q";
+export const TOUR_VERSION = "2026.10.17r";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.catering-tent-cards",
+    title: "Catering by session and day, and tent cards",
+    body: "Each session shows exactly what the caterer gets. **Copy this session** or **Copy the day**, and print **Tent cards**: one big letter-size card per requirement, allergies in red.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Catering", href: "/admin/workspace/training-admin?tab=catering" },
+    since: "2026.10.17r",
   },
   {
     id: "training-admin.capacity-monitor",

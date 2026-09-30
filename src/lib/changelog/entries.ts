@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Catering: copy a session or a day, and print tent cards",
+    body: "**Catering & accessibility** now shows, for every session, the exact text the caterer gets \u2014 grouped by day. **Copy this session** or **Copy the day** puts just that on the clipboard; **Copy for the caterer** and **Copy only what changed** at the top work as before.\n\n**Tent cards** print one letter-size card per dietary requirement, for the day or for one session: fold on the dashed line and stand it on the table. Each card names, small, the workshops it is for \u2014 no names of people. **Allergies print in red** with a red frame (nut, shellfish, coeliac, and anything typed under *Other* that mentions an allergy or an EpiPen); everything else, like Halal or Vegetarian, prints in black.\n\nNobody is approved yet, so the sessions are empty until then. Tick **Include requests not yet approved** to plan with the requests still waiting \u2014 anything copied that way says it is not final.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Capacity monitor for Training Week",
     body: "Every Training Week session as a bar: **requests against student seats**, pending ones included \u2014 the seats table only counted approved and confirmed seats, so it showed nothing until somebody was approved. Each session says **Oversubscribed +N**, **Full**, or how many seats are left; the capacity line marks where the overflow starts. Staff and guests are not counted.\n\nIt sits at the top of the **Training Week dashboard**, and on the **admin home dashboard** just above the Training Week registration switch.",
     kind: "feature",
