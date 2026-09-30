@@ -121,6 +121,7 @@ const BlockEdit = z.object({
   flexible: z.boolean(),
   people: z.array(z.string().max(40)).max(50),
   facilitators: z.array(z.string().max(40)).max(20).default([]),
+  done: z.boolean().default(false),
 }).refine((v) => new Date(v.start) < new Date(v.end), { message: "A task must end after it starts." })
   .refine((v) => v.prepMinutes * 60_000 < new Date(v.end).getTime() - new Date(v.start).getTime(), { message: "Preparation must be shorter than the task." });
 

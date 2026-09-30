@@ -13,7 +13,7 @@
  */
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, DoorOpen, Lock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, DoorOpen, Lock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import {
   GROUP_LABEL, GROUPS, KIND_LABEL, KINDS, ON_CAMERA, atMinute, clockOf, hhmmToMinutes, issues, longDate, minuteOfDay, minutesToHhmm,
@@ -66,7 +66,7 @@ const BTN = "inline-flex items-center gap-1.5 rounded-lg border border-line px-2
 
 const payload = (b: Block) => ({
   kind: b.kind, title: b.title, notes: b.notes, start: b.start, end: b.end,
-  prepMinutes: b.prepMinutes, locked: b.locked, flexible: b.flexible, people: b.people, facilitators: b.facilitators,
+  prepMinutes: b.prepMinutes, locked: b.locked, flexible: b.flexible, people: b.people, facilitators: b.facilitators, done: b.done ?? false,
 });
 const minutes = (n: number) => (n >= 60 && n % 60 === 0 ? `${n / 60} h` : n > 60 ? `${Math.floor(n / 60)} h ${n % 60} min` : `${n} min`);
 
@@ -400,7 +400,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                 <div key={b.id}>
                   <div
                     className={`relative h-16 border-b border-line/60 transition-colors ${
-                      dropOn === b.id ? "bg-brand-500/15" : focused ? "bg-amber-400/10" : i % 2 ? "bg-elevated/20" : ""
+                      dropOn === b.id ? "bg-brand-500/15" : b.done ? "bg-black/25" : focused ? "bg-amber-400/10" : i % 2 ? "bg-elevated/20" : ""
                     }`}
                     onDragOver={(e) => { if (acceptsPerson(e)) { e.preventDefault(); setDropOn(b.id); } }}
                     onDragLeave={() => setDropOn((x) => (x === b.id ? null : x))}
@@ -423,7 +423,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                       onKeyDown={(e) => { if (e.key === "Enter") setEditing(b.id); }}
                       className={`absolute top-2.5 bottom-2.5 flex touch-none select-none overflow-hidden rounded ${
                         b.locked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
-                      } ${b.flexible ? "outline-2 outline-dashed outline-offset-1 outline-amber-500" : ""} ${focused ? "ring-2 ring-amber-400" : ""}`}
+                      } ${b.flexible ? "outline-2 outline-dashed outline-offset-1 outline-amber-500" : ""} ${focused ? "ring-2 ring-amber-400" : ""} ${b.done ? "opacity-35 grayscale" : ""}`}
                       style={{ left: pct(s), width: `calc(${pct(en)} - ${pct(s)})` }}
                       title={`${b.title} · ${clockOf(s)}–${clockOf(en)}${prep ? ` · prep & make-up ${minutes(prep)}, then filming ${minutes(en - film)}` : ""}${b.notes ? `\n${b.notes}` : ""}`}
                     >
@@ -456,15 +456,27 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                       className="absolute top-0 flex h-full max-w-[34rem] flex-col justify-center gap-0.5 pl-2"
                       style={{ left: pct(en) }}
                     >
-                      <span className="flex items-center gap-1.5 whitespace-nowrap">
-                        <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-fg hover:underline">
+                      <span className={`flex items-center gap-1.5 whitespace-nowrap ${b.done ? "opacity-50" : ""}`}>
+                        <button
+                          type="button"
+                          onClick={() => saveBlock({ ...b, done: !b.done })}
+                          aria-pressed={b.done ?? false}
+                          aria-label={b.done ? `Mark “${b.title}” as not done` : `Mark “${b.title}” as done`}
+                          title={b.done ? "Done — click to undo" : "Mark as done"}
+                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-colors ${
+                            b.done ? "border-emerald-500 bg-emerald-500 text-white" : "border-line text-transparent hover:border-emerald-500 hover:text-emerald-500"
+                          }`}
+                        >
+                          <Check size={12} strokeWidth={3} />
+                        </button>
+                        <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className={`inline-flex items-center gap-1 text-[12.5px] font-semibold text-fg hover:underline ${b.done ? "line-through decoration-2" : ""}`}>
                           {b.locked && <Lock size={10} className="text-subtle" aria-label="Pinned" />}
                           {b.title}
                         </button>
                         {/* Short bars cannot hold their times, so they sit here. */}
                         {en - film < 25 && <span className="text-[10.5px] tabular-nums text-subtle">{clockOf(s)}–{clockOf(en)}</span>}
                       </span>
-                      <span className="flex flex-wrap items-center gap-1">
+                      <span className={`flex flex-wrap items-center gap-1 ${b.done ? "opacity-50" : ""}`}>
                         {onIt.map((p) => chip(p, "people"))}
                         {facs.length > 0 && <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-subtle">Facilitator{facs.length > 1 ? "s" : ""}</span>}
                         {facs.map((p) => chip(p, "facilitators"))}
@@ -497,7 +509,8 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
           {KINDS.map((k) => (
             <span key={k} className="inline-flex items-center gap-1"><span className={`inline-block h-2.5 w-4 rounded-sm ${tone(k).bar}`} /> {KIND_LABEL[k]}</span>
           ))}
-          <span>· Drag a bar to move it, its right end to change its length, an interview's left end to change its prep (5 min steps) · lighter lead-in: prep — the script and make-up · dashed outline: time not fixed · <Lock size={10} className="inline" /> pinned · dashed chip: facilitator · click a task's name to edit it</span>
+          <span>· Tick the circle before a task's name when it's done ·</span>
+          <span>Drag a bar to move it, its right end to change its length, an interview's left end to change its prep (5 min steps) · lighter lead-in: prep — the script and make-up · dashed outline: time not fixed · <Lock size={10} className="inline" /> pinned · dashed chip: facilitator · click a task's name to edit it</span>
         </p>
       </div>
       <div className="h-[70vh]" aria-hidden />

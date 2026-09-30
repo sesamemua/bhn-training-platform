@@ -54,6 +54,8 @@ export interface Block {
   prepMinutes: number;
   locked: boolean;
   flexible: boolean;
+  /** Ticked off on the day. */
+  done?: boolean;
   /** On it: the interviewee, the crew, whoever does the task. */
   people: string[];
   /** Interviews: who runs the prep and sits in on the filming. */

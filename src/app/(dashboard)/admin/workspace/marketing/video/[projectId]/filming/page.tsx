@@ -49,7 +49,7 @@ export default async function FilmingDayPage({ params }: Props) {
           people={f.people.map((p) => ({ id: p.id, name: p.name, group: p.group, role: p.role, email: p.email }))}
           blocks={f.blocks.map((b) => ({
             id: b.id, kind: b.kind, title: b.title, notes: b.notes, start: b.start.toISOString(), end: b.end.toISOString(),
-            prepMinutes: b.prepMinutes, locked: b.locked, flexible: b.flexible, people: b.people, facilitators: b.facilitators,
+            prepMinutes: b.prepMinutes, locked: b.locked, flexible: b.flexible, people: b.people, facilitators: b.facilitators, done: b.done,
           }))}
         />
       ) : (

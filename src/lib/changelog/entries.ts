@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Filming day: tick a task off when it is done",
+    body: "Each task on the **Filming day** chart has a small circle right in front of its name. Tick it when the task is done: the row darkens, the bar greys out, and the name is struck through \u2014 so on the day, what is left stands out. Tick it again to undo.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: release form, windshield loading notice, and a Logistics packing list",
     body: "**Printout** now has a **photo, video & audio release form** (one per person: consent wording, two tick boxes, name, email, programme, signature and date, a parent-or-guardian section for under-18s, and a privacy notice) \u2014 draft wording in the shape of U of T\u2019s divisional release forms, to be checked with Pharmacy communications before use. There is also a **windshield notice** for the contractor\u2019s car at the loading dock: *Loading \u2014 back shortly*, with a line to write a phone number on. Any sign can have that write-in line.\n\nA new **Logistics** tab is the **packing list** for the day \u2014 hair & make-up, paper & printing, camera & sound, people & comfort, wardrobe, loading & parking. Tick things off as they are packed (with a progress bar), add anything missing under any heading, take off what is not needed, and print the list. Items the team did not ask for are marked **suggested**. It saves as you go.\n\nConfirmations on these pages \u2014 deleting a sign, a task or a person, sending a letter, accepting a travel claim, bulk decisions, naming a saved view \u2014 now open **beside the button** instead of as a browser pop-up.",
     kind: "feature",

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18b";
+export const TOUR_VERSION = "2026.10.18c";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "video.filming-done",
+    title: "Tick off what's done",
+    body: "On **Filming day**, tick the circle in front of a task's name when it's done — the row darkens and the name is struck through. Tick again to undo.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.18c",
   },
   {
     id: "video.logistics",

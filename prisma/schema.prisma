@@ -6809,6 +6809,8 @@ model FilmingBlock {
   locked      Boolean         @default(false)
   /// Time not certain: others' filming may overlap it, and nobody on it counts as double-booked.
   flexible    Boolean         @default(false)
+  /// Ticked off on the day: shown greyed and struck through.
+  done        Boolean         @default(false)
   /// FilmingPerson ids dragged onto it: the interviewee, the crew, whoever does it.
   people       String[]        @default([])
   /// Interviews: FilmingPerson ids who run the prep and sit in on the filming.
