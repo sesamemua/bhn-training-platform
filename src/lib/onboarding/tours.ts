@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18o";
+export const TOUR_VERSION = "2026.10.18p";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.filming-tray-move",
+    title: "Move the People box",
+    body: "On **Filming day**, grab the **People** box by its header and drag it wherever it's out of your way. **Reset** puts it back.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18p",
   },
   {
     id: "video.signups",

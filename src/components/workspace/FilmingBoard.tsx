@@ -13,7 +13,7 @@
  */
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Check, DoorOpen, Lock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, DoorOpen, Lock, MapPin, Move, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import {
   GROUP_LABEL, GROUPS, KIND_LABEL, KINDS, ON_CAMERA, atMinute, clockOf, hhmmToMinutes, issues, longDate, minuteOfDay, minutesToHhmm,
@@ -99,6 +99,40 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   const [editingPerson, setEditingPerson] = useState<string | null>(null);
   const [editingDay, setEditingDay] = useState(false);
   const [dropOn, setDropOn] = useState<string | null>(null);
+  // The People box can be dragged anywhere on the chart by its header;
+  // where it was left is remembered in this browser only.
+  const trayKey = `filming.tray.${day.id}`;
+  const trayRef = useRef<HTMLDivElement>(null);
+  const [trayOff, setTrayOff] = useState({ x: 0, y: 0 });
+  const trayDrag = useRef<{ px: number; py: number; ox: number; oy: number; min: { x: number; y: number }; max: { x: number; y: number } } | null>(null);
+  useEffect(() => {
+    try { const v = JSON.parse(localStorage.getItem(trayKey) ?? "null"); if (v && Number.isFinite(v.x) && Number.isFinite(v.y)) setTrayOff(v); } catch { /* nothing saved */ }
+  }, [trayKey]);
+  const moveTray = {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      const box = trayRef.current?.getBoundingClientRect(), chart = chartRef.current?.getBoundingClientRect();
+      if (!box || !chart || (e.target as HTMLElement).closest("button")) return;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      // Keep the whole box on the chart: offsets that put its edges on the chart's edges.
+      trayDrag.current = {
+        px: e.clientX, py: e.clientY, ox: trayOff.x, oy: trayOff.y,
+        min: { x: trayOff.x + chart.left - box.left, y: trayOff.y + chart.top - box.top },
+        max: { x: trayOff.x + chart.right - box.right, y: trayOff.y + Math.max(chart.bottom - box.bottom, chart.top - box.top) },
+      };
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      const d = trayDrag.current;
+      if (!d) return;
+      const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), Math.max(a, b));
+      setTrayOff({ x: clamp(d.ox + e.clientX - d.px, d.min.x, d.max.x), y: clamp(d.oy + e.clientY - d.py, d.min.y, d.max.y) });
+    },
+    onPointerUp: () => {
+      if (!trayDrag.current) return;
+      trayDrag.current = null;
+      setTrayOff((v) => { try { localStorage.setItem(trayKey, JSON.stringify(v)); } catch { /* not saved */ } return v; });
+    },
+  };
+  const resetTray = () => { setTrayOff({ x: 0, y: 0 }); try { localStorage.removeItem(trayKey); } catch { /* nothing to clear */ } };
   const [focusPerson, setFocusPerson] = useState<string | null>(null);
 
   const sorted = useMemo(() => [...blocks].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end) || a.title.localeCompare(b.title)), [blocks]);
@@ -264,7 +298,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
           <span className="text-[11.5px] text-muted">
             Drag people from the <strong className="text-fg">People</strong> box onto a task, from one task to another to move them, or back into the box to take them off.
           </span>
-          <button type="button" className={`${BTN} ml-auto`} onClick={addTask} disabled={pending}><Plus size={13} /> Add task</button>
+          <button type="button" className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13.5px] font-bold text-white shadow-md hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 disabled:opacity-50" onClick={addTask} disabled={pending}><Plus size={16} strokeWidth={2.5} /> Add task</button>
         </div>
         {(() => {
           const p = people.find((x) => x.id === editingPerson);
@@ -315,8 +349,10 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
             </div>
 
             {/* People: a box sitting in the day's empty corner — the afternoon
-                columns above the midday rows — clear of every label beside it. */}
+                columns above the midday rows — clear of every label beside it.
+                Its header drags it anywhere else on the chart. */}
             <div
+              ref={trayRef}
               onDragOver={(e) => { if (acceptsPerson(e)) { e.preventDefault(); setDropOn("tray"); } }}
               onDragLeave={() => setDropOn((x) => (x === "tray" ? null : x))}
               onDrop={(e) => { e.preventDefault(); setDropOn(null); const d = readDrag(e); if (d) takeOff(d); }}
@@ -328,9 +364,18 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                 left: `max(${pct(TRAY_FROM)}, ${labelEdge + 12}px)`,
                 width: `max(15rem, calc(${pct(TRAY_TO)} - max(${pct(TRAY_FROM)}, ${labelEdge + 12}px)))`,
                 maxHeight: Math.max(trayRows * ROW_H - 12, 200),
+                transform: trayOff.x || trayOff.y ? `translate(${trayOff.x}px, ${trayOff.y}px)` : undefined,
               }}
             >
-              <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People</p>
+              <div {...moveTray} onPointerCancel={moveTray.onPointerUp} className="sticky -top-2.5 z-10 -mx-2.5 -mt-2.5 mb-1 flex cursor-move touch-none select-none items-center gap-1.5 rounded-t-xl border-b border-line bg-elevated/60 px-2.5 py-1.5 active:cursor-grabbing" title="Drag to move the box">
+                <Move size={12} className="text-subtle" aria-hidden />
+                <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People</p>
+                {(trayOff.x !== 0 || trayOff.y !== 0) && (
+                  <button type="button" onClick={resetTray} className="ml-auto inline-flex items-center gap-1 rounded px-1 text-[10.5px] font-semibold text-muted hover:text-fg" title="Put the box back where it started">
+                    <RotateCcw size={10} /> Reset
+                  </button>
+                )}
+              </div>
               <p className="text-[10.5px] leading-snug text-subtle">{dropOn === "tray" ? "Drop to take them off that task" : "Drag onto a task"}</p>
               {GROUPS.map((g) => {
                 const list = people.filter((p) => p.group === g);

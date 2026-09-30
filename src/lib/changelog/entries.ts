@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Filming day: move the People box anywhere; a bigger Add task",
+    body: "On **Filming day**, drag the **People** box by its header to anywhere on the chart \u2014 it stays where you leave it (in your browser), and **Reset** puts it back. The **Add task** button is now a solid button at the top right, easy to find.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: trainees can sign up for a filming slot",
     body: "A new **Sign-ups** tab (after Logistics) makes a **public link** for extra trainees to join the shoot. They give their **name and email**, see the day as a **chart**, pick a start time \u2014 each slot is **preparation first, then time on camera** \u2014 and say whether they **need parking**. Any time is open unless its camera time would clash with a **locked** task on the Filming day; preparation can overlap. Each sign-up lands on the **Filming day** as a locked interview, so nobody else can take it (unlock it there to move it).\n\nOn the tab: open or close sign-ups, copy the link or make a new one, set the slot length, the preparation time and the hours people can pick from, and see who signed up and who needs parking. **No email goes out** \u2014 you confirm people yourselves.",
     kind: "feature",
