@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Filming day: a People box on the chart, and drag people between tasks",
+    body: "The people are now in a **People box on the chart itself**, in the empty afternoon corner above the midday rows, kept clear of every task's label. Drag a name from the box onto a task to put them on it, **drag a name from one task to another to move them**, or **drag it back into the box to take them off** that task.\n\nThe BHN Promo day has **three student interviews** (TBD 1\u20133): 15 minutes of prep, then 20 minutes each on camera, back to back from 9:30 \u2014 marked as not fixed, since they could also go after 5.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Registrants: open any row for the whole registration; one list instead of two",
     body: "Click a name in the **Registrants** table to open that person's whole registration right under the row: every answer they gave, which form they used, and each seat they asked for with its **four decisions**, the letter and the line to add to it \u2014 what the separate **Submitted registrations** list below used to show. That list is gone; the only registrations it still lists are the rare ones that asked for **no session** at all, which have no row in the table.\n\nThe count of people (or seats) in the view is now **big and bright**. **No dietary requirements** and **no accessibility needs** are left blank instead of spelled out, so the needs that matter stand out.",
     kind: "improvement",

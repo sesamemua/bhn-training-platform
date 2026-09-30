@@ -34,6 +34,12 @@ export interface FilmingDayProps {
 
 const DRAG_TYPE = "application/x-filming-person";
 const SNAP = 5;
+const ROW_H = 64;
+const RULER_H = 48;
+/** Where the People box sits: the 3–5 p.m. columns, above the rows starting from 12:30. */
+const TRAY_FROM = 15 * 60;
+const TRAY_TO = 17 * 60;
+const TRAY_ABOVE = 12 * 60 + 30;
 /** The chart always runs to at least 7 p.m.: a shoot can go past closing. */
 const VIEW_UNTIL = 19 * 60;
 /** "11:30", and a whole hour as just "12", so a half-hour bar can hold its times. */
@@ -109,6 +115,24 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   const quarters = Array.from({ length: span / 15 + 1 }, (_, i) => from + i * 15);
   const QUARTER = { 0: "bg-line", 30: "bg-line/50", 15: "bg-line/25", 45: "bg-line/25" } as Record<number, string>;
 
+  // The People box sits over the rows that start before midday-ish, in the
+  // 3–5 p.m. columns, pushed right of any label that reaches that far.
+  const trayRows = (() => { const i = sorted.findIndex((b) => minuteOfDay(b.start) >= TRAY_ABOVE); return i === -1 ? sorted.length : i; })();
+  const chartRef = useRef<HTMLDivElement>(null);
+  const labelRefs = useRef(new Map<string, HTMLDivElement>());
+  const [labelEdge, setLabelEdge] = useState(0);
+  useEffect(() => {
+    const c = chartRef.current;
+    if (!c) return;
+    const left = c.getBoundingClientRect().left;
+    let edge = 0;
+    for (const b of sorted.slice(0, trayRows)) {
+      const el = labelRefs.current.get(b.id);
+      if (el) edge = Math.max(edge, Math.round(el.getBoundingClientRect().right - left));
+    }
+    setLabelEdge((prev) => (prev === edge ? prev : edge));
+  });
+
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, refresh = false) {
     setError(null);
     start(async () => {
@@ -165,14 +189,31 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
     if (b) run(() => updateFilmingBlock(b.id, payload(b)));
   }
 
-  // ── dropping a person on a task ────────────────────────────────────
+  // ── dragging people: from the box onto a task (adds), from one task to
+  // another (moves), from a task back into the box (takes them off) ─────
+  type Drag = { id: string; from?: string; role?: "people" | "facilitators" };
+  const startDrag = (e: React.DragEvent, d: Drag) => {
+    e.stopPropagation();
+    e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(d));
+    e.dataTransfer.effectAllowed = "move";
+  };
+  const readDrag = (e: React.DragEvent): Drag | null => {
+    try { return JSON.parse(e.dataTransfer.getData(DRAG_TYPE)) as Drag; } catch { return null; }
+  };
+  const takeOff = (d: Drag) => {
+    const src = d.from ? blocks.find((x) => x.id === d.from) : null;
+    if (src && d.role) saveBlock({ ...src, [d.role]: src[d.role].filter((x) => x !== d.id) });
+  };
   function onDrop(e: React.DragEvent, b: Block) {
     e.preventDefault();
     setDropOn(null);
-    const id = e.dataTransfer.getData(DRAG_TYPE);
-    if (!id || b.people.includes(id) || b.facilitators.includes(id)) return;
-    if (asFacilitator(b)) saveBlock({ ...b, facilitators: [...b.facilitators, id] });
-    else saveBlock({ ...b, people: [...b.people, id] });
+    const d = readDrag(e);
+    if (!d || d.from === b.id) return;
+    if (!b.people.includes(d.id) && !b.facilitators.includes(d.id)) {
+      if (asFacilitator(b)) saveBlock({ ...b, facilitators: [...b.facilitators, d.id] });
+      else saveBlock({ ...b, people: [...b.people, d.id] });
+    }
+    takeOff(d);
   }
   const asFacilitator = (b: Block) => b.kind === "interview" && b.people.length > 0;
   const acceptsPerson = (e: React.DragEvent) => e.dataTransfer.types.includes(DRAG_TYPE);
@@ -218,40 +259,10 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
         className={`border-y border-line bg-card ${bleed ? "" : "rounded-xl border-x"}`}
         style={bleed ? { marginLeft: bleed.ml, width: bleed.w } : undefined}
       >
-        {/* People: a strip above the chart, dragged down onto a task. */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 pt-2 pb-1">
-          <span className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People — drag onto a task</span>
-          {GROUPS.map((g) => {
-            const list = people.filter((p) => p.group === g);
-            if (!list.length) return null;
-            return (
-              <span key={g} className="flex flex-wrap items-center gap-1">
-                <span className="mr-0.5 text-[11px] font-semibold text-subtle">{GROUP_LABEL[g]}</span>
-                {list.map((p) => (
-                  <span
-                    key={p.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_TYPE, p.id); e.dataTransfer.effectAllowed = "copy"; }}
-                    onMouseEnter={() => setFocusPerson(p.id)}
-                    onMouseLeave={() => setFocusPerson(null)}
-                    title={`${p.role ? `${p.role} · ` : ""}on ${tasksOf(p.id)} task${tasksOf(p.id) === 1 ? "" : "s"}`}
-                    className={`inline-flex cursor-grab items-center gap-1 rounded-full border py-0.5 pl-2 pr-1 text-[12px] font-semibold text-fg active:cursor-grabbing ${
-                      editingPerson === p.id ? "border-brand-400 bg-brand-500/10" : "border-line bg-card-solid hover:border-brand-400/60"
-                    }`}
-                  >
-                    {p.name}
-                    <span className="text-[10px] font-normal tabular-nums text-subtle">{tasksOf(p.id)}</span>
-                    <button type="button" aria-label={`Edit ${p.name}`} onClick={() => setEditingPerson(editingPerson === p.id ? null : p.id)} className="rounded-full p-0.5 text-subtle hover:text-fg">
-                      <Pencil size={10} />
-                    </button>
-                  </span>
-                ))}
-              </span>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 pt-1 pb-2">
-          <AddPerson pending={pending} onAdd={(v) => run(() => addFilmingPerson(day.id, v), true)} />
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+          <span className="text-[11.5px] text-muted">
+            Drag people from the <strong className="text-fg">People</strong> box onto a task, from one task to another to move them, or back into the box to take them off.
+          </span>
           <button type="button" className={`${BTN} ml-auto`} onClick={addTask} disabled={pending}><Plus size={13} /> Add task</button>
         </div>
         {(() => {
@@ -277,7 +288,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
 
         {/* The chart: one thin row per task, the whole width is time. */}
         <div className="overflow-x-auto">
-          <div className="min-w-[1100px]">
+          <div ref={chartRef} className="relative min-w-[1100px]">
             {/* Three levels, so neighbouring labels never collide: the hour on
                 top, the half hour under it, the quarters smallest at the foot. */}
             <div className="relative h-12 border-b border-line bg-elevated/40">
@@ -303,6 +314,59 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               <span className="absolute top-[16px] mr-1 rounded bg-rose-500/15 px-1 text-[9px] font-semibold leading-tight text-rose-500" style={{ right: `calc(100% - ${pct(closes)})` }} title="The building closes">closes</span>
             </div>
 
+            {/* People: a box sitting in the day's empty corner — the afternoon
+                columns above the midday rows — clear of every label beside it. */}
+            <div
+              onDragOver={(e) => { if (acceptsPerson(e)) { e.preventDefault(); setDropOn("tray"); } }}
+              onDragLeave={() => setDropOn((x) => (x === "tray" ? null : x))}
+              onDrop={(e) => { e.preventDefault(); setDropOn(null); const d = readDrag(e); if (d) takeOff(d); }}
+              className={`absolute z-20 overflow-y-auto rounded-xl border p-2.5 shadow-lg transition-colors ${
+                dropOn === "tray" ? "border-rose-400 bg-rose-500/10" : "border-brand-500/40 bg-card-solid"
+              }`}
+              style={{
+                top: RULER_H + 6,
+                left: `max(${pct(TRAY_FROM)}, ${labelEdge + 12}px)`,
+                width: `max(15rem, calc(${pct(TRAY_TO)} - max(${pct(TRAY_FROM)}, ${labelEdge + 12}px)))`,
+                maxHeight: Math.max(trayRows * ROW_H - 12, 200),
+              }}
+            >
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People</p>
+              <p className="text-[10.5px] leading-snug text-subtle">{dropOn === "tray" ? "Drop to take them off that task" : "Drag onto a task"}</p>
+              {GROUPS.map((g) => {
+                const list = people.filter((p) => p.group === g);
+                if (!list.length) return null;
+                return (
+                  <div key={g} className="mt-1.5">
+                    <p className="text-[10.5px] font-semibold text-subtle">{GROUP_LABEL[g]}</p>
+                    <div className="mt-0.5 flex flex-wrap gap-1">
+                      {list.map((p) => (
+                        <span
+                          key={p.id}
+                          draggable
+                          onDragStart={(e) => startDrag(e, { id: p.id })}
+                          onMouseEnter={() => setFocusPerson(p.id)}
+                          onMouseLeave={() => setFocusPerson(null)}
+                          title={`${p.role ? `${p.role} · ` : ""}on ${tasksOf(p.id)} task${tasksOf(p.id) === 1 ? "" : "s"}`}
+                          className={`inline-flex cursor-grab items-center gap-1 rounded-full border py-0.5 pl-2 pr-1 text-[11.5px] font-semibold text-fg active:cursor-grabbing ${
+                            editingPerson === p.id ? "border-brand-400 bg-brand-500/10" : "border-line bg-card hover:border-brand-400/60"
+                          }`}
+                        >
+                          {p.name}
+                          <span className="text-[10px] font-normal tabular-nums text-subtle">{tasksOf(p.id)}</span>
+                          <button type="button" aria-label={`Edit ${p.name}`} onClick={() => setEditingPerson(editingPerson === p.id ? null : p.id)} className="rounded-full p-0.5 text-subtle hover:text-fg">
+                            <Pencil size={10} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="mt-2 border-t border-line pt-2">
+                <AddPerson pending={pending} onAdd={(v) => run(() => addFilmingPerson(day.id, v), true)} />
+              </div>
+            </div>
+
             {sorted.map((b, i) => {
               const s = minuteOfDay(b.start), en = minuteOfDay(b.end);
               const t = tone(b.kind);
@@ -313,7 +377,12 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               const onIt = b.people.map((id) => byId.get(id)).filter((p): p is Person => !!p);
               const facs = b.facilitators.map((id) => byId.get(id)).filter((p): p is Person => !!p);
               const chip = (p: Person, from: "people" | "facilitators") => (
-                <span key={`${from}${p.id}`} className={`group/chip inline-flex items-center rounded-full py-px pl-1.5 pr-0.5 text-[11px] font-medium ${
+                <span
+                  key={`${from}${p.id}`}
+                  draggable
+                  onDragStart={(e) => startDrag(e, { id: p.id, from: b.id, role: from })}
+                  title="Drag to another task to move, or into the People box to take off"
+                  className={`group/chip inline-flex cursor-grab items-center rounded-full py-px pl-1.5 pr-0.5 text-[11px] font-medium active:cursor-grabbing ${
                   from === "facilitators" ? "border border-dashed border-line bg-card-solid text-fg" : t.chip
                 }`}>
                   {p.name}
@@ -375,7 +444,11 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                     </div>
 
                     {/* What and who, always to the right of the bar. */}
-                    <div className="absolute top-0 flex h-full max-w-[34rem] flex-col justify-center gap-0.5 pl-2" style={{ left: pct(en) }}>
+                    <div
+                      ref={(el) => { if (el) labelRefs.current.set(b.id, el); else labelRefs.current.delete(b.id); }}
+                      className="absolute top-0 flex h-full max-w-[34rem] flex-col justify-center gap-0.5 pl-2"
+                      style={{ left: pct(en) }}
+                    >
                       <span className="flex items-center gap-1.5 whitespace-nowrap">
                         <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-fg hover:underline">
                           {b.locked && <Lock size={10} className="text-subtle" aria-label="Pinned" />}
@@ -531,7 +604,7 @@ function AddPerson({ pending, onAdd }: { pending: boolean; onAdd: (v: Omit<Perso
   const [group, setGroup] = useState<string>("team");
   return (
     <form
-      className="flex items-center gap-1"
+      className="flex flex-wrap items-center gap-1"
       onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; onAdd({ name: name.trim(), group, role: "", email: "" }); setName(""); }}
     >
       <input id="filming-add-person" aria-label="Add a person" placeholder="Add a person" className={`${INPUT} w-32 py-0.5`} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
