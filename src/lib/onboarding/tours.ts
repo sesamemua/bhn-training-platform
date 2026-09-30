@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18k";
+export const TOUR_VERSION = "2026.10.18l";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.scroll-room",
+    title: "Scroll any card to the top",
+    body: "Every **Video Production** tab now has room below its last section, so you can scroll a card like **Storage** up to the top of the screen, even on a big display where the page used to fit exactly and could not scroll.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18l",
   },
   {
     id: "video.storage",

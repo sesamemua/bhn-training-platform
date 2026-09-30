@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: every tab scrolls, even on a big screen",
+    body: "On a large display, **Prep day**, **Call sheets** and **Before the shoot** fitted the screen exactly, so they could not scroll and their last card stayed stuck at the bottom edge. Every tab of a video project now has room below its last section, so you can scroll it up to the top of the screen.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: a Storage card on Prep day, and a tighter task list",
     body: "**Prep day** has a new **Storage** card. It reads the on-camera time from the **Filming day** and works out the footage for the ALEXA Mini LF (recommended: LF Open Gate 4.5K, ProRes 422 HQ, 23.976 fps), the sound (3 tracks), **when each 1 TB mag has to be copied off and how long it takes**, whether the camera has to wait, and **which drives to buy** at Staples on University Ave, with prices and HST. Change the format, frame rate, how much the camera rolls, the number of mags, or SSD vs hard drive and everything recalculates. A table compares every format, and the recommended settings for open gate with anamorphic lenses are underneath.\n\nThe task list is now **one line per task**; open a task for its notes and checklist. New: **Get the footage drives ready** (Prep day), **ask the rental house for a second mag and the reader** (Before the shoot), and the drives, reader and offload laptop on Ruilin's **Logistics** list.",
     kind: "feature",
