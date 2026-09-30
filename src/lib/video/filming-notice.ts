@@ -6,6 +6,7 @@
  *
  * Pure module: no React, no Prisma.
  */
+import { z } from "zod";
 export interface Notice {
   headline: string;
   subhead: string;
@@ -48,4 +49,48 @@ ${opts.preview ? "" : "@media screen { body { padding: .25in 0; background: #e6e
 <p class="thanks">${esc(n.thanks)}</p>
 <div class="foot"><img src="${esc(n.logoUrl)}" alt="BioHubNet"></div>
 </div>${opts.print ? `<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 300); });</script>` : ""}</body></html>`;
+}
+
+// ── the saved signs ──────────────────────────────────────────────────
+
+
+/** Where a project's signs are kept (PlatformSetting), edits and all. */
+export const printoutsKey = (projectId: string) => `video.printouts.${projectId}`;
+
+export const SignSchema = z.object({
+  id: z.string().min(1).max(40),
+  label: z.string().trim().min(1).max(60),
+  /** Made here rather than one of the built-in three — can be deleted. */
+  custom: z.boolean(),
+  fields: z.object({
+    subhead: z.string().max(80),
+    headline: z.string().max(120),
+    when: z.string().max(120),
+    where: z.string().max(160),
+    message: z.string().max(1000),
+    thanks: z.string().max(120),
+  }),
+});
+export type Sign = z.infer<typeof SignSchema>;
+export const SignsSchema = z.array(SignSchema).max(30);
+
+/** Saved signs, read back safely: anything unreadable is dropped. */
+export function parseSigns(raw: string | null | undefined): Sign[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.flatMap((x) => { const r = SignSchema.safeParse(x); return r.success ? [r.data] : []; }).slice(0, 30);
+  } catch {
+    return [];
+  }
+}
+
+/** The built-in signs, with any saved edits laid over them, then the ones made here. */
+export function mergeSigns(builtIn: Sign[], saved: Sign[]): Sign[] {
+  const byId = new Map(saved.map((s) => [s.id, s]));
+  return [
+    ...builtIn.map((b) => { const s = byId.get(b.id); return s && !s.custom ? { ...b, fields: s.fields, label: s.label } : b; }),
+    ...saved.filter((s) => s.custom),
+  ];
 }

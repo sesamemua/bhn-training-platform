@@ -11,6 +11,7 @@ import { ProjectNav } from "@/components/workspace/ProjectNav";
 import { ProjectBackLink } from "@/components/workspace/ProjectBackLink";
 import { FilmingNoticeEditor } from "@/components/workspace/FilmingNoticeEditor";
 import { clockOf, hhmmToMinutes, longDate } from "@/lib/video/filming";
+import { mergeSigns, parseSigns, printoutsKey, type Sign } from "@/lib/video/filming-notice";
 
 export const dynamic = "force-dynamic";
 interface Props { params: Promise<{ projectId: string }> }
@@ -30,54 +31,62 @@ export default async function PrintoutPage({ params }: Props) {
     ? `${longDate(f.date.toISOString().slice(0, 10)).replace(/, \d{4}$/, "")} · ${clockOf(hhmmToMinutes(f.opensAt))} – ${clockOf(hhmmToMinutes(f.closesAt))}`
     : "Today";
 
+  const builtIn: Sign[] = [
+    {
+      id: "quiet",
+      custom: false,
+      label: "Quiet please",
+      fields: {
+        subhead: "Filming in progress",
+        headline: "Quiet please",
+        when,
+        where: f?.location ?? "",
+        message: "We're filming interviews here today. Please keep your voice down and take phone calls elsewhere as you pass by — thank you for bearing with us!",
+        thanks: "Thank you!",
+      },
+    },
+    {
+      id: "closed",
+      custom: false,
+      label: "Area closed",
+      fields: {
+        subhead: "Filming in progress",
+        headline: "This area is closed for filming",
+        when,
+        where: f?.location ?? "",
+        message: "Please don't walk through while we're filming. We're sorry for the detour, and we'll be out of your way as soon as we can.",
+        thanks: "Thank you for understanding!",
+      },
+    },
+    {
+      id: "entrance",
+      custom: false,
+      label: "Use the other entrance",
+      fields: {
+        subhead: "Filming in progress",
+        headline: "Please use the other entrance",
+        when,
+        where: "The entrance on College Street is open",
+        message: "This door is closed while we film inside. Please go around to the College Street entrance — thank you for helping us keep the shot quiet.",
+        thanks: "Thank you!",
+      },
+    },
+  ];
+  const saved = await prisma.platformSetting.findUnique({ where: { key: printoutsKey(project.id) }, select: { value: true } });
+
   return (
     <div className="space-y-6">
       <PageHero
         eyebrow={<><Printer size={11} /> Video Production · Printout</>}
         title={project.title}
-        description="Signs for the shoot day — quiet please, area closed, use the other entrance. Pick one, edit the words, check the preview, print on letter paper."
+        description="Signs for the shoot day — quiet please, area closed, use the other entrance, and any you make. Pick one, edit the words, check the preview, print on letter paper."
         actions={<ProjectBackLink />}
       />
       <ProjectNav projectId={project.id} />
       <FilmingNoticeEditor
-        presets={[
-          {
-            id: "quiet",
-            label: "Quiet please",
-            fields: {
-              subhead: "Filming in progress",
-              headline: "Quiet please",
-              when,
-              where: f?.location ?? "",
-              message: "We're filming interviews here today. Please keep your voice down and take phone calls elsewhere as you pass by — thank you for bearing with us!",
-              thanks: "Thank you!",
-            },
-          },
-          {
-            id: "closed",
-            label: "Area closed",
-            fields: {
-              subhead: "Filming in progress",
-              headline: "This area is closed for filming",
-              when,
-              where: f?.location ?? "",
-              message: "Please don't walk through while we're filming. We're sorry for the detour, and we'll be out of your way as soon as we can.",
-              thanks: "Thank you for understanding!",
-            },
-          },
-          {
-            id: "entrance",
-            label: "Use the other entrance",
-            fields: {
-              subhead: "Filming in progress",
-              headline: "Please use the other entrance",
-              when,
-              where: "The entrance on College Street is open",
-              message: "This door is closed while we film inside. Please go around to the College Street entrance — thank you for helping us keep the shot quiet.",
-              thanks: "Thank you!",
-            },
-          },
-        ]}
+        projectId={project.id}
+        builtIn={builtIn}
+        initial={mergeSigns(builtIn, parseSigns(saved?.value))}
       />
     </div>
   );

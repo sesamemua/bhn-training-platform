@@ -10,3 +10,16 @@ test("typed text is escaped, line breaks kept, printing only when asked", () => 
   assert.ok(!html.includes("window.print"));
   assert.ok(noticeHtml({ headline: "", subhead: "", when: "", where: "", message: "", thanks: "", logoUrl: "" }, { print: true }).includes("window.print"));
 });
+
+test("saved signs: edits laid over the built-in ones, custom ones after, junk dropped", async () => {
+  const { mergeSigns, parseSigns } = await import("../../src/lib/video/filming-notice");
+  const f = { subhead: "", headline: "Quiet please", when: "", where: "", message: "", thanks: "" };
+  const builtIn = [{ id: "quiet", label: "Quiet please", custom: false, fields: f }];
+  const saved = parseSigns(JSON.stringify([
+    { id: "quiet", label: "Quiet please", custom: false, fields: { ...f, headline: "Shh" } },
+    { id: "c1", label: "Parking", custom: true, fields: { ...f, headline: "No parking" } },
+    { id: "", label: "", custom: true, fields: f },
+  ]));
+  assert.deepEqual(mergeSigns(builtIn, saved).map((s) => s.fields.headline), ["Shh", "No parking"]);
+  assert.deepEqual(parseSigns("nope"), []);
+});

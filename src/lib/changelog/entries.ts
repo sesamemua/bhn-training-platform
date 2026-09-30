@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Printout: signs as thumbnails, make your own, and they save",
+    body: "On a video project's **Printout** tab the signs are now **thumbnails of the real pages** \u2014 click one to edit it beside a large preview. **New sign** makes one from scratch (give it a name, write the words); signs you make can be deleted with the \u00d7 on their thumbnail. Every change **saves on its own** a moment after you stop typing, so the signs \u2014 edited or new \u2014 are there next time. **Reset the words** puts a built-in sign back as it was.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Filming day: what prep means, on hover; facilitators for every interview",
     body: "Hover the paler **prep** part of an interview's bar and it says what it is for: getting familiar with the script, and make-up \u2014 with its times. Hover the filming part for the filming times.\n\nThe BHN Promo day now has a facilitator on every interview: **Roshni** for the three student interviews, **Yoo Jin and Yeseul** for Roshni, **Yoo Jin and Epshita** for Molly.",
     kind: "improvement",
