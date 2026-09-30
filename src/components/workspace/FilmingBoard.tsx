@@ -284,7 +284,8 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               {quarters.map((q) => (
                 <span key={`t${q}`} className={`absolute bottom-0 w-px ${QUARTER[q % 60]}`} style={{ left: pct(q), height: q % 60 === 0 ? 10 : q % 60 === 30 ? 7 : 4 }} aria-hidden />
               ))}
-              <span className="absolute bottom-0.5 ml-1 rounded bg-rose-500/15 px-1 text-[9.5px] font-semibold text-rose-500" style={{ left: pct(closes) }}>building closes</span>
+              {/* Just left of the line, between the half hour and the hour, where no label sits. */}
+              <span className="absolute top-[16px] mr-1 rounded bg-rose-500/15 px-1 text-[9px] font-semibold leading-tight text-rose-500" style={{ right: `calc(100% - ${pct(closes)})` }} title="The building closes">closes</span>
             </div>
 
             {sorted.map((b, i) => {
