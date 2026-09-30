@@ -35,19 +35,49 @@ export default async function PrintoutPage({ params }: Props) {
       <PageHero
         eyebrow={<><Printer size={11} /> Video Production · Printout</>}
         title={project.title}
-        description="Things to print for the shoot day. The filming notice goes on the door: edit the words, check the preview, print on letter paper."
+        description="Signs for the shoot day — quiet please, area closed, use the other entrance. Pick one, edit the words, check the preview, print on letter paper."
         actions={<ProjectBackLink />}
       />
       <ProjectNav projectId={project.id} />
       <FilmingNoticeEditor
-        initial={{
-          subhead: "Filming in progress",
-          headline: "Quiet please",
-          when,
-          where: f?.location ?? "",
-          message: "We're filming interviews here today. Please keep your voice down and take phone calls elsewhere as you pass by — thank you for bearing with us!",
-          thanks: "Thank you!",
-        }}
+        presets={[
+          {
+            id: "quiet",
+            label: "Quiet please",
+            fields: {
+              subhead: "Filming in progress",
+              headline: "Quiet please",
+              when,
+              where: f?.location ?? "",
+              message: "We're filming interviews here today. Please keep your voice down and take phone calls elsewhere as you pass by — thank you for bearing with us!",
+              thanks: "Thank you!",
+            },
+          },
+          {
+            id: "closed",
+            label: "Area closed",
+            fields: {
+              subhead: "Filming in progress",
+              headline: "This area is closed for filming",
+              when,
+              where: f?.location ?? "",
+              message: "Please don't walk through while we're filming. We're sorry for the detour, and we'll be out of your way as soon as we can.",
+              thanks: "Thank you for understanding!",
+            },
+          },
+          {
+            id: "entrance",
+            label: "Use the other entrance",
+            fields: {
+              subhead: "Filming in progress",
+              headline: "Please use the other entrance",
+              when,
+              where: "The entrance on College Street is open",
+              message: "This door is closed while we film inside. Please go around to the College Street entrance — thank you for helping us keep the shot quiet.",
+              thanks: "Thank you!",
+            },
+          },
+        ]}
       />
     </div>
   );

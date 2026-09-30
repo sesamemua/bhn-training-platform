@@ -1,9 +1,11 @@
 "use client";
 
 /**
- * Edit the door notice and see it exactly as it prints: the preview is the
- * same page the Print button opens. Nothing is saved — the words come from
- * the filming day each time, and changes are for this printout.
+ * The shoot day's signs — quiet please, area closed, use the other
+ * entrance. Pick one, edit it, and see it exactly as it prints: the
+ * preview is the same page the Print button opens. Nothing is saved — the
+ * words come from the filming day each time; edits to each sign are kept
+ * while you switch between them.
  */
 import { useMemo, useState } from "react";
 import { Printer } from "lucide-react";
@@ -12,8 +14,14 @@ import { noticeHtml, type Notice } from "@/lib/video/filming-notice";
 type Fields = Omit<Notice, "logoUrl">;
 const INPUT = "w-full rounded-md border border-line bg-card px-2 py-1.5 text-[13px] text-fg focus:border-brand-400 focus:outline-none";
 
-export function FilmingNoticeEditor({ initial }: { initial: Fields }) {
-  const [f, setF] = useState(initial);
+export interface NoticePreset { id: string; label: string; fields: Fields }
+
+export function FilmingNoticeEditor({ presets }: { presets: NoticePreset[] }) {
+  const [which, setWhich] = useState(presets[0].id);
+  const [edits, setEdits] = useState<Record<string, Fields>>(() => Object.fromEntries(presets.map((p) => [p.id, p.fields])));
+  const initial = presets.find((p) => p.id === which)!.fields;
+  const f = edits[which];
+  const setF = (v: Fields) => setEdits((e) => ({ ...e, [which]: v }));
   const [blocked, setBlocked] = useState(false);
   // Relative is enough: the preview frame and the print window both take this page's address as their base.
   const logoUrl = "/biohubnet-logo.png";
@@ -30,9 +38,9 @@ export function FilmingNoticeEditor({ initial }: { initial: Fields }) {
     <label className="block text-[11.5px] font-semibold text-muted">
       {label}
       {rows ? (
-        <textarea id={`notice-${key}`} rows={rows} className={INPUT} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} />
+        <textarea id={`notice-${which}-${key}`} rows={rows} className={INPUT} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} />
       ) : (
-        <input id={`notice-${key}`} className={INPUT} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} />
+        <input id={`notice-${which}-${key}`} className={INPUT} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} />
       )}
     </label>
   );
@@ -40,7 +48,23 @@ export function FilmingNoticeEditor({ initial }: { initial: Fields }) {
   return (
     <section className="grid gap-5 lg:grid-cols-[minmax(0,22rem)_1fr]">
       <div className="space-y-3">
-        <p className="text-[14px] font-bold text-fg">Filming notice for the door</p>
+        <p className="text-[14px] font-bold text-fg">Signs for the door</p>
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Which sign">
+          {presets.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="tab"
+              aria-selected={which === p.id}
+              onClick={() => setWhich(p.id)}
+              className={`rounded-full border px-3 py-1 text-[12.5px] font-semibold ${
+                which === p.id ? "border-brand-500 bg-brand-500/15 text-fg" : "border-line text-muted hover:text-fg"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         {field("subhead", "Small heading")}
         {field("headline", "Big heading")}
         {field("when", "When")}

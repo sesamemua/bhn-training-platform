@@ -18,6 +18,8 @@ export interface Notice {
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+/** Long headlines step down so they still fit in two or three lines. */
+const headlineSize = (h: string) => (h.length <= 14 ? 64 : h.length <= 32 ? 54 : 42);
 const lines = (s: string) => esc(s).replace(/\n/g, "<br>");
 
 export function noticeHtml(n: Notice, opts: { print?: boolean; preview?: boolean } = {}): string {
@@ -39,7 +41,7 @@ h2 { font-size: 28pt; font-weight: 600; margin-top: .2in; color: #333 }
 ${opts.preview ? "" : "@media screen { body { padding: .25in 0; background: #e6e6e6 } .page { box-shadow: 0 1px 8px rgba(0,0,0,.2); background: #fff } }"}
 </style></head><body><div class="page">
 <p class="eyebrow"><span class="dot"></span>${esc(n.subhead)}</p>
-<h1>${esc(n.headline)}</h1>
+<h1 style="font-size:${headlineSize(n.headline)}pt">${esc(n.headline)}</h1>
 <p class="when">${esc(n.when)}</p>
 <p class="where">${esc(n.where)}</p>
 <p class="message">${lines(n.message)}</p>
