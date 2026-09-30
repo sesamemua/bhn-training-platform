@@ -4,14 +4,14 @@
  * Video Production project list — create / open / delete projects. Each
  * project is drawn as a film slate: clapper stripes, a black slate with the
  * title in chalk, and the slate's boxes holding scripts, call sheets, the
- * shoot day and the budget. Its three tabs are one click from the card.
+ * shoot day and the budget. Its four tabs are one click from the card.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, FileText, Loader2, Clapperboard, ClipboardList, Receipt, ArrowRight } from "lucide-react";
+import { Plus, Trash2, FileText, Loader2, Clapperboard, ClipboardList, Receipt, ArrowRight, CalendarClock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { callSheetsPath, productionCostPath } from "@/lib/video/paths";
+import { callSheetsPath, filmingPath, productionCostPath } from "@/lib/video/paths";
 
 interface ProjectRow {
   id: string;
@@ -25,6 +25,8 @@ interface ProjectRow {
   callSheetCount: number;
   /** YYYY-MM-DD, or "" when no call sheet has a date. */
   shootDate: string;
+  /** The filming day, if one is planned: its date and how many tasks it has. */
+  filming: { date: string; tasks: number } | null;
   /** Production cost total in cents, or null when the project has no budget. */
   budget: number | null;
   updatedAt: string;
@@ -121,6 +123,10 @@ export function VideoProjectsClient({ initialProjects }: { initialProjects: Proj
                 href: callSheetsPath(p.id), label: "Call sheets", icon: ClipboardList, tone: "bg-amber-500/15 text-amber-700",
                 value: p.callSheetCount ? `${plural(p.callSheetCount, "sheet", "sheets")} · ${shortDate(p.shootDate)}` : "None yet",
               },
+              {
+                href: filmingPath(p.id), label: "Filming day", icon: CalendarClock, tone: "bg-violet-500/12 text-violet-700",
+                value: p.filming ? `${shortDate(p.filming.date)} · ${plural(p.filming.tasks, "task", "tasks")}` : "Not planned yet",
+              },
             ];
             return (
               <article key={p.id} className="group flex min-h-[30rem] flex-col overflow-hidden rounded-2xl border border-line bg-card-solid shadow-card-rest transition-shadow hover:shadow-elevated">
@@ -156,7 +162,7 @@ export function VideoProjectsClient({ initialProjects }: { initialProjects: Proj
                 </div>
 
                 {/* The project's three tabs, as big labelled tiles */}
-                <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2">
                   {tiles.map((t) => (
                     <Link
                       key={t.label}

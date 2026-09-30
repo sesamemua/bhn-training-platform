@@ -29,6 +29,7 @@ export default async function VideoProductionPage() {
       _count: { select: { scripts: { where: { isArchived: false } }, callSheets: true } },
       callSheets: { where: { shootDate: { not: null } }, orderBy: { shootDate: "asc" }, select: { shootDate: true } },
       scripts: { where: { isArchived: false }, orderBy: { order: "asc" }, select: { id: true, title: true }, take: 2 },
+      filming: { select: { date: true, _count: { select: { blocks: true } } } },
     },
   });
   const today = new Date().toISOString().slice(0, 10);
@@ -52,6 +53,7 @@ export default async function VideoProductionPage() {
       // The next shoot day still ahead, else the last one there was.
       shootDate: dates.find((d) => d >= today) ?? dates.at(-1) ?? "",
       budget: groups ? totals(groups).total : null,
+      filming: p.filming ? { date: p.filming.date.toISOString().slice(0, 10), tasks: p.filming._count.blocks } : null,
       updatedAt: p.updatedAt.toISOString(),
     };
   });

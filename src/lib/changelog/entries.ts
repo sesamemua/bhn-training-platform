@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: plan the filming day on a timeline",
+    body: "Each video project has a new **Filming day** card and tab: the shoot day hour by hour, every task a bar \u2014 set-up, meeting the contractor outside, each interview, the lab session, B-roll, lunch.\n\n**People** are listed on the left \u2014 the team, the crew, the interviewees \u2014 and **dragged onto a task** to put them on it; the same person can be on several (interviewed, then supporting). Drag a bar to move it, or its ends to change its length. An interview's bar shows its **preparation** striped, then the **filming** solid.\n\nAbove the timeline, anything wrong with the plan: two things **filmed at once** (one camera), somebody **in two places**, a task **with nobody on it**, anything **outside building hours** \u2014 with the reminder that if anyone steps out after closing, one person stays inside to let them back in. Pinned tasks (Darius, Gilbert) can't be dragged by accident; tasks whose time isn't fixed yet (Molly) are outlined dashed and don't count as clashes.\n\nThe BHN Promo shoot on **Tuesday 6 October** is already laid out, with tentative times where none are fixed yet.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Catering: print the list, and a warning when a new allergy turns up",
     body: "Next to **Copy this session**, **Print list** prints the people in that session who have a dietary or accessibility need \u2014 allergies first, in red \u2014 for the caterer to check against.\n\nEvery print and copy is now remembered per session, with who did it and when. If a session later needs a tent card it did not have then \u2014 somebody new with a kiwi allergy, the first Halal request \u2014 a red warning at the top of the tab names the session and the new card, with **Reprint tent cards** beside it, and the session itself is outlined in red.\n\nHovering a **Tent cards**, **Print list** or copy button explains what it does. The **For the caterer** box is gone: copying by session or by day, and the new warning, replace it.",
     kind: "improvement",

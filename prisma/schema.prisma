@@ -5678,6 +5678,7 @@ model VideoProject {
 
   scripts    Script[]
   callSheets CallSheet[]
+  filming    FilmingSchedule?
 
   @@index([category, isArchived])
 }
@@ -6743,4 +6744,75 @@ model KnowledgeExchangeAwardee {
   updatedAt       DateTime @updatedAt
 
   @@index([round, createdAt])
+}
+
+/// A shoot day planned as a timeline: tasks are bars, people are dragged
+/// onto them. One per project. The booking fields are for the public link
+/// trainees will book their interview slot from.
+model FilmingSchedule {
+  id           String          @id @default(cuid())
+  projectId    String          @unique
+  project      VideoProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title        String
+  date         DateTime        @db.Date
+  location     String          @default("")
+  /// Toronto wall clock, "HH:MM": when the building is open.
+  opensAt      String          @default("08:30")
+  closesAt     String          @default("17:00")
+  /// Standing notes for everybody on the day (the lockout rule and the like).
+  notes        String          @default("")
+  /// Toronto wall clock, "HH:MM": the times trainees may book between.
+  openFrom     String          @default("09:00")
+  openTo       String          @default("17:00")
+  /// A booking's length, and how much of the start of it is preparation.
+  slotMinutes  Int             @default(60)
+  prepMinutes  Int             @default(30)
+  /// The public booking link; null until an admin creates it.
+  bookingToken String?         @unique
+  isOpen       Boolean         @default(false)
+  people       FilmingPerson[]
+  blocks       FilmingBlock[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+/// Somebody on the day: the team, the crew, an interviewee, a trainee.
+model FilmingPerson {
+  id         String          @id @default(cuid())
+  scheduleId String
+  schedule   FilmingSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  name       String
+  /// "team" | "crew" | "interviewee" | "trainee"
+  group      String          @default("team")
+  /// What they do on the day, in words: "Camera & B-roll", "Interviewee · support".
+  role       String          @default("")
+  email      String          @default("")
+  createdAt  DateTime        @default(now())
+
+  @@index([scheduleId])
+}
+
+/// A bar on the timeline: a task, an interview, a lab session. For an
+/// interview, the first prepMinutes are preparation, the rest filming.
+model FilmingBlock {
+  id          String          @id @default(cuid())
+  scheduleId  String
+  schedule    FilmingSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  /// "setup" | "logistics" | "interview" | "lab" | "broll"
+  kind        String          @default("logistics")
+  title       String
+  notes       String          @default("")
+  start       DateTime
+  end         DateTime
+  prepMinutes Int             @default(0)
+  /// Pinned: the timeline will not drag it.
+  locked      Boolean         @default(false)
+  /// Time not certain: others' filming may overlap it, and nobody on it counts as double-booked.
+  flexible    Boolean         @default(false)
+  /// FilmingPerson ids dragged onto it.
+  people      String[]        @default([])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([scheduleId, start])
 }

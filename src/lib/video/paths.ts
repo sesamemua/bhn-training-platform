@@ -7,3 +7,4 @@ export const scriptPath = (projectId: string, scriptId: string) => `${projectPat
 /** Scripts opens the script itself when there is exactly one, else the list. */
 export const scriptsHref = (projectId: string, scriptIds: string[]) =>
   scriptIds.length === 1 ? scriptPath(projectId, scriptIds[0]) : projectPath(projectId);
+export const filmingPath = (projectId: string) => `${projectPath(projectId)}/filming`;
