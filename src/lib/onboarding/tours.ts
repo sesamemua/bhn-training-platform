@@ -115,7 +115,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "video.filming-day",
     title: "Plan the filming day",
-    body: "Each video project has a **Filming day** tab: tasks as bars across the day, people dragged onto them from the list on the left. Clashes, empty tasks and building hours are checked as you go.",
+    body: "Each video project has a **Filming day** tab: tasks as bars across the full width of the window, with who is on each named beside its bar. Drag people onto a task from the strip above. Clashes, empty tasks and building hours are checked as you go.",
     path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],

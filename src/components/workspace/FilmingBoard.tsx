@@ -13,7 +13,7 @@
  */
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, DoorOpen, GripVertical, Lock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, DoorOpen, Lock, MapPin, Pencil, Plus, Trash2, X } from "lucide-react";
 import {
   GROUP_LABEL, GROUPS, KIND_LABEL, KINDS, atMinute, clockOf, hhmmToMinutes, issues, longDate, minuteOfDay, minutesToHhmm,
   type Block, type Issue, type Person,
@@ -34,7 +34,6 @@ export interface FilmingDayProps {
 
 const DRAG_TYPE = "application/x-filming-person";
 const SNAP = 5;
-const LABEL_W = 250;
 
 const KIND_TONE: Record<string, { bar: string; prep: string; chip: string }> = {
   setup: { bar: "bg-slate-500", prep: "bg-slate-500/40", chip: "bg-slate-500/15 text-fg" },
@@ -157,8 +156,8 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-[16px] font-bold text-fg">{day.title}</h2>
-            <p className="mt-0.5 text-[13px] text-muted">{longDate(day.date)}</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-fg">
+              <span className="text-muted">{longDate(day.date)}</span>
               {day.location && <span className="inline-flex items-center gap-1"><MapPin size={13} className="text-muted" /> {day.location}</span>}
               <span className="inline-flex items-center gap-1"><DoorOpen size={13} className="text-muted" /> Building open {clockOf(opens)} – {clockOf(closes)}</span>
             </p>
@@ -176,181 +175,174 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
       {error && <p role="alert" className="text-[12.5px] font-semibold text-rose-600">{error}</p>}
       <IssueList issues={found} />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        {/* People: drag onto a task. */}
-        <aside className="w-full shrink-0 rounded-xl border border-line bg-card p-3 lg:sticky lg:top-3 lg:w-56">
-          <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People</p>
-          <p className="mt-0.5 text-[11.5px] leading-snug text-muted">Drag a name onto a task.</p>
+      {/* Edge to edge: the day needs every pixel of width it can get. */}
+      <div className="full-bleed border-y border-line bg-card">
+        {/* People: a strip above the chart, dragged down onto a task. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-line px-3 py-2">
+          <span className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People — drag onto a task</span>
           {GROUPS.map((g) => {
             const list = people.filter((p) => p.group === g);
             if (!list.length) return null;
             return (
-              <div key={g} className="mt-3">
-                <p className="text-[11px] font-semibold text-subtle">{GROUP_LABEL[g]}</p>
-                <ul className="mt-1 space-y-1">
-                  {list.map((p) => (
-                    <li key={p.id}>
-                      <div
-                        draggable
-                        onDragStart={(e) => { e.dataTransfer.setData(DRAG_TYPE, p.id); e.dataTransfer.effectAllowed = "copy"; }}
-                        onMouseEnter={() => setFocusPerson(p.id)}
-                        onMouseLeave={() => setFocusPerson(null)}
-                        className="group flex cursor-grab items-start gap-1.5 rounded-md border border-line bg-card-solid px-2 py-1.5 active:cursor-grabbing"
-                        title={p.role || undefined}
-                      >
-                        <GripVertical size={13} className="mt-0.5 shrink-0 text-subtle" aria-hidden />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[12.5px] font-semibold leading-tight text-fg">{p.name}</span>
-                          {p.role && <span className="block truncate text-[10.5px] leading-tight text-muted">{p.role}</span>}
-                        </span>
-                        <span className="text-[10.5px] tabular-nums text-subtle" title="Tasks they are on">{tasksOf(p.id)}</span>
-                        <button type="button" aria-label={`Edit ${p.name}`} onClick={() => setEditingPerson(editingPerson === p.id ? null : p.id)} className="rounded p-0.5 text-subtle opacity-0 hover:text-fg group-hover:opacity-100 focus:opacity-100">
-                          <Pencil size={11} />
-                        </button>
-                      </div>
-                      {editingPerson === p.id && (
-                        <PersonForm
-                          person={p}
-                          pending={pending}
-                          onSave={(v) => { setPeople((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...v } : x))); run(() => updateFilmingPerson(p.id, v)); setEditingPerson(null); }}
-                          onDelete={() => {
-                            if (!confirm(`Take ${p.name} off the day, and off every task they are on?`)) return;
-                            setPeople((ps) => ps.filter((x) => x.id !== p.id));
-                            setBlocks((bs) => bs.map((b) => ({ ...b, people: b.people.filter((x) => x !== p.id) })));
-                            run(() => deleteFilmingPerson(p.id));
-                            setEditingPerson(null);
-                          }}
-                        />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <span key={g} className="flex flex-wrap items-center gap-1">
+                <span className="mr-0.5 text-[11px] font-semibold text-subtle">{GROUP_LABEL[g]}</span>
+                {list.map((p) => (
+                  <span
+                    key={p.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData(DRAG_TYPE, p.id); e.dataTransfer.effectAllowed = "copy"; }}
+                    onMouseEnter={() => setFocusPerson(p.id)}
+                    onMouseLeave={() => setFocusPerson(null)}
+                    title={`${p.role ? `${p.role} · ` : ""}on ${tasksOf(p.id)} task${tasksOf(p.id) === 1 ? "" : "s"}`}
+                    className={`inline-flex cursor-grab items-center gap-1 rounded-full border py-0.5 pl-2 pr-1 text-[12px] font-semibold text-fg active:cursor-grabbing ${
+                      editingPerson === p.id ? "border-brand-400 bg-brand-500/10" : "border-line bg-card-solid hover:border-brand-400/60"
+                    }`}
+                  >
+                    {p.name}
+                    <span className="text-[10px] font-normal tabular-nums text-subtle">{tasksOf(p.id)}</span>
+                    <button type="button" aria-label={`Edit ${p.name}`} onClick={() => setEditingPerson(editingPerson === p.id ? null : p.id)} className="rounded-full p-0.5 text-subtle hover:text-fg">
+                      <Pencil size={10} />
+                    </button>
+                  </span>
+                ))}
+              </span>
             );
           })}
           <AddPerson pending={pending} onAdd={(v) => run(() => addFilmingPerson(day.id, v), true)} />
-        </aside>
+          <button type="button" className={`${BTN} ml-auto`} onClick={addTask} disabled={pending}><Plus size={13} /> Add task</button>
+        </div>
+        {(() => {
+          const p = people.find((x) => x.id === editingPerson);
+          if (!p) return null;
+          return (
+            <PersonForm
+              key={p.id}
+              person={p}
+              pending={pending}
+              onClose={() => setEditingPerson(null)}
+              onSave={(v) => { setPeople((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...v } : x))); run(() => updateFilmingPerson(p.id, v)); setEditingPerson(null); }}
+              onDelete={() => {
+                if (!confirm(`Take ${p.name} off the day, and off every task they are on?`)) return;
+                setPeople((ps) => ps.filter((x) => x.id !== p.id));
+                setBlocks((bs) => bs.map((b) => ({ ...b, people: b.people.filter((x) => x !== p.id) })));
+                run(() => deleteFilmingPerson(p.id));
+                setEditingPerson(null);
+              }}
+            />
+          );
+        })()}
 
-        {/* The timeline. */}
-        <section className="min-w-0 flex-1 rounded-xl border border-line bg-card">
-          <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
-            <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">Timeline · {blocks.length} tasks</p>
-            <button type="button" className={BTN} onClick={addTask} disabled={pending}><Plus size={13} /> Add task</button>
-          </div>
-          <div className="overflow-x-auto">
-            <div className="min-w-[860px]">
-              {/* Hour ruler. */}
-              <div className="flex border-b border-line">
-                <div style={{ width: LABEL_W }} className="shrink-0" />
-                <div className="relative h-7 flex-1">
-                  {hours.map((h) => (
-                    <span key={h} className="absolute top-1.5 -translate-x-1/2 text-[10.5px] tabular-nums text-subtle" style={{ left: pct(h) }}>
-                      {clockOf(h).replace(":00", "")}
-                    </span>
-                  ))}
-                </div>
-              </div>
+        {/* The chart: one thin row per task, the whole width is time. */}
+        <div className="overflow-x-auto">
+          <div className="min-w-[900px]">
+            <div className="relative h-6 border-b border-line bg-elevated/40">
+              {hours.map((h) => (
+                <span key={h} className="absolute top-1 -translate-x-1/2 text-[10.5px] tabular-nums text-subtle" style={{ left: pct(h) }}>
+                  {h === from ? "" : clockOf(h).replace(":00", "")}
+                </span>
+              ))}
+              <span className="absolute top-1 ml-1 text-[10px] font-semibold text-rose-500" style={{ left: pct(closes) }}>closes</span>
+            </div>
 
-              {sorted.map((b) => {
-                const s = minuteOfDay(b.start), en = minuteOfDay(b.end);
-                const t = tone(b.kind);
-                const prepPct = b.prepMinutes > 0 ? Math.min(100, (b.prepMinutes / (en - s)) * 100) : 0;
-                const focused = focusPerson && b.people.includes(focusPerson);
-                return (
-                  <div key={b.id} className="border-b border-line last:border-b-0">
+            {sorted.map((b, i) => {
+              const s = minuteOfDay(b.start), en = minuteOfDay(b.end);
+              const t = tone(b.kind);
+              const prepPct = b.prepMinutes > 0 ? Math.min(100, (b.prepMinutes / (en - s)) * 100) : 0;
+              const focused = focusPerson && b.people.includes(focusPerson);
+              // Late in the day the label goes before the bar, so it never runs off the edge.
+              const labelLeft = (s - from) / span > 0.62;
+              const onIt = b.people.map((id) => byId.get(id)).filter((p): p is Person => !!p);
+              return (
+                <div key={b.id}>
+                  <div
+                    className={`relative h-9 border-b border-line/60 transition-colors ${
+                      dropOn === b.id ? "bg-brand-500/15" : focused ? "bg-amber-400/10" : i % 2 ? "bg-elevated/20" : ""
+                    }`}
+                    onDragOver={(e) => { if (acceptsPerson(e)) { e.preventDefault(); setDropOn(b.id); } }}
+                    onDragLeave={() => setDropOn((x) => (x === b.id ? null : x))}
+                    onDrop={(e) => onDrop(e, b)}
+                  >
+                    {/* Outside building hours, shaded; hour lines; the closing line. */}
+                    <div className="absolute inset-y-0 bg-elevated/60" style={{ left: 0, width: pct(opens) }} aria-hidden />
+                    <div className="absolute inset-y-0 right-0 bg-elevated/60" style={{ left: pct(closes) }} aria-hidden />
+                    {hours.map((h) => <div key={h} className="absolute inset-y-0 w-px bg-line/50" style={{ left: pct(h) }} aria-hidden />)}
+                    <div className="absolute inset-y-0 w-0.5 bg-rose-500/70" style={{ left: pct(closes) }} aria-hidden />
+
                     <div
-                      className={`flex transition-colors ${dropOn === b.id ? "bg-brand-500/10" : focused ? "bg-amber-400/[0.08]" : ""}`}
-                      onDragOver={(e) => { if (acceptsPerson(e)) { e.preventDefault(); setDropOn(b.id); } }}
-                      onDragLeave={() => setDropOn((x) => (x === b.id ? null : x))}
-                      onDrop={(e) => onDrop(e, b)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${b.title}, ${clockOf(s)} to ${clockOf(en)}${b.locked ? ", pinned" : ", drag to move"}`}
+                      onPointerDown={(e) => onBarDown(e, b)}
+                      onPointerMove={onBarMove}
+                      onPointerUp={onBarUp}
+                      onPointerCancel={onBarUp}
+                      onDoubleClick={() => setEditing(b.id)}
+                      onKeyDown={(e) => { if (e.key === "Enter") setEditing(b.id); }}
+                      className={`absolute top-1.5 bottom-1.5 flex touch-none select-none overflow-hidden rounded ${
+                        b.locked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+                      } ${b.flexible ? "outline-2 outline-dashed outline-offset-1 outline-amber-500" : ""} ${focused ? "ring-2 ring-amber-400" : ""}`}
+                      style={{ left: pct(s), width: `calc(${pct(en)} - ${pct(s)})` }}
+                      title={`${b.title} · ${clockOf(s)}–${clockOf(en)}${b.prepMinutes ? ` · ${b.prepMinutes} min preparation, then filming` : ""}${b.notes ? `\n${b.notes}` : ""}`}
                     >
-                      {/* Label: what, when, who. */}
-                      <div style={{ width: LABEL_W }} className="shrink-0 border-r border-line px-3 py-2">
-                        <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className="block w-full text-left">
-                          <span className="flex items-center gap-1 text-[12.5px] font-semibold leading-tight text-fg">
-                            {b.locked && <Lock size={11} className="shrink-0 text-subtle" aria-label="Pinned" />}
-                            <span className="truncate">{b.title}</span>
-                          </span>
-                          <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
-                            <span className={`rounded px-1 text-[10px] font-semibold ${t.chip}`}>{KIND_LABEL[b.kind as keyof typeof KIND_LABEL] ?? b.kind}</span>
-                            <span className="tabular-nums">{clockOf(s)}–{clockOf(en)}</span>
-                            {b.flexible && <span className="text-amber-600">time TBC</span>}
-                          </span>
-                        </button>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {b.people.map((id) => byId.get(id)).filter((p): p is Person => !!p).map((p) => (
-                            <span key={p.id} className="inline-flex items-center gap-0.5 rounded-full bg-elevated py-px pl-1.5 pr-0.5 text-[10.5px] font-medium text-fg">
-                              {p.name}
-                              <button type="button" aria-label={`Take ${p.name} off ${b.title}`} onClick={() => saveBlock({ ...b, people: b.people.filter((x) => x !== p.id) })} className="rounded-full px-0.5 text-subtle hover:text-rose-500">
-                                <X size={10} />
-                              </button>
-                            </span>
-                          ))}
-                          {b.people.length === 0 && <span className="text-[10.5px] italic text-amber-600">Drop someone here</span>}
-                        </div>
-                      </div>
-
-                      {/* Track. */}
-                      <div className="relative min-h-[56px] flex-1">
-                        {/* Outside building hours, shaded. */}
-                        <div className="absolute inset-y-0 bg-elevated/70" style={{ left: 0, width: pct(opens) }} aria-hidden />
-                        <div className="absolute inset-y-0 right-0 bg-elevated/70" style={{ left: pct(closes) }} aria-hidden />
-                        {hours.map((h) => <div key={h} className="absolute inset-y-0 w-px bg-line/60" style={{ left: pct(h) }} aria-hidden />)}
-                        <div className="absolute inset-y-0 w-0.5 bg-rose-500/70" style={{ left: pct(closes) }} aria-hidden />
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`${b.title}, ${clockOf(s)} to ${clockOf(en)}${b.locked ? ", pinned" : ", drag to move"}`}
-                          onPointerDown={(e) => onBarDown(e, b)}
-                          onPointerMove={onBarMove}
-                          onPointerUp={onBarUp}
-                          onPointerCancel={onBarUp}
-                          onDoubleClick={() => setEditing(b.id)}
-                          className={`absolute top-2 bottom-2 flex touch-none select-none overflow-hidden rounded-md text-white shadow-sm ${
-                            b.locked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
-                          } ${b.flexible ? "outline-2 outline-dashed outline-offset-1 outline-amber-500" : ""} ${focused ? "ring-2 ring-amber-400" : ""}`}
-                          style={{ left: pct(s), width: `calc(${pct(en)} - ${pct(s)})` }}
-                          title={`${b.title} · ${clockOf(s)}–${clockOf(en)}${b.prepMinutes ? ` · ${b.prepMinutes} min preparation, then filming` : ""}${b.notes ? `\n${b.notes}` : ""}`}
-                        >
-                          {prepPct > 0 && (
-                            <div className={`h-full shrink-0 ${t.prep}`} style={{ width: `${prepPct}%`, backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.18) 5px 10px)" }} />
-                          )}
-                          <div className={`flex h-full min-w-0 flex-1 items-center gap-0.5 px-1.5 ${t.bar}`}>
-                            {b.people.slice(0, 6).map((id) => byId.get(id)).filter(Boolean).map((p) => (
-                              <span key={p!.id} className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/25 text-[9px] font-bold" title={p!.name}>
-                                {initials(p!.name)}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                      {prepPct > 0 && (
+                        <div className={`h-full shrink-0 ${t.prep}`} style={{ width: `${prepPct}%`, backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.2) 5px 10px)" }} />
+                      )}
+                      <div className={`h-full min-w-0 flex-1 ${t.bar}`} />
                     </div>
 
-                    {editing === b.id && (
-                      <TaskForm
-                        block={b}
-                        date={day.date}
-                        pending={pending}
-                        onSave={(nb) => { saveBlock(nb); setEditing(null); }}
-                        onDelete={() => {
-                          if (!confirm(`Delete “${b.title}”?`)) return;
-                          setBlocks((bs) => bs.filter((x) => x.id !== b.id));
-                          run(() => deleteFilmingBlock(b.id));
-                          setEditing(null);
-                        }}
-                        onClose={() => setEditing(null)}
-                      />
-                    )}
+                    {/* What and who, right beside the bar. */}
+                    <div
+                      className={`absolute top-0 flex h-full items-center gap-1 whitespace-nowrap ${labelLeft ? "flex-row-reverse pr-1.5" : "pl-1.5"}`}
+                      style={labelLeft ? { right: `calc(100% - ${pct(s)})` } : { left: pct(en) }}
+                    >
+                      <button type="button" onClick={() => setEditing(editing === b.id ? null : b.id)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-fg hover:underline">
+                        {b.locked && <Lock size={10} className="text-subtle" aria-label="Pinned" />}
+                        {b.title}
+                      </button>
+                      <span className="text-[10.5px] tabular-nums text-subtle">{clockOf(s)}–{clockOf(en)}</span>
+                      {onIt.map((p) => (
+                        <span key={p.id} className={`group/chip inline-flex items-center rounded-full py-px pl-1.5 pr-0.5 text-[11px] font-medium ${t.chip}`}>
+                          {p.name}
+                          <button
+                            type="button"
+                            aria-label={`Take ${p.name} off ${b.title}`}
+                            onClick={() => saveBlock({ ...b, people: b.people.filter((x) => x !== p.id) })}
+                            className="ml-0.5 rounded-full text-subtle opacity-40 hover:text-rose-500 hover:opacity-100 group-hover/chip:opacity-100"
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
+                      {onIt.length === 0 && <span className="text-[11px] italic text-amber-600">drop someone here</span>}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {editing === b.id && (
+                    <TaskForm
+                      block={b}
+                      date={day.date}
+                      pending={pending}
+                      onSave={(nb) => { saveBlock(nb); setEditing(null); }}
+                      onDelete={() => {
+                        if (!confirm(`Delete “${b.title}”?`)) return;
+                        setBlocks((bs) => bs.filter((x) => x.id !== b.id));
+                        run(() => deleteFilmingBlock(b.id));
+                        setEditing(null);
+                      }}
+                      onClose={() => setEditing(null)}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <p className="border-t border-line px-3 py-2 text-[11px] leading-snug text-subtle">
-            Drag a bar to move it, or its ends to change its length (5-minute steps). Striped part: preparation; solid: filming or the task itself.
-            Dashed outline: time not fixed. <Lock size={10} className="inline" /> pinned. Grey: building closed; red line: {clockOf(closes)} close.
-          </p>
-        </section>
+        </div>
+        <p className="flex flex-wrap gap-x-3 gap-y-1 px-3 py-1.5 text-[11px] leading-snug text-subtle">
+          {KINDS.map((k) => (
+            <span key={k} className="inline-flex items-center gap-1"><span className={`inline-block h-2.5 w-4 rounded-sm ${tone(k).bar}`} /> {KIND_LABEL[k]}</span>
+          ))}
+          <span>· Drag a bar to move it, its ends to resize (5 min) · striped: preparation · dashed: time not fixed · <Lock size={10} className="inline" /> pinned · click a task's name to edit it</span>
+        </p>
       </div>
     </div>
   );
@@ -435,22 +427,25 @@ function TaskForm({ block, date, pending, onSave, onDelete, onClose }: {
   );
 }
 
-function PersonForm({ person, pending, onSave, onDelete }: {
-  person: Person; pending: boolean; onSave: (v: Omit<Person, "id">) => void; onDelete: () => void;
+function PersonForm({ person, pending, onSave, onDelete, onClose }: {
+  person: Person; pending: boolean; onSave: (v: Omit<Person, "id">) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [f, setF] = useState({ name: person.name, group: person.group, role: person.role, email: person.email });
   return (
-    <form className="mt-1 space-y-1.5 rounded-md border border-dashed border-line p-2" onSubmit={(e) => { e.preventDefault(); onSave(f); }}>
-      <input id={`p-name-${person.id}`} aria-label="Name" className={INPUT} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required maxLength={120} />
-      <select id={`p-group-${person.id}`} aria-label="Group" className={INPUT} value={f.group} onChange={(e) => setF({ ...f, group: e.target.value })}>
-        {GROUPS.map((g) => <option key={g} value={g}>{GROUP_LABEL[g]}</option>)}
-      </select>
-      <input id={`p-role-${person.id}`} aria-label="Role on the day" placeholder="Role on the day" className={INPUT} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} maxLength={200} />
-      <input id={`p-email-${person.id}`} aria-label="Email" placeholder="Email (optional)" className={INPUT} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} maxLength={200} />
-      <div className="flex justify-between gap-1.5">
+    <form className="flex flex-wrap items-end gap-2 border-b border-line bg-elevated/40 px-3 py-2" onSubmit={(e) => { e.preventDefault(); onSave(f); }}>
+      <label className="w-40 text-[11px] text-muted">Name<input id={`p-name-${person.id}`} className={INPUT} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required maxLength={120} /></label>
+      <label className="w-36 text-[11px] text-muted">Group
+        <select id={`p-group-${person.id}`} className={INPUT} value={f.group} onChange={(e) => setF({ ...f, group: e.target.value })}>
+          {GROUPS.map((g) => <option key={g} value={g}>{GROUP_LABEL[g]}</option>)}
+        </select>
+      </label>
+      <label className="min-w-[14rem] flex-1 text-[11px] text-muted">Role on the day<input id={`p-role-${person.id}`} className={INPUT} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} maxLength={200} /></label>
+      <label className="w-56 text-[11px] text-muted">Email (optional)<input id={`p-email-${person.id}`} className={INPUT} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} maxLength={200} /></label>
+      <span className="flex gap-1.5">
         <button type="button" className={`${BTN} text-rose-600`} onClick={onDelete} disabled={pending}><Trash2 size={11} /> Remove</button>
-        <button type="submit" className={BTN} disabled={pending}>Save</button>
-      </div>
+        <button type="button" className={BTN} onClick={onClose}>Cancel</button>
+        <button type="submit" className={`${BTN} border-brand-500 bg-brand-600 text-white hover:bg-brand-700`} disabled={pending}>Save</button>
+      </span>
     </form>
   );
 }
@@ -460,17 +455,14 @@ function AddPerson({ pending, onAdd }: { pending: boolean; onAdd: (v: Omit<Perso
   const [group, setGroup] = useState<string>("team");
   return (
     <form
-      className="mt-3 space-y-1.5 border-t border-line pt-3"
+      className="flex items-center gap-1"
       onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; onAdd({ name: name.trim(), group, role: "", email: "" }); setName(""); }}
     >
-      <p className="text-[11px] font-semibold text-subtle">Add a person</p>
-      <input id="filming-add-person" aria-label="Name" placeholder="Name" className={INPUT} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
-      <div className="flex gap-1.5">
-        <select id="filming-add-group" aria-label="Group" className={INPUT} value={group} onChange={(e) => setGroup(e.target.value)}>
-          {GROUPS.map((g) => <option key={g} value={g}>{GROUP_LABEL[g]}</option>)}
-        </select>
-        <button type="submit" className={BTN} disabled={pending || !name.trim()}><Plus size={12} /> Add</button>
-      </div>
+      <input id="filming-add-person" aria-label="Add a person" placeholder="Add a person" className={`${INPUT} w-32 py-0.5`} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+      <select id="filming-add-group" aria-label="Group" className={`${INPUT} w-auto py-0.5`} value={group} onChange={(e) => setGroup(e.target.value)}>
+        {GROUPS.map((g) => <option key={g} value={g}>{GROUP_LABEL[g]}</option>)}
+      </select>
+      <button type="submit" aria-label="Add" className={`${BTN} py-0.5`} disabled={pending || !name.trim()}><Plus size={12} /></button>
     </form>
   );
 }
