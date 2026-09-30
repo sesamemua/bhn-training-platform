@@ -36,6 +36,8 @@ const DRAG_TYPE = "application/x-filming-person";
 const SNAP = 5;
 /** The chart always runs to at least 7 p.m.: a shoot can go past closing. */
 const VIEW_UNTIL = 19 * 60;
+/** "11:30", and a whole hour as just "12", so a half-hour bar can hold its times. */
+const compact = (min: number) => (min % 60 ? short(min) : String(((Math.floor(min / 60) + 11) % 12) + 1));
 const short = (min: number) => `${((Math.floor(min / 60) + 11) % 12) + 1}:${String(min % 60).padStart(2, "0")}`;
 
 /*
@@ -358,14 +360,15 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                     >
                       {prep > 0 && (
                         <div className={`flex h-full shrink-0 flex-col items-center justify-center overflow-hidden text-center leading-tight ${t.prep} ${t.text === "text-white" ? "text-fg" : t.text}`} style={{ width: `${prepPct}%` }}>
-                          {prep >= 20 && <><span className="text-[9.5px] font-semibold">Prep</span><span className="text-[9px] tabular-nums opacity-80">{minutes(prep)}</span></>}
+                          {prep >= 20 && <><span className="text-[9px] font-semibold">Prep</span><span className="text-[8.5px] tabular-nums opacity-80">{minutes(prep)}</span></>}
                         </div>
                       )}
                       <div className={`flex h-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden px-1 text-center leading-tight ${t.bar} ${t.text}`}>
                         {en - film >= 25 && (
                           <>
-                            <span className="whitespace-nowrap text-[9.5px] font-semibold tabular-nums">{short(film)}–{short(en)}</span>
-                            <span className="whitespace-nowrap text-[9px] tabular-nums opacity-85">{ON_CAMERA.has(b.kind) ? `Filming ${minutes(en - film)}` : minutes(en - film)}</span>
+                            {ON_CAMERA.has(b.kind) && <span className="whitespace-nowrap text-[9px] font-semibold">Filming</span>}
+                            <span className="whitespace-nowrap text-[9px] font-semibold tabular-nums">{compact(film)}–{compact(en)}</span>
+                            <span className="whitespace-nowrap text-[8.5px] tabular-nums opacity-85">{minutes(en - film)}</span>
                           </>
                         )}
                       </div>
