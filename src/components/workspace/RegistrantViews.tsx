@@ -14,6 +14,7 @@ import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plu
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { farSchoolOf } from "@/lib/travel/far-email";
 import { travelWords } from "@/lib/travel/from-postcode";
 import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/allocation/highlights";
@@ -712,21 +713,15 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         ) : r.travel === "far" ? "Over 2 h" : r.travel === "near" ? "Local" : "—"}
                         {r.travel !== "far" && r.emailFar && !r.internal && (
                           /* A card on hover or focus, not a browser tooltip: it has to be read. */
-                          <span className="group/why relative ml-1 inline-flex align-middle">
-                            <span
-                              tabIndex={0}
-                              className={`${chip} cursor-help bg-amber-500/15 font-bold text-amber-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-400`}
-                              aria-describedby={`why-${r.bookingId}`}
-                            >?</span>
-                            <span
-                              id={`why-${r.bookingId}`}
-                              role="tooltip"
-                              className="pointer-events-none absolute left-0 top-full z-30 mt-1 w-72 whitespace-normal rounded-lg border border-amber-500/40 bg-card-solid px-3 py-2 text-[11.5px] leading-snug text-fg opacity-0 shadow-lg transition-opacity group-hover/why:opacity-100 group-focus-within/why:opacity-100"
+                          <span className="ml-1 inline-flex align-middle">
+                            <HoverCard
+                              className="border-amber-500/40"
+                              trigger={<span className={`${chip} bg-amber-500/15 font-bold text-amber-700`} aria-label={`Worth checking: ${r.emailFar.school} email`}>?</span>}
                             >
                               <strong className="block text-amber-700">May be over two hours away</strong>
                               Based on their email address — {r.emailFar.school}, in {r.emailFar.city} — this person may live {travelWords({ fsa: "", place: r.emailFar.city, ...r.emailFar })} from 144 College Street.
                               They said {r.travel === "near" ? "they are local" : "nothing about distance"}. Worth checking; it does not change their ranking.
-                            </span>
+                            </HoverCard>
                           </span>
                         )}
                         {r.postcode && <span className="ml-1 font-mono text-[11px] text-subtle">{r.postcode}</span>}
