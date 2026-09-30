@@ -33,7 +33,7 @@ export function FilmSignupForm({ token, from, to, slot, prep, taken, offers, whe
         <ul className="mt-2 space-y-1 text-[14px] text-fg">
           <li><strong>{when}</strong>{where && <> · {where}</>}</li>
           <li>Arrive for preparation at <strong>{clockOf(done)}</strong> — make-up and going through the questions.</li>
-          <li>On camera <strong>{clockOf(done + prep)}–{clockOf(done + slot)}</strong>.</li>
+          <li>On camera <strong>{clockOf(done + prep)}–{clockOf(done + slot)}</strong></li>
           {parking && <li>We&apos;ve noted that you need a parking spot.</li>}
         </ul>
         <p className="mt-3 text-[12.5px] text-muted">The team will be in touch to confirm. Need to change your time? Reply to them rather than signing up again.</p>
@@ -98,7 +98,7 @@ export function FilmSignupForm({ token, from, to, slot, prep, taken, offers, whe
         )}
         {start != null && (
           <p className="mt-2 text-[13px] text-fg">
-            Preparation from <strong>{clockOf(start)}</strong>, on camera <strong>{clockOf(start + prep)}–{clockOf(start + slot)}</strong>.
+            Preparation from <strong>{clockOf(start)}</strong>, on camera <strong>{clockOf(start + prep)}–{clockOf(start + slot)}</strong>
           </p>
         )}
       </fieldset>
