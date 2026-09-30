@@ -263,19 +263,21 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
         {/* The chart: one thin row per task, the whole width is time. */}
         <div className="overflow-x-auto">
           <div className="min-w-[1100px]">
-            <div className="relative h-11 border-b border-line bg-elevated/40">
+            {/* Three levels, so neighbouring labels never collide: the hour on
+                top, the half hour under it, the quarters smallest at the foot. */}
+            <div className="relative h-12 border-b border-line bg-elevated/40">
               {quarters.map((q) => {
                 const m = q % 60;
                 if (q === from || q === to) return null;
                 return (
-                  <span key={q} className="absolute top-0 flex -translate-x-1/2 flex-col items-center" style={{ left: pct(q) }}>
-                    <span
-                      className={`mt-1 whitespace-nowrap tabular-nums ${
-                        m === 0 ? "text-[11.5px] font-semibold text-fg" : m === 30 ? "mt-1.5 text-[9.5px] text-muted" : "mt-2 text-[8px] text-subtle"
-                      }`}
-                    >
-                      {m === 0 ? clockOf(q).replace(":00", "") : short(q)}
-                    </span>
+                  <span
+                    key={q}
+                    className={`absolute -translate-x-1/2 whitespace-nowrap tabular-nums leading-none ${
+                      m === 0 ? "top-1 text-[11.5px] font-semibold text-fg" : m === 30 ? "top-[17px] text-[9.5px] text-muted" : "top-[28px] text-[8px] text-subtle"
+                    }`}
+                    style={{ left: pct(q) }}
+                  >
+                    {m === 0 ? clockOf(q).replace(":00", "") : short(q)}
                   </span>
                 );
               })}
