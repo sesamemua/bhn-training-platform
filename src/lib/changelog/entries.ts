@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: a Prep day tab for the day before the shoot",
+    body: "A new **Prep day** tab, right after **Filming day**, lists what has to happen the day before: **pick up the camera**, **test the camera**, **prepare the gear** (with its own checklist \u2014 light, softbox, light stand, two extension cords, sound recorder and bag, batteries, chargers, boom, wireless lavaliers, headphones, slate, Fresnel spotlight, make-up kits), a **final confirmation with the students**, and **collecting dietary requirements**.\n\nEach task has a tick for done (the card darkens and the name is struck through), the people on it \u2014 added from the filming day's list \u2014 a note, and its own checklist lines. Add tasks and lines anywhere; it saves as you go.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Filming day: tick a task off when it is done",
     body: "Each task on the **Filming day** chart has a small circle right in front of its name. Tick it when the task is done: the row darkens, the bar greys out, and the name is struck through \u2014 so on the day, what is left stands out. Tick it again to undo.",
     kind: "improvement",
