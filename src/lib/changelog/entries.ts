@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: a Printout tab with a filming notice for the door",
+    body: "Each video project has a **Printout** tab. Its first printout is the **filming notice** for the door: *Quiet please \u2014 filming in progress*, the day and hours (8:30 a.m. \u2013 5:00 p.m. for the BHN Promo shoot), where, and a polite request to keep voices down and take calls elsewhere, with the BioHubNet logo. Every line can be changed before printing; the preview beside it is exactly what prints, on letter paper.\n\nOn the **Filming day** chart: it now starts at the building's opening time (8:30), a short task sorts above the long one starting with it (morning coffee above Darius), and the prep lead-ins are paler. The BHN Promo day has **TBD 1\u20133** for the lab-shot trainees (rename them when you know), **Ruilin setting up** at 8:30, the second box of coffee folded into **lunch**, and Epshita and Roshni moved up \u2014 each preps while the one before is filmed, then films straight after. Roshni and Yeseul facilitate Epshita.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Filming day: facilitators, prep lead-ins, and times inside the bars",
     body: "**Interviews have facilitators** now, kept apart from who is on camera: drop a person on an interview that already has its interviewee and they become its facilitator (a dashed chip). An interview without one is flagged.\n\nEvery interview **leads in with prep & make-up** \u2014 the same colour, lighter, before the filming. Drag an interview's **left end** to lengthen or shorten its prep without moving the filming; drag the right end to change how long the filming runs. Each bar shows its **own times and length** inside it (\u201c1:30\u20132:00 \u00b7 Filming 30 min\u201d).\n\nRows are taller, the task and its people always sit **to the right** of the bar, and **after 5 p.m. is open time** \u2014 no longer shaded or flagged. Set-up and errands are **see-through**; **coffee & lunch** have their own colour. Somebody on two set-up tasks at once is no longer a problem.\n\nThe BHN Promo day is updated: Ruilin and Darek are no longer listed on every interview; facilitators are in for Darius, Gilbert, Yoo Jin and Yeseul; **lab shots with Molly's students** (still to be decided) moved to lunch; B-roll is gone; **morning coffee by 11:15** and a **second box at lunch** are on.",
     kind: "improvement",

@@ -46,11 +46,11 @@ const short = (min: number) => `${((Math.floor(min / 60) + 11) % 12) + 1}:${Stri
  * interview's prep & make-up is the same colour, lighter, leading in.
  */
 const KIND_TONE: Record<string, { bar: string; prep: string; chip: string; text: string }> = {
-  setup: { bar: "bg-slate-400/20 border border-slate-400/60", prep: "bg-slate-400/10", chip: "bg-slate-500/15 text-fg", text: "text-fg" },
-  logistics: { bar: "bg-slate-400/15 border border-dashed border-slate-400/60", prep: "bg-slate-400/10", chip: "bg-slate-500/15 text-fg", text: "text-fg" },
-  meal: { bar: "bg-amber-500", prep: "bg-amber-500/35", chip: "bg-amber-500/15 text-amber-700", text: "text-white" },
-  interview: { bar: "bg-sky-600", prep: "bg-sky-500/35", chip: "bg-sky-500/15 text-sky-700", text: "text-white" },
-  lab: { bar: "bg-violet-600", prep: "bg-violet-500/35", chip: "bg-violet-500/15 text-violet-700", text: "text-white" },
+  setup: { bar: "bg-slate-400/20 border border-slate-400/60", prep: "bg-slate-400/[0.07]", chip: "bg-slate-500/15 text-fg", text: "text-fg" },
+  logistics: { bar: "bg-slate-400/15 border border-dashed border-slate-400/60", prep: "bg-slate-400/[0.07]", chip: "bg-slate-500/15 text-fg", text: "text-fg" },
+  meal: { bar: "bg-amber-500", prep: "bg-amber-500/15 border border-amber-500/30", chip: "bg-amber-500/15 text-amber-700", text: "text-white" },
+  interview: { bar: "bg-sky-600", prep: "bg-sky-500/15 border border-sky-500/30", chip: "bg-sky-500/15 text-sky-700", text: "text-white" },
+  lab: { bar: "bg-violet-600", prep: "bg-violet-500/15 border border-violet-500/30", chip: "bg-violet-500/15 text-violet-700", text: "text-white" },
 };
 const tone = (k: string) => KIND_TONE[k] ?? KIND_TONE.logistics;
 
@@ -94,14 +94,14 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   const [dropOn, setDropOn] = useState<string | null>(null);
   const [focusPerson, setFocusPerson] = useState<string | null>(null);
 
-  const sorted = useMemo(() => [...blocks].sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title)), [blocks]);
+  const sorted = useMemo(() => [...blocks].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end) || a.title.localeCompare(b.title)), [blocks]);
   const found = useMemo(() => issues(day, blocks), [day, blocks]);
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
   // The visible range: building hours with a margin, widened to fit any task outside them.
   const opens = hhmmToMinutes(day.opensAt);
   const closes = hhmmToMinutes(day.closesAt);
-  const from = Math.floor((Math.min(opens, ...blocks.map((b) => minuteOfDay(b.start))) - 30) / 60) * 60;
+  const from = Math.floor(Math.min(opens, ...blocks.map((b) => minuteOfDay(b.start))) / 15) * 15;
   const to = Math.ceil(Math.max(VIEW_UNTIL, closes + 60, ...blocks.map((b) => minuteOfDay(b.end) + 30)) / 60) * 60;
   const span = to - from;
   const pct = (min: number) => `${((min - from) / span) * 100}%`;
@@ -283,11 +283,11 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
             <div className="relative h-12 border-b border-line bg-elevated/40">
               {quarters.map((q) => {
                 const m = q % 60;
-                if (q === from || q === to) return null;
+                if (q === to) return null;
                 return (
                   <span
                     key={q}
-                    className={`absolute -translate-x-1/2 whitespace-nowrap tabular-nums leading-none ${
+                    className={`absolute whitespace-nowrap tabular-nums leading-none ${q === from ? "pl-1" : "-translate-x-1/2"} ${
                       m === 0 ? "top-1 text-[11.5px] font-semibold text-fg" : m === 30 ? "top-[17px] text-[9.5px] text-muted" : "top-[28px] text-[8px] text-subtle"
                     }`}
                     style={{ left: pct(q) }}
@@ -359,7 +359,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                       title={`${b.title} · ${clockOf(s)}–${clockOf(en)}${prep ? ` · prep & make-up ${minutes(prep)}, then filming ${minutes(en - film)}` : ""}${b.notes ? `\n${b.notes}` : ""}`}
                     >
                       {prep > 0 && (
-                        <div className={`flex h-full shrink-0 flex-col items-center justify-center overflow-hidden text-center leading-tight ${t.prep} ${t.text === "text-white" ? "text-fg" : t.text}`} style={{ width: `${prepPct}%` }}>
+                        <div className={`flex h-full shrink-0 flex-col items-center justify-center overflow-hidden text-center leading-tight ${t.prep} text-muted rounded-l`} style={{ width: `${prepPct}%` }}>
                           {prep >= 20 && <><span className="text-[9px] font-semibold">Prep</span><span className="text-[8.5px] tabular-nums opacity-80">{minutes(prep)}</span></>}
                         </div>
                       )}
