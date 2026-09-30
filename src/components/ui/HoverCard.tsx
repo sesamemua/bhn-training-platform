@@ -39,7 +39,7 @@ export function HoverCard({ trigger, children, width = 288, className = "" }: {
         <span
           id={id}
           role="tooltip"
-          className={`pointer-events-none fixed z-[60] rounded-lg border bg-card-solid px-3 py-2 text-left text-[11.5px] font-normal leading-snug text-fg shadow-xl ${className}`}
+          className={`pointer-events-none fixed z-[60] whitespace-normal break-words rounded-lg border bg-card-solid px-3 py-2 text-left text-[11.5px] font-normal leading-snug text-fg shadow-xl ${className}`}
           style={{ left: at.left, top: at.top, width }}
         >
           {children}

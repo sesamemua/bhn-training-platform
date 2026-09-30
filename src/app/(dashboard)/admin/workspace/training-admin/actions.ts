@@ -8,6 +8,7 @@
  * page guard says who may SEE the tab and has no bearing on who may POST
  * to it.
  */
+import { institutionOf } from "@/lib/travel/far-email";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/auth";
@@ -1224,6 +1225,73 @@ export async function loadTravelChecks(): Promise<string[]> {
     } catch { /* a log line we cannot read is not a reason to fail the page */ }
   }
   return [...out];
+}
+
+/* ── distance check by email address ──────────────────────────────── */
+
+const DISTANCE_CHECK = "training_admin.distance_check";
+
+/**
+ * Said local (or nothing), registered with a university over two hours
+ * away: the letter that asks where they are travelling from. Who it goes
+ * to and which school it names come off the registration on the server,
+ * never from the page.
+ */
+async function distanceCheckFor(bookingId: string): Promise<{ mail: SentMail; school: string } | { problem: string }> {
+  if (!isId(bookingId)) return { problem: "That is not a seat." };
+  const booking = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: { submission: { select: { data: true, email: true } }, user: { select: { name: true, email: true } } },
+  });
+  if (!booking) return { problem: "That registration no longer exists." };
+  const answers = (booking.submission?.data ?? {}) as Record<string, unknown>;
+  const trainee = typeof answers.trainee_email === "string" ? answers.trainee_email : null;
+  const far = [trainee, booking.submission?.email, booking.user?.email].map((e) => institutionOf(e)).find((i) => i && i.band === "far");
+  if (!far) return { problem: "Their email address is not at a university over two hours away." };
+  const to = booking.submission?.email ?? booking.user?.email ?? trainee;
+  const name = registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(to)) || "";
+  const draft = await personLetterDraft("support_check_email", {
+    to, name,
+    vars: { school: far.school, school_city: far.city, school_travel_time: travelWords({ fsa: "", place: far.city, ...far }) },
+  });
+  if (!draft.ok) return { problem: draft.receipt.state === "no-template" ? "The “Travel — checking where they are coming from” letter has been deleted from the standing letters." : receiptProblem(draft.receipt) };
+  return { mail: draft.mail, school: far.school };
+}
+
+/** The letter, shown rather than sent — what the card beside the warning opens with. */
+export async function draftDistanceCheck(bookingId: string): Promise<{ ok: boolean; problem?: string; to?: string; subject?: string; body?: string }> {
+  await requireAdmin();
+  const made = await distanceCheckFor(bookingId);
+  if ("problem" in made) return { ok: false, problem: made.problem };
+  return { ok: true, to: made.mail.to, subject: made.mail.subject, body: made.mail.body };
+}
+
+/** Send it — only ever from a coordinator pressing Send on the draft they read. */
+export async function sendDistanceCheck(bookingId: string, edited: { subject: string; body: string }): Promise<{ ok: boolean; problem?: string; receipt?: Receipt }> {
+  const admin = await requireAdmin();
+  const made = await distanceCheckFor(bookingId);
+  if ("problem" in made) return { ok: false, problem: made.problem };
+  const subject = edited.subject.trim().replace(/[\r\n]+/g, " ").slice(0, 300);
+  const body = edited.body.trim().slice(0, 20_000);
+  if (!subject || !body) return { ok: false, problem: "An empty letter is not a letter." };
+  const receipt = await sendComposed({ to: made.mail.to, subject, body });
+  await logSend(admin.id, DISTANCE_CHECK, { bookingId, email: made.mail.to, school: made.school, state: receipt.state });
+  revalidatePath(PAGE);
+  return { ok: true, receipt };
+}
+
+/** When each address was last asked, so the warning can say so. */
+export async function loadDistanceChecks(): Promise<Record<string, string>> {
+  await requireAdmin();
+  const rows = await prisma.auditLog.findMany({ where: { action: DISTANCE_CHECK }, select: { detail: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 500 });
+  const out: Record<string, string> = {};
+  for (const r of rows) {
+    try {
+      const d = JSON.parse(r.detail ?? "{}") as { email?: string; state?: string };
+      if (d.email && (d.state === "sent" || d.state === "sent-to-you") && !out[d.email.toLowerCase()]) out[d.email.toLowerCase()] = r.createdAt.toISOString();
+    } catch { /* unreadable log line */ }
+  }
+  return out;
 }
 
 /* ── internal people ─────────────────────────────────────────────── */

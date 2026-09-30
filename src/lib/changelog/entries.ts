@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registrants: a next step when an address says “far” — a clarification email, ready to send",
+    body: "Open a registration where somebody said they are local but registered with a university address over two hours away, and a warning now sits **right under their travel answer**: which school, how far it is, and the **next step** \u2014 a short email asking where they will travel from.\n\n**See sample email** opens the letter beside the button, filled in and ready to edit (it is also a standing letter, *Travel \u2014 checking where they are coming from*, under **Email**). **Send\u2026** asks once more before it goes; nothing is sent without you pressing it. Once asked, the warning says when.\n\nThe **?** card beside their distance no longer runs out of its box.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Logistics: hand items to people; release form with the U of T Pharmacy signature",
     body: "The **Logistics** packing list is now a board with a column for each person bringing things \u2014 **Alison** and **Ruilin** to start \u2014 and one for what nobody has taken yet. **Drag a card onto a person** to hand it to them, drag a person\u2019s name to reorder the columns, and **Add a person** for anyone else. Every item \u2014 suggestions included \u2014 can be ticked, taken off, or added to any column. The printed list is grouped by person.\n\nThe **release form** now carries the **University of Toronto \u2014 Leslie Dan Faculty of Pharmacy** signature beside the BioHubNet logo, and the under-18 guardian section is gone.",
     kind: "improvement",

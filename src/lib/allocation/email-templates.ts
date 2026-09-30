@@ -55,6 +55,9 @@ export const MERGE_FIELDS: MergeField[] = [
   { key: "pass_link", means: "Their Training Week pass — the QR they show at the door of every session", sample: "https://…/training-week/pass/…" },
   { key: "postcode", means: "The first three characters of the postal code they gave", sample: "M5V" },
   { key: "travel_time", means: "How long that postal code is from 144 College Street", sample: "about 15\u201345 minutes" },
+  { key: "school", means: "The university or college their email address belongs to", sample: "Queen's University" },
+  { key: "school_city", means: "Where that university or college is", sample: "Kingston" },
+  { key: "school_travel_time", means: "How far that is from 144 College Street", sample: "about 2½ hours" },
   { key: "support_form_link", means: "The travel and accommodation form", sample: "https://…" },
   { key: "coordinator", means: "Who signs the message off", sample: "The BioHubNet team" },
 ];
@@ -344,6 +347,30 @@ The estimate may well be the thing that is wrong. It is worked out from the firs
 So: if your journey really is over two hours each way, reply to this message and tell us the trip you would make — where you would be starting from, and the first service that gets you here in time. We will look at it again.
 
 If it is under two hours, there is nothing you need to do, and nothing has gone wrong. Travel support is only for journeys over two hours each way, so we would not be able to cover this one — but your place at the session is not affected at all, and we will see you there.` + SIGN_OFF,
+  },
+  {
+    /*
+     * The other way round from the postal-code check: they said local
+     * (or said nothing), but registered with an address at a university
+     * over two hours away. Nothing is wrong — most such students live in
+     * Toronto — so the letter only asks, and says what changes if the
+     * answer is "far".
+     */
+    id: "support_check_email",
+    stage: "support",
+    name: "Travel — checking where they are coming from",
+    when: "When somebody said they are local (or said nothing) but registered with an address at a university over two hours away.",
+    subject: "A quick question about your trip to {{event}}",
+    body:
+      `Hello {{first_name}},
+
+Thank you for registering for {{event}}. A quick question before we plan the sessions.
+
+You registered with your {{school}} address, and {{school_city}} is {{school_travel_time}} from 144 College Street. Where will you be travelling from on the day?
+
+If you are staying in Toronto that week, there is nothing to do — just let us know and we will see you there.
+
+If you are coming from further away and the one-way trip is over two hours, reply and tell us where you will be starting from. Travel support is available for journeys over two hours each way, and we will send you the details.` + SIGN_OFF,
   },
   {
     id: "support_declined",

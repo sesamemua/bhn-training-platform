@@ -8,9 +8,10 @@
  */
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useState, useTransition } from "react";
-import { Check, ChevronDown, Mail } from "lucide-react";
+import { Check, ChevronDown, Loader2, Mail } from "lucide-react";
 import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
-import { decideSeat, deleteSubmission, loadSubmissions, sendSeatLetter } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { decideSeat, deleteSubmission, draftDistanceCheck, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendSeatLetter } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { AnchoredCard } from "@/components/ui/AnchoredCard";
 import type { SubmissionRow } from "@/lib/allocation/admin-types";
 import { DECISION_LABEL, type Decision } from "@/lib/allocation/decisions";
 import { receiptLine } from "@/lib/formbuilder/receipt";
@@ -65,6 +66,12 @@ export function RegistrationDetail({ sub, onChanged, where }: {
 }) {
   const [, start] = useTransition();
   const who = sub.name || sub.email || "them";
+  // Said local (or nothing) from a university address over two hours away.
+  const school = where ? institutionOf(where.email) : null;
+  const farCheck = school && school.band === "far" && where?.said !== "far" && sub.seats[0]
+    ? { bookingId: sub.seats[0].id, who, email: where!.email, said: where!.said, school }
+    : null;
+  const travelQuestion = Object.keys(sub.answers).find((q) => /travel time|more than 2 hours|one[- ]way|door to door/i.test(q));
   return (
     <div className="grid gap-4 bg-elevated/30 px-3 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="min-w-0">
@@ -75,11 +82,14 @@ export function RegistrationDetail({ sub, onChanged, where }: {
           <span title={sub.form === "v1" ? "The original registration form" : `Version ${sub.form.replace(/^v/, "")} of the registration form`}>form {sub.form}</span>
           {sub.isTest && <span className="ml-1.5 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 text-[10px] text-amber-600">test</span>}
         </p>
+        {farCheck && !travelQuestion && <DistanceWarning {...farCheck} />}
         <dl className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-x-3 gap-y-1">
           {Object.entries(sub.answers).map(([q, a]) => (
             <div key={q} className="contents">
               <dt className="truncate text-[11px] font-semibold text-subtle" title={q}>{q}</dt>
               <dd className="break-words text-[12px] text-fg">{a || "—"}</dd>
+              {/* Right under what they said about the journey. */}
+              {farCheck && q === travelQuestion && <div style={{ gridColumn: "1 / -1" }}><DistanceWarning {...farCheck} /></div>}
             </div>
           ))}
         </dl>
@@ -332,3 +342,100 @@ function Seat({ seat, who, onDone }: { seat: SubmissionRow["seats"][number]; who
   );
 }
 
+
+/**
+ * The warning under their travel answer, and the next step: a short
+ * letter asking where they will travel from. The letter opens in a card
+ * beside the button, ready to edit; it goes only when Send is pressed,
+ * and Send asks once more, in the card.
+ */
+function DistanceWarning({ bookingId, who, email, said, school }: {
+  bookingId: string; who: string; email: string; said: string; school: NonNullable<ReturnType<typeof institutionOf>>;
+}) {
+  const [asked, setAsked] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [sure, setSure] = useState(false);
+  const [said2, setSaid2] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  useEffect(() => { loadDistanceChecks().then((m) => setAsked(m[email.toLowerCase()] ?? null)).catch(() => {}); }, [email]);
+
+  function open(e: React.MouseEvent<HTMLButtonElement>) {
+    setAnchor(e.currentTarget.getBoundingClientRect());
+    setSaid2(null);
+    setSure(false);
+    start(async () => {
+      const r = await draftDistanceCheck(bookingId);
+      if (r.ok) setDraft({ to: r.to ?? "", subject: r.subject ?? "", body: r.body ?? "" });
+      else { setAnchor(null); setSaid2(r.problem ?? "That letter could not be written."); }
+    });
+  }
+  function send() {
+    if (!draft) return;
+    start(async () => {
+      const r = await sendDistanceCheck(bookingId, { subject: draft.subject, body: draft.body });
+      if (!r.ok) { setSaid2(r.problem ?? "Not sent."); return; }
+      setSaid2(r.receipt ? receiptLine(r.receipt) : "Sent.");
+      if (r.receipt?.state === "sent" || r.receipt?.state === "sent-to-you") setAsked(new Date().toISOString());
+      setDraft(null); setAnchor(null); setSure(false);
+    });
+  }
+
+  return (
+    <div className="my-1.5 rounded-lg border border-orange-500/50 bg-orange-500/[0.08] px-2.5 py-2 text-[12px] leading-snug text-fg">
+      <p className="font-bold text-orange-700">May be over two hours away</p>
+      <p className="mt-0.5">
+        They said {said === "near" ? "they are local" : "nothing about distance"}, but registered with a <strong>{school.school}</strong> address —
+        {" "}{school.city} is {travelWords({ fsa: "", place: school.city, ...school })} from 144 College Street.
+      </p>
+      <p className="mt-1 text-muted"><strong className="text-fg">Next step:</strong> send a short email asking where they will be travelling from on the day.</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={open} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md border border-orange-500/50 bg-card-solid px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-orange-500/10 disabled:opacity-50">
+          <Mail size={12} /> See sample email
+        </button>
+        {asked && <span className="text-[11.5px] text-emerald-700">Asked {new Date(asked).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>}
+        {said2 && <span role="status" className="text-[11.5px] text-muted">{said2}</span>}
+      </div>
+
+      {draft && (
+        <AnchoredCard anchor={anchor} width={520} label={`Email to ${who}`} onDismiss={() => { if (!pending) { setDraft(null); setSure(false); } }}>
+          <div className="space-y-2 p-3">
+            <p className="text-[12.5px] font-semibold text-fg">Email to {who}</p>
+            <p className="text-[11.5px] text-muted">To <span className="font-mono">{draft.to}</span> — from BioHubNet, with the usual signature. Change anything before sending.</p>
+            <input
+              value={draft.subject}
+              onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+              aria-label="Subject"
+              className="w-full rounded-md border border-line bg-card px-2 py-1.5 text-[12.5px] font-semibold text-fg focus:border-brand-400 focus:outline-none"
+            />
+            <textarea
+              value={draft.body}
+              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+              rows={13}
+              aria-label="Message"
+              className="w-full resize-y rounded-md border border-line bg-card px-2 py-1.5 text-[12.5px] leading-relaxed text-fg focus:border-brand-400 focus:outline-none"
+            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {sure ? (
+                <>
+                  <span className="mr-auto text-[12px] font-semibold text-fg">Email {draft.to} now?</span>
+                  <button type="button" onClick={() => setSure(false)} className="rounded-md px-3 py-1.5 text-[12px] font-semibold text-muted hover:bg-elevated">Back</button>
+                  <button type="button" onClick={send} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-brand-700 disabled:opacity-50">
+                    {pending ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />} Send now
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={() => { setDraft(null); setSure(false); }} className="rounded-md px-3 py-1.5 text-[12px] font-semibold text-muted hover:bg-elevated">Close</button>
+                  <button type="button" onClick={() => setSure(true)} disabled={!draft.subject.trim() || !draft.body.trim()} className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-brand-700 disabled:opacity-50">
+                    <Mail size={12} /> Send…
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </AnchoredCard>
+      )}
+    </div>
+  );
+}

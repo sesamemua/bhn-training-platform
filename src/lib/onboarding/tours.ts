@@ -113,6 +113,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.10.16p",
   },
   {
+    id: "training-admin.distance-email",
+    title: "Ask where they're travelling from",
+    body: "When a registrant said local but their university is over two hours away, the warning under their travel answer offers **See sample email** — edit it, then **Send…**. Nothing goes without you pressing Send.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.18f",
+  },
+  {
     id: "platform.no-popups",
     title: "Questions open beside the button",
     body: "Confirmations and small prompts now open as a card right beside the button you pressed — no more browser pop-up boxes. Esc or a click elsewhere cancels.",
