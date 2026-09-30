@@ -80,7 +80,7 @@ export default async function EventsLayout({ children }: { children: React.React
           {/* Events pages bring their own hero/typography — we skip
               the (dashboard) wrapper's max-width + padding so the
               event marketing layout has the full canvas. */}
-          <div className="pt-16">{children}</div>
+          <div className="pt-16 pb-[60vh]">{children}</div>
         </main>
         <div className="fixed top-3 right-4 z-40 pointer-events-auto" data-no-translate>
           <div className="surface px-1 py-1">

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18l";
+export const TOUR_VERSION = "2026.10.18m";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "platform.scroll-room",
+    title: "Scroll anything to the top",
+    body: "Every page now has room below its last section, so you can scroll whatever is at the bottom up to the top of the screen \u2014 even on a big display.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18m",
   },
   {
     id: "video.scroll-room",

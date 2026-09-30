@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Every page scrolls its last section to the top",
+    body: "Every page on the platform now has room below its last section, so whatever is at the bottom can be scrolled up to the top of the screen \u2014 even on a large display where a page used to fit exactly and could not scroll at all.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: every tab scrolls, even on a big screen",
     body: "On a large display, **Prep day**, **Call sheets** and **Before the shoot** fitted the screen exactly, so they could not scroll and their last card stayed stuck at the bottom edge. Every tab of a video project now has room below its last section, so you can scroll it up to the top of the screen.",
     kind: "fix",

@@ -152,7 +152,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <LayoutBannersSlot /> inside DSPageHeader, fed by
             <LayoutBannerProvider> wrapping the page content below. */}
         <LayoutBannerProvider data={bannerData}>
-          <div className="dashboard-container max-w-screen-2xl mx-auto px-6 py-8 pt-16">
+          {/* pb-[60vh]: room below the last section on every page, so it can
+              be scrolled up to the top of the screen — without it a page
+              that fits the screen exactly cannot scroll at all. */}
+          <div className="dashboard-container max-w-screen-2xl mx-auto px-6 py-8 pt-16 pb-[60vh]">
             {children}
             {/* Portal target for <DemoSeedAndClearTray />. The tray
                 component uses createPortal to render itself here no
