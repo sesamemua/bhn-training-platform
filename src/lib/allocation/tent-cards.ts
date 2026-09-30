@@ -42,6 +42,9 @@ const WARNINGS: [RegExp, string][] = [
   [/shellfish|shrimp|prawn|crab|lobster/i, "Shellfish"],
   [/sesame/i, "Sesame"],
 ];
+/** Identifies a card across prints: the same words, the same kind. */
+export const cardKey = (c: { label: string; contains: boolean }) => `${c.contains ? "contains" : "diet"}:${c.label.toLowerCase()}`;
+
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** The cards one requirement asks for; empty when it cannot be read. */
@@ -73,7 +76,7 @@ export function tentCards(entries: Entry[]): TentCardSet {
         continue;
       }
       for (const f of found) {
-        const k = `${f.contains}|${f.label.toLowerCase()}`;
+        const k = cardKey(f);
         const card = cards.get(k) ?? { ...f, workshops: [] };
         if (!card.workshops.includes(e.workshop)) card.workshops.push(e.workshop);
         cards.set(k, card);

@@ -1,7 +1,7 @@
-/** Catering copy: upcoming approved seats only, and a clean "what changed". */
+/** Catering copy: upcoming approved seats only. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { changesSince, currentEntries, fullText, updateText, type Snapshot } from "../../src/lib/allocation/catering";
+import { currentEntries, fullText, peopleListHtml } from "../../src/lib/allocation/catering";
 import type { RegistrantRow } from "../../src/lib/allocation/registrant-views";
 
 const NOW = new Date("2026-10-26T20:00:00Z"); // Monday evening: Monday's session is over
@@ -32,27 +32,10 @@ test("the full copy reads like something to paste to a caterer", () => {
   assert.doesNotMatch(t, /Cy Park/, "waitlisted is not attending");
 });
 
-test("changes since the last copy — and nothing about sessions already over", () => {
-  const prev: Snapshot = { at: "2026-10-20T12:00:00Z", by: "Ruilin", entries: currentEntries(rows, new Date("2026-10-20T12:00:00Z")) };
-  assert.equal(prev.entries.length, 3, "Monday was still ahead last time");
-  const later = [
-    { ...rows[0], dietary: ["Vegan", "Gluten-free"] },           // Ana changed
-    // Ben no longer approved:
-    { ...rows[1], status: "cancelled" },
-    { ...rows[2], status: "confirmed" },                          // Cy now approved
-    rows[3],
-  ];
-  const cur = currentEntries(later, NOW);
-  const ch = changesSince(prev, cur, NOW);
-  assert.deepEqual(ch.map((c) => `${c.kind}:${(c.now ?? c.was)!.name}`).sort(), ["added:Cy Park", "changed:Ana Diaz", "removed:Ben Ho"]);
-  const t = updateText(ch, cur, prev.at, NOW.toISOString());
-  assert.match(t, /\+ Added: Cy Park — Halal/);
-  assert.match(t, /− No longer attending: Ben Ho/);
-  assert.match(t, /~ Changed: Ana Diaz — now Vegan, Gluten-free, Other: no snail, accessibility: floating chair \(was Vegan, Other: no snail, accessibility: floating chair\)/);
-  assert.match(t, /New total: 2 attendees/);
-  assert.doesNotMatch(t, /GMP/, "Monday's GMP seat is not reported as removed — the session is over");
-});
-
-test("first copy ever: everything counts as new", () => {
-  assert.equal(changesSince(null, currentEntries(rows, NOW), NOW).length, 2);
+test("the printed list: people with needs only, warnings first, escaped", () => {
+  const list = currentEntries([...rows, row({ bookingId: "5", personKey: "dee", name: "<Dee>", dietary: ["Nut allergy"] })], NOW);
+  const html = peopleListHtml(list, { title: "RA 101", asOf: NOW.toISOString(), warns: (e) => e.dietary.includes("Nut allergy") });
+  assert.ok(html.indexOf("&lt;Dee&gt;") < html.indexOf("Ana Diaz"), "the allergy comes first");
+  assert.ok(!html.includes("Ben Ho"), "no needs, not listed");
+  assert.match(html, /3 attending · 2 with a dietary or accessibility need/);
 });

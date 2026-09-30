@@ -23,8 +23,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Catering: print the list, and a warning when a new allergy turns up",
+    body: "Next to **Copy this session**, **Print list** prints the people in that session who have a dietary or accessibility need \u2014 allergies first, in red \u2014 for the caterer to check against.\n\nEvery print and copy is now remembered per session, with who did it and when. If a session later needs a tent card it did not have then \u2014 somebody new with a kiwi allergy, the first Halal request \u2014 a red warning at the top of the tab names the session and the new card, with **Reprint tent cards** beside it, and the session itself is outlined in red.\n\nHovering a **Tent cards**, **Print list** or copy button explains what it does. The **For the caterer** box is gone: copying by session or by day, and the new warning, replace it.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Catering: copy a session or a day, and print tent cards",
-    body: "**Catering & accessibility** now shows, for every session, the exact text the caterer gets \u2014 grouped by day. **Copy this session** or **Copy the day** puts just that on the clipboard; **Copy for the caterer** and **Copy only what changed** at the top work as before.\n\n**Tent cards** label the food on the lunch table, one letter-size card each, for the day or for one session: fold on the dashed line and stand it by the platter. A diet names the dish that meets it \u2014 **Halal**, **Vegetarian**. An allergy or intolerance becomes a warning in **red** for the dish that has it \u2014 **Contains kiwi** on the fruit, **Contains lactose** by the milk and yogurt, **Contains nuts**, **Contains gluten**. What people wrote under *Other* is read the same way; anything that cannot be made into a card is listed on the print page to label by hand. Each card names, small, the workshops it is for \u2014 no names of people.\n\nNobody is approved yet, so the sessions are empty until then. Tick **Include requests not yet approved** to plan with the requests still waiting \u2014 anything copied that way says it is not final.",
+    body: "**Catering & accessibility** now shows, for every session, the exact text the caterer gets \u2014 grouped by day. **Copy this session** or **Copy the day** puts just that on the clipboard;\n\n**Tent cards** label the food on the lunch table, one letter-size card each, for the day or for one session: fold on the dashed line and stand it by the platter. A diet names the dish that meets it \u2014 **Halal**, **Vegetarian**. An allergy or intolerance becomes a warning in **red** for the dish that has it \u2014 **Contains kiwi** on the fruit, **Contains lactose** by the milk and yogurt, **Contains nuts**, **Contains gluten**. What people wrote under *Other* is read the same way; anything that cannot be made into a card is listed on the print page to label by hand. Each card names, small, the workshops it is for \u2014 no names of people.\n\nNobody is approved yet, so the sessions are empty until then. Tick **Include requests not yet approved** to plan with the requests still waiting \u2014 anything copied that way says it is not final.",
     kind: "feature",
     visibleTo: STAFF,
     daysAgo: 0,

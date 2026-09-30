@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseRules, validateRules, type Rule } from "@/lib/allocation/model";
 import {
-  CATERING_COPY_KEY, isAudience, isId, REGISTRANT_VIEWS_KEY, RULES_KEY,
+  isAudience, isId, REGISTRANT_VIEWS_KEY, RULES_KEY,
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
@@ -27,7 +27,8 @@ import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocat
 import { registrantName } from "@/lib/allocation/registrant-name";
 import { cantAttendUrl, passTokenFor, passUrl } from "@/lib/training-week/pass";
 import { withPassQr } from "@/lib/training-week/pass-qr";
-import { EntrySchema, type Snapshot } from "@/lib/allocation/catering";
+import { EntrySchema } from "@/lib/allocation/catering";
+import { CATERING_SENT_KEY, parseSent, recordSent, type SentRecord } from "@/lib/allocation/catering-sent";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { personLetterDraft, sendComposed, sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
@@ -783,21 +784,20 @@ export async function deleteSubmission(id: string): Promise<{ ok: boolean }> {
 // ── catering copy ────────────────────────────────────────────────────
 
 /**
- * Record what was just copied for the caterer, so the next copy can be
- * "only what changed". Validated: a server action is a public endpoint.
+ * Record what the caterer was just given — tent cards printed, a list
+ * printed, text copied — per session, so a new allergy after that is
+ * flagged. The cards are worked out here from the entries, not trusted
+ * from the page.
  */
-export async function saveCateringSnapshot(entries: unknown): Promise<{ ok: boolean; snapshot?: Snapshot; problem?: string }> {
+export async function recordCateringSent(entries: unknown, how: "print" | "copy"): Promise<{ ok: boolean; sent?: SentRecord; problem?: string }> {
   const admin = await requireAdmin();
   const parsed = EntrySchema.array().max(5000).safeParse(entries);
-  if (!parsed.success) return { ok: false, problem: "That list could not be read." };
-  const snapshot: Snapshot = { at: new Date().toISOString(), by: admin.name ?? "", entries: parsed.data };
-  const value = JSON.stringify(snapshot);
-  await prisma.platformSetting.upsert({
-    where: { key: CATERING_COPY_KEY },
-    create: { key: CATERING_COPY_KEY, value },
-    update: { value },
-  });
-  return { ok: true, snapshot };
+  if (!parsed.success || (how !== "print" && how !== "copy")) return { ok: false, problem: "That list could not be read." };
+  const row = await prisma.platformSetting.findUnique({ where: { key: CATERING_SENT_KEY }, select: { value: true } });
+  const sent = recordSent(parseSent(row?.value), parsed.data, admin.name ?? admin.email ?? "", how, new Date().toISOString());
+  const value = JSON.stringify(sent);
+  await prisma.platformSetting.upsert({ where: { key: CATERING_SENT_KEY }, create: { key: CATERING_SENT_KEY, value }, update: { value } });
+  return { ok: true, sent };
 }
 
 // ── saved registrant views ───────────────────────────────────────────

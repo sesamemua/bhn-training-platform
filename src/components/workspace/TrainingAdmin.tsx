@@ -47,7 +47,7 @@ import { RegistrantViews } from "./RegistrantViews";
 import { CateringTab } from "./CateringTab";
 import { TravelTab } from "./TravelTab";
 import type { View } from "@/lib/allocation/registrant-views";
-import type { Snapshot } from "@/lib/allocation/catering";
+import type { SentRecord } from "@/lib/allocation/catering-sent";
 
 type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "catering" | "travel" | "email";
 const isTab = (v: unknown): v is Tab =>
@@ -89,9 +89,9 @@ export interface EligibilitySummary {
 }
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, catering, workshops, initialTab, eligibility, internalPeople, internalStaff,
+  eventId, eventTitle, rules: initialRules, views, cateringSent, workshops, initialTab, eligibility, internalPeople, internalStaff,
 }: {
-  eventId: string; eventTitle: string; rules: Rule[]; views: View[]; catering: Snapshot | null; workshops: AdminWorkshop[];
+  eventId: string; eventTitle: string; rules: Rule[]; views: View[]; cateringSent: SentRecord; workshops: AdminWorkshop[];
   /** ?tab=… in the URL — e.g. a link straight to Catering & accessibility. */
   initialTab?: string;
   eligibility: EligibilitySummary;
@@ -135,7 +135,7 @@ export function TrainingAdmin({
           </>
         )}
         {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
-        {tab === "catering" && <CateringTab workshops={workshops} catering={catering} />}
+        {tab === "catering" && <CateringTab workshops={workshops} sent={cateringSent} />}
         {tab === "travel" && <TravelTab workshops={workshops} />}
         {tab === "email" && <EmailSection eventId={eventId} workshops={workshops} />}
       </div>

@@ -1,10 +1,9 @@
 /**
- * What the caterer needs, and what changed since they were last told.
+ * What the caterer needs, per session and per day.
  *
  * Counts APPROVED seats only (who is actually coming), for sessions that
  * have not finished yet — a workshop that already happened needs nothing
- * more from the kitchen. Each copy is stored as the baseline, so the next
- * one can be "only what changed".
+ * more from the kitchen.
  *
  * Pure module: no React, no Prisma, no I/O.
  */
@@ -25,23 +24,6 @@ export const EntrySchema = z.object({
   accessibility: z.string(),
 });
 export type Entry = z.infer<typeof EntrySchema>;
-
-export const SnapshotSchema = z.object({
-  at: z.string(),
-  by: z.string().default(""),
-  entries: z.array(EntrySchema).max(5000),
-});
-export type Snapshot = z.infer<typeof SnapshotSchema>;
-
-export function parseSnapshot(raw: string | null | undefined): Snapshot | null {
-  if (!raw) return null;
-  try {
-    const r = SnapshotSchema.safeParse(JSON.parse(raw));
-    return r.success ? r.data : null;
-  } catch {
-    return null;
-  }
-}
 
 const NOT_A_NEED = /^(no dietary|other\b)/i;
 
@@ -71,36 +53,6 @@ export function currentEntries(
     }))
     .sort((a, b) => a.start.localeCompare(b.start) || a.workshop.localeCompare(b.workshop) || a.name.localeCompare(b.name));
 }
-
-const key = (e: Entry) => `${e.workshopId}|${e.personKey}`;
-const needs = (e: Entry) => [...e.dietary, ...(e.dietaryOther ? [`Other: ${e.dietaryOther}`] : [])];
-const sameNeeds = (a: Entry, b: Entry) =>
-  JSON.stringify(needs(a)) === JSON.stringify(needs(b)) && a.accessibility === b.accessibility;
-
-export interface Change { kind: "added" | "removed" | "changed"; now?: Entry; was?: Entry }
-
-/**
- * What changed since the last copy — for sessions still to come. People in
- * a session that has since happened are neither "removed" nor anything
- * else: the kitchen is done with that one.
- */
-export function changesSince(prev: Snapshot | null, cur: Entry[], now: Date = new Date()): Change[] {
-  if (!prev) return cur.map((e) => ({ kind: "added" as const, now: e }));
-  const upcoming = (e: Entry) => cur.some((c) => c.workshopId === e.workshopId) || isAhead(e, now);
-  const before = new Map(prev.entries.filter(upcoming).map((e) => [key(e), e]));
-  const after = new Map(cur.map((e) => [key(e), e]));
-  const out: Change[] = [];
-  for (const [k, e] of after) {
-    const was = before.get(k);
-    if (!was) out.push({ kind: "added", now: e });
-    else if (!sameNeeds(was, e)) out.push({ kind: "changed", now: e, was });
-  }
-  for (const [k, was] of before) if (!after.has(k)) out.push({ kind: "removed", was });
-  return out;
-}
-// A session from the last copy counts as still ahead if it has not started
-// yet by today's date — its end is not in the snapshot, the start is.
-const isAhead = (e: Entry, now: Date) => new Date(e.start).getTime() > now.getTime();
 
 // ── the text that gets pasted into the email ─────────────────────────
 
@@ -148,33 +100,27 @@ export function fullText(entries: Entry[], asOf: string, opts: { scope?: string;
   return [...head, ...sessions(entries).flatMap((l) => [...sessionBlock(l), ""])].join("\n").trimEnd();
 }
 
-/** Only what changed since the last copy, with each affected session's new totals. */
-export function updateText(changes: Change[], entries: Entry[], since: string, asOf: string): string {
-  const head = [
-    "BioHubNet Training Week — dietary & accessibility: UPDATE",
-    `Changes since ${stamp(since)} (as of ${stamp(asOf)})`,
-    "",
-  ];
-  if (!changes.length) return [...head, "No changes."].join("\n");
-  const describe = (e: Entry) => [...needs(e), ...(e.accessibility ? [`accessibility: ${e.accessibility}`] : [])].join(", ") || "no requirements";
-  const bySession = new Map<string, Change[]>();
-  for (const c of changes) {
-    const e = (c.now ?? c.was)!;
-    bySession.set(e.workshopId, [...(bySession.get(e.workshopId) ?? []), c]);
-  }
-  const blocks = [...bySession.entries()]
-    .sort(([, a], [, b]) => (a[0].now ?? a[0].was)!.start.localeCompare((b[0].now ?? b[0].was)!.start))
-    .flatMap(([id, list]) => {
-      const s = (list[0].now ?? list[0].was)!;
-      const lines = [`${when(s.start)}, ${clock(s.start)} — ${s.workshop}`];
-      for (const c of list) {
-        if (c.kind === "added") lines.push(`  + Added: ${c.now!.name} — ${describe(c.now!)}`);
-        if (c.kind === "removed") lines.push(`  − No longer attending: ${c.was!.name}`);
-        if (c.kind === "changed") lines.push(`  ~ Changed: ${c.now!.name} — now ${describe(c.now!)} (was ${describe(c.was!)})`);
-      }
-      const nowList = entries.filter((e) => e.workshopId === id);
-      lines.push(`  New total: ${nowList.length} attendee${nowList.length === 1 ? "" : "s"}`);
-      return [...lines, ""];
-    });
-  return [...head, ...blocks].join("\n").trimEnd();
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/**
+ * The people in a session who need something, as a page to print: for
+ * the caterer to check against, or for the lunch table. Warnings (an
+ * allergy, an intolerance) first and in red — `warns` decides which.
+ */
+export function peopleListHtml(list: Entry[], opts: { title: string; asOf: string; pending?: boolean; warns: (e: Entry) => boolean }): string {
+  const needy = list.filter((e) => e.dietary.length || e.dietaryOther || e.accessibility);
+  const ordered = [...needy].sort((a, b) => Number(opts.warns(b)) - Number(opts.warns(a)) || a.name.localeCompare(b.name));
+  const rows = ordered.map((e) => `<tr${opts.warns(e) ? ' class="warn"' : ""}><td>${esc(e.name)}</td><td>${esc(e.dietary.join(", ") || "—")}</td><td>${esc(e.dietaryOther || "—")}</td><td>${esc(e.accessibility || "—")}</td></tr>`).join("");
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(opts.title)}</title><style>
+@page { size: letter portrait; margin: .6in }
+body { font: 11pt/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+h1 { font-size: 16pt; margin: 0 0 2pt } p { margin: 0 0 12pt; color: #555 } .draft { color: #b45309; font-weight: 700 }
+table { width: 100%; border-collapse: collapse } th, td { text-align: left; padding: 5pt 6pt; border-bottom: 1px solid #ddd; vertical-align: top }
+th { font-size: 8.5pt; text-transform: uppercase; letter-spacing: .06em; color: #666 } .warn td { color: #c8102e; font-weight: 700 }
+</style></head><body>
+<h1>${esc(opts.title)}</h1>
+<p>${list.length} attending · ${needy.length} with a dietary or accessibility need · as of ${esc(stamp(opts.asOf))}${opts.pending ? ' · <span class="draft">includes requests not yet approved</span>' : ""}</p>
+${needy.length ? `<table><thead><tr><th>Name</th><th>Dietary</th><th>Other</th><th>Accessibility</th></tr></thead><tbody>${rows}</tbody></table>` : "<p>Nobody in this session has a dietary or accessibility need.</p>"}
+<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 300); });</script>
+</body></html>`;
 }
