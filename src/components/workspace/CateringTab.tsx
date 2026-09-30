@@ -25,9 +25,11 @@ const BTN =
 
 export function CateringTab({ workshops, catering }: { workshops: AdminWorkshop[]; catering: Snapshot | null }) {
   const rows = useMemo(() => rowsFrom(workshops), [workshops]);
-  // Before anybody is approved there is nothing to show; planning mode
-  // counts the requests still waiting, clearly marked in what is copied.
-  const [planning, setPlanning] = useState(false);
+  // Before anybody is approved there is nothing to show, so the tab opens
+  // in planning mode then: it counts the requests still waiting, and every
+  // copy says so. Once seats are approved it opens on the real list.
+  const noneApproved = useMemo(() => currentEntries(rows).length === 0, [rows]);
+  const [planning, setPlanning] = useState(noneApproved);
   const [copied, setCopied] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
 
@@ -69,9 +71,16 @@ export function CateringTab({ workshops, catering }: { workshops: AdminWorkshop[
     <div className="space-y-5">
       <CateringPanel rows={rows} initial={catering} />
 
-      <label className="flex w-fit cursor-pointer items-center gap-2 text-[12.5px] text-muted">
-        <input id="catering-planning" type="checkbox" className="accent-brand-600" checked={planning} onChange={(e) => setPlanning(e.target.checked)} />
-        Include requests not yet approved <span className="text-subtle">(for planning — copies say so)</span>
+      <label
+        className={`flex w-fit cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[12.5px] ${
+          planning ? "border-amber-500/50 bg-amber-500/10 text-fg" : "border-line text-muted"
+        }`}
+      >
+        <input id="catering-planning" type="checkbox" className="accent-amber-500" checked={planning} onChange={(e) => setPlanning(e.target.checked)} />
+        <span>
+          <strong>Include requests not yet approved</strong>
+          <span className="text-subtle"> — for planning{noneApproved ? "; nobody is approved yet" : ""}. Copies say the numbers are not final.</span>
+        </span>
       </label>
       {blocked && (
         <p role="alert" className="text-[12.5px] font-semibold text-amber-600">
