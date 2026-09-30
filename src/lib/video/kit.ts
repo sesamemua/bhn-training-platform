@@ -21,16 +21,24 @@ export const KitItemSchema = z.object({
   removed: z.boolean().default(false),
   /** Put on the starting list as a suggestion rather than asked for. */
   suggested: z.boolean().default(false),
+  /** Who is bringing it — one of the list's people, or "" for nobody yet. */
+  owner: z.string().max(60).default(""),
 });
 export type KitItem = z.infer<typeof KitItemSchema>;
 export const KitSchema = z.array(KitItemSchema).max(300);
+
+/** The list, and the people things are handed to. */
+export const KitStateSchema = z.object({ items: KitSchema, owners: z.array(z.string().trim().min(1).max(60)).max(20) });
+export type KitState = z.infer<typeof KitStateSchema>;
+/** Who brings things, to start with. */
+export const DEFAULT_OWNERS = ["Alison", "Ruilin"];
 
 export const KIT_GROUPS = ["Hair & make-up", "Paper & printing", "Camera & sound", "People & comfort", "Wardrobe", "Loading & parking"] as const;
 
 const start = (group: string, labels: string[], suggested = false) =>
   labels.map((label, i) => ({
     id: `${group.toLowerCase().replace(/[^a-z]+/g, "-")}-${suggested ? "s" : "a"}${i}`,
-    group, label, checked: false, custom: false, removed: false, suggested,
+    group, label, checked: false, custom: false, removed: false, suggested, owner: "",
   }));
 
 /** The starting list: what was asked for, then suggestions. */
@@ -45,16 +53,28 @@ export const DEFAULT_KIT: KitItem[] = [
   ...start("Loading & parking", ["Cart or dolly for the gear", "The contractor's loading-dock details"], true),
 ];
 
-/** Saved state over the starting list; anything unreadable is dropped. */
-export function mergeKit(raw: string | null | undefined): KitItem[] {
+/**
+ * Saved state over the starting list; anything unreadable is dropped.
+ * Reads both the old shape (a bare list of items) and the new one
+ * ({ items, owners }).
+ */
+export function mergeKit(raw: string | null | undefined): KitState {
   let saved: KitItem[] = [];
+  let owners = DEFAULT_OWNERS;
   try {
-    const arr = raw ? JSON.parse(raw) : [];
-    if (Array.isArray(arr)) saved = arr.flatMap((x) => { const r = KitItemSchema.safeParse(x); return r.success ? [r.data] : []; });
+    const parsed = raw ? JSON.parse(raw) : [];
+    const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+    saved = list.flatMap((x: unknown) => { const r = KitItemSchema.safeParse(x); return r.success ? [r.data] : []; });
+    if (!Array.isArray(parsed) && Array.isArray(parsed?.owners)) {
+      owners = parsed.owners.filter((o: unknown): o is string => typeof o === "string" && o.trim().length > 0).slice(0, 20);
+    }
   } catch { /* nothing saved that can be read */ }
   const byId = new Map(saved.map((i) => [i.id, i]));
-  return [
-    ...DEFAULT_KIT.map((d) => { const s = byId.get(d.id); return s ? { ...d, checked: s.checked, removed: s.removed, label: s.label } : d; }),
-    ...saved.filter((s) => s.custom),
-  ];
+  return {
+    owners,
+    items: [
+      ...DEFAULT_KIT.map((d) => { const s = byId.get(d.id); return s ? { ...d, checked: s.checked, removed: s.removed, label: s.label, owner: s.owner } : d; }),
+      ...saved.filter((s) => s.custom),
+    ],
+  };
 }

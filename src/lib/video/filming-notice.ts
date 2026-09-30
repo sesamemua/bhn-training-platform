@@ -104,6 +104,9 @@ export function mergeSigns(builtIn: Sign[], saved: Sign[]): Sign[] {
   ];
 }
 
+/** The University of Toronto signature with the Leslie Dan Faculty of Pharmacy — official lockup, on white only. */
+const UOFT_PHARMACY_LOGO = "/uoft-pharmacy-logo.png";
+
 /**
  * The photo, video & audio release, one per person. The consent wording,
  * project, date, place and contact line are editable; the tick boxes, the
@@ -116,8 +119,10 @@ export function releaseHtml(n: Notice, opts: { print?: boolean; preview?: boolea
 * { box-sizing: border-box; margin: 0 }
 html, body { background: #fff; color: #111; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact }
 .page { width: 8.5in; height: 11in; padding: .6in .7in; display: flex; flex-direction: column; margin: 0 auto; font-size: 10.5pt; line-height: 1.45 }
-.top { display: flex; justify-content: space-between; align-items: flex-start; gap: .3in }
-.top img { height: .55in; width: auto }
+.logos { display: flex; justify-content: space-between; align-items: center; gap: .4in; padding-bottom: .16in; border-bottom: 1px solid #ddd }
+.logos .uoft { height: .62in; width: auto }
+.logos .bhn { height: .5in; width: auto }
+.top { margin-top: .2in }
 h1 { font-size: 20pt; line-height: 1.1; font-weight: 800; color: #1f4b5b }
 .meta { margin-top: .08in; color: #333 }
 .meta strong { color: #111 }
@@ -130,16 +135,13 @@ h1 { font-size: 20pt; line-height: 1.1; font-weight: 800; color: #1f4b5b }
 .f.wide { grid-column: span 2 }
 .f .rule { height: .32in; border-bottom: 1.2px solid #111 }
 .f .lab { font-size: 8.5pt; color: #555; margin-top: .03in }
-.minor { margin-top: .25in; padding: .12in .15in; border: 1px solid #bbb; border-radius: .06in }
-.minor h2 { font-size: 10pt; font-weight: 700 }
-.minor .fields { margin-top: .12in }
 .contact { margin-top: .2in; font-weight: 600; color: #1f4b5b }
 .privacy { margin-top: auto; font-size: 7.5pt; line-height: 1.4; color: #555 }
 ${opts.preview ? "" : "@media screen { body { padding: .25in 0; background: #e6e6e6 } .page { box-shadow: 0 1px 8px rgba(0,0,0,.2); background: #fff } }"}
 </style></head><body><div class="page">
-<div class="top"><div><h1>${esc(n.headline)}</h1>
+<div class="logos"><img class="uoft" src="${esc(UOFT_PHARMACY_LOGO)}" alt="University of Toronto — Leslie Dan Faculty of Pharmacy"><img class="bhn" src="${esc(n.logoUrl)}" alt="BioHubNet"></div>
+<div class="top"><h1>${esc(n.headline)}</h1>
 <p class="meta"><strong>${esc(n.subhead)}</strong>${n.when ? ` · ${esc(n.when)}` : ""}${n.where ? `<br>${esc(n.where)}` : ""}</p></div>
-<img src="${esc(n.logoUrl)}" alt="BioHubNet"></div>
 <p class="consent">${lines(n.message)}</p>
 <div class="ticks">
 <p class="tick"><span class="box"></span><span>I agree to be <strong>photographed</strong> and <strong>filmed</strong>, including my <strong>voice</strong>.</span></p>
@@ -150,8 +152,6 @@ ${line("Full name (please print)")}${line("Email")}
 ${line("Programme, organisation or role")}${line("Date")}
 ${line("Signature", true)}
 </div>
-<div class="minor"><h2>If you are under 18 — a parent or guardian signs too</h2>
-<div class="fields">${line("Parent or guardian's name")}${line("Date")}${line("Parent or guardian's signature", true)}</div></div>
 <p class="contact">${esc(n.thanks)}</p>
 <p class="privacy">The personal information on this form is collected under the authority of the University of Toronto Act, 1971, to keep a record of your consent and to contact you about it. It is protected in accordance with Ontario's Freedom of Information and Protection of Privacy Act. Questions about it can go to the contact above.</p>
 </div>${opts.print ? `<script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 300); });</script>` : ""}</body></html>`;

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18e";
+export const TOUR_VERSION = "2026.10.18f";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -144,12 +144,12 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "video.logistics",
     title: "Packing list for the shoot",
-    body: "The **Logistics** tab in a video project is the list of what to bring \u2014 tick things off as they are packed, add what is missing, print it. **Printout** also has the release form and a windshield loading notice.",
+    body: "The **Logistics** tab in a video project is the list of what to bring, as a board \u2014 drag items onto the person bringing them, tick them off as they are packed, add what is missing, print it. **Printout** also has the release form and a windshield loading notice.",
     path: "/admin/workspace/marketing/video",
     placement: "center",
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
-    since: "2026.10.18b",
+    since: "2026.10.18f",
   },
   {
     id: "training-admin.getting-here",

@@ -27,7 +27,8 @@ test("saved signs: edits laid over the built-in ones, custom ones after, junk dr
 test("the release form and the write-in line", async () => {
   const { printableHtml } = await import("../../src/lib/video/filming-notice");
   const n = { headline: "Release", subhead: "Promo", when: "", where: "", message: "I agree", thanks: "Ask us", logoUrl: "/l.png" };
-  assert.ok(printableHtml("release", n).includes("Parent or guardian"));
+  assert.ok(printableHtml("release", n).includes("Leslie Dan Faculty of Pharmacy"));
+  assert.ok(!printableHtml("release", n).includes("guardian"));
   assert.ok(printableHtml("sign", { ...n, writeIn: "Call or text:" }).includes("Call or text:"));
   assert.ok(!printableHtml("sign", n).includes('class="writein"'));
 });

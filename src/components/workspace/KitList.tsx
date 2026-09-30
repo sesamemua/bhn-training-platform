@@ -1,22 +1,30 @@
 "use client";
 
 /**
- * The packing list for a shoot day. Tick an item as it goes in the bag;
- * add what is missing under any heading; take off what is not needed.
- * Suggestions (not on the list the team asked for) are marked. Saves on
- * its own a moment after each change.
+ * The packing list for a shoot day, as a board: one column per person
+ * bringing things, and one for what nobody has taken yet. Drag an item
+ * card onto a person to hand it to them; drag a person's name onto
+ * another to reorder the columns. Tick an item as it goes in the bag,
+ * add what is missing, take off what is not needed — suggestions
+ * included. Saves on its own a moment after each change.
  */
 import { useEffect, useRef, useState } from "react";
-import { Check, Loader2, Plus, Printer, RotateCcw, X } from "lucide-react";
-import { KIT_GROUPS, type KitItem } from "@/lib/video/kit";
+import { Check, GripVertical, Loader2, Plus, Printer, RotateCcw, UserPlus, X } from "lucide-react";
+import { KIT_GROUPS, type KitItem, type KitState } from "@/lib/video/kit";
 import { saveKit } from "@/lib/video/printout-actions";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 
+const ITEM = "application/x-kit-item";
+const OWNER = "application/x-kit-owner";
+const NOBODY = "";
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-export function KitList({ projectId, initial }: { projectId: string; initial: KitItem[] }) {
-  const [items, setItems] = useState(initial);
+export function KitList({ projectId, initial }: { projectId: string; initial: KitState }) {
+  const [items, setItems] = useState(initial.items);
+  const [owners, setOwners] = useState(initial.owners);
   const [status, setStatus] = useState<"saved" | "saving" | "error">("saved");
-  const [adding, setAdding] = useState<Record<string, string>>({});
+  const [over, setOver] = useState<string | null>(null);
+  const [newOwner, setNewOwner] = useState("");
   const [blocked, setBlocked] = useState(false);
 
   const first = useRef(true);
@@ -24,41 +32,57 @@ export function KitList({ projectId, initial }: { projectId: string; initial: Ki
     if (first.current) { first.current = false; return; }
     setStatus("saving");
     const t = setTimeout(() => {
-      saveKit(projectId, items).then((r) => setStatus(r.ok ? "saved" : "error")).catch(() => setStatus("error"));
+      saveKit(projectId, { items, owners }).then((r) => setStatus(r.ok ? "saved" : "error")).catch(() => setStatus("error"));
     }, 600);
     return () => clearTimeout(t);
-  }, [items, projectId]);
+  }, [items, owners, projectId]);
 
   const set = (id: string, patch: Partial<KitItem>) => setItems((all) => all.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   const remove = (i: KitItem) => (i.custom ? setItems((all) => all.filter((x) => x.id !== i.id)) : set(i.id, { removed: true }));
-  const add = (group: string) => {
-    const label = (adding[group] ?? "").trim();
-    if (!label) return;
-    setItems((all) => [...all, { id: `c-${Date.now().toString(36)}`, group, label, checked: false, custom: true, removed: false, suggested: false }]);
-    setAdding((a) => ({ ...a, [group]: "" }));
-  };
-
-  const live = items.filter((i) => !i.removed);
-  const packed = live.filter((i) => i.checked).length;
+  const live = items.filter((i) => !i.removed && (i.owner === NOBODY || owners.includes(i.owner)));
+  const orphaned = items.filter((i) => !i.removed && i.owner !== NOBODY && !owners.includes(i.owner));
+  const packed = items.filter((i) => !i.removed && i.checked).length;
+  const total = items.filter((i) => !i.removed).length;
   const takenOff = items.filter((i) => i.removed).length;
-  const groups = [...KIT_GROUPS, ...new Set(items.map((i) => i.group).filter((g) => !(KIT_GROUPS as readonly string[]).includes(g)))];
+  const columns = [NOBODY, ...owners];
+
+  function dropOn(e: React.DragEvent, owner: string) {
+    e.preventDefault();
+    setOver(null);
+    const itemId = e.dataTransfer.getData(ITEM);
+    if (itemId) { set(itemId, { owner }); return; }
+    const moving = e.dataTransfer.getData(OWNER);
+    if (moving && owner && moving !== owner) {
+      setOwners((all) => { const rest = all.filter((o) => o !== moving); const at = rest.indexOf(owner); rest.splice(at, 0, moving); return rest; });
+    }
+  }
+  function addOwner() {
+    const name = newOwner.trim();
+    if (!name || owners.some((o) => o.toLowerCase() === name.toLowerCase())) return;
+    setOwners((all) => [...all, name]);
+    setNewOwner("");
+  }
+  function removeOwner(name: string) {
+    setOwners((all) => all.filter((o) => o !== name));
+    setItems((all) => all.map((i) => (i.owner === name ? { ...i, owner: NOBODY } : i)));
+  }
 
   function print() {
     const w = window.open("", "_blank");
     if (!w) return setBlocked(true);
     setBlocked(false);
-    const body = groups.map((g) => {
-      const list = live.filter((i) => i.group === g);
+    const body = columns.map((o) => {
+      const list = live.filter((i) => i.owner === o);
       if (!list.length) return "";
-      return `<h2>${esc(g)}</h2><ul>${list.map((i) => `<li><span class="box">${i.checked ? "✓" : ""}</span>${esc(i.label)}</li>`).join("")}</ul>`;
+      return `<h2>${o ? esc(o) : "Not assigned yet"}</h2><ul>${list.map((i) => `<li><span class="box">${i.checked ? "✓" : ""}</span>${esc(i.label)} <em>${esc(i.group)}</em></li>`).join("")}</ul>`;
     }).join("");
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>What to bring</title><style>
 @page { size: letter portrait; margin: .6in }
 body { font: 11pt/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #111; columns: 2; column-gap: .4in }
-h1 { column-span: all; font-size: 18pt; margin: 0 0 .15in } h2 { font-size: 11pt; margin: .18in 0 .05in; break-after: avoid; color: #1f4b5b }
-ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; padding: .03in 0; break-inside: avoid }
+h1 { column-span: all; font-size: 18pt; margin: 0 0 .15in } h2 { font-size: 11.5pt; margin: .18in 0 .05in; break-after: avoid; color: #1f4b5b }
+ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; padding: .03in 0; break-inside: avoid } em { color: #888; font-size: 8.5pt; font-style: normal; margin-left: auto }
 .box { display: inline-grid; place-items: center; width: .16in; height: .16in; border: 1.3px solid #111; font-size: 9pt; flex-shrink: 0; margin-top: .02in }
-</style></head><body><h1>What to bring — ${packed} of ${live.length} packed</h1>${body}
+</style></head><body><h1>What to bring — ${packed} of ${total} packed</h1>${body}
 <script>window.addEventListener("load", function () { setTimeout(function () { window.print(); }, 200); });</script></body></html>`);
     w.document.close();
   }
@@ -69,11 +93,11 @@ ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; pa
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-bold text-fg">What to bring</p>
           <p className="text-[12.5px] text-muted">
-            <strong className="text-fg">{packed}</strong> of {live.length} packed
+            <strong className="text-fg">{packed}</strong> of {total} packed · drag a card onto a person to hand it to them
             {takenOff > 0 && <> · {takenOff} taken off</>}
           </p>
           <div className="mt-1.5 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-elevated">
-            <div className="h-full rounded-full bg-emerald-500 transition-[width]" style={{ width: `${live.length ? (packed / live.length) * 100 : 0}%` }} />
+            <div className="h-full rounded-full bg-emerald-500 transition-[width]" style={{ width: `${total ? (packed / total) * 100 : 0}%` }} />
           </div>
         </div>
         <span className="inline-flex items-center gap-1 text-[11.5px] text-subtle" role="status">
@@ -92,18 +116,42 @@ ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; pa
         {blocked && <p role="alert" className="basis-full text-[12px] font-semibold text-amber-600">Your browser blocked the print window. Allow pop-ups for this site, then try again.</p>}
       </div>
 
-      <div className="columns-1 gap-4 md:columns-2 xl:columns-3">
-        {groups.map((g) => {
-          const list = live.filter((i) => i.group === g);
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {columns.map((o) => {
+          const list = [...live.filter((i) => i.owner === o), ...(o === NOBODY ? orphaned : [])];
+          const mine = list.filter((i) => i.checked).length;
           return (
-            <section key={g} className="mb-4 break-inside-avoid rounded-xl border border-line bg-card p-3">
-              <p className="flex items-baseline justify-between text-[13px] font-bold text-fg">
-                {g}
-                <span className="text-[11px] font-normal text-subtle">{list.filter((i) => i.checked).length}/{list.length}</span>
-              </p>
-              <ul className="mt-1.5 space-y-0.5">
+            <section
+              key={o || "nobody"}
+              onDragOver={(e) => { if (e.dataTransfer.types.includes(ITEM) || (o && e.dataTransfer.types.includes(OWNER))) { e.preventDefault(); setOver(o || "nobody"); } }}
+              onDragLeave={() => setOver((x) => (x === (o || "nobody") ? null : x))}
+              onDrop={(e) => dropOn(e, o)}
+              className={`flex w-72 shrink-0 flex-col rounded-xl border p-2.5 transition-colors ${
+                over === (o || "nobody") ? "border-brand-400 bg-brand-500/10" : o ? "border-line bg-card" : "border-dashed border-line bg-elevated/30"
+              }`}
+            >
+              <div
+                draggable={!!o}
+                onDragStart={(e) => { if (!o) return; e.dataTransfer.setData(OWNER, o); e.dataTransfer.effectAllowed = "move"; }}
+                className={`flex items-center gap-1.5 ${o ? "cursor-grab active:cursor-grabbing" : ""}`}
+              >
+                {o && <GripVertical size={13} className="text-subtle" aria-hidden />}
+                <p className="min-w-0 flex-1 truncate text-[13.5px] font-bold text-fg">{o || "Not assigned yet"}</p>
+                <span className="text-[11px] tabular-nums text-subtle">{mine}/{list.length}</span>
+                {o && (
+                  <ConfirmPopover message={`Take ${o} off the list?`} detail="Their items go back to Not assigned yet." confirmLabel="Remove" tone="danger" onConfirm={() => removeOwner(o)}>
+                    {(open) => <button type="button" onClick={open} aria-label={`Remove ${o}`} className="rounded p-0.5 text-subtle hover:text-rose-500"><X size={13} /></button>}
+                  </ConfirmPopover>
+                )}
+              </div>
+              <ul className="mt-2 flex-1 space-y-1">
                 {list.map((i) => (
-                  <li key={i.id} className="group flex items-start gap-2 rounded-md px-1 py-1 hover:bg-elevated/50">
+                  <li
+                    key={i.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.setData(ITEM, i.id); e.dataTransfer.effectAllowed = "move"; }}
+                    className="group flex cursor-grab items-start gap-2 rounded-lg border border-line bg-card-solid px-2 py-1.5 active:cursor-grabbing"
+                  >
                     <input
                       id={`kit-${i.id}`}
                       type="checkbox"
@@ -111,33 +159,50 @@ ul { list-style: none; padding: 0; margin: 0 } li { display: flex; gap: .1in; pa
                       onChange={(e) => set(i.id, { checked: e.target.checked })}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600"
                     />
-                    <label htmlFor={`kit-${i.id}`} className={`min-w-0 flex-1 cursor-pointer text-[12.5px] leading-snug ${i.checked ? "text-subtle line-through" : "text-fg"}`}>
-                      {i.label}
-                      {i.suggested && <span className="ml-1.5 rounded bg-sky-500/12 px-1 text-[9.5px] font-semibold uppercase tracking-wide text-sky-700 no-underline">suggested</span>}
+                    <label htmlFor={`kit-${i.id}`} className="min-w-0 flex-1 cursor-pointer leading-snug">
+                      <span className={`text-[12.5px] ${i.checked ? "text-subtle line-through" : "text-fg"}`}>{i.label}</span>
+                      <span className="mt-0.5 flex flex-wrap gap-1 text-[9.5px]">
+                        <span className="rounded bg-elevated px-1 text-subtle">{i.group}</span>
+                        {i.suggested && <span className="rounded bg-sky-500/12 px-1 font-semibold uppercase tracking-wide text-sky-700">suggested</span>}
+                      </span>
                     </label>
                     <button type="button" onClick={() => remove(i)} aria-label={`Take “${i.label}” off the list`} className="shrink-0 rounded p-0.5 text-subtle opacity-0 hover:text-rose-500 group-hover:opacity-100 focus:opacity-100">
                       <X size={12} />
                     </button>
                   </li>
                 ))}
+                {list.length === 0 && <li className="rounded-lg border border-dashed border-line px-2 py-4 text-center text-[11.5px] text-subtle">Drag items here</li>}
               </ul>
-              <form className="mt-1.5 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); add(g); }}>
-                <input
-                  id={`kit-add-${g}`}
-                  value={adding[g] ?? ""}
-                  onChange={(e) => setAdding((a) => ({ ...a, [g]: e.target.value }))}
-                  placeholder="Add something…"
-                  maxLength={120}
-                  className="min-w-0 flex-1 rounded-md border border-line bg-card-solid px-2 py-1 text-[12px] text-fg focus:border-brand-400 focus:outline-none"
-                />
-                <button type="submit" aria-label={`Add to ${g}`} disabled={!(adding[g] ?? "").trim()} className="rounded-md border border-line px-2 text-muted hover:text-fg disabled:opacity-40">
-                  <Plus size={13} />
-                </button>
-              </form>
+              <AddItem onAdd={(label, group) => setItems((all) => [...all, { id: `c-${Date.now().toString(36)}`, group, label, checked: false, custom: true, removed: false, suggested: false, owner: o }])} />
             </section>
           );
         })}
+        <form
+          onSubmit={(e) => { e.preventDefault(); addOwner(); }}
+          className="flex w-56 shrink-0 flex-col gap-1.5 self-start rounded-xl border border-dashed border-line p-2.5"
+        >
+          <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-muted"><UserPlus size={13} /> Add a person</p>
+          <input id="kit-new-owner" value={newOwner} onChange={(e) => setNewOwner(e.target.value)} placeholder="Name" maxLength={60} className="rounded-md border border-line bg-card-solid px-2 py-1 text-[12.5px] text-fg focus:border-brand-400 focus:outline-none" />
+          <button type="submit" disabled={!newOwner.trim()} className="rounded-md bg-brand-600 px-2 py-1 text-[12px] font-semibold text-white hover:bg-brand-700 disabled:opacity-40">Add</button>
+        </form>
       </div>
     </div>
+  );
+}
+
+function AddItem({ onAdd }: { onAdd: (label: string, group: string) => void }) {
+  const [label, setLabel] = useState("");
+  const [group, setGroup] = useState<string>(KIT_GROUPS[0]);
+  return (
+    <form
+      className="mt-2 flex flex-wrap gap-1"
+      onSubmit={(e) => { e.preventDefault(); if (!label.trim()) return; onAdd(label.trim(), group); setLabel(""); }}
+    >
+      <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Add something…" maxLength={120} aria-label="Item" className="min-w-0 flex-1 rounded-md border border-line bg-card-solid px-2 py-1 text-[12px] text-fg focus:border-brand-400 focus:outline-none" />
+      <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label="Kind" className="rounded-md border border-line bg-card-solid px-1 py-1 text-[11px] text-muted">
+        {KIT_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+      </select>
+      <button type="submit" aria-label="Add" disabled={!label.trim()} className="rounded-md border border-line px-2 text-muted hover:text-fg disabled:opacity-40"><Plus size={13} /></button>
+    </form>
   );
 }

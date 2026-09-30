@@ -10,16 +10,24 @@ test("saved state is laid over the starting list, and custom items follow", () =
     { ...DEFAULT_KIT[1], removed: true },
     { id: "c1", group: "Paper & printing", label: "Stapler", checked: false, custom: true },
     { id: "", group: "", label: "", checked: false, custom: true },
-  ]));
+  ])).items;
   assert.equal(merged[0].checked, true);
   assert.equal(merged[1].removed, true);
   assert.equal(merged.at(-1)?.label, "Stapler");
   assert.equal(merged.length, DEFAULT_KIT.length + 1);
-  assert.equal(mergeKit("junk").length, DEFAULT_KIT.length);
+  assert.equal(mergeKit("junk").items.length, DEFAULT_KIT.length);
 });
 
 test("the starting list keeps what was asked for, and marks suggestions", () => {
   assert.ok(DEFAULT_KIT.some((i) => i.label === "Lint roller" && !i.suggested));
   assert.ok(DEFAULT_KIT.some((i) => i.label.startsWith("Release forms") && i.suggested));
   assert.equal(new Set(DEFAULT_KIT.map((i) => i.id)).size, DEFAULT_KIT.length);
+});
+
+test("owners: the new shape keeps who brings what; the old shape gets the default people", () => {
+  const first = DEFAULT_KIT[0];
+  const state = mergeKit(JSON.stringify({ items: [{ ...first, owner: "Alison" }], owners: ["Alison", "Ruilin", "Darek"] }));
+  assert.deepEqual(state.owners, ["Alison", "Ruilin", "Darek"]);
+  assert.equal(state.items[0].owner, "Alison");
+  assert.deepEqual(mergeKit(JSON.stringify([first])).owners, ["Alison", "Ruilin"]);
 });

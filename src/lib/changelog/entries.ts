@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Logistics: hand items to people; release form with the U of T Pharmacy signature",
+    body: "The **Logistics** packing list is now a board with a column for each person bringing things \u2014 **Alison** and **Ruilin** to start \u2014 and one for what nobody has taken yet. **Drag a card onto a person** to hand it to them, drag a person\u2019s name to reorder the columns, and **Add a person** for anyone else. Every item \u2014 suggestions included \u2014 can be ticked, taken off, or added to any column. The printed list is grouped by person.\n\nThe **release form** now carries the **University of Toronto \u2014 Leslie Dan Faculty of Pharmacy** signature beside the BioHubNet logo, and the under-18 guardian section is gone.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "No more pop-up windows: questions open beside the button you pressed",
     body: "Everywhere on the platform, the browser\u2019s own pop-up boxes \u2014 \u201cAre you sure?\u201d, \u201cOK\u201d notices, \u201cType a name\u201d prompts \u2014 and the centred dialogs that dimmed the page are gone. The same question now opens as a small card **right beside the button you pressed**: confirm or cancel there, press **Esc** or click anywhere else to cancel, and type straight into it when it needs a name. Error notices that used to pop up now appear as text next to the thing that failed.",
     kind: "improvement",

@@ -8,7 +8,7 @@
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SignsSchema, printoutsKey } from "@/lib/video/filming-notice";
-import { KitSchema, kitKey } from "@/lib/video/kit";
+import { KitStateSchema, kitKey } from "@/lib/video/kit";
 import { PrepSchema, prepKey } from "@/lib/video/prep";
 
 export async function savePrintouts(projectId: string, signs: unknown): Promise<{ ok: boolean; error?: string }> {
@@ -23,10 +23,10 @@ export async function savePrintouts(projectId: string, signs: unknown): Promise<
   return { ok: true };
 }
 
-/** Save a project's kit list — ticks, removals and added items. */
-export async function saveKit(projectId: string, items: unknown): Promise<{ ok: boolean; error?: string }> {
+/** Save a project's kit list — ticks, removals, added items, and who brings what. */
+export async function saveKit(projectId: string, state: unknown): Promise<{ ok: boolean; error?: string }> {
   await requireRole("admin");
-  const p = KitSchema.safeParse(items);
+  const p = KitStateSchema.safeParse(state);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "That list could not be saved." };
   const project = await prisma.videoProject.findUnique({ where: { id: projectId }, select: { id: true } });
   if (!project) return { ok: false, error: "That project no longer exists." };
