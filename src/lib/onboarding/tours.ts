@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18g";
+export const TOUR_VERSION = "2026.10.18h";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "training-admin.mailbox",
+    title: "The mailbox",
+    body: "Each decision sends an envelope into the **mailbox** at the top. Open it to see one letter per person — what it says, a preview — and send them when you're ready. Nothing goes until you press Send.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.18h",
   },
   {
     id: "training-admin.distance-email",

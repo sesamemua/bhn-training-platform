@@ -21,7 +21,7 @@ import {
 } from "@/lib/allocation/model";
 import { suggestSeats, type ApplicantInfo } from "@/lib/allocation/applicants";
 import {
-  applySeatSuggestions, createWorkshop, sendLetters, loadEmailTemplates, previewAudience,
+  applySeatSuggestions, createWorkshop, loadEmailTemplates, previewAudience,
   removeWorkshop, resetEmailTemplate, saveEmailTemplate, saveRules, saveSupportFormUrl,
   sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
@@ -44,6 +44,7 @@ import type { InternalPerson } from "@/lib/training-week/internal";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { RegistrantViews } from "./RegistrantViews";
 import { RegistrationsWithoutSeats } from "./RegistrationDetail";
+import { LetterMailbox, queueLetterFx } from "./LetterMailbox";
 import { CateringTab } from "./CateringTab";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TravelTab } from "./TravelTab";
@@ -105,6 +106,8 @@ export function TrainingAdmin({
 
   return (
     <div className="mt-6">
+      {/* Floats at the top of every tab: decisions fly into it, and it is where letters are sent from. */}
+      <LetterMailbox />
       <p className="text-[12.5px] text-muted">{eventTitle}</p>
       <nav className="mt-3 flex flex-wrap gap-1 border-b border-line">
         {TABS.map((t) => (
@@ -655,7 +658,6 @@ export function SeatSuggestions({ rules, workshops }: { rules: Rule[]; workshops
           The saved decision model can&apos;t allocate yet: {verdict.problem} Fix it on the Decision model tab.
         </p>
       )}
-      <LetterQueue workshops={workshops} />
       {rooms.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">
           Nobody has registered yet. Each workshop&apos;s ranking and suggestions appear here as registrations come in.
@@ -691,8 +693,9 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
     setSaid(null);
     start(async () => {
       const r = await applySeatSuggestions(w.id, approve, waitlist);
+      if (r.ok && (r.approved || r.waitlisted)) queueLetterFx();
       setSaid(r.ok
-        ? `Approved ${r.approved}, waitlisted ${r.waitlisted}. Letters are waiting to be sent.`
+        ? `Approved ${r.approved}, waitlisted ${r.waitlisted}. Their letters are in the mailbox, waiting to be sent.`
           + (r.skipped ? ` ${r.skipped} skipped — already decided elsewhere.` : "")
         : r.problem ?? "Nothing was applied.");
     });
@@ -977,72 +980,12 @@ function NewWorkshop({ eventId, onDone }: { eventId: string; onDone: () => void 
 // ── registrants ──────────────────────────────────────────────────────
 
 /**
- * The letters owed: decisions taken but not yet emailed. Pick one
- * workshop or all of them, see how many, send. Confirmed before it runs,
- * because it writes to people.
- */
-function LetterQueue({ workshops }: { workshops: AdminWorkshop[] }) {
-  const [scope, setScope] = useState<string>("all");
-  const [pending, start] = useTransition();
-  const [said, setSaid] = useState<string | null>(null);
-  const { confirmDialog, node: confirmNode } = useConfirmDialog();
-  const owed = (w: AdminWorkshop) => w.bookings.filter((b) => b.letterOwed).length;
-  const total = workshops.reduce((n, w) => n + owed(w), 0);
-  const picked = scope === "all" ? null : workshops.find((w) => w.id === scope) ?? null;
-  const count = picked ? owed(picked) : total;
-
-  async function send() {
-    const where = picked ? `for ${picked.title}` : "across all workshops";
-    if (!(await confirmDialog({
-      title: `Send ${count} letter${count === 1 ? "" : "s"} ${where}?`,
-      description: "Each person gets the letter for their seat's current decision.",
-      confirmLabel: "Send",
-      tone: "warning",
-    }))) return;
-    setSaid(null);
-    start(async () => {
-      const r = await sendLetters(picked ? { workshopId: picked.id } : {});
-      setSaid(r.ok
-        ? `Sent ${r.sent}.` + (r.notSent ? ` ${r.notSent} did not go out — they stay in the queue; open the registration to see why.` : "")
-        : r.problem ?? "Nothing was sent.");
-    });
-  }
-
-  return (
-    <section className={`${CARD} flex flex-wrap items-center gap-3`}>
-      <Mail size={16} className="text-muted" />
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-bold text-fg">
-          Letters · {total === 0 ? "nothing waiting" : `${total} decision${total === 1 ? "" : "s"} not emailed yet`}
-        </p>
-        <p className="text-[11.5px] text-muted">Deciding a seat no longer emails anyone. Send the letters here — for one workshop or all — or one by one from each registration.</p>
-      </div>
-      <select
-        aria-label="Which workshop's letters"
-        value={scope}
-        onChange={(e) => setScope(e.target.value)}
-        className="rounded-md border border-line bg-elevated px-2 py-1.5 text-[12.5px] text-fg"
-      >
-        <option value="all">All workshops ({total})</option>
-        {workshops.map((w) => <option key={w.id} value={w.id}>{w.title} ({owed(w)})</option>)}
-      </select>
-      <button type="button" onClick={send} disabled={pending || count === 0} className={PRIMARY}>
-        {pending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />} Send {count} letter{count === 1 ? "" : "s"}
-      </button>
-      {said && <p role="status" className="basis-full text-[12px] text-fg">{said}</p>}
-      {confirmNode}
-    </section>
-  );
-}
-
-/**
  * Registrants: the letters owed, the list seen through a view (built-in
  * or saved), and below it each registration with its seats to decide.
  */
 function Registrants({ workshops, views }: { workshops: AdminWorkshop[]; views: View[] }) {
   return (
     <div className="space-y-5">
-      <LetterQueue workshops={workshops} />
       <RegistrantViews workshops={workshops} initialViews={views} />
       <RegistrationsWithoutSeats />
     </div>

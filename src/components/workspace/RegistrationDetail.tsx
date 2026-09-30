@@ -10,8 +10,9 @@ import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useState, useTransition } from "react";
 import { Check, ChevronDown, Loader2, Mail } from "lucide-react";
 import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
-import { decideSeat, deleteSubmission, draftDistanceCheck, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendSeatLetter } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { decideSeat, deleteSubmission, draftDistanceCheck, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendPersonLetterFor } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { AnchoredCard } from "@/components/ui/AnchoredCard";
+import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import type { SubmissionRow } from "@/lib/allocation/admin-types";
 import { DECISION_LABEL, type Decision } from "@/lib/allocation/decisions";
 import { receiptLine } from "@/lib/formbuilder/receipt";
@@ -111,7 +112,7 @@ export function RegistrationDetail({ sub, onChanged, where }: {
         <div className="min-w-0 space-y-1.5">
           <NoMailPromise />
           {sub.seats.map((s) => (
-            <Seat key={s.id} seat={s} who={who} onDone={onChanged} />
+            <Seat key={s.id} seat={s} who={who} registrationId={sub.id} onDone={onChanged} />
           ))}
         </div>
       )}
@@ -205,7 +206,7 @@ function NoMailPromise() {
       <p className="mt-0.5">
         A decision is saved and the seat shows{" "}
         <span className="rounded bg-amber-500/15 px-1 font-semibold text-amber-700">Letter not sent</span>.
-        Nobody hears anything until you press <strong>Send letter</strong>, which asks you first. Change your mind as often as you like before then.
+        Their letter waits in the <strong>mailbox</strong> at the top — one email per person, covering every session of theirs — and nobody hears anything until you send it. Change your mind as often as you like before then.
       </p>
       <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-sky-900/80">
         {(["confirmed", "waitlist", "cancelled", "pending"] as const).map((d) => (
@@ -231,7 +232,7 @@ function NoMailPromise() {
  * optional note side by side. The note used to take a full-width line
  * of its own on every seat, used by almost nobody.
  */
-function Seat({ seat, who, onDone }: { seat: SubmissionRow["seats"][number]; who: string; onDone: () => void }) {
+function Seat({ seat, who, registrationId, onDone }: { seat: SubmissionRow["seats"][number]; who: string; registrationId: string; onDone: () => void }) {
   const [note, setNote] = useState(seat.note ?? "");
   const [noteOpen, setNoteOpen] = useState(Boolean(seat.note));
   const [said, setSaid] = useState<string | null>(null);
@@ -245,16 +246,19 @@ function Seat({ seat, who, onDone }: { seat: SubmissionRow["seats"][number]; who
       const r = await decideSeat(seat.id, to, note);
       setSaid(
         !r.ok ? r.problem ?? "Could not record that."
-        : r.letterOwed ? `${r.said ?? "Saved"} — saved. Nobody has been emailed.`
+        : r.letterOwed ? `${r.said ?? "Saved"} — saved. Their letter waits in the mailbox; nobody has been emailed.`
         : `${r.said ?? "Saved"} — saved. Nothing to send: it matches what they were last told.`,
       );
+      // A letter is now owed: it flies into the mailbox.
+      if (r.ok && r.letterOwed) queueLetterFx(); else lettersChanged();
       setMail(null);
       onDone();
     });
-  const letterLabel = seat.status === "pending" ? "Not decided" : DECISION_LABEL[seat.status as Decision] ?? seat.status;
   const send = () => {
     start(async () => {
-      const r = await sendSeatLetter(seat.id);
+      // Their ONE letter: every session of theirs with news, not just this one.
+      const r = await sendPersonLetterFor(registrationId);
+      lettersChanged();
       // What happened to the letter, said out loud. A coordinator told
       // it went out when it did not will never follow up.
       setMail(r.receipt ? receiptLine(r.receipt) : r.problem ?? "Nothing to send — they already know.");
@@ -304,11 +308,11 @@ function Seat({ seat, who, onDone }: { seat: SubmissionRow["seats"][number]; who
         {seat.letterOwed ? (
           <span className="inline-flex items-center gap-1.5">
             <span className="rounded bg-amber-500/12 px-1.5 py-0.5 font-bold text-amber-600">Letter not sent</span>
-            <ConfirmPopover message={`Email ${who} now?`} detail={`They get the “${letterLabel}” letter for ${seat.workshop}.`} confirmLabel="Send" align="start" onConfirm={send}>
+            <ConfirmPopover message={`Email ${who} now?`} detail="One email covering every session of theirs with news — this one included." confirmLabel="Send" align="start" onConfirm={send}>
               {(open) => (
                 <button type="button" onClick={open} disabled={pending}
                   className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 font-semibold text-fg hover:bg-elevated disabled:opacity-40">
-                  <Mail size={11} /> Send letter
+                  <Mail size={11} /> Send their letter
                 </button>
               )}
             </ConfirmPopover>

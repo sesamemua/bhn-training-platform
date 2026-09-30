@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: a floating mailbox, and one letter per person",
+    body: "Decisions still email nobody. Now, when you **approve, waitlist or decline** a seat \u2014 one at a time, in bulk, or from seat suggestions \u2014 an envelope flies into the **mailbox** floating at the top of the page, and its count goes up.\n\nOpen the mailbox to see **one row per person**: what their letter will say (Approved \u00b7 Waitlisted \u00b7 Declined, by session) and a **preview** of the email. **Send\u2026** one, or **Send all**, each asking once more before anything goes.\n\nEvery letter is now **one email per person**, covering every session of theirs with news \u2014 somebody approved for three sessions gets one email with all three, their pass and QR code, a calendar entry for each, and an *I can\u2019t make it* link per session \u2014 instead of three emails a minute apart. **Send their letter** on a registration, the bulk **Send letters owed**, and **Email them now** all send it the same way. Letters later on, such as *Can you still make it?* before a session, stay one per session.\n\nThe small *Letters \u00b7 Send 0 letters* bar is gone; the mailbox replaces it.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: Print job, with the scripts pulled live",
     body: "The **Printout** tab is now **Print job**. Below the signs and forms there is a **Scripts** printout: every tab of the project's scripts \u2014 Overview, Molly, Gilbert, Darius, each pillar lead, Year in Review \u2014 pulled **live from the Scripts page** each time you open it, laid out for reading on paper (a contents page, then each part on its own pages, the lines large and well spaced). Tick which parts to include, check the preview, and **Print or save as PDF**. Nothing is frozen: change a script, press **Pull the latest**, and the printout follows.",
     kind: "feature",

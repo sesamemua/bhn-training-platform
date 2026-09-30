@@ -248,7 +248,7 @@ export async function sendComposed(mail: SentMail): Promise<Receipt> {
  * gives that for free: a later decision on the same seat always has a
  * later `decidedAt`, so the number can only go up.
  */
-function calendarFor(about: {
+export function calendarFor(about: {
   to: string | null;
   name: string;
   session: string;
@@ -291,4 +291,34 @@ function calendarFor(about: {
     // filename.
     contentType: `text/calendar; charset=utf-8; method=${about.calendar === "remove" ? "CANCEL" : "REQUEST"}`,
   }];
+}
+
+/**
+ * One person's letter for a round of decisions (see person-letter.ts):
+ * the pass and its QR when a place is in it, and a calendar entry per
+ * session added or taken away.
+ */
+export async function sendPersonCombined(mail: {
+  to: string | null;
+  name: string;
+  subject: string;
+  body: string;
+  passLink?: string;
+  passToken?: string;
+  calendar: { seat: { bookingId: string; session: string; start: Date; end: Date; venue: string | null; bookedAt?: Date; decidedAt?: Date }; action: "add" | "remove" }[];
+}): Promise<Receipt> {
+  if (!mail.to) return { state: "no-address" };
+  const preview = { to: mail.to, subject: mail.subject.replace(/[\r\n]+/g, " ").trim(), body: mail.body };
+  if (!mailConfigured()) return { state: "not-configured", preview };
+  const qr = mail.passLink && mail.passToken ? withPassQr(preview.body, mail.passLink, mail.passToken) : null;
+  const calendars = mail.calendar.flatMap(({ seat, action }, i) =>
+    (calendarFor({ to: mail.to, name: mail.name, ...seat, calendar: action }) ?? []).map((a) => ({ ...a, filename: `training-week-${i + 1}.ics` })),
+  );
+  const attachments = [...calendars, ...(qr ? [qr.attachment] : [])];
+  try {
+    await sendMail({ to: mail.to, subject: preview.subject, text: preview.body, html: qr?.html, attachments: attachments.length ? attachments : undefined });
+    return { state: "sent", preview };
+  } catch (err) {
+    return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };
+  }
 }

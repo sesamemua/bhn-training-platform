@@ -8,6 +8,7 @@
  * page guard says who may SEE the tab and has no bearing on who may POST
  * to it.
  */
+import { personLetter, letterSummary, type LetterSeat } from "@/lib/allocation/person-letter";
 import { institutionOf } from "@/lib/travel/far-email";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
@@ -32,7 +33,7 @@ import { EntrySchema } from "@/lib/allocation/catering";
 import { CATERING_SENT_KEY, parseSent, recordSent, type SentRecord } from "@/lib/allocation/catering-sent";
 import { parseForm } from "@/lib/formbuilder/types";
 import { rankedSessions } from "@/lib/formbuilder/submit";
-import { personLetterDraft, sendComposed, sendDecisionLetter } from "@/lib/formbuilder/acknowledge";
+import { personLetterDraft, sendComposed, sendPersonCombined } from "@/lib/formbuilder/acknowledge";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import {
   describe as describeDecision, isDecision, letterDue, type Decision,
@@ -880,7 +881,8 @@ export async function applySeatSuggestions(
  *
  * Deciding no longer emails anyone. The seat now owes a letter (see
  * letterDue), sent when a coordinator chooses: one seat at a time, one
- * workshop, or everything owed at once (sendSeatLetter / sendLetters).
+ * person, the people behind a selection, or everyone owed at once — one
+ * letter per person (sendPersonLetterFor / sendAllPersonLetters).
  * Pass `send: true` to decide and send in one go.
  */
 export async function decideSeat(
@@ -923,7 +925,8 @@ export async function decideSeat(
   revalidatePath(PAGE);
 
   if (opts?.send) {
-    const sent = await sendSeatLetter(bookingId);
+    const seat = await prisma.workshopBooking.findUnique({ where: { id: bookingId }, select: { id: true, submissionId: true, userId: true } });
+    const sent = seat ? await sendPersonLetterFor(keyOf(seat)) : { delivered: false, receipt: undefined };
     return { ok: true, said, letterOwed: !sent.delivered && !!sent.receipt, receipt: sent.receipt };
   }
   return { ok: true, said, letterOwed: !!letterDue(booking.notifiedStatus, decision) };
@@ -939,103 +942,122 @@ async function accountNameFor(email: string | null | undefined): Promise<string 
 /** Did the letter reach somebody? A test registration's goes to the person running it. */
 const delivered = (r: Receipt) => r.state === "sent" || r.state === "sent-to-you";
 
-/**
- * Send the letter a seat owes, if it owes one.
- *
- * The letter is the move from what the registrant was last told to where
- * the seat stands NOW — so approve-then-waitlist before sending is one
- * waitlist letter, and a decision taken back to what they already know
- * owes nothing. Only a letter that actually went out marks them told; a
- * failed one stays owed, so it shows up again rather than vanishing.
- */
-export async function sendSeatLetter(bookingId: string): Promise<{ ok: boolean; delivered: boolean; receipt?: Receipt; problem?: string }> {
-  const admin = await requireAdmin();
-  if (!isId(bookingId)) return { ok: false, delivered: false, problem: "That is not a seat." };
-  const booking = await prisma.workshopBooking.findUnique({
-    where: { id: bookingId },
-    select: {
-      id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true,
-      workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true } },
-      user: { select: { name: true, email: true } },
-      submission: { select: { id: true, data: true, email: true } },
-    },
-  });
-  if (!booking) return { ok: false, delivered: false, problem: "That seat no longer exists." };
-  const templateId = letterDue(booking.notifiedStatus, booking.status);
-  if (!templateId) return { ok: true, delivered: false };
+/* ── one letter per person ───────────────────────────────────────── */
 
-  const told = isDecision(booking.notifiedStatus) ? booking.notifiedStatus : "pending";
-  const answers = ((booking.submission?.data ?? {}) as Record<string, unknown>) as Answers;
-  /*
-   * The calendar entry follows the SEAT, not the letter: an approval
-   * carries one to add; a seat they were told was approved and no longer
-   * is carries the withdrawal, or the session stays in their calendar and
-   * they turn up to a room with no place for them.
-   */
-  const calendar =
-    booking.status === "confirmed" ? "add" as const
-    : told === "confirmed" ? "remove" as const
-    : undefined;
+const PERSON_LETTER = "training_admin.person_letter";
 
-  const receipt = await sendDecisionLetter(templateId, {
-    to: booking.submission?.email ?? booking.user?.email ?? null,
-    name: registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(booking.submission?.email)) || "",
-    session: booking.workshop.title,
-    start: booking.workshop.startDateTime,
-    end: booking.workshop.endDateTime,
-    venue: booking.workshop.locationName,
-    note: booking.decisionNote?.trim() || null,
-    bookingId: booking.id,
-    bookedAt: booking.bookedAt,
-    decidedAt: booking.approvedAt ?? new Date(),
-    calendar,
-    // The pass that gets them through the door — made on first use —
-    // and, for this seat, where they tell us they can't make it.
-    ...(await (async () => {
-      if (!booking.submission) return {};
-      const token = await passTokenFor(booking.submission.id);
-      return { passLink: passUrl(token), passToken: token, cantAttendLink: cantAttendUrl(token, booking.id) };
-    })()),
-  });
+/** Who a seat belongs to: the registration, or the account for a seat booked without one. */
+const keyOf = (b: { submissionId: string | null; userId: string | null; id: string }) =>
+  b.submissionId ?? (b.userId ? `u:${b.userId}` : `b:${b.id}`);
 
-  if (delivered(receipt)) {
-    await prisma.workshopBooking.update({
-      where: { id: booking.id },
-      data: { notifiedStatus: booking.status, notifiedAt: new Date() },
-    });
+const SEAT_SELECT = {
+  id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true,
+  submissionId: true, userId: true,
+  workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, eventId: true } },
+  user: { select: { name: true, email: true } },
+  submission: { select: { id: true, data: true, email: true, checkInToken: true } },
+} as const;
+
+type SeatRow = Awaited<ReturnType<typeof seatsOf>>[number];
+async function seatsOf(where: object) {
+  return prisma.workshopBooking.findMany({ where, select: SEAT_SELECT, orderBy: { bookedAt: "asc" } });
+}
+
+/** A person's seats as the letter reads them — with their pass links when the pass exists (or `makePass`). */
+async function letterFor(rows: SeatRow[], makePass: boolean) {
+  const b = rows[0];
+  const answers = ((b.submission?.data ?? {}) as Record<string, unknown>) as Answers;
+  const to = b.submission?.email ?? b.user?.email ?? null;
+  const name = registrantName(answers) || b.user?.name?.trim() || (await accountNameFor(to)) || "";
+  const token = b.submission ? (makePass ? await passTokenFor(b.submission.id) : b.submission.checkInToken) : null;
+  const seats: LetterSeat[] = rows.map((r) => ({
+    bookingId: r.id, session: r.workshop.title, start: r.workshop.startDateTime, end: r.workshop.endDateTime,
+    venue: r.workshop.locationName, status: r.status, told: r.notifiedStatus, note: r.decisionNote,
+    cantAttendLink: token ? cantAttendUrl(token, r.id) : undefined, bookedAt: r.bookedAt, decidedAt: r.approvedAt ?? new Date(),
+  }));
+  const passLink = token ? passUrl(token) : "(their pass link — made when the letter is sent)";
+  return { to, name, token, seats, letter: personLetter({ name, seats, passLink }) };
+}
+
+export interface OwedLetter {
+  key: string;
+  name: string;
+  email: string;
+  summary: { label: string; sessions: string[] }[];
+  subject: string;
+  body: string;
+}
+
+/** Everybody a letter is waiting for, one entry per person — for the mailbox. Writes nothing. */
+export async function lettersOwed(): Promise<OwedLetter[]> {
+  await requireAdmin();
+  const eventId = await trainingWeekEventId();
+  if (!eventId) return [];
+  const rows = await seatsOf({ workshop: { eventId } });
+  const byPerson = new Map<string, SeatRow[]>();
+  for (const r of rows) byPerson.set(keyOf(r), [...(byPerson.get(keyOf(r)) ?? []), r]);
+  const out: OwedLetter[] = [];
+  for (const [key, list] of byPerson) {
+    if (!list.some((r) => letterDue(r.notifiedStatus, r.status))) continue;
+    const made = await letterFor(list, false);
+    if (!made.letter) continue;
+    out.push({ key, name: made.name || made.to || "No name given", email: made.to ?? "", summary: letterSummary(made.seats), subject: made.letter.subject, body: made.letter.body });
   }
-  await logSend(admin.id, "training_admin.seat_letter", {
-    bookingId, template: templateId, state: receipt.state, workshop: booking.workshop.title,
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Send one person their letter — everything owed on all their seats, in one email. */
+export async function sendPersonLetterFor(key: string): Promise<{ ok: boolean; delivered: boolean; receipt?: Receipt; problem?: string }> {
+  const admin = await requireAdmin();
+  const where = key.startsWith("u:") ? { userId: key.slice(2), submissionId: null }
+    : key.startsWith("b:") ? { id: key.slice(2) }
+    : { submissionId: key };
+  if (!isId(key.replace(/^[ub]:/, ""))) return { ok: false, delivered: false, problem: "That is not a registration." };
+  const eventId = await trainingWeekEventId();
+  const rows = await seatsOf({ ...where, ...(eventId ? { workshop: { eventId } } : {}) });
+  if (!rows.length) return { ok: false, delivered: false, problem: "That registration no longer exists." };
+  const made = await letterFor(rows, true);
+  if (!made.letter) return { ok: true, delivered: false };
+  const receipt = await sendPersonCombined({
+    to: made.to, name: made.name, subject: made.letter.subject, body: made.letter.body,
+    passLink: made.letter.hasPlace && made.token ? passUrl(made.token) : undefined,
+    passToken: made.letter.hasPlace && made.token ? made.token : undefined,
+    calendar: made.letter.calendar,
   });
+  if (delivered(receipt)) {
+    // Told about each seat as it stands now.
+    await prisma.$transaction(made.letter.seats.map((s) => prisma.workshopBooking.update({
+      where: { id: s.bookingId }, data: { notifiedStatus: s.status, notifiedAt: new Date() },
+    })));
+  }
+  await logSend(admin.id, PERSON_LETTER, { key, email: made.to, seats: made.letter.seats.map((s) => `${s.session}: ${s.status}`), state: receipt.state });
   revalidatePath(PAGE);
   return { ok: true, delivered: delivered(receipt), receipt };
 }
 
-/**
- * Send every letter owed — across the week, or for one workshop.
- *
- * One at a time through sendSeatLetter, so each is the same letter a
- * single send would be, and one failure never stops the rest.
- */
-export async function sendLetters(scope: { workshopId?: string } = {}): Promise<{
-  ok: boolean; sent: number; notSent: number; problem?: string;
-}> {
+/** Every letter waiting, one per person. Sequential; one failure never stops the rest. */
+export async function sendAllPersonLetters(): Promise<{ ok: boolean; sent: number; notSent: number }> {
   await requireAdmin();
-  if (scope.workshopId && !isId(scope.workshopId)) return { ok: false, sent: 0, notSent: 0, problem: "That is not a workshop." };
-  const eventId = await trainingWeekEventId();
-  if (!eventId) return { ok: false, sent: 0, notSent: 0, problem: "No Training Week event." };
-  const seats = await prisma.workshopBooking.findMany({
-    where: { workshop: { eventId, ...(scope.workshopId ? { id: scope.workshopId } : {}) } },
-    select: { id: true, status: true, notifiedStatus: true },
-    orderBy: { bookedAt: "asc" },
-  });
+  const owed = await lettersOwed();
   let sent = 0, notSent = 0;
-  for (const s of seats) {
-    if (!letterDue(s.notifiedStatus, s.status)) continue;
-    const r = await sendSeatLetter(s.id);
+  for (const o of owed) {
+    const r = await sendPersonLetterFor(o.key);
     if (r.delivered) sent++; else notSent++;
   }
   return { ok: true, sent, notSent };
+}
+
+/** The letters for the people behind these seats — each person once, with everything they are owed. */
+export async function sendLettersForBookings(bookingIds: string[]): Promise<{ ok: boolean; sent: number; failed: number }> {
+  await requireAdmin();
+  const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
+  const rows = await prisma.workshopBooking.findMany({ where: { id: { in: ids } }, select: { id: true, submissionId: true, userId: true } });
+  let sent = 0, failed = 0;
+  for (const key of new Set(rows.map(keyOf))) {
+    const r = await sendPersonLetterFor(key);
+    if (r.delivered) sent++; else if (r.receipt) failed++;
+  }
+  return { ok: true, sent, failed };
 }
 
 /** The Training Week event — the one carrying the most workshops, as the page picks it. */
@@ -1091,26 +1113,13 @@ export async function decideSeats(
   const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
   let done = 0, failed = 0, sent = 0;
   for (const id of ids) {
-    const r = await decideSeat(id, to, undefined, opts);
+    const r = await decideSeat(id, to);
     if (!r.ok) { failed += 1; continue; }
     done += 1;
-    if (opts?.send && r.receipt && !r.letterOwed) sent += 1;
   }
+  // Then one letter per person, not one per seat.
+  if (opts?.send) sent = (await sendLettersForBookings(ids)).sent;
   return { ok: true, done, failed, sent };
-}
-
-/** The letters a set of already-decided seats owes. */
-export async function sendSeatLetters(
-  bookingIds: string[],
-): Promise<{ ok: boolean; sent: number; failed: number }> {
-  await requireAdmin();
-  const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
-  let sent = 0, failed = 0;
-  for (const id of ids) {
-    const r = await sendSeatLetter(id);
-    if (r.ok && r.delivered) sent += 1; else failed += 1;
-  }
-  return { ok: true, sent, failed };
 }
 
 /**

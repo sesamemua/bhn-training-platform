@@ -12,8 +12,9 @@ import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "r
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
-import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendSeatLetters } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendLettersForBookings } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
+import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { farSchoolOf } from "@/lib/travel/far-email";
 import { travelWords } from "@/lib/travel/from-postcode";
@@ -276,10 +277,12 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   const bulkWho = `${chosen.length} ${draft.perPerson ? (chosen.length === 1 ? "person" : "people") : chosen.length === 1 ? "seat" : "seats"}${
     draft.perPerson && chosenSeats.length !== chosen.length ? ` (${chosenSeats.length} seats)` : ""}`;
   const owedLetters = chosen.filter((r) => r.letter === "owed").flatMap((r) => r.bookingIds);
+  const owedPeople = new Set(chosen.filter((r) => r.letter === "owed").map((r) => r.personKey)).size;
   function runBulk(to: string, label: string) {
     start(async () => {
       const r = await decideSeats(chosenSeats, to, { send: alsoEmail });
       if (!r.ok) { setSaid(r.problem ?? "That did not go through."); return; }
+      if (!alsoEmail && r.done) queueLetterFx(); else lettersChanged();
       setSaid(`${label}: ${r.done} seat${r.done === 1 ? "" : "s"}${r.sent ? `, ${r.sent} emailed` : ""}${r.failed ? `, ${r.failed} failed` : ""}.`);
       clearPick();
     });
@@ -288,7 +291,9 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
     const owed = owedLetters;
     if (owed.length === 0) { setSaid("None of those owe a letter."); return; }
     start(async () => {
-      const r = await sendSeatLetters(owed);
+      // One letter per person behind these seats, whatever else of theirs is owed.
+      const r = await sendLettersForBookings(owed);
+      lettersChanged();
       setSaid(`${r.sent} letter${r.sent === 1 ? "" : "s"} sent${r.failed ? `, ${r.failed} failed` : ""}.`);
       clearPick();
     });
@@ -541,8 +546,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
           </label>
           <span className="h-4 w-px bg-line" aria-hidden />
           <ConfirmPopover
-            message={owedLetters.length ? `Send ${owedLetters.length} letter${owedLetters.length === 1 ? "" : "s"} now?` : "None of those owe a letter."}
-            detail={owedLetters.length ? "Each person gets the letter for their seat's current decision." : undefined}
+            message={owedPeople ? `Email ${owedPeople} ${owedPeople === 1 ? "person" : "people"} now?` : "None of those owe a letter."}
+            detail={owedPeople ? "One letter each, covering every session of theirs with news — not one per seat." : undefined}
             confirmLabel={owedLetters.length ? "Send" : "OK"}
             align="start"
             onConfirm={runLetters}
