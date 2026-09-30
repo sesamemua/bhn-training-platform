@@ -14,6 +14,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Trash2, RotateCcw, AlertCircle, Pencil, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { CommitteeMeta } from "@/lib/committees/registry";
 
 interface Member {
@@ -208,6 +209,7 @@ function MemberRow({ member }: { member: Member }) {
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState(member.note ?? "");
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function mutate(payload: Record<string, unknown>, method: "PATCH" | "DELETE" = "PATCH") {
     setError(null);
@@ -262,8 +264,12 @@ function MemberRow({ member }: { member: Member }) {
           {member.active ? (
             <button
               type="button"
-              onClick={() => {
-                if (confirm(`Revoke ${member.user.name ?? member.user.email} from this committee?`)) {
+              onClick={async () => {
+                if (await confirmDialog({
+                  title: `Revoke ${member.user.name ?? member.user.email} from this committee?`,
+                  confirmLabel: "Revoke",
+                  tone: "destructive",
+                })) {
                   mutate({}, "DELETE");
                 }
               }}
@@ -321,6 +327,7 @@ function MemberRow({ member }: { member: Member }) {
           <AlertCircle size={11} /> {error}
         </p>
       )}
+      {confirmNode}
     </li>
   );
 }

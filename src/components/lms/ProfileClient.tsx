@@ -406,6 +406,7 @@ function PrivacySection() {
   const [marketing, setMarketing] = useState(consent.marketing);
   const [confirmText, setConfirmText] = useState("");
   const [busyDelete, setBusyDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   function saveConsent() {
     setConsent({ analytics, marketing });
@@ -413,6 +414,7 @@ function PrivacySection() {
 
   async function deleteAccount() {
     if (confirmText !== "DELETE") return;
+    setDeleteError(null);
     setBusyDelete(true);
     try {
       const res = await fetch("/api/profile/delete", {
@@ -422,7 +424,7 @@ function PrivacySection() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Couldn't delete");
+        setDeleteError(j.error ?? "Couldn't delete");
         return;
       }
       // Sign out and bounce home
@@ -487,6 +489,7 @@ function PrivacySection() {
             Delete account
           </Button>
         </div>
+        {deleteError && <div className="mt-3 max-w-sm"><Alert tone="danger">{deleteError}</Alert></div>}
       </div>
     </Card>
   );

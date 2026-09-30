@@ -13,12 +13,14 @@ import { resetSignature, saveSignature } from "@/app/(dashboard)/admin/email-sig
 import {
   cleanSignature, SIGNATURE_MAX_CHARS, SIGNATURE_MAX_LINES, signatureHtml, signatureProblem,
 } from "@/lib/mail-signature";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function SignatureEditor({ initial, original }: { initial: string; original: string }) {
   const [text, setText] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [said, setSaid] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const problem = signatureProblem(text);
   const changed = cleanSignature(text) !== saved;
@@ -34,8 +36,13 @@ export function SignatureEditor({ initial, original }: { initial: string; origin
       setSaid("Saved. Emails sent from now on end with this — give it a minute to reach every server.");
     });
   }
-  function reset() {
-    if (!confirm("Put back the original signature? Your version is kept in the audit log.")) return;
+  async function reset() {
+    if (!(await confirmDialog({
+      title: "Put back the original signature?",
+      description: "Your version is kept in the audit log.",
+      confirmLabel: "Put back",
+      tone: "warning",
+    }))) return;
     start(async () => {
       const r = await resetSignature();
       setSaved(r.signature);
@@ -112,6 +119,7 @@ ${cleanSignature(text)}`}
           </pre>
         </div>
       </section>
+      {confirmNode}
     </div>
   );
 }

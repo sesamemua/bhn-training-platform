@@ -195,7 +195,12 @@ export function CampaignDetailClient({
     }
   }
   async function remove() {
-    if (!confirm(`Delete the campaign "${campaign.name}"? Contacts and their reach-out history are kept.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete the campaign "${campaign.name}"?`,
+      description: "Contacts and their reach-out history are kept.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     await fetch(`/api/workspace/outreach/campaigns/${campaign.id}`, { method: "DELETE" }).catch(() => {});
     router.push("/admin/workspace/outreach/campaigns");
   }

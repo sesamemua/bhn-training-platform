@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Copy, Loader2, Plus, Trash2, Users } from "lucide-react";
 import { createCallSheet, deleteCallSheet, duplicateCallSheet } from "@/lib/video/call-sheet-actions";
 import { callSheetsPath } from "@/lib/video/paths";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface CallSheetRow {
   id: string;
@@ -31,6 +32,7 @@ export function CallSheetList({ projectId, sheets }: { projectId: string; sheets
   const [pending, start] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const go = (id: string) => router.push(`${BASE}/${id}`);
 
@@ -50,8 +52,8 @@ export function CallSheetList({ projectId, sheets }: { projectId: string; sheets
       if (r.ok) go(r.id); else setError(r.error);
     });
   }
-  function remove(id: string, title: string) {
-    if (!confirm(`Delete “${title}”? This can't be undone.`)) return;
+  async function remove(id: string, title: string) {
+    if (!(await confirmDialog({ title: `Delete “${title}”?`, description: "This can't be undone.", confirmLabel: "Delete", tone: "destructive" }))) return;
     setBusyId(id);
     start(async () => {
       await deleteCallSheet(id);
@@ -62,6 +64,7 @@ export function CallSheetList({ projectId, sheets }: { projectId: string; sheets
 
   return (
     <div className="max-w-4xl space-y-4">
+      {confirmNode}
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"

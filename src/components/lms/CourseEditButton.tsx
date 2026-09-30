@@ -27,6 +27,7 @@ export function CourseEditButton({ course }: { course: CourseShape }) {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState(course.title);
   const [description, setDescription] = useState(course.description ?? "");
@@ -41,15 +42,16 @@ export function CourseEditButton({ course }: { course: CourseShape }) {
 
   async function hardDelete() {
     if (deleteConfirm !== course.title) {
-      alert("Type the exact course title to confirm.");
+      setError("Type the exact course title to confirm.");
       return;
     }
     setDeleting(true);
+    setError(null);
     try {
       const res = await fetch(`/api/courses/${course.id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Delete failed");
+        setError(j.error ?? "Delete failed");
         return;
       }
       // Send the admin back to the catalog — the detail page they're
@@ -63,10 +65,11 @@ export function CourseEditButton({ course }: { course: CourseShape }) {
 
   async function save() {
     if (!title.trim()) {
-      alert("Title is required");
+      setError("Title is required");
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/courses/${course.id}`, {
         method: "PATCH",
@@ -86,7 +89,7 @@ export function CourseEditButton({ course }: { course: CourseShape }) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Save failed");
+        setError(j.error ?? "Save failed");
         return;
       }
       setOpen(false);
@@ -104,7 +107,7 @@ export function CourseEditButton({ course }: { course: CourseShape }) {
 
       <Modal
         open={open}
-        onClose={() => { setOpen(false); setShowDelete(false); setDeleteConfirm(""); }}
+        onClose={() => { setOpen(false); setShowDelete(false); setDeleteConfirm(""); setError(null); }}
         size="lg"
         title="Edit course"
         description="Changes apply immediately. Existing enrollments are preserved. To stop new enrollments without deleting, set status to Archived — the course stays visible in the catalog but enrolment is closed."
@@ -122,6 +125,11 @@ export function CourseEditButton({ course }: { course: CourseShape }) {
           </>
         }
       >
+        {error && (
+          <div role="alert" className="rounded-xl bg-rose-50 ring-1 ring-inset ring-rose-200 px-4 py-2 mb-4 text-sm text-rose-900">
+            {error}
+          </div>
+        )}
         {showDelete && (
           <div className="rounded-xl bg-rose-50 ring-1 ring-inset ring-rose-200 px-4 py-3 mb-4 space-y-2">
             <div className="flex items-start gap-2">

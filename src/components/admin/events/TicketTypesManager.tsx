@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Loader2, AlertCircle, Save } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface TicketTypeRow {
   id: string;
@@ -27,11 +28,17 @@ export function TicketTypesManager({
   const [tickets, setTickets] = useState<TicketTypeRow[]>(initial);
   const [editing, setEditing] = useState<TicketTypeRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function refresh() { router.refresh(); }
 
   async function deleteTicket(id: string, name: string) {
-    if (!confirm(`Delete the "${name}" ticket? Existing registrations against it stay intact, but no new buyers can pick it.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete the "${name}" ticket?`,
+      description: "Existing registrations against it stay intact, but no new buyers can pick it.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     const res = await fetch(`/api/admin/events/${slug}/tickets/${id}`, { method: "DELETE" });
     if (res.ok) {
       setTickets((ts) => ts.filter((t) => t.id !== id));
@@ -61,6 +68,7 @@ export function TicketTypesManager({
 
   return (
     <div className="space-y-4">
+      {confirmNode}
       {/* Always-on activation banner. Paid public checkout is shipped
           in the schema + APIs but intentionally NOT wired into the
           public registration form yet (the form remains free-only).

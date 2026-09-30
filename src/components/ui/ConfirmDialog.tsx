@@ -3,6 +3,11 @@
 /**
  * ConfirmDialog — branded replacement for window.confirm().
  *
+ * Opens beside the button that asked (see AnchoredCard), not as a
+ * centred modal: nothing on the platform uses browser pop-ups or modal
+ * "are you sure?" boxes. With `acknowledgeOnly` it replaces alert() —
+ * one OK button.
+ *
  * The browser-native confirm() is functional but jarring on a
  * designed surface — flat OS chrome, no theming, no description,
  * no destructive vs neutral distinction. This component gives the
@@ -38,6 +43,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AlertTriangle, AlertCircle, X, Check, HelpCircle } from "lucide-react";
+import { AnchoredCard, currentAnchor } from "./AnchoredCard";
 
 export type ConfirmTone = "neutral" | "warning" | "destructive";
 
@@ -60,11 +66,14 @@ export interface ConfirmDialogOptions {
   tone?: ConfirmTone;
   /** Optional icon override. Defaults match the tone. */
   icon?: React.ElementType;
+  /** A notice rather than a question (in place of alert()): one OK button. */
+  acknowledgeOnly?: boolean;
 }
 
 interface OpenState extends ConfirmDialogOptions {
   open: true;
   resolve: (value: boolean) => void;
+  anchor: DOMRect | null;
 }
 interface ClosedState {
   open: false;
@@ -78,7 +87,7 @@ export function useConfirmDialog() {
 
   const confirmDialog = useCallback((opts: ConfirmDialogOptions): Promise<boolean> => {
     return new Promise((resolve) => {
-      setState({ open: true, resolve, ...opts });
+      setState({ open: true, resolve, anchor: currentAnchor(), ...opts });
     });
   }, []);
 
@@ -160,10 +169,7 @@ function Dialog({
   // have to tab into the button first).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose(false);
-      } else if (e.key === "Enter") {
+      if (e.key === "Enter") {
         e.preventDefault();
         onClose(true);
       }
@@ -173,71 +179,31 @@ function Dialog({
   }, [onClose]);
 
   return (
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby={headingId}
-      aria-describedby={description ? descriptionId : undefined}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-    >
-      {/* Backdrop — clicking it dismisses without confirming. Same
-          treatment as InputDialog so the two share a feel. */}
-      <button
-        type="button"
-        aria-label="Cancel"
-        onClick={() => onClose(false)}
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-      />
-
-      {/* Card. */}
-      <div className="relative bg-card-solid rounded-2xl border border-line shadow-2xl ring-1 ring-line/40 w-full max-w-md overflow-hidden">
-        {/* Gradient header strip — tone-tinted so the user reads the
-            stakes at a glance: cool brand for neutral, warm amber
-            for warning, rose for destructive. */}
-        <div className={`bg-gradient-to-r ${toneDefaults.headerGrad} px-5 py-4 flex items-start gap-3 border-b border-line`}>
-          <span className={`inline-flex w-9 h-9 rounded-xl items-center justify-center shrink-0 ${toneDefaults.iconDisc}`}>
-            <Icon size={16} />
+    <AnchoredCard anchor={opts.anchor} onDismiss={() => onClose(false)} role="alertdialog" label={title}>
+      <div aria-labelledby={headingId} aria-describedby={description ? descriptionId : undefined}>
+        <div className={`bg-gradient-to-r ${toneDefaults.headerGrad} px-3.5 py-3 flex items-start gap-2.5 border-b border-line`}>
+          <span className={`inline-flex w-7 h-7 rounded-lg items-center justify-center shrink-0 ${toneDefaults.iconDisc}`}>
+            <Icon size={14} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 id={headingId} className="text-base font-semibold text-fg leading-tight">
-              {title}
-            </h2>
-            {description && (
-              <p id={descriptionId} className="text-[13px] text-fg-muted mt-1 leading-snug">
-                {description}
-              </p>
-            )}
+            <h2 id={headingId} className="text-[13.5px] font-semibold text-fg leading-snug">{title}</h2>
+            {description && <p id={descriptionId} className="text-[12px] text-fg-muted mt-0.5 leading-snug">{description}</p>}
           </div>
-          <button
-            type="button"
-            onClick={() => onClose(false)}
-            aria-label="Cancel"
-            className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded text-fg-muted hover:text-fg hover:bg-elevated"
-          >
-            <X size={14} />
+          <button type="button" onClick={() => onClose(false)} aria-label="Cancel" className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded text-fg-muted hover:text-fg hover:bg-elevated">
+            <X size={13} />
           </button>
         </div>
-
-        {/* Footer — buttons right-aligned. Cancel is the secondary
-            (ghost) action; Confirm is the primary, coloured per tone. */}
-        <div className="px-5 py-3 border-t border-line bg-background/30 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => onClose(false)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-fg-muted hover:bg-elevated"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            ref={confirmRef}
-            type="button"
-            onClick={() => onClose(true)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${toneDefaults.confirmBtn}`}
-          >
-            <Check size={12} /> {confirmLabel}
+        <div className="px-3.5 py-2.5 flex items-center justify-end gap-2">
+          {!opts.acknowledgeOnly && (
+            <button type="button" onClick={() => onClose(false)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-fg-muted hover:bg-elevated">
+              {cancelLabel}
+            </button>
+          )}
+          <button ref={confirmRef} type="button" onClick={() => onClose(true)} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${toneDefaults.confirmBtn}`}>
+            <Check size={12} /> {opts.acknowledgeOnly ? (opts.confirmLabel ?? "OK") : confirmLabel}
           </button>
         </div>
       </div>
-    </div>
+    </AnchoredCard>
   );
 }

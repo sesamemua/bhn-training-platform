@@ -7,6 +7,7 @@
  * standalone showcases (no pathway) are listed in their own section.
  */
 import { useState, useEffect } from "react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Plus,
   Copy,
@@ -63,6 +64,7 @@ export function ShowcasePathwaysManager({
   const [form, setForm] = useState({ name: "", eyebrow: "", intro: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [copied, setCopied] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
@@ -147,9 +149,12 @@ export function ShowcasePathwaysManager({
 
   async function deletePathway(p: Pathway) {
     if (
-      !confirm(
-        `Delete the pathway "${p.name}"?${p.cohorts.length > 0 ? ` Its ${p.cohorts.length} cohort(s) become standalone showcases — they keep their links and submissions.` : ""}`,
-      )
+      !(await confirmDialog({
+        title: `Delete the pathway "${p.name}"?`,
+        description: p.cohorts.length > 0 ? `Its ${p.cohorts.length} cohort(s) become standalone showcases — they keep their links and submissions.` : undefined,
+        confirmLabel: "Delete",
+        tone: "destructive",
+      }))
     ) {
       return;
     }
@@ -224,9 +229,12 @@ export function ShowcasePathwaysManager({
     count: number,
   ) {
     if (
-      !confirm(
-        `Delete "${slug}"?${count > 0 ? ` It has ${count} submission(s) — those stay in the dashboard, but the link stops accepting new entries.` : ""}`,
-      )
+      !(await confirmDialog({
+        title: `Delete "${slug}"?`,
+        description: count > 0 ? `It has ${count} submission(s) — those stay in the dashboard, but the link stops accepting new entries.` : undefined,
+        confirmLabel: "Delete",
+        tone: "destructive",
+      }))
     ) {
       return;
     }
@@ -250,6 +258,7 @@ export function ShowcasePathwaysManager({
 
   return (
     <section className="overflow-hidden rounded-2xl border border-line/70 bg-card-solid">
+      {confirmNode}
       <header className="flex items-center justify-between gap-3 border-b border-line/60 px-5 py-3.5">
         <div>
           <h2 className="text-[13.5px] font-semibold text-fg">
@@ -730,6 +739,7 @@ function RosterPanel({ slug, onRemoved }: { slug: string; onRemoved: () => void 
   const [people, setPeople] = useState<Person[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   useEffect(() => {
     let live = true;
@@ -741,7 +751,7 @@ function RosterPanel({ slug, onRemoved }: { slug: string; onRemoved: () => void 
   }, [slug]);
 
   async function remove(p: Person) {
-    if (!confirm(`Remove ${p.name} from this showcase? This deletes their entry and headshot — it can't be undone.`)) return;
+    if (!(await confirmDialog({ title: `Remove ${p.name} from this showcase?`, description: "This deletes their entry and headshot — it can't be undone.", confirmLabel: "Remove", tone: "destructive" }))) return;
     setRemoving(p.id);
     try {
       const res = await fetch(`/api/admin/showcase/${p.id}`, { method: "DELETE" });
@@ -757,6 +767,7 @@ function RosterPanel({ slug, onRemoved }: { slug: string; onRemoved: () => void 
 
   return (
     <div className="ml-2 space-y-1 rounded-md border border-line/70 bg-raised/15 p-2.5">
+      {confirmNode}
       <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">People in /{slug}</span>
       {error && <p className="text-[11.5px] text-rose-600">{error}</p>}
       {people === null ? (

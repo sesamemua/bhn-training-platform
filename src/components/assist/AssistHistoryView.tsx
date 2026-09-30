@@ -11,6 +11,7 @@
  */
 import { useState } from "react";
 import { Loader2, AlertCircle, Trash2, Activity, FileText, Calendar, Sparkles, ChevronDown } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Props {
   counts: {
@@ -61,6 +62,7 @@ export function AssistHistoryView({ counts, recentEvents, rollups, summaries, hi
   const [wiping, setWiping] = useState(false);
   const [wipeResult, setWipeResult] = useState<{ deleted: typeof counts } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   // Long lists are collapsed to the latest few; expandable to all.
   const COLLAPSED = 5;
   const [showAllEvents, setShowAllEvents] = useState(false);
@@ -69,7 +71,12 @@ export function AssistHistoryView({ counts, recentEvents, rollups, summaries, hi
   const shownHints = showAllHints ? hints : hints.slice(0, COLLAPSED);
 
   async function wipe() {
-    if (!confirm("Permanently delete every behaviour signal, rollup, summary, and hint we have on file for you? This can't be undone. Your preferences (consent toggle, sensitivity) are NOT deleted.")) {
+    if (!(await confirmDialog({
+      title: "Permanently delete every behaviour signal, rollup, summary, and hint we have on file for you?",
+      description: "This can't be undone. Your preferences (consent toggle, sensitivity) are NOT deleted.",
+      confirmLabel: "Delete everything",
+      tone: "destructive",
+    }))) {
       return;
     }
     setWiping(true);
@@ -93,6 +100,7 @@ export function AssistHistoryView({ counts, recentEvents, rollups, summaries, hi
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {/* Counts strip */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat icon={Activity} label="Raw events" value={counts.events} help="last 90 days" />

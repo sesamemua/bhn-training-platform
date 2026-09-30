@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, ExternalLink, Loader2, Pencil, Trash2, UserCheck } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { countWords } from "@/lib/events/bio";
 import {
   DEFAULT_LIMITS, WORD_LIMIT_MIN, WORD_LIMIT_MAX,
@@ -70,6 +71,7 @@ export function SpeakersManager({
   const [askNote, setAskNote] = useState<string | null>(null);
   const [limitsBusy, setLimitsBusy] = useState(false);
   const [limitsNote, setLimitsNote] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   /*
    * One field per request, and the answer comes back from the server.
@@ -176,7 +178,7 @@ export function SpeakersManager({
   }
 
   async function remove(s: SpeakerRow) {
-    if (!confirm(`Remove ${s.fullName}? Their headshot is deleted too.`)) return;
+    if (!(await confirmDialog({ title: `Remove ${s.fullName}?`, description: "Their headshot is deleted too.", confirmLabel: "Remove", tone: "destructive" }))) return;
     setSpeakers((cur) => cur.filter((x) => x.id !== s.id));
     await fetch(API, {
       method: "DELETE",
@@ -188,6 +190,7 @@ export function SpeakersManager({
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {/* The link to hand out */}
       <section className="rounded-xl border border-line bg-card-solid p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

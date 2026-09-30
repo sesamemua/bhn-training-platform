@@ -1,13 +1,22 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function RevokeButton({ certId, revoked }: { certId: string; revoked: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function toggle() {
-    if (!confirm(revoked ? "Reinstate this certificate?" : "Revoke this certificate?")) return;
+    if (
+      !(await confirmDialog(
+        revoked
+          ? { title: "Reinstate this certificate?", confirmLabel: "Reinstate" }
+          : { title: "Revoke this certificate?", confirmLabel: "Revoke", tone: "destructive" },
+      ))
+    )
+      return;
     setLoading(true);
     await fetch(`/api/admin/certificates/${certId}`, {
       method: "PATCH",
@@ -19,6 +28,7 @@ export function RevokeButton({ certId, revoked }: { certId: string; revoked: boo
   }
 
   return (
+    <>
     <button
       onClick={toggle}
       disabled={loading}
@@ -30,5 +40,7 @@ export function RevokeButton({ certId, revoked }: { certId: string; revoked: boo
     >
       {revoked ? "Reinstate" : "Revoke"}
     </button>
+    {confirmNode}
+    </>
   );
 }

@@ -8,14 +8,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Beaker, Trash2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function EquipDemoTools() {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function run(label: string, method: "POST" | "DELETE") {
-    if (method === "DELETE" && !confirm("Delete every demo applicant (equip-demo-*@bhn.test) and the applications they own? Real users are untouched.")) return;
+    if (method === "DELETE" && !(await confirmDialog({
+      title: "Delete every demo applicant (equip-demo-*@bhn.test) and the applications they own?",
+      description: "Real users are untouched.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setBusy(label);
     setResult(null);
     try {
@@ -30,6 +37,7 @@ export function EquipDemoTools() {
 
   return (
     <section className="rounded-2xl border border-dashed border-line bg-elevated/30 p-4 space-y-3">
+      {confirmNode}
       <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-subtle inline-flex items-center gap-1.5">
         <Beaker size={11} className="text-amber-600" />
         Demo data — only for this page

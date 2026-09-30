@@ -17,6 +17,7 @@ import {
   DESIGN_SYSTEMS,
   type DesignSystemId,
 } from "@/lib/design-system/registry";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function DesignSystemAdminPicker({ initial }: { initial: DesignSystemId }) {
   const router = useRouter();
@@ -25,12 +26,18 @@ export function DesignSystemAdminPicker({ initial }: { initial: DesignSystemId }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function apply(id: DesignSystemId) {
     if (id === active) return;
     const target = DESIGN_SYSTEMS.find((d) => d.id === id);
     if (!target) return;
-    if (!confirm(`Apply "${target.name}" to every user of the platform? Their next page load will pick it up.`)) {
+    if (!(await confirmDialog({
+      title: `Apply "${target.name}" to every user of the platform?`,
+      description: "Their next page load will pick it up.",
+      confirmLabel: "Apply",
+      tone: "warning",
+    }))) {
       setPending(null);
       return;
     }
@@ -129,6 +136,7 @@ export function DesignSystemAdminPicker({ initial }: { initial: DesignSystemId }
           <Check size={11} /> {successMessage}
         </p>
       )}
+      {confirmNode}
     </div>
   );
 }

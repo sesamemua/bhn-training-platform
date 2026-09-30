@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Plus, Trash2, EyeOff, Eye, Check, X, Loader2 } from "lucide-react";
 
 export interface FilterOption {
@@ -27,6 +28,7 @@ export function CourseFilterOptionsAdmin({ initial }: { initial: FilterOption[] 
     topic: "", delivery: "", provider: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function addOption(type: FilterOption["type"]) {
     const value = drafts[type].trim();
@@ -78,7 +80,12 @@ export function CourseFilterOptionsAdmin({ initial }: { initial: FilterOption[] 
   }
 
   async function removeRow(id: string, label: string) {
-    if (!confirm(`Delete "${label}"? Courses already tagged with it keep the value, but it won't show in the picker.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete "${label}"?`,
+      description: "Courses already tagged with it keep the value, but it won't show in the picker.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setBusyId(id);
     setError(null);
     try {
@@ -97,6 +104,7 @@ export function CourseFilterOptionsAdmin({ initial }: { initial: FilterOption[] 
 
   return (
     <div className="space-y-6 max-w-3xl">
+      {confirmNode}
       {error && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl px-4 py-2.5">
           {error}

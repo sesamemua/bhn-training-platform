@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface LtiConfig {
   id: string;
@@ -28,6 +29,7 @@ export function LtiConfigClient({ configs: initial }: { configs: LtiConfig[] }) 
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function set(key: string, value: string | boolean) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -57,7 +59,7 @@ export function LtiConfigClient({ configs: initial }: { configs: LtiConfig[] }) 
   }
 
   async function del(id: string) {
-    if (!confirm("Delete this LTI config?")) return;
+    if (!(await confirmDialog({ title: "Delete this LTI config?", confirmLabel: "Delete", tone: "destructive" }))) return;
     await fetch(`/api/admin/lti/${id}`, { method: "DELETE" });
     router.refresh();
   }
@@ -73,6 +75,7 @@ export function LtiConfigClient({ configs: initial }: { configs: LtiConfig[] }) 
 
   return (
     <div className="space-y-4">
+      {confirmNode}
       <div className="flex justify-end">
         <button
           onClick={() => setShow(true)}

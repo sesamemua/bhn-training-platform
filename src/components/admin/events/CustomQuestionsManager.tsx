@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Plus, Save, Trash2, Loader2, AlertCircle, GripVertical, X,
 } from "lucide-react";
@@ -51,20 +52,26 @@ export function CustomQuestionsManager({
   const [questions, setQuestions] = useState<QuestionRow[]>(initial);
   const [editing, setEditing] = useState<QuestionRow | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function refresh() {
     router.refresh();
   }
 
   async function deleteQuestion(id: string, label: string) {
-    if (!confirm(`Delete "${label}"? Any answers from existing registrations will also be deleted. This can't be undone.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete "${label}"?`,
+      description: "Any answers from existing registrations will also be deleted. This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     const res = await fetch(`/api/admin/events/${slug}/questions/${id}`, { method: "DELETE" });
     if (res.ok) {
       setQuestions((qs) => qs.filter((q) => q.id !== id));
       refresh();
     } else {
       const json = await res.json().catch(() => ({}));
-      alert(`Failed to delete: ${json.error ?? res.status}`);
+      await confirmDialog({ title: `Failed to delete: ${json.error ?? res.status}`, acknowledgeOnly: true });
     }
   }
 
@@ -93,6 +100,7 @@ export function CustomQuestionsManager({
 
   return (
     <div className="space-y-4">
+      {confirmNode}
       {questions.length === 0 ? (
         <div className="rounded-2xl border border-line bg-card p-8 text-center">
           <p className="text-sm text-muted">

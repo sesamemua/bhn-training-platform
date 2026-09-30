@@ -28,12 +28,14 @@
  * so opt-in is explicit.
  *
  * Saved to `/admin/design-system` as the canonical replacement for
- * `window.prompt()`. New code should reach for this; only the
- * lowest-stakes "you sure?" dialogs still warrant the native confirm.
+ * `window.prompt()`. It opens beside the button that asked (see
+ * AnchoredCard), not as a centred modal — nothing on the platform uses
+ * browser pop-ups.
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Pencil, X, CheckCircle2 } from "lucide-react";
+import { AnchoredCard, currentAnchor } from "./AnchoredCard";
 
 export interface InputDialogOptions {
   /** Bold heading at the top of the dialog. Short imperative noun-
@@ -63,6 +65,7 @@ export interface InputDialogOptions {
 interface OpenState extends InputDialogOptions {
   open: true;
   resolve: (value: string | null) => void;
+  anchor: DOMRect | null;
 }
 interface ClosedState {
   open: false;
@@ -76,7 +79,7 @@ export function useInputDialog() {
 
   const inputDialog = useCallback((opts: InputDialogOptions): Promise<string | null> => {
     return new Promise((resolve) => {
-      setState({ open: true, resolve, ...opts });
+      setState({ open: true, resolve, anchor: currentAnchor(), ...opts });
     });
   }, []);
 
@@ -116,17 +119,6 @@ function Dialog({
     inputRef.current?.select();
   }, []);
 
-  // Close on Escape, confirm on Enter (when valid).
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose(null);
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const trimmed = value.trim();
   const isValid = allowEmpty || trimmed.length > 0;
@@ -137,97 +129,44 @@ function Dialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={headingId}
-      aria-describedby={description ? descriptionId : undefined}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-    >
-      {/* Backdrop — solid black at low opacity to dim the page but
-          not the modal. Clicking dismisses without saving. */}
-      <button
-        type="button"
-        aria-label="Cancel"
-        onClick={() => onClose(null)}
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-      />
-
-      {/* Card. Centered, max-width caps so it doesn't stretch on
-          big screens. Brand-tinted icon + soft gradient header strip
-          give it the platform's flat + line + gradient aesthetic. */}
-      <div className="relative bg-card-solid rounded-2xl border border-line shadow-2xl ring-1 ring-line/40 w-full max-w-md overflow-hidden">
-        {/* Gradient header strip — same treatment used on group
-            cards in the preferences switchboard. Sets the tone
-            without dominating. */}
-        <div className="bg-gradient-to-r from-brand-100/60 via-brand-50/40 to-transparent px-5 py-4 flex items-start gap-3 border-b border-line">
-          <span className="inline-flex w-9 h-9 rounded-xl bg-brand-600 text-white items-center justify-center shrink-0">
-            <Icon size={16} />
+    <AnchoredCard anchor={opts.anchor} onDismiss={() => onClose(null)} label={title}>
+      <div aria-labelledby={headingId} aria-describedby={description ? descriptionId : undefined}>
+        <div className="bg-gradient-to-r from-brand-100/60 via-brand-50/40 to-transparent px-3.5 py-3 flex items-start gap-2.5 border-b border-line">
+          <span className="inline-flex w-7 h-7 rounded-lg bg-brand-600 text-white items-center justify-center shrink-0">
+            <Icon size={14} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 id={headingId} className="text-base font-semibold text-fg leading-tight">
-              {title}
-            </h2>
-            {description && (
-              <p id={descriptionId} className="text-[12px] text-fg-muted mt-0.5">
-                {description}
-              </p>
-            )}
+            <h2 id={headingId} className="text-[13.5px] font-semibold text-fg leading-snug">{title}</h2>
+            {description && <p id={descriptionId} className="text-[12px] text-fg-muted mt-0.5">{description}</p>}
           </div>
-          <button
-            type="button"
-            onClick={() => onClose(null)}
-            aria-label="Cancel"
-            className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded text-fg-muted hover:text-fg hover:bg-elevated"
-          >
-            <X size={14} />
+          <button type="button" onClick={() => onClose(null)} aria-label="Cancel" className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded text-fg-muted hover:text-fg hover:bg-elevated">
+            <X size={13} />
           </button>
         </div>
-
-        {/* Body */}
-        <div className="px-5 py-4 space-y-3">
+        <div className="px-3.5 py-2.5">
           <label className="block">
-            <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-fg-subtle">
-              {label}
-            </span>
+            <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-fg-subtle">{label}</span>
             <input
               ref={inputRef}
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && isValid) {
-                  e.preventDefault();
-                  confirm();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter" && isValid) { e.preventDefault(); confirm(); } }}
               placeholder={placeholder}
               maxLength={maxLength}
-              className="mt-1 w-full bg-card-solid border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+              className="mt-1 w-full bg-card-solid border border-line rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
             />
           </label>
         </div>
-
-        {/* Footer — buttons right-aligned. Cancel is secondary
-            (ghost), Confirm is primary (brand). */}
-        <div className="px-5 py-3 border-t border-line bg-background/30 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => onClose(null)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-fg-muted hover:bg-elevated"
-          >
+        <div className="px-3.5 pb-2.5 flex items-center justify-end gap-2">
+          <button type="button" onClick={() => onClose(null)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-fg-muted hover:bg-elevated">
             {cancelLabel}
           </button>
-          <button
-            type="button"
-            onClick={confirm}
-            disabled={!isValid}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
-          >
+          <button type="button" onClick={confirm} disabled={!isValid} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 transition-colors">
             <CheckCircle2 size={12} /> {confirmLabel}
           </button>
         </div>
       </div>
-    </div>
+    </AnchoredCard>
   );
 }

@@ -13,6 +13,7 @@ import {
   Mail, ChevronDown, Pencil, Sparkles, Loader2, Check, X, Eye, Plus, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface EditableFields {
   subject: string;
@@ -99,6 +100,7 @@ export function CustomEquipTemplates({
   const [busy, setBusy] = useState<"preview" | "save" | "ai" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function closeEditor() {
     setEditing(null);
@@ -210,7 +212,12 @@ export function CustomEquipTemplates({
   }
 
   async function remove(it: CustomTemplateItem) {
-    if (!confirm(`Delete “${it.label}”? This removes it from every application's send picker. Emails already sent are unaffected.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete “${it.label}”?`,
+      description: "This removes it from every application's send picker. Emails already sent are unaffected.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setBusy("delete");
     setError(null);
     try {
@@ -374,6 +381,7 @@ export function CustomEquipTemplates({
 
   return (
     <div className="space-y-3">
+      {confirmNode}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-fg">Custom templates</p>

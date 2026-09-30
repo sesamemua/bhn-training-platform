@@ -45,6 +45,7 @@ import { workshopTone } from "@/lib/allocation/workshop-colour";
 import { RegistrantViews } from "./RegistrantViews";
 import { RegistrationsWithoutSeats } from "./RegistrationDetail";
 import { CateringTab } from "./CateringTab";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TravelTab } from "./TravelTab";
 import type { View } from "@/lib/allocation/registrant-views";
 import type { SentRecord } from "@/lib/allocation/catering-sent";
@@ -669,6 +670,7 @@ export function SeatSuggestions({ rules, workshops }: { rules: Rule[]; workshops
 function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: AdminWorkshop; rules: Rule[]; canApply: boolean }) {
   const [pending, start] = useTransition();
   const [said, setSaid] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const ranked = useMemo(
     () => rankApplicants(contenders(w).map((b) => b.applicant), rules, w.capacity),
     [w, rules],
@@ -679,9 +681,13 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
   const confirmed = ranked.filter((r) => r.applicant.status === "confirmed").length;
   const open = Math.max(0, w.capacity - confirmed);
 
-  function apply() {
+  async function apply() {
     const parts = [approve.length && `approve ${approve.length}`, waitlist.length && `waitlist ${waitlist.length}`].filter(Boolean).join(" and ");
-    if (!confirm(`${w.title}: ${parts}?\n\nNo emails go out yet — the letters wait in the Letters box until you send them. You can still change any seat.`)) return;
+    if (!(await confirmDialog({
+      title: `${w.title}: ${parts}?`,
+      description: "No emails go out yet — the letters wait in the Letters box until you send them. You can still change any seat.",
+      confirmLabel: "Apply",
+    }))) return;
     setSaid(null);
     start(async () => {
       const r = await applySeatSuggestions(w.id, approve, waitlist);
@@ -760,6 +766,7 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
           </tbody>
         </table>
       </div>
+      {confirmNode}
     </section>
   );
 }
@@ -978,14 +985,20 @@ function LetterQueue({ workshops }: { workshops: AdminWorkshop[] }) {
   const [scope, setScope] = useState<string>("all");
   const [pending, start] = useTransition();
   const [said, setSaid] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const owed = (w: AdminWorkshop) => w.bookings.filter((b) => b.letterOwed).length;
   const total = workshops.reduce((n, w) => n + owed(w), 0);
   const picked = scope === "all" ? null : workshops.find((w) => w.id === scope) ?? null;
   const count = picked ? owed(picked) : total;
 
-  function send() {
+  async function send() {
     const where = picked ? `for ${picked.title}` : "across all workshops";
-    if (!confirm(`Send ${count} letter${count === 1 ? "" : "s"} ${where}?\n\nEach person gets the letter for their seat's current decision.`)) return;
+    if (!(await confirmDialog({
+      title: `Send ${count} letter${count === 1 ? "" : "s"} ${where}?`,
+      description: "Each person gets the letter for their seat's current decision.",
+      confirmLabel: "Send",
+      tone: "warning",
+    }))) return;
     setSaid(null);
     start(async () => {
       const r = await sendLetters(picked ? { workshopId: picked.id } : {});
@@ -1017,6 +1030,7 @@ function LetterQueue({ workshops }: { workshops: AdminWorkshop[] }) {
         {pending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />} Send {count} letter{count === 1 ? "" : "s"}
       </button>
       {said && <p role="status" className="basis-full text-[12px] text-fg">{said}</p>}
+      {confirmNode}
     </section>
   );
 }
@@ -1403,6 +1417,7 @@ function Compose({
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const usesReplyBy = fieldsUsed(`${subject}\n${body}`).includes("reply_by");
   // The same function the send action refuses with, so the warning here
@@ -1464,7 +1479,7 @@ function Compose({
           <select
             className={LINE}
             value={from}
-            onChange={(e) => {
+            onChange={async (e) => {
               const id = e.target.value;
               const t = templates.find((x) => x.id === id);
               // Loading over something written is not undoable — React
@@ -1472,7 +1487,11 @@ function Compose({
               // undo does not bring it back. Asked only when there is
               // something to lose.
               const written = subject.trim() || body.trim();
-              if (written && !confirm("Replace what you have written with this letter?")) {
+              if (written && !(await confirmDialog({
+                title: "Replace what you have written with this letter?",
+                confirmLabel: "Replace",
+                tone: "warning",
+              }))) {
                 e.target.value = from;
                 return;
               }
@@ -1634,6 +1653,7 @@ function Compose({
           </>
         )}
       </aside>
+      {confirmNode}
     </div>
   );
 }

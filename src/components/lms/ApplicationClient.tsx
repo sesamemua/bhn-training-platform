@@ -21,6 +21,7 @@ import {
   Check, AlertCircle, Loader2, Sparkles,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Field, Textarea } from "@/components/ui/Field";
 import Link from "next/link";
@@ -60,6 +61,7 @@ export function ApplicationClient({
   const [busyKind, setBusyKind] = useState<"resume" | "video" | "pitch" | "seed" | null>(null);
   const [seedStep, setSeedStep] = useState<string>("");
   const [toast, setToast] = useState<Toast | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const resumeInput = useRef<HTMLInputElement>(null);
   const videoInput  = useRef<HTMLInputElement>(null);
@@ -92,9 +94,14 @@ export function ApplicationClient({
   }
 
   async function clearArtifact(kind: "resume" | "video") {
-    if (!confirm(kind === "resume"
-      ? "Remove your resume? Forms that auto-fill will fall back to manual upload until you replace it."
-      : "Remove your video introduction?")) return;
+    if (!(await confirmDialog(kind === "resume"
+      ? {
+          title: "Remove your resume?",
+          description: "Forms that auto-fill will fall back to manual upload until you replace it.",
+          confirmLabel: "Remove",
+          tone: "warning",
+        }
+      : { title: "Remove your video introduction?", confirmLabel: "Remove", tone: "warning" }))) return;
     setBusyKind(kind);
     try {
       const field = kind === "resume" ? "resumeUrl" : "videoIntroUrl";
@@ -244,6 +251,7 @@ export function ApplicationClient({
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {canSeedSample && (
         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50/60 flex-wrap">
           <div className="min-w-0">

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const AUDIENCE_OPTIONS = [
   { value: "all",        label: "Everyone",                description: "All non-cancelled registrants" },
@@ -22,13 +23,14 @@ export function BroadcastComposer({ slug, audienceCounts }: {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ sent: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const canSubmit = !sending && subject.trim().length > 0 && body.trim().length > 10;
   const audCount = audienceCounts[audience] ?? 0;
 
   async function send() {
     if (!canSubmit) return;
-    if (!confirm(`Send "${subject}" to ${audCount} recipient${audCount === 1 ? "" : "s"}?`)) return;
+    if (!(await confirmDialog({ title: `Send "${subject}" to ${audCount} recipient${audCount === 1 ? "" : "s"}?`, confirmLabel: "Send", tone: "warning" }))) return;
     setSending(true);
     setError(null);
     const res = await fetch(`/api/admin/events/${slug}/messages`, {
@@ -51,6 +53,7 @@ export function BroadcastComposer({ slug, audienceCounts }: {
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {result && (
         <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900 inline-flex items-start gap-2.5">
           <CheckCircle2 size={16} className="shrink-0 mt-0.5" />

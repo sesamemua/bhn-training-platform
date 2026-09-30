@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "No more pop-up windows: questions open beside the button you pressed",
+    body: "Everywhere on the platform, the browser\u2019s own pop-up boxes \u2014 \u201cAre you sure?\u201d, \u201cOK\u201d notices, \u201cType a name\u201d prompts \u2014 and the centred dialogs that dimmed the page are gone. The same question now opens as a small card **right beside the button you pressed**: confirm or cancel there, press **Esc** or click anywhere else to cancel, and type straight into it when it needs a name. Error notices that used to pop up now appear as text next to the thing that failed.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: a Prep day tab for the day before the shoot",
     body: "A new **Prep day** tab, right after **Filming day**, lists what has to happen the day before: **pick up the camera**, **test the camera**, **prepare the gear** (with its own checklist \u2014 light, softbox, light stand, two extension cords, sound recorder and bag, batteries, chargers, boom, wireless lavaliers, headphones, slate, Fresnel spotlight, make-up kits), a **final confirmation with the students**, and **collecting dietary requirements**.\n\nEach task has a tick for done (the card darkens and the name is struck through), the people on it \u2014 added from the filming day's list \u2014 a note, and its own checklist lines. Add tasks and lines anywhere; it saves as you go.",
     kind: "feature",

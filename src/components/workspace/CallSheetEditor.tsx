@@ -21,6 +21,7 @@ import {
 import { deleteCallSheet, duplicateCallSheet, updateCallSheet } from "@/lib/video/call-sheet-actions";
 import { callSheetsPath } from "@/lib/video/paths";
 import { fmtShootDate } from "./CallSheetList";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 function move<T>(arr: T[], i: number, j: number): T[] {
   if (j < 0 || j >= arr.length) return arr;
@@ -305,6 +306,7 @@ export function CallSheetEditor({ id, projectId, initial, updatedAt }: {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const printRef = useRef<HTMLDivElement>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const dirty = JSON.stringify(sheet) !== savedJson;
 
@@ -348,15 +350,25 @@ export function CallSheetEditor({ id, projectId, initial, updatedAt }: {
       router.refresh();
     });
   }
-  function duplicate() {
-    if (dirty && !confirm("Duplicate the last saved version? Your unsaved changes are not included.")) return;
+  async function duplicate() {
+    if (dirty && !(await confirmDialog({
+      title: "Duplicate the last saved version?",
+      description: "Your unsaved changes are not included.",
+      confirmLabel: "Duplicate",
+      tone: "warning",
+    }))) return;
     start(async () => {
       const r = await duplicateCallSheet(id);
       if (r.ok) router.push(`${LIST}/${r.id}`); else setError(r.error);
     });
   }
-  function remove() {
-    if (!confirm(`Delete “${sheet.title}”? This can't be undone.`)) return;
+  async function remove() {
+    if (!(await confirmDialog({
+      title: `Delete “${sheet.title}”?`,
+      description: "This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     start(async () => {
       await deleteCallSheet(id);
       setSavedJson(JSON.stringify(sheet)); // nothing left to warn about
@@ -398,6 +410,7 @@ export function CallSheetEditor({ id, projectId, initial, updatedAt }: {
         <button type="button" onClick={duplicate} disabled={pending} title="Duplicate" aria-label="Duplicate" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-elevated hover:text-fg"><Copy size={15} /></button>
         <button type="button" onClick={remove} disabled={pending} title="Delete" aria-label="Delete" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-rose-500/10 hover:text-rose-600"><Trash2 size={15} /></button>
       </div>
+      {confirmNode}
     </div>
   );
 }

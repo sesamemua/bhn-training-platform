@@ -14,6 +14,7 @@
 import { useCallback, useState } from "react";
 import { Check, Copy, Clock, Download, RefreshCw, X, Image as ImageIcon } from "lucide-react";
 import { LogoMark } from "@/components/ui/Logo";
+import { useInputDialog } from "@/components/ui/InputDialog";
 import { SocialPostEditor } from "./SocialPostEditor";
 import type { SavedSocialText } from "@/lib/social/edit-history";
 import { withSocialTags } from "@/lib/social/tags";
@@ -64,6 +65,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const { inputDialog, node: inputNode } = useInputDialog();
   const [drafts, setDrafts] = useState<Record<string, { body: string; pending: boolean }>>({});
   const onSaved = useCallback((saved: SavedSocialText) => {
     setPosts((all) => all.map((post) => post.id === saved.id ? { ...post, ...saved } : post));
@@ -140,7 +142,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
       setCopied(p.id);
       setTimeout(() => setCopied(null), 1800);
     } catch {
-      window.prompt("Copy the post:", body);
+      await inputDialog({ title: "Copy the post", defaultValue: body, confirmLabel: "Done", allowEmpty: true, maxLength: Math.max(200, body.length) });
     }
   }
 
@@ -170,6 +172,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
 
   return (
     <div className="space-y-4">
+      {inputNode}
       <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
         {([
           ["symposium_2026", "2026 Symposium speakers"],

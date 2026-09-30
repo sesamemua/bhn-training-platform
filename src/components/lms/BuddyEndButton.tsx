@@ -9,9 +9,11 @@ export function BuddyEndButton({ pairId }: { pairId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function end() {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(`/api/buddy/${pairId}`, {
         method: "PATCH",
@@ -20,7 +22,7 @@ export function BuddyEndButton({ pairId }: { pairId: string }) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Action failed");
+        setError(j.error ?? "Action failed");
         return;
       }
       router.push("/buddy");
@@ -51,6 +53,7 @@ export function BuddyEndButton({ pairId }: { pairId: string }) {
         }
       >
         <p className="text-sm text-muted">This action ends the pair for both sides.</p>
+        {error && <p role="alert" className="text-sm text-rose-700 mt-2">{error}</p>}
       </Modal>
     </>
   );

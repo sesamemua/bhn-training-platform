@@ -18,6 +18,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface EditableFields {
   subject: string;
@@ -150,6 +151,7 @@ export function EquipEmailGallery({
   const [busy, setBusy] = useState<"preview" | "save" | "ai" | "reset" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const current = streams.find((s) => s.key === active) ?? streams[0];
 
@@ -250,7 +252,11 @@ export function EquipEmailGallery({
   }
 
   async function resetToDefault(it: PreviewItem) {
-    if (!confirm(`Reset “${it.label}” (${current.name}) to the shipped default copy?`)) return;
+    if (!(await confirmDialog({
+      title: `Reset “${it.label}” (${current.name}) to the shipped default copy?`,
+      confirmLabel: "Reset",
+      tone: "warning",
+    }))) return;
     setBusy("reset");
     setError(null);
     try {
@@ -640,6 +646,7 @@ export function EquipEmailGallery({
           </div>
         </div>
       )}
+      {confirmNode}
     </div>
   );
 }

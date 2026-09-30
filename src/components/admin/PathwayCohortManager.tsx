@@ -6,6 +6,7 @@ import {
   Layers, Plus, Pencil, Trash2, CheckCircle2, AlertTriangle, Users,
   Calendar, Clock, X,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface CohortRow {
   id: string;
@@ -53,6 +54,7 @@ export function PathwayCohortManager({
   const [busy, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function setFlashAuto(s: string) {
     setFlash(s);
@@ -60,7 +62,12 @@ export function PathwayCohortManager({
   }
 
   async function deleteCohort(c: CohortRow) {
-    if (!confirm(`Delete cohort "${c.name}"? This is blocked if active enrollments exist (use Archive instead).`)) return;
+    if (!(await confirmDialog({
+      title: `Delete cohort "${c.name}"?`,
+      description: "This is blocked if active enrollments exist (use Archive instead).",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setError(null);
     try {
       const res = await fetch(`/api/admin/pathways/${pathwayId}/cohorts/${c.id}`, { method: "DELETE" });
@@ -76,6 +83,7 @@ export function PathwayCohortManager({
 
   return (
     <section className="rounded-2xl bg-card border border-line p-5 surface-shadow space-y-4">
+      {confirmNode}
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-lg font-bold text-fg inline-flex items-center gap-2 tracking-tight">
           <Layers size={16} className="text-brand-600" />

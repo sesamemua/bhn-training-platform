@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Calendar, CheckCircle2, XCircle, Building2, User, MapPin, Video, Phone, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Interview {
   id: string;
@@ -19,6 +20,7 @@ interface Interview {
 export function InterviewResponseList({ interviews }: { interviews: Interview[] }) {
   const [list, setList] = useState(interviews);
   const [busy, setBusy] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function accept(id: string, slot: string) {
     setBusy(id);
@@ -34,7 +36,7 @@ export function InterviewResponseList({ interviews }: { interviews: Interview[] 
     } finally { setBusy(null); }
   }
   async function decline(id: string) {
-    if (!confirm("Decline this interview?")) return;
+    if (!(await confirmDialog({ title: "Decline this interview?", confirmLabel: "Decline", tone: "warning" }))) return;
     setBusy(id);
     try {
       const r = await fetch("/api/interviews", {
@@ -140,6 +142,7 @@ export function InterviewResponseList({ interviews }: { interviews: Interview[] 
           )}
         </article>
       ))}
+      {confirmNode}
     </div>
   );
 }

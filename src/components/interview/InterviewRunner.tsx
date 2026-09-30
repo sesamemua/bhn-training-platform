@@ -22,6 +22,7 @@ import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import { analyzeAudio } from "@/lib/interview/acoustics";
 import { AnalysisInfoModal } from "./AnalysisInfoModal";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface RunnerAnswer {
   id: string;
@@ -145,6 +146,7 @@ export function InterviewRunner({ interview, answers: initial }: { interview: In
   const [coachOpen, setCoachOpen] = useState(false);
   const [coachLoading, setCoachLoading] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [summary, setSummary] = useState({ status: interview.status, overallScore: interview.overallScore, text: interview.summary });
 
   const current = answers[idx];
@@ -307,7 +309,12 @@ export function InterviewRunner({ interview, answers: initial }: { interview: In
   }
 
   async function deleteSession() {
-    if (!confirm("Delete this practice session and its feedback? This can't be undone.")) return;
+    if (!(await confirmDialog({
+      title: "Delete this practice session and its feedback?",
+      description: "This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     await fetch(`/api/mock-interview/${interview.id}`, { method: "DELETE" }).catch(() => {});
     router.push("/mock-interview");
   }
@@ -601,6 +608,7 @@ export function InterviewRunner({ interview, answers: initial }: { interview: In
       )}
 
       {infoOpen && <AnalysisInfoModal onClose={() => setInfoOpen(false)} />}
+      {confirmNode}
     </div>
   );
 }

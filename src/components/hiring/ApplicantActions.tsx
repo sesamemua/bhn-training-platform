@@ -24,6 +24,7 @@ import {
   ClipboardCheck, FileEdit, MessageSquare, Briefcase,
 } from "lucide-react";
 import { OFFER_TEMPLATES, getOfferTemplate, renderOfferTemplate } from "@/lib/hiring/offer-templates";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 // Import from the pure metadata module — NOT from transitions.ts —
 // because transitions.ts pulls nodemailer through mail.ts, which would
 // break this client bundle ("Module not found: Can't resolve 'tls'").
@@ -766,15 +767,16 @@ function OfferSection({
   const [hoursPerWeek, setHoursPerWeek] = useState(existingOffer?.hoursPerWeek ?? "");
   const [location, setLocation] = useState(existingOffer?.location ?? "");
   const [acceptDeadline, setAcceptDeadline] = useState(existingOffer?.acceptDeadline?.slice(0, 10) ?? "");
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   // When the user picks a template, render its body with the form
   // values + applicant context. If body is already non-empty (e.g.
   // they typed manual edits), we don't overwrite without confirm.
-  function applyTemplate(key: string) {
+  async function applyTemplate(key: string) {
     setTemplateKey(key);
     const tmpl = getOfferTemplate(key);
     if (!tmpl) return;
-    if (body.trim() && !confirm("Replace your current draft with the template body?")) return;
+    if (body.trim() && !(await confirmDialog({ title: "Replace your current draft with the template body?", confirmLabel: "Replace", tone: "warning" }))) return;
     setBody(
       renderOfferTemplate(tmpl.body, {
         traineeName: applicantName,
@@ -867,6 +869,7 @@ function OfferSection({
 
   return (
     <section className="rounded-2xl border border-line bg-card p-5 surface-shadow">
+      {confirmNode}
       <header className="flex items-center justify-between mb-3">
         <div>
           <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-subtle">Offer</p>

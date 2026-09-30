@@ -40,6 +40,7 @@ import { institutionsForStream } from "@/lib/equip/institutions";
 import { getCampaignAttribution } from "@/lib/campaign/attribution-client";
 import { trackGoogleAdsConversion } from "@/lib/campaign/google-ads-conversions";
 import { LiftDocumentTray, VENTURE_CONNECT_KINDS } from "./LiftDocumentTray";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Props {
   applicationId: string;
@@ -169,6 +170,7 @@ export function ConnectForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validation, setValidation] = useState<string[]>([]);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-save: 800ms debounced PATCH after every edit.
@@ -233,6 +235,7 @@ export function ConnectForm({
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {/* Header */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div>
@@ -294,8 +297,8 @@ export function ConnectForm({
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (!confirm("Clear every field in this draft?")) return;
+            onClick={async () => {
+              if (!(await confirmDialog({ title: "Clear every field in this draft?", confirmLabel: "Clear draft", tone: "destructive" }))) return;
               setForm({});
             }}
             className="inline-flex items-center gap-1.5 bg-card-solid hover:bg-elevated border border-line text-fg text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"

@@ -15,6 +15,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Share2, Plus, Copy, Check, Trash2, Loader2, Link as LinkIcon } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface ShareLink {
   id: string;
@@ -34,6 +35,7 @@ export function SharePanel({ scriptId, initialLinks }: { scriptId: string; initi
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   // Portals need a DOM target — only render the popup after mount.
   useEffect(() => setMounted(true), []);
@@ -112,7 +114,7 @@ export function SharePanel({ scriptId, initialLinks }: { scriptId: string; initi
   }
 
   async function revoke(l: ShareLink) {
-    if (!confirm("Revoke this link? Anyone using it loses access immediately.")) return;
+    if (!(await confirmDialog({ title: "Revoke this link?", description: "Anyone using it loses access immediately.", confirmLabel: "Revoke", tone: "destructive" }))) return;
     setLinks((cur) => cur.filter((x) => x.id !== l.id));
     await fetch(`/api/workspace/scripts/${scriptId}/share?tokenId=${l.id}`, { method: "DELETE" }).catch(() => {});
   }
@@ -168,6 +170,8 @@ export function SharePanel({ scriptId, initialLinks }: { scriptId: string; initi
         </ul>
       )}
       {copiedId && <p className="mt-2 text-[11px] font-medium text-emerald-700">Link copied — send it to your collaborator.</p>}
+      {/* Inside the popup so a click on the confirm card isn't an "outside click" that closes it. */}
+      {confirmNode}
     </div>
   );
 

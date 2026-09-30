@@ -26,6 +26,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Activity,
   ArrowRight,
@@ -89,6 +90,7 @@ export function SimulatorPlayer({
   guest,
 }: Props) {
   const [state, setState] = useState<AttemptState>(initialState);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [submitting, setSubmitting] = useState(false);
   const [resolved, setResolved] = useState<{
     choiceIdx: number;
@@ -252,9 +254,12 @@ export function SimulatorPlayer({
 
   async function handleReset() {
     if (
-      !confirm(
-        "Reset back to week 1 with starting stats? Your decision log will be cleared.",
-      )
+      !(await confirmDialog({
+        title: "Reset back to week 1 with starting stats?",
+        description: "Your decision log will be cleared.",
+        confirmLabel: "Reset",
+        tone: "destructive",
+      }))
     ) {
       return;
     }
@@ -295,9 +300,12 @@ export function SimulatorPlayer({
   // player can replay a different path.
   async function handleRewind(week: number) {
     if (
-      !confirm(
-        `Go back to week ${week}? Your decisions from week ${week} onward will be cleared so you can replay from there — earlier weeks are kept.`,
-      )
+      !(await confirmDialog({
+        title: `Go back to week ${week}?`,
+        description: `Your decisions from week ${week} onward will be cleared so you can replay from there — earlier weeks are kept.`,
+        confirmLabel: "Go back",
+        tone: "warning",
+      }))
     ) {
       return;
     }
@@ -332,18 +340,22 @@ export function SimulatorPlayer({
   // Review view when finished
   if (state.finished) {
     return (
-      <ReviewView
-        payload={payload}
-        state={state}
-        attemptId={attemptId}
-        guest={!!guest}
-        onReset={handleReset}
-      />
+      <>
+        {confirmNode}
+        <ReviewView
+          payload={payload}
+          state={state}
+          attemptId={attemptId}
+          guest={!!guest}
+          onReset={handleReset}
+        />
+      </>
     );
   }
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {/* Hero band — role context */}
       <RoleHeader payload={payload} onReset={handleReset} />
 

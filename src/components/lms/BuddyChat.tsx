@@ -17,6 +17,7 @@ export function BuddyChat({ pairId, mePartnerName, myUserId }: { pairId: string;
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +47,7 @@ export function BuddyChat({ pairId, mePartnerName, myUserId }: { pairId: string;
   async function send() {
     const body = text.trim();
     if (!body || busy) return;
+    setError(null);
     setBusy(true);
     try {
       const res = await fetch(`/api/buddy/${pairId}/messages`, {
@@ -55,7 +57,7 @@ export function BuddyChat({ pairId, mePartnerName, myUserId }: { pairId: string;
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Send failed");
+        setError(j.error ?? "Send failed");
         return;
       }
       const created = (await res.json()) as Msg;
@@ -123,6 +125,7 @@ export function BuddyChat({ pairId, mePartnerName, myUserId }: { pairId: string;
             <Send size={13} /> Send
           </Button>
         </div>
+        {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
       </div>
     </Card>
   );

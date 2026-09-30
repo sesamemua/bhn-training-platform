@@ -22,6 +22,7 @@ export function RoleRequestRow({ id, status, toRole, reviewerRole }: Props) {
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"none" | "approve" | "reject">("none");
   const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   if (status !== "pending") {
     return <span className="text-xs text-subtle">—</span>;
@@ -33,6 +34,7 @@ export function RoleRequestRow({ id, status, toRole, reviewerRole }: Props) {
 
   async function decide(decision: "approve" | "reject") {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(`/api/admin/role-requests/${id}`, {
         method: "PATCH",
@@ -41,7 +43,7 @@ export function RoleRequestRow({ id, status, toRole, reviewerRole }: Props) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Action failed");
+        setError(j.error ?? "Action failed");
         return;
       }
       setMode("none");
@@ -56,7 +58,7 @@ export function RoleRequestRow({ id, status, toRole, reviewerRole }: Props) {
     <>
       <div className="flex items-center gap-1.5">
         <button
-          onClick={() => setMode("approve")}
+          onClick={() => { setError(null); setMode("approve"); }}
           disabled={busy || !canApprove}
           title={canApprove ? "Approve" : "Superadmin approval required"}
           className="text-xs font-medium px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 transition-colors"
@@ -64,7 +66,7 @@ export function RoleRequestRow({ id, status, toRole, reviewerRole }: Props) {
           <Check size={12} className="inline mr-1" />Approve
         </button>
         <button
-          onClick={() => setMode("reject")}
+          onClick={() => { setError(null); setMode("reject"); }}
           disabled={busy}
           className="text-xs font-medium px-2.5 py-1 rounded-lg bg-card border border-line hover:border-rose-300 hover:text-rose-700 text-muted transition-colors"
         >
@@ -88,6 +90,7 @@ export function RoleRequestRow({ id, status, toRole, reviewerRole }: Props) {
         <Field label="Note for the user" hint="Optional. Visible on their profile page.">
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
         </Field>
+        {error && <p role="alert" className="text-sm text-rose-700 mt-2">{error}</p>}
       </Modal>
 
       <Modal
@@ -106,6 +109,7 @@ export function RoleRequestRow({ id, status, toRole, reviewerRole }: Props) {
         <Field label="Reason" required>
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} />
         </Field>
+        {error && <p role="alert" className="text-sm text-rose-700 mt-2">{error}</p>}
       </Modal>
     </>
   );

@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Globe, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface IntakeRow {
   id: string;
@@ -49,6 +50,7 @@ export function EmployerIntakeTable({ rows }: { rows: IntakeRow[] }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function openEdit(r: IntakeRow) {
     setForm({ ...r });
@@ -94,7 +96,12 @@ export function EmployerIntakeTable({ rows }: { rows: IntakeRow[] }) {
   }
 
   async function remove(r: IntakeRow) {
-    if (!confirm(`Delete the intake from ${r.organization || r.name || r.email}? This can't be undone.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete the intake from ${r.organization || r.name || r.email}?`,
+      description: "This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setDeletingId(r.id);
     try {
       const res = await fetch(`/api/admin/experience/employer-intake/${r.id}`, { method: "DELETE" });
@@ -203,6 +210,7 @@ export function EmployerIntakeTable({ rows }: { rows: IntakeRow[] }) {
           </div>
         )}
       </Modal>
+      {confirmNode}
     </>
   );
 }

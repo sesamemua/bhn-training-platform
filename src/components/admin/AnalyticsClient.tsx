@@ -47,6 +47,7 @@ export function AnalyticsClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const reportRef = useRef<HTMLDivElement>(null);
 
   async function load(r = range) {
@@ -67,6 +68,7 @@ export function AnalyticsClient() {
 
   async function downloadPdf() {
     if (!reportRef.current || !data) return;
+    setExportError("");
     setExporting(true);
     try {
       const [{ default: html2canvas }, jspdfMod] = await Promise.all([
@@ -109,7 +111,7 @@ export function AnalyticsClient() {
       const label = data.range.allTime ? "all-time" : `${data.range.days}d`;
       pdf.save(`bhn-analytics-${label}-${stamp}.pdf`);
     } catch (e) {
-      alert("Couldn't generate PDF: " + (e as Error).message);
+      setExportError("Couldn't generate PDF: " + (e as Error).message);
     } finally {
       setExporting(false);
     }
@@ -167,6 +169,7 @@ export function AnalyticsClient() {
             <Download size={13} className={exporting ? "animate-pulse" : ""} />
             {exporting ? "Exporting…" : "PDF report"}
           </button>
+          {exportError && <span className="text-xs text-rose-600">{exportError}</span>}
           <button
             onClick={() => load()}
             disabled={loading}

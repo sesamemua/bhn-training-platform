@@ -6,6 +6,7 @@ import {
   Sparkles, ExternalLink, Clock, Search, X, Eye, Undo2, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useInputDialog } from "@/components/ui/InputDialog";
 
 interface Invite {
   id: string;
@@ -26,6 +27,7 @@ const TEST_EMAIL_RE = /@biohubnet\.test$/i;
 
 export function EmployerInvitesAdmin({ initial }: { initial: Invite[] }) {
   const router = useRouter();
+  const { inputDialog, node: inputNode } = useInputDialog();
   const [invites, setInvites] = useState<Invite[]>(initial);
   const [form, setForm] = useState({
     email: "", companyName: "", companyWebsite: "", expiresInDays: 14,
@@ -121,7 +123,7 @@ export function EmployerInvitesAdmin({ initial }: { initial: Invite[] }) {
         setCopiedId(created.id);
         setTimeout(() => setCopiedId(null), 2000);
       } catch {
-        window.prompt("Copy link:", linkFor(created.token));
+        await inputDialog({ title: "Copy link", defaultValue: linkFor(created.token), confirmLabel: "Done", maxLength: 2000 });
       }
     }
   }
@@ -132,7 +134,7 @@ export function EmployerInvitesAdmin({ initial }: { initial: Invite[] }) {
       setCopiedId(invite.id);
       setTimeout(() => setCopiedId(null), 1800);
     } catch {
-      window.prompt("Copy link:", linkFor(invite.token));
+      await inputDialog({ title: "Copy link", defaultValue: linkFor(invite.token), confirmLabel: "Done", maxLength: 2000 });
     }
   }
 
@@ -172,6 +174,7 @@ export function EmployerInvitesAdmin({ initial }: { initial: Invite[] }) {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      {inputNode}
       {/* Issue invite */}
       <section className="bg-card border border-line rounded-2xl p-5">
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">

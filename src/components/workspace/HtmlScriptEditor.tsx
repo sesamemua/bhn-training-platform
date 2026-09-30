@@ -26,6 +26,7 @@ import { colorForKey, type PresencePeer } from "@/lib/scripts/presence";
 import { AccountOfferModal } from "./AccountOfferModal";
 import { ScriptCommentLayer, inHiddenTab } from "./ScriptCommentLayer";
 import { shieldShadowTyping } from "@/lib/workspace/typing-shield";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Revision {
   id: string;
@@ -219,6 +220,7 @@ export function HtmlScriptEditor({
   const [secondsLeft, setSecondsLeft] = useState(AUTOSAVE_SECONDS);
   const [lastSaved, setLastSaved] = useState<{ at: number; kind: "manual" | "auto" } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [showSource, setShowSource] = useState(false);
   const [sourceHtml, setSourceHtml] = useState(initialHtml);
   const [tab, setTab] = useState<"sections" | "tables" | "history" | "comments">(showStructureTabs ? "sections" : "comments");
@@ -868,10 +870,10 @@ export function HtmlScriptEditor({
     markDirty();
     refreshSections();
   }
-  function removeSection(i: number) {
+  async function removeSection(i: number) {
     const b = boxesRef.current[i];
     if (!b) return;
-    if (!confirm("Remove this section?")) return;
+    if (!(await confirmDialog({ title: "Remove this section?", confirmLabel: "Remove", tone: "destructive" }))) return;
     const parent = b.parentElement;
     b.remove();
     if (parent && parent.tagName === "SECTION" && parent.children.length === 0) parent.remove();
@@ -905,10 +907,10 @@ export function HtmlScriptEditor({
     markDirty();
     refreshSections();
   }
-  function removeIntercut(i: number) {
+  async function removeIntercut(i: number) {
     const r = intercutRef.current[i];
     if (!r) return;
-    if (!confirm("Remove this script line?")) return;
+    if (!(await confirmDialog({ title: "Remove this script line?", confirmLabel: "Remove", tone: "destructive" }))) return;
     r.remove();
     markDirty();
     refreshSections();
@@ -980,10 +982,10 @@ export function HtmlScriptEditor({
     markDirty();
     refreshTables();
   }
-  function removeTableRow(ti: number, ri: number) {
+  async function removeTableRow(ti: number, ri: number) {
     const r = rowsOf(ti)[ri];
     if (!r) return;
-    if (!confirm("Remove this row?")) return;
+    if (!(await confirmDialog({ title: "Remove this row?", confirmLabel: "Remove", tone: "destructive" }))) return;
     r.remove();
     markDirty();
     refreshTables();
@@ -1054,8 +1056,8 @@ export function HtmlScriptEditor({
     refreshTables();
   }, [syncTableOrderToGantt, markDirty, refreshTables]);
 
-  const removeGanttRow = useCallback((row: HTMLElement) => {
-    if (!confirm("Remove this timeline row (and its linked table row, if any)?")) return;
+  const removeGanttRow = useCallback(async (row: HTMLElement) => {
+    if (!(await confirmDialog({ title: "Remove this timeline row?", description: "Its linked table row, if any, goes too.", confirmLabel: "Remove", tone: "destructive" }))) return;
     const track = row.querySelector<HTMLElement>(".bar[data-track]")?.getAttribute("data-track");
     row.remove();
     // Remove EVERY table row linked to this bar (not just the first), so a
@@ -1064,7 +1066,7 @@ export function HtmlScriptEditor({
     reconcileTable();
     markDirty();
     refreshTables();
-  }, [reconcileTable, markDirty, refreshTables]);
+  }, [confirmDialog, reconcileTable, markDirty, refreshTables]);
 
   useEffect(() => {
     ganttOpsRef.current = { add: addGanttRow, move: moveGanttRow, remove: removeGanttRow };
@@ -1077,10 +1079,12 @@ export function HtmlScriptEditor({
 
   async function revertToLastManual() {
     if (!lastManual) return;
-    if (!confirm(
-      `Revert to the last manual save — by ${lastManual.authorName}, ${fmtWhen(lastManual.createdAt)}?\n\n` +
-      "Unsaved edits are discarded. Newer auto-saved versions stay in History."
-    )) return;
+    if (!(await confirmDialog({
+      title: `Revert to the last manual save — by ${lastManual.authorName}, ${fmtWhen(lastManual.createdAt)}?`,
+      description: "Unsaved edits are discarded. Newer auto-saved versions stay in History.",
+      confirmLabel: "Revert",
+      tone: "warning",
+    }))) return;
     await applyRestore(lastManual.id);
   }
 
@@ -1091,7 +1095,7 @@ export function HtmlScriptEditor({
       : null;
     if (panel && docTab) {
       const label = docTabs.find((t) => t.key === docTab)?.label ?? docTab;
-      if (!confirm(`Restore the ${label} tab to this version? Other tabs stay as they are. The result is saved as a new version.`)) return;
+      if (!(await confirmDialog({ title: `Restore the ${label} tab to this version?`, description: "Other tabs stay as they are. The result is saved as a new version.", confirmLabel: "Restore", tone: "warning" }))) return;
       const res = await fetch(`${base}/revisions?id=${encodeURIComponent(revId)}`).catch(() => null);
       const j = (await res?.json().catch(() => ({}))) as { ok?: boolean; html?: string; error?: string } | undefined;
       if (!j?.ok || typeof j.html !== "string") { setError(j?.error ?? "Restore failed."); return; }
@@ -1111,8 +1115,8 @@ export function HtmlScriptEditor({
     }
     const whole = rev?.untabbed && docTabs.length > 0
       ? "This version is from before the document had tabs. Restoring it replaces the whole document, every tab included, and saves it as a new version."
-      : "Restore this version? The current content is replaced and saved as a new version.";
-    if (!confirm(whole)) return;
+      : "The current content is replaced and saved as a new version.";
+    if (!(await confirmDialog({ title: "Restore this version?", description: whole, confirmLabel: "Restore", tone: "warning" }))) return;
     await applyRestore(revId);
   }
 
@@ -1176,6 +1180,7 @@ export function HtmlScriptEditor({
 
   return (
     <div className="space-y-3 pb-24">
+      {confirmNode}
       {/* Sticky toolbar — presence + view toggle (Save lives in the floating bar). */}
       <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-card-solid px-3 py-2 shadow-card-rest">
         <div className="flex items-center gap-3">

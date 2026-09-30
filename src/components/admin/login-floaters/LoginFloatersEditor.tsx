@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FLOATER_REGISTRY, FLOATER_LIST, type FloaterDef } from "@/lib/login-floaters/registry";
 import type { FloaterInstance, LoginFloaterFx } from "@/lib/login-floaters/types";
 
@@ -59,6 +60,7 @@ export function LoginFloatersEditor({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [savedNote, setSavedNote] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   // Global on/off flags for the two ambient layers. Toggled instantly
   // (own transition + feedback note), independent of the floater list's
   // Save button below.
@@ -126,7 +128,12 @@ export function LoginFloatersEditor({
     });
   }
   async function reset() {
-    if (!confirm("Reset login floaters to the default 5? Your customisations will be lost."))
+    if (!(await confirmDialog({
+      title: "Reset login floaters to the default 5?",
+      description: "Your customisations will be lost.",
+      confirmLabel: "Reset",
+      tone: "warning",
+    })))
       return;
     setError(null);
     setSavedNote(null);
@@ -638,6 +645,7 @@ export function LoginFloatersEditor({
         })}
       </div>
 
+      {confirmNode}
     </div>
   );
 }

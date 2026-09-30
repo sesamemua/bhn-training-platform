@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { UserRowClient } from "./UserRowClient";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface UserRow {
   id: string;
@@ -72,6 +73,7 @@ export function UsersTableClient({ users, groups, kind, initialQuery }: Props) {
   const [pendingAmount, setPendingAmount] = useState("100");
   const [pendingGroup, setPendingGroup] = useState(groups[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   // Batch hard-delete is destructive — only surfaced for non-real test accounts.
   const canBatchDelete = kind !== "real";
 
@@ -151,11 +153,15 @@ export function UsersTableClient({ users, groups, kind, initialQuery }: Props) {
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string; affected?: number; failed?: number };
       if (!res.ok) {
-        alert(j.error ?? "Batch action failed");
+        await confirmDialog({ title: j.error ?? "Batch action failed", acknowledgeOnly: true });
         return;
       }
       if (action === "delete" && (j.failed ?? 0) > 0) {
-        alert(`Deleted ${j.affected ?? 0}. ${j.failed} couldn't be removed — they still have linked records that block deletion.`);
+        await confirmDialog({
+          title: `Deleted ${j.affected ?? 0}. ${j.failed} couldn't be removed.`,
+          description: "They still have linked records that block deletion.",
+          acknowledgeOnly: true,
+        });
       }
       setModal(null);
       clearSelection();
@@ -487,6 +493,7 @@ export function UsersTableClient({ users, groups, kind, initialQuery }: Props) {
           account and any superadmins are skipped automatically.
         </div>
       </Modal>
+      {confirmNode}
     </div>
   );
 }

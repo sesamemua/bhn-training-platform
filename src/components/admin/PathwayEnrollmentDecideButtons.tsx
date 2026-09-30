@@ -5,6 +5,7 @@ import { Check, X, Clock, ArrowUp, RotateCcw } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Textarea } from "@/components/ui/Field";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Decision = "approve" | "reject" | "waitlist" | "promote" | "reopen" | "withdraw";
 
@@ -18,6 +19,7 @@ export function PathwayEnrollmentDecideButtons({ id, status }: Props) {
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<Decision | null>(null);
   const [note, setNote] = useState("");
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function decide(d: Decision, withModal = false) {
     if (withModal && !note.trim()) {
@@ -33,7 +35,7 @@ export function PathwayEnrollmentDecideButtons({ id, status }: Props) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Action failed");
+        await confirmDialog({ title: j.error ?? "Action failed", acknowledgeOnly: true });
         return;
       }
       setModal(null);
@@ -78,6 +80,7 @@ export function PathwayEnrollmentDecideButtons({ id, status }: Props) {
 
   return (
     <>
+      {confirmNode}
       <div className="flex items-center gap-1.5 flex-wrap">
         {actions.map((a) => {
           const Icon = a.icon;

@@ -12,6 +12,7 @@ import {
   MessageCircle, Plus, UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Touch {
   id: string;
@@ -63,6 +64,7 @@ export function TouchLogModal({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/workspace/outreach/people/${personId}/touches`).catch(() => null);
@@ -106,7 +108,7 @@ export function TouchLogModal({
   }
 
   async function remove(t: Touch) {
-    if (!confirm("Delete this logged reach-out?")) return;
+    if (!(await confirmDialog({ title: "Delete this logged reach-out?", confirmLabel: "Delete", tone: "destructive" }))) return;
     setTouches((cur) => (cur ?? []).filter((x) => x.id !== t.id));
     await fetch(`/api/workspace/outreach/touches/${t.id}`, { method: "DELETE" }).catch(() => {});
     router.refresh();
@@ -114,6 +116,7 @@ export function TouchLogModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      {confirmNode}
       <div className="flex max-h-[82vh] w-full max-w-xl flex-col rounded-2xl border border-line bg-card-solid shadow-elevated">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">

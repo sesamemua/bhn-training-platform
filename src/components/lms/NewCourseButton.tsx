@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Loader2 } from "lucide-react";
 import { COURSE_TOPICS, COURSE_DELIVERY, COURSE_PROVIDERS } from "@/lib/courses/filters";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 /**
  * "New Course" modal. Topic / Delivery / Provider are managed inline
@@ -38,6 +39,7 @@ export function NewCourseButton() {
   const [deliveries, setDeliveries] = useState<FilterOpt[]>([]);
   const [providers, setProviders] = useState<FilterOpt[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   useEffect(() => {
     if (!open || loaded) return;
@@ -85,7 +87,12 @@ export function NewCourseButton() {
       if (type === "provider") setProviders((cur) => cur.filter((o) => o.id !== id));
       return;
     }
-    if (!confirm("Remove this option from the canonical list? Existing courses keep their value; the option just stops appearing as a suggestion.")) return;
+    if (!(await confirmDialog({
+      title: "Remove this option from the canonical list?",
+      description: "Existing courses keep their value; the option just stops appearing as a suggestion.",
+      confirmLabel: "Remove",
+      tone: "warning",
+    }))) return;
     const r = await fetch(`/api/admin/courses/filter-options/${id}`, { method: "DELETE" });
     if (!r.ok) return;
     if (type === "topic")    setTopics((cur) => cur.filter((o) => o.id !== id));
@@ -267,6 +274,7 @@ export function NewCourseButton() {
           </div>
         </div>
       )}
+      {confirmNode}
     </>
   );
 }

@@ -20,6 +20,7 @@ export function CreditApplicationReview({ applicationId, status, requestedAmount
   const [note, setNote] = useState("");
   const [amount, setAmount] = useState(String(requestedAmount));
   const [mode, setMode] = useState<Mode>("none");
+  const [error, setError] = useState<string | null>(null);
 
   const isRejected = status === "rejected";
   const heading = isRejected ? "Reverse decision" : "Decide";
@@ -29,6 +30,7 @@ export function CreditApplicationReview({ applicationId, status, requestedAmount
 
   async function submit(decision: "approve" | "reject" | "reopen") {
     setBusy(true);
+    setError(null);
     try {
       const body: Record<string, unknown> = { decision };
       if (note) body.note = note;
@@ -40,7 +42,7 @@ export function CreditApplicationReview({ applicationId, status, requestedAmount
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Action failed");
+        setError(j.error ?? "Action failed");
         return;
       }
       router.refresh();
@@ -54,6 +56,7 @@ export function CreditApplicationReview({ applicationId, status, requestedAmount
       <div className="mb-3">
         <h3 className="text-xs font-semibold text-subtle uppercase tracking-wider">{heading}</h3>
         {subhead && <p className="text-xs text-muted mt-1">{subhead}</p>}
+        {error && <p role="alert" className="text-sm text-rose-700 mt-2">{error}</p>}
       </div>
 
       {mode === "none" && (

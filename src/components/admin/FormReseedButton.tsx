@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { RotateCw, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 /**
  * One-click "reset form schema to default" for admins. Overwrites the
@@ -14,11 +15,15 @@ export function FormReseedButton({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<"ok" | "err" | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function go() {
-    if (!confirm(
-      "Reset this form's schema to the source default? This overwrites any custom field edits you've made via the inline form editor."
-    )) return;
+    if (!(await confirmDialog({
+      title: "Reset this form's schema to the source default?",
+      description: "This overwrites any custom field edits you've made via the inline form editor.",
+      confirmLabel: "Reset",
+      tone: "warning",
+    }))) return;
     setBusy(true); setErr(null); setDone(null);
     try {
       const r = await fetch(`/api/admin/forms/${slug}/reseed`, { method: "POST" });
@@ -37,6 +42,8 @@ export function FormReseedButton({ slug }: { slug: string }) {
   }
 
   return (
+    <>
+    {confirmNode}
     <button
       onClick={go}
       disabled={busy}
@@ -52,5 +59,6 @@ export function FormReseedButton({ slug }: { slug: string }) {
       )}
       {done === "ok" ? "Schema reset" : err ? err : "Reset schema"}
     </button>
+    </>
   );
 }

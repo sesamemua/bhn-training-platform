@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface CourseOption {
   id: string;
@@ -32,6 +33,7 @@ const MIME = "application/x-bhn-pathway-course";
 
 export function PathwayManageButton({ mode, pathway, courses }: Props) {
   const router = useRouter();
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -130,7 +132,7 @@ export function PathwayManageButton({ mode, pathway, courses }: Props) {
 
   async function submit() {
     if (!title.trim()) {
-      alert("Title is required");
+      await confirmDialog({ title: "Title is required", acknowledgeOnly: true });
       return;
     }
     setLoading(true);
@@ -150,7 +152,7 @@ export function PathwayManageButton({ mode, pathway, courses }: Props) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Save failed");
+        await confirmDialog({ title: j.error ?? "Save failed", acknowledgeOnly: true });
         return;
       }
       const data = await res.json();
@@ -164,12 +166,17 @@ export function PathwayManageButton({ mode, pathway, courses }: Props) {
 
   async function remove() {
     if (!pathway) return;
-    if (!confirm("Delete this pathway? Existing certificates remain but no new ones will issue.")) return;
+    if (!(await confirmDialog({
+      title: "Delete this pathway?",
+      description: "Existing certificates remain but no new ones will issue.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/pathways/${pathway.id}`, { method: "DELETE" });
       if (!res.ok) {
-        alert("Delete failed");
+        await confirmDialog({ title: "Delete failed", acknowledgeOnly: true });
         return;
       }
       router.push("/pathways");
@@ -187,6 +194,7 @@ export function PathwayManageButton({ mode, pathway, courses }: Props) {
 
   return (
     <>
+      {confirmNode}
       {mode === "create" ? (
         <Button onClick={() => setOpen(true)} variant="primary">
           <Plus size={14} /> New pathway

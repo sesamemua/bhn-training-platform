@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Save, Trash2, Loader2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   PAGE_AUDIENCES,
   PAGE_AUDIENCE_LABEL,
@@ -59,6 +60,7 @@ export function PageEditor({ initial, mode }: Props) {
   const [audience, setAudience] = useState<PageAudience>(initial.audience);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   function onTitleChange(v: string) {
     setTitle(v);
@@ -106,7 +108,7 @@ export function PageEditor({ initial, mode }: Props) {
 
   async function remove() {
     if (!initial.id) return;
-    if (!confirm(`Delete "${title}"? This can't be undone.`)) return;
+    if (!(await confirmDialog({ title: `Delete "${title}"?`, description: "This can't be undone.", confirmLabel: "Delete", tone: "destructive" }))) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/pages/${initial.id}`, { method: "DELETE" });
@@ -121,6 +123,7 @@ export function PageEditor({ initial, mode }: Props) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {confirmNode}
       {/* ─── Form ─── */}
       <div className="space-y-5">
         <Field label="Title">

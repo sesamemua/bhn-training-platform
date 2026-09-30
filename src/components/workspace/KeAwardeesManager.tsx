@@ -7,6 +7,7 @@
  */
 import { useState, useTransition } from "react";
 import { Check, Copy, Download, ExternalLink, Trash2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { countWords } from "@/lib/events/bio";
@@ -64,6 +65,7 @@ export function KeAwardeesManager({
   const [inForce, setInForce] = useState(settings.quoteMaxWords);
   const [byRound, setByRound] = useState(true);
   const [note, setNote] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
 
@@ -99,8 +101,13 @@ export function KeAwardeesManager({
     run(() => setAwardeeRound(a.id, to), `${a.fullName} moved to Round ${to}.`, () => put(a.round));
   }
 
-  function remove(a: AwardeeRow) {
-    if (!confirm(`Delete ${a.fullName}'s submission?\n\nTheir photo is deleted too. This can't be undone.`)) return;
+  async function remove(a: AwardeeRow) {
+    if (!(await confirmDialog({
+      title: `Delete ${a.fullName}'s submission?`,
+      description: "Their photo is deleted too. This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setAwardees((cur) => cur.filter((x) => x.id !== a.id));
     run(() => deleteAwardee(a.id), `${a.fullName}'s submission was deleted.`, () => setAwardees((cur) => [...cur, a]));
   }
@@ -144,6 +151,7 @@ export function KeAwardeesManager({
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       <section className="rounded-xl border border-line bg-card-solid p-4">
         <h2 className="text-[13.5px] font-semibold text-fg">Form link</h2>
         <p className="text-[12px] text-fg-subtle">Send this to awardees. No login needed.</p>

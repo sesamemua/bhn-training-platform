@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import {
   MessageCircle, Send, AlertCircle, Lock, Trash2, ShieldCheck, Building2,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface CommentRow {
   id: string;
@@ -40,6 +41,7 @@ export function ApplicationCommentThread({
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -92,7 +94,7 @@ export function ApplicationCommentThread({
   }
 
   async function remove(c: CommentRow) {
-    if (!confirm("Delete this comment?")) return;
+    if (!(await confirmDialog({ title: "Delete this comment?", confirmLabel: "Delete", tone: "destructive" }))) return;
     setError(null);
     try {
       const res = await fetch(`/api/talent-pool/${submissionId}/comments/${c.id}`, {
@@ -108,6 +110,7 @@ export function ApplicationCommentThread({
 
   return (
     <section className="rounded-2xl border border-line bg-card p-4 surface-shadow space-y-3">
+      {confirmNode}
       <header className="flex items-center gap-2">
         <MessageCircle size={14} className="text-brand-600" />
         <h3 className="text-sm font-bold text-fg tracking-tight">

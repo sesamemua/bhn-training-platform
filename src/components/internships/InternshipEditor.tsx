@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { DemoFiller } from "@/components/demo/DemoFiller";
 import { POSTING_PRESETS } from "@/lib/demo/presets";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface PostingValues {
   companyName: string;
@@ -54,6 +55,7 @@ export function InternshipEditor({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function set<K extends keyof PostingValues>(k: K, v: PostingValues[K]) {
@@ -171,7 +173,7 @@ export function InternshipEditor({
 
   async function destroy() {
     if (!postingId) return;
-    if (!confirm("Delete this posting? This cannot be undone.")) return;
+    if (!(await confirmDialog({ title: "Delete this posting?", description: "This cannot be undone.", confirmLabel: "Delete", tone: "destructive" }))) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/admin/internships/${postingId}`, { method: "DELETE" });
@@ -205,6 +207,7 @@ export function InternshipEditor({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {confirmNode}
       {/* DemoFiller — admin-only sample preset filler */}
       <DemoFiller
         visible={true}

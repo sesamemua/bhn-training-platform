@@ -8,6 +8,7 @@ import {
   ExternalLink, Building2, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Invite {
   id: string;
@@ -47,6 +48,7 @@ export function DemoWorkspacesClient({ initialInvites, initialActive }: Props) {
   const [form, setForm] = useState({ email: "", companyName: "", companyWebsite: "", days: 7 });
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   // Multi-select state for the bulk-delete action. Sets keep the
   // membership-check fast even at the page's 50-row hard cap.
   const [selectedInvites, setSelectedInvites] = useState<Set<string>>(() => new Set());
@@ -116,7 +118,7 @@ export function DemoWorkspacesClient({ initialInvites, initialActive }: Props) {
   }
 
   async function endDemo(employerId: string) {
-    if (!confirm("End this demo workspace now? The visitor's data will be deleted.")) return;
+    if (!(await confirmDialog({ title: "End this demo workspace now?", description: "The visitor's data will be deleted.", confirmLabel: "End demo", tone: "destructive" }))) return;
     setBusy(true);
     try {
       const r = await fetch(`/api/admin/demo-workspaces?employerId=${employerId}`, { method: "DELETE" });
@@ -191,6 +193,7 @@ export function DemoWorkspacesClient({ initialInvites, initialActive }: Props) {
 
   return (
     <div className="space-y-6">
+      {confirmNode}
       {/* Mint CTA */}
       <section className="bg-card border border-line rounded-2xl p-5">
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">

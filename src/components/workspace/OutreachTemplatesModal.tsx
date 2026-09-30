@@ -12,6 +12,7 @@ import {
   BadgeCheck, UserRound, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface ResolvedTemplate {
   id: string;
@@ -57,6 +58,7 @@ export function OutreachTemplatesModal({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const tpl = templates.find((t) => t.id === selectedId) ?? templates[0];
   const contact = contacts.find((c) => c.id === contactId) ?? null;
@@ -139,7 +141,11 @@ export function OutreachTemplatesModal({
 
   async function resetToDefault() {
     if (!tpl) return;
-    if (!confirm(`Reset “${tpl.label}” to the default copy?`)) return;
+    if (!(await confirmDialog({
+      title: `Reset “${tpl.label}” to the default copy?`,
+      confirmLabel: "Reset",
+      tone: "warning",
+    }))) return;
     setBusy("reset");
     setError(null);
     try {
@@ -305,6 +311,7 @@ export function OutreachTemplatesModal({
           </div>
         </div>
       </div>
+      {confirmNode}
     </div>
   );
 }

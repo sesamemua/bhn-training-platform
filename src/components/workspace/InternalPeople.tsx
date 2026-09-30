@@ -14,6 +14,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Loader2, Plus, Trash2, UserCheck } from "lucide-react";
 import { emailKey } from "@/lib/eligibility/email-key";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { AdminWorkshop } from "@/lib/allocation/admin-types";
 import type { InternalPerson } from "@/lib/training-week/internal";
 import { saveInternalPeople, setInternalAttendance } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
@@ -29,6 +30,7 @@ export function InternalPeople({
   const [draft, setDraft] = useState<InternalPerson>({ name: "", email: "", dietary: "" });
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [pending, start] = useTransition();
 
   const live = useMemo(() => workshops.filter((w) => w.isActive), [workshops]);
@@ -68,9 +70,17 @@ export function InternalPeople({
     setDraft({ name: "", email: "", dietary: "" });
   }
 
-  function remove(p: InternalPerson) {
+  async function remove(p: InternalPerson) {
     const held = live.filter((w) => seatOf(p, w)?.internalMade).length;
-    if (!confirm(`Take ${p.name} off the Internal list?${held ? `\n\nTheir ${held} session seat${held === 1 ? "" : "s"} made here stay until you untick them first.` : ""}`)) return;
+    if (
+      !(await confirmDialog({
+        title: `Take ${p.name} off the Internal list?`,
+        description: held ? `Their ${held} session seat${held === 1 ? "" : "s"} made here stay until you untick them first.` : undefined,
+        confirmLabel: "Remove",
+        tone: "warning",
+      }))
+    )
+      return;
     save(people.filter((x) => x !== p), `Removed ${p.name}.`);
   }
 
@@ -86,6 +96,7 @@ export function InternalPeople({
 
   return (
     <section className="mt-6 rounded-lg border border-line bg-card p-4">
+      {confirmNode}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="flex items-center gap-1.5 text-[13px] font-bold text-fg">
           <UserCheck size={14} className="text-indigo-600" /> Internal people

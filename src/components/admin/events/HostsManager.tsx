@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Loader2, AlertCircle, User as UserIcon } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface HostRow {
   id: string;
@@ -22,6 +23,7 @@ export function HostsManager({
   const [role, setRole]   = useState("host");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function addHost(e: React.FormEvent) {
     e.preventDefault();
@@ -46,19 +48,21 @@ export function HostsManager({
   }
 
   async function removeHost(id: string, name: string | null) {
-    if (!confirm(`Remove ${name ?? "this host"}?`)) return;
+    if (!(await confirmDialog({ title: `Remove ${name ?? "this host"}?`, confirmLabel: "Remove", tone: "destructive" }))) return;
+    setError(null);
     const res = await fetch(`/api/admin/events/${slug}/hosts/${id}`, { method: "DELETE" });
     if (res.ok) {
       setHosts((hs) => hs.filter((h) => h.id !== id));
       router.refresh();
     } else {
       const json = await res.json().catch(() => ({}));
-      alert(`Failed: ${json.error ?? res.status}`);
+      setError(`Failed: ${json.error ?? res.status}`);
     }
   }
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {hosts.length === 0 ? (
         <div className="rounded-2xl border border-line bg-card p-8 text-center text-sm text-muted">
           No hosts yet. Add one by email below.

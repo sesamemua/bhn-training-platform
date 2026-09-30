@@ -12,6 +12,7 @@ import {
   ChevronDown, Trash2, Save, Loader2, CheckCircle2, AlertCircle, Hourglass, ExternalLink,
 } from "lucide-react";
 import { validateStarStructure } from "@/lib/prep/star";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Story {
   id: string;
@@ -73,6 +74,7 @@ function StoryCard({
 }) {
   const [savingTransition, startSaving] = useTransition();
   const [savedFlash, setSavedFlash] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const feedback = validateStarStructure({
     situation: story.situation,
@@ -103,7 +105,12 @@ function StoryCard({
   }
 
   async function del() {
-    if (!confirm("Delete this story? It's only in your private Story Bank — but the action is permanent.")) {
+    if (!(await confirmDialog({
+      title: "Delete this story?",
+      description: "It's only in your private Story Bank — but the action is permanent.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) {
       return;
     }
     const res = await fetch(`/api/prep/star/${story.id}`, { method: "DELETE" });
@@ -121,6 +128,7 @@ function StoryCard({
     // dividers. Hover/open state uses a subtle elevated wash so the
     // active row stands out without a rounded box around it.
     <li className={open ? "bg-elevated/30" : ""}>
+      {confirmNode}
       <button
         type="button"
         onClick={onToggle}

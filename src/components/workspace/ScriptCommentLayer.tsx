@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MessageSquarePlus, Check, RotateCcw, Trash2, Pencil, CornerDownRight, X } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Cmt {
   id: string; body: string; authorName: string; authorKind: string; status: string; parentId: string | null;
@@ -122,6 +123,7 @@ export function ScriptCommentLayer({
   const [replyFor, setReplyFor] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [, force] = useState(0);
   // Coalesce all position recomputes (scroll / resize / every keystroke) into a
   // single update per animation frame — measuring ranges with getClientRects on
@@ -275,7 +277,7 @@ export function ScriptCommentLayer({
     setReplyBody(""); setReplyFor(null); await load();
   }
   async function del(c: Cmt) {
-    if (!confirm("Delete this comment?")) return;
+    if (!(await confirmDialog({ title: "Delete this comment?", confirmLabel: "Delete", tone: "destructive" }))) return;
     setComments((cur) => cur.filter((x) => x.id !== c.id && x.parentId !== c.id));
     await fetch(`${base}/comments?commentId=${c.id}`, { method: "DELETE" }).catch(() => {});
   }
@@ -418,6 +420,7 @@ export function ScriptCommentLayer({
       {tops.length > 0 && <p className="mt-2 text-[11px] text-subtle">{tops.filter((c) => c.status !== "resolved").length} open · {tops.length} total</p>}
       {overlay}
       {floatBtn}
+      {confirmNode}
     </div>
   );
 }

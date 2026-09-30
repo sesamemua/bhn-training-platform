@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import {
   Trash2, CheckCircle2, XCircle, FileEdit, ChevronUp, AlertCircle, Loader2, ExternalLink, Pencil,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface AdminPostingRow {
   id: string;
@@ -47,6 +48,7 @@ export function InternshipAdminTable({ postings }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const allIds = useMemo(() => postings.map((p) => p.id), [postings]);
   const allSelected = selected.size > 0 && selected.size === allIds.length;
@@ -75,9 +77,12 @@ export function InternshipAdminTable({ postings }: Props) {
     if (ids.length === 0) return;
 
     if (action === "delete") {
-      const ok = confirm(
-        `Permanently delete ${ids.length} posting${ids.length === 1 ? "" : "s"}? This cannot be undone.`
-      );
+      const ok = await confirmDialog({
+        title: `Permanently delete ${ids.length} posting${ids.length === 1 ? "" : "s"}?`,
+        description: "This cannot be undone.",
+        confirmLabel: "Delete",
+        tone: "destructive",
+      });
       if (!ok) return;
     }
 
@@ -126,6 +131,7 @@ export function InternshipAdminTable({ postings }: Props) {
 
   return (
     <div className="space-y-3">
+      {confirmNode}
       {/* Sticky action toolbar — slides into view when at least one
           row is selected. Sticks below the page's top nav band. */}
       {selected.size > 0 && (

@@ -8,16 +8,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Mail } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function NotifyDraftsButton({ untold }: { untold: number }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   if (untold === 0) return null;
 
   async function go() {
     const n = `${untold} applicant${untold === 1 ? "" : "s"}`;
-    if (!confirm(`Email ${n} the link to their unsubmitted application?\n\nEach gets their own link and a date two weeks from today. Drafts still unsubmitted after that are removed.`)) return;
+    if (!(await confirmDialog({
+      title: `Email ${n} the link to their unsubmitted application?`,
+      description: "Each gets their own link and a date two weeks from today. Drafts still unsubmitted after that are removed.",
+      confirmLabel: "Send",
+      tone: "warning",
+    }))) return;
     setBusy(true);
     try {
       const r = await fetch("/api/admin/equip/drafts/notify", { method: "POST" });
@@ -31,6 +38,7 @@ export function NotifyDraftsButton({ untold }: { untold: number }) {
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
+      {confirmNode}
       <button
         type="button"
         onClick={go}

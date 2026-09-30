@@ -8,6 +8,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Share2, Plus, Copy, Check, Trash2, Loader2, Link as LinkIcon } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface ShareLink {
   id: string;
@@ -21,6 +22,7 @@ export function OutreachSharePanel({ listId, listName, initialLinks }: { listId:
   const [links, setLinks] = useState<ShareLink[]>(initialLinks);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setLinks(initialLinks), [initialLinks]);
@@ -68,13 +70,14 @@ export function OutreachSharePanel({ listId, listName, initialLinks }: { listId:
   }
 
   async function revoke(l: ShareLink) {
-    if (!confirm("Revoke this link? Anyone using it loses access immediately.")) return;
+    if (!(await confirmDialog({ title: "Revoke this link?", description: "Anyone using it loses access immediately.", confirmLabel: "Revoke", tone: "destructive" }))) return;
     setLinks((cur) => cur.filter((x) => x.id !== l.id));
     await fetch(`/api/workspace/outreach/lists/${listId}/share?tokenId=${l.id}`, { method: "DELETE" }).catch(() => {});
   }
 
   return (
     <div ref={wrapRef} className="relative">
+      {confirmNode}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

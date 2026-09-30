@@ -5,6 +5,7 @@ import {
   Loader2, Sparkles, RefreshCw, Trash2, Copy, ExternalLink, Check,
   GraduationCap, Award, Coins, Gift, Calendar, Lightbulb,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface ShowcaseSummary {
   exists: true;
@@ -45,6 +46,7 @@ export function ShowcasePanel({ initial }: { initial: State }) {
   const [busy, setBusy] = useState<null | "spawn" | "reset" | "delete">(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const magicLink = state.exists
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/sandbox/${state.magicToken}`
@@ -131,6 +133,7 @@ export function ShowcasePanel({ initial }: { initial: State }) {
 
   return (
     <section className="rounded-2xl border border-line bg-card p-5 sm:p-6 surface-shadow space-y-5">
+      {confirmNode}
       {/* Header — name + email */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -209,8 +212,13 @@ export function ShowcasePanel({ initial }: { initial: State }) {
         </button>
         <button
           type="button"
-          onClick={() => {
-            if (!confirm("Delete the showcase trainee account and all owned rows? You can spawn a fresh one afterwards.")) return;
+          onClick={async () => {
+            if (!(await confirmDialog({
+              title: "Delete the showcase trainee account and all owned rows?",
+              description: "You can spawn a fresh one afterwards.",
+              confirmLabel: "Delete",
+              tone: "destructive",
+            }))) return;
             call("DELETE", "delete");
           }}
           disabled={busy !== null}

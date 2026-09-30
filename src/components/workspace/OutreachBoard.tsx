@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Loader2, Pencil, Check, X,
   Columns3, UserRound, ArrowLeft, ArrowRight, Link2, BookUser, UserMinus,
@@ -259,6 +260,7 @@ export function OutreachBoard({
   // Reach-out history modal target.
   const [touchFor, setTouchFor] = useState<{ personId: string; name: string; listId: string | null } | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   useEffect(() => {
     setBoard(data);
@@ -300,11 +302,15 @@ export function OutreachBoard({
     if (res && res.status === 409) {
       const j = (await res.json().catch(() => ({}))) as { conflict?: { id: string; name: string; org: string; lists: string[] } };
       const c = j.conflict;
-      if (c && confirm(
-        `${value} already belongs to ${c.name || "another contact"}${c.org ? ` (${c.org})` : ""}` +
-        `${c.lists.length ? ` — on ${c.lists.join(", ")}` : ""}.\n\nMerge this row into that contact? ` +
-        "Their details are kept; this row's list memberships move over.",
-      )) {
+      if (c && (await confirmDialog({
+        title: "Merge this row into that contact?",
+        description:
+          `${value} already belongs to ${c.name || "another contact"}${c.org ? ` (${c.org})` : ""}` +
+          `${c.lists.length ? ` — on ${c.lists.join(", ")}` : ""}. ` +
+          "Their details are kept; this row's list memberships move over.",
+        confirmLabel: "Merge",
+        tone: "warning",
+      }))) {
         await api(`/api/workspace/outreach/people/merge`, { method: "POST", body: JSON.stringify({ keepId: c.id, dropId: personId }) });
       }
       router.refresh();
@@ -364,7 +370,12 @@ export function OutreachBoard({
   }
   async function removeFromList(row: ListRow) {
     const who = row.personValues["name"] || row.personValues["org"] || "this contact";
-    if (!confirm(`Remove ${who} from this list? They stay in the directory${row.otherLists.length ? ` and on ${row.otherLists.join(", ")}` : ""}.`)) return;
+    if (!(await confirmDialog({
+      title: `Remove ${who} from this list?`,
+      description: `They stay in the directory${row.otherLists.length ? ` and on ${row.otherLists.join(", ")}` : ""}.`,
+      confirmLabel: "Remove",
+      tone: "warning",
+    }))) return;
     setBoard((cur) => ({
       ...cur,
       lists: cur.lists.map((l) => (l.id !== activeId ? l : { ...l, rows: l.rows.filter((r) => r.membershipId !== row.membershipId) })),
@@ -374,7 +385,12 @@ export function OutreachBoard({
   }
   async function deletePerson(p: DirPerson) {
     const who = p.values["name"] || p.values["org"] || "this contact";
-    if (!confirm(`Delete ${who} from the directory${p.lists.length ? ` and from ${p.lists.map((x) => x.name).join(", ")}` : ""}? This can't be undone.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete ${who} from the directory${p.lists.length ? ` and from ${p.lists.map((x) => x.name).join(", ")}` : ""}?`,
+      description: "This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setBoard((cur) => ({ ...cur, directory: cur.directory.filter((x) => x.id !== p.id) }));
     await api(`/api/workspace/outreach/people/${p.id}`, { method: "DELETE" });
     router.refresh();
@@ -416,7 +432,12 @@ export function OutreachBoard({
   }
   async function deleteList() {
     if (!active) return;
-    if (!confirm(`Delete "${active.name}"? Contacts stay in the directory; only this list (and its notes) goes away.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete "${active.name}"?`,
+      description: "Contacts stay in the directory; only this list (and its notes) goes away.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setActiveId(DIR_TAB);
     setBoard((cur) => ({ ...cur, lists: cur.lists.filter((l) => l.id !== active.id) }));
     await api(`/api/workspace/outreach/lists/${active.id}`, { method: "DELETE" });
@@ -492,6 +513,7 @@ export function OutreachBoard({
 
   return (
     <div className="space-y-4">
+      {confirmNode}
       {/* Tabs + actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1 rounded-lg bg-elevated/60 p-1">
@@ -601,7 +623,14 @@ export function OutreachBoard({
                 <button
                   type="button"
                   title="Remove column"
-                  onClick={() => { if (confirm(`Remove the "${c.label}" column? Its data stays saved and comes back if you re-add a column with the same name.`)) setDraftCols((cur) => cur.filter((_, xi) => xi !== i)); }}
+                  onClick={async () => {
+                    if (await confirmDialog({
+                      title: `Remove the "${c.label}" column?`,
+                      description: "Its data stays saved and comes back if you re-add a column with the same name.",
+                      confirmLabel: "Remove",
+                      tone: "warning",
+                    })) setDraftCols((cur) => cur.filter((x) => x.key !== c.key));
+                  }}
                   className={cn(miniBtn, "hover:text-rose-700")}
                 >
                   <Trash2 size={12} />

@@ -7,6 +7,7 @@ import {
   CheckCircle2, XCircle, Clock, BookOpen, Layers, Ghost, AlertTriangle,
   Loader2,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface PendingRequest {
   id: string;
@@ -56,6 +57,7 @@ export function PendingEnrollmentRequests({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [, startTransition] = useTransition();
 
   // ── Auto-sync local state with server props ───────────────────
@@ -138,7 +140,11 @@ export function PendingEnrollmentRequests({
     // doesn't waste calls.
     const work = requests.filter((r) => selected.has(r.id) && !resolved.has(r.id));
     if (work.length === 0) return;
-    if (action === "reject" && !confirm(`Reject ${work.length} request${work.length === 1 ? "" : "s"}?`)) return;
+    if (action === "reject" && !(await confirmDialog({
+      title: `Reject ${work.length} request${work.length === 1 ? "" : "s"}?`,
+      confirmLabel: "Reject",
+      tone: "destructive",
+    }))) return;
 
     setBulkBusy(true);
     setError(null);
@@ -323,6 +329,7 @@ export function PendingEnrollmentRequests({
           />
         </div>
       )}
+      {confirmNode}
     </section>
   );
 }

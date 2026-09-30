@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Ghost, Plus, Trash2, RotateCw, ExternalLink, AlertTriangle, CheckCircle2,
   Hourglass, Sparkles,
@@ -49,6 +50,7 @@ export function PhantomUsersClient({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [, startTransition] = useTransition();
 
   // Keep rows in sync if the server re-renders us with fresh data.
@@ -87,7 +89,7 @@ export function PhantomUsersClient({
   }
 
   async function deleteOne(p: PhantomRow) {
-    if (!confirm(`Delete phantom ${p.name ?? p.email} now?`)) return;
+    if (!(await confirmDialog({ title: `Delete phantom ${p.name ?? p.email} now?`, confirmLabel: "Delete", tone: "destructive" }))) return;
     setBusy(true); setError(null);
     try {
       const res = await fetch(`/api/admin/phantom-users/${p.id}`, { method: "DELETE" });
@@ -163,6 +165,7 @@ export function PhantomUsersClient({
 
   return (
     <div className="space-y-6">
+      {confirmNode}
       {/* Spawn form */}
       <section className="rounded-2xl border border-line bg-card p-5 surface-shadow space-y-4">
         <header className="flex items-center justify-between gap-3 flex-wrap">

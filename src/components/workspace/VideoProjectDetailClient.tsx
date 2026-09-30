@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, FileText, Loader2, ArrowRight, Pencil, Check, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface ScriptRow {
   id: string;
@@ -30,6 +31,7 @@ export function VideoProjectDetailClient({
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function create() {
     const t = title.trim();
@@ -66,7 +68,12 @@ export function VideoProjectDetailClient({
   }
 
   async function remove(id: string, name: string) {
-    if (!confirm(`Delete the script "${name}"? This can't be undone.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete the script "${name}"?`,
+      description: "This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setScripts((cur) => cur.filter((s) => s.id !== id));
     await fetch(`/api/workspace/scripts/${id}?force=true`, { method: "DELETE" }).catch(() => {});
     router.refresh();
@@ -141,6 +148,7 @@ export function VideoProjectDetailClient({
           ))}
         </div>
       )}
+      {confirmNode}
     </div>
   );
 }

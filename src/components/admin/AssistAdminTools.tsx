@@ -7,11 +7,13 @@
  */
 import { useState } from "react";
 import { Loader2, Play, FileText, Sparkles, Share2, Beaker, Trash2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function AssistAdminTools() {
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [userId, setUserId] = useState("");
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function run(label: string, fn: () => Promise<Response>) {
     setBusy(label);
@@ -52,6 +54,7 @@ export function AssistAdminTools() {
 
   return (
     <section className="rounded-2xl border border-line bg-card surface-shadow p-5 space-y-4">
+      {confirmNode}
       <h2 className="text-sm font-bold text-fg inline-flex items-center gap-2">
         <Play size={14} className="text-brand-600" />
         Operator actions
@@ -132,8 +135,13 @@ export function AssistAdminTools() {
           <button
             type="button"
             disabled={busy === "clear-demo"}
-            onClick={() => {
-              if (!confirm("Delete every demo trainee (assist-demo-*@bhn.test) and the assist data they own? Real users are untouched.")) return;
+            onClick={async () => {
+              if (!(await confirmDialog({
+                title: "Delete every demo trainee (assist-demo-*@bhn.test) and the assist data they own?",
+                description: "Real users are untouched.",
+                confirmLabel: "Delete",
+                tone: "destructive",
+              }))) return;
               run("clear-demo", () => fetch("/api/admin/assist/demo/seed", { method: "DELETE" }));
             }}
             className="inline-flex items-center gap-1.5 bg-card-solid hover:bg-elevated border border-line text-fg text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"

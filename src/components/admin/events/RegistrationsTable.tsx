@@ -7,6 +7,7 @@ import {
   Search, CheckCircle2, Circle, UserX, AlertTriangle, MoreHorizontal,
   XCircle, RotateCcw, Mail, ExternalLink, StickyNote, Trash2,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface RegistrationRow {
   id: string;
@@ -59,6 +60,7 @@ export function RegistrationsTable({
   const [status, setStatus] = useState<StatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -190,12 +192,15 @@ export function RegistrationsTable({
 
   // ── Per-row hard delete ────────────────────────────────────────
   async function deleteRow(row: RegistrationRow) {
-    if (!confirm(
-      `PERMANENTLY DELETE ${row.name ?? row.email}'s registration?\n\n` +
-      `This can't be undone from the UI. Workshop bookings will be ` +
-      `released and waitlisters promoted. For a soft-cancel that ` +
-      `keeps the row recoverable, use Cancel instead.`,
-    )) return;
+    if (!(await confirmDialog({
+      title: `Permanently delete ${row.name ?? row.email}'s registration?`,
+      description:
+        `This can't be undone from the UI. Workshop bookings will be ` +
+        `released and waitlisters promoted. For a soft-cancel that ` +
+        `keeps the row recoverable, use Cancel instead.`,
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setBusyIds((s) => new Set(s).add(row.id));
     try {
       const res = await fetch(
@@ -221,7 +226,7 @@ export function RegistrationsTable({
       setFlashAuto(`Deleted${detail}.`);
       startTransition(() => router.refresh());
     } catch (e) {
-      alert((e as Error).message);
+      setError((e as Error).message);
     } finally {
       setBusyIds((s) => {
         const next = new Set(s);
@@ -234,11 +239,15 @@ export function RegistrationsTable({
   // ── Per-row "Cancel" / "Reinstate" via PATCH ───────────────────
   async function setRowStatus(row: RegistrationRow, newStatus: "cancelled" | "confirmed") {
     if (newStatus === "cancelled") {
-      const ok = confirm(
-        `Cancel registration for ${row.name ?? row.email}?\n\n` +
-        `This releases their workshop bookings (waitlisters get promoted). ` +
-        `Reversible, but workshop bookings won't auto-restore.`,
-      );
+      const ok = await confirmDialog({
+        title: `Cancel registration for ${row.name ?? row.email}?`,
+        description:
+          `This releases their workshop bookings (waitlisters get promoted). ` +
+          `Reversible, but workshop bookings won't auto-restore.`,
+        confirmLabel: "Cancel registration",
+        cancelLabel: "Keep",
+        tone: "warning",
+      });
       if (!ok) return;
     }
     setBusyIds((s) => new Set(s).add(row.id));
@@ -313,10 +322,13 @@ export function RegistrationsTable({
       "reinstate": "reinstate",
     }[action];
     if (action === "cancel") {
-      const ok = confirm(
-        `Cancel ${selected.size} registration${selected.size === 1 ? "" : "s"}?\n\n` +
-        `Each one will release their workshop bookings. Waitlisters get promoted.`,
-      );
+      const ok = await confirmDialog({
+        title: `Cancel ${selected.size} registration${selected.size === 1 ? "" : "s"}?`,
+        description: `Each one will release their workshop bookings. Waitlisters get promoted.`,
+        confirmLabel: "Cancel registrations",
+        cancelLabel: "Keep",
+        tone: "warning",
+      });
       if (!ok) return;
     }
     setBulkBusy(true);
@@ -356,6 +368,7 @@ export function RegistrationsTable({
 
   return (
     <div className="space-y-3">
+      {confirmNode}
       {/* Search + filter */}
       <div className="flex flex-wrap items-center gap-3">
         <label className="relative flex-1 min-w-[200px] max-w-sm">

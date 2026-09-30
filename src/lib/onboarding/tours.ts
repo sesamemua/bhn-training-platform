@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18d";
+export const TOUR_VERSION = "2026.10.18e";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -111,6 +111,15 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open the registration", href: "/apply/training-week-registration-2026-v2" },
     since: "2026.10.16p",
+  },
+  {
+    id: "platform.no-popups",
+    title: "Questions open beside the button",
+    body: "Confirmations and small prompts now open as a card right beside the button you pressed — no more browser pop-up boxes. Esc or a click elsewhere cancels.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18e",
   },
   {
     id: "video.prep-day",

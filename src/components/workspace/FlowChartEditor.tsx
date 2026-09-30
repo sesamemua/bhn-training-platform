@@ -36,6 +36,7 @@ import { moveBounds, moveFieldInForm } from "@/lib/flowchart/fields";
 import { FlowOptionsRail } from "./FlowOptionsRail";
 import { FlowShapePalette } from "./FlowShapePalette";
 import { FlowReviewPanel } from "./FlowReviewPanel";
+import { useInputDialog } from "@/components/ui/InputDialog";
 
 /** Keep a computed scroll position inside what the pane can actually do. */
 function clampScroll(pane: HTMLElement, top: number): number {
@@ -247,6 +248,7 @@ export function FlowChartEditor({
   canEdit: boolean;
 }) {
   const [charts, setCharts] = useState(initialCharts);
+  const { inputDialog, node: inputNode } = useInputDialog();
   const [activeId, setActiveId] = useState(initialCharts[0]?.id ?? "");
   const active = charts.find((c) => c.id === activeId) ?? charts[0];
 
@@ -1071,7 +1073,7 @@ export function FlowChartEditor({
   };
 
   const newChart = async () => {
-    const title = window.prompt("Name this chart");
+    const title = await inputDialog({ title: "Name this chart", confirmLabel: "Create" });
     if (!title) return;
     const res = await fetch("/api/workspace/flowcharts", {
       method: "POST",
@@ -1586,6 +1588,7 @@ export function FlowChartEditor({
           about the whole workflow, not any one pane, and it re-measures
           the coordinator's note against the chart on every edit. */}
       <FlowReviewPanel doc={doc} />
+      {inputNode}
     </div>
   );
 }

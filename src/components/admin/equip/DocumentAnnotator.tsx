@@ -32,6 +32,7 @@ import {
   Loader2, MessageSquarePlus, ChevronLeft, ChevronRight, Check,
   RotateCcw, Trash2, FileText, ImageIcon, AlertCircle, Download,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/utils";
 
 export interface AnnotatableDocument {
@@ -92,6 +93,7 @@ export function DocumentAnnotator({
   const [error, setError] = useState<string | null>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const active = documents.find((d) => d.key === activeKey) ?? null;
   /** The raw upload — used for images, and for the "open the file" link. */
@@ -217,7 +219,7 @@ export function DocumentAnnotator({
   }
 
   async function remove(note: DocumentNote) {
-    if (!confirm("Delete this note? The attachment itself isn't affected.")) return;
+    if (!(await confirmDialog({ title: "Delete this note?", description: "The attachment itself isn't affected.", confirmLabel: "Delete", tone: "destructive" }))) return;
     setBusy(true);
     setError(null);
     try {
@@ -250,6 +252,7 @@ export function DocumentAnnotator({
 
   return (
     <div className={cn("grid gap-3 lg:grid-cols-[1fr_18rem]", className)}>
+      {confirmNode}
       <div className="min-w-0 space-y-2">
         {/* Attachment switcher */}
         <div className="flex flex-wrap items-center gap-1.5">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle2, Circle, XCircle, RotateCcw, Mail, Loader2, AlertCircle, Trash2, Check,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 /**
  * Top-of-page action buttons for /admin/events/[slug]/registrations/[rid].
@@ -37,6 +38,7 @@ export function AttendeeActions({
   const [status, setStatus] = useState(initialStatus);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const cancelled = status === "cancelled";
 
@@ -93,7 +95,13 @@ export function AttendeeActions({
   }
 
   async function cancelRegistration() {
-    if (!confirm(`Cancel ${attendeeName}'s registration?\n\nThis will release every workshop booking they hold for the event and promote waitlisters into the freed spots. This action is reversible (you can reinstate them later) but their workshop bookings will NOT auto-restore.`)) {
+    if (!(await confirmDialog({
+      title: `Cancel ${attendeeName}'s registration?`,
+      description: "This will release every workshop booking they hold for the event and promote waitlisters into the freed spots. This action is reversible (you can reinstate them later) but their workshop bookings will NOT auto-restore.",
+      confirmLabel: "Cancel registration",
+      cancelLabel: "Keep",
+      tone: "warning",
+    }))) {
       return;
     }
     setError(null);
@@ -156,7 +164,12 @@ export function AttendeeActions({
    * have to recreate the registration from scratch).
    */
   async function deleteRegistration() {
-    if (!confirm(`PERMANENTLY DELETE ${attendeeName}'s registration?\n\nThis can't be undone from the UI. The attendee's workshop bookings and breakout picks will be released and any waitlisters promoted. For a soft-cancel that keeps the row recoverable, use Cancel instead.`)) {
+    if (!(await confirmDialog({
+      title: `PERMANENTLY DELETE ${attendeeName}'s registration?`,
+      description: "This can't be undone from the UI. The attendee's workshop bookings and breakout picks will be released and any waitlisters promoted. For a soft-cancel that keeps the row recoverable, use Cancel instead.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) {
       return;
     }
     setError(null);
@@ -206,6 +219,7 @@ export function AttendeeActions({
 
   return (
     <div className="flex flex-wrap gap-2 items-start">
+      {confirmNode}
       {pending && (
         <button
           type="button"

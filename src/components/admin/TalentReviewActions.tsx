@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle2, XCircle, FastForward, AlertCircle, Loader2,
 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useInputDialog } from "@/components/ui/InputDialog";
 
 export type TalentReviewStatus =
   | "pending"
@@ -42,22 +44,30 @@ export function TalentReviewActions({
   const [busy, startTransition] = useTransition();
   const [status, setStatus] = useState<TalentReviewStatus>(submission.reviewStatus);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
+  const { inputDialog, node: inputNode } = useInputDialog();
 
   async function review(action: "approve" | "skip" | "reject") {
     let note: string | null = null;
     if (action === "skip") {
-      const ok = confirm(
-        "Skip approval and add this submission directly to the talent pool?\n\n" +
+      const ok = await confirmDialog({
+        title: "Skip approval and add this submission directly to the talent pool?",
+        description:
           "Use this only when you're confident the submission qualifies " +
           "without queue review. The action is audit-logged separately " +
           "from standard approvals.",
-      );
+        confirmLabel: "Skip approval",
+        tone: "warning",
+      });
       if (!ok) return;
     } else if (action === "reject") {
-      note = prompt(
-        "Reason for rejection? (Shown to the applicant. Leave blank to skip.)",
-        "",
-      );
+      note = await inputDialog({
+        title: "Reason for rejection?",
+        description: "Shown to the applicant. Leave blank to skip.",
+        label: "Reason",
+        confirmLabel: "Reject",
+        allowEmpty: true,
+      });
       // null on cancel — bail. Empty string = "no note" and proceeds.
       if (note === null) return;
     }
@@ -122,6 +132,8 @@ export function TalentReviewActions({
             <AlertCircle size={9} /> {error}
           </span>
         )}
+        {confirmNode}
+        {inputNode}
       </div>
     );
   }

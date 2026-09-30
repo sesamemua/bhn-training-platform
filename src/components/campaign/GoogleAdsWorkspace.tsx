@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { GOOGLE_ADS_PILOT } from "@/lib/campaign/google-ads-pilot";
 import { getGoogleAdsPlanWarnings, googleAdsPlanSchema, type GoogleAdsPlan, type GoogleAdsWorkspaceState } from "@/lib/campaign/google-ads-workspace";
 import styles from "./GoogleAdsWorkspace.module.css";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Program = GoogleAdsPlan["programs"][number];
 type Keyword = Program["keywords"][number];
@@ -88,6 +89,7 @@ function TermList({ terms, onChange, editing, negative = false }: {
 
 export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
   const feedbackInputId = useId();
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [state, setState] = useState<GoogleAdsWorkspaceState | null>(null);
   const [plan, setPlan] = useState<GoogleAdsPlan | null>(null);
   const [editing, setEditing] = useState(false);
@@ -154,7 +156,7 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
   async function reloadLatest() {
     if (requestInFlight.current) return;
     if (hasUnsavedInput) {
-      if (!window.confirm("Download a backup of your unsaved input, then replace this draft with the latest saved plan?")) return;
+      if (!(await confirmDialog({ title: "Download a backup of your unsaved input, then replace this draft with the latest saved plan?", confirmLabel: "Back up & load latest", tone: "warning" }))) return;
       if (!downloadDraft()) return;
     }
     requestInFlight.current = true; setBusy(true); setError("");
@@ -236,10 +238,11 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
   const switcher = <div className={styles.programTabs} role="group" aria-label="Choose program">{plan.programs.map(p => <button key={p.id} aria-pressed={p.id === program?.id} onClick={() => setSelected(p.id)}>{p.name}</button>)}</div>;
 
   return <div className={styles.workspace}>
+    {confirmNode}
     <div className={styles.topbar}><span>BioHubNet <span className={styles.slash}>/</span> Marketing workspace</span><span>Draft · Revision {state.revision}</span></div>
     <header className={styles.hero}><div><p className={styles.eyebrow}>Plan · Review · Improve</p><h1>Google Ads</h1><p>Manage the plan. Keep every change in one place.</p></div><div className={styles.heroFacts}><span><strong>CA${plan.settings.monthlyBudgetCad}</strong> monthly plan</span><span><strong>{totalKeywords} / {totalNegatives}</strong> keywords / negatives</span><span><strong>{plan.settings.language}</strong>{plan.settings.locations}</span></div></header>
     <div className={styles.toolbar}>
-      <div className={styles.actions}><button className={editing ? styles.secondary : styles.primary} onClick={() => setEditing(!editing)} disabled={busy || !!recovery}>{editing ? "View plan" : "Edit plan"}</button><button className={styles.primary} onClick={save} disabled={!dirty || busy || conflict || !!recovery}>{busy ? "Working…" : "Save changes"}</button>{(dirty || summary) && <button onClick={() => { if (window.confirm("Discard your unsaved plan edits and return to the version originally loaded?")) { setPlan(state.plan); setBaseRevision(state.revision); setSummary(""); setError(""); } }} disabled={busy || !!recovery}>Discard edits</button>}<span className={dirty ? styles.unsaved : styles.saved}>{dirty ? "Unsaved changes" : "Saved draft"}</span></div>
+      <div className={styles.actions}><button className={editing ? styles.secondary : styles.primary} onClick={() => setEditing(!editing)} disabled={busy || !!recovery}>{editing ? "View plan" : "Edit plan"}</button><button className={styles.primary} onClick={save} disabled={!dirty || busy || conflict || !!recovery}>{busy ? "Working…" : "Save changes"}</button>{(dirty || summary) && <button onClick={async () => { if (await confirmDialog({ title: "Discard your unsaved plan edits?", description: "The plan returns to the version originally loaded.", confirmLabel: "Discard", tone: "destructive" })) { setPlan(state.plan); setBaseRevision(state.revision); setSummary(""); setError(""); } }} disabled={busy || !!recovery}>Discard edits</button>}<span className={dirty ? styles.unsaved : styles.saved}>{dirty ? "Unsaved changes" : "Saved draft"}</span></div>
       <div className={styles.actions}>{hasUnsavedInput && <button onClick={downloadDraft} disabled={busy || !!recovery}>Back up unsaved draft</button>}<button onClick={() => exportHandoff(false)} disabled={hasUnsavedInput || busy || !!recovery}>Copy for Codex</button><button onClick={() => exportHandoff(true)} disabled={hasUnsavedInput || busy || !!recovery}>Download handoff</button></div>
     </div>
     <div className={styles.content}>
@@ -249,7 +252,7 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
       {recovery && <div className={styles.warning} role="status"><p>Unsaved input from your previous visit is available.</p><div className={styles.actions}><button disabled={busy} onClick={() => {
         setPlan(recovery.plan); setBaseRevision(recovery.baseRevision); setSummary(recovery.summary); setFeedbackSection(recovery.feedbackSection); setFeedbackBody(recovery.feedbackBody); setEditing(true);
         setConflict(recovery.baseRevision !== state.revision); setRecovery(null); setMessage("Recovered your unsaved input.");
-      }}>Restore my draft</button><button disabled={busy} onClick={() => { if (window.confirm("Discard the unsaved draft from your previous visit?")) setRecovery(null); }}>Discard recovered draft</button></div></div>}
+      }}>Restore my draft</button><button disabled={busy} onClick={async () => { if (await confirmDialog({ title: "Discard the unsaved draft from your previous visit?", confirmLabel: "Discard", tone: "destructive" })) setRecovery(null); }}>Discard recovered draft</button></div></div>}
       {message && <div className={styles.success} role="status">{message}</div>}
       <fieldset className={styles.editorFields} disabled={busy || !!recovery}>
       {editing && <Field label="What changed? (optional save note)" value={summary} onChange={setSummary} editing />}
@@ -277,7 +280,7 @@ export function GoogleAdsWorkspace({ viewerId }: { viewerId: string }) {
           <Field label="Goal" value={p.objective} onChange={objective => updateProgram(p.id, { objective })} editing={editing} />
           <Field label="Landing page" value={p.landingUrl} onChange={landingUrl => updateProgram(p.id, { landingUrl })} editing={editing} />
           <Field label="Eligibility & campaign notes" value={p.notes} onChange={notes => updateProgram(p.id, { notes })} editing={editing} multiline />
-          {editing && <button className={styles.remove} onClick={() => { if (window.confirm(`Remove ${p.name} and its keywords and ads from this draft?`)) setPlan({ ...plan, programs: plan.programs.filter(item => item.id !== p.id) }); }}>Remove program from draft</button>}
+          {editing && <button className={styles.remove} onClick={async () => { if (await confirmDialog({ title: `Remove ${p.name} and its keywords and ads from this draft?`, confirmLabel: "Remove", tone: "destructive" })) setPlan({ ...plan, programs: plan.programs.filter(item => item.id !== p.id) }); }}>Remove program from draft</button>}
         </article>)}</div>
         {editing && <button onClick={() => { const id = newId(); setPlan({ ...plan, programs: [...plan.programs, { id, name: "New program", audience: "", intent: "", objective: "", landingUrl: "https://biohubnet.ca/", notes: "Proposed — verify eligibility and intake before use.", keywords: [], negatives: [], ads: [] }] }); setSelected(id); }}>Add program</button>}
       </Section>

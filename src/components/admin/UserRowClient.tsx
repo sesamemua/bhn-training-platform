@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useInputDialog } from "@/components/ui/InputDialog";
 
 const ROLES = ["trainee", "evaluating", "employer", "hr", "industrial_mentor", "instructor", "admin", "superadmin"];
 
@@ -17,6 +19,8 @@ export function UserRowClient({ user }: { user: UserData }) {
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
+  const { inputDialog, node: inputNode } = useInputDialog();
 
   async function patch(data: Record<string, unknown>) {
     setLoading(true);
@@ -48,7 +52,7 @@ export function UserRowClient({ user }: { user: UserData }) {
   }
 
   async function grantCredits() {
-    const amtStr = prompt("Grant credits (enter amount):");
+    const amtStr = await inputDialog({ title: "Grant credits", label: "Amount", placeholder: "e.g. 10", confirmLabel: "Grant" });
     const amt = parseFloat(amtStr ?? "");
     if (isNaN(amt) || amt <= 0) return;
     setLoading(true);
@@ -62,14 +66,17 @@ export function UserRowClient({ user }: { user: UserData }) {
   }
 
   async function resetPassword() {
-    const pw = prompt("New password:");
-    if (!pw || pw.length < 6) return alert("Password must be at least 6 characters.");
+    const pw = await inputDialog({ title: "Reset password", label: "New password", confirmLabel: "Update" });
+    if (pw === null) return;
+    if (pw.length < 6) return setError("Password must be at least 6 characters.");
     await patch({ password: pw });
-    alert("Password updated.");
+    await confirmDialog({ title: "Password updated.", acknowledgeOnly: true });
   }
 
   return (
     <div className="flex items-center gap-1 flex-wrap">
+      {confirmNode}
+      {inputNode}
       <select
         value={user.role}
         disabled={loading}

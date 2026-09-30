@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface ChangeLogEntry {
   id: string;
@@ -48,6 +49,7 @@ export function ChangeLogClient({ entries, canManage }: Props) {
   const [editing, setEditing] = useState<ChangeLogEntry | null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   // Form state
   const [title, setTitle] = useState("");
@@ -78,11 +80,15 @@ export function ChangeLogClient({ entries, canManage }: Props) {
 
   async function save() {
     if (!title.trim()) {
-      alert("Title required");
+      await confirmDialog({ title: "Title required", acknowledgeOnly: true });
       return;
     }
     if (visibleTo.length === 0) {
-      alert("Pick at least one role to share with — otherwise nobody will see this entry.");
+      await confirmDialog({
+        title: "Pick at least one role to share with",
+        description: "Otherwise nobody will see this entry.",
+        acknowledgeOnly: true,
+      });
       return;
     }
     setBusy(true);
@@ -96,7 +102,7 @@ export function ChangeLogClient({ entries, canManage }: Props) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Save failed");
+        await confirmDialog({ title: j.error ?? "Save failed", acknowledgeOnly: true });
         return;
       }
       close();
@@ -107,12 +113,17 @@ export function ChangeLogClient({ entries, canManage }: Props) {
   }
 
   async function remove(id: string) {
-    if (!confirm("Delete this changelog entry? This cannot be undone.")) return;
+    if (!(await confirmDialog({
+      title: "Delete this changelog entry?",
+      description: "This cannot be undone.",
+      confirmLabel: "Delete",
+      tone: "destructive",
+    }))) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/changelog/${id}`, { method: "DELETE" });
       if (!res.ok) {
-        alert("Delete failed");
+        await confirmDialog({ title: "Delete failed", acknowledgeOnly: true });
         return;
       }
       router.refresh();
@@ -207,6 +218,7 @@ export function ChangeLogClient({ entries, canManage }: Props) {
           </Field>
         </div>
       </Modal>
+      {confirmNode}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   BLEND_MODES,
   type ThumbnailOverlay,
 } from "@/lib/courses/thumbnail-overlay";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 /**
  * A row in the cover-art admin tool. Both courses and pathways flow
@@ -104,6 +105,7 @@ export function CourseThumbnailRegenerator({
   // first sight matches what regenerates apply.
   const [overlay, setOverlay] = useState<ThumbnailOverlay>(defaultOverlay ?? DEFAULT_OVERLAY);
   const [overlayBusy, setOverlayBusy] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [overlayMsg, setOverlayMsg] = useState<string | null>(null);
   // "Save as default" toggle. Pre-checked when a default already
   // exists so re-applying preserves it (rather than silently clearing
@@ -184,12 +186,12 @@ export function CourseThumbnailRegenerator({
     router.refresh();
   }
 
-  function startBulk() {
+  async function startBulk() {
     const targets = someSelected
       ? items.filter((c) => selected.has(rowKey(c)))
       : items;
     if (targets.length === 0) return;
-    if (!confirm(`Regenerate ${targets.length} thumbnail${targets.length === 1 ? "" : "s"}? Each takes ~5–10 seconds.`)) return;
+    if (!(await confirmDialog({ title: `Regenerate ${targets.length} thumbnail${targets.length === 1 ? "" : "s"}?`, description: "Each takes ~5–10 seconds.", confirmLabel: "Regenerate" }))) return;
     regenBatch(targets);
   }
 
@@ -341,6 +343,7 @@ export function CourseThumbnailRegenerator({
 
   return (
     <section className="space-y-4">
+      {confirmNode}
       <OverlayBuilder
         overlay={overlay}
         setOverlay={setOverlay}

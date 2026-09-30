@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { Camera, Check, Laptop, Loader2, RotateCcw, Search, Undo2, X } from "lucide-react";
 import { VERDICT_COPY, type DoorVerdict } from "@/lib/training-week/check-in";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface DeskSession {
   id: string;
@@ -88,6 +89,7 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
   const [card, setCard] = useState<Card | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   const session = sessions.find((s) => s.id === sessionId) ?? null;
 
@@ -148,6 +150,7 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
 
   return (
     <div className="space-y-4">
+      {confirmNode}
       {/* Which door this is. */}
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-card p-3">
         <label className="min-w-[16rem] flex-1">
@@ -202,8 +205,8 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
           room={room}
           busy={busy}
           onCheckIn={(r, letIn) => void send({ bookingId: r.bookingId, letIn }, r.bookingId)}
-          onUndo={(r) => {
-            if (!confirm(`Take back ${r.name}'s check-in?`)) return;
+          onUndo={async (r) => {
+            if (!(await confirmDialog({ title: `Take back ${r.name}'s check-in?`, confirmLabel: "Take back", tone: "warning" }))) return;
             void send({ bookingId: r.bookingId, undo: true }, r.bookingId);
           }}
         />

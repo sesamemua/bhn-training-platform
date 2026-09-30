@@ -30,6 +30,7 @@ import {
 } from "@/lib/formbuilder/logic";
 import { chosenClashes } from "@/lib/formbuilder/calendar";
 import { FormFillView } from "./FormFillView";
+import { useInputDialog } from "@/components/ui/InputDialog";
 import { SessionCalendar } from "./SessionCalendar";
 import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { readSheet, saveForm, submitBuiltForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
@@ -81,6 +82,7 @@ export function FormBuilder({
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { inputDialog, node: inputNode } = useInputDialog();
   const [pending, start] = useTransition();
   const [answers, setAnswers] = useState<Answers>({});
   // Which of the two moments the preview is showing. The registration
@@ -126,6 +128,7 @@ export function FormBuilder({
 
   return (
     <div className="mt-4">
+      {inputNode}
       {/* Stays with you down the page.
           A form is long, and the Save is the one control you reach for
           from anywhere in it — parking it at the top means scrolling
@@ -199,7 +202,7 @@ export function FormBuilder({
                       await navigator.clipboard.writeText(url);
                       setCopied(true);
                     } catch {
-                      window.prompt("Copy registration link:", url);
+                      await inputDialog({ title: "Copy registration link", defaultValue: url, confirmLabel: "Done", maxLength: 2000 });
                     }
                   }}
                 >

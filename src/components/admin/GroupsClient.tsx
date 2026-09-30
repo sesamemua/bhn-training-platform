@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface UserBasic { id: string; name: string | null; email: string }
 interface CourseBasic { id: string; title: string }
@@ -31,6 +32,7 @@ export function GroupsClient({
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [loading, setLoading] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function createGroup(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +49,7 @@ export function GroupsClient({
   }
 
   async function deleteGroup(id: string) {
-    if (!confirm("Delete this group?")) return;
+    if (!(await confirmDialog({ title: "Delete this group?", confirmLabel: "Delete", tone: "destructive" }))) return;
     await fetch(`/api/admin/groups/${id}`, { method: "DELETE" });
     setGroups((prev) => prev.filter((g) => g.id !== id));
   }
@@ -91,6 +93,7 @@ export function GroupsClient({
 
   return (
     <div className="space-y-4">
+      {confirmNode}
       <div className="flex justify-end">
         <button
           onClick={() => setShowCreate(true)}
@@ -311,7 +314,7 @@ function MemberPicker({
     setSelected(new Set());
     setQuery("");
   }
-  async function confirm() {
+  async function confirmAdd() {
     if (selected.size === 0 || busy) return;
     setBusy(true);
     await onAdd([...selected]);
@@ -390,7 +393,7 @@ function MemberPicker({
           Cancel
         </button>
         <button
-          onClick={confirm}
+          onClick={confirmAdd}
           disabled={selected.size === 0 || busy}
           className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
         >

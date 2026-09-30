@@ -6,9 +6,11 @@ import { Check, X } from "lucide-react";
 export function BuddyInviteResponseButtons({ pairId }: { pairId: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function decide(decision: "accept" | "decline") {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(`/api/buddy/${pairId}`, {
         method: "PATCH",
@@ -17,7 +19,7 @@ export function BuddyInviteResponseButtons({ pairId }: { pairId: string }) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        alert(j.error ?? "Action failed");
+        setError(j.error ?? "Action failed");
         return;
       }
       if (decision === "accept") router.push(`/buddy/${pairId}`);
@@ -43,6 +45,7 @@ export function BuddyInviteResponseButtons({ pairId }: { pairId: string }) {
       >
         <X size={13} /> Decline
       </button>
+      {error && <p role="alert" className="text-[11px] text-rose-700 max-w-[10rem]">{error}</p>}
     </div>
   );
 }

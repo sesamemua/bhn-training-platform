@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, FileText, Loader2, Clapperboard, ClipboardList, Receipt, ArrowRight, CalendarClock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { callSheetsPath, filmingPath, productionCostPath } from "@/lib/video/paths";
 
 interface ProjectRow {
@@ -43,6 +44,7 @@ export function VideoProjectsClient({ initialProjects }: { initialProjects: Proj
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function create() {
     const t = title.trim();
@@ -66,7 +68,7 @@ export function VideoProjectsClient({ initialProjects }: { initialProjects: Proj
   }
 
   async function remove(id: string, name: string) {
-    if (!confirm(`Delete "${name}" and all its scripts? This can't be undone.`)) return;
+    if (!(await confirmDialog({ title: `Delete "${name}" and all its scripts?`, description: "This can't be undone.", confirmLabel: "Delete", tone: "destructive" }))) return;
     setProjects((cur) => cur.filter((p) => p.id !== id));
     await fetch(`/api/workspace/video-projects/${id}?force=true`, { method: "DELETE" }).catch(() => {});
     router.refresh();
@@ -74,6 +76,7 @@ export function VideoProjectsClient({ initialProjects }: { initialProjects: Proj
 
   return (
     <div className="space-y-5">
+      {confirmNode}
       {/* Create + seed row */}
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pin, Trash2, Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Announcement {
   id: string;
@@ -29,6 +30,7 @@ export function AnnouncementsClient({
   const [courseId, setCourseId] = useState("");
   const [pinned, setPinned] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { confirmDialog, node: confirmNode } = useConfirmDialog();
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -54,13 +56,14 @@ export function AnnouncementsClient({
   }
 
   async function del(id: string) {
-    if (!confirm("Delete this announcement?")) return;
+    if (!(await confirmDialog({ title: "Delete this announcement?", confirmLabel: "Delete", tone: "destructive" }))) return;
     await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
     router.refresh();
   }
 
   return (
     <div className="space-y-4">
+      {confirmNode}
       <div className="flex justify-end">
         <button
           onClick={() => setShowForm(true)}
