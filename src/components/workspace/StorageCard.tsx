@@ -11,7 +11,7 @@ import { HardDrive } from "lucide-react";
 import { clockOf } from "@/lib/video/filming";
 import {
   AUDIO_MB_S, FORMATS, FPS, HST, MAG_GB, OFFLOAD, STAPLES_CHECKED,
-  cheapestSet, offloadPlan, rateMBs, setPrice, type Dest, type Drive,
+  cheapestSet, mergeWindows, offloadPlan, rateMBs, setPrice, type Dest, type Drive,
 } from "@/lib/video/storage";
 
 const SELECT = "rounded-md border border-line bg-card-solid px-1.5 py-1 text-[12px] text-fg";
@@ -88,7 +88,7 @@ export function StorageCard({ windows }: { windows: { s: number; e: number; titl
         <div>
           <h3 className="text-[12.5px] font-bold text-fg">When to dump footage</h3>
           <p className="text-[11.5px] text-muted">
-            From the Filming day. Filming: {windows.map((w) => `${clockOf(w.s)}–${clockOf(w.e)}`).join(", ") || "nothing on camera yet"}.
+            From the Filming day — on camera {mergeWindows(windows).map((w) => `${clockOf(w.s)}–${clockOf(w.e)}`).join(", ") || "nothing yet"}
           </p>
           <ol className="mt-1.5 space-y-1">
             {plan.events.map((e, i) => (
@@ -100,7 +100,7 @@ export function StorageCard({ windows }: { windows: { s: number; e: number; titl
           </ol>
           <p className={`mt-1.5 text-[12px] font-semibold ${plan.waitMin ? "text-rose-600" : "text-emerald-600"}`}>
             {plan.waitMin ? `The camera waits ${hm(plan.waitMin)} for copies — everything after slips by that much.` : "The camera never waits for a copy."}{" "}
-            <span className="font-normal text-muted">Last copy done about {at(plan.doneAt)}.</span>
+            <span className="font-normal text-muted">Last copy done about {at(plan.doneAt)}</span>
           </p>
           <p className="mt-1 text-[11.5px] text-muted">
             Ruilin is behind the camera, so someone else starts each copy — it is a drag and a click in the offload app. Never erase a mag until its footage is on two drives and checked.
