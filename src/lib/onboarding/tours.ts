@@ -115,7 +115,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "training-admin.catering-tent-cards",
     title: "Catering by session and day, and tent cards",
-    body: "Each session shows exactly what the caterer gets. **Copy this session** or **Copy the day**, and print **Tent cards**: one big letter-size card per requirement, allergies in red.",
+    body: "Each session shows exactly what the caterer gets. **Copy this session** or **Copy the day**, and print **Tent cards** for the platters: **Halal** or **Vegetarian** on the dish that meets it, and red **Contains kiwi** or **Contains lactose** warnings on the dish that has it.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],
