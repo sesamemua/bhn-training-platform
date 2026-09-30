@@ -34,6 +34,9 @@ export interface FilmingDayProps {
 
 const DRAG_TYPE = "application/x-filming-person";
 const SNAP = 5;
+/** The chart always runs to at least 7 p.m.: a shoot can go past closing. */
+const VIEW_UNTIL = 19 * 60;
+const short = (min: number) => `${((Math.floor(min / 60) + 11) % 12) + 1}:${String(min % 60).padStart(2, "0")}`;
 
 const KIND_TONE: Record<string, { bar: string; prep: string; chip: string }> = {
   setup: { bar: "bg-slate-500", prep: "bg-slate-500/40", chip: "bg-slate-500/15 text-fg" },
@@ -92,10 +95,12 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
   const opens = hhmmToMinutes(day.opensAt);
   const closes = hhmmToMinutes(day.closesAt);
   const from = Math.floor((Math.min(opens, ...blocks.map((b) => minuteOfDay(b.start))) - 30) / 60) * 60;
-  const to = Math.ceil((Math.max(closes, ...blocks.map((b) => minuteOfDay(b.end))) + 30) / 60) * 60;
+  const to = Math.ceil(Math.max(VIEW_UNTIL, closes + 60, ...blocks.map((b) => minuteOfDay(b.end) + 30)) / 60) * 60;
   const span = to - from;
   const pct = (min: number) => `${((min - from) / span) * 100}%`;
-  const hours = Array.from({ length: span / 60 + 1 }, (_, i) => from + i * 60);
+  // Every quarter hour: the hour largest, the half hour smaller, :15 and :45 smallest.
+  const quarters = Array.from({ length: span / 15 + 1 }, (_, i) => from + i * 15);
+  const QUARTER = { 0: "bg-line", 30: "bg-line/50", 15: "bg-line/25", 45: "bg-line/25" } as Record<number, string>;
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, refresh = false) {
     setError(null);
@@ -199,7 +204,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
         style={bleed ? { marginLeft: bleed.ml, width: bleed.w } : undefined}
       >
         {/* People: a strip above the chart, dragged down onto a task. */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-line px-3 py-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 pt-2 pb-1">
           <span className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">People — drag onto a task</span>
           {GROUPS.map((g) => {
             const list = people.filter((p) => p.group === g);
@@ -229,6 +234,8 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               </span>
             );
           })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 pt-1 pb-2">
           <AddPerson pending={pending} onAdd={(v) => run(() => addFilmingPerson(day.id, v), true)} />
           <button type="button" className={`${BTN} ml-auto`} onClick={addTask} disabled={pending}><Plus size={13} /> Add task</button>
         </div>
@@ -255,14 +262,27 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
 
         {/* The chart: one thin row per task, the whole width is time. */}
         <div className="overflow-x-auto">
-          <div className="min-w-[900px]">
-            <div className="relative h-6 border-b border-line bg-elevated/40">
-              {hours.map((h) => (
-                <span key={h} className="absolute top-1 -translate-x-1/2 text-[10.5px] tabular-nums text-subtle" style={{ left: pct(h) }}>
-                  {h === from ? "" : clockOf(h).replace(":00", "")}
-                </span>
+          <div className="min-w-[1100px]">
+            <div className="relative h-11 border-b border-line bg-elevated/40">
+              {quarters.map((q) => {
+                const m = q % 60;
+                if (q === from || q === to) return null;
+                return (
+                  <span key={q} className="absolute top-0 flex -translate-x-1/2 flex-col items-center" style={{ left: pct(q) }}>
+                    <span
+                      className={`mt-1 whitespace-nowrap tabular-nums ${
+                        m === 0 ? "text-[11.5px] font-semibold text-fg" : m === 30 ? "mt-1.5 text-[9.5px] text-muted" : "mt-2 text-[8px] text-subtle"
+                      }`}
+                    >
+                      {m === 0 ? clockOf(q).replace(":00", "") : short(q)}
+                    </span>
+                  </span>
+                );
+              })}
+              {quarters.map((q) => (
+                <span key={`t${q}`} className={`absolute bottom-0 w-px ${QUARTER[q % 60]}`} style={{ left: pct(q), height: q % 60 === 0 ? 10 : q % 60 === 30 ? 7 : 4 }} aria-hidden />
               ))}
-              <span className="absolute top-1 ml-1 text-[10px] font-semibold text-rose-500" style={{ left: pct(closes) }}>closes</span>
+              <span className="absolute bottom-0.5 ml-1 rounded bg-rose-500/15 px-1 text-[9.5px] font-semibold text-rose-500" style={{ left: pct(closes) }}>building closes</span>
             </div>
 
             {sorted.map((b, i) => {
@@ -276,7 +296,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
               return (
                 <div key={b.id}>
                   <div
-                    className={`relative h-9 border-b border-line/60 transition-colors ${
+                    className={`relative h-12 border-b border-line/60 transition-colors ${
                       dropOn === b.id ? "bg-brand-500/15" : focused ? "bg-amber-400/10" : i % 2 ? "bg-elevated/20" : ""
                     }`}
                     onDragOver={(e) => { if (acceptsPerson(e)) { e.preventDefault(); setDropOn(b.id); } }}
@@ -286,7 +306,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                     {/* Outside building hours, shaded; hour lines; the closing line. */}
                     <div className="absolute inset-y-0 bg-elevated/60" style={{ left: 0, width: pct(opens) }} aria-hidden />
                     <div className="absolute inset-y-0 right-0 bg-elevated/60" style={{ left: pct(closes) }} aria-hidden />
-                    {hours.map((h) => <div key={h} className="absolute inset-y-0 w-px bg-line/50" style={{ left: pct(h) }} aria-hidden />)}
+                    {quarters.map((q) => <div key={q} className={`absolute inset-y-0 w-px ${QUARTER[q % 60]}`} style={{ left: pct(q) }} aria-hidden />)}
                     <div className="absolute inset-y-0 w-0.5 bg-rose-500/70" style={{ left: pct(closes) }} aria-hidden />
 
                     <div
@@ -299,7 +319,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
                       onPointerCancel={onBarUp}
                       onDoubleClick={() => setEditing(b.id)}
                       onKeyDown={(e) => { if (e.key === "Enter") setEditing(b.id); }}
-                      className={`absolute top-1.5 bottom-1.5 flex touch-none select-none overflow-hidden rounded ${
+                      className={`absolute top-2 bottom-2 flex touch-none select-none overflow-hidden rounded ${
                         b.locked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
                       } ${b.flexible ? "outline-2 outline-dashed outline-offset-1 outline-amber-500" : ""} ${focused ? "ring-2 ring-amber-400" : ""}`}
                       style={{ left: pct(s), width: `calc(${pct(en)} - ${pct(s)})` }}
@@ -365,6 +385,7 @@ export function FilmingBoard({ day, people: initialPeople, blocks: initialBlocks
           <span>· Drag a bar to move it, its ends to resize (5 min) · striped: preparation · dashed: time not fixed · <Lock size={10} className="inline" /> pinned · click a task's name to edit it</span>
         </p>
       </div>
+      <div className="h-[70vh]" aria-hidden />
     </div>
   );
 }
