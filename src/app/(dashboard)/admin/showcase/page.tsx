@@ -16,9 +16,12 @@ import { ShowcasePathwaysManager } from "@/components/admin/ShowcasePathwaysMana
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminShowcasePage() {
+export default async function AdminShowcasePage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect("/dashboard");
+  // ?group=<slug> opens the list filtered to that link's submissions.
+  const { group: groupSlug } = await searchParams;
+  const openGroup = groupSlug ? await prisma.showcaseGroup.findUnique({ where: { slug: groupSlug }, select: { id: true } }) : null;
 
   const submissions = await prisma.showcaseSubmission.findMany({
     orderBy: { createdAt: "desc" },
@@ -142,6 +145,7 @@ export default async function AdminShowcasePage() {
       />
 
       <ShowcaseAdminClient
+        initialGroupId={openGroup?.id ?? null}
         initialSubmissions={serialised}
         adminName={adminName}
         groupCatalog={groupCatalog}

@@ -65,7 +65,6 @@ export function ShowcaseSubmitForm({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // The photo as framed in the cropper: dragged, zoomed, auto-centred.
   const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
-  const [cropKey, setCropKey] = useState(0);
   const onCrop = useCallback((c: CropState) => { setCrop(c); setPhotoFile(c.file); }, []);
 
   // Returning-person lookup.
@@ -204,24 +203,6 @@ export function ShowcaseSubmitForm({
           We&apos;ll review your entry and you&apos;ll see yourself on the
           showcase shortly. If anything looks off, the team will reach out.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setName("");
-            setLinkedin("");
-            setAnswer("");
-            setPhotoFile(null);
-            setPhotoPreview(null);
-            setCropKey((k) => k + 1);
-            setMatched(null);
-            lastQueried.current = "";
-            setStatus("idle");
-          }}
-          className="mt-5 text-[12px] font-semibold underline"
-          style={{ color: "#0b6f90" }}
-        >
-          Submit another
-        </button>
       </div>
     );
   }
@@ -314,7 +295,7 @@ export function ShowcaseSubmitForm({
         )}
         {/* The cropper is styled by the speaker page's colour variables; set here for this page. */}
         <div style={CROPPER_COLOURS}>
-          <HeadshotCropper key={cropKey} onChange={onCrop} />
+          <HeadshotCropper onChange={onCrop} />
         </div>
         <p className="mt-1 text-[11px] text-[#475569] leading-relaxed">
           JPEG, PNG, or WebP. Drag to move it, scroll or pinch to zoom, or press Auto center.

@@ -52,14 +52,16 @@ interface Props {
   initialSubmissions: Submission[];
   adminName: string;
   groupCatalog: GroupCatalog;
+  /** Open filtered to this group (from ?group=<slug>). */
+  initialGroupId?: string | null;
 }
 
-export function ShowcaseAdminClient({ initialSubmissions, adminName, groupCatalog }: Props) {
+export function ShowcaseAdminClient({ initialSubmissions, adminName, groupCatalog, initialGroupId = null }: Props) {
   const router = useRouter();
   const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [onlyUndownloaded, setOnlyUndownloaded] = useState(false);
-  const [programFilter, setProgramFilter] = useState<string | null>(null);
+  const [programFilter, setProgramFilter] = useState<string | null>(initialGroupId);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
