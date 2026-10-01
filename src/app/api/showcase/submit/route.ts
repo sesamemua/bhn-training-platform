@@ -24,6 +24,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, normaliseLinkedin } from "@/lib/showcase/validation";
+import { countWords } from "@/lib/events/bio";
 
 export const runtime = "nodejs";
 
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
   // /admin/showcase).
   const group = await prisma.showcaseGroup.findUnique({
     where: { slug: programSlug },
-    select: { id: true, active: true, gateOnAttendance: true, linkedCohortId: true },
+    select: { id: true, active: true, gateOnAttendance: true, linkedCohortId: true, quotePrompt: true, quoteMaxWords: true },
   });
   if (!group) {
     return NextResponse.json({ error: "Unknown showcase." }, { status: 400 });
@@ -104,6 +105,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Add your LinkedIn handle (2–200 characters)." }, { status: 400 });
   }
   const linkedinUrl = normaliseLinkedin(linkedinRaw);
+  // The group's written question, if it asks one: required, and held to its word limit.
+  const quote = group.quotePrompt ? String(formData.get("quote") ?? "").trim() : "";
+  if (group.quotePrompt) {
+    if (quote.length > group.quoteMaxWords * 12) return NextResponse.json({ error: "That answer is far too long." }, { status: 413 });
+    const words = countWords(quote);
+    if (words === 0) return NextResponse.json({ error: "Please answer the written question." }, { status: 400 });
+    if (words > group.quoteMaxWords) return NextResponse.json({ error: `Keep your answer to ${group.quoteMaxWords} words or fewer — yours is ${words}.` }, { status: 400 });
+  }
   if (!linkedinUrl) {
     return NextResponse.json({
       error: "That LinkedIn handle doesn't look right. Try a URL like linkedin.com/in/yourname or just the slug 'yourname'.",
@@ -192,6 +201,7 @@ export async function POST(req: NextRequest) {
         name,
         linkedinHandle: linkedinRaw,
         linkedinUrl,
+        quote: quote || null,
         photoUrl: r2PublicUrl(photoKey),
         photoKey,
         submittedFromIp: ip,

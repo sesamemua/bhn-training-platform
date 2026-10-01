@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Showcase links can ask a written question — first up, Knowledge Exchange awardees",
+    body: "A showcase submission link can now ask one **written question** with a **word limit** (a live counter shows how many words are left), and name the photo it wants. The answer shows on each submission in **Admin → Showcase**.\n\nThe first link to use it is for **Knowledge Exchange awardees**: a headshot or a photo of them working in a lab, up to 250 words on what they hope to achieve from their placement (used as a quote), and their LinkedIn. No login needed.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: open, full or closed — per session",
     body: "Training Admin has a new **Open / closed** tab: set each session to **Open**, **Full** or **Closed**, and write the message people see (or leave it empty for \u201cThis session is full.\u201d / \u201cRegistration for this session is closed.\u201d). On the registration form a Full or Closed session stays on the calendar with its label and message, but can\u2019t be picked \u2014 and a submission that asks for one is refused. Seats already given out are not touched.\n\nThe same status and message, with every session\u2019s day, times, room and seats, are published at **/api/public/training-week/workshops** for biohubnet.ca to read, so the website and the form always agree.",
     kind: "feature",

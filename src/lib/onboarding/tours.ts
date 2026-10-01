@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18t";
+export const TOUR_VERSION = "2026.10.18u";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,16 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "showcase.ke-intake",
+    title: "Knowledge Exchange awardees: photo, quote, LinkedIn",
+    body: "Send Knowledge Exchange awardees the **/showcase/knowledge-exchange-2026** link. Their photo, quote (up to 250 words) and LinkedIn land in **Admin → Showcase**, ready to download.",
+    path: "/admin/showcase",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Showcase", href: "/admin/showcase" },
+    since: "2026.10.18u",
   },
   {
     id: "training.open-closed",

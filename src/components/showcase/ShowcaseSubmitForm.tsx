@@ -27,7 +27,13 @@ interface Props {
    *  Skips the returning-person name lookup and prefills their name. */
   gated?: boolean;
   lockedName?: string;
+  /** The group's written question, if it asks one — answered in a box with a word limit. */
+  quote?: { prompt: string; maxWords: number } | null;
+  /** What the photo question is called; "Headshot" by default. */
+  photoLabel?: string | null;
 }
+
+const wordsIn = (t: string) => (t.trim() ? t.trim().split(/\s+/).length : 0);
 
 type Status = "idle" | "submitting" | "success" | "error";
 type Matched = {
@@ -41,8 +47,12 @@ export function ShowcaseSubmitForm({
   programSlug,
   gated = false,
   lockedName = "",
+  quote = null,
+  photoLabel = null,
 }: Props) {
   const [name, setName] = useState(lockedName);
+  const [answer, setAnswer] = useState("");
+  const answerWords = wordsIn(answer);
   const [linkedin, setLinkedin] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -146,7 +156,15 @@ export function ShowcaseSubmitForm({
       return;
     }
     if (!photoFile && !reusing) {
-      setErrorMsg("Add a headshot.");
+      setErrorMsg(photoLabel ? `Add a photo: ${photoLabel.toLowerCase()}.` : "Add a headshot.");
+      return;
+    }
+    if (quote && answerWords === 0) {
+      setErrorMsg("Please answer the written question.");
+      return;
+    }
+    if (quote && answerWords > quote.maxWords) {
+      setErrorMsg(`Keep your answer to ${quote.maxWords} words or fewer — it's ${answerWords} now.`);
       return;
     }
 
@@ -154,6 +172,7 @@ export function ShowcaseSubmitForm({
     fd.set("programSlug", programSlug);
     fd.set("name", name.trim());
     fd.set("linkedin", linkedin.trim());
+    if (quote) fd.set("quote", answer.trim());
     if (photoFile) fd.set("photo", photoFile);
     else if (matched) fd.set("reuseFromId", matched.submissionId);
 
@@ -195,6 +214,7 @@ export function ShowcaseSubmitForm({
           onClick={() => {
             setName("");
             setLinkedin("");
+            setAnswer("");
             setPhotoFile(null);
             setPhotoPreview(null);
             setMatched(null);
@@ -287,7 +307,7 @@ export function ShowcaseSubmitForm({
       {/* Photo */}
       <div>
         <label className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
-          Headshot
+          {photoLabel || "Headshot"}
         </label>
         <div className="flex items-start gap-4">
           {/* Preview */}
@@ -349,6 +369,28 @@ export function ShowcaseSubmitForm({
           </div>
         </div>
       </div>
+
+      {/* The group's written question, when it asks one. */}
+      {quote && (
+        <div>
+          <label htmlFor="showcase-quote" className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
+            Your words
+          </label>
+          <p className="mb-1.5 text-[13px] leading-relaxed text-[#1f2937]">{quote.prompt}</p>
+          <textarea
+            id="showcase-quote"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            required
+            rows={7}
+            disabled={submitting}
+            className="w-full px-3 py-2 rounded-lg border border-[#cbd5e1] bg-white text-[14px] leading-relaxed text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0b6f90] disabled:opacity-50"
+          />
+          <p className={`mt-1 text-[11px] ${answerWords > quote.maxWords ? "font-semibold text-[#881337]" : "text-[#475569]"}`} aria-live="polite">
+            {answerWords} of {quote.maxWords} words
+          </p>
+        </div>
+      )}
 
       {/* Error — see note in the original on the literal rose colour. */}
       {errorMsg && (

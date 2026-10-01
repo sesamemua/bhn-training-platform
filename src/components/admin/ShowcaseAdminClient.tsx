@@ -43,6 +43,8 @@ interface Submission {
   lastDownloadedAt: string | null;
   lastDownloadedBy: string | null;
   adminNote: string | null;
+  /** The answer to the group's written question, when it asks one. */
+  quote?: string | null;
   memberships: Membership[];
 }
 
@@ -354,6 +356,11 @@ function SubmissionCard({
             >
               {submission.linkedinHandle} <ExternalLink size={9} />
             </a>
+          )}
+          {submission.quote && (
+            <blockquote className="mt-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap border-l-2 border-brand-400 pl-2 text-[12px] leading-relaxed text-fg">
+              {submission.quote}
+            </blockquote>
           )}
           <p className="mt-1.5 text-[11px] text-fg-subtle">
             Submitted {new Date(submission.createdAt).toLocaleString()}

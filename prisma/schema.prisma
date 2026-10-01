@@ -5363,6 +5363,8 @@ model ShowcaseSubmission {
   /// Name / email of the admin who last downloaded.
   lastDownloadedBy String?
   adminNote        String?
+  /// The answer to the group's written question (ShowcaseGroup.quotePrompt), if it asks one.
+  quote            String?
   /// Editable membership tags shown as pills on the admin card: an
   /// array of { kind: "workshop" | "pathway" | "cohort", label }.
   /// Admin-managed and free-form — independent of `programSlug`
@@ -5402,6 +5404,12 @@ model ShowcaseGroup {
   /// false = the public page hides the form and shows "submissions closed",
   /// and the submit API rejects new entries for this slug.
   active      Boolean  @default(true)
+  /// When set, the form also asks this one written question (its answer is
+  /// stored as the submission's `quote`), up to `quoteMaxWords` words.
+  quotePrompt   String?
+  quoteMaxWords Int      @default(250)
+  /// What the photo question is called — "Headshot" when null.
+  photoLabel    String?
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

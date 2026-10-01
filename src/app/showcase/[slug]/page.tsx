@@ -70,6 +70,7 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
   const group = await getGroup(slug);
   if (!group) notFound();
   const b = branding(group);
+  const ask = group.quotePrompt ? { prompt: group.quotePrompt, maxWords: group.quoteMaxWords } : null;
 
   // Attendance gate: a bound + gated cohort requires login and only lets
   // approved-enrolled + attended trainees submit (re-checked server-side in
@@ -150,6 +151,8 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
                 programSlug={group.slug}
                 gated
                 lockedName={lockedName}
+                quote={ask}
+                photoLabel={group.photoLabel}
               />
             ) : (
               <GateNotice
@@ -159,7 +162,7 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
               />
             )
           ) : (
-            <ShowcaseSubmitForm programSlug={group.slug} />
+            <ShowcaseSubmitForm programSlug={group.slug} quote={ask} photoLabel={group.photoLabel} />
           )}
         </section>
 
