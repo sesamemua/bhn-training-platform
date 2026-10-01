@@ -48,8 +48,7 @@ Catering will be provided. Please reply with any allergies or dietary restrictio
 
 If you have any questions before the day, just reply to this email.
 
-Best regards,
-{sender}`,
+Best regards,`,
 };
 
 /** The fields a template can use, with what each one is. */

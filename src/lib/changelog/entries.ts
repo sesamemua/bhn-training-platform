@@ -24,7 +24,7 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     title: "Messages: edit each person's email right in its box",
-    body: "On the **Messages** tab, click into any person's message to edit it for them \u2014 subject or body. Edited messages are saved, marked **Edited**, and no longer follow the template (so a later template change won't overwrite them); **Back to the template** undoes that. The template now gives one **scheduled time** (when they're on camera) and asks people to arrive 30 minutes before **to settle in**, get camera-ready and meet the team, and has a **Your script** paragraph: their script is attached, they are free to change it, and the final version is due back by end of day Monday, October 5.",
+    body: "On the **Messages** tab, click into any person's message to edit it for them \u2014 subject or body. Edited messages are saved, marked **Edited**, and no longer follow the template (so a later template change won't overwrite them); **Back to the template** undoes that. The template now gives one **scheduled time** (when they're on camera) and asks people to arrive 30 minutes before **to settle in**, get camera-ready and meet the team, and has a **Your script** paragraph: their script is attached, they are free to change it, and the final version is due back by end of day Monday, October 5. Messages end on \u201cBest regards,\u201d with no name, so your own email signature follows.",
     kind: "improvement",
     visibleTo: STAFF,
     daysAgo: 0,
