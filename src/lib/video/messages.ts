@@ -34,6 +34,9 @@ WHEN AND WHERE
 • Your scheduled time: {time}
 • We encourage you to arrive {prep_minutes} minutes before your scheduled time to settle in, get camera-ready, and meet {facilitators} from our team to go over the questions and the script
 
+YOUR SCRIPT
+Attached is your script. Please feel free to modify it as you see fit, and send the final version back to us by end of day Monday, October 5.
+
 WHAT TO WEAR
 Business attire. Solid colours work best on camera; please avoid fine stripes, small checks and large logos.
 

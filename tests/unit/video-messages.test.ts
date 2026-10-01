@@ -24,6 +24,7 @@ test("fills times, facilitators and other slots", () => {
   assert.ok(!/\{[a-z_]+\}/.test(body), "every field filled");
   assert.ok(!/\.\./.test(body), "no doubled full stop after a.m./p.m.");
   assert.match(body, /Business attire/);
+  assert.match(body, /Attached is your script/);
   assert.match(body, /setting powder, hairspray and lint rollers/);
   assert.match(body, /allergies or dietary restrictions/);
 });
