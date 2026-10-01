@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Video Production: a Messages tab for the scientific directors",
+    body: "A new **Messages** tab (after Sign-ups) holds the email to the **scientific directors** \u2014 Molly, Gilbert and Darius. It is one template, filled in for each of them from the **Filming day**: when to **arrive**, the **lead-in** to settle in and meet the team member(s) going over the questions and script with them, when they are **on camera**, anything else they are filmed for, **business attire**, the **setting powder, hairspray and lint rollers** on set (and that they are welcome to bring their own make-up), and **catering** with a request for allergies and dietary restrictions.\n\nEdit the template once (it saves as you go; **{fields}** fill in per person), then **Copy** or **Open in email** for each person. Nothing is sent from the platform. Anything missing on the Filming day \u2014 an email address, a facilitator \u2014 is flagged.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video scripts show just the script; an eye button brings back the visuals",
     body: "Video scripts now open showing **just the script** \u2014 the words people say. Visual and on-screen notes, editor\u2019s notes, interviewer cues and Picture / Sound lines are hidden until you press the **eye button** in the script\u2019s toolbar (**Just the script** / **Visuals & notes shown**). **Print job** has the same switch, so printed scripts leave them off unless you turn them on. Nothing is removed \u2014 it is only hidden from view.\n\nThe **EQUIP** pillar script now includes the new **Innovation Fellowship** (Trainee Entrepreneur Fellowship): $20,333 for master\u2019s and PhD students and $30,000 for postdoctoral fellows, over six months.",
     kind: "improvement",

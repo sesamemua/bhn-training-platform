@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { SignsSchema, printoutsKey } from "@/lib/video/filming-notice";
 import { KitStateSchema, kitKey } from "@/lib/video/kit";
 import { PREP_LISTS, PrepSchema, keyFor, type PrepList } from "@/lib/video/prep";
+import { TemplateSchema, messagesKey } from "@/lib/video/messages";
 
 export async function savePrintouts(projectId: string, signs: unknown): Promise<{ ok: boolean; error?: string }> {
   await requireRole("admin");
@@ -45,6 +46,19 @@ export async function savePrep(projectId: string, tasks: unknown, list: PrepList
   const project = await prisma.videoProject.findUnique({ where: { id: projectId }, select: { id: true } });
   if (!project) return { ok: false, error: "That project no longer exists." };
   const key = keyFor(list, projectId);
+  const value = JSON.stringify(p.data);
+  await prisma.platformSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+  return { ok: true };
+}
+
+/** Save a project's message template (the one the Messages tab fills in per person). */
+export async function saveMessageTemplate(projectId: string, template: unknown): Promise<{ ok: boolean; error?: string }> {
+  await requireRole("admin");
+  const p = TemplateSchema.safeParse(template);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "That message could not be saved." };
+  const project = await prisma.videoProject.findUnique({ where: { id: projectId }, select: { id: true } });
+  if (!project) return { ok: false, error: "That project no longer exists." };
+  const key = messagesKey(projectId);
   const value = JSON.stringify(p.data);
   await prisma.platformSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
   return { ok: true };

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18q";
+export const TOUR_VERSION = "2026.10.18r";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,16 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.messages",
+    title: "Emails to the scientific directors, ready to send",
+    body: "The **Messages** tab fills one template in for each scientific director from the Filming day — their times, who meets them, what to wear, make-up and catering. Copy it or open it in your email; you send it.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
+    since: "2026.10.18r",
   },
   {
     id: "video.script-directions",
