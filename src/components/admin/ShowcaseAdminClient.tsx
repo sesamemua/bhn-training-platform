@@ -45,6 +45,8 @@ interface Submission {
   adminNote: string | null;
   /** The answer to the group's written question, when it asks one. */
   quote?: string | null;
+  /** Award round, assigned here by an admin. */
+  round?: number | null;
   memberships: Membership[];
 }
 
@@ -61,6 +63,8 @@ export function ShowcaseAdminClient({ initialSubmissions, adminName, groupCatalo
   const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [onlyUndownloaded, setOnlyUndownloaded] = useState(false);
+  // "" = every round, "none" = not assigned yet, else a round number.
+  const [roundFilter, setRoundFilter] = useState("");
   const [programFilter, setProgramFilter] = useState<string | null>(initialGroupId);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -82,9 +86,25 @@ export function ShowcaseAdminClient({ initialSubmissions, adminName, groupCatalo
   })();
   const visible = submissions.filter((s) => {
     if (onlyUndownloaded && s.lastDownloadedAt) return false;
+    if (roundFilter === "none" ? s.round != null : roundFilter && String(s.round ?? "") !== roundFilter) return false;
     if (programFilter && !s.memberships.some((m) => m.groupId === programFilter)) return false;
     return true;
   });
+
+  /** Assign (or clear) the award round. Saved straight away; put back if the save fails. */
+  async function setRound(s: Submission, round: number | null) {
+    const before = s.round ?? null;
+    setSubmissions((cur) => cur.map((x) => (x.id === s.id ? { ...x, round } : x)));
+    const res = await fetch(`/api/admin/showcase/${s.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ round }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setSubmissions((cur) => cur.map((x) => (x.id === s.id ? { ...x, round: before } : x)));
+      setError("Couldn't save the round — try again.");
+    }
+  }
 
   async function markDownloaded(s: Submission, mark: boolean) {
     setBusyId(s.id);
@@ -243,6 +263,14 @@ export function ShowcaseAdminClient({ initialSubmissions, adminName, groupCatalo
           />
           Only show un-downloaded
         </label>
+        <label className="inline-flex items-center gap-1.5 text-[11.5px] text-fg-muted">
+          Round
+          <select value={roundFilter} onChange={(e) => setRoundFilter(e.target.value)} className="rounded-md border border-line bg-card px-1.5 py-0.5 text-[11.5px] text-fg">
+            <option value="">All</option>
+            <option value="none">Not assigned</option>
+            {[...new Set(submissions.map((x) => x.round).filter((r): r is number => r != null))].sort((a, b) => a - b).map((r) => <option key={r} value={r}>Round {r}</option>)}
+          </select>
+        </label>
         <div className="flex-1" />
         <p className="text-[11px] text-fg-subtle">
           Signed in as <span className="font-semibold">{adminName}</span>
@@ -276,6 +304,7 @@ export function ShowcaseAdminClient({ initialSubmissions, adminName, groupCatalo
                 onDelete={() => deleteRow(s)}
                 onAddMembership={(groupId) => addMembership(s, groupId)}
                 onRemoveMembership={(m) => removeMembership(s, m)}
+                onRound={(round) => setRound(s, round)}
                 groupCatalog={groupCatalog}
               />
             </li>
@@ -300,11 +329,12 @@ export function ShowcaseAdminClient({ initialSubmissions, adminName, groupCatalo
 }
 
 function SubmissionCard({
-  submission, busy, onDownload, onToggleMark, onDelete, onAddMembership, onRemoveMembership, groupCatalog,
+  submission, busy, onDownload, onToggleMark, onDelete, onAddMembership, onRemoveMembership, onRound, groupCatalog,
 }: {
   submission: Submission;
   busy: boolean;
   onDownload: () => void;
+  onRound: (round: number | null) => void;
   onToggleMark: () => void;
   onDelete: () => void;
   onAddMembership: (groupId: string) => void;
@@ -359,6 +389,18 @@ function SubmissionCard({
               {submission.linkedinHandle} <ExternalLink size={9} />
             </a>
           )}
+          <label className="mt-1.5 inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-fg-muted">
+            Round
+            <select
+              value={submission.round ?? ""}
+              onChange={(e) => onRound(e.target.value ? Number(e.target.value) : null)}
+              className="rounded-md border border-line bg-card px-1.5 py-0.5 text-[12px] font-semibold text-fg"
+              aria-label={`Award round for ${submission.name}`}
+            >
+              <option value="">—</option>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
           {submission.quote && (
             <blockquote className="mt-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap border-l-2 border-brand-400 pl-2 text-[12px] leading-relaxed text-fg">
               {submission.quote}

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Showcase: assign an award round",
+    body: "Each submission in **Admin \u2192 Grad showcase** now has a **Round** picker (1\u201310, or \u2014 for not yet). Only admins set it \u2014 awardees never see it. A **Round** filter beside \u201cOnly show un-downloaded\u201d shows one round, or the ones **not assigned** yet.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Photo uploads: drag, zoom and Auto center",
     body: "The photo step on **Showcase** links (including Knowledge Exchange) and the **speaker intake** now has a cropper: **drag** to move the photo, **zoom** with the slider, the scroll wheel or a pinch, and **Auto center** to frame it on where the eye goes \u2014 the person, or what stands out \u2014 rather than the middle of the picture, leaving a little headroom above a face. It frames itself that way as soon as a photo is chosen. What is inside the circle is exactly what is uploaded. After sending, the form simply says thank you (no \u201cSubmit another\u201d). **Admin \u2192 Grad showcase** can open filtered to one link with **?group=<link name>**, e.g. /admin/showcase?group=knowledge-exchange-2026.",
     kind: "improvement",

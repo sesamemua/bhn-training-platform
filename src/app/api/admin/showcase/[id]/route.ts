@@ -58,7 +58,7 @@ function sanitisePills(input: unknown): Pill[] {
 /**
  * PATCH /api/admin/showcase/[id]  { pills: Pill[] }
  *
- * Admin edits the membership pills (workshop / pathway / cohort tags)
+ * Admin edits the membership pills (workshop / pathway / cohort tags), and/or the award round,
  * shown on a submission card. Replaces the whole array — the client
  * always sends the full desired set after an add / edit / remove.
  */
@@ -72,14 +72,22 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = (await req.json().catch(() => null)) as { pills?: unknown } | null;
-  // Require a well-formed pills array. An unparseable/truncated body or a
-  // missing/non-array `pills` is rejected rather than silently treated as
-  // "clear all pills" (a legitimate clear sends an explicit empty array).
-  if (!body || !Array.isArray(body.pills)) {
-    return NextResponse.json({ error: "Body must include a pills array." }, { status: 400 });
+  const body = (await req.json().catch(() => null)) as { pills?: unknown; round?: unknown } | null;
+  // Pills: a well-formed array or nothing — an unparseable/truncated body or a
+  // non-array `pills` is rejected rather than silently treated as "clear all
+  // pills" (a legitimate clear sends an explicit empty array).
+  // Round: a whole number 1–99, or null to clear it. Assigned only here.
+  if (!body || (body.pills === undefined && body.round === undefined)) {
+    return NextResponse.json({ error: "Send pills or round." }, { status: 400 });
   }
-  const pills = sanitisePills(body.pills);
+  if (body.pills !== undefined && !Array.isArray(body.pills)) {
+    return NextResponse.json({ error: "pills must be an array." }, { status: 400 });
+  }
+  if (body.round !== undefined && body.round !== null && !(Number.isInteger(body.round) && (body.round as number) >= 1 && (body.round as number) <= 99)) {
+    return NextResponse.json({ error: "Round must be a whole number from 1 to 99." }, { status: 400 });
+  }
+  const pills = Array.isArray(body.pills) ? sanitisePills(body.pills) : undefined;
+  const round = body.round === undefined ? undefined : (body.round as number | null);
 
   const existing = await prisma.showcaseSubmission.findUnique({
     where: { id },
@@ -89,8 +97,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Submission not found." }, { status: 404 });
   }
 
-  await prisma.showcaseSubmission.update({ where: { id }, data: { pills } });
-  return NextResponse.json({ ok: true, pills });
+  await prisma.showcaseSubmission.update({ where: { id }, data: { ...(pills !== undefined && { pills }), ...(round !== undefined && { round }) } });
+  return NextResponse.json({ ok: true, pills, round });
 }
 
 export async function DELETE(

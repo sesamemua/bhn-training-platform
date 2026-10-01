@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18v";
+export const TOUR_VERSION = "2026.10.18w";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "showcase.round",
+    title: "Put each awardee in their round",
+    body: "In **Admin → Grad showcase**, pick a **Round** on each submission. Filter by round, or by **Not assigned** to see who still needs one.",
+    path: "/admin/showcase",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18w",
   },
   {
     id: "showcase.cropper",

@@ -5365,6 +5365,8 @@ model ShowcaseSubmission {
   adminNote        String?
   /// The answer to the group's written question (ShowcaseGroup.quotePrompt), if it asks one.
   quote            String?
+  /// Award round (e.g. Knowledge Exchange round 2). Assigned by an admin, never by the submitter.
+  round            Int?
   /// Editable membership tags shown as pills on the admin card: an
   /// array of { kind: "workshop" | "pathway" | "cohort", label }.
   /// Admin-managed and free-form — independent of `programSlug`
