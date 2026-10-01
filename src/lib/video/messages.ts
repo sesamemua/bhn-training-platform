@@ -12,13 +12,18 @@ import { clock, filmStart, longDate } from "@/lib/video/filming";
 
 export const messagesKey = (projectId: string) => `video.messages.${projectId}`;
 
-export const TemplateSchema = z.object({
+const Message = z.object({
   subject: z.string().trim().min(1, "Give the message a subject.").max(200),
   body: z.string().trim().min(1, "Write the message.").max(8000),
+});
+export const TemplateSchema = Message.extend({
+  /** A person's message edited by hand, by FilmingPerson id — it no longer follows the template. */
+  people: z.record(z.string().max(40), Message).default({}),
 });
 export type Template = z.infer<typeof TemplateSchema>;
 
 export const DEFAULT_TEMPLATE: Template = {
+  people: {},
   subject: "BioHubNet promo video — your filming on {date}",
   body: `Hi {first_name},
 
@@ -26,9 +31,9 @@ Thank you again for taking part in the BioHubNet promo video. Here are the detai
 
 WHEN AND WHERE
 • {date}, {location}
-• Arrive at {arrive}: the first {prep_minutes} minutes are for settling in, getting camera-ready, and meeting {facilitators} from our team to go over the questions and the script
-• On camera from {camera} to {end}
-{other_slots}
+• Your scheduled time: {time}
+• We encourage you to arrive {prep_minutes} minutes before your scheduled time to settle in, get camera-ready, and meet {facilitators} from our team to go over the questions and the script
+
 WHAT TO WEAR
 Business attire. Solid colours work best on camera; please avoid fine stripes, small checks and large logos.
 
@@ -50,6 +55,7 @@ export const FIELDS: [string, string][] = [
   ["name", "Their full name"],
   ["date", "The shoot date"],
   ["location", "Where — from the Filming day"],
+  ["time", "Their scheduled time: when they are on camera, start to end"],
   ["arrive", "When to arrive: the start of their slot, preparation included"],
   ["prep_minutes", "How long the preparation is"],
   ["facilitators", "Who from the team meets them"],
@@ -85,6 +91,7 @@ export function fieldsFor(p: Recipient, day: { date: string; location: string },
       facilitators: main?.facilitators.length ? and(main.facilitators.map((id) => nameOf(id).replace(/\s*\(.*?\)\s*$/, ""))) : "[someone]",
       camera: main ? clock(new Date(filmStart(main)).toISOString()) : "[time]",
       end: main ? clock(main.end) : "[time]",
+      time: main ? `${clock(new Date(filmStart(main)).toISOString())}–${clock(main.end)}` : "[time]",
       other_slots: rest.map((s) => `• We will also film ${s.title.replace(/\s*—.*$/, "").toLowerCase()} with you, ${clock(s.start)}–${clock(s.end)}\n`).join(""),
       sender,
     } as Record<string, string>,

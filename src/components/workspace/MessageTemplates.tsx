@@ -3,11 +3,13 @@
 /**
  * The Messages tab: one template, edited on the left and saved as you go;
  * on the right, the message as each person will get it, filled in from
- * the Filming day. Copy it, or open it in your own email — nothing is
- * sent from the platform.
+ * the Filming day. Each person's message can be edited right there — it
+ * then stops following the template, until "Back to the template".
+ * Copy it, or open it in your own email — nothing is sent from the platform.
  */
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Loader2, Mail, RotateCcw } from "lucide-react";
+import { Check, Copy, Loader2, Mail, PenLine, RotateCcw } from "lucide-react";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { DEFAULT_TEMPLATE, FIELDS, fill, type Template } from "@/lib/video/messages";
 import { saveMessageTemplate } from "@/lib/video/printout-actions";
 
@@ -44,7 +46,7 @@ export function MessageTemplates({ projectId, initial, recipients }: { projectId
           <span className="text-[11.5px] text-subtle" role="status">
             {status === "saving" ? <><Loader2 size={11} className="inline animate-spin" /> Saving…</> : status === "error" ? <span className="text-rose-600">Not saved — check the subject and message aren&apos;t empty</span> : "Saved"}
           </span>
-          <button type="button" className={`${BTN} ml-auto`} onClick={() => setTpl(DEFAULT_TEMPLATE)} disabled={tpl.subject === DEFAULT_TEMPLATE.subject && tpl.body === DEFAULT_TEMPLATE.body}>
+          <button type="button" className={`${BTN} ml-auto`} onClick={() => setTpl({ ...DEFAULT_TEMPLATE, people: tpl.people })} disabled={tpl.subject === DEFAULT_TEMPLATE.subject && tpl.body === DEFAULT_TEMPLATE.body}>
             <RotateCcw size={12} /> Start from the original
           </button>
         </div>
@@ -65,9 +67,14 @@ export function MessageTemplates({ projectId, initial, recipients }: { projectId
       <section className="space-y-3">
         {recipients.length === 0 && <p className="rounded-xl border border-dashed border-line p-4 text-[12.5px] text-muted">Nobody in the Interviewees group on the Filming day yet.</p>}
         {recipients.map((r) => {
-          const subject = fill(tpl.subject, r.fields), body = fill(tpl.body, r.fields);
+          const own = tpl.people[r.id];
+          const subject = own?.subject ?? fill(tpl.subject, r.fields), body = own?.body ?? fill(tpl.body, r.fields);
+          // Typing in a box makes it this person's own message, starting from what it showed.
+          const edit = (patch: Partial<{ subject: string; body: string }>) =>
+            setTpl((t) => ({ ...t, people: { ...t.people, [r.id]: { subject, body, ...patch } } }));
+          const backToTemplate = () => setTpl((t) => { const people = { ...t.people }; delete people[r.id]; return { ...t, people }; });
           return (
-            <article key={r.id} className="rounded-xl border border-line bg-card p-3">
+            <article key={r.id} className={`rounded-xl border bg-card p-3 ${own ? "border-brand-400/60" : "border-line"}`}>
               <header className="flex flex-wrap items-center gap-2">
                 <h3 className="text-[14px] font-bold text-fg">{r.name}</h3>
                 <span className="text-[12px] text-muted">{r.email || "no email"}</span>
@@ -84,12 +91,35 @@ export function MessageTemplates({ projectId, initial, recipients }: { projectId
                 </div>
               </header>
               {r.missing.length > 0 && <p className="mt-1 text-[12px] font-semibold text-amber-600">Missing on the Filming day: {r.missing.join(", ")}. The gaps show in [brackets].</p>}
-              <p className="mt-2 text-[12.5px] font-semibold text-fg">{subject}</p>
-              <pre className="mt-1 max-h-[28rem] overflow-y-auto whitespace-pre-wrap rounded-lg bg-elevated/50 p-2.5 font-sans text-[12.5px] leading-relaxed text-fg">{body}</pre>
+              {own && (
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] text-brand-700">
+                  <PenLine size={12} /> Edited for {r.name.split(" ")[0]} — the template and Filming day times no longer change it.
+                  <ConfirmPopover message={`Put ${r.name.split(" ")[0]}'s message back to the template?`} detail="Your edits to this message are dropped." confirmLabel="Back to the template" align="start" onConfirm={backToTemplate}>
+                    {(open) => <button type="button" onClick={open} className="font-semibold underline-offset-2 hover:underline">Back to the template</button>}
+                  </ConfirmPopover>
+                </p>
+              )}
+              <input
+                id={`msg-subject-${r.id}`}
+                aria-label={`Subject for ${r.name}`}
+                value={subject}
+                maxLength={200}
+                onChange={(e) => edit({ subject: e.target.value })}
+                className="mt-2 w-full rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[12.5px] font-semibold text-fg hover:border-line focus:border-brand-400 focus:outline-none"
+              />
+              <textarea
+                id={`msg-body-${r.id}`}
+                aria-label={`Message for ${r.name}`}
+                value={body}
+                maxLength={8000}
+                rows={Math.min(40, body.split("\n").length + 1)}
+                onChange={(e) => edit({ body: e.target.value })}
+                className="mt-1 w-full resize-y rounded-lg border border-transparent bg-elevated/50 p-2.5 font-sans text-[12.5px] leading-relaxed text-fg hover:border-line focus:border-brand-400 focus:outline-none"
+              />
             </article>
           );
         })}
-        <p className="text-[11.5px] text-subtle">Nothing is sent from here. &ldquo;Open in email&rdquo; starts the message in your own email; you send it.</p>
+        <p className="text-[11.5px] text-subtle">Click into any message to edit it for that person. Nothing is sent from here. &ldquo;Open in email&rdquo; starts the message in your own email; you send it.</p>
       </section>
     </div>
   );

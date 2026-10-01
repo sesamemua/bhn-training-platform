@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Messages: edit each person's email right in its box",
+    body: "On the **Messages** tab, click into any person's message to edit it for them \u2014 subject or body. Edited messages are saved, marked **Edited**, and no longer follow the template (so a later template change won't overwrite them); **Back to the template** undoes that. The template now gives one **scheduled time** (when they're on camera) and asks people to arrive 30 minutes before **to settle in**, get camera-ready and meet the team.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Video Production: a Messages tab for the scientific directors",
     body: "A new **Messages** tab (after Sign-ups) holds the email to the **scientific directors** \u2014 Molly, Gilbert and Darius. It is one template, filled in for each of them from the **Filming day**: when to **arrive**, the **lead-in** to settle in and meet the team member(s) going over the questions and script with them, when they are **on camera**, anything else they are filmed for, **business attire**, the **setting powder, hairspray and lint rollers** on set (and that they are welcome to bring their own make-up), and **catering** with a request for allergies and dietary restrictions.\n\nEdit the template once (it saves as you go; **{fields}** fill in per person), then **Copy** or **Open in email** for each person. Nothing is sent from the platform. Anything missing on the Filming day \u2014 an email address, a facilitator \u2014 is flagged.",
     kind: "feature",

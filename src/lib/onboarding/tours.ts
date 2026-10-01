@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18r";
+export const TOUR_VERSION = "2026.10.18s";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "video.messages-edit",
+    title: "Tailor each message",
+    body: "On **Messages**, click into a person's email to change it just for them. **Back to the template** undoes it.",
+    path: "/admin/workspace/marketing/video",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18s",
   },
   {
     id: "video.messages",
