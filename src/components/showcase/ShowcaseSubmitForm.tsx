@@ -78,6 +78,9 @@ export function ShowcaseSubmitForm({
   // LinkedIn (if blank) and show the saved photo.
   useEffect(() => {
     if (gated) return; // verified trainee — no name-based lookup needed
+    // A form with a written question (e.g. Knowledge Exchange) starts blank every time:
+    // nothing is filled in from someone's earlier entry.
+    if (quote) return;
     if (photoFile) return;
     const trimmed = name.trim();
     if (trimmed.length < 3) {
@@ -124,7 +127,7 @@ export function ShowcaseSubmitForm({
     }, 550);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, photoFile]);
+  }, [name, photoFile, gated, quote]);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -248,7 +251,6 @@ export function ShowcaseSubmitForm({
             required
             maxLength={120}
             autoComplete="name"
-            placeholder="e.g. Priya Iyer"
             disabled={submitting}
             className="w-full px-3 py-2 rounded-lg border border-[#cbd5e1] bg-white text-[14px] text-[#111827] placeholder:text-[#5b6470] focus:outline-none focus:ring-2 focus:ring-[#0b6f90] disabled:opacity-50"
           />
@@ -295,7 +297,6 @@ export function ShowcaseSubmitForm({
           onChange={(e) => setLinkedin(e.target.value)}
           required
           maxLength={200}
-          placeholder="e.g. priya-iyer-1234 or linkedin.com/in/priya-iyer-1234"
           disabled={submitting}
           className="w-full px-3 py-2 rounded-lg border border-[#cbd5e1] bg-white text-[14px] text-[#111827] placeholder:text-[#5b6470] focus:outline-none focus:ring-2 focus:ring-[#0b6f90] disabled:opacity-50"
         />
