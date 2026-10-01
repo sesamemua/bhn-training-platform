@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: open, full or closed — per session",
+    body: "Training Admin has a new **Open / closed** tab: set each session to **Open**, **Full** or **Closed**, and write the message people see (or leave it empty for \u201cThis session is full.\u201d / \u201cRegistration for this session is closed.\u201d). On the registration form a Full or Closed session stays on the calendar with its label and message, but can\u2019t be picked \u2014 and a submission that asks for one is refused. Seats already given out are not touched.\n\nThe same status and message, with every session\u2019s day, times, room and seats, are published at **/api/public/training-week/workshops** for biohubnet.ca to read, so the website and the form always agree.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Messages: edit each person's email right in its box",
     body: "On the **Messages** tab, click into any person's message to edit it for them \u2014 subject or body. Edited messages are saved, marked **Edited**, and no longer follow the template (so a later template change won't overwrite them); **Back to the template** undoes that. The template now gives one **scheduled time** (when they're on camera) and asks people to arrive 30 minutes before **to settle in**, get camera-ready and meet the team, and has a **Your script** paragraph: their script is attached, they are free to change it, and the final version is due back by end of day Monday, October 5. Messages end on \u201cBest regards,\u201d with no name, so your own email signature follows.",
     kind: "improvement",

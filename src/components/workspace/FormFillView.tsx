@@ -53,9 +53,11 @@ const FIELD =
   "mt-2 w-full rounded-lg border border-line bg-elevated px-3 py-2.5 text-[14px] text-fg outline-none transition-colors focus-visible:border-brand-500";
 
 export function FormFillView({
-  doc, title, submit, mode = "preview", liveHref,
+  doc, title, submit, mode = "preview", liveHref, shut,
 }: {
   doc: BuiltForm;
+  /** Sessions marked Full or Closed by the team, by option string. */
+  shut?: Record<string, { label: string; message: string }>;
   title: string;
   mode?: "preview" | "test" | "live";
   /** The public registration page, offered from the staff test view. */
@@ -459,6 +461,7 @@ export function FormFillView({
             onTell={tellUs}
             // Nothing left to open: the hint names Submit rather than Continue.
             gateRetry={more > 0 ? "continue" : "submit"}
+            shut={shut}
           />
         ))}
         {shown.length === 0 && (
@@ -622,9 +625,11 @@ export function FormFillView({
  */
 export function Question({
   doc, field: f, index, answers, set, flagged, gateMissing = false, gateRetry = "continue",
-  gateUpdatedAt = null, gateTold = false, gateTelling = false, onTell,
+  gateUpdatedAt = null, gateTold = false, gateTelling = false, onTell, shut,
 }: {
   doc: BuiltForm; field: FormField; index: number;
+  /** Sessions marked Full or Closed, by option string. */
+  shut?: Record<string, { label: string; message: string }>;
   answers: Answers; set: (k: string, v: Answers[string]) => void; flagged: boolean;
   /** The address is on no list, said here rather than above the form (presentation.gateInline). */
   gateMissing?: boolean;
@@ -786,7 +791,7 @@ export function Question({
         </select>
       ) : f.type === "multi" && f.slots.length > 0 ? (
         <>
-          <SessionCalendar field={f} chosen={arr} onToggle={pickMulti} hideHint={doc.presentation?.hideCalendarHint} />
+          <SessionCalendar field={f} chosen={arr} onToggle={pickMulti} hideHint={doc.presentation?.hideCalendarHint} shut={shut} />
           <RankedChoices
             chosen={arr}
             slots={f.slots}

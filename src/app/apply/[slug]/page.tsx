@@ -11,6 +11,7 @@
  * URL that goes on the Luma page, in emails and on biohubnet.ca, and it
  * must not sit behind a layout that assumes somebody is signed in.
  */
+import { WORKSHOP_STATUS_KEY, parseStatusMap, sessionOptionsOf, shutOptions } from "@/lib/training-week/workshop-status";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
@@ -54,6 +55,11 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
   if (!form) notFound();
 
   const doc = parseForm(form.fields);
+  // Sessions the team has marked Full or Closed — shown on the calendar, not pickable.
+  const offered = sessionOptionsOf(doc);
+  const shut = offered.length
+    ? shutOptions(offered, parseStatusMap((await prisma.platformSetting.findUnique({ where: { key: WORKSHOP_STATUS_KEY } }))?.value))
+    : {};
 
   /*
    * Closed, or only paused?
@@ -89,7 +95,7 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
   const intro = look?.intro?.length ? look.intro : undefined;
 
   const questions = !stop ? (
-    <PublicForm slug={form.slug} title={form.title} doc={doc} />
+    <PublicForm slug={form.slug} title={form.title} doc={doc} shut={shut} />
   ) : (
     /*
      * Said plainly, and the questions are not drawn. A form you can

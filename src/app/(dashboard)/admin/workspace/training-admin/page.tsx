@@ -9,6 +9,8 @@
  * console — /admin/events already covers events in general, and a tool
  * that tries to be both ends up being neither.
  */
+import { WORKSHOP_STATUS_KEY, parseStatusMap, switchable } from "@/lib/training-week/workshop-status";
+import { REGISTRATION_FORM_SLUG_V2 } from "@/lib/allocation/symposium-2026";
 import { redirect } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 import { requireRole } from "@/lib/auth";
@@ -176,6 +178,8 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
   const held = new Map<string, number>();
   for (const b of all) if (b.status === "confirmed") held.set(personOf(b), (held.get(personOf(b)) ?? 0) + 1);
 
+  const workshopStatus = await prisma.platformSetting.findUnique({ where: { key: WORKSHOP_STATUS_KEY }, select: { value: true } });
+
   return (
     <>
       <PageHero
@@ -185,6 +189,12 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         icon={<SlidersHorizontal />}
       />
       <TrainingAdmin
+        switches={{
+          initial: parseStatusMap(workshopStatus?.value),
+          sessions: switchable(),
+          feedUrl: "/api/public/training-week/workshops",
+          formUrl: `/apply/${REGISTRATION_FORM_SLUG_V2}`,
+        }}
         eligibility={eligibility}
         internalPeople={internalPeople}
         internalStaff={internalLoaded.staff}

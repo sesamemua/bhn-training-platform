@@ -48,12 +48,13 @@ import { LetterMailbox, queueLetterFx } from "./LetterMailbox";
 import { CateringTab } from "./CateringTab";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TravelTab } from "./TravelTab";
+import { WorkshopSwitches } from "./WorkshopSwitches";
 import type { View } from "@/lib/allocation/registrant-views";
 import type { SentRecord } from "@/lib/allocation/catering-sent";
 
-type Tab = "dashboard" | "model" | "suggest" | "capacity" | "registrants" | "catering" | "travel" | "email";
+type Tab = "dashboard" | "model" | "suggest" | "capacity" | "open" | "registrants" | "catering" | "travel" | "email";
 const isTab = (v: unknown): v is Tab =>
-  typeof v === "string" && ["dashboard", "model", "suggest", "capacity", "registrants", "catering", "travel", "email"].includes(v);
+  typeof v === "string" && ["dashboard", "model", "suggest", "capacity", "open", "registrants", "catering", "travel", "email"].includes(v);
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
@@ -61,6 +62,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "model", label: "Decision model" },
   { id: "suggest", label: "Seat suggestions" },
   { id: "capacity", label: "Capacity" },
+  { id: "open", label: "Open / closed" },
   { id: "catering", label: "Catering & accessibility" },
   { id: "travel", label: "Travel follow-up" },
   { id: "email", label: "Email" },
@@ -91,8 +93,10 @@ export interface EligibilitySummary {
 }
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, cateringSent, workshops, initialTab, eligibility, internalPeople, internalStaff,
+  eventId, eventTitle, rules: initialRules, views, cateringSent, workshops, initialTab, eligibility, internalPeople, internalStaff, switches,
 }: {
+  /** Open / Full / Closed per session, with what the switches need. */
+  switches: React.ComponentProps<typeof WorkshopSwitches>;
   eventId: string; eventTitle: string; rules: Rule[]; views: View[]; cateringSent: SentRecord; workshops: AdminWorkshop[];
   /** ?tab=… in the URL — e.g. a link straight to Catering & accessibility. */
   initialTab?: string;
@@ -138,6 +142,7 @@ export function TrainingAdmin({
             <InternalPeople initial={internalPeople} staff={internalStaff} workshops={workshops} />
           </>
         )}
+        {tab === "open" && <WorkshopSwitches {...switches} />}
         {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
         {tab === "catering" && <CateringTab workshops={workshops} sent={cateringSent} />}
         {tab === "travel" && <TravelTab workshops={workshops} />}

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18s";
+export const TOUR_VERSION = "2026.10.18t";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,16 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "training.open-closed",
+    title: "Close one session without closing the form",
+    body: "Training Admin → **Open / closed**: mark a session **Full** or **Closed** with your own message. The form shows it and won't let anyone pick it, and biohubnet.ca picks it up within a minute.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Admin", href: "/admin/workspace/training-admin?tab=open" },
+    since: "2026.10.18t",
   },
   {
     id: "video.messages-edit",

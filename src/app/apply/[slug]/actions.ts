@@ -26,6 +26,7 @@ import { makeSeats } from "@/lib/formbuilder/seats";
 import { since, tooMany } from "@/lib/formbuilder/throttle";
 import type { Receipt } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
+import { WORKSHOP_STATUS_KEY, parseStatusMap, sessionOptionsOf, shutProblems } from "@/lib/training-week/workshop-status";
 
 export async function submitPublicForm(
   slug: string,
@@ -38,6 +39,14 @@ export async function submitPublicForm(
   const doc = parseForm(form.fields);
   const verdict = checkSubmission(doc, answers as Answers);
   if (!verdict.ok) return { ok: false, problems: verdict.problems };
+
+  // A session the team has marked Full or Closed cannot be asked for —
+  // the calendar already will not let it be picked; this is the server's word.
+  if (sessionOptionsOf(doc).length) {
+    const status = parseStatusMap((await prisma.platformSetting.findUnique({ where: { key: WORKSHOP_STATUS_KEY } }))?.value);
+    const shut = shutProblems(doc, verdict.clean as Record<string, unknown>, status);
+    if (shut.length) return { ok: false, problems: shut };
+  }
 
   const email = emailFrom(doc, verdict.clean);
   const from = since(new Date());

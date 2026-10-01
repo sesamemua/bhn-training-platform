@@ -61,6 +61,8 @@ export type SessionCalendarProps = {
   field: FormField;
   /** Chosen options in click order — the index IS the rank. */
   chosen: string[];
+  /** Sessions the team has marked Full or Closed, by option: shown, but not pickable. */
+  shut?: Record<string, { label: string; message: string }>;
 } & (
   | {
       readOnly?: false;
@@ -151,7 +153,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
       <div className="mt-2">
         <div className="flex flex-wrap gap-2">
           {unscheduled.map((o) => (
-            <Chip key={o} label={o} rank={chosen.indexOf(o)} full={atCap} onClick={ro ? undefined : () => props.onToggle(o)} />
+            <Chip key={o} label={props.shut?.[o] && !chosen.includes(o) ? `${o} — ${props.shut[o].label}` : o} rank={chosen.indexOf(o)} full={atCap || (!!props.shut?.[o] && !chosen.includes(o))} onClick={ro ? undefined : () => props.onToggle(o)} />
           ))}
         </div>
         {/* Said in both branches. A framed row of dimmed chips with the
@@ -181,7 +183,9 @@ export function SessionCalendar(props: SessionCalendarProps) {
       .flatMap((d) => d.slots)
       .filter((o) => o.option !== sl.option && overlaps(sl, o)).length;
     const minutes = toMinutes(sl.end) - toMinutes(sl.start);
-    const blocked = !on && atCap;
+    // Full or Closed by the team: drawn with its reason, never pickable.
+    const shutHere = !ro && !on ? props.shut?.[sl.option] : undefined;
+    const blocked = !on && (atCap || !!shutHere);
 
     /*
      * Meals, as bands across the block, each saying what it is.
@@ -288,6 +292,12 @@ export function SessionCalendar(props: SessionCalendarProps) {
             the thing the reader is checking — the hours are already the
             scale it is drawn against. */}
         {on && <span className="mb-0.5 block"><RankBadge rank={rank + 1} word /></span>}
+        {shutHere && (
+          <span className="mb-0.5 block">
+            <span className="inline-flex rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{shutHere.label}</span>
+            <span className="mt-0.5 block text-[10.5px] leading-tight text-fg">{shutHere.message}</span>
+          </span>
+        )}
         <span className="relative block truncate font-mono text-[10.5px] text-subtle">
           {sl.start}–{sl.end}
         </span>
@@ -350,7 +360,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
 
     return {
       className,
-      title: blocked ? `${cap} is the most you can choose — take one back first` : name,
+      title: shutHere ? `${shutHere.label} — ${shutHere.message}` : blocked ? `${cap} is the most you can choose — take one back first` : name,
       children,
       press: { onClick: () => props.onToggle(sl.option), pressed: on, disabled: blocked },
     };
@@ -409,7 +419,7 @@ export function SessionCalendar(props: SessionCalendarProps) {
       {unscheduled.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {unscheduled.map((o) => (
-            <Chip key={o} label={o} rank={chosen.indexOf(o)} full={atCap} onClick={ro ? undefined : () => props.onToggle(o)} />
+            <Chip key={o} label={props.shut?.[o] && !chosen.includes(o) ? `${o} — ${props.shut[o].label}` : o} rank={chosen.indexOf(o)} full={atCap || (!!props.shut?.[o] && !chosen.includes(o))} onClick={ro ? undefined : () => props.onToggle(o)} />
           ))}
         </div>
       )}

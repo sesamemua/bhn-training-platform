@@ -33,6 +33,7 @@ import { withPassQr } from "@/lib/training-week/pass-qr";
 import { EntrySchema } from "@/lib/allocation/catering";
 import { CATERING_SENT_KEY, parseSent, recordSent, type SentRecord } from "@/lib/allocation/catering-sent";
 import { parseForm } from "@/lib/formbuilder/types";
+import { StatusMapSchema, WORKSHOP_STATUS_KEY, switchable } from "@/lib/training-week/workshop-status";
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { personLetterDraft, sendComposed, sendPersonCombined } from "@/lib/formbuilder/acknowledge";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
@@ -1591,4 +1592,19 @@ export async function sendLetterForRegistration(submissionId: string): Promise<{
   const seat = await prisma.workshopBooking.findFirst({ where: { submissionId }, select: { id: true } });
   const key = seat ? await personKeyForSeat(seat.id) : null;
   return key ? sendPersonLetterFor(key) : { ok: false, delivered: false, problem: "That registration has no seats." };
+}
+
+/** Open, Full or Closed per session, with the message the form and biohubnet.ca show. */
+export async function saveWorkshopStatus(map: unknown) {
+  await requireAdmin();
+  const p = StatusMapSchema.safeParse(map);
+  if (!p.success) return { ok: false as const, problem: p.error.issues[0]?.message ?? "That could not be saved." };
+  const known = new Set(switchable().map((s) => s.slug));
+  // Kept: known sessions that are shut, or open with a message waiting for when they shut.
+  const clean = Object.fromEntries(Object.entries(p.data).filter(([slug, e]) => known.has(slug) && (e.state !== "open" || e.message)));
+  const value = JSON.stringify(clean);
+  await prisma.platformSetting.upsert({ where: { key: WORKSHOP_STATUS_KEY }, create: { key: WORKSHOP_STATUS_KEY, value }, update: { value } });
+  revalidatePath(PAGE);
+  revalidatePath(`/apply/${REGISTRATION_FORM_SLUG_V2}`);
+  return { ok: true as const };
 }
