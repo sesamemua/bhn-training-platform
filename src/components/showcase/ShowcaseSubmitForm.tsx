@@ -11,13 +11,12 @@
  * and records them in THIS cohort; uploading a new photo always wins.
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { HeadshotCropper, type CropState } from "@/components/events/HeadshotCropper";
 import {
-  Camera,
   CheckCircle2,
   Loader2,
   AlertCircle,
-  Upload,
   Sparkles,
 } from "lucide-react";
 
@@ -32,6 +31,12 @@ interface Props {
   /** What the photo question is called; "Headshot" by default. */
   photoLabel?: string | null;
 }
+
+const CROPPER_COLOURS = {
+  "--speaker-control-line": "#cbd5e1", "--speaker-control-bg": "#f8fafc", "--speaker-control-ink": "#111827",
+  "--speaker-disabled-bg": "#e2e8f0", "--speaker-subtle": "#475569", "--speaker-copy": "#1f2937",
+  "--speaker-danger-line": "#fecdd3", "--speaker-danger-bg": "#fff1f2", "--speaker-danger-strong": "#be123c", "--speaker-danger": "#e11d48",
+} as React.CSSProperties;
 
 const wordsIn = (t: string) => (t.trim() ? t.trim().split(/\s+/).length : 0);
 
@@ -58,20 +63,16 @@ export function ShowcaseSubmitForm({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // The photo as framed in the cropper: dragged, zoomed, auto-centred.
+  const [crop, setCrop] = useState<CropState>({ file: null, toBlob: async () => null });
+  const [cropKey, setCropKey] = useState(0);
+  const onCrop = useCallback((c: CropState) => { setCrop(c); setPhotoFile(c.file); }, []);
 
   // Returning-person lookup.
   const [matched, setMatched] = useState<Matched | null>(null);
   const [lookupBusy, setLookupBusy] = useState(false);
   const lastQueried = useRef<string>("");
 
-  // Local preview URL for a freshly chosen file — revoke on cleanup.
-  useEffect(() => {
-    if (!photoFile) return;
-    const url = URL.createObjectURL(photoFile);
-    setPhotoPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [photoFile]);
 
   // Debounced exact-name lookup. Skips once the user has chosen their own
   // photo (we don't override their explicit upload). On a hit, prefill
@@ -129,22 +130,7 @@ export function ShowcaseSubmitForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, photoFile, gated, quote]);
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setPhotoFile(null);
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg(
-        `Photo must be under 5 MB. Yours is ${(file.size / 1024 / 1024).toFixed(1)} MB.`,
-      );
-      e.target.value = "";
-      return;
-    }
-    setErrorMsg(null);
-    setPhotoFile(file); // overrides any reused photo
-  }
+
 
   // We're reusing the saved photo when there's a match and the user
   // hasn't uploaded a fresh file.
@@ -176,8 +162,14 @@ export function ShowcaseSubmitForm({
     fd.set("name", name.trim());
     fd.set("linkedin", linkedin.trim());
     if (quote) fd.set("quote", answer.trim());
-    if (photoFile) fd.set("photo", photoFile);
-    else if (matched) fd.set("reuseFromId", matched.submissionId);
+    if (photoFile) {
+      const blob = await crop.toBlob();
+      if (!blob) {
+        setErrorMsg("Couldn't read that photo — try choosing it again.");
+        return;
+      }
+      fd.set("photo", new File([blob], "photo.png", { type: "image/png" }));
+    } else if (matched) fd.set("reuseFromId", matched.submissionId);
 
     setStatus("submitting");
     try {
@@ -220,6 +212,7 @@ export function ShowcaseSubmitForm({
             setAnswer("");
             setPhotoFile(null);
             setPhotoPreview(null);
+            setCropKey((k) => k + 1);
             setMatched(null);
             lastQueried.current = "";
             setStatus("idle");
@@ -310,65 +303,22 @@ export function ShowcaseSubmitForm({
         <label className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
           {photoLabel || "Headshot"}
         </label>
-        <div className="flex items-start gap-4">
-          {/* Preview */}
-          <div
-            className="shrink-0 w-24 h-24 rounded-full overflow-hidden border-2 flex items-center justify-center"
-            style={{
-              borderColor: photoPreview ? "#67b094" : "#cbd5e1",
-              backgroundColor: photoPreview ? "transparent" : "#f1f5f9",
-            }}
-          >
-            {photoPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photoPreview}
-                alt="Headshot preview"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <Camera className="h-7 w-7 text-[#64748b]" />
-            )}
-          </div>
-
-          {/* Upload button + helper */}
-          <div className="flex-1 min-w-0">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handlePhotoChange}
-              disabled={submitting}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={submitting}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#cbd5e1] bg-white text-[12px] font-semibold text-[#1f2937] hover:bg-[#f1f5f9] disabled:opacity-50"
-            >
-              <Upload size={12} />
-              {reusing
-                ? "Upload a new photo"
-                : photoFile
-                  ? "Choose a different photo"
-                  : "Choose photo"}
-            </button>
-            {reusing ? (
-              <p className="mt-1 text-[11px] text-[#2a8a6a] font-medium">
-                Using your saved headshot — upload a new one only if you want to
-                replace it.
-              </p>
-            ) : photoFile ? (
-              <p className="mt-1 text-[11px] text-[#475569] truncate">
-                {photoFile.name} — {(photoFile.size / 1024).toFixed(0)} KB
-              </p>
-            ) : null}
-            <p className="mt-1 text-[11px] text-[#475569] leading-relaxed">
-              JPEG, PNG, or WebP. Under 5 MB. Square photos work best.
+        {reusing && photoPreview && (
+          <div className="mb-2 flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photoPreview} alt="Your saved headshot" className="h-16 w-16 rounded-full border-2 border-[#67b094] object-cover" />
+            <p className="text-[11px] font-medium text-[#2a8a6a]">
+              Using your saved headshot — choose a new photo below only if you want to replace it.
             </p>
           </div>
+        )}
+        {/* The cropper is styled by the speaker page's colour variables; set here for this page. */}
+        <div style={CROPPER_COLOURS}>
+          <HeadshotCropper key={cropKey} onChange={onCrop} />
         </div>
+        <p className="mt-1 text-[11px] text-[#475569] leading-relaxed">
+          JPEG, PNG, or WebP. Drag to move it, scroll or pinch to zoom, or press Auto center.
+        </p>
       </div>
 
       {/* The group's written question, when it asks one. */}

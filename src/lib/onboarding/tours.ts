@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18u";
+export const TOUR_VERSION = "2026.10.18v";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "showcase.cropper",
+    title: "Photos frame themselves",
+    body: "On Showcase and speaker forms, a chosen photo is centred on the person automatically. People can still drag, zoom (slider, scroll or pinch), or press **Auto center** again.",
+    path: "/admin/showcase",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18v",
   },
   {
     id: "showcase.ke-intake",

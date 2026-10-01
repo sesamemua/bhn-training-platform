@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Photo uploads: drag, zoom and Auto center",
+    body: "The photo step on **Showcase** links (including Knowledge Exchange) and the **speaker intake** now has a cropper: **drag** to move the photo, **zoom** with the slider, the scroll wheel or a pinch, and **Auto center** to frame it on where the eye goes \u2014 the person, or what stands out \u2014 rather than the middle of the picture, leaving a little headroom above a face. It frames itself that way as soon as a photo is chosen. What is inside the circle is exactly what is uploaded.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Showcase links can ask a written question — first up, Knowledge Exchange awardees",
     body: "A showcase submission link can now ask one **written question** with a **word limit** (a live counter shows how many words are left), and name the photo it wants. The answer shows on each submission in **Admin → Showcase**.\n\nThe first link to use it is for **Knowledge Exchange awardees**: a headshot or a photo of them working in a lab, up to 250 words on what they hope to achieve from their placement (used as a quote), and their LinkedIn. No login needed. **Showcase** (the public links and Admin \u2192 Showcase) is switched back on for this; the rest of ENGAGE and EXPERIENCE stays paused. The name and LinkedIn boxes start empty (no example text), and a form with a written question never fills anything in from someone\u2019s earlier entry.",
     kind: "feature",
