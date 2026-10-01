@@ -159,7 +159,7 @@ test("an inactive build config adds no redirects and hides nothing", () => {
   const on = pausedPillarsBuildConfig({ VERCEL: "1", VERCEL_PROJECT_ID: PRODUCTION_PROJECT_ID }, OTHER_DIR);
   assert.equal(on.active, true);
   assert.equal(on.redirects.length, (PAUSED_PAGE_PREFIXES.length + EXACT_PAUSED_PAGE_PATHS.length) * 2);
-  assert.equal(on.redirects.length, 126);
+  assert.equal(on.redirects.length, 122);
   assert.equal(on.env.NEXT_PUBLIC_PAUSED_PREFIXES, pausedPagePrefixesEnvValue());
   assert.equal(on.env.NEXT_PUBLIC_PAUSED_API_PREFIXES, pausedApiPrefixesEnvValue());
   for (const r of on.redirects) {
@@ -217,7 +217,6 @@ const EXPECTED_PREFIXES: [string, string][] = [
   ["src/app/(dashboard)/buddy", "/buddy"],
   ["src/app/player", "/player"],
   ["src/app/scorm-files", "/scorm-files"],
-  ["src/app/showcase/[slug]", "/showcase/*"],
   ["src/app/showcase/regulatory-affairs", "/showcase/regulatory-affairs"],
   ["src/app/(dashboard)/admin/committees/hqp", "/admin/committees/hqp"],
   ["src/app/(dashboard)/admin/enrollments", "/admin/enrollments"],
@@ -228,7 +227,6 @@ const EXPECTED_PREFIXES: [string, string][] = [
   ["src/app/(dashboard)/admin/course-thumbnails", "/admin/course-thumbnails"],
   ["src/app/(dashboard)/admin/certificates", "/admin/certificates"],
   ["src/app/(dashboard)/admin/cover-art", "/admin/cover-art"],
-  ["src/app/(dashboard)/admin/showcase", "/admin/showcase"],
   ["src/app/(dashboard)/admin/reports", "/admin/reports"],
   ["src/app/(dashboard)/admin/lti", "/admin/lti"],
   ["src/app/(dashboard)/experience", "/experience"],
@@ -281,7 +279,6 @@ const EXPECTED_PREFIXES: [string, string][] = [
   ["src/app/api/xapi", "/api/xapi"],
   ["src/app/api/rewards", "/api/rewards"],
   ["src/app/api/committee", "/api/committee"],
-  ["src/app/api/showcase", "/api/showcase"],
   ["src/app/api/buddy", "/api/buddy"],
   ["src/app/api/admin/committees/hqp", "/api/admin/committees/hqp"],
   ["src/app/api/admin/certificates", "/api/admin/certificates"],
@@ -294,7 +291,6 @@ const EXPECTED_PREFIXES: [string, string][] = [
   ["src/app/api/admin/pathway-enrollments", "/api/admin/pathway-enrollments"],
   ["src/app/api/admin/pathways", "/api/admin/pathways"],
   ["src/app/api/admin/reports", "/api/admin/reports"],
-  ["src/app/api/admin/showcase", "/api/admin/showcase"],
   ["src/app/api/admin/ai", "/api/admin/ai"],
   ["src/app/api/auth/claim-invite", "/api/auth/claim-invite"],
   ["src/app/api/share/sim", "/api/share/sim"],
@@ -333,7 +329,7 @@ const EXPECTED_PREFIXES: [string, string][] = [
 ];
 
 test("every listed folder maps to the URL prefix it serves", () => {
-  assert.equal(PAUSED_ROUTE_FOLDERS.length, 125);
+  assert.equal(PAUSED_ROUTE_FOLDERS.length, 121);
   assert.deepEqual(
     [...PAUSED_ROUTE_FOLDERS].sort(),
     EXPECTED_PREFIXES.map(([f]) => f).sort(),
@@ -384,6 +380,10 @@ test("the deliberate keeps stay off the list", () => {
     "src/app/feedback",
     "src/app/api/feedback",
     "src/app/showcase/gsap",
+    "src/app/showcase/[slug]",
+    "src/app/(dashboard)/admin/showcase",
+    "src/app/api/showcase",
+    "src/app/api/admin/showcase",
     "src/app/(dashboard)/admin/merch",
     "src/app/merch",
   ]) {
@@ -556,7 +556,7 @@ test("isPausedPath follows the production prefixes", () => {
       ["/admin/experience", true],
       ["/admin/experience/employer-intake", true],
       ["/admin/experience-metrics", false],
-      ["/admin/showcase", true],
+      ["/admin/showcase", false],
       ["/admin/showcases", true],
       ["/admin/committees", false],
       ["/admin/committees/hqp", true],
@@ -568,7 +568,7 @@ test("isPausedPath follows the production prefixes", () => {
       ["/profile/resumes", true],
       ["/showcase/gsap", false],
       ["/showcase/gsap/anything", false],
-      ["/showcase/some-cohort", true],
+      ["/showcase/some-cohort", false],
       ["/showcase/regulatory-affairs", true],
       ["/share/equip-report/abc", false],
       ["/share/sim/abc", true],
@@ -678,21 +678,22 @@ test("the prune script removes exactly the listed folders when told to", () => {
   try {
     const res = runPrune(dir, { BHN_PAUSE_LOCAL_COPY: dir });
     assert.equal(res.status, 0, res.stderr);
-    assert.match(res.stdout, /removed 3 of 125 folders \(3 files\)/);
-    for (const gone of ["src/app/(dashboard)/courses", "src/app/api/adaptive", "src/app/showcase/[slug]"]) {
+    assert.match(res.stdout, /removed 2 of 121 folders \(2 files\)/);
+    for (const gone of ["src/app/(dashboard)/courses", "src/app/api/adaptive"]) {
       assert.equal(fs.existsSync(path.join(dir, gone)), false, gone);
     }
     for (const kept of [
       "src/app/showcase/gsap/page.tsx",
       "src/app/(dashboard)/admin/experience-metrics/page.tsx",
       "src/app/api/public/employer-intake/route.ts",
+      "src/app/showcase/[slug]/page.tsx",
     ]) {
       assert.ok(fs.existsSync(path.join(dir, kept)), kept);
     }
     // Running twice is harmless.
     const again = runPrune(dir, { BHN_PAUSE_LOCAL_COPY: dir });
     assert.equal(again.status, 0, again.stderr);
-    assert.match(again.stdout, /removed 0 of 125 folders/);
+    assert.match(again.stdout, /removed 0 of 121 folders/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -702,10 +703,10 @@ test("on Vercel the prune script needs every listed folder, and removes them all
   const prod = { VERCEL: "1", VERCEL_PROJECT_ID: PRODUCTION_PROJECT_ID, VERCEL_ENV: "production" };
   const dir = fakeRepo();
   try {
-    // The fake repo holds only 3 of the listed folders: list drift. Fail, remove nothing.
+    // The fake repo holds only 2 of the listed folders: list drift. Fail, remove nothing.
     const res = runPrune(dir, prod);
     assert.equal(res.status, 1, res.stdout);
-    assert.match(res.stderr, /122 of 125 listed folders do not exist/);
+    assert.match(res.stderr, /119 of 121 listed folders do not exist/);
     assert.match(res.stderr, /Nothing was removed/);
     assert.ok(fs.existsSync(path.join(dir, "src/app/(dashboard)/courses/[id]/page.tsx")));
     assert.ok(fs.existsSync(path.join(dir, "src/app/api/adaptive/route.ts")));
@@ -717,7 +718,7 @@ test("on Vercel the prune script needs every listed folder, and removes them all
     }
     const ok = runPrune(dir, prod);
     assert.equal(ok.status, 0, ok.stderr);
-    assert.match(ok.stdout, /removed 125 of 125 folders/);
+    assert.match(ok.stdout, /removed 121 of 121 folders/);
     assert.match(ok.stdout, /0 already absent/);
     for (const folder of PAUSED_ROUTE_FOLDERS) assert.equal(fs.existsSync(path.join(dir, folder)), false, folder);
     for (const kept of [

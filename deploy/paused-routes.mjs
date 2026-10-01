@@ -67,6 +67,9 @@ export const MAIN_CHECKOUT = "/Users/ruilinyuan/Documents/My Doc/Claude Proj/bhn
  *   • the root of admin/committees and api/admin/committees — the EQUIP
  *     Review committee lives under them (only the hqp folders go).
  *   • the legacy forms / feedback surfaces.
+ *   • Showcase — /showcase/[slug], /admin/showcase and their APIs — back
+ *     on since 1 Oct 2026 for the Knowledge Exchange awardee intake.
+ *     (/showcase/regulatory-affairs and /admin/showcases stay paused.)
  */
 export const PAUSED_ROUTE_FOLDERS = Object.freeze([
   // ── ENGAGE: learner pages
@@ -82,7 +85,6 @@ export const PAUSED_ROUTE_FOLDERS = Object.freeze([
   "src/app/(dashboard)/buddy",
   "src/app/player",
   "src/app/scorm-files",
-  "src/app/showcase/[slug]",
   "src/app/showcase/regulatory-affairs",
   // ── ENGAGE: admin pages
   "src/app/(dashboard)/admin/committees/hqp",
@@ -94,7 +96,6 @@ export const PAUSED_ROUTE_FOLDERS = Object.freeze([
   "src/app/(dashboard)/admin/course-thumbnails",
   "src/app/(dashboard)/admin/certificates",
   "src/app/(dashboard)/admin/cover-art",
-  "src/app/(dashboard)/admin/showcase",
   "src/app/(dashboard)/admin/reports",
   "src/app/(dashboard)/admin/lti",
   // ── EXPERIENCE: learner pages
@@ -151,7 +152,6 @@ export const PAUSED_ROUTE_FOLDERS = Object.freeze([
   "src/app/api/xapi",
   "src/app/api/rewards",
   "src/app/api/committee",
-  "src/app/api/showcase",
   "src/app/api/buddy",
   "src/app/api/admin/committees/hqp",
   "src/app/api/admin/certificates",
@@ -164,7 +164,6 @@ export const PAUSED_ROUTE_FOLDERS = Object.freeze([
   "src/app/api/admin/pathway-enrollments",
   "src/app/api/admin/pathways",
   "src/app/api/admin/reports",
-  "src/app/api/admin/showcase",
   "src/app/api/admin/ai",
   // ── EXPERIENCE: APIs
   "src/app/api/auth/claim-invite",
@@ -210,9 +209,7 @@ export const PAUSED_ROUTE_FOLDERS = Object.freeze([
  * step around it. tests/unit/paused-routes.test.ts checks this against
  * the disk.
  */
-export const KEPT_DYNAMIC_SIBLINGS = Object.freeze({
-  "src/app/showcase/[slug]": Object.freeze(["gsap"]),
-});
+export const KEPT_DYNAMIC_SIBLINGS = Object.freeze({});
 
 /**
  * Exact page paths paused while their route FOLDER stays deployed,
