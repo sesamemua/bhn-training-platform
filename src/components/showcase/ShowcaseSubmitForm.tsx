@@ -263,7 +263,8 @@ export function ShowcaseSubmitForm({
       {/* LinkedIn */}
       <div>
         <label className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
-          LinkedIn handle
+          {/* Awardee forms (with a written question) ask for the link, in the programme's own words. */}
+          {quote ? "A link to your LinkedIn account" : "LinkedIn handle"}
         </label>
         <input
           type="text"
@@ -274,9 +275,11 @@ export function ShowcaseSubmitForm({
           disabled={submitting}
           className="w-full px-3 py-2 rounded-lg border border-[#cbd5e1] bg-white text-[14px] text-[#111827] placeholder:text-[#5b6470] focus:outline-none focus:ring-2 focus:ring-[#0b6f90] disabled:opacity-50"
         />
-        <p className="mt-1 text-[11px] text-[#475569]">
-          Just the slug works — we&apos;ll fill in the rest.
-        </p>
+        {!quote && (
+          <p className="mt-1 text-[11px] text-[#475569]">
+            Just the slug works — we&apos;ll fill in the rest.
+          </p>
+        )}
       </div>
 
       {/* Photo */}
