@@ -29,8 +29,6 @@ import { chat } from "@/lib/ai";
 import { AnswerSchema, QuestionsSchema, answerProblems, cleanQuote, quotePrompt, type Answer } from "@/lib/showcase/testimonial";
 
 export const runtime = "nodejs";
-// A testimonial waits for its AI-drafted quote before replying.
-export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   if (!R2_PUBLIC_URL) {

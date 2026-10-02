@@ -10,7 +10,6 @@ import { chat } from "@/lib/ai";
 import { AnswerSchema, cleanQuote, quotePrompt } from "@/lib/showcase/testimonial";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole("admin").catch(() => null);

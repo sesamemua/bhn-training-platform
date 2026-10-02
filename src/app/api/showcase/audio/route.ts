@@ -20,7 +20,6 @@ import { transcribe } from "@/lib/ai";
 import { AUDIO_TYPES, MAX_AUDIO_BYTES, baseType } from "@/lib/showcase/testimonial";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   if (!R2_PUBLIC_URL) return NextResponse.json({ error: "Uploads aren't configured. Contact us." }, { status: 500 });
