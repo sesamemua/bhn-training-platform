@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Trainee testimonials: type or record your story, AI drafts the quote",
+    body: "A new **testimonial link** (/showcase/trainee-testimonials-2026) asks trainees for their name, photo (with the cropper), which programme they are in (**ENGAGE, EXPERIENCE, EQUIP**), and a few guide questions \u2014 they answer as many as they like, each by **typing** (about a minute\u2019s worth) or **recording up to a minute**, with as many **takes** as they want, played back before they choose one. Recordings are **transcribed**, and **AI drafts one short quote** from everything they said.\n\nIn **Admin \u2192 Grad showcase**, each testimonial shows the programmes, the quote (edit it and **Save**, or **Redraft with AI**), and every answer with its recording and transcript.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Knowledge Exchange intake: 50-word quote, consent box, simpler page",
     body: "The Knowledge Exchange awardee form now asks for **up to 50 words** (it won\u2019t submit more), ends with a **required consent checkbox** for using their photo and details in promotion and communications (the time they ticked it shows on each submission in Admin \u2192 Grad showcase), uses ordinary sentence-case question labels, and has a new intro. The photo hint and the \u201cAlready submitted?\u201d footer are gone.",
     kind: "improvement",

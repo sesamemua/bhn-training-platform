@@ -15,6 +15,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ShowcaseSubmitForm } from "@/components/showcase/ShowcaseSubmitForm";
+import { QuestionsSchema } from "@/lib/showcase/testimonial";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,8 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
   if (!group) notFound();
   const b = branding(group);
   const ask = group.quotePrompt ? { prompt: group.quotePrompt, maxWords: group.quoteMaxWords } : null;
+  const guide = QuestionsSchema.safeParse(group.questions);
+  const questions = guide.success ? guide.data : null;
 
   // Attendance gate: a bound + gated cohort requires login and only lets
   // approved-enrolled + attended trainees submit (re-checked server-side in
@@ -154,6 +157,8 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
                 quote={ask}
                 photoLabel={group.photoLabel}
                 consentText={group.consentText}
+                questions={questions}
+                programChoices={group.programChoices}
               />
             ) : (
               <GateNotice
@@ -163,12 +168,12 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
               />
             )
           ) : (
-            <ShowcaseSubmitForm programSlug={group.slug} quote={ask} photoLabel={group.photoLabel} consentText={group.consentText} />
+            <ShowcaseSubmitForm programSlug={group.slug} quote={ask} photoLabel={group.photoLabel} consentText={group.consentText} questions={questions} programChoices={group.programChoices} />
           )}
         </section>
 
         {/* Not on an awardee intake (a link that asks a written question): one submission each. */}
-        {!group.quotePrompt && (
+        {!group.quotePrompt && !questions && (
         <footer className="mt-10 text-center text-[12px] text-fg-muted">
           <p>
             Already submitted? You can resubmit any time — we&apos;ll triage

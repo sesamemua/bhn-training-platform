@@ -72,14 +72,19 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = (await req.json().catch(() => null)) as { pills?: unknown; round?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { pills?: unknown; round?: unknown; quote?: unknown } | null;
   // Pills: a well-formed array or nothing — an unparseable/truncated body or a
   // non-array `pills` is rejected rather than silently treated as "clear all
   // pills" (a legitimate clear sends an explicit empty array).
   // Round: a whole number 1–99, or null to clear it. Assigned only here.
-  if (!body || (body.pills === undefined && body.round === undefined)) {
-    return NextResponse.json({ error: "Send pills or round." }, { status: 400 });
+  if (!body || (body.pills === undefined && body.round === undefined && body.quote === undefined)) {
+    return NextResponse.json({ error: "Send pills, round or quote." }, { status: 400 });
   }
+  if (body.quote !== undefined && body.quote !== null && (typeof body.quote !== "string" || body.quote.length > 1200)) {
+    return NextResponse.json({ error: "The quote must be text of 1,200 characters or fewer." }, { status: 400 });
+  }
+  // The quote: the team's edit of a testimonial's AI-drafted quote (empty clears it).
+  const quote = body.quote === undefined ? undefined : ((body.quote as string | null)?.trim() || null);
   if (body.pills !== undefined && !Array.isArray(body.pills)) {
     return NextResponse.json({ error: "pills must be an array." }, { status: 400 });
   }
@@ -97,7 +102,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Submission not found." }, { status: 404 });
   }
 
-  await prisma.showcaseSubmission.update({ where: { id }, data: { ...(pills !== undefined && { pills }), ...(round !== undefined && { round }) } });
+  await prisma.showcaseSubmission.update({ where: { id }, data: { ...(pills !== undefined && { pills }), ...(round !== undefined && { round }), ...(quote !== undefined && { quote }) } });
   return NextResponse.json({ ok: true, pills, round });
 }
 

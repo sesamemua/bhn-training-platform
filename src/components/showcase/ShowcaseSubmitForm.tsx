@@ -13,6 +13,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { HeadshotCropper, type CropState } from "@/components/events/HeadshotCropper";
+import { TestimonialAnswers, answered, type TestimonialValue } from "./TestimonialAnswers";
+import { MAX_TEXT_WORDS } from "@/lib/showcase/testimonial";
 import {
   CheckCircle2,
   Loader2,
@@ -32,6 +34,10 @@ interface Props {
   photoLabel?: string | null;
   /** A required consent checkbox before Submit, with this text. */
   consentText?: string | null;
+  /** Testimonial links: guide questions answered by typing or recording. */
+  questions?: string[] | null;
+  /** Testimonial links: "Which programme are you part of?" */
+  programChoices?: string[];
 }
 
 const CROPPER_COLOURS = {
@@ -57,10 +63,14 @@ export function ShowcaseSubmitForm({
   quote = null,
   photoLabel = null,
   consentText = null,
+  questions = null,
+  programChoices = [],
 }: Props) {
   const [consent, setConsent] = useState(false);
-  // Awardee intake forms (with a written question) use sentence-case labels; the graduate showcase keeps its small caps.
-  const LABEL = quote
+  const [story, setStory] = useState<TestimonialValue>({ programs: [], drafts: {} });
+  const [uploading, setUploading] = useState<string | null>(null);
+  // Intake forms (a written question, or testimonial questions) use sentence-case labels; the graduate showcase keeps its small caps.
+  const LABEL = quote || questions
     ? "block text-[13.5px] font-semibold text-[#1f2937] mb-1"
     : "block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1";
   const [name, setName] = useState(lockedName);
@@ -88,7 +98,7 @@ export function ShowcaseSubmitForm({
     if (gated) return; // verified trainee — no name-based lookup needed
     // A form with a written question (e.g. Knowledge Exchange) starts blank every time:
     // nothing is filled in from someone's earlier entry.
-    if (quote) return;
+    if (quote || questions) return;
     if (photoFile) return;
     const trimmed = name.trim();
     if (trimmed.length < 3) {
@@ -135,7 +145,7 @@ export function ShowcaseSubmitForm({
     }, 550);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, photoFile, gated, quote]);
+  }, [name, photoFile, gated, quote, questions]);
 
 
 
@@ -147,9 +157,16 @@ export function ShowcaseSubmitForm({
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!name.trim() || !linkedin.trim()) {
-      setErrorMsg("Fill in your name and LinkedIn.");
+    if (!name.trim() || (!questions && !linkedin.trim())) {
+      setErrorMsg(questions ? "Fill in your name." : "Fill in your name and LinkedIn.");
       return;
+    }
+    if (questions) {
+      const ready = answered(story);
+      if (programChoices.length && !story.programs.length) { setErrorMsg("Tell us which programme you are part of."); return; }
+      if (!ready.length) { setErrorMsg("Answer at least one of the questions — type it or record it."); return; }
+      const long = ready.find(([, d]) => d.mode === "type" && wordsIn(d.text) > MAX_TEXT_WORDS);
+      if (long) { setErrorMsg(`Keep each typed answer to ${MAX_TEXT_WORDS} words — “${long[0]}” is longer.`); return; }
     }
     if (!photoFile && !reusing) {
       setErrorMsg(photoLabel ? `Add a photo: ${photoLabel.toLowerCase()}.` : "Add a headshot.");
@@ -174,6 +191,35 @@ export function ShowcaseSubmitForm({
     fd.set("linkedin", linkedin.trim());
     if (quote) fd.set("quote", answer.trim());
     if (consentText && consent) fd.set("consent", "yes");
+    if (questions) {
+      // The chosen takes go up first, one at a time; each comes back with its words.
+      const out: { question: string; text?: string; audioKey?: string; transcript?: string }[] = [];
+      const ready = answered(story);
+      const recordings = ready.filter(([, d]) => d.mode === "record").length;
+      let n = 0;
+      setStatus("submitting");
+      for (const [question, d] of ready) {
+        if (d.mode === "type") { out.push({ question, text: d.text.trim() }); continue; }
+        n += 1;
+        setUploading(`Uploading your recordings… ${n} of ${recordings}`);
+        const af = new FormData();
+        af.set("programSlug", programSlug);
+        const ext = d.take!.blob.type.includes("mp4") ? "m4a" : d.take!.blob.type.includes("ogg") ? "ogg" : "webm";
+        af.set("audio", new File([d.take!.blob], `answer.${ext}`, { type: d.take!.blob.type.split(";")[0] || "audio/webm" }));
+        const r = await fetch("/api/showcase/audio", { method: "POST", body: af }).catch(() => null);
+        const j = (await r?.json().catch(() => ({}))) as { ok?: boolean; key?: string; transcript?: string; error?: string };
+        if (!r?.ok || !j.ok || !j.key) {
+          setUploading(null);
+          setStatus("error");
+          setErrorMsg(j.error ?? "A recording didn't upload — try again.");
+          return;
+        }
+        out.push({ question, audioKey: j.key, transcript: j.transcript ?? "" });
+      }
+      setUploading(null);
+      fd.set("answers", JSON.stringify(out));
+      fd.set("programs", story.programs.join(","));
+    }
     if (photoFile) {
       const blob = await crop.toBlob();
       if (!blob) {
@@ -277,18 +323,18 @@ export function ShowcaseSubmitForm({
       <div>
         <label className={LABEL}>
           {/* Awardee forms (with a written question) ask for the link, in the programme's own words. */}
-          {quote ? "LinkedIn Account" : "LinkedIn handle"}
+          {questions ? "LinkedIn Account (optional)" : quote ? "LinkedIn Account" : "LinkedIn handle"}
         </label>
         <input
           type="text"
           value={linkedin}
           onChange={(e) => setLinkedin(e.target.value)}
-          required
+          required={!questions}
           maxLength={200}
           disabled={submitting}
           className="w-full px-3 py-2 rounded-lg border border-[#cbd5e1] bg-white text-[14px] text-[#111827] placeholder:text-[#5b6470] focus:outline-none focus:ring-2 focus:ring-[#0b6f90] disabled:opacity-50"
         />
-        {!quote && (
+        {!quote && !questions && (
           <p className="mt-1 text-[11px] text-[#475569]">
             Just the slug works — we&apos;ll fill in the rest.
           </p>
@@ -314,6 +360,11 @@ export function ShowcaseSubmitForm({
           <HeadshotCropper onChange={onCrop} />
         </div>
       </div>
+
+      {/* Testimonial links: programme, then the guide questions. */}
+      {questions && (
+        <TestimonialAnswers questions={questions} programChoices={programChoices} value={story} onChange={setStory} disabled={submitting} labelClass={LABEL} />
+      )}
 
       {/* The group's written question, when it asks one. */}
       {quote && (
@@ -373,7 +424,7 @@ export function ShowcaseSubmitForm({
         >
           {submitting ? <Loader2 size={14} className="animate-spin" /> : null}
           {submitting
-            ? "Submitting…"
+            ? (uploading ?? "Submitting…")
             : reusing
               ? "Confirm & submit"
               : "Submit my entry"}

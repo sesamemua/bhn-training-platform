@@ -49,6 +49,9 @@ interface Submission {
   round?: number | null;
   /** When they ticked the link's consent box. */
   consentAt?: string | null;
+  /** Testimonial links: programme(s) and the answers (typed, or a recording with its transcript). */
+  programs?: string[];
+  answers?: unknown;
   memberships: Membership[];
 }
 
@@ -406,7 +409,9 @@ function SubmissionCard({
           {submission.consentAt && (
             <p className="mt-1 text-[10.5px] text-fg-subtle">Consented {new Date(submission.consentAt).toLocaleDateString()}</p>
           )}
-          {submission.quote && (
+          {Array.isArray(submission.answers) ? (
+            <TestimonialBlock submission={submission} />
+          ) : submission.quote && (
             <blockquote className="mt-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap border-l-2 border-brand-400 pl-2 text-[12px] leading-relaxed text-fg">
               {submission.quote}
             </blockquote>
@@ -562,6 +567,69 @@ function MembershipChips({
             <Plus size={10} /> Add additional pathway
           </button>
         ))}
+    </div>
+  );
+}
+
+type TestimonialAnswer = { question: string; text?: string; audioUrl?: string; transcript?: string };
+
+/**
+ * A testimonial on its card: programme(s), the AI-drafted quote (editable,
+ * saved on Save; "Redraft with AI" asks again), and every answer — typed,
+ * or the recording with its transcript.
+ */
+function TestimonialBlock({ submission }: { submission: Submission }) {
+  const answers = (submission.answers as TestimonialAnswer[]).filter((a) => a && typeof a.question === "string");
+  const [quote, setQuote] = useState(submission.quote ?? "");
+  const [saved, setSaved] = useState(submission.quote ?? "");
+  const [busy, setBusy] = useState<"save" | "draft" | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const save = async () => {
+    setBusy("save"); setNote(null);
+    const r = await fetch(`/api/admin/showcase/${submission.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quote }) }).catch(() => null);
+    setBusy(null);
+    if (r?.ok) { setSaved(quote); setNote("Saved"); } else setNote("Couldn't save — try again.");
+  };
+  const redraft = async () => {
+    setBusy("draft"); setNote(null);
+    const r = await fetch(`/api/admin/showcase/${submission.id}/draft-quote`, { method: "POST" }).catch(() => null);
+    const j = (await r?.json().catch(() => ({}))) as { quote?: string; error?: string };
+    setBusy(null);
+    if (r?.ok && j.quote) { setQuote(j.quote); setSaved(j.quote); setNote("New draft saved"); } else setNote(j.error ?? "Couldn't draft — try again.");
+  };
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      {submission.programs && submission.programs.length > 0 && (
+        <p className="flex flex-wrap gap-1">{submission.programs.map((p) => <span key={p} className="rounded-full bg-brand-500/12 px-2 py-0.5 text-[10.5px] font-semibold text-fg">{p}</span>)}</p>
+      )}
+      <label className="block text-[10.5px] font-semibold uppercase tracking-wide text-fg-subtle">
+        Quote (AI draft — edit before use)
+        <textarea
+          value={quote}
+          onChange={(e) => setQuote(e.target.value)}
+          rows={3}
+          placeholder="No quote yet — press Redraft with AI."
+          className="mt-0.5 w-full resize-y rounded-md border border-line bg-card px-2 py-1 text-[12px] normal-case tracking-normal text-fg"
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <button type="button" onClick={save} disabled={busy !== null || quote === saved} className="rounded-md border border-line px-2 py-0.5 font-semibold text-fg hover:bg-elevated disabled:opacity-40">{busy === "save" ? "Saving…" : "Save"}</button>
+        <button type="button" onClick={redraft} disabled={busy !== null} className="rounded-md border border-line px-2 py-0.5 font-semibold text-fg hover:bg-elevated disabled:opacity-40">{busy === "draft" ? "Drafting…" : "Redraft with AI"}</button>
+        {note && <span className="text-fg-subtle">{note}</span>}
+      </div>
+      <details className="rounded-md border border-line px-2 py-1">
+        <summary className="cursor-pointer text-[11px] font-semibold text-fg">{answers.length} answer{answers.length === 1 ? "" : "s"}</summary>
+        <ol className="mt-1 space-y-2">
+          {answers.map((a, i) => (
+            <li key={i} className="text-[11.5px]">
+              <p className="font-semibold text-fg">{a.question}</p>
+              {a.audioUrl && <audio src={a.audioUrl} controls preload="none" className="mt-0.5 h-8 w-full" />}
+              {(a.text || a.transcript) && <p className="mt-0.5 whitespace-pre-wrap text-fg-muted">{a.text || a.transcript}</p>}
+              {a.audioUrl && !a.transcript && <p className="mt-0.5 italic text-fg-subtle">No transcript — listen to the recording.</p>}
+            </li>
+          ))}
+        </ol>
+      </details>
     </div>
   );
 }

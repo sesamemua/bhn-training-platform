@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18x";
+export const TOUR_VERSION = "2026.10.18y";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,16 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "showcase.testimonials",
+    title: "Testimonials, typed or recorded",
+    body: "Share **/showcase/trainee-testimonials-2026**: trainees answer guide questions by typing or recording (several takes, one minute each). In **Admin → Grad showcase** you get the recordings, transcripts and an AI-drafted quote to edit.",
+    path: "/admin/showcase",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Grad showcase", href: "/admin/showcase?group=trainee-testimonials-2026" },
+    since: "2026.10.18y",
   },
   {
     id: "training.registered-from",

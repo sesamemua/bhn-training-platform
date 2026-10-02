@@ -25,8 +25,12 @@ import { getSession } from "@/lib/auth";
 import { putR2Object, r2PublicUrl, R2_PUBLIC_URL } from "@/lib/r2";
 import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, normaliseLinkedin } from "@/lib/showcase/validation";
 import { countWords } from "@/lib/events/bio";
+import { chat } from "@/lib/ai";
+import { AnswerSchema, QuestionsSchema, answerProblems, cleanQuote, quotePrompt, type Answer } from "@/lib/showcase/testimonial";
 
 export const runtime = "nodejs";
+// A testimonial waits for its AI-drafted quote before replying.
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   if (!R2_PUBLIC_URL) {
@@ -54,7 +58,7 @@ export async function POST(req: NextRequest) {
   // /admin/showcase).
   const group = await prisma.showcaseGroup.findUnique({
     where: { slug: programSlug },
-    select: { id: true, active: true, gateOnAttendance: true, linkedCohortId: true, quotePrompt: true, quoteMaxWords: true, consentText: true },
+    select: { id: true, active: true, gateOnAttendance: true, linkedCohortId: true, quotePrompt: true, quoteMaxWords: true, consentText: true, questions: true, programChoices: true },
   });
   if (!group) {
     return NextResponse.json({ error: "Unknown showcase." }, { status: 400 });
@@ -101,10 +105,27 @@ export async function POST(req: NextRequest) {
   if (name.length < 2 || name.length > 120) {
     return NextResponse.json({ error: "Name should be 2–120 characters." }, { status: 400 });
   }
-  if (linkedinRaw.length < 2 || linkedinRaw.length > 200) {
+  // A testimonial link asks guide questions; LinkedIn is optional there.
+  const questions = QuestionsSchema.safeParse(group.questions);
+  const testimonial = questions.success;
+  if (linkedinRaw.length > 200 || (!testimonial && linkedinRaw.length < 2)) {
     return NextResponse.json({ error: "Add your LinkedIn handle (2–200 characters)." }, { status: 400 });
   }
-  const linkedinUrl = normaliseLinkedin(linkedinRaw);
+  const linkedinUrl = linkedinRaw ? normaliseLinkedin(linkedinRaw) : null;
+  let answers: Answer[] = [];
+  let programs: string[] = [];
+  if (testimonial) {
+    try {
+      const raw = JSON.parse(String(formData.get("answers") ?? "[]"));
+      answers = (Array.isArray(raw) ? raw : []).slice(0, 12).map((a) => AnswerSchema.parse(a));
+    } catch {
+      return NextResponse.json({ error: "Couldn't read your answers — try again." }, { status: 400 });
+    }
+    const problems = answerProblems(answers, questions.data, programSlug);
+    if (problems.length) return NextResponse.json({ error: problems[0] }, { status: 400 });
+    programs = String(formData.get("programs") ?? "").split(",").map((x) => x.trim()).filter((x) => group.programChoices.includes(x));
+    if (group.programChoices.length && !programs.length) return NextResponse.json({ error: "Tell us which programme you are part of." }, { status: 400 });
+  }
   // The group's written question, if it asks one: required, and held to its word limit.
   const quote = group.quotePrompt ? String(formData.get("quote") ?? "").trim() : "";
   // The link's consent box, when it has one: required, and when it was ticked is kept.
@@ -117,7 +138,7 @@ export async function POST(req: NextRequest) {
     if (words === 0) return NextResponse.json({ error: "Please answer the written question." }, { status: 400 });
     if (words > group.quoteMaxWords) return NextResponse.json({ error: `Keep your answer to ${group.quoteMaxWords} words or fewer — yours is ${words}.` }, { status: 400 });
   }
-  if (!linkedinUrl) {
+  if (linkedinRaw && !linkedinUrl) {
     return NextResponse.json({
       error: "That LinkedIn handle doesn't look right. Try a URL like linkedin.com/in/yourname or just the slug 'yourname'.",
     }, { status: 400 });
@@ -206,6 +227,10 @@ export async function POST(req: NextRequest) {
         linkedinHandle: linkedinRaw,
         linkedinUrl,
         quote: quote || null,
+        ...(testimonial ? {
+          programs,
+          answers: answers.map((a) => ({ ...a, ...(a.audioKey ? { audioUrl: r2PublicUrl(a.audioKey) } : {}) })),
+        } : {}),
         consentAt: group.consentText ? new Date() : null,
         photoUrl: r2PublicUrl(photoKey),
         photoKey,
@@ -225,6 +250,13 @@ export async function POST(req: NextRequest) {
       await deleteR2ObjectByUrl(photoKey);
     } catch { /* swallow */ }
     return NextResponse.json({ error: "Couldn't save your submission. Try again." }, { status: 500 });
+  }
+
+  // A testimonial's quote, drafted now from what they said; the team edits it.
+  // Never blocks the submission: no AI, no quote, and the team can redraft.
+  if (testimonial) {
+    const q = await chat(quotePrompt(name, programs, answers), { feature: "showcase-testimonial-quote", maxTokens: 160, temperature: 0.3, timeoutMs: 20000 }).catch(() => null);
+    if (q?.ok && q.text.trim()) await prisma.showcaseSubmission.update({ where: { id }, data: { quote: cleanQuote(q.text) } }).catch(() => {});
   }
 
   return NextResponse.json({ ok: true, id });
