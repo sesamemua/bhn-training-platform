@@ -277,7 +277,7 @@ export function ShowcaseSubmitForm({
       <div>
         <label className={LABEL}>
           {/* Awardee forms (with a written question) ask for the link, in the programme's own words. */}
-          {quote ? "A link to your LinkedIn account" : "LinkedIn handle"}
+          {quote ? "LinkedIn Account" : "LinkedIn handle"}
         </label>
         <input
           type="text"
