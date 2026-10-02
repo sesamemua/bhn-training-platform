@@ -20,7 +20,7 @@
  *     registration: { state: "open" | "paused" | "closed", message: string | null, url },
  *     workshops: [{ slug, title, subtitle, kind, date: "YYYY-MM-DD", dayLabel, start: "HH:MM",
  *                   end: "HH:MM", startsAt: ISO, endsAt: ISO, venue, partner, facilitator,
- *                   seats, summary, transport: string | null (where the bus leaves from, when we provide one),
+ *                   seats, summary, transport: string | null (how people get there, when we provide it),
  *                   status: "open" | "full" | "closed",
  *                   — and for drawing the page: anchor, webTitle, host, longDate, time12,
  *                   offsetMinutes, durationMinutes, lane, detailsHtml (breaks in "registration") }]

@@ -37,6 +37,13 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     daysAgo: 0,
   },
   {
+    title: "Microbix tour: 12 places, transportation provided",
+    body: "Monday's **Microbix tour + Lunch & Learn** now has **12 places** (was 20), and says **\u201cTransportation will be provided\u201d** instead of naming a bus. The registration form, Training Admin and the feed for biohubnet.ca all show it.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: Monday's company tour is at Microbix Biosystems",
     body: "Monday 26 October's company tour is now **Microbix tour + Lunch & Learn** at **Microbix Biosystems Inc., 265 Watline Ave, Mississauga**, with a **bus from the U of T downtown campus** (pick-up point to be confirmed). The registration form, the Training Admin dashboard and the public feed for biohubnet.ca all show it. Registrations made under the old name keep their place \u2014 nobody has to choose again.",
     kind: "improvement",

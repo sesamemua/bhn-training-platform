@@ -16,7 +16,8 @@ test("every session, with the website's words and a position", () => {
   assert.equal(tour.offsetMinutes, 30);
   assert.equal(tour.durationMinutes, 360);
   assert.equal(tour.time12, "9:30 AM–3:30 PM");
-  assert.match(tour.detailsHtml!, /bus from the U of T downtown/);
+  assert.match(tour.detailsHtml!, /Transportation will be provided/);
+  assert.equal(tour.seats, 12);
   // Two Monday sessions overlap, so they sit in different lanes.
   const cl3 = w.sessions.find((s) => s.slug === "cl3-workshop-2026")!;
   assert.notEqual(cl3.lane, tour.lane);

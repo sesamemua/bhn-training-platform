@@ -37,7 +37,7 @@ export const WEB_CONTENT: Record<string, WebContent> = {
       `<p class="workshop-subtitle">Microbix Biosystems</p>`,
       `<p>${link("https://microbix.com/", "Microbix Biosystems")} is a Canadian biotechnology company that develops and manufactures infectious disease diagnostic products, quality control materials, and biomanufacturing solutions used by healthcare and diagnostic organizations around the world.</p>`,
       `<p><strong>Location:</strong> Microbix Biosystems Inc.<br>${link("https://microbix.com/contact", "265 Watline Ave, Mississauga, ON")}</p>`,
-      `<p><strong>Getting there:</strong> We provide a bus from the U of T downtown (St. George) campus. Pick-up point to be confirmed.</p>`,
+      `<p><strong>Getting there:</strong> Transportation will be provided.</p>`,
     ].join("\n"),
   },
   "cl3-workshop-2026": {

@@ -18,11 +18,11 @@ const bySlug = (slug: string) => SESSIONS.find((s) => s.slug === slug)!;
 
 test("Monday is one company tour against the THCF workshop, and they overlap", () => {
   // October's grid replaced the two back-to-back tours with a single
-  // tour whose host is still to be chosen, and gave the workshop the
+  // tour (Microbix, 12 places from 2 Oct), and gave the workshop the
   // facility's name, an end at 14:30 and twice the places.
   const tour = bySlug("catalent-tour-lunch-learn-2026");
   const thcf = bySlug("cl3-workshop-2026");
-  assert.deepEqual([tour.day, tour.start, tour.end, tour.capacity], ["2026-10-26", "09:30", "15:30", 20]);
+  assert.deepEqual([tour.day, tour.start, tour.end, tour.capacity], ["2026-10-26", "09:30", "15:30", 12]);
   assert.deepEqual([thcf.day, thcf.start, thcf.end, thcf.capacity], ["2026-10-26", "09:30", "14:00", 20]);
   assert.equal(clashes(
     { option: "a", day: tour.day, start: tour.start, end: tour.end },
