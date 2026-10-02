@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: Monday's company tour is at Microbix Biosystems",
+    body: "Monday 26 October's company tour is now **Microbix tour + Lunch & Learn** at **Microbix Biosystems Inc., 265 Watline Ave, Mississauga**, with a **bus from the U of T downtown campus** (pick-up point to be confirmed). The registration form, the Training Admin dashboard and the public feed for biohubnet.ca all show it. Registrations made under the old name keep their place \u2014 nobody has to choose again.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: postcode required for long trips; where each registration came from",
     body: "On the registration form, anyone who says their trip to Toronto is **over two hours** must now give the **first 3 characters of their postal code** (a letter, a number, a letter \u2014 like M5V). Before, it could be left blank.\n\nEvery registration now records the **IP address** it was sent from and the **area** that address maps to. In **Registrants**, open a person to see **Registered from** \u2014 e.g. \u201cToronto, ON, CA \u00b7 203.0.113.7\u201d, highlighted when it is outside Canada. It locates their connection, not them: a VPN, mobile data or a campus network can place someone elsewhere. Registrations before 2 October say \u201cnot recorded\u201d.",
     kind: "improvement",

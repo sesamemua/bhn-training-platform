@@ -301,10 +301,12 @@ test("a venue that is not booked says so, and a room with no name stays empty", 
   // Booked rooms are stated plainly, with no hedge.
   assert.equal(venue("communication-chameleon-2026"), "Room 850");
   // The grid names the facility for the Monday workshop but has not
-  // booked it, and names no host at all for the Monday tour — the
-  // render sites fall back to TBA rather than to an invented building.
+  // booked it. The Monday tour's host is confirmed: Microbix, booked.
   assert.equal(venue("cl3-workshop-2026"), "Toronto High Containment Facility (to be confirmed)");
-  assert.equal(venue("catalent-tour-lunch-learn-2026"), null);
+  assert.equal(venue("catalent-tour-lunch-learn-2026"), "Microbix Biosystems Inc., 265 Watline Ave, Mississauga");
+  // A room with no name stays empty — the render sites fall back to TBA
+  // rather than to an invented building.
+  assert.equal(displayVenue({ name: null, status: "inquiry", note: null }), null);
   for (const s of SESSIONS) {
     if (s.venue.status === "options") {
       assert.ok(s.venue.alternative, `${s.title} has two candidate rooms but names only one`);

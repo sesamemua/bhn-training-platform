@@ -17,7 +17,8 @@
  *     registration: { state: "open" | "paused" | "closed", message: string | null, url },
  *     workshops: [{ slug, title, subtitle, kind, date: "YYYY-MM-DD", dayLabel, start: "HH:MM",
  *                   end: "HH:MM", startsAt: ISO, endsAt: ISO, venue, partner, facilitator,
- *                   seats, summary, status: "open" | "full" | "closed",
+ *                   seats, summary, transport: string | null (where the bus leaves from, when we provide one),
+ *                   status: "open" | "full" | "closed",
  *                   statusLabel: "Open" | "Full" | "Closed", message: string | null }]
  *   }
  */
@@ -80,6 +81,7 @@ export async function GET() {
         facilitator: s.facilitator,
         seats: s.capacity,
         summary: s.summary,
+        transport: s.transport ?? null,
         status: e.state,
         statusLabel: STATE_LABEL[e.state],
         message: messageOf(e) || null,

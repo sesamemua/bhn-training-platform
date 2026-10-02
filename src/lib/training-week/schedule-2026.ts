@@ -139,6 +139,8 @@ export interface Session {
   subtitle?: string;
   /** Meals inside the session's own hours. */
   breaks?: Break[];
+  /** Where the bus leaves from, when we take people there. */
+  transport?: string;
   /** One line for the Workshop row and the admin table. */
   summary: string;
   /** Everything else the grid records against it. */
@@ -192,19 +194,24 @@ export const SESSIONS: Session[] = [
      * and its bookings behind.
      */
     slug: "catalent-tour-lunch-learn-2026",
-    title: "Company tour + Lunch & Learn",
+    // The host is Microbix Biosystems (confirmed 1 Oct 2026). "Microbix
+    // tour", not the full company name: the option label has 60
+    // characters and the day and time take 27 of them.
+    title: "Microbix tour + Lunch & Learn",
+    subtitle: "Microbix Biosystems, Mississauga",
     kind: "tour",
     day: "2026-10-26", start: "09:30", end: "15:30", track: 1,
     capacity: 20,
-    venue: { name: null, status: "inquiry", note: "Host company still to be chosen; inquiry made." },
-    partner: null,
+    venue: { name: "Microbix Biosystems Inc., 265 Watline Ave, Mississauga", status: "booked", note: null },
+    partner: "Microbix Biosystems",
     facilitator: null,
     lead: "Epshita",
-    summary: "A Lunch & Learn, a tour of the company, and time to talk to the people who work there. The host is being confirmed.",
-    notes: ["20 spots", "Lunch & Learn", "Company tour", "Talk to employees", "Host company to be confirmed"],
-    tentative: true,
-    previousTitles: ["Catalent tour + Lunch & Learn"],
-    previousOptions: ["Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn"],
+    summary: "Microbix Biosystems is a Canadian biotechnology company that develops and manufactures infectious disease diagnostic products, quality control materials, and biomanufacturing solutions used by healthcare and diagnostic organizations around the world. A Lunch & Learn, a tour of its Mississauga site, and time to talk to the people who work there. We provide a bus from the U of T downtown campus.",
+    notes: ["20 spots", "Lunch & Learn", "Company tour", "Talk to employees", "Bus from the U of T downtown campus"],
+    transport: "U of T downtown (St. George) campus — pick-up point to be confirmed",
+    tentative: false,
+    previousTitles: ["Catalent tour + Lunch & Learn", "Company tour + Lunch & Learn"],
+    previousOptions: ["Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn", "Mon 26 Oct · 09:30–15:30 · Company tour + Lunch & Learn"],
   },
   {
     slug: "cl3-workshop-2026",
@@ -522,5 +529,7 @@ export const workshopRows = () =>
     locationName: displayVenue(s.venue),
     partnerOrganization: s.partner,
     shortDescription: s.summary,
+    requiresTransport: Boolean(s.transport),
+    departureLocation: s.transport ?? null,
     displayOrder: i,
   }));

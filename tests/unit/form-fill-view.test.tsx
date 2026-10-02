@@ -161,7 +161,7 @@ function boxTop(title: string): number {
 test("a session's height is how long it runs", () => {
   // The whole point. Monday's company tour runs 09:30-15:30 and the
   // CCRM tour 15:00-17:00 — three times as long, and it has to look it.
-  const tour = boxHeight("Company tour");
+  const tour = boxHeight("Microbix tour");
   const ccrm = boxHeight("Discovery to Delivery");
   assert.ok(tour > ccrm * 2.5, `the day is ${tour}% and the tour is ${ccrm}% — not to scale`);
 });
@@ -178,7 +178,7 @@ test("the Tuesday pair, both 13:00–16:00, are drawn the same height", () => {
 test("a session's position is when it starts", () => {
   // Monday's tour is at 09:30 and the CCRM tour at 15:00, so one sits
   // well below the other on a 9-to-5 grid.
-  assert.ok(boxTop("Discovery to Delivery") > boxTop("Company tour") + 20);
+  assert.ok(boxTop("Discovery to Delivery") > boxTop("Microbix tour") + 20);
   // The two Tuesday workshops both start at 13:00 — same height on the page.
   assert.equal(boxTop("Communication Chameleon"), boxTop("Negotiation Navigator"));
 });
@@ -198,7 +198,7 @@ test("concurrent sessions sit side by side", () => {
     return Number(tag.match(/left:\s*([\d.]+)%/)![1]);
   };
   assert.notEqual(left("Communication Chameleon"), left("Negotiation Navigator"));
-  assert.notEqual(left("Company tour"), left("Pandemic Preparedness"));
+  assert.notEqual(left("Microbix tour"), left("Pandemic Preparedness"));
 });
 
 test("it says what the height means, because a scale nobody reads is decoration", () => {
@@ -206,9 +206,9 @@ test("it says what the height means, because a scale nobody reads is decoration"
 });
 
 test("the day is a column heading, not repeated inside every box", () => {
-  // "Mon 26 Oct · 09:30–15:30 · Company tour" in a box that is already
+  // "Mon 26 Oct · 09:30–15:30 · Microbix tour" in a box that is already
   // in Monday's column under a 09:30 line is three copies of one fact.
-  const tag = calendar.split("<button").find((t) => t.includes("Company tour"))!;
+  const tag = calendar.split("<button").find((t) => t.includes("Microbix tour"))!;
   const body = tag.slice(tag.indexOf(">"));
   assert.ok(!body.includes("Mon 26 Oct"), "the box repeats the day it is already under");
 });
@@ -216,7 +216,7 @@ test("the day is a column heading, not repeated inside every box", () => {
 test("no session is drawn past the bottom of its day", () => {
   // top + height > 100% overflows the column and the box spills over
   // whatever is under it. Cheap to check, invisible until it happens.
-  for (const t of ["Company tour", "Pandemic Preparedness", "Communication Chameleon", "Negotiation Navigator", "Discovery to Delivery", "Innovation Ignited"]) {
+  for (const t of ["Microbix tour", "Pandemic Preparedness", "Communication Chameleon", "Negotiation Navigator", "Discovery to Delivery", "Innovation Ignited"]) {
     const bottom = boxTop(t) + boxHeight(t);
     assert.ok(bottom <= 100.01, `${t} ends at ${bottom.toFixed(1)}% of the day`);
   }
