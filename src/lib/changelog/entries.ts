@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week schedule: one source for the form and biohubnet.ca",
+    body: "The platform now holds everything biohubnet.ca/training-week-2026 shows about each session \u2014 the timetable (times, positions, the line under each name, seats) and the full description cards (facilitators, links, location, the Microbix bus) \u2014 and serves it at **/api/public/training-week/workshops** in two versions of the same sessions: **website** (no lunch bands) and **registration** (?version=registration, with them). Once the website draws from it, a change made here shows on biohubnet.ca within about a minute \u2014 no website edits needed.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: Monday's company tour is at Microbix Biosystems",
     body: "Monday 26 October's company tour is now **Microbix tour + Lunch & Learn** at **Microbix Biosystems Inc., 265 Watline Ave, Mississauga**, with a **bus from the U of T downtown campus** (pick-up point to be confirmed). The registration form, the Training Admin dashboard and the public feed for biohubnet.ca all show it. Registrations made under the old name keep their place \u2014 nobody has to choose again.",
     kind: "improvement",

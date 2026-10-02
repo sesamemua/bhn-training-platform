@@ -11,7 +11,10 @@
  * status from the trainingWeek.workshopStatus setting. Internal fields
  * (coordinator, venue notes, tentative flags) are NOT exposed.
  *
- * Contract (keep stable — the external page depends on it):
+ * Versions (?version=): "website" (default) — no lunch bands; "registration" —
+ * each session also carries its meal `breaks`, as the registration form shows.
+ *
+ * Contract (keep stable — the external page depends on it; fields are only ever added):
  *   GET → 200 {
  *     updatedAt: ISO,
  *     registration: { state: "open" | "paused" | "closed", message: string | null, url },
@@ -19,6 +22,9 @@
  *                   end: "HH:MM", startsAt: ISO, endsAt: ISO, venue, partner, facilitator,
  *                   seats, summary, transport: string | null (where the bus leaves from, when we provide one),
  *                   status: "open" | "full" | "closed",
+ *                   — and for drawing the page: anchor, webTitle, host, longDate, time12,
+ *                   offsetMinutes, durationMinutes, lane, detailsHtml (breaks in "registration") }]
+ *     version, timezone, hours: { from, to }, days: [{ date, label, longLabel, lanes }],
  *                   statusLabel: "Open" | "Full" | "Closed", message: string | null }]
  *   }
  */
@@ -27,6 +33,7 @@ import { prisma } from "@/lib/prisma";
 import { DAYS, SESSIONS, displayVenue, torontoToUtc } from "@/lib/training-week/schedule-2026";
 import { REGISTRATION_FORM_SLUG_V2 } from "@/lib/allocation/symposium-2026";
 import { REGISTRATION_STATE_KEY, parseSwitch, publicNotice } from "@/lib/registration/state";
+import { VERSIONS, webSchedule, type Version } from "@/lib/training-week/web-schedule";
 import { STATE_LABEL, WORKSHOP_STATUS_KEY, messageOf, parseStatusMap, statusOf } from "@/lib/training-week/workshop-status";
 
 export const runtime = "nodejs";
@@ -44,7 +51,10 @@ export function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const asked = new URL(req.url).searchParams.get("version");
+  const version: Version = (VERSIONS as readonly string[]).includes(asked ?? "") ? (asked as Version) : "website";
+  const web = webSchedule(version);
   const [statusRow, stateRow, form] = await Promise.all([
     prisma.platformSetting.findUnique({ where: { key: WORKSHOP_STATUS_KEY }, select: { value: true, updatedAt: true } }),
     prisma.platformSetting.findUnique({ where: { key: REGISTRATION_STATE_KEY }, select: { value: true } }),
@@ -63,9 +73,16 @@ export async function GET() {
       message: notice ? `${notice.title}. ${notice.body}` : null,
       url: `${ORIGIN}/apply/${REGISTRATION_FORM_SLUG_V2}`,
     },
-    workshops: SESSIONS.map((s) => {
+    version: web.version,
+    timezone: web.timezone,
+    hours: web.hours,
+    days: web.days,
+    workshops: SESSIONS.map((s, i) => {
       const e = statusOf(map, s.slug);
+      const { slug: _slug, date: _date, dayLabel: _dayLabel, start: _start, end: _end, startsAt: _startsAt, endsAt: _endsAt,
+        seats: _seats, venue: _venue, partner: _partner, facilitator: _facilitator, transport: _transport, summary: _summary, kind: _kind, ...draw } = web.sessions[i];
       return {
+        ...draw,
         slug: s.slug,
         title: s.title,
         subtitle: s.subtitle ?? null,
