@@ -15,6 +15,8 @@
  * can set.
  */
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { originFrom, postcodePrefix } from "@/lib/formbuilder/origin";
 import { prisma } from "@/lib/prisma";
 import { parseForm } from "@/lib/formbuilder/types";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
@@ -39,6 +41,13 @@ export async function submitPublicForm(
   const doc = parseForm(form.fields);
   const verdict = checkSubmission(doc, answers as Answers);
   if (!verdict.ok) return { ok: false, problems: verdict.problems };
+
+  // A postcode, when asked for, is the first three characters of a Canadian one — kept as just those three.
+  if (typeof verdict.clean.postcode === "string" && verdict.clean.postcode.trim()) {
+    const fsa = postcodePrefix(verdict.clean.postcode);
+    if (!fsa) return { ok: false, problems: ["Enter the first 3 characters of your postal code — a letter, a number, a letter, like M5V."] };
+    verdict.clean.postcode = fsa;
+  }
 
   // A session the team has marked Full or Closed cannot be asked for —
   // the calendar already will not let it be picked; this is the server's word.
@@ -97,6 +106,8 @@ export async function submitPublicForm(
        */
       data: {
         ...(verdict.clean as object),
+        // Where it was sent from: the IP address and the area Vercel places it in.
+        __origin: { ...originFrom(await headers()), at: new Date().toISOString() },
         ...(eligibility
           ? {
               __eligibility: eligibility.matched ? "matched" : "not_matched",

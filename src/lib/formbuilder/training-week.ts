@@ -199,7 +199,8 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       // for a postcode to settle a question most of them answered no
       // to is how a form gets long for no reason.
       id: "f_postcode", key: "postcode", label: "First 3 characters of your postal code",
-      type: "short_text", required: false, options: [],
+      // Required once shown: a "Yes" to over two hours without a postcode cannot be checked.
+      type: "short_text", required: true, options: [],
       showWhen: [whenEligible, { field: "travel_over_2h", op: "is", value: "Yes" }],
       help: "Enter only the first 3 characters, for example M5V. We use them only to estimate travel distance.",
     },

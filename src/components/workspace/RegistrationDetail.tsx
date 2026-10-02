@@ -6,6 +6,7 @@
  * table opens this under a row; registrations that asked for no seat at
  * all (so have no row in that table) are listed on their own below it.
  */
+import { placeOf } from "@/lib/formbuilder/origin";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useState, useTransition } from "react";
 import { Check, ChevronDown, Loader2, Mail } from "lucide-react";
@@ -77,6 +78,19 @@ export function RegistrationDetail({ sub, onChanged, where }: {
     <div className="grid gap-4 bg-elevated/30 px-3 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="min-w-0">
         {where && <GettingHere {...where} />}
+        <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+          <span className="font-semibold text-subtle">Registered from</span>
+          {sub.origin ? (
+            <span
+              className={`rounded-md border px-2 py-0.5 ${sub.origin.country && sub.origin.country !== "CA" ? "border-orange-400/60 bg-orange-500/10 text-fg ring-2 ring-orange-400/30" : "border-line text-fg"}`}
+              title="Where their internet connection was when they registered — a VPN, mobile data or a campus network can place someone elsewhere"
+            >
+              {placeOf(sub.origin) ?? "Unknown area"}{sub.origin.ip && <span className="font-mono text-subtle"> · {sub.origin.ip}</span>}
+            </span>
+          ) : (
+            <span className="text-subtle">not recorded (registered before 2 Oct)</span>
+          )}
+        </p>
         <p className="mb-1.5 text-[11px] text-subtle">
           Registered {new Date(sub.at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
           {" · "}

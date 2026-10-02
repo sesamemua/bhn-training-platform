@@ -731,6 +731,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
       // Submitted timestamp: what first-come-first-served is decided on.
       at: r.createdAt.toISOString(),
       isTest: data.__test === true,
+      origin: data.__origin && typeof data.__origin === "object" ? (data.__origin as SubmissionRow["origin"]) : null,
       internal: isInternal(
         [typeof data.trainee_email === "string" ? data.trainee_email : null, r.email, r.user?.email],
         data, internalSet,

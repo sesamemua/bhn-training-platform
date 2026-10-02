@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18w";
+export const TOUR_VERSION = "2026.10.18x";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -160,6 +160,15 @@ export const TOUR_STEPS: TourStep[] = [
     placement: "center",
     roles: ["admin", "superadmin"],
     since: "2026.10.18e",
+  },
+  {
+    id: "training.registered-from",
+    title: "Where a registration came from",
+    body: "Open a registrant in **Registrants** to see **Registered from** — the area and IP address their registration was sent from, highlighted when it is outside Canada.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.18x",
   },
   {
     id: "showcase.round",

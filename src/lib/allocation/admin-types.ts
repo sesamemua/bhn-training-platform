@@ -210,4 +210,6 @@ export interface SubmissionRow {
   }[];
   /** Everything else, by question label, for the expanded view. */
   answers: Record<string, string>;
+  /** Where it was sent from — IP and the area it maps to. Absent before 2 Oct 2026. */
+  origin?: { ip: string | null; city: string | null; region: string | null; country: string | null } | null;
 }
