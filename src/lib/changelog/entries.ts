@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Knowledge Exchange intake: 50-word quote, consent box, simpler page",
+    body: "The Knowledge Exchange awardee form now asks for **up to 50 words** (it won\u2019t submit more), ends with a **required consent checkbox** for using their photo and details in promotion and communications (the time they ticked it shows on each submission in Admin \u2192 Grad showcase), uses ordinary sentence-case question labels, and has a new intro. The photo hint and the \u201cAlready submitted?\u201d footer are gone.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week schedule: one source for the form and biohubnet.ca",
     body: "The platform now holds everything biohubnet.ca/training-week-2026 shows about each session \u2014 the timetable (times, positions, the line under each name, seats) and the full description cards (facilitators, links, location, the Microbix bus) \u2014 and serves it at **/api/public/training-week/workshops** in two versions of the same sessions: **website** (no lunch bands) and **registration** (?version=registration, with them). Once the website draws from it, a change made here shows on biohubnet.ca within about a minute \u2014 no website edits needed.",
     kind: "feature",

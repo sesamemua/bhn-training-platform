@@ -153,6 +153,7 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
                 lockedName={lockedName}
                 quote={ask}
                 photoLabel={group.photoLabel}
+                consentText={group.consentText}
               />
             ) : (
               <GateNotice
@@ -162,10 +163,12 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
               />
             )
           ) : (
-            <ShowcaseSubmitForm programSlug={group.slug} quote={ask} photoLabel={group.photoLabel} />
+            <ShowcaseSubmitForm programSlug={group.slug} quote={ask} photoLabel={group.photoLabel} consentText={group.consentText} />
           )}
         </section>
 
+        {/* Not on an awardee intake (a link that asks a written question): one submission each. */}
+        {!group.quotePrompt && (
         <footer className="mt-10 text-center text-[12px] text-fg-muted">
           <p>
             Already submitted? You can resubmit any time — we&apos;ll triage
@@ -173,6 +176,7 @@ export default async function ShowcaseGroupPage({ params }: Ctx) {
           </p>
           <p className="mt-2">Questions? Reach out to the BioHubNet team.</p>
         </footer>
+        )}
       </div>
     </main>
   );

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   // /admin/showcase).
   const group = await prisma.showcaseGroup.findUnique({
     where: { slug: programSlug },
-    select: { id: true, active: true, gateOnAttendance: true, linkedCohortId: true, quotePrompt: true, quoteMaxWords: true },
+    select: { id: true, active: true, gateOnAttendance: true, linkedCohortId: true, quotePrompt: true, quoteMaxWords: true, consentText: true },
   });
   if (!group) {
     return NextResponse.json({ error: "Unknown showcase." }, { status: 400 });
@@ -107,6 +107,10 @@ export async function POST(req: NextRequest) {
   const linkedinUrl = normaliseLinkedin(linkedinRaw);
   // The group's written question, if it asks one: required, and held to its word limit.
   const quote = group.quotePrompt ? String(formData.get("quote") ?? "").trim() : "";
+  // The link's consent box, when it has one: required, and when it was ticked is kept.
+  if (group.consentText && String(formData.get("consent") ?? "") !== "yes") {
+    return NextResponse.json({ error: "Please tick the box to give your consent." }, { status: 400 });
+  }
   if (group.quotePrompt) {
     if (quote.length > group.quoteMaxWords * 12) return NextResponse.json({ error: "That answer is far too long." }, { status: 413 });
     const words = countWords(quote);
@@ -202,6 +206,7 @@ export async function POST(req: NextRequest) {
         linkedinHandle: linkedinRaw,
         linkedinUrl,
         quote: quote || null,
+        consentAt: group.consentText ? new Date() : null,
         photoUrl: r2PublicUrl(photoKey),
         photoKey,
         submittedFromIp: ip,

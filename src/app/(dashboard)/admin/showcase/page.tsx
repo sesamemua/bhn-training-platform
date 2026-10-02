@@ -45,6 +45,7 @@ export default async function AdminShowcasePage({ searchParams }: { searchParams
     ...s,
     createdAt: s.createdAt.toISOString(),
     lastDownloadedAt: s.lastDownloadedAt?.toISOString() ?? null,
+    consentAt: s.consentAt?.toISOString() ?? null,
     memberships: s.memberships.map((m) => ({
       membershipId: m.id,
       groupId: m.groupId,

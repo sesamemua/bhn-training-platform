@@ -5367,6 +5367,8 @@ model ShowcaseSubmission {
   quote            String?
   /// Award round (e.g. Knowledge Exchange round 2). Assigned by an admin, never by the submitter.
   round            Int?
+  /// When they ticked the group's consent box (ShowcaseGroup.consentText), if it asks for one.
+  consentAt        DateTime?
   /// Editable membership tags shown as pills on the admin card: an
   /// array of { kind: "workshop" | "pathway" | "cohort", label }.
   /// Admin-managed and free-form — independent of `programSlug`
@@ -5412,6 +5414,8 @@ model ShowcaseGroup {
   quoteMaxWords Int      @default(250)
   /// What the photo question is called — "Headshot" when null.
   photoLabel    String?
+  /// When set, the form ends with a required checkbox saying this; submissions record when it was ticked.
+  consentText   String?
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

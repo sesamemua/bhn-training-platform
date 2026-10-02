@@ -30,6 +30,8 @@ interface Props {
   quote?: { prompt: string; maxWords: number } | null;
   /** What the photo question is called; "Headshot" by default. */
   photoLabel?: string | null;
+  /** A required consent checkbox before Submit, with this text. */
+  consentText?: string | null;
 }
 
 const CROPPER_COLOURS = {
@@ -54,7 +56,13 @@ export function ShowcaseSubmitForm({
   lockedName = "",
   quote = null,
   photoLabel = null,
+  consentText = null,
 }: Props) {
+  const [consent, setConsent] = useState(false);
+  // Awardee intake forms (with a written question) use sentence-case labels; the graduate showcase keeps its small caps.
+  const LABEL = quote
+    ? "block text-[13.5px] font-semibold text-[#1f2937] mb-1"
+    : "block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1";
   const [name, setName] = useState(lockedName);
   const [answer, setAnswer] = useState("");
   const answerWords = wordsIn(answer);
@@ -151,6 +159,10 @@ export function ShowcaseSubmitForm({
       setErrorMsg("Please answer the written question.");
       return;
     }
+    if (consentText && !consent) {
+      setErrorMsg("Please tick the box to give your consent.");
+      return;
+    }
     if (quote && answerWords > quote.maxWords) {
       setErrorMsg(`Keep your answer to ${quote.maxWords} words or fewer — it's ${answerWords} now.`);
       return;
@@ -161,6 +173,7 @@ export function ShowcaseSubmitForm({
     fd.set("name", name.trim());
     fd.set("linkedin", linkedin.trim());
     if (quote) fd.set("quote", answer.trim());
+    if (consentText && consent) fd.set("consent", "yes");
     if (photoFile) {
       const blob = await crop.toBlob();
       if (!blob) {
@@ -214,7 +227,7 @@ export function ShowcaseSubmitForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Name */}
       <div>
-        <label className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
+        <label className={LABEL}>
           Your name
         </label>
         <div className="relative">
@@ -262,7 +275,7 @@ export function ShowcaseSubmitForm({
 
       {/* LinkedIn */}
       <div>
-        <label className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
+        <label className={LABEL}>
           {/* Awardee forms (with a written question) ask for the link, in the programme's own words. */}
           {quote ? "A link to your LinkedIn account" : "LinkedIn handle"}
         </label>
@@ -284,7 +297,7 @@ export function ShowcaseSubmitForm({
 
       {/* Photo */}
       <div>
-        <label className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
+        <label className={LABEL}>
           {photoLabel || "Headshot"}
         </label>
         {reusing && photoPreview && (
@@ -300,15 +313,12 @@ export function ShowcaseSubmitForm({
         <div style={CROPPER_COLOURS}>
           <HeadshotCropper onChange={onCrop} />
         </div>
-        <p className="mt-1 text-[11px] text-[#475569] leading-relaxed">
-          JPEG, PNG, or WebP. Drag to move it, scroll or pinch to zoom, or press Auto center.
-        </p>
       </div>
 
       {/* The group's written question, when it asks one. */}
       {quote && (
         <div>
-          <label htmlFor="showcase-quote" className="block text-[11px] uppercase tracking-[0.16em] font-bold text-[#1f2937] mb-1">
+          <label htmlFor="showcase-quote" className={LABEL}>
             Your words
           </label>
           <p className="mb-1.5 text-[13px] leading-relaxed text-[#1f2937]">{quote.prompt}</p>
@@ -333,6 +343,22 @@ export function ShowcaseSubmitForm({
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
+      )}
+
+      {/* The link's consent, when it asks for it: ticked before anything is sent. */}
+      {consentText && (
+        <label htmlFor="showcase-consent" className="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-[#1f2937]">
+          <input
+            id="showcase-consent"
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            required
+            disabled={submitting}
+            className="mt-1 h-4 w-4 shrink-0 accent-[#0e7da3]"
+          />
+          <em>{consentText}</em>
+        </label>
       )}
 
       {/* Submit */}

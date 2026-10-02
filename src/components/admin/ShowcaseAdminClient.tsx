@@ -47,6 +47,8 @@ interface Submission {
   quote?: string | null;
   /** Award round, assigned here by an admin. */
   round?: number | null;
+  /** When they ticked the link's consent box. */
+  consentAt?: string | null;
   memberships: Membership[];
 }
 
@@ -401,6 +403,9 @@ function SubmissionCard({
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
+          {submission.consentAt && (
+            <p className="mt-1 text-[10.5px] text-fg-subtle">Consented {new Date(submission.consentAt).toLocaleDateString()}</p>
+          )}
           {submission.quote && (
             <blockquote className="mt-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap border-l-2 border-brand-400 pl-2 text-[12px] leading-relaxed text-fg">
               {submission.quote}
