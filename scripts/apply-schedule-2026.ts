@@ -152,6 +152,8 @@ async function workshops(eventId: string) {
     if (was.shortDescription !== r.shortDescription) diffs.push("summary");
     if (was.kind !== r.kind) diffs.push(`kind ${was.kind} → ${r.kind}`);
     if (was.displayOrder !== r.displayOrder) diffs.push(`order ${was.displayOrder} → ${r.displayOrder}`);
+    if (was.requiresTransport !== r.requiresTransport || was.departureLocation !== r.departureLocation)
+      diffs.push(`bus "${was.departureLocation ?? "—"}" → "${r.departureLocation ?? "—"}"`);
     if (diffs.length === 0) continue;
 
     note(`workshop ${r.title}: ${diffs.join("; ")}`);
@@ -162,6 +164,7 @@ async function workshops(eventId: string) {
         startDateTime: r.startDateTime, endDateTime: r.endDateTime,
         capacity: r.capacity, locationName: r.locationName,
         partnerOrganization: r.partnerOrganization, shortDescription: r.shortDescription,
+        requiresTransport: r.requiresTransport, departureLocation: r.departureLocation,
         displayOrder: r.displayOrder,
       },
     });
