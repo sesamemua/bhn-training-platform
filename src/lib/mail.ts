@@ -26,6 +26,11 @@ export function senderFrom(smtpFrom: string | undefined, user: string | undefine
 
 const FROM = senderFrom(process.env.SMTP_FROM, USER);
 
+/** Calendar organizers must match the mailbox actually sending the invitation. */
+export function mailSenderAddress(): string {
+  return FROM.match(/<([^>]+)>/)?.[1] ?? "info@biohubnet.ca";
+}
+
 /*
  * The signature every message ends with. Edited at /admin/email-signature
  * and kept as a PlatformSetting; read once a minute per server rather
@@ -83,6 +88,12 @@ export interface MailAttachment {
   cid?: string;
 }
 
+export interface MailCalendar {
+  filename: string;
+  content: string | Buffer;
+  method: "REQUEST" | "CANCEL";
+}
+
 export function normaliseMailRecipients(value?: string | string[]): string[] {
   return (Array.isArray(value) ? value : value ? [value] : [])
     .map((address) => address.trim())
@@ -107,6 +118,8 @@ export async function sendMail(opts: {
    *  by the registration-confirmation flow to ship a .ics calendar
    *  invite alongside the HTML body. */
   attachments?: MailAttachment[];
+  /** Native meeting invitation; keep separate from QR / other attachments. */
+  icalEvent?: MailCalendar;
   /** False for mail to ourselves (backups, "somebody pressed Tell us"):
    *  a newsletter link in the team's own archive is noise. */
   signature?: boolean;
@@ -130,5 +143,6 @@ export async function sendMail(opts: {
     text: signature ? withSignature(opts.text, signature) : opts.text,
     html: signature && opts.html !== undefined ? withHtmlSignature(opts.html, signature) : opts.html,
     attachments: opts.attachments,
+    icalEvent: opts.icalEvent,
   });
 }

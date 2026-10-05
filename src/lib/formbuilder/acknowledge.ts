@@ -14,13 +14,14 @@ import "server-only";
  * trust the editor again.
  */
 import { prisma } from "@/lib/prisma";
-import { mailConfigured, sendMail } from "@/lib/mail";
+import { mailConfigured, mailSenderAddress, sendMail } from "@/lib/mail";
 import { parseOverrides, render, resolveTemplates, TEMPLATES_KEY } from "@/lib/allocation/email-templates";
 import type { Answers } from "./logic";
 import type { Receipt, SentMail } from "./receipt";
 import type { BuiltForm } from "./types";
 import { buildIcs } from "@/lib/events/ics";
 import { withPassQr } from "@/lib/training-week/pass-qr";
+import { trainingWeekMessages } from "@/lib/training-week/calendar-mail";
 
 export async function sendAcknowledgement(
   doc: BuiltForm,
@@ -157,16 +158,13 @@ export async function sendDecisionLetter(
   // A letter carrying the pass link carries the QR too, under the link,
   // so it can be shown straight from the inbox.
   const qr = about.passLink && about.passToken ? withPassQr(preview.body, about.passLink, about.passToken) : null;
-  const attachments = [...(calendarFor(about) ?? []), ...(qr ? [qr.attachment] : [])];
+  const messages = trainingWeekMessages({
+    to: about.to, subject: preview.subject, text: preview.body,
+    html: qr?.html, attachments: qr ? [qr.attachment] : undefined,
+  }, calendarFor(about) ?? []);
 
   try {
-    await sendMail({
-      to: about.to,
-      subject: preview.subject,
-      text: preview.body,
-      html: qr?.html,
-      attachments: attachments.length ? attachments : undefined,
-    });
+    for (const message of messages) await sendMail(message);
     return { state: "sent", preview };
   } catch (err) {
     return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };
@@ -275,7 +273,7 @@ export function calendarFor(about: {
     location: about.venue,
     start: about.start,
     end: about.end,
-    organizerEmail: process.env.SMTP_FROM_EMAIL ?? "info@biohubnet.ca",
+    organizerEmail: mailSenderAddress(),
     organizerName: "BioHubNet",
     attendeeEmail: about.to,
     attendeeName: about.name || undefined,
@@ -284,12 +282,10 @@ export function calendarFor(about: {
   });
 
   return [{
+    title: about.session,
     filename: "training-week.ics",
     content: ics,
-    // The type matters more than the extension: Apple Mail and Outlook
-    // decide whether to offer "Add to calendar" from this, not from the
-    // filename.
-    contentType: `text/calendar; charset=utf-8; method=${about.calendar === "remove" ? "CANCEL" : "REQUEST"}`,
+    method: about.calendar === "remove" ? "CANCEL" as const : "REQUEST" as const,
   }];
 }
 
@@ -314,9 +310,12 @@ export async function sendPersonCombined(mail: {
   const calendars = mail.calendar.flatMap(({ seat, action }, i) =>
     (calendarFor({ to: mail.to, name: mail.name, ...seat, calendar: action }) ?? []).map((a) => ({ ...a, filename: `training-week-${i + 1}.ics` })),
   );
-  const attachments = [...calendars, ...(qr ? [qr.attachment] : [])];
+  const messages = trainingWeekMessages({
+    to: mail.to, subject: preview.subject, text: preview.body,
+    html: qr?.html, attachments: qr ? [qr.attachment] : undefined,
+  }, calendars);
   try {
-    await sendMail({ to: mail.to, subject: preview.subject, text: preview.body, html: qr?.html, attachments: attachments.length ? attachments : undefined });
+    for (const message of messages) await sendMail(message);
     return { state: "sent", preview };
   } catch (err) {
     return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };

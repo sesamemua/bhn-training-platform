@@ -78,9 +78,15 @@ function toIcsUtc(d: Date): string {
 function escText(v: string): string {
   return v
     .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
+    .replace(/\r\n|\r|\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
+}
+
+/** CN is a parameter, not a TEXT value (RFC 5545 / RFC 6868). */
+function escParameter(value: string): string {
+  const encoded = value.replace(/\^/g, "^^").replace(/\r\n|\r|\n/g, "^n").replace(/"/g, "^'");
+  return /[,:;]/.test(encoded) ? `"${encoded}"` : encoded;
 }
 
 /** Fold lines >75 octets per RFC 5545 §3.1. Conservative byte count
@@ -128,13 +134,13 @@ export function buildIcs(input: IcsEventInput): string {
 
   // Organiser — RFC 5545 wants `mailto:<addr>` in the value, with the
   // display name in the CN parameter.
-  const orgCn = input.organizerName ? `;CN=${escText(input.organizerName)}` : "";
+  const orgCn = input.organizerName ? `;CN=${escParameter(input.organizerName)}` : "";
   lines.push(`ORGANIZER${orgCn}:mailto:${input.organizerEmail}`);
 
   // Attendee — optional; without it the .ics still imports, just no
   // RSVP affordance.
   if (input.attendeeEmail) {
-    const cn = input.attendeeName ? `;CN=${escText(input.attendeeName)}` : "";
+    const cn = input.attendeeName ? `;CN=${escParameter(input.attendeeName)}` : "";
     lines.push(
       `ATTENDEE${cn};ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:${input.attendeeEmail}`,
     );
