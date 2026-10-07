@@ -8,8 +8,8 @@
  * capacity, then write to the people it just let in — and a navigation
  * between each of those is four chances to lose your place.
  */
-import { CapacityMonitor } from "@/components/training-week/CapacityMonitor";
-import { sessionCapacity } from "@/lib/training-week/capacity";
+import { SeatProjection } from "@/components/training-week/SeatProjection";
+import { projectWeekSeats } from "@/lib/allocation/seat-projection";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertTriangle, ArrowDown, ArrowUp, Check, ChevronDown, Eye, FileText, Loader2, Mail,
@@ -27,7 +27,6 @@ import {
   sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import {
-  countsOf,
   type AdminWorkshop, type Audience,
 } from "@/lib/allocation/admin-types";
 // Declared here until the calendar needed them without dragging this
@@ -168,28 +167,13 @@ function Dashboard({
 }: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void; eligibility: EligibilitySummary }) {
   const live = workshops.filter((w) => w.isActive);
   const active = rules.filter((r) => r.isActive);
-  const totals = live.reduce(
-    (acc, w) => {
-      const c = countsOf(w);
-      return {
-        confirmed: acc.confirmed + c.confirmed,
-        waitlisted: acc.waitlisted + c.waitlisted,
-        capacity: acc.capacity + c.capacity,
-        internal: acc.internal + c.internal,
-      };
-    },
-    { confirmed: 0, waitlisted: 0, capacity: 0, internal: 0 },
-  );
+  const projection = useMemo(() => projectWeekSeats(workshops, rules), [workshops, rules]);
 
   return (
     <div className="space-y-5">
-      <CapacityMonitor
-        sessions={live.map((w) => ({ id: w.id, slug: w.slug, title: w.title, start: w.startDateTime, cap: sessionCapacity(w.capacity, w.bookings) }))}
-        action={
-          <button onClick={() => onOpen("capacity")} className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">
-            Change capacity →
-          </button>
-        }
+      <SeatProjection
+        projection={projection} workshops={workshops}
+        onReview={() => onOpen("suggest")} onCapacity={() => onOpen("capacity")}
       />
 
       <EligibilityCard summary={eligibility} />
@@ -229,66 +213,9 @@ function Dashboard({
         )}
       </section>
 
-      {/* Approved seats are final, without a separate attendance response. */}
-      <section>
-        <div className="flex items-baseline justify-between gap-3">
-          <p className={LABEL}>Seats</p>
-          <button
-            onClick={() => onOpen("capacity")}
-            className="text-[12px] font-semibold text-brand-400 hover:text-brand-200"
-          >
-            Change capacity →
-          </button>
-        </div>
-        <div className="mt-2 overflow-x-auto rounded-lg border border-line">
-          <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
-            <thead>
-              <tr className="bg-elevated text-left">
-                <th className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">Workshop</th>
-                {["Approved", "Waitlisted", "Capacity", "Internal"].map((h) => (
-                  <th key={h} className="whitespace-nowrap px-3 py-2 text-right text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {live.map((w) => {
-                const c = countsOf(w);
-                const over = c.confirmed > c.capacity;
-                return (
-                  <tr key={w.id} className="border-t border-line">
-                    <td className="px-3 py-1.5">
-                      <span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle ${workshopTone(w.slug).dot}`} aria-hidden />
-                      <span className="text-fg">{w.title}</span>
-                      <span className="ml-2 text-[11px] text-subtle">
-                        {new Date(w.startDateTime).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
-                      </span>
-                    </td>
-                    <td className={`px-3 py-1.5 text-right tabular-nums ${over ? "font-bold text-red-500" : "text-fg"}`}>{c.confirmed}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.waitlisted}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{c.capacity}</td>
-                    {/* Beside capacity, never inside it: staff and guests are
-                        extra people in the room and at lunch, not students. */}
-                    <td className={`px-3 py-1.5 text-right tabular-nums ${c.internal ? "font-semibold text-indigo-600" : "text-subtle"}`}>{c.internal ? `+${c.internal}` : "—"}</td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t-2 border-line bg-elevated/50 font-semibold">
-                <td className="px-3 py-1.5 text-subtle">All {live.length} sessions</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-fg">{totals.confirmed}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.waitlisted}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{totals.capacity}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-indigo-600">{totals.internal ? `+${totals.internal}` : "—"}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-1.5 max-w-prose text-[11px] leading-snug text-subtle">
-          Approved seats are confirmed for attendance. Registrants do not need to reply again to keep their place.
-        </p>
-      </section>
-
       <section>
         <p className={LABEL}>Calendar</p>
+        <p className="mt-1 text-[11px] text-muted">Actual bookings, before suggested decisions are applied.</p>
         <TrainingWeekCalendar workshops={live} />
       </section>
     </div>
