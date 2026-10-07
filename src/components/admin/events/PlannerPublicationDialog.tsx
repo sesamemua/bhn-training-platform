@@ -10,7 +10,7 @@ const API = "/api/admin/symposium-people/publication";
 const BUTTON = "inline-flex items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 type Preview = { version: string | null; rosterHash: string; initialized: boolean; changes: PlannerPublicationChanges; before: PublicationState["approved"] };
 
-export default function PlannerPublicationDialog({ onClose }: { onClose: () => void }) {
+export default function PlannerPublicationDialog({ onClose, returnFocus }: { onClose: () => void; returnFocus: () => void }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -53,7 +53,7 @@ export default function PlannerPublicationDialog({ onClose }: { onClose: () => v
 
   return <Dialog.Root open onOpenChange={(open) => { if (!open && !lock.current) onClose(); }}><Dialog.Portal>
     <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-    <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%_-_2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-line bg-card-solid text-fg [overflow-wrap:anywhere]">
+    <Dialog.Content onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus(); }} className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%_-_2rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-line bg-card-solid text-fg [overflow-wrap:anywhere]">
       <div className="flex items-start justify-between gap-3 border-b border-line p-5">
         <div><Dialog.Title className="text-lg font-bold">Push planner changes to website</Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-muted">Structured Networking and Interactive Discussion. Keynote and panel placements stay unchanged.</Dialog.Description></div>

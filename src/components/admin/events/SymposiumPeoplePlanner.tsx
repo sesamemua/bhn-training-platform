@@ -51,6 +51,7 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
   const [showArchive, setShowArchive] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const publishButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +122,7 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
       <div className="flex flex-wrap gap-2"><button className={BUTTON} type="button" onClick={async () => {
         try { await navigator.clipboard.writeText(`${location.origin}/events/2026-annual-symposium/speaker`); setNotice("Submission link copied."); } catch { setError("Couldn't copy the link."); }
       }}><Copy size={14} />Copy submission link</button>
-        {view === "planner" && <button type="button" className={`${BUTTON} border-brand bg-brand text-white hover:opacity-90`} title={drafts.length ? "Save or discard unsaved people first" : "Review saved planner changes before publishing"} disabled={!snapshot || busy || parsing || !!editing || drafts.length > 0} onClick={() => setPublishing(true)}><CloudUpload size={15} />Push changes to website</button>}
+        {view === "planner" && <button ref={publishButton} type="button" className={`${BUTTON} border-brand bg-brand text-white hover:opacity-90`} title={drafts.length ? "Save or discard unsaved people first" : "Review saved planner changes before publishing"} disabled={!snapshot || busy || parsing || !!editing || drafts.length > 0} onClick={() => setPublishing(true)}><CloudUpload size={15} />Push changes to website</button>}
       </div>
     </div>
     <div className="flex flex-wrap items-center gap-3">
@@ -180,7 +181,7 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
       <Dialog.Description className="mb-3 text-[12px] text-muted">Submitted details remain unchanged.</Dialog.Description>
       {editing && <><PersonFields person={editing} onChange={(p) => setEditing({ ...editing, ...p })} /><TagEditor key={editing.id} tags={editing.tags ?? []} onChange={(tags) => setEditing({ ...editing, tags })} />{error && <p role="alert" className="mt-2 text-[12px] text-fg">{error}</p>}<button type="button" className={`${BUTTON} mt-4`} disabled={busy} onClick={async () => { if (await mutate({ action: "edit", id: editing.id, person: editing }, editVersion.current)) setEditing(null); }}><Save size={14} />Save profile</button></>}
     </Dialog.Content></Dialog.Portal></Dialog.Root>
-    {publishing && <PlannerPublicationDialog onClose={() => setPublishing(false)} />}
+    {publishing && <PlannerPublicationDialog onClose={() => setPublishing(false)} returnFocus={() => publishButton.current?.focus()} />}
   </div>;
 }
 
