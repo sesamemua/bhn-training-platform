@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
 import { PEOPLE_2025 } from "./people-2025";
+import { PEOPLE_2026 } from "./people-2026";
+import { buildPeopleRoster } from "./people-roster";
 import { BoardSchema, PersonInput, SessionSchema, duplicatePeople, matchPlanPeople, type PlanPerson, type PlanSnapshot, type Submission } from "./people-plan";
 
 export const PEOPLE_PLAN_KEY = "symposium2026.peoplePlan.v1";
@@ -16,17 +18,25 @@ export const PlanAction = z.discriminatedUnion("action", [
 export type PlanAction = z.infer<typeof PlanAction>;
 
 export async function loadPeoplePlan() {
-  const [saved, event] = await Promise.all([
+  const [saved, event, insights] = await Promise.all([
     prisma.platformSetting.findUnique({ where: { key: PEOPLE_PLAN_KEY } }),
     prisma.bhnEvent.findUnique({ where: { slug: EVENT_SLUG }, select: { speakers: { orderBy: { createdAt: "desc" }, select: {
+      id: true, fullName: true, organization: true, title: true, bio: true, contactEmail: true,
+      photoUrl: true, sessionTitle: true, submittedAt: true,
+    } } } }),
+    prisma.bhnEvent.findUnique({ where: { slug: "2026-industry-insights" }, select: { speakers: { orderBy: { createdAt: "desc" }, select: {
       id: true, fullName: true, organization: true, title: true, bio: true, contactEmail: true,
       photoUrl: true, sessionTitle: true, submittedAt: true,
     } } } }),
   ]);
   if (!event) throw new Error("Symposium event not found.");
   // Fail visibly on corrupt stored data instead of silently erasing colleagues' work.
-  const people = saved ? BoardSchema.parse(JSON.parse(saved.value)).people : structuredClone(PEOPLE_2025);
-  const speakers: Submission[] = event.speakers.map((s) => ({ ...s, submittedAt: s.submittedAt?.toISOString() ?? null }));
+  const stored = saved ? BoardSchema.parse(JSON.parse(saved.value)).people : structuredClone(PEOPLE_2025);
+  const speakers: Submission[] = [
+    ...event.speakers.map((s) => ({ ...s, eventSlug: EVENT_SLUG, submittedAt: s.submittedAt?.toISOString() ?? null })),
+    ...(insights?.speakers ?? []).map((s) => ({ ...s, eventSlug: "2026-industry-insights", submittedAt: s.submittedAt?.toISOString() ?? null })),
+  ];
+  const people = buildPeopleRoster(stored, [...PEOPLE_2025, ...PEOPLE_2026], speakers);
   return { snapshot: { people, speakers, version: saved?.updatedAt.toISOString() ?? null } satisfies PlanSnapshot, raw: saved?.value ?? null };
 }
 

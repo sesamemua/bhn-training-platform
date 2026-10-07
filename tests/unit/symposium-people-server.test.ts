@@ -59,7 +59,7 @@ test("empty storage starts with sourced 2025 profiles and saves all colleagues' 
   const { loadPeoplePlan, savePeoplePlan } = await server;
   t.mock.method(prisma.platformSetting, "findUnique", async () => null);
   t.mock.method(prisma.bhnEvent, "findUnique", async () => ({ speakers: [] }));
-  const initial = await loadPeoplePlan(); assert.equal(initial.snapshot.people.length, 12);
+  const initial = await loadPeoplePlan(); assert.equal(initial.snapshot.people.length, 33);
   let saved = "";
   t.mock.method(prisma.platformSetting, "create", async ({ data }) => { saved = data.value; return data; });
   const result = await savePeoplePlan(null, { action: "assign", id: initial.snapshot.people[0].id, session: "discussion" });
@@ -72,4 +72,27 @@ test("corrupt stored data fails visibly rather than resetting profiles", async (
   t.mock.method(prisma.platformSetting, "findUnique", async () => ({ value: "bad json", updatedAt: new Date() }));
   t.mock.method(prisma.bhnEvent, "findUnique", async () => ({ speakers: [] }));
   await assert.rejects(loadPeoplePlan());
+});
+
+test("both event intakes enter the roster without modifying public speaker records", async (t) => {
+  const { loadPeoplePlan } = await server;
+  t.mock.method(prisma.platformSetting, "findUnique", async () => null);
+  const requested: string[] = [];
+  t.mock.method(prisma.bhnEvent, "findUnique", async ({ where }) => {
+    requested.push(where.slug);
+    return { speakers: [{ ...s, id: where.slug, submittedAt: new Date(s.submittedAt!) }] };
+  });
+  const { snapshot } = await loadPeoplePlan();
+  assert.deepEqual(requested.sort(), ["2026-annual-symposium", "2026-industry-insights"]);
+  const jane = snapshot.people.filter((p) => p.fullName === "Jane Smith");
+  assert.equal(jane.length, 1);
+  assert.equal(jane[0].eventTags?.length, 2);
+  assert.equal(jane[0].speakerIds?.length, 2);
+});
+
+test("missing Industry Insights event does not break symposium roster", async (t) => {
+  const { loadPeoplePlan } = await server;
+  t.mock.method(prisma.platformSetting, "findUnique", async () => null);
+  t.mock.method(prisma.bhnEvent, "findUnique", async ({ where }) => where.slug === "2026-industry-insights" ? null : { speakers: [] });
+  assert.equal((await loadPeoplePlan()).snapshot.people.length, 33);
 });
