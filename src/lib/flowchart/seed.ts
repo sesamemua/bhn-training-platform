@@ -297,22 +297,13 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
   const n13 = { id: "n13", kind: "step" as const, x: MAIN, y: at(78), w: W, h: 78,
     text: "Seat confirmed, info pack emailed", actor: "System" };
 
-  // Holding a seat is not the same as turning up. An unconfirmed seat goes
-  // back to the waitlist rather than to an empty chair.
-  const n14 = { id: "n14", kind: "question" as const, x: MAIN, y: at(62), w: W, h: 62,
-    text: "Confirm you can still attend",
-    field: { key: "confirmed", type: "yesno" as const, required: true,
-      help: "Asked before the day. Confirm by the cut-off or the seat is released." } };
-  const n15 = { id: "n15", kind: "step" as const, x: SIDE, y: n14.y, w: W, h: 78,
-    text: "Seat released to the waitlist", actor: "System" };
-
   const n16 = { id: "n16", kind: "end" as const, x: MAIN, y: at(46), w: W, h: 46,
     text: "Attends" };
 
   return {
     nodes: [n1, nT, nTinfo, nTv, nTroster, nTd, nTc, nTx, n6,
             n3, n2, n2r, n3b, n4a, n4d, n5, n5r, n7,
-            n8, n9, n10, nPri, n11, n12, n13, n14, n15, n16],
+            n8, n9, n10, nPri, n11, n12, n13, n16],
     edges: [
       { id: "e1", from: "n1", to: "nT" },
       // Saying yes means proving it; saying no costs nothing and the
@@ -351,10 +342,7 @@ export const TRAINING_WEEK_FLOW: ChartDoc = (() => {
       { id: "e11p", from: "n10", to: "nPri", label: "priority" },
       { id: "e12", from: "n11", to: "n12", label: "no" },
       { id: "e13", from: "n11", to: "n13", label: "yes" },
-      { id: "e14", from: "n13", to: "n14" },
-      { id: "e15", from: "n14", to: "n16", when: { field: "confirmed", op: "is", value: "Yes" }, label: "confirmed" },
-      { id: "e16", from: "n14", to: "n15", when: { field: "confirmed", op: "is not", value: "Yes" }, label: "no reply" },
-      { id: "e17", from: "n15", to: "n9", label: "offer it on" },
+      { id: "e14", from: "n13", to: "n16", label: "no further confirmation needed" },
     ],
   };
 })();

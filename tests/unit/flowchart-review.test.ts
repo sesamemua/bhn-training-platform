@@ -42,7 +42,8 @@ test("the shipped chart answers the note", () => {
     // the honest status is a standing flag, not a green tick.
     "expertise-clarify": "attention",
     "symposium-participant-q": "out-of-scope",
-    "relevant-questions": "met",
+    // Removing reconfirmation also removes its two conditioned arrows.
+    "relevant-questions": "attention",
     "standardised-data": "met",
   });
 });

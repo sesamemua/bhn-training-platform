@@ -21,15 +21,6 @@ const academic = [...INSTITUTIONS.filter((i) => i.sector === "academic").map((i)
 const health = [...INSTITUTIONS.filter((i) => i.sector === "health").map((i) => i.name), OTHER];
 
 /**
- * How long before a session the confirmation email goes out.
- *
- * The same number the Admin dashboard measures "confirmed by cut-off"
- * against, so the two cannot drift apart — a deadline the process uses
- * and a deadline the reporting uses have to be one number.
- */
-export const CONFIRM_DAYS_BEFORE = 7;
-
-/**
  * The four answers to "where do you stand with BioHubNet".
  *
  * NOT a yes/no. Yes/no had three different people answering No — an
@@ -370,21 +361,6 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       type: "choice", required: false, showWhen: [whenEligible],
       options: ["Yes, sign me up", "No thanks", "I am already subscribed"],
     },
-    {
-      /*
-       * Stage "confirmation": NOT on the registration form.
-       *
-       * It goes out by email once a place has been approved, about a
-       * week before the session. Asking it on the day somebody signs up
-       * gets an answer about a seat they have not been given yet. It
-       * lives in the same document so the answer has somewhere to go and
-       * the workflow has something to read.
-       */
-      id: "f_conf", key: "confirmed", label: "Can you still make it?",
-      type: "yesno", required: true, options: [], showWhen: [],
-      stage: "confirmation",
-      help: `Asked by email once your place is approved, about ${CONFIRM_DAYS_BEFORE} days before the session. Yes holds your seat. No releases it to the next person on the waitlist — which is the kind thing to do if you already know you cannot come. No reply by the cut-off is treated as No.`,
-    },
   ],
   steps: [
     { id: "w_start", kind: "start", label: "Registration opens", when: [], next: "w_trainee" },
@@ -424,18 +400,8 @@ export const TRAINING_WEEK_FORM: BuiltForm = BuiltFormSchema.parse({
       next: "w_seat", otherwise: "w_declined",
     },
     { id: "w_declined", kind: "end", label: "Declined, with a reason", when: [] },
-    { id: "w_seat", kind: "action", label: "Place approved, info pack emailed", when: [], next: "w_hold",
-      note: "The seat is held from here. Nothing is asked of the registrant yet." },
-    { id: "w_hold", kind: "action", label: `Held until ${CONFIRM_DAYS_BEFORE} days before the session`, when: [], next: "w_ask",
-      note: "A quiet period. Approval is not attendance, and asking on the day someone is approved gets an answer about a session weeks away." },
-    { id: "w_ask", kind: "action", label: "Coordinator sends the confirmation email, in one batch", when: [], next: "w_stillcoming",
-      note: "One send to everyone approved for that session, from Admin → Email. Each person is asked to confirm or say they cannot make it." },
-    {
-      id: "w_stillcoming", kind: "check", label: "Said they can still make it?",
-      when: [{ field: "confirmed", op: "is", value: "Yes" }],
-      next: "w_attends", otherwise: "w_released",
-    },
+    { id: "w_seat", kind: "action", label: "Place approved, attendance confirmed, info pack emailed", when: [], next: "w_attends",
+      note: "No reply or further confirmation is required. The registrant can release their seat using the cancellation link if they can no longer attend." },
     { id: "w_attends", kind: "end", label: "Attends", when: [] },
-    { id: "w_released", kind: "end", label: "Seat released to the waitlist", when: [] },
   ],
 });

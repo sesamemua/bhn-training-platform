@@ -18,7 +18,6 @@
  * Pure module: no React, no I/O.
  */
 import { z } from "zod";
-import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 
 /** Where the overrides and the support-form link are stored. */
 export const TEMPLATES_KEY = "trainingWeek.emailTemplates";
@@ -178,7 +177,7 @@ Current BioHubNet trainees are given priority consideration. If you asked for tr
     id: "approved",
     stage: "registration",
     name: "Place approved",
-    when: "When a seat is granted. Say what they have and what holds it.",
+    when: "When a seat is granted. Approval confirms attendance; no further response is required.",
     subject: "Your place at {{event}}: {{session}}",
     body:
       `Hello {{first_name}},
@@ -191,7 +190,7 @@ You have a place at {{session}}.
 Your pass — show its QR code at the door of every session you attend:
 {{pass_link}}
 
-Please put it in your calendar now. About ${CONFIRM_DAYS_BEFORE} days before the session we will write once more to ask whether you can still make it — a reply to that message is what holds your seat, and no reply releases it to the next person on the waitlist.
+Please put it in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.
 
 Can't make it after all? Tell us here, with the reason, so the place can go to somebody else:
 {{cant_attend_link}}
@@ -239,7 +238,7 @@ Any other session you were given a place at is unaffected, and you will hear abo
 
 {{session}} is full, so you are on the waitlist.
 
-That is not a no. Places come free regularly — people's plans change, and everyone with a seat has to confirm it about ${CONFIRM_DAYS_BEFORE} days before the session, which is when most of the movement happens. If one opens we will write to you.
+If a place becomes available because someone cancels, we will write to you.
 
 You do not need to do anything. If you would rather we took you off the list, reply and say so.` + SIGN_OFF,
   },
@@ -252,36 +251,24 @@ You do not need to do anything. If you would rather we took you off the list, re
     body:
       `Hello {{first_name}},
 
-A place has come free at {{session}} and it is yours if you want it.
+A place has come free at {{session}}, and your attendance is now confirmed.
 
   When:  {{session_date}}, {{session_time}}
   Where: {{session_venue}}
 
-Please reply by {{reply_by}} to say whether you can come. If we do not hear from you by then we will pass it to the next person, which we would rather not do.` + SIGN_OFF,
-  },
-  {
-    id: "confirm_attendance",
-    stage: "registration",
-    name: "Can you still make it?",
-    when: `The batch send about ${CONFIRM_DAYS_BEFORE} days before a session. A reply holds the seat.`,
-    subject: "Can you still make it to {{session}}?",
-    body:
-      `Hello {{first_name}},
+No reply or further confirmation is required to keep your seat. Please add the session to your calendar.
 
-{{session}} is nearly here and we are confirming numbers.
+Your pass:
+{{pass_link}}
 
-  When:  {{session_date}}, {{session_time}}
-  Where: {{session_venue}}
-
-Please reply by {{reply_by}} and tell us one of two things: that you are still coming, or that you are not.
-
-If we do not hear from you by {{reply_by}} we will treat it as a no and give your place to somebody on the waitlist. That is not us being strict — an empty seat at a session this oversubscribed is a place somebody else could have used.` + SIGN_OFF,
+If you can no longer attend, please release your seat here:
+{{cant_attend_link}}` + SIGN_OFF,
   },
   {
     id: "seat_released",
     stage: "registration",
     name: "Place released",
-    when: "When somebody tells us they cannot come, or the deadline passes.",
+    when: "When somebody tells us they cannot come and their seat is released.",
     subject: "Your place at {{session}} has been released",
     body:
       `Hello {{first_name}},

@@ -102,8 +102,8 @@ test("there is a way to submit, and it is checked for real", () => {
   assert.ok(!solo.includes(">Continue<"), "nothing left to continue to");
 });
 
-test("the second stage is offered, because this form has one", () => {
-  assert.match(html, /The email after approval/);
+test("Training Week does not offer an after-approval confirmation stage", () => {
+  assert.doesNotMatch(html, /The email after approval|Can you still make it/);
 });
 
 test("a form with no confirmation questions offers no stage switch", () => {

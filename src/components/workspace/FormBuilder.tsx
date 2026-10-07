@@ -32,7 +32,6 @@ import { chosenClashes } from "@/lib/formbuilder/calendar";
 import { FormFillView } from "./FormFillView";
 import { useInputDialog } from "@/components/ui/InputDialog";
 import { SessionCalendar } from "./SessionCalendar";
-import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { readSheet, saveForm, submitBuiltForm } from "@/app/(dashboard)/admin/workspace/forms/actions";
 
 const CARD = "rounded-lg border border-line bg-card p-3";
@@ -825,7 +824,7 @@ function Preview({
             are not hidden by a rule that might accidentally be true —
             they are simply not part of the registration form, and the
             only honest way to check them is to look at that stage. */}
-        <span className="flex rounded-md border border-line p-0.5">
+        {(stage === "confirmation" || doc.fields.some((f) => f.stage === "confirmation")) && <span className="flex rounded-md border border-line p-0.5">
           {FIELD_STAGES.map((st) => (
             <button
               key={st}
@@ -837,12 +836,12 @@ function Preview({
               {st === "registration" ? "Registration form" : "After approval"}
             </button>
           ))}
-        </span>
+        </span>}
       </div>
       <p className="mt-1 text-[11.5px] leading-snug text-subtle">
         {stage === "registration"
           ? "What somebody sees when they sign up."
-          : `Sent by email once a place is approved, about ${CONFIRM_DAYS_BEFORE} days before the session.`}{" "}
+          : "Follow-up questions configured for this form."}{" "}
         {shown.length} of {inStage} shown
         {missingCount > 0 ? ` · ${missingCount} still needed` : ""}.
       </p>

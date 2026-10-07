@@ -12,7 +12,6 @@
  * into every module that wants the type — including the calendar, which
  * is otherwise pure drawing.
  */
-import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import type { ApplicantInfo } from "./applicants";
 
 import type { Highlight } from "./highlights";
@@ -60,21 +59,7 @@ export interface AdminWorkshop {
   bookings: AdminBooking[];
 }
 
-/**
- * The five numbers for one workshop, in the order the organisers read
- * them: approved, confirmed, confirmed by the cut-off, waitlisted, and
- * what the room actually holds.
- *
- * `byCutOff` is confirmed AND approved on or before the cut-off, which
- * is the closest the data supports: the platform records when an ADMIN
- * approved a booking, not when the registrant themselves confirmed. The
- * column says what it measures rather than implying the other thing.
- */
-// One number for the deadline the process uses and the deadline the
-// reporting measures against — two would drift the first time either
-// changed.
-export const CUT_OFF_DAYS = CONFIRM_DAYS_BEFORE;
-
+/** Approval confirms attendance; there is no second confirmation or cut-off. */
 export function countsOf(w: AdminWorkshop) {
   /*
    * Students only. Capacity is the seats a room offers trainees, so
@@ -84,12 +69,10 @@ export function countsOf(w: AdminWorkshop) {
    * the seats directly and sees them.
    */
   const live = w.bookings.filter((b) => b.status !== "cancelled" && !b.internal);
-  const cutOff = new Date(w.startDateTime).getTime() - CUT_OFF_DAYS * 86400_000;
   const confirmed = live.filter((b) => b.status === "confirmed");
   return {
-    approved: live.filter((b) => b.approvedAt).length,
+    approved: confirmed.length,
     confirmed: confirmed.length,
-    byCutOff: confirmed.filter((b) => b.approvedAt && new Date(b.approvedAt).getTime() <= cutOff).length,
     waitlisted: live.filter((b) => b.status === "waitlist").length,
     capacity: w.capacity,
     internal: w.bookings.filter((b) => b.internal && b.status === "confirmed").length,

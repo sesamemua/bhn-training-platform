@@ -27,7 +27,7 @@ import {
   sendToAudience, updateWorkshop,
 } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import {
-  countsOf, CUT_OFF_DAYS,
+  countsOf,
   type AdminWorkshop, type Audience,
 } from "@/lib/allocation/admin-types";
 // Declared here until the calendar needed them without dragging this
@@ -172,15 +172,13 @@ function Dashboard({
     (acc, w) => {
       const c = countsOf(w);
       return {
-        approved: acc.approved + c.approved,
         confirmed: acc.confirmed + c.confirmed,
-        byCutOff: acc.byCutOff + c.byCutOff,
         waitlisted: acc.waitlisted + c.waitlisted,
         capacity: acc.capacity + c.capacity,
         internal: acc.internal + c.internal,
       };
     },
-    { approved: 0, confirmed: 0, byCutOff: 0, waitlisted: 0, capacity: 0, internal: 0 },
+    { confirmed: 0, waitlisted: 0, capacity: 0, internal: 0 },
   );
 
   return (
@@ -231,7 +229,7 @@ function Dashboard({
         )}
       </section>
 
-      {/* Every room, and the five numbers. */}
+      {/* Approved seats are final, without a separate attendance response. */}
       <section>
         <div className="flex items-baseline justify-between gap-3">
           <p className={LABEL}>Seats</p>
@@ -247,7 +245,7 @@ function Dashboard({
             <thead>
               <tr className="bg-elevated text-left">
                 <th className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">Workshop</th>
-                {["Approved", "Confirmed", "By cut-off", "Waitlisted", "Capacity", "Internal"].map((h) => (
+                {["Approved", "Waitlisted", "Capacity", "Internal"].map((h) => (
                   <th key={h} className="whitespace-nowrap px-3 py-2 text-right text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
                 ))}
               </tr>
@@ -265,9 +263,7 @@ function Dashboard({
                         {new Date(w.startDateTime).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.approved}</td>
                     <td className={`px-3 py-1.5 text-right tabular-nums ${over ? "font-bold text-red-500" : "text-fg"}`}>{c.confirmed}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.byCutOff}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.waitlisted}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{c.capacity}</td>
                     {/* Beside capacity, never inside it: staff and guests are
@@ -278,9 +274,7 @@ function Dashboard({
               })}
               <tr className="border-t-2 border-line bg-elevated/50 font-semibold">
                 <td className="px-3 py-1.5 text-subtle">All {live.length} sessions</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.approved}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-fg">{totals.confirmed}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.byCutOff}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-muted">{totals.waitlisted}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-subtle">{totals.capacity}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-indigo-600">{totals.internal ? `+${totals.internal}` : "—"}</td>
@@ -289,10 +283,7 @@ function Dashboard({
           </table>
         </div>
         <p className="mt-1.5 max-w-prose text-[11px] leading-snug text-subtle">
-          <strong>By cut-off</strong> counts confirmed seats approved at least {CUT_OFF_DAYS} days
-          before the session. It reads when an ADMIN approved the booking — the platform does not yet
-          record the moment a registrant confirms for themselves, so this is the closest the data
-          supports rather than a separate answer.
+          Approved seats are confirmed for attendance. Registrants do not need to reply again to keep their place.
         </p>
       </section>
 

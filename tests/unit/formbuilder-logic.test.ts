@@ -200,13 +200,10 @@ test("a required confirmation question does not block the registration form", ()
   assert.deepEqual(missing(f, { name: "x" }, "confirmation").map((x) => x.key), ["confirmed"]);
 });
 
-test("the shipped form asks 'Can you still make it?' only after approval", () => {
-  const conf = TRAINING_WEEK_FORM.fields.find((f) => f.key === "confirmed")!;
-  assert.equal(conf.stage, "confirmation");
-  const onForm = visibleFields(TRAINING_WEEK_FORM, {}).map((f) => f.key);
-  assert.ok(!onForm.includes("confirmed"), "it must not appear while registering");
-  // And the workflow still reads it, from the step that sends the email.
-  assert.ok(TRAINING_WEEK_FORM.steps.some((s) => s.when.some((c) => c.field === "confirmed")));
+test("Training Week approval is final without a reconfirmation question or workflow", () => {
+  assert.ok(!TRAINING_WEEK_FORM.fields.some((f) => f.key === "confirmed" || f.stage === "confirmation"));
+  assert.ok(!TRAINING_WEEK_FORM.steps.some((s) => s.when.some((c) => c.field === "confirmed")));
+  assert.equal(TRAINING_WEEK_FORM.steps.find((s) => s.id === "w_seat")?.next, "w_attends");
 });
 
 /* ── when a form that unfolds should open the next question ──────── */

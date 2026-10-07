@@ -6,12 +6,10 @@
  * a minute apart. Each seat is written about only if what they were
  * last told differs from where it stands now (the same rule as the
  * single-seat letters), so a seat already reported is not repeated.
- * Letters later on — "can you still make it?" before a session — stay
- * separate: they are about one session at one time.
+ * Approval is final; reminders never require another attendance response.
  *
  * Pure module: no Prisma, no mail.
  */
-import { CONFIRM_DAYS_BEFORE } from "@/lib/formbuilder/training-week";
 import { letterDue, type Decision } from "./decisions";
 
 export interface LetterSeat {
@@ -76,7 +74,7 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
   if (placed.length) {
     out.push(placed.length > 1 ? "You have a place at:" : "You have a place at:", ...placed.map(line), "");
     if (p.passLink) out.push("Your pass — show its QR code at the door of every session you attend:", p.passLink, "");
-    out.push(`Please put ${placed.length > 1 ? "them" : "it"} in your calendar now. About ${CONFIRM_DAYS_BEFORE} days before each session we will write once more to ask whether you can still make it — a reply to that message is what holds your seat, and no reply releases it to the next person on the waitlist.`, "");
+    out.push(`Please put ${placed.length > 1 ? "them" : "it"} in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.`, "");
     const links = placed.filter((s) => s.cantAttendLink);
     if (links.length) {
       out.push("Can't make one after all? Tell us, with the reason, so the place can go to somebody else:");
@@ -87,7 +85,7 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
   }
   if (waiting.length) {
     out.push(`${waiting.length > 1 ? "These sessions are" : "This session is"} full, so you are on the waitlist:`, ...waiting.map(line), "");
-    out.push(`That is not a no. Places come free regularly — everyone with a seat confirms it about ${CONFIRM_DAYS_BEFORE} days before the session, which is when most of the movement happens. If one opens we will write to you. You do not need to do anything.`, "");
+    out.push("If a place becomes available because someone cancels, we will write to you. You do not need to do anything.", "");
   }
   if (released.length) {
     out.push(`Your place at ${released.length > 1 ? "these sessions has" : "this session has"} been released, so it can go to somebody who is waiting for one:`, ...released.map(line), "");
