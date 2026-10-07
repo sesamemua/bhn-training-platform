@@ -23,6 +23,7 @@ import { SpeakersManager, type SpeakerRow } from "@/components/admin/events/Spea
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
 import { speakerLimits } from "@/lib/events/limits";
 import { speakerFields } from "@/lib/events/fields";
+import { SymposiumPeopleTabs } from "@/components/admin/events/SymposiumPeoplePlanner";
 
 export const dynamic = "force-dynamic";
 
@@ -78,8 +79,9 @@ export default async function SymposiumSpeakersPage() {
       {/* "Seen" is recorded by the browser once the page is on screen —
           never by rendering, which prefetches and previews also do. */}
       <MarkSpeakersSeen slug={EVENT_SLUG} />
-      <div className="mx-auto max-w-3xl space-y-6 pb-12">
+      <SymposiumPeopleTabs>
         <SpeakersManager
+          key={rows.map((s) => `${s.id}:${s.submittedAt}`).join(",")}
           slug={EVENT_SLUG}
           askFields={speakerFields(event)}
         intakeOpen={event.speakerIntakeOpen}
@@ -90,7 +92,7 @@ export default async function SymposiumSpeakersPage() {
             pitch: event.speakerPitchMaxWords,
           }}
         />
-      </div>
+      </SymposiumPeopleTabs>
     </>
   );
 }
