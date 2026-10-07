@@ -1,0 +1,5 @@
+{
+  "uninitialized": {"schemaVersion":1,"eventId":"2026-annual-symposium","initialized":false,"complete":false,"revision":0,"updatedAt":null,"people":[]},
+  "published": {"schemaVersion":1,"eventId":"2026-annual-symposium","initialized":true,"complete":true,"revision":2,"updatedAt":"2026-10-07T20:00:00.000Z","people":[{"id":"example-person","approvedRevision":1,"fullName":"Example Person","title":"Research Director","organization":"Example Organization","bio":"Plain-text biography for integration tests.","photoUrl":null,"linkedinUrl":null,"links":[{"label":"Example Organization","url":"https://example.org/"}],"placements":[{"id":"example-person:keynote","sessionId":"keynote","order":0},{"id":"example-person:panel-3","sessionId":"panel-3","order":1}]}]},
+  "unpublished": {"schemaVersion":1,"eventId":"2026-annual-symposium","initialized":true,"complete":true,"revision":3,"updatedAt":"2026-10-07T20:01:00.000Z","people":[]}
+}
