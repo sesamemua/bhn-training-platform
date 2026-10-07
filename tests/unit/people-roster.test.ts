@@ -26,6 +26,7 @@ test("one person retains both event associations and latest symposium details", 
 test("known company aliases match, conflicting emails and namesakes do not", () => {
   const seed = { ...person, organization: "Canadian Alliance for Skills and Training in Life Sciences (CASTL)" };
   assert.equal(buildPeopleRoster([seed], [], [{ ...speaker, organization: "CASTL" }]).length, 1);
+  assert.equal(buildPeopleRoster([{ ...person, organization: "Health Emergency Readiness Canada" }], [], [{ ...speaker, organization: "Health Emergency Readiness Canada-Innovation Science and Economic Development Canada" }]).length, 1);
   assert.equal(buildPeopleRoster([{ ...person, email: "a@example.org" }], [], [{ ...speaker, contactEmail: "b@example.org" }]).length, 2);
   assert.equal(buildPeopleRoster([person], [], [{ ...speaker, organization: "Other company" }]).length, 2);
 });

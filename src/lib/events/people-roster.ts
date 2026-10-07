@@ -10,7 +10,8 @@ const aliases: Record<string, string> = {
   "bough biosciences": "bough bio",
 };
 function comparable(p: PlanPerson) {
-  const company = identityText(p.organization).replace(/ (inc|incorporated|canada)$/, "");
+  const raw = identityText(p.organization);
+  const company = aliases[raw] ?? raw.replace(/ (inc|incorporated|canada)$/, "");
   return { ...p, organization: aliases[company] ?? company };
 }
 
