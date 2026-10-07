@@ -17,6 +17,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { parseRules, validateRules, type Rule } from "@/lib/allocation/model";
+import { currentSeatSuggestions, writeSeatDecision } from "@/lib/allocation/seat-suggestions-server";
 import {
   isAudience, isId, REGISTRANT_VIEWS_KEY, RULES_KEY,
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
@@ -853,6 +854,12 @@ export async function applySeatSuggestions(
 ): Promise<{ ok: boolean; approved: number; waitlisted: number; skipped: number; problem?: string }> {
   await requireAdmin();
   if (!isId(workshopId)) return { ok: false, approved: 0, waitlisted: 0, skipped: 0, problem: "That is not a workshop." };
+  const workshop = await prisma.workshop.findUnique({ where: { id: workshopId }, select: { eventId: true } });
+  if (!workshop) return { ok: false, approved: 0, waitlisted: 0, skipped: 0, problem: "That workshop no longer exists." };
+  const rules = await loadRules();
+  const verdict = validateRules(rules);
+  if (!verdict.ok) return { ok: false, approved: 0, waitlisted: 0, skipped: 0, problem: verdict.problem };
+  const suggestions = await currentSeatSuggestions(workshop.eventId);
   const wanted = [...approve.map((id) => [id, "confirmed"] as const), ...waitlist.map((id) => [id, "waitlist"] as const)]
     .filter(([id]) => isId(id))
     .slice(0, 200);
@@ -865,8 +872,8 @@ export async function applySeatSuggestions(
   for (const [id, to] of wanted) {
     const now = current.get(id);
     const movable = to === "confirmed" ? now === "pending" || now === "waitlist" : now === "pending";
-    if (!movable) { skipped++; continue; }
-    const r = await decideSeat(id, to);
+    if (!movable || suggestions.get(id)?.suggestion !== (to === "confirmed" ? "approve" : "waitlist")) { skipped++; continue; }
+    const r = await decideSeat(id, to, undefined, { expectedStatuses: to === "confirmed" ? ["pending", "waitlist"] : ["pending"] });
     if (!r.ok) { skipped++; continue; }
     if (to === "confirmed") approved++; else waitlisted++;
   }
@@ -892,33 +899,17 @@ export async function decideSeat(
   bookingId: string,
   to: string,
   note?: string,
-  opts?: { send?: boolean },
+  opts?: { send?: boolean; expectedStatuses?: string[] },
 ): Promise<{ ok: boolean; problem?: string; said?: string; letterOwed?: boolean; receipt?: Receipt }> {
   const admin = await requireAdmin();
   if (!isDecision(to)) return { ok: false, problem: "That is not a decision." };
   if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
 
-  const booking = await prisma.workshopBooking.findUnique({
-    where: { id: bookingId },
-    select: { id: true, status: true, notifiedStatus: true, workshop: { select: { title: true } } },
-  });
-  if (!booking) return { ok: false, problem: "That seat no longer exists." };
-
-  const from = isDecision(booking.status) ? booking.status : "pending";
   const decision = to as Decision;
-
-  await prisma.workshopBooking.update({
-    where: { id: bookingId },
-    data: {
-      status: decision,
-      decisionNote: note?.trim() ? note.trim().slice(0, 500) : null,
-      // Stamped only when a human actually decided. Taking it back to
-      // undecided clears it, or the dashboard would keep counting a
-      // decision nobody is standing behind.
-      approvedAt: decision === "pending" ? null : new Date(),
-      approvedById: decision === "pending" ? null : admin.id ?? null,
-    },
-  });
+  const written = await writeSeatDecision(bookingId, decision, admin.id, note, opts?.expectedStatuses);
+  if (!written.ok) return written;
+  const booking = written.booking;
+  const from = isDecision(booking.status) ? booking.status : "pending";
 
   await logSend(admin.id, "training_admin.seat_decided", {
     bookingId, from, to: decision, workshop: booking.workshop.title, note: note ?? null,

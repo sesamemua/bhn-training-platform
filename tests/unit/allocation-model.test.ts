@@ -110,7 +110,7 @@ test("a corrupt stored blob falls back to the shipped policy", () => {
   assert.deepEqual(parseRules(null), DEFAULT_RULES);
   assert.deepEqual(parseRules('[{"id":"x","kind":"nope","label":"x"}]'), DEFAULT_RULES);
   const good = JSON.stringify([{ id: "f", kind: "first_come", label: "FCFS", isActive: true }]);
-  assert.equal(parseRules(good).length, 1);
+  assert.deepEqual(parseRules(good).map((rule) => rule.kind), ["preference", "first_come"]);
 });
 
 // ── regressions from the adversarial review ─────────────────────────

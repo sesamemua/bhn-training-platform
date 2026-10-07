@@ -19,7 +19,8 @@ import {
   DEFAULT_RULES, RULE_KINDS, rankApplicants, validateRules,
   type Applicant, type Rule, type RuleKind,
 } from "@/lib/allocation/model";
-import { suggestSeats, type ApplicantInfo } from "@/lib/allocation/applicants";
+import { type ApplicantInfo } from "@/lib/allocation/applicants";
+import { suggestWeekSeats, type SeatSuggestion } from "@/lib/allocation/seat-suggestions";
 import {
   applySeatSuggestions, createWorkshop, loadEmailTemplates, previewAudience,
   removeWorkshop, resetEmailTemplate, saveEmailTemplate, saveRules, saveSupportFormUrl,
@@ -647,14 +648,14 @@ const STATUS_CHIP: Record<string, string> = {
  */
 export function SeatSuggestions({ rules, workshops }: { rules: Rule[]; workshops: AdminWorkshop[] }) {
   const verdict = validateRules(rules);
+  const plan = useMemo(() => suggestWeekSeats(workshops, rules), [workshops, rules]);
   const rooms = workshops.filter((w) => w.bookings.some((b) => b.status !== "cancelled"));
 
   return (
     <div className="space-y-5">
       <p className="max-w-3xl text-[12.5px] leading-relaxed text-muted">
-        Each workshop, ranked by the saved <strong className="text-fg">Decision model</strong>:
-        out of town from the form&apos;s travel question, trainees from the roster, then first come.
-        Suggestions only fill seats that are still open — a confirmed seat is never taken back.
+        Higher-ranked choices take priority before first come, within the saved <strong className="text-fg">Decision model</strong>.
+        Concurrent sessions cannot both be approved. Confirmed seats are kept; existing conflicts are flagged for review.
         Nothing changes until you press <strong className="text-fg">Apply</strong>, and applying
         sends no email — the letters wait in the Letters box below until you send them.
       </p>
@@ -668,13 +669,13 @@ export function SeatSuggestions({ rules, workshops }: { rules: Rule[]; workshops
           Nobody has registered yet. Each workshop&apos;s ranking and suggestions appear here as registrations come in.
         </p>
       ) : (
-        rooms.map((w) => <WorkshopSuggestions key={w.id} workshop={w} rules={rules} canApply={verdict.ok} />)
+        rooms.map((w) => <WorkshopSuggestions key={w.id} workshop={w} rules={rules} plan={plan} canApply={verdict.ok} />)
       )}
     </div>
   );
 }
 
-function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: AdminWorkshop; rules: Rule[]; canApply: boolean }) {
+function WorkshopSuggestions({ workshop: w, rules, plan, canApply }: { workshop: AdminWorkshop; rules: Rule[]; plan: Map<string, SeatSuggestion>; canApply: boolean }) {
   const [pending, start] = useTransition();
   const [said, setSaid] = useState<string | null>(null);
   const { confirmDialog, node: confirmNode } = useConfirmDialog();
@@ -682,9 +683,8 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
     () => rankApplicants(contenders(w).map((b) => b.applicant), rules, w.capacity),
     [w, rules],
   );
-  const suggestion = useMemo(() => suggestSeats(ranked, w.capacity), [ranked, w.capacity]);
-  const approve = ranked.filter((r) => suggestion.get(r.applicant.id) === "approve").map((r) => r.applicant.id);
-  const waitlist = ranked.filter((r) => suggestion.get(r.applicant.id) === "waitlist").map((r) => r.applicant.id);
+  const approve = ranked.filter((r) => plan.get(r.applicant.id)?.suggestion === "approve").map((r) => r.applicant.id);
+  const waitlist = ranked.filter((r) => plan.get(r.applicant.id)?.suggestion === "waitlist").map((r) => r.applicant.id);
   const confirmed = ranked.filter((r) => r.applicant.status === "confirmed").length;
   const open = Math.max(0, w.capacity - confirmed);
 
@@ -701,7 +701,7 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
       if (r.ok && (r.approved || r.waitlisted)) queueLetterFx();
       setSaid(r.ok
         ? `Approved ${r.approved}, waitlisted ${r.waitlisted}. Their letters are in the mailbox, waiting to be sent.`
-          + (r.skipped ? ` ${r.skipped} skipped — already decided elsewhere.` : "")
+          + (r.skipped ? ` ${r.skipped} skipped: the current ranking, capacity or availability changed.` : "")
         : r.problem ?? "Nothing was applied.");
     });
   }
@@ -729,7 +729,7 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
         <table className="w-full min-w-[860px] border-collapse text-[12.5px]">
           <thead>
             <tr className="bg-elevated text-left">
-              {["#", "Name", "Travel", "Trainee", "Their choice", "Applied", "Now", "Suggestion", "Above the next person because"].map((h) => (
+              {["#", "Name", "Travel", "Trainee", "Their choice", "Applied", "Now", "Suggestion", "Reason", "Above the next person because"].map((h) => (
                 <th key={h} className="whitespace-nowrap px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
               ))}
             </tr>
@@ -737,9 +737,9 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
           <tbody>
             {ranked.map((r) => {
               const a = r.applicant;
-              const sug = suggestion.get(a.id);
+              const sug = plan.get(a.id)?.suggestion;
               return (
-                <tr key={a.id} className={`border-t border-line ${r.position === w.capacity ? "border-b-2 border-b-brand-500/60" : ""}`}>
+                <tr key={a.id} className="border-t border-line">
                   <td className="px-3 py-1.5 font-mono text-subtle">{r.position}</td>
                   <td className="px-3 py-1.5">
                     <div className="font-semibold text-fg">{a.name}</div>
@@ -767,6 +767,7 @@ function WorkshopSuggestions({ workshop: w, rules, canApply }: { workshop: Admin
                       : sug === "waitlist" ? <span className={`${chip} bg-amber-500/15 text-amber-600`}>Waitlist</span>
                       : <span className="text-[11px] text-subtle">—</span>}
                   </td>
+                  <td className="max-w-[260px] px-3 py-1.5 text-[11.5px] text-muted">{plan.get(a.id)?.reason || "—"}</td>
                   <td className="px-3 py-1.5 text-[11.5px] text-muted">{r.decidedBy ?? "—"}</td>
                 </tr>
               );

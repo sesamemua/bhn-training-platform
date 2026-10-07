@@ -21,6 +21,7 @@ export type RuleKind =
   | "out_of_town"
   | "current_trainee"
   | "first_come"
+  | "preference"
   | "under_represented_org"
   | "fewest_seats_held";
 
@@ -48,6 +49,8 @@ export interface Applicant {
   appliedAt: string | Date;
   /** Seats this person already holds across the week. */
   seatsHeld?: number;
+  /** Registrant's workshop preference; 1 is best, missing ranks sort last. */
+  preference?: number | null;
 }
 
 export interface RuleKindInfo {
@@ -60,6 +63,12 @@ export interface RuleKindInfo {
 }
 
 export const RULE_KINDS: Record<RuleKind, RuleKindInfo> = {
+  preference: {
+    label: "Higher-ranked choices first",
+    blurb: "Favours a first choice over a second, third or later choice. Unranked requests follow ranked requests.",
+    caution: "Earlier priority rules still take precedence. Confirmed seats are kept.",
+    configurable: false,
+  },
   out_of_town: {
     label: "Out-of-town applicants first",
     blurb:
@@ -99,7 +108,7 @@ export const RULE_KINDS: Record<RuleKind, RuleKindInfo> = {
 };
 
 /**
- * The policy as it stands: out-of-town first, then first come.
+ * Out-of-town first, then the registrant's preference, then first come.
  *
  * Shipped as the starting point rather than as the only option — the
  * admin tab edits this, and what is stored wins.
@@ -111,6 +120,12 @@ export const DEFAULT_RULES: Rule[] = [
     label: "Out-of-town applicants first",
     isActive: true,
     config: { minKm: 50 },
+  },
+  {
+    id: "r-preference",
+    kind: "preference",
+    label: "Higher-ranked choices first",
+    isActive: true,
   },
   {
     id: "r-first-come",
@@ -136,6 +151,8 @@ const isOutOfTown = (a: Applicant, rule: Rule) => {
  */
 function compareBy(rule: Rule, a: Applicant, b: Applicant): number {
   switch (rule.kind) {
+    case "preference":
+      return preferenceRank(a.preference) - preferenceRank(b.preference);
     case "out_of_town":
       return Number(isOutOfTown(b, rule)) - Number(isOutOfTown(a, rule));
     case "current_trainee":
@@ -160,6 +177,19 @@ function compareBy(rule: Rule, a: Applicant, b: Applicant): number {
     default:
       return 0;
   }
+}
+
+export function preferenceRank(value: number | null | undefined): number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : Number.MAX_SAFE_INTEGER;
+}
+
+/** Upgrade saved policies once in memory; an explicitly disabled rule stays disabled. */
+export function withPreferenceRule(rules: Rule[]): Rule[] {
+  if (rules.some((rule) => rule.kind === "preference")) return rules;
+  const result = [...rules];
+  const index = result.findIndex((rule) => rule.kind === "first_come");
+  result.splice(index < 0 ? result.length : index, 0, { ...DEFAULT_RULES[1] });
+  return result;
 }
 
 export interface Ranked<T extends Applicant = Applicant> {
@@ -224,7 +254,7 @@ export function parseRules(raw: string | null | undefined): Rule[] {
       (r): r is Rule =>
         !!r && typeof r.id === "string" && typeof r.label === "string" && r.kind in RULE_KINDS,
     );
-    return clean.length ? clean : DEFAULT_RULES;
+    return clean.length ? withPreferenceRule(clean) : DEFAULT_RULES;
   } catch {
     // A corrupt blob must not take the allocation offline; the shipped
     // policy is a defensible answer, an exception is not.
