@@ -39,11 +39,15 @@ export const PublicationStateSchema = z.object({
   && new Set(state.approved.map((p) => p.id)).size === state.approved.length
   && state.approved.every((p) => p.approvedRevision <= state.revision));
 export type PublicationState = z.infer<typeof PublicationStateSchema>;
+export const PlannerPublicationChanges = z.array(z.object({ id: PersonId, profile: PublicProfileInput.nullable() }).strict()).max(500)
+  .refine((items) => new Set(items.map((p) => p.id)).size === items.length, "Each person may appear only once.");
+export type PlannerPublicationChanges = z.infer<typeof PlannerPublicationChanges>;
 export const PublicationAction = z.discriminatedUnion("action", [
   z.object({ action: z.literal("save"), id: PersonId, profile: PublicProfileInput }).strict(),
   z.object({ action: z.literal("approve"), id: PersonId, draftHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ action: z.literal("unpublish"), id: PersonId }).strict(),
   z.object({ action: z.literal("initialize"), confirm: z.literal(true) }).strict(),
+  z.object({ action: z.literal("publish-plan"), confirm: z.literal(true), rosterHash: z.string().regex(/^[a-f0-9]{64}$/), changes: PlannerPublicationChanges }).strict(),
 ]);
 export type PublicationAction = z.infer<typeof PublicationAction>;
 export const EMPTY_PUBLICATION: PublicationState = { initialized: false, revision: 0, updatedAt: null, drafts: [], approved: [] };

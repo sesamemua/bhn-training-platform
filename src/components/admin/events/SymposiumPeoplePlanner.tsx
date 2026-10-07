@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Archive, Check, Copy, GripVertical, Loader2, Pencil, Plus, RefreshCw, Save, Search, Trash2, Unlink, X } from "lucide-react";
+import { Archive, Check, CloudUpload, Copy, GripVertical, Loader2, Pencil, Plus, RefreshCw, Save, Search, Trash2, Unlink, X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
 import { PLAN_SESSIONS, ROSTER_EVENTS, personEvents, matchPlanPeople, type PlanPerson, type PersonInput, type PlanSession, type PlanSnapshot, type Match } from "@/lib/events/people-plan";
 import type { PlanAction } from "@/lib/events/people-plan-store";
 import PeoplePublicationPanel from "./PeoplePublicationPanel";
+import PlannerPublicationDialog from "./PlannerPublicationDialog";
 
 const API = "/api/admin/symposium-people";
 const INPUT = "w-full min-w-0 rounded-md border border-line bg-card-solid px-2.5 py-2 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-brand";
@@ -49,6 +50,7 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
   const [editing, setEditing] = useState<PlanPerson | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,10 +117,12 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="text-lg font-bold text-fg">{view === "roster" ? "People roster" : "2026 session people"}</h2><p className="text-[12px] text-muted">{view === "roster" ? "Event associations, not attendance confirmations. No new invitations or website publication." : "Planning only · Not published or invited · Concurrent sessions, 3:30–4:45 p.m."}</p></div>
-      <button className={BUTTON} type="button" onClick={async () => {
+      <div><h2 className="text-lg font-bold text-fg">{view === "roster" ? "People roster" : "2026 session people"}</h2><p className="text-[12px] text-muted">{view === "roster" ? "Event associations, not attendance confirmations. No new invitations or website publication." : "Session planning · Concurrent sessions, 3:30–4:45 p.m."}</p></div>
+      <div className="flex flex-wrap gap-2"><button className={BUTTON} type="button" onClick={async () => {
         try { await navigator.clipboard.writeText(`${location.origin}/events/2026-annual-symposium/speaker`); setNotice("Submission link copied."); } catch { setError("Couldn't copy the link."); }
       }}><Copy size={14} />Copy submission link</button>
+        {view === "planner" && <button type="button" className={`${BUTTON} border-brand bg-brand text-white hover:opacity-90`} title={drafts.length ? "Save or discard unsaved people first" : "Review saved planner changes before publishing"} disabled={!snapshot || busy || parsing || !!editing || drafts.length > 0} onClick={() => setPublishing(true)}><CloudUpload size={15} />Push changes to website</button>}
+      </div>
     </div>
     <div className="flex flex-wrap items-center gap-3">
       <label className="flex min-w-0 flex-1 items-center gap-2"><Search size={16} className="text-muted" /><input className={INPUT} aria-label="Search people" placeholder="Search name, company or tag" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
@@ -176,6 +180,7 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
       <Dialog.Description className="mb-3 text-[12px] text-muted">Submitted details remain unchanged.</Dialog.Description>
       {editing && <><PersonFields person={editing} onChange={(p) => setEditing({ ...editing, ...p })} /><TagEditor key={editing.id} tags={editing.tags ?? []} onChange={(tags) => setEditing({ ...editing, tags })} />{error && <p role="alert" className="mt-2 text-[12px] text-fg">{error}</p>}<button type="button" className={`${BUTTON} mt-4`} disabled={busy} onClick={async () => { if (await mutate({ action: "edit", id: editing.id, person: editing }, editVersion.current)) setEditing(null); }}><Save size={14} />Save profile</button></>}
     </Dialog.Content></Dialog.Portal></Dialog.Root>
+    {publishing && <PlannerPublicationDialog onClose={() => setPublishing(false)} />}
   </div>;
 }
 

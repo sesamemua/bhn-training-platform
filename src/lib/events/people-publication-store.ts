@@ -22,7 +22,17 @@ export function applyPublication(state: PublicationState, action: PublicationAct
     if (next.revision >= Number.MAX_SAFE_INTEGER) throw new Error("Publication revision limit reached.");
     next.revision++;
     next.updatedAt = now;
-    if (action.action === "approve") {
+    if (action.action === "publish-plan") {
+      if (!action.changes.length) throw new Error("No planner changes to publish.");
+      for (const change of action.changes) {
+        next.approved = next.approved.filter((p) => p.id !== change.id);
+        if (change.profile) {
+          next.approved.push({ ...structuredClone(change), profile: change.profile, approvedRevision: next.revision });
+          next.drafts = next.drafts.filter((p) => p.id !== change.id);
+          next.drafts.push({ id: change.id, profile: structuredClone(change.profile) });
+        }
+      }
+    } else if (action.action === "approve") {
       const draft = next.drafts.find((p) => p.id === action.id);
       if (!draft || profileHash(draft.profile) !== action.draftHash) throw new PublicationConflict("The preview changed. Review the latest saved draft.");
       const approved = { ...structuredClone(draft), approvedRevision: next.revision };
@@ -59,8 +69,8 @@ export async function savePublication(version: string | null, action: Publicatio
         targetId: "id" in action ? action.id : "2026-annual-symposium",
         detail: JSON.stringify({
           revision: next.revision, initialized: next.initialized,
-          before: "id" in action ? current.state.approved.find((p) => p.id === action.id) ?? null : null,
-          after: "id" in action ? next.approved.find((p) => p.id === action.id) ?? null : null,
+          before: action.action === "publish-plan" ? current.state.approved.filter((p) => action.changes.some((c) => c.id === p.id)) : "id" in action ? current.state.approved.find((p) => p.id === action.id) ?? null : null,
+          after: action.action === "publish-plan" ? next.approved.filter((p) => action.changes.some((c) => c.id === p.id)) : "id" in action ? next.approved.find((p) => p.id === action.id) ?? null : null,
         }),
       } });
     });
