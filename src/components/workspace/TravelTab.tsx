@@ -3,27 +3,26 @@
 /**
  * Training admin → Travel follow-up. Everyone who said their one-way trip
  * to downtown Toronto is over 2 hours: they need a separate follow-up
- * about travel support. Copy the list, download it as a CSV, or — where
- * the postal code they gave is nowhere near two hours away — write to
- * them about it.
+ * about travel support. Copy the list or download it as a CSV.
  *
- * That last one never sends from the row. It opens the letter, filled
- * in and editable, and the send sits behind a confirmation a
- * coordinator can switch off once they trust it: a one-click send on a
- * table row is a message to a real person, in their name, posted by a
- * mis-click.
+ * Click a name to open the row: their registration (as under
+ * Registrants), the travel-eligibility check — approved by whom, and
+ * when — and their letter. The letter depends on where they stand: a
+ * clarifying question for a False OOT, the next steps (hotel, how they
+ * travel) for everybody else. It is written into a box on the row,
+ * editable, and nothing goes until Send is confirmed.
  */
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { AlertTriangle, Check, ClipboardCopy, Download, Loader2, Mail, Send } from "lucide-react";
-import type { AdminWorkshop } from "@/lib/allocation/admin-types";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
+import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Send, ShieldCheck } from "lucide-react";
+import type { AdminWorkshop, SubmissionRow } from "@/lib/allocation/admin-types";
 import { TRAVEL_HEAD, travellerCells, travellers, worthChecking, type Traveller } from "@/lib/allocation/registrant-views";
 import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { rowsFrom } from "./RegistrantViews";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
-import { draftTravelCheck, loadTravelChecks, sendTravelCheck, setOotAccepted } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
-import { Modal } from "@/components/ui/Modal";
+import { draftTravelCheck, loadSubmissions, loadTravelStatus, sendTravelCheck, setTravelEligibility } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { RegistrationDetail } from "./RegistrationDetail";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 
 const TONE: Record<string, string> = {
@@ -35,11 +34,11 @@ const TONE: Record<string, string> = {
 const LABEL: Record<string, string> = { pending: "Not decided", confirmed: "Approved", waitlist: "Waitlisted", cancelled: "Declined" };
 const BTN = "inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[13px] font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 
-/** The letter, open on screen and not yet sent. */
-interface Draft { bookingId: string; to: string; name: string; subject: string; body: string }
-
-/** Per-browser, per-person: whether Send asks again first. On unless turned off. */
-const CONFIRM_KEY = "bhn.travelCheck.confirmBeforeSend";
+type Kind = "clarify" | "next";
+/** The letter, written into the row's box and not yet sent. */
+interface Draft { kind: Kind; to: string; subject: string; body: string }
+const KIND_LABEL: Record<Kind, string> = { clarify: "Clarifying question", next: "Next steps" };
+const day = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 
 export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   const rows = useMemo(() => rowsFrom(workshops), [workshops]);
@@ -51,13 +50,15 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
      Worth seeing at the top rather than finding at approval time. */
   const doubtful = list.filter((t) => t.falseOot).length;
 
-  /* Who has already been written to. Read once on mount rather than
-     passed down: it is one small query, and it is the only thing on
-     this page that is not derived from the bookings. */
-  const [asked, setAsked] = useState<Set<string>>(new Set());
+  /* What is not derived from the bookings: letters already sent, who
+     approved whose eligibility, and the registrations themselves. */
+  const [sent, setSent] = useState<Record<string, Kind[]>>({});
+  const [approvals, setApprovals] = useState<Record<string, { byName: string; at: string }>>({});
+  const [subs, setSubs] = useState<SubmissionRow[] | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const table = [TRAVEL_HEAD, ...list.map(travellerCells)];
+  const ids = list.map((t) => t.bookingId).join(",");
 
   async function copy() {
     // Tab-separated, so it pastes into a spreadsheet as columns and into an email as a list.
@@ -65,66 +66,64 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
     try { await navigator.clipboard.writeText(text); setSaid(`Copied ${list.length} ${list.length === 1 ? "person" : "people"}.`); }
     catch { setSaid("Your browser blocked copying — use Download CSV instead."); }
   }
-  useEffect(() => { loadTravelChecks().then((rows) => setAsked(new Set(rows))).catch(() => {}); }, []);
-
-  /*
-   * Nothing is sent from the row.
-   *
-   * The button opens the letter — the real one, filled in, editable —
-   * and the send lives in there behind a confirmation that a
-   * coordinator can switch off once they trust it. A one-click send on
-   * a row is a message to a real person, in their name, posted by a
-   * mis-click.
-   */
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [opening, setOpening] = useState<string | null>(null);
-  const [sure, setSure] = useState(false);
-  const [confirmFirst, setConfirmFirst] = useState(true);
   useEffect(() => {
-    // Read after mount: the server has no idea what this browser
-    // remembers, and rendering the box differently would not match.
-    try { setConfirmFirst(localStorage.getItem(CONFIRM_KEY) !== "off"); } catch { /* private window */ }
-  }, []);
-  function rememberConfirm(on: boolean) {
-    setConfirmFirst(on);
-    if (!on) setSure(false);
-    try { localStorage.setItem(CONFIRM_KEY, on ? "on" : "off"); } catch { /* nothing to do about it */ }
-  }
+    loadTravelStatus(ids ? ids.split(",") : []).then((r) => { setSent(r.sent); setApprovals(r.approvals); }).catch(() => {});
+  }, [ids]);
+  const reloadSubs = () => { void loadSubmissions().then(setSubs).catch(() => setSubs([])); };
+  const subOf = (t: Traveller) => subs?.find((s) => s.seats.some((x) => x.id === t.bookingId)) ?? null;
 
-  function open(t: Traveller) {
-    setOpening(t.bookingId);
-    setSaid(null);
+  /* One row open at a time; its letter is drafted on the server when it opens. */
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const kindOf = (t: Traveller): Kind => (t.falseOot ? "clarify" : "next");
+
+  function writeDraft(t: Traveller) {
+    setDraft(null);
+    setDrafting(true);
     start(async () => {
-      const r = await draftTravelCheck(t.bookingId);
-      setOpening(null);
+      const kind = kindOf(t);
+      const r = await draftTravelCheck(t.bookingId, kind);
+      setDrafting(false);
       if (!r.ok) { setSaid(r.problem ?? "That letter could not be written."); return; }
-      setSure(false);
-      setDraft({ bookingId: t.bookingId, to: r.to ?? "", name: r.name ?? t.name, subject: r.subject ?? "", body: r.body ?? "" });
+      setDraft({ kind, to: r.to ?? "", subject: r.subject ?? "", body: r.body ?? "" });
     });
   }
+  function toggle(t: Traveller) {
+    setSaid(null);
+    if (openKey === t.personKey) { setOpenKey(null); setDraft(null); return; }
+    setOpenKey(t.personKey);
+    if (subs === null) reloadSubs();
+    writeDraft(t);
+  }
 
-  /* Their explanation holds up (travelling from elsewhere that week):
-     give them back the out-of-town priority — or take it away again. */
-  function accept(t: Traveller, on: boolean) {
+  /* Checked and approved — recorded with who and when — or taken back.
+     The row's status changes with it, so its letter is written again. */
+  function approve(t: Traveller, on: boolean) {
     start(async () => {
-      const r = await setOotAccepted(t.bookingId, on);
-      setSaid(r.ok ? (on ? `${t.name}'s claim accepted.` : `${t.name} is marked False OOT again.`) : r.problem ?? "Could not save.");
+      const r = await setTravelEligibility(t.bookingId, on);
+      if (!r.ok) { setSaid(r.problem ?? "Could not save."); return; }
+      setApprovals((a) => {
+        const next = { ...a };
+        if (on && r.byName && r.at) next[t.bookingId] = { byName: r.byName, at: r.at }; else delete next[t.bookingId];
+        return next;
+      });
+      setSaid(on ? `${t.name}'s travel eligibility is approved.` : `${t.name}'s approval is taken back.`);
+      if (openKey === t.personKey) { setOpenKey(null); setDraft(null); }
     });
   }
 
-  function send() {
+  function send(t: Traveller) {
     if (!draft) return;
-    if (confirmFirst && !sure) { setSure(true); return; }
     const d = draft;
     start(async () => {
-      const r = await sendTravelCheck(d.bookingId, { subject: d.subject, body: d.body });
+      const r = await sendTravelCheck(t.bookingId, { subject: d.subject, body: d.body }, d.kind);
       if (!r.ok) { setSaid(r.problem ?? "That did not send."); return; }
       setSaid(receiptLine(r.receipt));
       if (r.receipt?.state === "sent" || r.receipt?.state === "sent-to-you") {
-        setAsked((s) => new Set(s).add(d.to.toLowerCase()));
+        const k = t.email.toLowerCase();
+        setSent((m) => ({ ...m, [k]: [...new Set([...(m[k] ?? []), d.kind])] }));
       }
-      setDraft(null);
-      setSure(false);
     });
   }
 
@@ -179,151 +178,137 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
           <table className="w-full min-w-[760px] border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-elevated text-left">
-                {["Name", "Email", "Postcode", "Travel time", "Sessions", "Registered", "Ask"].map((h) => (
-                  <th key={h} className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h === "Ask" ? "" : h}</th>
+                {["Name", "Email", "Postcode", "Travel time", "Sessions", "Registered", "Letter"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-[10.5px] font-bold uppercase tracking-wide text-subtle">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {list.map((t) => (
-                <tr key={t.personKey} className="border-t border-line align-top">
-                  <td className="px-3 py-2 font-semibold text-fg">{t.name}</td>
-                  <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.email}</td>
-                  <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.postcode || "—"}</td>
-                  <td className="px-3 py-2">
-                    <TravelCell postcode={t.postcode} />
-                    {(t.falseOot || t.ootAccepted) && (
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-                        {t.falseOot ? (
-                          <span className="rounded bg-rose-500/10 px-1.5 py-0.5 font-bold text-rose-700" title="Ranked as local by the decision model">False OOT</span>
-                        ) : (
-                          <span className="rounded bg-emerald-500/12 px-1.5 py-0.5 font-bold text-emerald-700">Claim accepted</span>
-                        )}
-                        {t.ootAccepted ? (
-                          <button type="button" disabled={pending} onClick={() => accept(t, false)} className="font-semibold text-muted underline underline-offset-2 hover:text-fg disabled:opacity-50">
-                            Undo
-                          </button>
-                        ) : (
-                          <ConfirmPopover
-                            message={`Accept ${t.name}'s out-of-town claim?`}
-                            detail="They get out-of-town priority in the decision model again."
-                            confirmLabel="Accept claim"
-                            align="start"
-                            onConfirm={() => accept(t, true)}
-                          >
-                            {(open) => (
-                              <button type="button" disabled={pending} onClick={open} className="font-semibold text-muted underline underline-offset-2 hover:text-fg disabled:opacity-50">
-                                Accept claim
-                              </button>
-                            )}
-                          </ConfirmPopover>
-                        )}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    <ul className="space-y-1">
-                      {t.sessions.map((s, i) => (
-                        <li key={i} className="flex flex-wrap items-center gap-1.5 text-muted">
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${TONE[s.status] ?? "bg-elevated text-subtle"}`}>{LABEL[s.status] ?? s.status}</span>
-                          {s.dayLabel} · {s.workshop}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-subtle">{new Date(t.appliedAt).toLocaleDateString("en-CA")}</td>
-                  <td className="whitespace-nowrap px-3 py-2">
-                    {/* Offered only where there is a question to ask: the
-                        postal code is well inside two hours and the
-                        registration says otherwise. */}
-                    {/* Only while the claim stands unexplained: once accepted there is nothing to ask. */}
-                    {t.falseOot && (
-                      asked.has(t.email.toLowerCase()) ? (
-                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-muted"><Check size={13} /> Asked</span>
-                      ) : (
-                        <button type="button" onClick={() => open(t)} disabled={pending}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-50">
-                          {opening === t.bookingId ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />} Write to them
+              {list.map((t) => {
+                const open = openKey === t.personKey;
+                const approval = approvals[t.bookingId];
+                const approved = t.ootAccepted || Boolean(approval);
+                const letters = sent[t.email.toLowerCase()] ?? [];
+                const sub = open ? subOf(t) : null;
+                return (
+                  <Fragment key={t.personKey}>
+                    <tr className={`border-t border-line align-top ${open ? "bg-elevated/40" : ""}`}>
+                      <td className="px-3 py-2">
+                        <button type="button" onClick={() => toggle(t)} aria-expanded={open} className="inline-flex items-center gap-1 text-left font-semibold text-fg hover:underline">
+                          <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? "" : "-rotate-90"}`} /> {t.name}
                         </button>
-                      )
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.email}</td>
+                      <td className="px-3 py-2 font-mono text-[11.5px] text-muted">{t.postcode || "—"}</td>
+                      <td className="px-3 py-2">
+                        <TravelCell postcode={t.postcode} />
+                        <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                          {approved ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-500/12 px-1.5 py-0.5 font-bold text-emerald-700">
+                              <ShieldCheck size={11} /> Travel eligibility approved
+                            </span>
+                          ) : t.falseOot ? (
+                            <span className="rounded bg-rose-500/10 px-1.5 py-0.5 font-bold text-rose-700" title="Ranked as local by the decision model">False OOT</span>
+                          ) : (
+                            <span className="rounded bg-elevated px-1.5 py-0.5 font-bold text-subtle">Not checked yet</span>
+                          )}
+                          {approved && <span className="text-subtle">{approval ? `Checked and approved by ${approval.byName} · ${day(approval.at)}` : "Approved before names were recorded"}</span>}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <ul className="space-y-1">
+                          {t.sessions.map((s, i) => (
+                            <li key={i} className="flex flex-wrap items-center gap-1.5 text-muted">
+                              <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${TONE[s.status] ?? "bg-elevated text-subtle"}`}>{LABEL[s.status] ?? s.status}</span>
+                              {s.dayLabel} · {s.workshop}
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-subtle">{new Date(t.appliedAt).toLocaleDateString("en-CA")}</td>
+                      <td className="px-3 py-2 text-[11.5px]">
+                        {letters.length ? (
+                          <span className="inline-flex items-center gap-1 font-semibold text-muted"><Check size={12} /> {letters.map((k) => KIND_LABEL[k]).join(", ")} sent</span>
+                        ) : (
+                          <span className="text-subtle">{KIND_LABEL[kindOf(t)]} — not sent</span>
+                        )}
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr className="border-t border-line">
+                        <td colSpan={7} className="p-0">
+                          <div className="grid gap-3 border-b border-line bg-elevated/30 px-3 py-3 lg:grid-cols-[18rem_minmax(0,1fr)]">
+                            <section>
+                              <h3 className="text-[11px] font-bold uppercase tracking-wide text-subtle">Travel eligibility</h3>
+                              {approved ? (
+                                <>
+                                  <p className="mt-1 inline-flex items-center gap-1.5 text-[13px] font-semibold text-emerald-700"><ShieldCheck size={14} /> Approved</p>
+                                  <p className="text-[12px] text-muted">{approval ? `Checked and approved by ${approval.byName} on ${new Date(approval.at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}.` : "Approved before names were recorded."}</p>
+                                  <ConfirmPopover message={`Take back ${t.name}'s approval?`} detail={t.postcode ? "If their postal code is under two hours they go back to False OOT." : undefined} confirmLabel="Take it back" tone="danger" align="start" onConfirm={() => approve(t, false)}>
+                                    {(o) => <button type="button" disabled={pending} onClick={o} className="mt-1.5 text-[12px] font-semibold text-muted underline underline-offset-2 hover:text-fg disabled:opacity-50">Take back approval</button>}
+                                  </ConfirmPopover>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="mt-1 text-[12.5px] text-muted">
+                                    {t.falseOot ? "Their postal code is under two hours. Approve only if their explanation holds up." : "Check their journey really is over two hours each way, then approve."}
+                                  </p>
+                                  <ConfirmPopover message={`Approve ${t.name}'s travel eligibility?`} detail="Your name and the time are recorded and shown on this row." confirmLabel="Checked — approve" align="start" onConfirm={() => approve(t, true)}>
+                                    {(o) => <button type="button" disabled={pending} onClick={o} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[12.5px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><ShieldCheck size={13} /> Checked — approve eligibility</button>}
+                                  </ConfirmPopover>
+                                </>
+                              )}
+                            </section>
+
+                            <section className="min-w-0">
+                              <h3 className="text-[11px] font-bold uppercase tracking-wide text-subtle">
+                                Letter · {KIND_LABEL[kindOf(t)]}{letters.includes(kindOf(t)) ? " · already sent once" : ""}
+                              </h3>
+                              {draft ? (
+                                <div className="mt-1 space-y-2">
+                                  <p className="text-[12px] text-muted">To {draft.to}</p>
+                                  <input id={`travel-subject-${t.bookingId}`} aria-label="Subject" value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+                                    className="w-full rounded-lg border border-line bg-card px-3 py-2 text-[13.5px] text-fg focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                                  <textarea id={`travel-body-${t.bookingId}`} aria-label="Message" rows={12} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                                    className="w-full rounded-lg border border-line bg-card px-3 py-2 text-[13px] leading-relaxed text-fg focus:outline-none focus:ring-2 focus:ring-brand-400" />
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <ConfirmPopover message={`Send this to ${draft.to} now?`} confirmLabel="Send" align="start" onConfirm={() => send(t)}>
+                                      {(o) => (
+                                        <button type="button" disabled={pending || !draft.subject.trim() || !draft.body.trim()} onClick={o}
+                                          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-brand-700 disabled:opacity-50">
+                                          {pending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Send
+                                        </button>
+                                      )}
+                                    </ConfirmPopover>
+                                    <button type="button" disabled={pending} onClick={() => writeDraft(t)} className="text-[12px] font-semibold text-muted underline underline-offset-2 hover:text-fg">Start again from the template</button>
+                                  </div>
+                                  <p className="text-[11.5px] leading-snug text-subtle">
+                                    Edits here go to this one message only. To change the wording for everybody, edit the travel letters under the Email tab.
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="mt-1 text-[12.5px] text-muted">{drafting ? "Writing the letter…" : "No letter could be written for this person — see the note at the top."}</p>
+                              )}
+                            </section>
+                          </div>
+                          {sub ? (
+                            <RegistrationDetail sub={sub} onChanged={reloadSubs} where={{ postcode: t.postcode, email: t.email, said: "far" }} />
+                          ) : (
+                            <p className="bg-elevated/30 px-3 py-3 text-[12px] text-muted">
+                              {subs === null ? "Loading the registration…" : "No registration form behind this seat, so there are no answers to show."}
+                            </p>
+                          )}
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                </tr>
-              ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* The letter, before it is a letter. Editable, because a
-          coordinator knows things about this person that a template
-          cannot, and because the words go out over their name. */}
-      <Modal
-        open={Boolean(draft)}
-        onClose={() => { setDraft(null); setSure(false); }}
-        size="lg"
-        title="Ask about their travel time"
-        description={draft ? `To ${draft.name || "them"} · ${draft.to}` : undefined}
-        footer={
-          <div className="flex w-full flex-wrap items-center gap-3">
-            <label className="mr-auto inline-flex items-center gap-2 text-[12.5px] text-muted">
-              <input type="checkbox" className="accent-brand-600" checked={confirmFirst} onChange={(e) => rememberConfirm(e.target.checked)} />
-              Ask me to confirm before sending
-            </label>
-            {sure ? (
-              <>
-                <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-amber-700">
-                  <AlertTriangle size={13} /> Send this to {draft?.to} now?
-                </span>
-                <button type="button" onClick={() => setSure(false)} className="px-3 py-2 text-[12.5px] font-semibold text-muted hover:text-fg">
-                  Not yet
-                </button>
-                <button type="button" onClick={send} disabled={pending}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-brand-700 disabled:opacity-50">
-                  {pending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Yes, send it
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => setDraft(null)} className="px-3 py-2 text-[12.5px] font-semibold text-muted hover:text-fg">
-                  Cancel
-                </button>
-                <button type="button" onClick={send} disabled={pending}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-brand-700 disabled:opacity-50">
-                  {pending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Send
-                </button>
-              </>
-            )}
-          </div>
-        }
-      >
-        {draft && (
-          <div className="space-y-3">
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-subtle">Subject</span>
-              <input
-                value={draft.subject}
-                onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-line bg-elevated/40 px-3 py-2 text-[13.5px] text-fg focus:outline-none focus:ring-2 focus:ring-brand-400"
-              />
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-subtle">Message</span>
-              <textarea
-                rows={16}
-                value={draft.body}
-                onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-line bg-elevated/40 px-3 py-2 text-[13px] leading-relaxed text-fg focus:outline-none focus:ring-2 focus:ring-brand-400"
-              />
-            </label>
-            <p className="text-[11.5px] leading-snug text-subtle">
-              Already filled in for this person — the merge fields are gone, so what you see is what they get.
-              Edits here go to this one message only; to change the wording for everybody, edit
-              <strong className="text-muted"> Travel support — checking the journey</strong> under the Email tab.
-            </p>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

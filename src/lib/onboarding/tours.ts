@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19d";
+export const TOUR_VERSION = "2026.10.19e";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.travel-eligibility",
+    title: "Travel follow-up: approve, and write in the row",
+    body: "Click a name in **Travel follow-up** to open their registration. **Checked — approve eligibility** records who confirmed the journey is over two hours, and shows it on the row. Each person has a letter ready in an editable box: a clarifying question for a False OOT, next steps (hotel, how they travel) for the rest.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Travel follow-up", href: "/admin/workspace/training-admin?tab=travel" },
+    since: "2026.10.19e",
   },
   {
     id: "training-week.self-check-in",

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Travel follow-up: open a person, approve their eligibility, write to them in the row",
+    body: "In **Training Week \u2192 Travel follow-up**, click a **name** to open the row \u2014 it shows their full registration, as under Registrants.\n\n**Travel eligibility.** Press **Checked \u2014 approve eligibility** once you have confirmed their journey is over two hours. The row then shows **Travel eligibility approved \u00b7 Checked and approved by {name} \u00b7 date**. It can be taken back.\n\n**A letter for everyone.** Each row has its letter in an **editable box**: a **clarifying question** for a False OOT, and **next steps** for everybody else (do they need a hotel room booked, and how are they travelling). Edit it right there and press Send \u2014 nothing goes until you confirm. The new wording lives under Email \u2192 Standing letters as *Travel support \u2014 reviewed, next steps*.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: self check-in, and cancelling with no reason",
     body: "**Self check-in.** The **Three days before** and **On the day** reminders now carry a **Check in** button (merge field {{check_in_link}}). It opens **30 minutes before the session starts**; earlier than that the page says when to come back. Self check-ins show as **self** on the door list. The pass page has the same Check in link.\n\n**Cancel, no reason.** Every letter\u2019s **Cancel my place** button now cancels in two taps \u2014 no reason is asked for, in the letters or on the page. The no-show line reads *A no-show may affect your eligibility for future BioHubNet training and programmes.*\n\nAll Training Week emails now go out as **HTML with a plain-text copy**, with check-in and cancel links drawn as buttons.",
     kind: "feature",

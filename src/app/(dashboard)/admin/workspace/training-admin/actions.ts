@@ -1206,6 +1206,9 @@ export async function decideSeats(
   return { ok: true, done, failed, sent };
 }
 
+/** Which travel letter: the clarifying question, or the next steps for somebody who qualifies. */
+type TravelLetterKind = "clarify" | "next";
+
 /**
  * Ask somebody about a travel claim their postal code does not support.
  *
@@ -1221,9 +1224,11 @@ export async function decideSeats(
 export async function sendTravelCheck(
   bookingId: string,
   edited?: { subject: string; body: string },
+  kind: TravelLetterKind = "clarify",
 ): Promise<{ ok: boolean; problem?: string; receipt?: Receipt }> {
   const admin = await requireAdmin();
-  const made = await travelCheckFor(bookingId);
+  if (kind !== "clarify" && kind !== "next") return { ok: false, problem: "That is not a letter." };
+  const made = await travelCheckFor(bookingId, kind);
   if ("problem" in made) return { ok: false, problem: made.problem };
 
   /*
@@ -1241,7 +1246,7 @@ export async function sendTravelCheck(
   );
 
   await logSend(admin.id, TRAVEL_CHECK, {
-    bookingId, email: made.mail.to, postcode: made.fsa, state: receipt.state, edited: Boolean(edited),
+    bookingId, email: made.mail.to, postcode: made.fsa, state: receipt.state, edited: Boolean(edited), kind,
   });
   revalidatePath(PAGE);
   return { ok: true, receipt };
@@ -1250,9 +1255,11 @@ export async function sendTravelCheck(
 /** The same letter, shown rather than sent — what the compose box opens with. */
 export async function draftTravelCheck(
   bookingId: string,
+  kind: TravelLetterKind = "clarify",
 ): Promise<{ ok: boolean; problem?: string; to?: string; name?: string; subject?: string; body?: string }> {
   await requireAdmin();
-  const made = await travelCheckFor(bookingId);
+  if (kind !== "clarify" && kind !== "next") return { ok: false, problem: "That is not a letter." };
+  const made = await travelCheckFor(bookingId, kind);
   if ("problem" in made) return { ok: false, problem: made.problem };
   return { ok: true, to: made.mail.to, name: made.name, subject: made.mail.subject, body: made.mail.body };
 }
@@ -1260,6 +1267,7 @@ export async function draftTravelCheck(
 /** Everything both of those need: who, where they said they were, and the letter. */
 async function travelCheckFor(
   bookingId: string,
+  kind: TravelLetterKind,
 ): Promise<{ mail: SentMail; name: string; fsa: string } | { problem: string }> {
   if (!isId(bookingId)) return { problem: "That is not a seat." };
 
@@ -1274,29 +1282,85 @@ async function travelCheckFor(
 
   const answers = (booking.submission?.data ?? {}) as Record<string, unknown>;
   const estimate = travelFromPostcode(String(answers.postcode ?? "").trim());
-  if (!estimate) return { problem: "There is no postal code on that registration to ask about." };
+  // Only the clarifying letter quotes the postal code; the next-steps one needs none.
+  if (!estimate && kind === "clarify") return { problem: "There is no postal code on that registration to ask about." };
 
   const to = booking.submission?.email ?? booking.user?.email ?? null;
   const name = registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(to)) || "";
-  const draft = await personLetterDraft("support_check_postcode", {
+  const draft = await personLetterDraft(kind === "clarify" ? "support_check_postcode" : "support_next_steps", {
     to, name,
-    vars: { postcode: estimate.fsa, travel_time: travelWords(estimate) },
+    vars: estimate ? { postcode: estimate.fsa, travel_time: travelWords(estimate) } : {},
   });
   if (!draft.ok) return { problem: receiptProblem(draft.receipt) };
-  return { mail: draft.mail, name, fsa: estimate.fsa };
+  return { mail: draft.mail, name, fsa: estimate?.fsa ?? "" };
 }
 
 /** Why a letter could not even be written, in words a coordinator can act on. */
 function receiptProblem(r: Receipt): string {
   switch (r.state) {
     case "no-address": return "There is no email address on that registration.";
-    case "no-template": return "The “Travel support — checking the journey” letter has been deleted from the standing letters.";
+    case "no-template": return "That travel letter has been deleted from the standing letters.";
     case "unfilled": return `The letter has nothing to put in ${r.missing.map((m) => `{{${m}}}`).join(", ")}.`;
     default: return "That letter could not be written.";
   }
 }
 
 const TRAVEL_CHECK = "training_admin.travel_check";
+
+/**
+ * What Travel follow-up shows beyond the bookings: which travel letters
+ * each person has been sent (by address), and who checked and approved
+ * each person's travel eligibility (by the seat the row carries).
+ */
+export async function loadTravelStatus(bookingIds: string[]): Promise<{
+  sent: Record<string, TravelLetterKind[]>;
+  approvals: Record<string, { byName: string; at: string }>;
+}> {
+  await requireAdmin();
+  const ids = [...new Set(bookingIds)].filter(isId).slice(0, 1000);
+  const [logs, seats] = await Promise.all([
+    prisma.auditLog.findMany({ where: { action: TRAVEL_CHECK }, select: { detail: true }, orderBy: { createdAt: "desc" }, take: 1000 }),
+    prisma.workshopBooking.findMany({ where: { id: { in: ids } }, select: { id: true, submission: { select: { data: true } } } }),
+  ]);
+  const sent: Record<string, TravelLetterKind[]> = {};
+  for (const r of logs) {
+    try {
+      const d = JSON.parse(r.detail ?? "{}") as { email?: string; state?: string; kind?: string };
+      // Only a letter that actually went counts.
+      if (!d.email || (d.state !== "sent" && d.state !== "sent-to-you")) continue;
+      const kind: TravelLetterKind = d.kind === "next" ? "next" : "clarify";
+      const k = d.email.toLowerCase();
+      if (!sent[k]?.includes(kind)) sent[k] = [...(sent[k] ?? []), kind];
+    } catch { /* a log line we cannot read is not a reason to fail the page */ }
+  }
+  const approvals: Record<string, { byName: string; at: string }> = {};
+  for (const s of seats) {
+    const a = ((s.submission?.data ?? {}) as Record<string, unknown>).__travelEligibility as { byName?: unknown; at?: unknown } | undefined;
+    if (a && typeof a.byName === "string" && typeof a.at === "string") approvals[s.id] = { byName: a.byName, at: a.at };
+  }
+  return { sent, approvals };
+}
+
+/**
+ * Travel eligibility checked and approved (or taken back), with who did
+ * it and when written on the registration. Approving also accepts the
+ * out-of-town claim, so the decision model and this tab agree.
+ */
+export async function setTravelEligibility(bookingId: string, approved: boolean): Promise<{ ok: boolean; problem?: string; byName?: string; at?: string }> {
+  const admin = await requireAdmin();
+  if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
+  const booking = await prisma.workshopBooking.findUnique({ where: { id: bookingId }, select: { submission: { select: { id: true, data: true } } } });
+  if (!booking?.submission) return { ok: false, problem: "That registration no longer exists." };
+  const data = { ...((booking.submission.data ?? {}) as Record<string, unknown>) };
+  const byName = admin.name || admin.email || "An admin";
+  const at = new Date().toISOString();
+  if (approved) { data.__ootAccepted = true; data.__travelEligibility = { byId: admin.id ?? null, byName, at }; }
+  else { delete data.__ootAccepted; delete data.__travelEligibility; }
+  await prisma.eventFormSubmission.update({ where: { id: booking.submission.id }, data: { data: data as object } });
+  await logSend(admin.id, "training_admin.travel_eligibility", { bookingId, approved });
+  revalidatePath(PAGE);
+  return approved ? { ok: true, byName, at } : { ok: true };
+}
 
 /** Who has already been asked, so the button does not offer it twice. */
 export async function loadTravelChecks(): Promise<string[]> {

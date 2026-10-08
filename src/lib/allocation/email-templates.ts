@@ -273,6 +273,24 @@ We are able to support your travel to {{event}}. The details of what is covered,
 Please keep your receipts — we cannot reimburse anything we have no record of. If your plans change and you no longer need the support, tell us, because it can go to somebody else.` + SIGN_OFF,
   },
   {
+    id: "support_next_steps",
+    stage: "support",
+    name: "Travel support — reviewed, next steps",
+    when: "When somebody's journey is over two hours and we need their travel and hotel plans.",
+    subject: "Your travel to {{event}} — next steps",
+    body:
+      `Hello {{first_name}},
+
+We have reviewed your registration for {{event}} and your one-way journey is over two hours, so you qualify for travel support.
+
+To arrange it, please reply to this message and tell us:
+
+  1. Do you need a hotel room booked for you? If so, for which nights?
+  2. How will you travel to Toronto — train, bus, car or flight — and where from?
+
+We will confirm the details once we have your answers.` + SIGN_OFF,
+  },
+  {
     /*
      * The one letter here that is asking a question rather than giving
      * an answer, and the only one where the recipient might feel
