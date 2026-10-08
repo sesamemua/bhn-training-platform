@@ -18,7 +18,7 @@ import {
 import { uploadFile } from "@/lib/design-review/render";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 
-const BASE = "/admin/workspace/website-review/design";
+const BASE = "/admin/workspace/design-review";
 const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
 const field = "w-full rounded-md border border-line bg-card px-2.5 py-1.5 text-[13px] text-fg focus:border-brand-400 focus:outline-none";
 const ghost = "inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40";
@@ -122,7 +122,7 @@ export function DesignProjectList({ projects, staff, defaultApproverId }: { proj
 // ── one project ──────────────────────────────────────────────────────
 export interface ArtworkCard {
   id: string; title: string; description: string; thumb: string | null; pages: number;
-  approval: Approval; openComments: number; reviewers: { id: string; name: string; state: Seen }[];
+  approval: Approval; openComments: number; round: number; locked: boolean; reviewers: { id: string; name: string; state: Seen; asked: boolean }[];
 }
 
 const SeenIcon = ({ state }: { state: Seen }) =>
@@ -217,13 +217,14 @@ export function DesignProjectView({ project, artworks, staff }: {
                   <Link href={`${BASE}?a=${a.id}`} className="text-[15px] font-bold text-fg hover:underline">{a.title}</Link>
                   <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${TONE[a.approval]}`}>{project.approverName ? `${project.approverName.split(" ")[0]}: ${APPROVAL_LABEL[a.approval]}` : APPROVAL_LABEL[a.approval]}</span>
                   <span className="inline-flex items-center gap-1 text-[12px] text-muted"><MessageSquare size={12} /> {a.openComments} open</span>
+                  <span className="text-[12px] text-muted">Round {a.round}{a.locked ? " · locked" : ""}</span>
                   {a.pages > 1 && <span className="text-[12px] text-muted">{a.pages} pages</span>}
                 </div>
                 {a.description && <p className="mt-0.5 text-[12.5px] text-muted">{a.description}</p>}
                 <ul className="mt-2 flex flex-wrap gap-1.5">
                   {a.reviewers.map((r) => (
                     <li key={r.id} title={`${r.name} — ${SEEN_WORD[r.state]}`} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] ${r.state === "none" ? "border-line text-subtle" : "border-line text-fg"}`}>
-                      <SeenIcon state={r.state} /> <span className="font-semibold">{initials(r.name)}</span> <span className="text-subtle">{SEEN_WORD[r.state]}</span>
+                      <SeenIcon state={r.state} /> <span className="font-semibold">{initials(r.name)}</span> <span className="text-subtle">{r.state === "none" && r.asked ? "asked" : SEEN_WORD[r.state]}</span>
                     </li>
                   ))}
                 </ul>

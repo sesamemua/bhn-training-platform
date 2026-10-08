@@ -1,7 +1,7 @@
 /** Design review: who has seen / OK'd an artwork, which pages are accepted, and where a pin may sit. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PinInput, PagesSchema, initials, isApproval, pagesOf, reviewerStates } from "../../src/lib/design-review/types";
+import { PinInput, PagesSchema, designBrief, initials, isApproval, pagesOf, reviewerStates } from "../../src/lib/design-review/types";
 
 const page = { key: "design-review/a.jpg", url: "https://cdn.example.com/design-review/a.jpg", w: 3200, h: 828 };
 
@@ -10,9 +10,11 @@ test("each reviewer rolls up to not yet / seen / OK", () => {
   const states = reviewerStates(people, [
     { userId: "a", viewedAt: new Date(), okAt: new Date() },
     { userId: "b", viewedAt: new Date(), okAt: null },
+    { userId: "c", viewedAt: null, okAt: null, requestedAt: new Date() },
     { userId: "gone", viewedAt: new Date(), okAt: new Date() },
   ]);
   assert.deepEqual(states.map((s) => s.state), ["ok", "viewed", "none"]);
+  assert.deepEqual(states.map((s) => s.asked), [false, false, true]);
 });
 
 test("only pages stored under the design-review prefix are accepted", () => {
@@ -33,4 +35,16 @@ test("approval states and initials", () => {
   assert.equal(isApproval("approved"), true);
   assert.equal(isApproval("maybe"), false);
   assert.equal(initials("Yoo Jin Park"), "YJ");
+});
+
+test("the copied feedback lists open comments only, numbered as on the artwork, with replies", () => {
+  const pin = (id: string, body: string, status: string, at: string, parentId: string | null = null) =>
+    ({ id, parentId, page: 0, x: 0.25, y: 0.5, authorName: "Alison", body, status, createdAt: at });
+  const text = designBrief({
+    project: "2026 Annual Symposium", title: "Stand-up banners", round: 2, pages: 1,
+    pins: [pin("a", "Old point", "resolved", "1"), pin("b", "Move the logo up", "open", "2"), pin("r", "Agreed", "open", "3", "b")],
+  });
+  assert.match(text, /^2026 Annual Symposium — Stand-up banners\nDesign feedback, round 2: 1 open comment\n/);
+  assert.match(text, /2\. \(25% from the left, 50% from the top\) Alison: Move the logo up\n   ↳ Alison: Agreed/);
+  assert.doesNotMatch(text, /Old point/);
 });

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19a";
+export const TOUR_VERSION = "2026.10.19b";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -73,6 +73,16 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.10.16t",
   },
   {
+    id: "design-review.rounds-and-requests",
+    title: "Design Review: ask a teammate, work in rounds",
+    body: "Design Review has its own place in the sidebar, under Website Review. On an artwork, the paper-plane beside a name emails that person a request to review. When the comments are in, **Copy feedback and lock round** hands the open ones to whoever makes the changes; **Start Round 2** opens it again.",
+    path: "/admin/workspace/design-review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Design Review", href: "/admin/workspace/design-review" },
+    since: "2026.10.19b",
+  },
+  {
     id: "training-week.approval-letter-cancel-buttons",
     title: "Approval letters: a cancel button per workshop",
     body: "Approval letters no longer carry the QR code or the room — they say the location will follow closer to the date, and calendar invitations go out without one. Each workshop in the letter has its own **Cancel my place** button. Under the dashboard’s settings, **Edit location, time and note** on any workshop changes what its attendees are told.",
@@ -86,10 +96,10 @@ export const TOUR_STEPS: TourStep[] = [
     id: "review.design-review",
     title: "Pin a comment anywhere on a design",
     body: "Website Review is now **Review**, with a **Design review** tab. Open an artwork and click anywhere on it to leave a comment on that exact spot. Each one shows who has seen it, who is OK with it, and the approver’s decision. Start with the **2026 Annual Symposium** project — or create your own and upload a PDF or image.",
-    path: "/admin/workspace/website-review/design",
+    path: "/admin/workspace/design-review",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],
-    cta: { label: "Open Design review", href: "/admin/workspace/website-review/design" },
+    cta: { label: "Open Design review", href: "/admin/workspace/design-review" },
     since: "2026.10.18z",
   },
   {

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Design Review: its own sidebar item, ask a teammate, and rounds",
+    body: "**Design Review** now sits in the sidebar under **Website Review** (which has its name back). On an artwork, the **paper-plane button** beside a teammate\u2019s name **emails them a request to review** with the link, and shows **Asked** until they open it.\n\nFeedback now works in **rounds**, like Website Review: **Copy feedback and lock round** puts the open comments on your clipboard for whoever makes the changes and **locks the round** \u2014 no new comments or edits \u2014 until you press **Start Round N+1**. Open comments carry over.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week approval letters: no QR, no room, a cancel button per workshop",
     body: "The **approval letter** no longer carries the **QR code** or the **room** \u2014 it says *Location information will be provided closer to the date.* Each approved workshop gets its own **Cancel my place** button, which opens the existing \u201cI can\u2019t make it\u201d page. **Calendar invitations** are sent **without a location**.\n\nIn **Training Week \u2192 Dashboard \u2192 settings**, every workshop now has **Edit location, time and note**: the note goes in approval letters and on passes; the location shows on passes and in reminders. A change is not emailed to people already written to \u2014 use the Email tab for that.",
     kind: "improvement",

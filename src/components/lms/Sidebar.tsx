@@ -439,12 +439,23 @@ const workspaceNewsletterItem: NavItem = {
 // live page, threads resolve, and the open ones export as a brief for an
 // AI coding agent.
 const workspaceWebsiteReviewItem: NavItem = {
-  label: "Review",
+  label: "Website Review",
   href: "/admin/workspace/website-review",
   icon: MessageSquareText,
   minRole: "instructor",
   description:
-    "Comment on any page of biohubnet.ca, or pin comments anywhere on a design (one-pagers, banners) — reply, resolve, see who has looked and what is approved.",
+    "Comment on any page of biohubnet.ca, reply to each other, resolve as fixes land — then export the open threads as a revision brief for Claude Code or Codex, anchored to the exact text on the page.",
+};
+
+// WORKSPACE → Design Review, under Website Review: the same idea for
+// artwork — pin a comment anywhere on a one-pager or a banner.
+const workspaceDesignReviewItem: NavItem = {
+  label: "Design Review",
+  href: "/admin/workspace/design-review",
+  icon: MessageSquareText,
+  minRole: "instructor",
+  description:
+    "Pin comments anywhere on a design (one-pagers, banners), ask a teammate to review, see who has looked and what is approved — then copy the round's feedback for the designer.",
 };
 
 
@@ -2176,6 +2187,7 @@ export function Sidebar({
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Website">
               <NavLink item={workspaceWebsiteReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceDesignReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             {/* The general tools. Admin moved to 2026 Symposium — it is
                 only ever about that event — and is deliberately NOT

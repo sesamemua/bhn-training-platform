@@ -15,7 +15,6 @@ import { MessageSquareText, ArrowLeft, ExternalLink } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
-import { ReviewTabs } from "@/components/workspace/ReviewTabs";
 import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { NewPageReviewForm } from "@/components/workspace/NewPageReviewForm";
 import { BookmarkletPanel } from "@/components/workspace/BookmarkletPanel";
@@ -112,10 +111,9 @@ export default async function WebsiteReviewPage({
     <div className="space-y-6">
       <PageHero
         eyebrow={<><MessageSquareText size={11} /> Workspace</>}
-        title="Review"
+        title="Website Review"
         description="Leave comments on a live page, reply to each other, and resolve them as they land. When a round is done, export the open threads as a brief for Claude Code or Codex — anchored to the exact text on the page so the change lands where you meant it."
       />
-      <ReviewTabs active="website" />
 
       {active ? (
         <>

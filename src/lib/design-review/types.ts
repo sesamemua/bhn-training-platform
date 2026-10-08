@@ -47,11 +47,33 @@ export const isApproval = (v: unknown): v is Approval => (APPROVALS as readonly 
 export type Seen = "none" | "viewed" | "ok";
 export interface Reviewer { id: string; name: string }
 /** Each reviewer's place on an artwork: not opened it, seen it, or said it is OK. */
-export function reviewerStates(reviewers: Reviewer[], reviews: { userId: string; viewedAt: unknown; okAt: unknown }[]): (Reviewer & { state: Seen })[] {
+export function reviewerStates(reviewers: Reviewer[], reviews: { userId: string; viewedAt: unknown; okAt: unknown; requestedAt?: unknown }[]): (Reviewer & { state: Seen; asked: boolean })[] {
   const by = new Map(reviews.map((r) => [r.userId, r]));
   return reviewers.map((p) => {
     const r = by.get(p.id);
-    return { ...p, state: r?.okAt ? "ok" : r?.viewedAt ? "viewed" : "none" };
+    return { ...p, state: r?.okAt ? "ok" : r?.viewedAt ? "viewed" : "none", asked: !!r?.requestedAt };
   });
+}
+
+export interface BriefPin { id: string; parentId: string | null; page: number; x: number; y: number; authorName: string; body: string; status: string; createdAt: string }
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+/**
+ * The round's open comments as text to hand to whoever makes the changes.
+ * Numbered as on the artwork (by when the thread started), each with where
+ * it sits — a share of the page from its left and top edges.
+ */
+export function designBrief(a: { project: string; title: string; round: number; pages: number; pins: BriefPin[] }): string {
+  const byTime = (x: BriefPin, y: BriefPin) => x.createdAt.localeCompare(y.createdAt);
+  const threads = a.pins.filter((p) => !p.parentId).sort(byTime);
+  const open = threads.filter((t) => t.status === "open");
+  const out = [`${a.project} — ${a.title}`, `Design feedback, round ${a.round}: ${open.length} open comment${open.length === 1 ? "" : "s"}`, ""];
+  if (!open.length) out.push("No open comments.");
+  for (const t of open) {
+    const where = `${a.pages > 1 ? `page ${t.page + 1}, ` : ""}${pct(t.x)} from the left, ${pct(t.y)} from the top`;
+    out.push(`${threads.indexOf(t) + 1}. (${where}) ${t.authorName}: ${t.body}`);
+    for (const r of a.pins.filter((p) => p.parentId === t.id).sort(byTime)) out.push(`   ↳ ${r.authorName}: ${r.body}`);
+    out.push("");
+  }
+  return out.join("\n").trim();
 }
 export const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";

@@ -6884,6 +6884,10 @@ model DesignArtwork {
   approvalNote String        @default("")
   approvalById String?
   approvalAt   DateTime?
+  /// The feedback round. Copying the feedback locks it (lockedAt); starting
+  /// the next round adds one and unlocks.
+  round        Int           @default(1)
+  lockedAt     DateTime?
   createdById  String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -6911,6 +6915,8 @@ model DesignPin {
   body       String
   /// open | resolved (on the thread's first comment).
   status     String        @default("open")
+  /// The round the comment was made in.
+  round      Int           @default(1)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
@@ -6926,6 +6932,9 @@ model DesignReview {
   userName  String
   viewedAt  DateTime?
   okAt      DateTime?
+  /// Somebody asked this person to review it.
+  requestedAt     DateTime?
+  requestedByName String?
 
   @@unique([artworkId, userId])
 }

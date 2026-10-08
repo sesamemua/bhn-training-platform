@@ -12,19 +12,22 @@
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, CircleDashed, Eye, Loader2, MessageSquarePlus, Minus, Plus, RotateCcw, X } from "lucide-react";
-import { APPROVAL_LABEL, type Approval, type Page, type Seen } from "@/lib/design-review/types";
+import { Check, CheckCircle2, CircleDashed, Copy, Eye, Loader2, Lock, MessageSquarePlus, Minus, Plus, RotateCcw, Send, X } from "lucide-react";
+import { APPROVAL_LABEL, designBrief, type Approval, type Page, type Seen } from "@/lib/design-review/types";
 import {
-  addDesignPin, deleteDesignPin, editDesignPin, markDesignSeen, replyDesignPin, resolveDesignPin, setDesignApproval, setDesignOk,
+  addDesignPin, deleteDesignPin, editDesignPin, lockDesignRound, markDesignSeen, replyDesignPin, requestDesignReview, resolveDesignPin,
+  setDesignApproval, setDesignOk, startDesignRound,
 } from "@/lib/design-review/actions";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 
-export interface PinRow { id: string; page: number; x: number; y: number; parentId: string | null; authorId: string | null; authorName: string; body: string; status: string; createdAt: string }
+export interface PinRow { id: string; page: number; x: number; y: number; parentId: string | null; authorId: string | null; authorName: string; body: string; status: string; round: number; createdAt: string }
 export interface ArtworkViewData {
   id: string; title: string; description: string; pages: Page[];
   approval: Approval; approvalNote: string; approvalAt: string | null;
+  /** The feedback round, whether it is locked, and the project's name (for the copied feedback). */
+  round: number; locked: boolean; project: string;
   pins: PinRow[];
-  reviewers: { id: string; name: string; state: Seen }[];
+  reviewers: { id: string; name: string; state: Seen; asked: boolean }[];
 }
 
 const APPROVAL_TONE: Record<Approval, string> = {
@@ -51,6 +54,8 @@ export function DesignArtworkView({ artwork, me, approver }: {
   const [showResolved, setShowResolved] = useState(true);
   const [note, setNote] = useState(artwork.approvalNote);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const locked = artwork.locked;
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
 
   // Seen — recorded once the page is really on screen, not when it is merely fetched.
@@ -77,7 +82,17 @@ export function DesignArtworkView({ artwork, me, approver }: {
   const iOk = mine?.state === "ok";
   const isApprover = approver?.id === me.id;
 
+  /** Copy the round's open comments; the first copy also locks the round. */
+  const copyFeedback = async () => {
+    const text = designBrief({ project: artwork.project, title: artwork.title, round: artwork.round, pages: artwork.pages.length, pins: artwork.pins });
+    try { await navigator.clipboard.writeText(text); } catch { setError("Your browser blocked copying — allow clipboard access and try again."); return; }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+    if (!locked) run(() => lockDesignRound(artwork.id), () => { setDraft(null); setEditing(null); });
+  };
+
   const place = (page: number, e: React.MouseEvent<HTMLDivElement>) => {
+    if (locked) return;
     if ((e.target as HTMLElement).closest("[data-pin],[data-card]")) return;
     const r = e.currentTarget.getBoundingClientRect();
     setOpenId(null);
@@ -100,7 +115,9 @@ export function DesignArtworkView({ artwork, me, approver }: {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-muted">
-          <span className="inline-flex items-center gap-1.5 font-semibold text-fg"><MessageSquarePlus size={14} /> Click anywhere on the artwork to comment</span>
+          {locked
+            ? <span className="inline-flex items-center gap-1.5 font-semibold text-amber-700"><Lock size={14} /> Round {artwork.round} is locked — start the next round to comment again</span>
+            : <span className="inline-flex items-center gap-1.5 font-semibold text-fg"><MessageSquarePlus size={14} /> Round {artwork.round} · Click anywhere on the artwork to comment</span>}
           <span className="ml-auto inline-flex items-center gap-1">
             <button type="button" aria-label="Zoom out" disabled={zoom === ZOOMS[0]} onClick={() => setZoom(ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)])} className="rounded-md border border-line p-1 text-fg disabled:opacity-40"><Minus size={13} /></button>
             <span className="w-12 text-center tabular-nums text-fg">{Math.round(zoom * 100)}%</span>
@@ -120,7 +137,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
                 <div
                   ref={(el) => { if (el) pageRefs.current.set(i, el); else pageRefs.current.delete(i); }}
                   onClick={(e) => place(i, e)}
-                  className="relative cursor-crosshair select-none bg-white shadow-md"
+                  className={`relative select-none bg-white shadow-md ${locked ? "cursor-default" : "cursor-crosshair"}`}
                   style={{ aspectRatio: `${pg.w} / ${pg.h}` }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -146,7 +163,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
                     <div key={`card-${t.id}`} data-card className="absolute z-20 w-72 cursor-auto rounded-xl border border-line bg-card-solid p-3 text-left shadow-2xl" style={beside(t.x, t.y)}>
                       <div className="flex items-center gap-2">
                         <span className={`grid h-5 w-5 place-items-center rounded-full text-[10.5px] font-bold text-white ${t.status === "open" ? "bg-rose-600" : "bg-slate-400"}`}>{numberOf.get(t.id)}</span>
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-subtle">{t.status === "open" ? "Open" : "Resolved"}</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-subtle">{t.status === "open" ? "Open" : "Resolved"} · Round {t.round}</span>
                         <button type="button" aria-label="Close" onClick={() => setOpenId(null)} className="ml-auto rounded p-0.5 text-subtle hover:text-fg"><X size={13} /></button>
                       </div>
                       <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto">
@@ -164,7 +181,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
                             ) : (
                               <p className="whitespace-pre-wrap leading-snug text-fg">{c.body}</p>
                             )}
-                            {(c.authorId === me.id || me.admin) && editing?.id !== c.id && (
+                            {!locked && (c.authorId === me.id || me.admin) && editing?.id !== c.id && (
                               <p className="mt-0.5 flex gap-2 text-[11px]">
                                 <button type="button" onClick={() => setEditing({ id: c.id, text: c.body })} className="font-semibold text-muted hover:text-fg">Edit</button>
                                 <ConfirmPopover message={c.parentId ? "Delete this reply?" : "Delete this comment and its replies?"} confirmLabel="Delete" tone="danger" align="start" onConfirm={() => run(() => deleteDesignPin(c.id), () => { if (!c.parentId) setOpenId(null); })}>
@@ -175,6 +192,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
                           </li>
                         ))}
                       </ul>
+                      {!locked && <>
                       <textarea id={`pin-reply-${t.id}`} aria-label="Reply" value={reply} rows={2} placeholder="Reply…" onChange={(e) => setReply(e.target.value)} className="mt-2 w-full rounded-md border border-line bg-card px-2 py-1 text-[12.5px] text-fg" />
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         <button type="button" disabled={pending || !reply.trim()} onClick={() => run(() => replyDesignPin(t.id, reply), () => setReply(""))} className="rounded-md bg-brand-600 px-2.5 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Reply</button>
@@ -182,6 +200,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
                           {t.status === "open" ? <><Check size={12} /> Resolve</> : <><RotateCcw size={12} /> Reopen</>}
                         </button>
                       </div>
+                      </>}
                     </div>
                   ))}
 
@@ -238,7 +257,12 @@ export function DesignArtworkView({ artwork, me, approver }: {
               <li key={r.id} className="flex items-center gap-2 text-[12.5px]">
                 {r.state === "ok" ? <CheckCircle2 size={14} className="text-emerald-600" /> : r.state === "viewed" ? <Eye size={14} className="text-sky-600" /> : <CircleDashed size={14} className="text-subtle" />}
                 <span className={r.state === "none" ? "text-muted" : "text-fg"}>{r.name}{r.id === me.id ? " (you)" : ""}</span>
-                <span className="ml-auto text-[11px] text-subtle">{r.state === "ok" ? "OK'd" : r.state === "viewed" ? "Seen" : "Not yet"}</span>
+                <span className="ml-auto text-[11px] text-subtle">{r.state === "ok" ? "OK'd" : r.state === "viewed" ? "Seen" : r.asked ? "Asked" : "Not yet"}</span>
+                {r.id !== me.id && r.state !== "ok" && (
+                  <ConfirmPopover message={`Email ${r.name} a request to review this?`} detail="They get a link to this artwork." confirmLabel="Send request" onConfirm={() => run(() => requestDesignReview(artwork.id, r.id, ""))}>
+                    {(o) => <button type="button" disabled={pending} onClick={o} aria-label={`Ask ${r.name} to review`} title={r.asked ? "Ask again" : "Ask to review"} className="rounded p-0.5 text-subtle hover:text-brand-600"><Send size={12} /></button>}
+                  </ConfirmPopover>
+                )}
               </li>
             ))}
           </ul>
@@ -249,11 +273,22 @@ export function DesignArtworkView({ artwork, me, approver }: {
         </section>
 
         <section className="rounded-xl border border-line bg-card p-3">
-          <h3 className="text-[12px] font-bold uppercase tracking-wide text-subtle">Comments · {open} open{threads.length > open ? `, ${threads.length - open} resolved` : ""}</h3>
+          <h3 className="text-[12px] font-bold uppercase tracking-wide text-subtle">Round {artwork.round} · {open} open{threads.length > open ? `, ${threads.length - open} resolved` : ""}</h3>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <button type="button" disabled={pending} onClick={copyFeedback} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-brand-700 disabled:opacity-50">
+              {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "Copied" : locked ? "Copy feedback" : "Copy feedback and lock round"}
+            </button>
+            {locked && (
+              <ConfirmPopover message={`Start Round ${artwork.round + 1}?`} detail="Comments open again. Anything still open carries over." confirmLabel={`Start Round ${artwork.round + 1}`} onConfirm={() => run(() => startDesignRound(artwork.id))}>
+                {(o) => <button type="button" disabled={pending} onClick={o} className="rounded-lg border border-line px-2.5 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated">Start Round {artwork.round + 1}</button>}
+              </ConfirmPopover>
+            )}
+          </div>
+          <p className="mt-1.5 text-[11.5px] text-subtle">{locked ? "Locked since the feedback was copied, so the list being worked from stays the same." : "Copying puts the open comments on your clipboard for whoever makes the changes, and locks this round."}</p>
           {threads.length === 0 ? (
-            <p className="mt-1.5 text-[12.5px] italic text-subtle">None yet. Click the artwork to add one.</p>
+            <p className="mt-2 text-[12.5px] italic text-subtle">None yet. Click the artwork to add one.</p>
           ) : (
-            <ol className="mt-1.5 max-h-[40vh] space-y-1 overflow-y-auto">
+            <ol className="mt-2 max-h-[40vh] space-y-1 overflow-y-auto">
               {threads.filter((t) => showResolved || t.status === "open").map((t) => (
                 <li key={t.id}>
                   <button type="button" onClick={() => jump(t)} className={`flex w-full items-start gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-elevated ${openId === t.id ? "bg-elevated" : ""}`}>
