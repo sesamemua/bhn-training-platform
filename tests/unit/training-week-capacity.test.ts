@@ -10,7 +10,7 @@ import { WorkshopRegistrationControl } from "../../src/components/training-week/
 
 const seats = (n: number, status = "pending", internal = false) => Array.from({ length: n }, () => ({ status, internal }));
 
-test("one bar shows demand, recommended additions, approvals and capacity on the same scale", () => {
+test("separate request and seat-plan tracks use the same capacity scale, including overflow", () => {
   for (const capacity of [0, 6, 10, 20]) {
     const cap = sessionCapacity(capacity, [
       ...seats(1, "confirmed"),
@@ -22,24 +22,49 @@ test("one bar shows demand, recommended additions, approvals and capacity on the
     ] }));
     const pct = (n: number) => `${n / Math.max(capacity, 10) * 100}%`;
     assert.ok(html.includes(`style="width:${pct(10)}" title="10 requested"`));
-    assert.ok(html.includes(`style="left:${pct(1)};width:${pct(4)}" title="4 recommended approval"`));
+    assert.ok(html.includes(`style="left:${pct(1)};width:${pct(4)};background-image:repeating-linear-gradient`));
     assert.ok(html.includes(`style="width:${pct(1)}" title="1 actual approved"`));
     assert.ok(html.includes(`style="left:${pct(capacity)}" title="${capacity} capacity"`));
     assert.match(html, />10<\/strong> requested/);
-    assert.match(html, />\+4<\/strong> recommended approval/);
+    assert.match(html, />4<\/strong> recommended approval/);
     assert.match(html, />1<\/strong> actual approved/);
-    assert.ok(html.includes(`>${capacity}</strong> capacity`));
+    assert.ok(html.includes(`>5/${capacity}</strong> planned / capacity`));
     assert.match(html, /aria-label="5 projected approvals: 1 actual approved \+ 4 recommended approval/);
-    const bar = html.slice(html.indexOf('role="img"'), html.indexOf('</li>'));
-    for (const label of ["requested", "recommended approval", "actual approved", "capacity"]) assert.ok(bar.includes(`</strong> ${label}`));
-    for (const colour of ["bg-sky-200", "bg-lime-200", "bg-teal-700"]) assert.ok(bar.includes(colour));
-    assert.ok(html.includes(`title="10 requested / ${capacity} capacity">10/${capacity}</span>`));
+    assert.ok(html.indexOf("Requests:") < html.indexOf("Seat plan:"));
+    assert.doesNotMatch(html, /grid-cols-4|bg-card\/95/);
+    for (const colour of ["bg-sky-500", "bg-lime-200", "bg-teal-700"]) assert.ok(html.includes(colour));
+    assert.ok(html.includes(`>10/${capacity}</strong> requested / capacity`));
     if (capacity < 10) {
       assert.ok(html.includes(`left:${pct(capacity)};width:${pct(10 - capacity)};background-image:repeating-linear-gradient`));
       assert.ok(html.includes(`title="${10 - capacity} requests over capacity"`));
     } else {
-      assert.doesNotMatch(html, /repeating-linear-gradient/);
+      assert.doesNotMatch(html, /title="\d+ requests over capacity"/);
     }
+  }
+});
+
+test("legacy Full highlights Pause without changing saved state or submitting a mutation", () => {
+  for (const initial of ["open", "paused", "full", "closed"] as const) {
+    let calls = 0;
+    const html = renderToStaticMarkup(createElement(WorkshopRegistrationControl, {
+      slug: "microbix", title: "Microbix", initial, save: async () => { calls++; return { ok: true }; },
+    }));
+    const selected = initial === "open" ? "Open" : initial === "closed" ? "Close" : "Pause";
+    const buttons = html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g) ?? [];
+    assert.equal(buttons.filter((b) => b.includes('aria-pressed="true"')).length, 1);
+    assert.ok(buttons.find((b) => b.includes('aria-pressed="true"'))?.endsWith(`${selected}</button>`));
+    if (initial === "full") assert.match(html, /Capacity reached/);
+    assert.equal(calls, 0);
+  }
+});
+
+test("empty and over-approved workshops keep finite track dimensions and explicit warnings", () => {
+  for (const cap of [sessionCapacity(0, []), sessionCapacity(2, seats(5, "confirmed"))]) {
+    const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
+      { id: "w", slug: "w", title: "Workshop", start: "2026-10-26T10:00:00Z", cap },
+    ] }));
+    assert.doesNotMatch(html, /NaN|Infinity/);
+    if (cap.over) assert.match(html, /3 over capacity/);
   }
 });
 
