@@ -30,3 +30,11 @@ test("a submission asking for a shut session is refused, one line each", () => {
   assert.equal(p.length, 1);
   assert.match(p[0], /Registration for this session is closed\. Please take it off your choices\./);
 });
+
+test("paused sessions stay unavailable to form choices and submission validation", () => {
+  const map = parseStatusMap(JSON.stringify({ [a.slug]: { state: "paused", message: "" } }));
+  assert.equal(statusOf(map, a.slug).state, "paused");
+  assert.equal(shutOptions([optA], map)[optA].label, "Paused");
+  const doc = { fields: [{ key: "sessions", type: "multi", options: [optA], slots: [{ option: optA }] }] } as unknown as BuiltForm;
+  assert.match(shutProblems(doc, { sessions: [optA] }, map)[0], /temporarily paused/);
+});

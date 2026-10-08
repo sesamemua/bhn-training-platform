@@ -21,7 +21,7 @@ function status(c: MonitorSession["cap"]): string {
   return `${left} left`;
 }
 
-export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession[]; action?: ReactNode }) {
+export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
   const requested = sessions.reduce((n, s) => n + s.cap.requested, 0);
   const projected = sessions.reduce((n, s) => n + s.cap.projectedApproved, 0);
@@ -35,6 +35,7 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
         <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">Training Week capacity</p>
         {action}
       </div>
+      {registered !== undefined && <p className="mt-2 text-[14px] text-fg"><strong className="text-[24px] tabular-nums">{registered === null ? "—" : registered.toLocaleString()}</strong> people registered</p>}
       <p className="mt-1 text-[12.5px] text-fg">
         <strong className="tabular-nums">{projected}</strong> projected approvals for <strong className="tabular-nums">{seats}</strong> student seats · {requested} requests
         {over > 0 && <span className="font-semibold text-rose-600"> · {over} over capacity</span>}
@@ -59,23 +60,24 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
                 <span className="shrink-0 tabular-nums text-muted" title={`${c.requested} requested / ${c.capacity} capacity`}>{c.requested}/{c.capacity}</span>
                 <span className={`shrink-0 rounded px-1.5 py-px text-[10.5px] font-semibold ${excess > 0 ? LEVEL.over.chip : tone.chip}`} title={detail}>{excess > 0 ? `+${excess} over` : status(c)}</span>
               </div>
+              {controls && <div className="mt-2 flex justify-end">{controls(s)}</div>}
               <div
-                className="relative mt-2 h-3 rounded-full bg-elevated"
+                className="relative mt-2 rounded-md border border-line bg-elevated"
                 role="img"
                 aria-label={detail}
                 title={detail}
               >
-                <div className="absolute inset-y-0 left-0 rounded-full border border-muted bg-fg/5" style={{ width: pct(c.requested) }} title={`${c.requested} requested`} aria-hidden />
-                {excess > 0 && <div className="absolute inset-y-0 rounded-r-full bg-rose-100 text-rose-600" style={{ left: pct(c.capacity), width: pct(excess), backgroundImage: "repeating-linear-gradient(135deg, transparent 0 4px, currentColor 4px 6px)" }} title={`${excess} requests over capacity`} aria-hidden />}
-                <div className={`absolute inset-y-0.5 opacity-40 ${tone.bar}`} style={{ left: pct(c.confirmed), width: pct(c.suggested) }} title={`${c.suggested} recommended approval`} aria-hidden />
-                <div className={`absolute inset-y-0.5 left-0 rounded-l-full ${tone.bar}`} style={{ width: pct(c.confirmed) }} title={`${c.confirmed} actual approved`} aria-hidden />
+                <div className="absolute inset-y-0 left-0 rounded-md border border-sky-500 bg-sky-200" style={{ width: pct(c.requested) }} title={`${c.requested} requested`} aria-hidden />
+                {excess > 0 && <div className="absolute inset-y-0 rounded-r-md bg-rose-100 text-rose-600" style={{ left: pct(c.capacity), width: pct(excess), backgroundImage: "repeating-linear-gradient(135deg, transparent 0 4px, currentColor 4px 6px)" }} title={`${excess} requests over capacity`} aria-hidden />}
+                <div className="absolute inset-y-0.5 bg-lime-200" style={{ left: pct(c.confirmed), width: pct(c.suggested) }} title={`${c.suggested} recommended approval`} aria-hidden />
+                <div className="absolute inset-y-0.5 left-0 rounded-l-md bg-teal-700" style={{ width: pct(c.confirmed) }} title={`${c.confirmed} actual approved`} aria-hidden />
                 <div className="absolute -inset-y-1 -translate-x-1/2 border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} aria-hidden />
-              </div>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] leading-snug text-muted tabular-nums">
-                <span className="inline-flex items-center gap-1.5"><span className="h-2 w-3 shrink-0 rounded-sm border border-muted bg-fg/5" aria-hidden /><strong className="text-fg">{c.requested}</strong> requested</span>
-                <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-3 shrink-0 opacity-40 ${tone.bar}`} aria-hidden /><strong className="text-fg">+{c.suggested}</strong> recommended approval</span>
-                <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-3 shrink-0 ${tone.bar}`} aria-hidden /><strong className="text-fg">{c.confirmed}</strong> actual approved</span>
-                <span className="inline-flex items-center gap-1.5"><span className="h-3 w-0 shrink-0 border-l-2 border-dashed border-fg" aria-hidden /><strong className="text-fg">{c.capacity}</strong> capacity</span>
+                <div className="relative grid grid-cols-2 gap-1 p-2 text-[11px] leading-snug text-fg tabular-nums sm:grid-cols-4" aria-hidden>
+                  <span className="inline-flex min-w-0 items-center gap-1.5 bg-card/95 px-1.5 py-1"><span className="h-2 w-2 shrink-0 bg-sky-400" /><span><strong>{c.requested}</strong> requested</span></span>
+                  <span className="inline-flex min-w-0 items-center gap-1.5 bg-card/95 px-1.5 py-1"><span className="h-2 w-2 shrink-0 bg-lime-300" /><span><strong>+{c.suggested}</strong> recommended approval</span></span>
+                  <span className="inline-flex min-w-0 items-center gap-1.5 bg-card/95 px-1.5 py-1"><span className="h-2 w-2 shrink-0 bg-teal-700" /><span><strong>{c.confirmed}</strong> actual approved</span></span>
+                  <span className="inline-flex min-w-0 items-center gap-1.5 bg-card/95 px-1.5 py-1"><span className="h-3 w-0 shrink-0 border-l-2 border-dashed border-fg" /><span><strong>{c.capacity}</strong> capacity</span></span>
+                </div>
               </div>
             </li>
           );

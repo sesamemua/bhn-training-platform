@@ -17,11 +17,12 @@ import { sessionParts } from "@/lib/formbuilder/calendar";
 import type { BuiltForm } from "@/lib/formbuilder/types";
 
 export const WORKSHOP_STATUS_KEY = "trainingWeek.workshopStatus";
-export const STATES = ["open", "full", "closed"] as const;
+export const STATES = ["open", "paused", "full", "closed"] as const;
 export type WorkshopState = (typeof STATES)[number];
-export const STATE_LABEL: Record<WorkshopState, string> = { open: "Open", full: "Full", closed: "Closed" };
+export const STATE_LABEL: Record<WorkshopState, string> = { open: "Open", paused: "Paused", full: "Full", closed: "Closed" };
 /** What a session says when the team has not written its own message. */
 export const DEFAULT_MESSAGE: Record<Exclude<WorkshopState, "open">, string> = {
+  paused: "Registration for this session is temporarily paused.",
   full: "This session is full.",
   closed: "Registration for this session is closed.",
 };

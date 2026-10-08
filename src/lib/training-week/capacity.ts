@@ -61,4 +61,5 @@ export interface MonitorSession {
   title: string;
   start: string;
   cap: SessionCapacity;
+  registration?: import("./workshop-status").StatusEntry;
 }

@@ -13,6 +13,7 @@ import { saveWorkshopStatus } from "@/app/(dashboard)/admin/workspace/training-a
 
 const TONE: Record<WorkshopState, string> = {
   open: "bg-emerald-600 text-white",
+  paused: "bg-amber-600 text-white",
   full: "bg-amber-500 text-white",
   closed: "bg-rose-600 text-white",
 };

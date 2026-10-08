@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CapacityMonitor } from "@/components/training-week/CapacityMonitor";
+import { saveWorkshopRegistration } from "@/lib/training-week/workshop-registration";
 import { loadCapacityMonitor } from "@/lib/training-week/capacity-server";
 import {
   ArrowRight, ClipboardList,
@@ -311,24 +311,8 @@ export async function AdminDashboard({
 
       {committeeBadge}
 
-      {/* Registrations for the events coming up — under the cover, never above it.
-          How full the week is comes first, above the switch that closes it. */}
-      {capacity.length > 0 && (
-        <article className="aero-frame">
-          <div className="aero-card">
-            <CapacityMonitor
-              sessions={capacity}
-              action={
-                <Link href="/admin/workspace/training-admin?tab=capacity" className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">
-                  Open Training Week →
-                </Link>
-              }
-            />
-          </div>
-        </article>
-      )}
+      <RegistrationCounts sessions={capacity} saveWorkshopState={saveWorkshopRegistration} />
       <RegistrationSwitch />
-      <RegistrationCounts />
       <MarketingMetrics />
 
       {/* ════ SIDEBAR RIGHT — content LEFT, quick-action rail RIGHT ═ */}

@@ -9,6 +9,7 @@ import { isInternal } from "./internal";
 import { loadInternalSet } from "./internal-server";
 import { sessionCapacity, type MonitorSession } from "./capacity";
 import { currentSeatSuggestions } from "@/lib/allocation/seat-suggestions-server";
+import { WORKSHOP_STATUS_KEY, parseStatusMap, statusOf } from "./workshop-status";
 
 export async function loadCapacityMonitor(): Promise<MonitorSession[]> {
   // The Training Week event is the one carrying the most workshops — the
@@ -16,7 +17,7 @@ export async function loadCapacityMonitor(): Promise<MonitorSession[]> {
   const events = await prisma.bhnEvent.findMany({ select: { id: true, _count: { select: { workshops: true } } } });
   const event = [...events].sort((a, b) => b._count.workshops - a._count.workshops)[0];
   if (!event) return [];
-  const [workshops, internal, suggestions] = await Promise.all([
+  const [workshops, internal, suggestions, storedStatus] = await Promise.all([
     prisma.workshop.findMany({
       where: { eventId: event.id, isActive: true },
       orderBy: { startDateTime: "asc" },
@@ -33,12 +34,15 @@ export async function loadCapacityMonitor(): Promise<MonitorSession[]> {
     }),
     loadInternalSet(),
     currentSeatSuggestions(event.id),
+    prisma.platformSetting.findUnique({ where: { key: WORKSHOP_STATUS_KEY }, select: { value: true } }),
   ]);
+  const registration = parseStatusMap(storedStatus?.value);
   return workshops.map((w) => ({
     id: w.id,
     slug: w.slug,
     title: w.title,
     start: w.startDateTime.toISOString(),
+    registration: statusOf(registration, w.slug),
     cap: sessionCapacity(
       w.capacity,
       w.bookings.map((b) => {

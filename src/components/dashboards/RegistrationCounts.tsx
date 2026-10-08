@@ -11,6 +11,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, RefreshCw, Users } from "lucide-react";
 import type { RegistrationCount } from "@/lib/events/registrations";
+import { CapacityMonitor } from "@/components/training-week/CapacityMonitor";
+import type { MonitorSession } from "@/lib/training-week/capacity";
+import { WorkshopRegistrationControl, type SaveWorkshopRegistration } from "@/components/training-week/WorkshopRegistrationControl";
 
 /*
  * Five minutes, and the answer is held on the server for four (see
@@ -20,7 +23,7 @@ import type { RegistrationCount } from "@/lib/events/registrations";
  */
 const EVERY_MS = 5 * 60_000;
 
-export function RegistrationCounts() {
+export function RegistrationCounts({ sessions, saveWorkshopState }: { sessions: MonitorSession[]; saveWorkshopState: SaveWorkshopRegistration }) {
   const [events, setEvents] = useState<RegistrationCount[] | null>(null);
   const [at, setAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,11 +55,12 @@ export function RegistrationCounts() {
   }, [load]);
 
   return (
+    <>
     <article className="aero-frame">
       <div className="aero-card">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="aero-h"><Users size={14} /> Event registrations</h3>
+            <h3 className="aero-h"><Users size={14} /> Annual Symposium registration</h3>
             <p className="aero-gloss">
               {failed
                 ? "Couldn’t reach the counts just now — they will retry."
@@ -74,15 +78,15 @@ export function RegistrationCounts() {
             <RefreshCw size={12} className={busy ? "animate-spin" : ""} /> Refresh
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {(events ?? PLACEHOLDER).map((e) => {
+        <div className="grid gap-3">
+          {(events ?? PLACEHOLDER).filter((e) => e.key === "symposium").map((e) => {
             const external = e.href.startsWith("http");
             return (
               <Link
                 key={e.key}
                 href={e.href}
                 {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-                className="group rounded-xl border border-line px-4 py-3 text-fg no-underline transition hover:border-brand-400"
+                className="group text-fg no-underline"
               >
                 <p className="text-[12.5px] font-semibold">{e.title}</p>
                 <p className="text-[11px] text-muted">{e.when}</p>
@@ -104,6 +108,14 @@ export function RegistrationCounts() {
         </div>
       </div>
     </article>
+    {sessions.length > 0 && <article className="aero-frame"><div className="aero-card">
+      <CapacityMonitor sessions={sessions} registered={events?.find((e) => e.key === "training")?.count ?? null}
+        action={<Link href="/admin/workspace/training-admin?tab=capacity" className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">Open Training Week →</Link>}
+        controls={(s) => s.registration && <WorkshopRegistrationControl key={`${s.id}:${s.registration.state}`} slug={s.slug} title={s.title} initial={s.registration.state} save={saveWorkshopState} />}
+      />
+      {failed && <p role="status" className="text-[12px] text-rose-600">Registration count could not refresh. Please try Refresh above.</p>}
+    </div></article>}
+    </>
   );
 }
 
