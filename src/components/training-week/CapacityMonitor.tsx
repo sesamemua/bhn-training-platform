@@ -1,5 +1,5 @@
 /**
- * Every Training Week session as a bar: requests against the seats the
+ * Every Training Week session as a bar: projected approvals against the seats the
  * room offers students. Used on the Training Week dashboard and the admin
  * home dashboard. No client code — it renders on the server too.
  */
@@ -15,15 +15,16 @@ const LEVEL: Record<CapacityLevel, { bar: string; chip: string }> = {
 };
 
 function status(c: MonitorSession["cap"]): string {
-  if (c.level === "over") return `Oversubscribed +${c.over}`;
+  if (c.level === "over") return `Over capacity +${c.over}`;
   if (c.level === "full") return "Full";
-  const left = c.capacity - c.requested;
+  const left = c.capacity - c.projectedApproved;
   return `${left} left`;
 }
 
 export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession[]; action?: ReactNode }) {
   if (sessions.length === 0) return null;
   const requested = sessions.reduce((n, s) => n + s.cap.requested, 0);
+  const projected = sessions.reduce((n, s) => n + s.cap.projectedApproved, 0);
   const seats = sessions.reduce((n, s) => n + s.cap.capacity, 0);
   const over = sessions.filter((s) => s.cap.level === "over").length;
   const full = sessions.filter((s) => s.cap.level === "full").length;
@@ -35,18 +36,17 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
         {action}
       </div>
       <p className="mt-1 text-[12.5px] text-fg">
-        <strong className="tabular-nums">{requested}</strong> requests for <strong className="tabular-nums">{seats}</strong> student seats
-        {over > 0 && <span className="font-semibold text-rose-600"> · {over} oversubscribed</span>}
+        <strong className="tabular-nums">{projected}</strong> projected approvals for <strong className="tabular-nums">{seats}</strong> student seats · {requested} requests
+        {over > 0 && <span className="font-semibold text-rose-600"> · {over} over capacity</span>}
         {full > 0 && <span className="font-semibold text-amber-600"> · {full} full</span>}
       </p>
       <ul className="mt-2.5 space-y-2">
         {sessions.map((s) => {
           const c = s.cap;
-          // The track is the larger of capacity and demand, so an
-          // oversubscribed room shows its overflow past the capacity line.
-          const scale = Math.max(c.capacity, c.requested, 1);
+          const scale = Math.max(c.capacity, c.projectedApproved, 1);
           const pct = (n: number) => `${(n / scale) * 100}%`;
           const tone = LEVEL[c.level];
+          const detail = `${c.projectedApproved} projected approvals: ${c.confirmed} approved + ${c.suggested} suggested; ${c.projectedWaitlisted} projected waitlist; ${c.requested} requests; ${c.capacity} seats`;
           return (
             <li key={s.id}>
               <div className="flex items-baseline gap-2 text-[12px] leading-tight">
@@ -55,17 +55,18 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
                 <span className="shrink-0 text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>
-                <span className="shrink-0 tabular-nums text-muted">{c.requested}/{c.capacity}</span>
+                <span className="shrink-0 tabular-nums text-muted" title={detail}>{c.projectedApproved}/{c.capacity}</span>
                 <span className={`shrink-0 rounded px-1.5 py-px text-[10.5px] font-semibold ${tone.chip}`}>{status(c)}</span>
               </div>
               <div
                 className="relative mt-1 h-2 overflow-hidden rounded-full bg-elevated"
                 role="img"
-                aria-label={`${c.requested} requests, ${c.confirmed} confirmed, ${c.capacity} seats`}
+                aria-label={detail}
+                title={detail}
               >
-                <div className={`absolute inset-y-0 left-0 opacity-40 ${tone.bar}`} style={{ width: pct(c.requested) }} />
-                <div className={`absolute inset-y-0 left-0 ${tone.bar}`} style={{ width: pct(Math.min(c.confirmed, c.requested)) }} />
-                {c.requested > c.capacity && (
+                <div className={`absolute inset-y-0 left-0 opacity-40 ${tone.bar}`} style={{ width: pct(c.projectedApproved) }} />
+                <div className={`absolute inset-y-0 left-0 ${tone.bar}`} style={{ width: pct(c.confirmed) }} />
+                {c.projectedApproved > c.capacity && (
                   <div className="absolute inset-y-[-2px] w-0.5 bg-fg" style={{ left: pct(c.capacity) }} aria-hidden />
                 )}
               </div>
@@ -74,7 +75,7 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
         })}
       </ul>
       <p className="mt-2 text-[11px] leading-snug text-subtle">
-        Pale bar: every request, pending included. Solid: confirmed. Staff and guests are not counted.
+        Pale: suggested approvals. Solid: already approved. Based on preferences and session conflicts; no decisions applied. Staff and guests excluded.
       </p>
     </section>
   );
