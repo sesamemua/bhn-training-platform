@@ -46,7 +46,8 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
           const scale = Math.max(c.capacity, c.requested, c.projectedApproved, 1);
           const pct = (n: number) => `${(n / scale) * 100}%`;
           const tone = LEVEL[c.level];
-          const detail = `${c.projectedApproved} projected approvals: ${c.confirmed} approved + ${c.suggested} suggested; ${c.projectedWaitlisted} projected waitlist; ${c.requested} requests; ${c.capacity} seats`;
+          const excess = Math.max(0, c.requested - c.capacity);
+          const detail = `${c.projectedApproved} projected approvals: ${c.confirmed} actual approved + ${c.suggested} recommended approval; ${c.projectedWaitlisted} projected waitlist; ${c.requested} requests; ${c.capacity} seats; ${excess} requests over capacity`;
           return (
             <li key={s.id}>
               <div className="flex items-baseline gap-2 text-[12px] leading-tight">
@@ -55,8 +56,8 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
                 <span className="shrink-0 text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>
-                <span className="shrink-0 tabular-nums text-muted" title={detail}>{c.projectedApproved}/{c.capacity}</span>
-                <span className={`shrink-0 rounded px-1.5 py-px text-[10.5px] font-semibold ${tone.chip}`}>{status(c)}</span>
+                <span className="shrink-0 tabular-nums text-muted" title={`${c.requested} requested / ${c.capacity} capacity`}>{c.requested}/{c.capacity}</span>
+                <span className={`shrink-0 rounded px-1.5 py-px text-[10.5px] font-semibold ${excess > 0 ? LEVEL.over.chip : tone.chip}`} title={detail}>{excess > 0 ? `+${excess} over` : status(c)}</span>
               </div>
               <div
                 className="relative mt-2 h-3 rounded-full bg-elevated"
@@ -65,14 +66,15 @@ export function CapacityMonitor({ sessions, action }: { sessions: MonitorSession
                 title={detail}
               >
                 <div className="absolute inset-y-0 left-0 rounded-full border border-muted bg-fg/5" style={{ width: pct(c.requested) }} title={`${c.requested} requested`} aria-hidden />
-                <div className={`absolute inset-y-0.5 opacity-40 ${tone.bar}`} style={{ left: pct(c.confirmed), width: pct(c.suggested) }} title={`${c.suggested} recommended additions`} aria-hidden />
-                <div className={`absolute inset-y-0.5 left-0 rounded-l-full ${tone.bar}`} style={{ width: pct(c.confirmed) }} title={`${c.confirmed} approved`} aria-hidden />
+                {excess > 0 && <div className="absolute inset-y-0 rounded-r-full bg-rose-100 text-rose-600" style={{ left: pct(c.capacity), width: pct(excess), backgroundImage: "repeating-linear-gradient(135deg, transparent 0 4px, currentColor 4px 6px)" }} title={`${excess} requests over capacity`} aria-hidden />}
+                <div className={`absolute inset-y-0.5 opacity-40 ${tone.bar}`} style={{ left: pct(c.confirmed), width: pct(c.suggested) }} title={`${c.suggested} recommended approval`} aria-hidden />
+                <div className={`absolute inset-y-0.5 left-0 rounded-l-full ${tone.bar}`} style={{ width: pct(c.confirmed) }} title={`${c.confirmed} actual approved`} aria-hidden />
                 <div className="absolute -inset-y-1 -translate-x-1/2 border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} aria-hidden />
               </div>
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] leading-snug text-muted tabular-nums">
                 <span className="inline-flex items-center gap-1.5"><span className="h-2 w-3 shrink-0 rounded-sm border border-muted bg-fg/5" aria-hidden /><strong className="text-fg">{c.requested}</strong> requested</span>
-                <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-3 shrink-0 opacity-40 ${tone.bar}`} aria-hidden /><strong className="text-fg">+{c.suggested}</strong> recommended</span>
-                <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-3 shrink-0 ${tone.bar}`} aria-hidden /><strong className="text-fg">{c.confirmed}</strong> approved</span>
+                <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-3 shrink-0 opacity-40 ${tone.bar}`} aria-hidden /><strong className="text-fg">+{c.suggested}</strong> recommended approval</span>
+                <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-3 shrink-0 ${tone.bar}`} aria-hidden /><strong className="text-fg">{c.confirmed}</strong> actual approved</span>
                 <span className="inline-flex items-center gap-1.5"><span className="h-3 w-0 shrink-0 border-l-2 border-dashed border-fg" aria-hidden /><strong className="text-fg">{c.capacity}</strong> capacity</span>
               </div>
             </li>

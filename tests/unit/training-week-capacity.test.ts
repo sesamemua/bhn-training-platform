@@ -20,14 +20,21 @@ test("one bar shows demand, recommended additions, approvals and capacity on the
     ] }));
     const pct = (n: number) => `${n / Math.max(capacity, 10) * 100}%`;
     assert.ok(html.includes(`style="width:${pct(10)}" title="10 requested"`));
-    assert.ok(html.includes(`style="left:${pct(1)};width:${pct(4)}" title="4 recommended additions"`));
-    assert.ok(html.includes(`style="width:${pct(1)}" title="1 approved"`));
+    assert.ok(html.includes(`style="left:${pct(1)};width:${pct(4)}" title="4 recommended approval"`));
+    assert.ok(html.includes(`style="width:${pct(1)}" title="1 actual approved"`));
     assert.ok(html.includes(`style="left:${pct(capacity)}" title="${capacity} capacity"`));
     assert.match(html, />10<\/strong> requested/);
-    assert.match(html, />\+4<\/strong> recommended/);
-    assert.match(html, />1<\/strong> approved/);
+    assert.match(html, />\+4<\/strong> recommended approval/);
+    assert.match(html, />1<\/strong> actual approved/);
     assert.ok(html.includes(`>${capacity}</strong> capacity`));
-    assert.match(html, /aria-label="5 projected approvals: 1 approved \+ 4 suggested/);
+    assert.match(html, /aria-label="5 projected approvals: 1 actual approved \+ 4 recommended approval/);
+    assert.ok(html.includes(`title="10 requested / ${capacity} capacity">10/${capacity}</span>`));
+    if (capacity < 10) {
+      assert.ok(html.includes(`left:${pct(capacity)};width:${pct(10 - capacity)};background-image:repeating-linear-gradient`));
+      assert.ok(html.includes(`title="${10 - capacity} requests over capacity"`));
+    } else {
+      assert.doesNotMatch(html, /repeating-linear-gradient/);
+    }
   }
 });
 
