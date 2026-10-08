@@ -6847,3 +6847,82 @@ model FilmingBlock {
 
   @@index([scheduleId, start])
 }
+
+// ── Design review (Workspace → Review → Design review) ───────────────────
+/// A set of artworks reviewed together — "2026 Annual Symposium".
+model DesignProject {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  /// User.id of the person whose approval settles each artwork (plain id, like VideoProject).
+  approverId  String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  artworks DesignArtwork[]
+}
+
+/// One design under review. A PDF's pages (or an image) are stored as
+/// images so a comment can be pinned anywhere on them.
+model DesignArtwork {
+  id           String        @id @default(cuid())
+  projectId    String
+  project      DesignProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title        String
+  description  String        @default("")
+  order        Int           @default(0)
+  /// [{ url, key, w, h }] — one per page, in order.
+  pages        Json
+  /// The uploaded file's name, for reference.
+  sourceName   String        @default("")
+  /// The approver's decision: pending | approved | changes.
+  approval     String        @default("pending")
+  approvalNote String        @default("")
+  approvalById String?
+  approvalAt   DateTime?
+  createdById  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  pins    DesignPin[]
+  reviews DesignReview[]
+
+  @@index([projectId, order])
+}
+
+/// A comment pinned on a page at (x, y), each 0–1 of the page's width and
+/// height; replies hang off it by parentId and share its place.
+model DesignPin {
+  id         String        @id @default(cuid())
+  artworkId  String
+  artwork    DesignArtwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  page       Int           @default(0)
+  x          Float
+  y          Float
+  parentId   String?
+  parent     DesignPin?    @relation("DesignPinReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    DesignPin[]   @relation("DesignPinReplies")
+  authorId   String?
+  authorName String
+  body       String
+  /// open | resolved (on the thread's first comment).
+  status     String        @default("open")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([artworkId])
+}
+
+/// Where one person stands on one artwork: seen it, and said it is OK.
+model DesignReview {
+  id        String        @id @default(cuid())
+  artworkId String
+  artwork   DesignArtwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  userId    String
+  userName  String
+  viewedAt  DateTime?
+  okAt      DateTime?
+
+  @@unique([artworkId, userId])
+}

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Review: comment anywhere on a design, and see who has looked",
+    body: "**Workspace \u2192 Website Review** is now **Review**, with a second tab: **Design review**. Designs are grouped into **projects** (the first is **2026 Annual Symposium**, with the program one-pagers and the stand-up banners). Open an artwork and **click anywhere on it** to pin a comment there \u2014 reply, resolve, edit or delete, zoom in for detail.\n\nEach artwork shows **who has seen it**, who pressed **I\u2019m OK with this**, and the **approver\u2019s decision** (Approved / Changes requested, with a note). Create your own projects, pick who approves, upload a **PDF or image**, rename, reorder, replace with a new version, or delete.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Trainee testimonials: type or record your story, AI drafts the quote",
     body: "A new **testimonial link** (/showcase/trainee-testimonials-2026) asks trainees for their name, photo (with the cropper), which programme they are in (**ENGAGE, EXPERIENCE, EQUIP**), and a few guide questions \u2014 they answer as many as they like, each by **typing** (about a minute\u2019s worth) or **recording up to a minute**, with as many **takes** as they want, played back before they choose one. Recordings are **transcribed**, and **AI drafts one short quote** from everything they said.\n\nIn **Admin \u2192 Grad showcase**, each testimonial shows the programmes, the quote (edit it and **Save**, or **Redraft with AI**), and every answer with its recording and transcript.",
     kind: "feature",

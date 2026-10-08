@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18y";
+export const TOUR_VERSION = "2026.10.18z";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "review.design-review",
+    title: "Pin a comment anywhere on a design",
+    body: "Website Review is now **Review**, with a **Design review** tab. Open an artwork and click anywhere on it to leave a comment on that exact spot. Each one shows who has seen it, who is OK with it, and the approver’s decision. Start with the **2026 Annual Symposium** project — or create your own and upload a PDF or image.",
+    path: "/admin/workspace/website-review/design",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Design review", href: "/admin/workspace/website-review/design" },
+    since: "2026.10.18z",
   },
   {
     id: "website-review.paste-renders",
