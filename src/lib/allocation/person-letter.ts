@@ -23,6 +23,8 @@ export interface LetterSeat {
   /** What they were last told (null = never told anything). */
   told: string | null;
   note: string | null;
+  /** The team's note for everyone at this workshop, if they wrote one. */
+  workshopNote?: string | null;
   /** "I can't make it" for this seat — set when the pass exists. */
   cantAttendLink?: string;
   /** For the calendar entry's version number. */
@@ -37,15 +39,20 @@ export interface PersonLetter {
   seats: LetterSeat[];
   /** What each seat's calendar entry does: added for a new place, removed for a place taken away. */
   calendar: { seat: LetterSeat; action: "add" | "remove" }[];
-  /** A place is in it, so it carries the pass (and its QR). */
+  /** A place is in it, so it carries the pass link. */
   hasPlace: boolean;
+  /** Links the HTML letter draws as buttons: one "cancel" per place. */
+  buttons: { url: string; label: string }[];
 }
 
 const EVENT = "BioHubNet Training Week 2026";
 const tz = "America/Toronto";
 const day = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "long", day: "numeric", month: "long" }).format(d);
 const clock = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
-const line = (s: LetterSeat) => `  • ${s.session} — ${day(s.start)}, ${clock(s.start)}–${clock(s.end)}${s.venue ? `, ${s.venue}` : ""}`;
+// No room in these lines: locations are sent closer to the date, once they are settled.
+const line = (s: LetterSeat) => `  • ${s.session} — ${day(s.start)}, ${clock(s.start)}–${clock(s.end)}`;
+export const LOCATION_LATER = "Location information will be provided closer to the date.";
+export const cancelLabel = (session: string) => `Cancel my place — ${session}`;
 
 /** The seats that owe a letter, of all a person has. */
 export const owed = (seats: LetterSeat[]) => seats.filter((s) => letterDue(s.told, s.status));
@@ -72,13 +79,14 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
   out.push(due.length > 1 ? `Here is where your sessions at ${EVENT} stand.` : `An update on your registration for ${EVENT}.`, "");
 
   if (placed.length) {
-    out.push(placed.length > 1 ? "You have a place at:" : "You have a place at:", ...placed.map(line), "");
-    if (p.passLink) out.push("Your pass — show its QR code at the door of every session you attend:", p.passLink, "");
+    out.push("You have a place at:", ...placed.map(line), "", LOCATION_LATER, "");
+    for (const s of placed) if (s.workshopNote?.trim()) out.push(`${s.session}: ${s.workshopNote.trim()}`, "");
+    if (p.passLink) out.push("Your Training Week pass, with your sessions:", p.passLink, "");
     out.push(`Please put ${placed.length > 1 ? "them" : "it"} in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.`, "");
     const links = placed.filter((s) => s.cantAttendLink);
     if (links.length) {
-      out.push("Can't make one after all? Tell us, with the reason, so the place can go to somebody else:");
-      for (const s of links) out.push(links.length > 1 ? `  ${s.session}: ${s.cantAttendLink}` : s.cantAttendLink!);
+      out.push(`Can't make ${placed.length > 1 ? "one" : "it"} after all? Cancel ${placed.length > 1 ? "that session" : "it"} here, so the place can go to somebody else:`);
+      for (const s of links) out.push(`  ${cancelLabel(s.session)}: ${s.cantAttendLink}`);
       out.push("");
     }
     out.push("Please tell us rather than not turning up: a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.", "");
@@ -116,6 +124,7 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
       ...due.filter((s) => s.told === "confirmed" && s.status !== "confirmed").map((seat) => ({ seat, action: "remove" as const })),
     ],
     hasPlace: placed.length > 0,
+    buttons: placed.filter((s) => s.cantAttendLink).map((s) => ({ url: s.cantAttendLink!, label: cancelLabel(s.session) })),
   };
 }
 

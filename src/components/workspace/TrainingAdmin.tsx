@@ -39,6 +39,7 @@ import {
   STAGE_LABELS, STAGES, SUBJECT_MAX, unfilledGlobals, type ResolvedTemplate, type Stage,
 } from "@/lib/allocation/email-templates";
 import { TrainingWeekCalendar } from "./TrainingWeekCalendar";
+import { torontoToUtc } from "@/lib/training-week/schedule-2026";
 import { InternalPeople } from "./InternalPeople";
 import type { InternalPerson } from "@/lib/training-week/internal";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
@@ -702,6 +703,79 @@ function WorkshopSuggestions({ workshop: w, rules, plan, canApply }: { workshop:
 
 // ── capacity ─────────────────────────────────────────────────────────
 
+/** "2026-10-26" and "09:30" for an instant, on the Toronto clock. */
+function torontoParts(iso: string) {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  return { day: `${g("year")}-${g("month")}-${g("day")}`, time: `${g("hour")}:${g("minute")}` };
+}
+
+/**
+ * Where, when and a note for one workshop — what its attendees are told.
+ * Times are typed and shown on the Toronto clock whatever the browser's is.
+ */
+function WorkshopDetails({ w, disabled, onSave }: { w: AdminWorkshop; disabled: boolean; onSave: (patch: Parameters<typeof updateWorkshop>[1]) => void }) {
+  const from = torontoParts(w.startDateTime);
+  const to = torontoParts(w.endDateTime);
+  const [open, setOpen] = useState(false);
+  const [d, setD] = useState({ location: w.locationName ?? "", day: from.day, start: from.time, end: to.time, note: w.attendeeNote ?? "" });
+  const input = "mt-0.5 w-full rounded-md border border-line bg-elevated px-2 py-1.5 text-[13px] text-fg outline-none focus-visible:border-brand-500";
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(d.day) && /^\d{2}:\d{2}$/.test(d.start) && /^\d{2}:\d{2}$/.test(d.end) && d.end > d.start;
+
+  if (!open) {
+    return (
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12px] text-muted">
+        <span>{from.time}–{to.time} · {w.locationName || "No location yet"}</span>
+        {w.attendeeNote && <span className="min-w-0 truncate text-subtle">Note: {w.attendeeNote}</span>}
+        <button type="button" className="font-semibold text-brand-600 hover:underline" onClick={() => setOpen(true)}>Edit location, time and note</button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 rounded-md border border-line p-3">
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+        <label className="text-[11.5px] text-muted" htmlFor={`wd-loc-${w.id}`}>Location
+          <input id={`wd-loc-${w.id}`} value={d.location} maxLength={200} onChange={(e) => setD({ ...d, location: e.target.value })} className={input} />
+        </label>
+        <label className="text-[11.5px] text-muted" htmlFor={`wd-day-${w.id}`}>Date
+          <input id={`wd-day-${w.id}`} type="date" value={d.day} onChange={(e) => setD({ ...d, day: e.target.value })} className={input} />
+        </label>
+        <label className="text-[11.5px] text-muted" htmlFor={`wd-start-${w.id}`}>Starts
+          <input id={`wd-start-${w.id}`} type="time" value={d.start} onChange={(e) => setD({ ...d, start: e.target.value })} className={input} />
+        </label>
+        <label className="text-[11.5px] text-muted" htmlFor={`wd-end-${w.id}`}>Ends
+          <input id={`wd-end-${w.id}`} type="time" value={d.end} onChange={(e) => setD({ ...d, end: e.target.value })} className={input} />
+        </label>
+      </div>
+      <label className="mt-2 block text-[11.5px] text-muted" htmlFor={`wd-note-${w.id}`}>Note for attendees (optional)
+        <textarea id={`wd-note-${w.id}`} value={d.note} rows={2} maxLength={1000} onChange={(e) => setD({ ...d, note: e.target.value })} className={input} />
+      </label>
+      <p className="mt-1 text-[11.5px] text-subtle">
+        Toronto time. The note goes in approval letters and on passes; the location shows on passes and in reminders, not in approval letters or calendar invitations.
+        People already written to are not told about a change — email them from the Email tab.
+      </p>
+      {!valid && <p className="mt-1 text-[11.5px] font-semibold text-amber-600">It has to end after it starts.</p>}
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          className={BTN}
+          disabled={disabled || !valid}
+          onClick={() => {
+            onSave({
+              locationName: d.location, attendeeNote: d.note,
+              startDateTime: torontoToUtc(d.day, d.start).toISOString(), endDateTime: torontoToUtc(d.day, d.end).toISOString(),
+            });
+            setOpen(false);
+          }}
+        >
+          Save
+        </button>
+        <button type="button" className="text-[12px] font-semibold text-muted hover:text-fg" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWorkshop[] }) {
   const [pending, start] = useTransition();
   const [adding, setAdding] = useState(false);
@@ -791,6 +865,13 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
                   )}
                 </div>
               </div>
+
+              <WorkshopDetails
+                key={`${w.id}:${w.startDateTime}:${w.endDateTime}:${w.locationName}:${w.attendeeNote}`}
+                w={w}
+                disabled={pending}
+                onSave={(patch) => commit(w.id, patch, () => {})}
+              />
 
               <div className="mt-3">
                 <p className="text-[12px] text-muted">

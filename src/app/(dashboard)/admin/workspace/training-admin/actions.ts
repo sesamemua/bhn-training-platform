@@ -180,6 +180,13 @@ export async function updateWorkshop(id: string, patch: Partial<WorkshopInput>) 
   if (patch.endDateTime && !dateOf(patch.endDateTime)) {
     return { ok: false as const, problem: "That end time could not be read." };
   }
+  if (patch.startDateTime || patch.endDateTime) {
+    const now = await prisma.workshop.findUnique({ where: { id }, select: { startDateTime: true, endDateTime: true } });
+    if (!now) return { ok: false as const, problem: "That workshop no longer exists." };
+    const s = patch.startDateTime ? new Date(patch.startDateTime) : now.startDateTime;
+    const e = patch.endDateTime ? new Date(patch.endDateTime) : now.endDateTime;
+    if (e <= s) return { ok: false as const, problem: "It has to end after it starts." };
+  }
 
   await prisma.workshop.update({
     where: { id },
@@ -188,7 +195,8 @@ export async function updateWorkshop(id: string, patch: Partial<WorkshopInput>) 
       ...(patch.kind !== undefined ? { kind: patch.kind } : {}),
       ...(patch.capacity !== undefined ? { capacity: patch.capacity } : {}),
       ...(patch.waitlistCapacity !== undefined ? { waitlistCapacity: patch.waitlistCapacity } : {}),
-      ...(patch.locationName !== undefined ? { locationName: patch.locationName || null } : {}),
+      ...(patch.locationName !== undefined ? { locationName: patch.locationName.trim().slice(0, 200) || null } : {}),
+      ...(patch.attendeeNote !== undefined ? { attendeeNote: patch.attendeeNote.trim().slice(0, 1000) || null } : {}),
       ...(patch.partnerOrganization !== undefined
         ? { partnerOrganization: patch.partnerOrganization || null }
         : {}),
@@ -958,7 +966,7 @@ function personKeyOf(b: { id: string; submissionId: string | null; userId: strin
 const SEAT_SELECT = {
   id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true,
   submissionId: true, userId: true,
-  workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, eventId: true } },
+  workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, attendeeNote: true, eventId: true } },
   user: { select: { name: true, email: true } },
   submission: { select: { id: true, data: true, email: true, checkInToken: true } },
 } as const;
@@ -1006,7 +1014,7 @@ async function letterFor(rows: SeatRow[], makePass: boolean, skip: (r: SeatRow) 
   const tokenOf = (r: SeatRow) => (r.submission ? tokens.get(r.submission.id) ?? null : null);
   const seats: LetterSeat[] = rows.filter((r) => !skip(r)).map((r) => ({
     bookingId: r.id, session: r.workshop.title, start: r.workshop.startDateTime, end: r.workshop.endDateTime,
-    venue: r.workshop.locationName, status: r.status, told: r.notifiedStatus, note: r.decisionNote,
+    venue: r.workshop.locationName, status: r.status, told: r.notifiedStatus, note: r.decisionNote, workshopNote: r.workshop.attendeeNote,
     cantAttendLink: tokenOf(r) ? cantAttendUrl(tokenOf(r)!, r.id) : undefined, bookedAt: r.bookedAt, decidedAt: r.approvedAt ?? new Date(),
   }));
   const placed = rows.find((r) => r.status === "confirmed" && tokenOf(r)) ?? rows.find((r) => tokenOf(r));
@@ -1079,6 +1087,7 @@ export async function sendPersonLetterFor(key: string): Promise<{ ok: boolean; d
     passLink: made.letter.hasPlace && made.token ? passUrl(made.token) : undefined,
     passToken: made.letter.hasPlace && made.token ? made.token : undefined,
     calendar: made.letter.calendar,
+    buttons: made.letter.buttons,
   });
   if (delivered(receipt)) {
     // Told about each seat in the letter as it stands now.

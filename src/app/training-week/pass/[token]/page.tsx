@@ -45,7 +45,7 @@ export default async function TrainingWeekPassPage({ params }: { params: Promise
         where: { status: "confirmed" },
         select: {
           id: true, checkedInAt: true,
-          workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true } },
+          workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, attendeeNote: true } },
         },
       },
     },
@@ -99,6 +99,7 @@ export default async function TrainingWeekPassPage({ params }: { params: Promise
                     {day(s.workshop.startDateTime)} · {time(s.workshop.startDateTime)}–{time(s.workshop.endDateTime)}
                   </p>
                   {s.workshop.locationName && <p className="text-[13px]">{s.workshop.locationName}</p>}
+                  {s.workshop.attendeeNote && <p className="mt-1 whitespace-pre-wrap text-[13px]">{s.workshop.attendeeNote}</p>}
                   {!s.checkedInAt && (
                     <Link
                       href={`/training-week/pass/${token}/cant-attend/${s.id}`}

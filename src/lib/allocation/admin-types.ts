@@ -56,6 +56,8 @@ export interface AdminWorkshop {
   startDateTime: string; endDateTime: string;
   locationName: string | null; partnerOrganization: string | null;
   shortDescription: string | null;
+  /** The team's note for this workshop's attendees. */
+  attendeeNote?: string | null;
   bookings: AdminBooking[];
 }
 
@@ -92,6 +94,7 @@ export interface WorkshopInput {
   capacity: number;
   waitlistCapacity: number;
   locationName?: string;
+  attendeeNote?: string;
   partnerOrganization?: string;
   shortDescription?: string;
   requiresApproval: boolean;

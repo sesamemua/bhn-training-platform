@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.18z";
+export const TOUR_VERSION = "2026.10.19a";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.approval-letter-cancel-buttons",
+    title: "Approval letters: a cancel button per workshop",
+    body: "Approval letters no longer carry the QR code or the room — they say the location will follow closer to the date, and calendar invitations go out without one. Each workshop in the letter has its own **Cancel my place** button. Under the dashboard’s settings, **Edit location, time and note** on any workshop changes what its attendees are told.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19a",
   },
   {
     id: "review.design-review",

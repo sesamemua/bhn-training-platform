@@ -20,7 +20,7 @@ import type { Answers } from "./logic";
 import type { Receipt, SentMail } from "./receipt";
 import type { BuiltForm } from "./types";
 import { buildIcs } from "@/lib/events/ics";
-import { withPassQr } from "@/lib/training-week/pass-qr";
+import { letterHtml } from "@/lib/training-week/letter-html";
 import { trainingWeekMessages } from "@/lib/training-week/calendar-mail";
 
 export async function sendAcknowledgement(
@@ -110,7 +110,7 @@ export async function sendDecisionLetter(
     passLink?: string;
     /** "I can't make it" for this seat, for letters that carry {{cant_attend_link}}. */
     cantAttendLink?: string;
-    /** The pass code behind passLink: with it, the QR itself goes in the letter. */
+    /** The pass code behind passLink. Unused since the letters stopped carrying the QR. */
     passToken?: string;
   },
 ): Promise<Receipt> {
@@ -155,12 +155,11 @@ export async function sendDecisionLetter(
   };
   if (!mailConfigured()) return { state: "not-configured", preview };
 
-  // A letter carrying the pass link carries the QR too, under the link,
-  // so it can be shown straight from the inbox.
-  const qr = about.passLink && about.passToken ? withPassQr(preview.body, about.passLink, about.passToken) : null;
+  // No QR in these letters: the pass link is enough, and the "can't make
+  // it" link is drawn as a button.
   const messages = trainingWeekMessages({
     to: about.to, subject: preview.subject, text: preview.body,
-    html: qr?.html, attachments: qr ? [qr.attachment] : undefined,
+    html: letterHtml(preview.body, about.cantAttendLink ? [{ url: about.cantAttendLink, label: "Cancel my place" }] : []),
   }, calendarFor(about) ?? []);
 
   try {
@@ -270,7 +269,9 @@ export function calendarFor(about: {
     description: about.calendar === "add"
       ? "Your attendance at this session is confirmed. No reply or further confirmation is required to keep your seat."
       : "This session has been removed from your Training Week schedule.",
-    location: about.venue,
+    // No location on the invitation: rooms are sent closer to the date,
+    // and a calendar entry is the one copy nobody goes back to correct.
+    location: null,
     start: about.start,
     end: about.end,
     organizerEmail: mailSenderAddress(),
@@ -291,8 +292,8 @@ export function calendarFor(about: {
 
 /**
  * One person's letter for a round of decisions (see person-letter.ts):
- * the pass and its QR when a place is in it, and a calendar entry per
- * session added or taken away.
+ * the pass link when a place is in it, a cancel button per place, and a
+ * calendar entry per session added or taken away.
  */
 export async function sendPersonCombined(mail: {
   to: string | null;
@@ -301,18 +302,19 @@ export async function sendPersonCombined(mail: {
   body: string;
   passLink?: string;
   passToken?: string;
+  /** Links drawn as buttons in the HTML letter. */
+  buttons?: { url: string; label: string }[];
   calendar: { seat: { bookingId: string; session: string; start: Date; end: Date; venue: string | null; bookedAt?: Date; decidedAt?: Date }; action: "add" | "remove" }[];
 }): Promise<Receipt> {
   if (!mail.to) return { state: "no-address" };
   const preview = { to: mail.to, subject: mail.subject.replace(/[\r\n]+/g, " ").trim(), body: mail.body };
   if (!mailConfigured()) return { state: "not-configured", preview };
-  const qr = mail.passLink && mail.passToken ? withPassQr(preview.body, mail.passLink, mail.passToken) : null;
   const calendars = mail.calendar.flatMap(({ seat, action }, i) =>
     (calendarFor({ to: mail.to, name: mail.name, ...seat, calendar: action }) ?? []).map((a) => ({ ...a, filename: `training-week-${i + 1}.ics` })),
   );
   const messages = trainingWeekMessages({
     to: mail.to, subject: preview.subject, text: preview.body,
-    html: qr?.html, attachments: qr ? [qr.attachment] : undefined,
+    html: letterHtml(preview.body, mail.buttons),
   }, calendars);
   try {
     for (const message of messages) await sendMail(message);

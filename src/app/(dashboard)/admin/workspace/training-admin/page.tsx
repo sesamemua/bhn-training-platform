@@ -76,7 +76,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
       select: {
         id: true, slug: true, title: true, kind: true, capacity: true,
         waitlistCapacity: true, requiresApproval: true, isActive: true,
-        startDateTime: true, endDateTime: true, locationName: true,
+        startDateTime: true, endDateTime: true, locationName: true, attendeeNote: true,
         partnerOrganization: true, shortDescription: true,
         bookings: {
           select: {

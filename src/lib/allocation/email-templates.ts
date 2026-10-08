@@ -185,9 +185,10 @@ Current BioHubNet trainees are given priority consideration. If you asked for tr
 You have a place at {{session}}.
 
   When:  {{session_date}}, {{session_time}}
-  Where: {{session_venue}}
 
-Your pass — show its QR code at the door of every session you attend:
+Location information will be provided closer to the date.
+
+Your Training Week pass, with your sessions:
 {{pass_link}}
 
 Please put it in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.
@@ -254,7 +255,8 @@ You do not need to do anything. If you would rather we took you off the list, re
 A place has come free at {{session}}, and your attendance is now confirmed.
 
   When:  {{session_date}}, {{session_time}}
-  Where: {{session_venue}}
+
+Location information will be provided closer to the date.
 
 No reply or further confirmation is required to keep your seat. Please add the session to your calendar.
 

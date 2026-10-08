@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week approval letters: no QR, no room, a cancel button per workshop",
+    body: "The **approval letter** no longer carries the **QR code** or the **room** \u2014 it says *Location information will be provided closer to the date.* Each approved workshop gets its own **Cancel my place** button, which opens the existing \u201cI can\u2019t make it\u201d page. **Calendar invitations** are sent **without a location**.\n\nIn **Training Week \u2192 Dashboard \u2192 settings**, every workshop now has **Edit location, time and note**: the note goes in approval letters and on passes; the location shows on passes and in reminders. A change is not emailed to people already written to \u2014 use the Email tab for that.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Review: comment anywhere on a design, and see who has looked",
     body: "**Workspace \u2192 Website Review** is now **Review**, with a second tab: **Design review**. Designs are grouped into **projects** (the first is **2026 Annual Symposium**, with the program one-pagers and the stand-up banners). Open an artwork and **click anywhere on it** to pin a comment there \u2014 reply, resolve, edit or delete, zoom in for detail.\n\nEach artwork shows **who has seen it**, who pressed **I\u2019m OK with this**, and the **approver\u2019s decision** (Approved / Changes requested, with a note). Create your own projects, pick who approves, upload a **PDF or image**, rename, reorder, replace with a new version, or delete.",
     kind: "feature",

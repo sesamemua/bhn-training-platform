@@ -2,6 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { letterSummary, personLetter, type LetterSeat } from "../../src/lib/allocation/person-letter";
+import { letterHtml } from "../../src/lib/training-week/letter-html";
 
 const seat = (session: string, status: string, told: string | null, h = 13): LetterSeat => ({
   bookingId: session, session, status, told, note: null, venue: "Room 1",
@@ -17,6 +18,8 @@ test("three decisions, one letter: approved, waitlisted, declined — with the p
   assert.match(l.body, /^Hello Amara,/);
   assert.match(l.body, /You have a place at:\n  • A — /);
   assert.match(l.body, /https:\/\/x\/pass\/abc/);
+  assert.doesNotMatch(l.body, /Room 1|QR/, "no room and no QR in the letter");
+  assert.match(l.body, /Location information will be provided closer to the date\./);
   assert.match(l.body, /on the waitlist:\n  • B/);
   assert.match(l.body, /not able to offer you a place at:\n  • C/);
   assert.match(l.body, /Your other sessions are unaffected/);
@@ -42,4 +45,20 @@ test("a place taken back is released, and its calendar entry removed", () => {
 test("declined from everything gets the fuller explanation", () => {
   const l = personLetter({ name: "X", seats: [seat("A", "cancelled", null), seat("B", "cancelled", null, 16)] })!;
   assert.match(l.body, /priority went to current BioHubNet trainees/);
+});
+
+test("every place gets its own cancel link, drawn as a button, and the workshop's note", () => {
+  const a = { ...seat("A", "confirmed", null), cantAttendLink: "https://x/pass/abc/cant-attend/a", workshopNote: "Bring photo ID." };
+  const b = { ...seat("B", "confirmed", null, 16), cantAttendLink: "https://x/pass/abc/cant-attend/b" };
+  const l = personLetter({ name: "X", seats: [a, b, seat("C", "waitlist", null, 18)] })!;
+  assert.deepEqual(l.buttons, [
+    { url: a.cantAttendLink, label: "Cancel my place — A" },
+    { url: b.cantAttendLink, label: "Cancel my place — B" },
+  ]);
+  assert.match(l.body, /Cancel my place — A: https:\/\/x\/pass\/abc\/cant-attend\/a/);
+  assert.match(l.body, /A: Bring photo ID\./);
+  const html = letterHtml(l.body, l.buttons);
+  assert.equal((html.match(/border:1px solid #b91c1c/g) ?? []).length, 2);
+  assert.match(html, /href="https:\/\/x\/pass\/abc\/cant-attend\/b"[^>]*>Cancel my place — B</);
+  assert.doesNotMatch(html, /<img/);
 });

@@ -2853,6 +2853,9 @@ model Workshop {
   endDateTime         DateTime
   locationName        String?
   locationAddress     String?
+  /// What the team wants this workshop's attendees to know (what to bring,
+  /// where to meet). Goes in their letters and on their pass.
+  attendeeNote        String?
   /// True when attendees need to board a bus from a common pickup.
   requiresTransport   Boolean  @default(false)
   /// Where the bus departs from, e.g. "Chelsea Hotel Front Entrance".
