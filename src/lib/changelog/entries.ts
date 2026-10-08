@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Design Review: wide artwork gets the full width",
+    body: "A very wide artwork \u2014 the **program one-pagers** \u2014 now takes the **whole width** of the page, with the approval, who-has-looked and comments panels in a row **above** it, so its text is readable. Taller artwork such as the stand-up banners keeps the panels on the right. The project page does the same for previews.\n\nAlso: the approval pill now reads **Yoo Jin: Waiting for approval**, and Meenakshi is no longer listed on the review team.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Registrants: every person\u2019s communications, sent and waiting",
     body: "Open anyone under **Registrants** (or Travel follow-up) and press **Communications with {name}**.\n\n**Waiting to go** shows their letter if it is in the outbox \u2014 read it there \u2014 and any of their seats that were **taken out of the letter round**, with who took them out and a **Put their letter back in the outbox** button.\n\n**Already sent** lists everything that has gone to them, newest first: what it was, when, and who sent it. From today a full copy of every Training Week message is kept, so you can read exactly what they received. For earlier messages the list shows decision and travel letters (when, and by whom) and the automatic acknowledgement; group emails sent from the Email tab before today are not listed per person.",
     kind: "feature",

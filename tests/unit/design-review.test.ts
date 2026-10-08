@@ -1,7 +1,7 @@
 /** Design review: who has seen / OK'd an artwork, which pages are accepted, and where a pin may sit. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PinInput, PagesSchema, designBrief, initials, isApproval, pagesOf, reviewerStates } from "../../src/lib/design-review/types";
+import { PinInput, PagesSchema, designBrief, givenNames, initials, isReviewer, isWide, isApproval, pagesOf, reviewerStates } from "../../src/lib/design-review/types";
 
 const page = { key: "design-review/a.jpg", url: "https://cdn.example.com/design-review/a.jpg", w: 3200, h: 828 };
 
@@ -47,4 +47,13 @@ test("the copied feedback lists open comments only, numbered as on the artwork, 
   assert.match(text, /^2026 Annual Symposium — Stand-up banners\nDesign feedback, round 2: 1 open comment\n/);
   assert.match(text, /2\. \(25% from the left, 50% from the top\) Alison: Move the logo up\n   ↳ Alison: Agreed/);
   assert.doesNotMatch(text, /Old point/);
+});
+
+test("short names, the review team, and which artworks get the full width", () => {
+  assert.equal(givenNames("Yoo Jin Park"), "Yoo Jin");
+  assert.equal(givenNames("Epshita"), "Epshita");
+  assert.equal(isReviewer("Meenakshi Venkatesan"), false);
+  assert.equal(isReviewer("Alison Stirling"), true);
+  assert.equal(isWide({ w: 3600, h: 932 }), true); // the one-pagers
+  assert.equal(isWide({ w: 3600, h: 2182 }), false); // the banners
 });

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19g";
+export const TOUR_VERSION = "2026.10.19h";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "design-review.wide-layout",
+    title: "Wide designs get the whole width",
+    body: "Open the program one-pagers in Design Review: the artwork now runs the full width so its text is readable, with the approval, people and comments panels in a row above it. Taller pieces like the banners keep the panels on the right.",
+    path: "/admin/workspace/design-review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Design Review", href: "/admin/workspace/design-review" },
+    since: "2026.10.19h",
   },
   {
     id: "training-week.communications",

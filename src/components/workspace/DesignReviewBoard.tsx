@@ -10,7 +10,7 @@ import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, CheckCircle2, CircleDashed, Eye, FolderPlus, Loader2, MessageSquare, Pencil, RefreshCw, Trash2, Upload } from "lucide-react";
-import { APPROVAL_LABEL, initials, type Approval, type Seen } from "@/lib/design-review/types";
+import { APPROVAL_LABEL, givenNames, initials, type Approval, type Seen } from "@/lib/design-review/types";
 import {
   createDesignArtwork, createDesignProject, deleteDesignArtwork, deleteDesignProject, moveDesignArtwork,
   replaceDesignArtworkPages, updateDesignArtwork, updateDesignProject,
@@ -121,7 +121,7 @@ export function DesignProjectList({ projects, staff, defaultApproverId }: { proj
 
 // ── one project ──────────────────────────────────────────────────────
 export interface ArtworkCard {
-  id: string; title: string; description: string; thumb: string | null; pages: number;
+  id: string; title: string; description: string; thumb: string | null; pages: number; /** Much wider than tall: its preview takes the full width. */ wide?: boolean;
   approval: Approval; openComments: number; round: number; locked: boolean; reviewers: { id: string; name: string; state: Seen; asked: boolean }[];
 }
 
@@ -206,16 +206,17 @@ export function DesignProjectView({ project, artworks, staff }: {
       ) : (
         <ol className="space-y-3">
           {artworks.map((a, i) => (
-            <li key={a.id} className="grid gap-3 rounded-xl border border-line bg-card p-3 md:grid-cols-[16rem_minmax(0,1fr)]">
-              <Link href={`${BASE}?a=${a.id}`} className="grid h-40 place-items-center rounded-lg bg-elevated/60 p-2 hover:ring-2 hover:ring-brand-400">
+            <li key={a.id} className={`grid gap-3 rounded-xl border border-line bg-card p-3 ${a.wide ? "" : "md:grid-cols-[16rem_minmax(0,1fr)]"}`}>
+              {/* A wide strip gets the whole width, at its own height, so its text is readable; anything else sits beside its details. */}
+              <Link href={`${BASE}?a=${a.id}`} className={`grid place-items-center rounded-lg bg-elevated/60 p-2 hover:ring-2 hover:ring-brand-400 ${a.wide ? "" : "h-40"}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {a.thumb ? <img src={a.thumb} alt={a.title} loading="lazy" className="max-h-full max-w-full object-contain shadow" /> : <span className="text-[12px] text-subtle">No preview</span>}
+                {a.thumb ? <img src={a.thumb} alt={a.title} loading="lazy" className={a.wide ? "w-full shadow" : "max-h-full max-w-full object-contain shadow"} /> : <span className="text-[12px] text-subtle">No preview</span>}
               </Link>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] font-bold tabular-nums text-subtle">{i + 1}</span>
                   <Link href={`${BASE}?a=${a.id}`} className="text-[15px] font-bold text-fg hover:underline">{a.title}</Link>
-                  <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${TONE[a.approval]}`}>{project.approverName ? `${project.approverName.split(" ")[0]}: ${APPROVAL_LABEL[a.approval]}` : APPROVAL_LABEL[a.approval]}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${TONE[a.approval]}`}>{project.approverName ? `${givenNames(project.approverName)}: ${APPROVAL_LABEL[a.approval]}` : APPROVAL_LABEL[a.approval]}</span>
                   <span className="inline-flex items-center gap-1 text-[12px] text-muted"><MessageSquare size={12} /> {a.openComments} open</span>
                   <span className="text-[12px] text-muted">Round {a.round}{a.locked ? " · locked" : ""}</span>
                   {a.pages > 1 && <span className="text-[12px] text-muted">{a.pages} pages</span>}

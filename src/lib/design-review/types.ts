@@ -77,3 +77,17 @@ export function designBrief(a: { project: string; title: string; round: number; 
   return out.join("\n").trim();
 }
 export const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+
+/**
+ * Staff who are not part of the design review team: left off every
+ * artwork's "who has looked" list.
+ * ponytail: a fixed list by name; make it a per-project reviewer picker if this grows past a name or two.
+ */
+const NOT_REVIEWERS = ["meenakshi venkatesan"];
+export const isReviewer = (name: string) => !NOT_REVIEWERS.includes(name.trim().toLowerCase());
+
+/** "Yoo Jin Park" → "Yoo Jin": the name without its last word, for a short label. */
+export const givenNames = (name: string) => { const w = name.trim().split(/\s+/); return w.length > 1 ? w.slice(0, -1).join(" ") : w[0] ?? ""; };
+
+/** Much wider than tall (a strip of one-pagers): it needs the full width, so the panels go above it, not beside. */
+export const isWide = (page: { w: number; h: number } | undefined) => !!page && page.w / page.h >= 2;

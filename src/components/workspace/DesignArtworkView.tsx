@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, CheckCircle2, CircleDashed, Copy, Eye, Loader2, Lock, MessageSquarePlus, Minus, Plus, RotateCcw, Send, X } from "lucide-react";
-import { APPROVAL_LABEL, designBrief, type Approval, type Page, type Seen } from "@/lib/design-review/types";
+import { APPROVAL_LABEL, designBrief, isWide, type Approval, type Page, type Seen } from "@/lib/design-review/types";
 import {
   addDesignPin, deleteDesignPin, editDesignPin, lockDesignRound, markDesignSeen, replyDesignPin, requestDesignReview, resolveDesignPin,
   setDesignApproval, setDesignOk, startDesignRound,
@@ -56,6 +56,8 @@ export function DesignArtworkView({ artwork, me, approver }: {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const locked = artwork.locked;
+  // A wide strip (the one-pagers) needs the whole width to be readable: its panels go on top, in a row.
+  const wide = isWide(artwork.pages[0]);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
 
   // Seen — recorded once the page is really on screen, not when it is merely fetched.
@@ -112,7 +114,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
   });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className={wide ? "flex flex-col-reverse gap-4" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]"}>
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-muted">
           {locked
@@ -229,7 +231,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
         {error && <p role="alert" className="mt-2 text-[12.5px] font-semibold text-rose-600">{error}</p>}
       </div>
 
-      <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+      <aside className={wide ? "grid items-start gap-3 md:grid-cols-3" : "space-y-3 lg:sticky lg:top-4 lg:self-start"}>
         <section className="rounded-xl border border-line bg-card p-3">
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-subtle">Approval</h3>
           <p className={`mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${APPROVAL_TONE[artwork.approval]}`}>{APPROVAL_LABEL[artwork.approval]}</p>
@@ -288,7 +290,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
           {threads.length === 0 ? (
             <p className="mt-2 text-[12.5px] italic text-subtle">None yet. Click the artwork to add one.</p>
           ) : (
-            <ol className="mt-2 max-h-[40vh] space-y-1 overflow-y-auto">
+            <ol className={`mt-2 space-y-1 overflow-y-auto ${wide ? "max-h-40" : "max-h-[40vh]"}`}>
               {threads.filter((t) => showResolved || t.status === "open").map((t) => (
                 <li key={t.id}>
                   <button type="button" onClick={() => jump(t)} className={`flex w-full items-start gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-elevated ${openId === t.id ? "bg-elevated" : ""}`}>

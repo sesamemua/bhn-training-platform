@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { DesignArtworkBar, DesignProjectList, DesignProjectView } from "@/components/workspace/DesignReviewBoard";
 import { DesignArtworkView } from "@/components/workspace/DesignArtworkView";
-import { isApproval, pagesOf, reviewerStates, type Approval } from "@/lib/design-review/types";
+import { isApproval, isReviewer, isWide, pagesOf, reviewerStates, type Approval } from "@/lib/design-review/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +34,8 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
   });
   const staff = staffRows.map((s) => ({ id: s.id, name: s.name || s.email || "Team member" }));
   const nameOf = (id: string | null) => staff.find((s) => s.id === id)?.name ?? null;
+  // Who reviews: the staff, less anyone not on the review team. (Approver pickers still offer everyone.)
+  const reviewers = staff.filter((s) => isReviewer(s.name));
 
   const hero = (
     <>
@@ -68,7 +70,7 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
             approval: approvalOf(art.approval), approvalNote: art.approvalNote, approvalAt: art.approvalAt?.toISOString() ?? null,
             round: art.round, locked: !!art.lockedAt, project: art.project.name,
             pins: art.pins.map((n) => ({ round: n.round, id: n.id, page: n.page, x: n.x, y: n.y, parentId: n.parentId, authorId: n.authorId, authorName: n.authorName, body: n.body, status: n.status, createdAt: n.createdAt.toISOString() })),
-            reviewers: reviewerStates(staff, art.reviews),
+            reviewers: reviewerStates(reviewers, art.reviews),
           }}
         />
       </div>
@@ -91,8 +93,8 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
           artworks={project.artworks.map((w) => {
             const pages = pagesOf(w.pages);
             return {
-              id: w.id, title: w.title, description: w.description, thumb: pages[0]?.url ?? null, pages: pages.length,
-              approval: approvalOf(w.approval), openComments: w.pins.length, round: w.round, locked: !!w.lockedAt, reviewers: reviewerStates(staff, w.reviews),
+              id: w.id, title: w.title, description: w.description, thumb: pages[0]?.url ?? null, pages: pages.length, wide: isWide(pages[0]),
+              approval: approvalOf(w.approval), openComments: w.pins.length, round: w.round, locked: !!w.lockedAt, reviewers: reviewerStates(reviewers, w.reviews),
             };
           })}
         />
