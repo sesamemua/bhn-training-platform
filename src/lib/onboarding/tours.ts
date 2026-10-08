@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19h";
+export const TOUR_VERSION = "2026.10.19i";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.no-meeting-requests",
+    title: "Approval letters stay in the inbox",
+    body: "A one-session approval used to reach Outlook as a meeting request, and accepting it sent the letter to Deleted Items. Letters now carry a calendar file per approved session as an ordinary attachment, so the email — with its pass link and cancel button — stays put.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19i",
   },
   {
     id: "design-review.wide-layout",

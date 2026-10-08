@@ -280,6 +280,8 @@ export function calendarFor(about: {
     attendeeName: about.name || undefined,
     sequence: seconds,
     cancel: about.calendar === "remove",
+    // An entry to add, not a meeting to accept — see buildIcs.
+    publish: about.calendar === "add",
   });
 
   return [{

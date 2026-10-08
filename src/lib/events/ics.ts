@@ -54,6 +54,14 @@ export interface IcsEventInput {
    * than add a second one.
    */
   cancel?: boolean;
+  /**
+   * A plain calendar entry, not a meeting request: METHOD:PUBLISH with no
+   * organiser or attendee. Outlook treats a REQUEST as a meeting — the
+   * email becomes an invitation, and accepting it files the email (and
+   * whatever letter it carried) under Deleted Items. A PUBLISH file just
+   * adds the entry when it is opened.
+   */
+  publish?: boolean;
 }
 
 const CRLF = "\r\n";
@@ -119,7 +127,7 @@ export function buildIcs(input: IcsEventInput): string {
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//BioHubNet//Events//EN",
-    input.cancel ? "METHOD:CANCEL" : "METHOD:REQUEST",
+    input.cancel ? "METHOD:CANCEL" : input.publish ? "METHOD:PUBLISH" : "METHOD:REQUEST",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${input.uid}`,
@@ -134,12 +142,13 @@ export function buildIcs(input: IcsEventInput): string {
 
   // Organiser — RFC 5545 wants `mailto:<addr>` in the value, with the
   // display name in the CN parameter.
+  const meeting = input.cancel || !input.publish;
   const orgCn = input.organizerName ? `;CN=${escParameter(input.organizerName)}` : "";
-  lines.push(`ORGANIZER${orgCn}:mailto:${input.organizerEmail}`);
+  if (meeting) lines.push(`ORGANIZER${orgCn}:mailto:${input.organizerEmail}`);
 
   // Attendee — optional; without it the .ics still imports, just no
   // RSVP affordance.
-  if (input.attendeeEmail) {
+  if (meeting && input.attendeeEmail) {
     const cn = input.attendeeName ? `;CN=${escParameter(input.attendeeName)}` : "";
     lines.push(
       `ATTENDEE${cn};ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:${input.attendeeEmail}`,

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week letters no longer arrive as meeting requests",
+    body: "An approval for a single session was arriving in **Outlook as a meeting request**, and accepting it moved the whole email \u2014 letter, pass link and cancel button \u2014 to **Deleted Items**. Decision letters are now always an ordinary email with a **calendar file attached** for each approved session: opening the file adds the session to the calendar, and the email stays in the inbox.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Design Review: wide artwork gets the full width",
     body: "A very wide artwork \u2014 the **program one-pagers** \u2014 now takes the **whole width** of the page, with the approval, who-has-looked and comments panels in a row **above** it, so its text is readable. Taller artwork such as the stand-up banners keeps the panels on the right. The project page does the same for previews.\n\nAlso: the approval pill now reads **Yoo Jin: Waiting for approval**, and Meenakshi is no longer listed on the review team.",
     kind: "improvement",
