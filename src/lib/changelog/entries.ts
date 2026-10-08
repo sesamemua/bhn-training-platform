@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week decisions: one email per person, with the reason and \u201cfinal\u201d",
+    body: "Each registrant now gets **one email** for their decisions \u2014 no separate calendar emails. Approved sessions come with their calendar entry in that same email (several sessions arrive as attached calendar files, one each); sessions not offered get none.\n\nFor sessions not offered, the letter now says why \u2014 **full, or overlapping with a session they were approved for, where only one can be approved based on their ranking** \u2014 and that **the decision is final**. The location line reads *Location information will be provided in future communications.*\n\nBecause of that, the standing letters **Not able to offer a place**, **Not able to offer one session** and **On the waitlist** are gone from Email \u2192 Standing letters.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Design Review: its own sidebar item, ask a teammate, and rounds",
     body: "**Design Review** now sits in the sidebar under **Website Review** (which has its name back). On an artwork, the **paper-plane button** beside a teammate\u2019s name **emails them a request to review** with the link, and shows **Asked** until they open it.\n\nFeedback now works in **rounds**, like Website Review: **Copy feedback and lock round** puts the open comments on your clipboard for whoever makes the changes and **locks the round** \u2014 no new comments or edits \u2014 until you press **Start Round N+1**. Open comments carry over.",
     kind: "feature",

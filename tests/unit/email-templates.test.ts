@@ -13,7 +13,7 @@ const all = (t: { subject: string; body: string }) => `${t.subject}\n${t.body}`;
 test("every stage the coordinator asked for has a letter", () => {
   const ids = DEFAULT_TEMPLATES.map((t) => t.id);
   for (const wanted of [
-    "received", "approved", "declined",
+    "received", "approved",
     "support_invite", "support_declined",
     "reminder_3day", "reminder_same_day",
   ]) {
@@ -64,8 +64,6 @@ test("letters about one session are the ones that name a session", () => {
   assert.ok(needsOneSession(all(DEFAULT_TEMPLATES.find((t) => t.id === "reminder_same_day")!)));
   assert.ok(!needsOneSession(all(DEFAULT_TEMPLATES.find((t) => t.id === "received")!)),
     "the acknowledgement goes out before anybody has a session");
-  assert.ok(!needsOneSession(all(DEFAULT_TEMPLATES.find((t) => t.id === "declined")!)),
-    "a decline has no session to name");
 });
 
 test("every letter addresses the person", () => {
@@ -145,8 +143,8 @@ test("the shipped wording passes its own check", () => {
 /* ── edits ───────────────────────────────────────────────────────── */
 
 test("an edit replaces the wording and is marked as edited", () => {
-  const r = resolveTemplates([{ id: "declined", subject: "Mine", body: "My words" }]);
-  const declined = r.find((t) => t.id === "declined")!;
+  const r = resolveTemplates([{ id: "seat_released", subject: "Mine", body: "My words" }]);
+  const declined = r.find((t) => t.id === "seat_released")!;
   assert.equal(declined.subject, "Mine");
   // The body too. Dropping it from the spread left the page showing the
   // edit as saved while every send went out with the shipped wording
@@ -172,7 +170,7 @@ test("a stored edit for a template that no longer exists is ignored", () => {
 test("a new template added in code appears without a migration", () => {
   // The reason defaults live in code and only edits live in the
   // database: adding one here must not need the row to be rewritten.
-  const r = resolveTemplates([{ id: "declined", subject: "Mine", body: "My words" }]);
+  const r = resolveTemplates([{ id: "seat_released", subject: "Mine", body: "My words" }]);
   assert.equal(r.length, DEFAULT_TEMPLATES.length);
 });
 
@@ -186,16 +184,16 @@ test("unreadable stored edits fall back to the shipped wording", () => {
 
 test("one broken edit does not take the good ones with it", () => {
   const raw = JSON.stringify([
-    { id: "declined", subject: "Mine", body: "My words" },
+    { id: "seat_released", subject: "Mine", body: "My words" },
     { id: 42, subject: null },
   ]);
   const kept = parseOverrides(raw);
   assert.equal(kept.length, 1);
-  assert.equal(kept[0].id, "declined");
+  assert.equal(kept[0].id, "seat_released");
 });
 
 test("an over-long body is dropped rather than stored", () => {
-  const raw = JSON.stringify([{ id: "declined", subject: "x", body: "y".repeat(20001) }]);
+  const raw = JSON.stringify([{ id: "seat_released", subject: "x", body: "y".repeat(20001) }]);
   assert.deepEqual(parseOverrides(raw), []);
 });
 
@@ -314,22 +312,16 @@ test("every shipped letter renders with nothing left over", () => {
 });
 
 test("a stored edit survives the round trip through storage", () => {
-  const written = JSON.stringify([{ id: "declined", subject: "Ours", body: "Our words" }]);
-  const back = resolveTemplates(parseOverrides(written)).find((t) => t.id === "declined")!;
+  const written = JSON.stringify([{ id: "seat_released", subject: "Ours", body: "Our words" }]);
+  const back = resolveTemplates(parseOverrides(written)).find((t) => t.id === "seat_released")!;
   assert.equal(back.subject, "Ours");
   assert.equal(back.body, "Our words");
   assert.equal(back.edited, true);
 });
 
-test("the whole-event decline and the one-session decline are different letters", () => {
-  // Partial approval is a designed outcome — approveFromClash is 1 — so
-  // telling somebody who holds a confirmed seat "we cannot offer you a
-  // place at Training Week" is simply false.
-  const whole = DEFAULT_TEMPLATES.find((t) => t.id === "declined")!;
-  const one = DEFAULT_TEMPLATES.find((t) => t.id === "session_declined")!;
-  assert.ok(!needsOneSession(all(whole)), "the whole-event decline names no session");
-  assert.ok(needsOneSession(all(one)), "the one-session decline names one, so the guard covers it");
-  assert.match(one.body, /unaffected/i, "it has to say the other places still stand");
+test("declines and the waitlist have no standing letter: they go in the one decision email", () => {
+  const ids = DEFAULT_TEMPLATES.map((t) => t.id);
+  for (const gone of ["declined", "session_declined", "waitlisted"]) assert.ok(!ids.includes(gone), `${gone} is back`);
 });
 
 /* ── the letter the form sends by itself ─────────────────────────── */

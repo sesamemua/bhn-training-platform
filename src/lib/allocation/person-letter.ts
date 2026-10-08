@@ -51,7 +51,7 @@ const day = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekda
 const clock = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
 // No room in these lines: locations are sent closer to the date, once they are settled.
 const line = (s: LetterSeat) => `  • ${s.session} — ${day(s.start)}, ${clock(s.start)}–${clock(s.end)}`;
-export const LOCATION_LATER = "Location information will be provided closer to the date.";
+export const LOCATION_LATER = "Location information will be provided in future communications.";
 export const cancelLabel = (session: string) => `Cancel my place — ${session}`;
 
 /** The seats that owe a letter, of all a person has. */
@@ -101,9 +101,11 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
   if (declined.length) {
     out.push(`We are not able to offer you a place at:`, ...declined.map(line), "");
     if (placed.length || waiting.length || stillHeld.length) {
-      out.push("Your other sessions are unaffected.", "");
+      out.push(`${declined.length > 1 ? "These sessions are" : "This session is"} either full, or overlap${declined.length > 1 ? "" : "s"} with a session you have been approved for. Where your choices overlap, we can only approve one, based on your ranking.`, "");
+      out.push("This decision is final. Your other sessions are unaffected.", "");
     } else {
       out.push("We had more registrations than the rooms hold, and priority went to current BioHubNet trainees. This is not a judgement of your application — if you are not yet a BioHubNet trainee, applying to ENGAGE, EXPERIENCE or EQUIP is the thing that changes the outcome next time.", "");
+      out.push("This decision is final.", "");
     }
   }
   for (const s of due) if (s.note?.trim()) out.push(`About ${s.session}: ${s.note.trim()}`, "");

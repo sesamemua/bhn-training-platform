@@ -186,7 +186,7 @@ You have a place at {{session}}.
 
   When:  {{session_date}}, {{session_time}}
 
-Location information will be provided closer to the date.
+Location information will be provided in future communications.
 
 Your Training Week pass, with your sessions:
 {{pass_link}}
@@ -198,51 +198,9 @@ Can't make it after all? Tell us here, with the reason, so the place can go to s
 
 Please tell us rather than not turning up: a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
   },
-  {
-    id: "declined",
-    stage: "registration",
-    name: "Not able to offer a place",
-    when: "When there is no seat at the week at all. For turning down ONE clashing session, use the letter below instead.",
-    subject: "About your registration for {{event}}",
-    body:
-      `Hello {{first_name}},
-
-We are not able to offer you a place at {{event}} this year. We had more registrations than the rooms hold, and priority went to current BioHubNet trainees.
-
-This is not a judgement of your application. If you are not yet a BioHubNet trainee, applying to ENGAGE, EXPERIENCE or EQUIP is the thing that changes the outcome next time, and we would encourage it.
-
-We will write to you when registration opens again.` + SIGN_OFF,
-  },
-  {
-    id: "session_declined",
-    stage: "registration",
-    name: "Not able to offer one session",
-    when: "When somebody picked two sessions that clash and only one can be approved. Their other places stand — say so.",
-    subject: "About your place at {{session}}",
-    body:
-      `Hello {{first_name}},
-
-We are not able to give you a place at {{session}}.
-
-You chose more than one session running at the same hour, and only one of a clashing pair can be approved. We have given you the other.
-
-Any other session you were given a place at is unaffected, and you will hear about each of them separately. If you would rather have had this one, reply and tell us — we cannot promise a swap, but we would rather know.` + SIGN_OFF,
-  },
-  {
-    id: "waitlisted",
-    stage: "registration",
-    name: "On the waitlist",
-    when: "When the room is full but they are next in line.",
-    subject: "You are on the waitlist for {{session}}",
-    body:
-      `Hello {{first_name}},
-
-{{session}} is full, so you are on the waitlist.
-
-If a place becomes available because someone cancels, we will write to you.
-
-You do not need to do anything. If you would rather we took you off the list, reply and say so.` + SIGN_OFF,
-  },
+  // No standing letters for "no place", "not this session" or "on the
+  // waitlist": those go in the one decision email each person gets
+  // (see person-letter.ts), so there is nothing separate to edit here.
   {
     id: "waitlist_promoted",
     stage: "registration",
@@ -256,7 +214,7 @@ A place has come free at {{session}}, and your attendance is now confirmed.
 
   When:  {{session_date}}, {{session_time}}
 
-Location information will be provided closer to the date.
+Location information will be provided in future communications.
 
 No reply or further confirmation is required to keep your seat. Please add the session to your calendar.
 

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19b";
+export const TOUR_VERSION = "2026.10.19c";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.one-decision-email",
+    title: "One decision email per person",
+    body: "A registrant now gets a single email: the sessions they are approved for (with calendar entries in the same email), and the ones not offered — with the reason (full, or overlapping an approved session, decided by their ranking) and that the decision is final. Read each letter in the mailbox before sending.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19c",
   },
   {
     id: "design-review.rounds-and-requests",
