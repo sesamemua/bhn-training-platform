@@ -32,6 +32,8 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
           const scale = Math.max(c.capacity, c.requested, c.projectedApproved, 1);
           const pct = (n: number) => `${(n / scale) * 100}%`;
           const excess = Math.max(0, c.requested - c.capacity);
+          const approvedWidth = Math.min(c.confirmed, c.capacity);
+          const suggestedWidth = Math.min(c.suggested, c.capacity - approvedWidth);
           const detail = `${c.projectedApproved} projected approvals: ${c.confirmed} actual approved + ${c.suggested} recommended approval; ${c.projectedWaitlisted} projected waitlist; ${c.requested} requests; ${c.capacity} seats; ${excess} requests over capacity`;
           return (
             <li key={s.id} className="py-3 first:pt-0 last:pb-0">
@@ -56,14 +58,15 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                     <div className="absolute inset-y-0 -translate-x-full border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} />
                   </div>
                 </div>
-                <div className="relative overflow-hidden rounded bg-elevated px-2 py-2 pb-4">
+                <div className="relative overflow-hidden rounded px-2 py-2 pb-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-fg">
                     <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><span>Seat plan: <strong>{c.confirmed}</strong> actual approved</span><span>+ <strong>{c.suggested}</strong> recommended approval</span></span>
                     <span><strong>{c.projectedApproved}/{c.capacity}</strong> planned / capacity{c.over > 0 && <span className="ml-2 font-semibold">({c.over} over capacity)</span>}</span>
                   </div>
-                  <div className="absolute inset-x-0 bottom-0 h-2 bg-line" aria-hidden>
-                    <div className="absolute inset-y-0 bg-lime-200 text-lime-700" style={{ left: pct(c.confirmed), width: pct(c.suggested), backgroundImage: "repeating-linear-gradient(135deg, transparent 0 4px, currentColor 4px 5px)" }} title={`${c.suggested} recommended approval`} />
-                    <div className="absolute inset-y-0 left-0 bg-teal-700" style={{ width: pct(c.confirmed) }} title={`${c.confirmed} actual approved`} />
+                  <div className="absolute inset-x-0 bottom-0 h-2" aria-hidden>
+                    <div className="absolute inset-y-0 left-0 bg-line" style={{ width: pct(c.capacity) }} />
+                    <div className="absolute inset-y-0 bg-lime-200 text-lime-700" style={{ left: pct(approvedWidth), width: pct(suggestedWidth), backgroundImage: "repeating-linear-gradient(135deg, transparent 0 4px, currentColor 4px 5px)" }} title={`${c.suggested} recommended approval`} />
+                    <div className="absolute inset-y-0 left-0 bg-teal-700" style={{ width: pct(approvedWidth) }} title={`${c.confirmed} actual approved`} />
                     <div className="absolute inset-y-0 -translate-x-full border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} />
                   </div>
                 </div>

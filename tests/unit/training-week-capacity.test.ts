@@ -22,8 +22,8 @@ test("separate request and seat-plan tracks use the same capacity scale, includi
     ] }));
     const pct = (n: number) => `${n / Math.max(capacity, 10) * 100}%`;
     assert.ok(html.includes(`style="width:${pct(10)}" title="10 requested"`));
-    assert.ok(html.includes(`style="left:${pct(1)};width:${pct(4)};background-image:repeating-linear-gradient`));
-    assert.ok(html.includes(`style="width:${pct(1)}" title="1 actual approved"`));
+    assert.ok(html.includes(`style="left:${pct(Math.min(1, capacity))};width:${pct(Math.min(4, Math.max(0, capacity - 1)))};background-image:repeating-linear-gradient`));
+    assert.ok(html.includes(`style="width:${pct(Math.min(1, capacity))}" title="1 actual approved"`));
     assert.ok(html.includes(`style="left:${pct(capacity)}" title="${capacity} capacity"`));
     assert.match(html, />10<\/strong> requested/);
     assert.match(html, />4<\/strong> recommended approval/);
@@ -41,6 +41,23 @@ test("separate request and seat-plan tracks use the same capacity scale, includi
       assert.doesNotMatch(html, /title="\d+ requests over capacity"/);
     }
   }
+});
+
+test("Microbix seat plan ends at 12 capacity with no grey track behind the 15 excess requests", () => {
+  const cap = sessionCapacity(12, [
+    ...seats(1, "confirmed"),
+    ...seats(11).map((s) => ({ ...s, suggestion: "approve" as const })),
+    ...seats(15),
+  ]);
+  const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
+    { id: "microbix", slug: "microbix", title: "Microbix", start: "2026-10-26T10:00:00Z", cap },
+  ] }));
+  const plan = html.slice(html.indexOf("Seat plan:"), html.indexOf("</li>"));
+  assert.ok(plan.includes(`class="absolute inset-y-0 left-0 bg-line" style="width:${12 / 27 * 100}%"`));
+  assert.doesNotMatch(plan, /inset-x-0 bottom-0 h-2 bg-line/);
+  assert.ok(plan.includes(`left:${1 / 27 * 100}%;width:${11 / 27 * 100}%`));
+  assert.match(plan, />12\/12<\/strong> planned \/ capacity/);
+  assert.match(html, /15 over capacity/);
 });
 
 test("legacy Full highlights Pause without changing saved state or submitting a mutation", () => {
