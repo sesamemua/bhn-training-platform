@@ -61,7 +61,7 @@ export async function sendAcknowledgement(
   if (!mailConfigured()) return { state: "not-configured", preview };
 
   try {
-    await sendMail({ to: opts.to, subject: preview.subject, text: preview.body, html: letterHtml(preview.body) });
+    await sendMail({ to: opts.to, subject: preview.subject, text: preview.body, html: letterHtml(preview.body), log: { kind: "Registration received (automatic)" } });
     return { state: opts.asTest ? "sent-to-you" : "sent", preview };
   } catch (err) {
     // The row is already written. A registration is not lost because
@@ -163,7 +163,7 @@ export async function sendDecisionLetter(
   }, calendarFor(about) ?? []);
 
   try {
-    for (const message of messages) await sendMail(message);
+    for (const message of messages) await sendMail({ ...message, log: { kind: `Letter: ${template.name}` } });
     return { state: "sent", preview };
   } catch (err) {
     return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };
@@ -226,10 +226,10 @@ export async function personLetterDraft(
 }
 
 /** Post a letter that is already written — the draft, or what the coordinator made of it. */
-export async function sendComposed(mail: SentMail): Promise<Receipt> {
+export async function sendComposed(mail: SentMail, log?: { kind: string; byName?: string | null }): Promise<Receipt> {
   if (!mailConfigured()) return { state: "not-configured", preview: mail };
   try {
-    await sendMail({ to: mail.to, subject: mail.subject, text: mail.body, html: letterHtml(mail.body) });
+    await sendMail({ to: mail.to, subject: mail.subject, text: mail.body, html: letterHtml(mail.body), log });
     return { state: "sent", preview: mail };
   } catch (err) {
     return { state: "failed", why: (err as Error)?.message ?? "unknown", preview: mail };
@@ -304,6 +304,8 @@ export async function sendPersonCombined(mail: {
   passToken?: string;
   /** Links drawn as buttons in the HTML letter. */
   buttons?: { url: string; label: string }[];
+  /** Who pressed Send — kept with the copy of the letter. */
+  byName?: string;
   calendar: { seat: { bookingId: string; session: string; start: Date; end: Date; venue: string | null; bookedAt?: Date; decidedAt?: Date }; action: "add" | "remove" }[];
 }): Promise<Receipt> {
   if (!mail.to) return { state: "no-address" };
@@ -317,7 +319,7 @@ export async function sendPersonCombined(mail: {
     html: letterHtml(preview.body, mail.buttons),
   }, calendars);
   try {
-    for (const message of messages) await sendMail(message);
+    for (const message of messages) await sendMail({ ...message, log: { kind: "Decision letter", byName: mail.byName } });
     return { state: "sent", preview };
   } catch (err) {
     return { state: "failed", why: (err as Error)?.message ?? "unknown", preview };

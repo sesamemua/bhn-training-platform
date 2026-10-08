@@ -511,7 +511,7 @@ export async function sendToAudience(input: {
           ...(v.cant_attend_link ? [{ url: v.cant_attend_link, label: "Cancel my place" }] : []),
         ];
         const qr = passToken && v.pass_link ? withPassQr(text, v.pass_link, passToken, buttons) : null;
-        await sendMail({ to: r.email, subject, text, html: qr?.html ?? letterHtml(text, buttons), attachments: qr ? [qr.attachment] : undefined });
+        await sendMail({ to: r.email, subject, text, html: qr?.html ?? letterHtml(text, buttons), attachments: qr ? [qr.attachment] : undefined, log: { kind: "Email to a group (Email tab)", byName: admin.name || admin.email } });
         sent += 1;
       } catch (err) {
         failed += 1;
@@ -1185,6 +1185,7 @@ export async function sendPersonLetterFor(key: string): Promise<{ ok: boolean; d
     passToken: made.letter.hasPlace && made.token ? made.token : undefined,
     calendar: made.letter.calendar,
     buttons: made.letter.buttons,
+    byName: admin.name || admin.email,
   });
   if (delivered(receipt)) {
     // Told about each seat in the letter as it stands now.
@@ -1332,6 +1333,7 @@ export async function sendTravelCheck(
 
   const receipt = await sendComposed(
     edited ? { to: made.mail.to, subject: subject!, body: body! } : made.mail,
+    { kind: kind === "next" ? "Travel — next steps" : "Travel — clarifying question", byName: admin.name || admin.email },
   );
 
   await logSend(admin.id, TRAVEL_CHECK, {
@@ -1520,7 +1522,7 @@ export async function sendDistanceCheck(bookingId: string, edited: { subject: st
   const subject = edited.subject.trim().replace(/[\r\n]+/g, " ").slice(0, 300);
   const body = edited.body.trim().slice(0, 20_000);
   if (!subject || !body) return { ok: false, problem: "An empty letter is not a letter." };
-  const receipt = await sendComposed({ to: made.mail.to, subject, body });
+  const receipt = await sendComposed({ to: made.mail.to, subject, body }, { kind: "Travel — where they are coming from", byName: admin.name || admin.email });
   await logSend(admin.id, DISTANCE_CHECK, { bookingId, email: made.mail.to, school: made.school, state: receipt.state });
   revalidatePath(PAGE);
   return { ok: true, receipt };
@@ -1771,4 +1773,73 @@ export async function saveWorkshopStatus(map: unknown) {
   revalidatePath(PAGE);
   revalidatePath(`/apply/${REGISTRATION_FORM_SLUG_V2}`);
   return { ok: true as const };
+}
+
+/* ── one person's communications ─────────────────────────────────── */
+
+export interface Communication { at: string; kind: string; subject: string | null; body: string | null; by: string | null }
+export interface Communications {
+  /** Everything that has gone to them, newest first. */
+  past: Communication[];
+  /** Their letter waiting in the outbox, if one is. */
+  outbox: { subject: string; body: string; seats: OwedSeat[] } | null;
+  /** Seats of theirs taken out of the letter round — nothing goes about these until they are put back. */
+  held: OwedSeat[];
+  /** Before this date only some kinds of message were recorded. */
+  fullSince: string;
+}
+
+/**
+ * Everything sent to the person behind a registration, and what is
+ * waiting to go. Messages are copied to MailLog as they are sent; from
+ * before that existed, the audit log still says when a decision or
+ * travel letter went and who sent it, and the registration's own date
+ * says when the automatic acknowledgement went.
+ */
+export async function loadCommunications(submissionId: string): Promise<{ ok: boolean; problem?: string; data?: Communications }> {
+  await requireAdmin();
+  if (!isId(submissionId)) return { ok: false, problem: "That is not a registration." };
+  const sub = await prisma.eventFormSubmission.findUnique({ where: { id: submissionId }, select: { email: true, createdAt: true, bookings: { select: { id: true }, take: 1 } } });
+  if (!sub) return { ok: false, problem: "That registration no longer exists." };
+  const email = (sub.email ?? "").trim().toLowerCase();
+
+  const first = await prisma.mailLog.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } });
+  const fullSince = first?.createdAt ?? new Date();
+  const [copies, logs] = await Promise.all([
+    email ? prisma.mailLog.findMany({ where: { to: email }, orderBy: { createdAt: "desc" }, take: 200 }) : [],
+    email ? prisma.auditLog.findMany({
+      where: { action: { in: [PERSON_LETTER, TRAVEL_CHECK, DISTANCE_CHECK] }, createdAt: { lt: fullSince }, detail: { contains: email, mode: "insensitive" } },
+      select: { action: true, detail: true, createdAt: true, actor: { select: { name: true, email: true } } },
+      orderBy: { createdAt: "desc" }, take: 200,
+    }) : [],
+  ]);
+  const past: Communication[] = copies.map((c) => ({ at: c.createdAt.toISOString(), kind: c.kind, subject: c.subject, body: c.body, by: c.byName }));
+  for (const l of logs) {
+    let d: { email?: string; state?: string; seats?: string[] };
+    try { d = JSON.parse(l.detail ?? "{}"); } catch { continue; }
+    if ((d.email ?? "").toLowerCase() !== email || (d.state !== "sent" && d.state !== "sent-to-you")) continue;
+    past.push({
+      at: l.createdAt.toISOString(),
+      kind: l.action === PERSON_LETTER ? "Decision letter" : l.action === TRAVEL_CHECK ? "Travel — clarifying question" : "Travel — where they are coming from",
+      subject: null,
+      body: l.action === PERSON_LETTER && d.seats?.length ? `About: ${d.seats.join("; ")}` : null,
+      by: l.actor.name || l.actor.email,
+    });
+  }
+  // The acknowledgement goes by itself on submitting; before copies were kept, its date is the registration's.
+  if (email && sub.createdAt < fullSince) {
+    past.push({ at: sub.createdAt.toISOString(), kind: "Registration received (automatic)", subject: null, body: null, by: null });
+  }
+  past.sort((a, b) => b.at.localeCompare(a.at));
+
+  // What is waiting: their letter in the outbox, and anything of theirs taken out of the round.
+  let outbox: Communications["outbox"] = null;
+  let heldSeatsOfTheirs: OwedSeat[] = [];
+  const key = sub.bookings[0] ? await personKeyForSeat(sub.bookings[0].id) : null;
+  if (key) {
+    const mine = (await lettersOwed()).find((o) => o.key === key);
+    if (mine?.seats.length) outbox = { subject: mine.subject, body: mine.body, seats: mine.seats };
+    heldSeatsOfTheirs = mine?.removed ?? [];
+  }
+  return { ok: true, data: { past, outbox, held: heldSeatsOfTheirs, fullSince: fullSince.toISOString() } };
 }

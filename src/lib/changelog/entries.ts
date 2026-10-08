@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registrants: every person\u2019s communications, sent and waiting",
+    body: "Open anyone under **Registrants** (or Travel follow-up) and press **Communications with {name}**.\n\n**Waiting to go** shows their letter if it is in the outbox \u2014 read it there \u2014 and any of their seats that were **taken out of the letter round**, with who took them out and a **Put their letter back in the outbox** button.\n\n**Already sent** lists everything that has gone to them, newest first: what it was, when, and who sent it. From today a full copy of every Training Week message is kept, so you can read exactly what they received. For earlier messages the list shows decision and travel letters (when, and by whom) and the automatic acknowledgement; group emails sent from the Email tab before today are not listed per person.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: no approving overlapping sessions by accident, and who did what",
     body: "**Overlap guard.** Approving a session that runs at the same time as one the person is **already approved for** is now stopped, with a warning naming the other session. **Approve anyway** overrides it (and is recorded as an override). Bulk approve skips overlapping seats and tells you how many.\n\n**Who did it.** Every seat under **Registrants** now shows its last action and who took it \u2014 *Approved by Epshita \u00b7 Oct 5* \u2014 with a **History** link for the full list: each approval, waitlist, decline, letter sent, and each time it was taken out of or put back into a letter round. The **mailbox** shows who made each decision and who took a seat out of the round.",
     kind: "feature",

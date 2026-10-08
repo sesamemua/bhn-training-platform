@@ -11,7 +11,7 @@ import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useState, useTransition } from "react";
 import { Check, ChevronDown, Loader2, Mail } from "lucide-react";
 import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
-import { decideSeat, deleteSubmission, draftDistanceCheck, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendLetterForRegistration } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { decideSeat, deleteSubmission, draftDistanceCheck, holdLetters, loadCommunications, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendLetterForRegistration, type Communications } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { AnchoredCard } from "@/components/ui/AnchoredCard";
 import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import type { SubmissionRow } from "@/lib/allocation/admin-types";
@@ -130,7 +130,101 @@ export function RegistrationDetail({ sub, onChanged, where }: {
           ))}
         </div>
       )}
+      <div className="lg:col-span-2">
+        <CommunicationsPanel submissionId={sub.id} who={who} onChanged={onChanged} />
+      </div>
     </div>
+  );
+}
+
+/**
+ * Everything that has gone to this person, and what is waiting to go:
+ * their letter in the outbox, and any seats taken out of the letter
+ * round — which can be put back from here. Loaded when opened.
+ */
+function CommunicationsPanel({ submissionId, who, onChanged }: { submissionId: string; who: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<Communications | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [shown, setShown] = useState<number | "outbox" | null>(null);
+  const [pending, start] = useTransition();
+  const stamp = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+
+  const load = () => start(async () => {
+    const r = await loadCommunications(submissionId).catch(() => ({ ok: false as const, problem: "Could not load — you may have been signed out.", data: undefined }));
+    if (r.ok && r.data) { setData(r.data); setProblem(null); } else setProblem(r.problem ?? "Could not load.");
+  });
+  const toggle = () => { if (!open && !data) load(); setOpen((v) => !v); };
+  const putBack = (ids: string[]) => start(async () => {
+    await holdLetters(ids, false);
+    lettersChanged();
+    onChanged();
+    load();
+  });
+
+  return (
+    <section className="rounded-lg border border-line bg-card px-2.5 py-2">
+      <button type="button" onClick={toggle} aria-expanded={open} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-fg hover:underline">
+        <Mail size={13} /> Communications with {who}
+        {pending && <Loader2 size={12} className="animate-spin" />}
+      </button>
+      {open && problem && <p role="alert" className="mt-1 text-[12px] font-semibold text-rose-600">{problem}</p>}
+      {open && data && (
+        <div className="mt-2 grid gap-3 md:grid-cols-2">
+          <div className="min-w-0">
+            <h4 className="text-[11px] font-bold uppercase tracking-wide text-subtle">Waiting to go</h4>
+            {!data.outbox && data.held.length === 0 && <p className="mt-1 text-[12px] text-muted">Nothing is waiting for them.</p>}
+            {data.outbox && (
+              <div className="mt-1 rounded-md border border-amber-500/40 bg-amber-500/[0.06] px-2 py-1.5 text-[12px]">
+                <p className="font-semibold text-fg">In the outbox: {data.outbox.subject}</p>
+                <p className="text-muted">{data.outbox.seats.map((x) => `${x.change}: ${x.session}`).join(" · ")}</p>
+                <button type="button" onClick={() => setShown(shown === "outbox" ? null : "outbox")} className="mt-0.5 font-semibold text-muted underline underline-offset-2 hover:text-fg">{shown === "outbox" ? "Hide the letter" : "Read the letter"}</button>
+                {shown === "outbox" && <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap rounded bg-card p-2 font-sans text-[12px] leading-relaxed text-fg">{data.outbox.body}</pre>}
+                <p className="mt-1 text-[11px] text-subtle">It goes when somebody sends it from the mailbox or from a seat above.</p>
+              </div>
+            )}
+            {data.held.length > 0 && (
+              <div className="mt-1.5 rounded-md border border-dashed border-line px-2 py-1.5 text-[12px]">
+                <p className="font-semibold text-fg">Taken out of the letter round{data.held[0].heldBy ? ` by ${data.held[0].heldBy}` : ""}</p>
+                <p className="text-muted">{data.held.map((x) => `${x.change}: ${x.session}`).join(" · ")}</p>
+                <p className="mt-0.5 text-[11px] text-subtle">Nobody will be emailed about these until they are put back.</p>
+                <button type="button" disabled={pending} onClick={() => putBack(data.held.map((x) => x.bookingId))}
+                  className="mt-1 inline-flex items-center gap-1 rounded border border-line px-2 py-0.5 text-[11.5px] font-semibold text-fg hover:bg-elevated disabled:opacity-40">
+                  <Mail size={11} /> Put their letter back in the outbox
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-[11px] font-bold uppercase tracking-wide text-subtle">Already sent · {data.past.length}</h4>
+            {data.past.length === 0 ? (
+              <p className="mt-1 text-[12px] text-muted">Nothing on record.</p>
+            ) : (
+              <ol className="mt-1 space-y-1">
+                {data.past.map((c, i) => (
+                  <li key={i} className="rounded-md border border-line px-2 py-1 text-[12px]">
+                    <p className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-semibold text-fg">{c.kind}</span>
+                      <span className="text-[11px] text-subtle">{stamp(c.at)}{c.by ? ` · sent by ${c.by}` : ""}</span>
+                    </p>
+                    {c.subject && <p className="text-muted">{c.subject}</p>}
+                    {c.body && (c.subject ? (
+                      <>
+                        <button type="button" onClick={() => setShown(shown === i ? null : i)} className="font-semibold text-muted underline underline-offset-2 hover:text-fg">{shown === i ? "Hide" : "Read it"}</button>
+                        {shown === i && <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap rounded bg-elevated/50 p-2 font-sans text-[12px] leading-relaxed text-fg">{c.body}</pre>}
+                      </>
+                    ) : <p className="text-muted">{c.body}</p>)}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <p className="mt-1.5 text-[11px] leading-snug text-subtle">
+              Full copies are kept from {new Date(data.fullSince).toLocaleDateString(undefined, { month: "short", day: "numeric" })}. Before that: decision and travel letters (when, and who sent them) and the automatic acknowledgement. Emails sent to a whole group from the Email tab before then are not listed per person.
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19f";
+export const TOUR_VERSION = "2026.10.19g";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.communications",
+    title: "See what each person has been sent",
+    body: "Open a registrant and press **Communications**. It lists every message that has gone to them — what, when, who sent it, and from now on the full text — plus what is waiting: their letter in the outbox, and any seats taken out of the letter round, which you can **put back** from there.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.19g",
   },
   {
     id: "training-week.overlap-guard-and-history",

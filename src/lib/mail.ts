@@ -128,6 +128,8 @@ export async function sendMail(opts: {
    *  the mailbox anyway. Reply-To is the supported way to route an answer
    *  back to the person who actually wrote the message. */
   replyTo?: string;
+  /** Keep a copy against the recipient (MailLog), so their past communications can be read back. */
+  log?: { kind: string; byName?: string | null };
 }) {
   const t = transporter();
   const signature = opts.signature === false ? null : await currentSignature();
@@ -145,4 +147,10 @@ export async function sendMail(opts: {
     attachments: opts.attachments,
     icalEvent: opts.icalEvent,
   });
+  if (opts.log) {
+    // After the send, and never able to fail it: the record is of what went.
+    await prisma.mailLog.create({
+      data: { to: opts.to.trim().toLowerCase(), subject: opts.subject.slice(0, 500), body: opts.text.slice(0, 20_000), kind: opts.log.kind.slice(0, 80), byName: opts.log.byName ?? null },
+    }).catch(() => null);
+  }
 }

@@ -6938,3 +6938,20 @@ model DesignReview {
 
   @@unique([artworkId, userId])
 }
+
+/// One row per message sent to somebody (Training Week letters, for now),
+/// so a registrant's past communications can be read back.
+model MailLog {
+  id        String   @id @default(cuid())
+  /// The recipient's address, lower-cased.
+  to        String
+  subject   String
+  body      String
+  /// What kind of message it was, in words an admin reads.
+  kind      String
+  /// Who sent it; null for mail the platform sends by itself.
+  byName    String?
+  createdAt DateTime @default(now())
+
+  @@index([to, createdAt])
+}
