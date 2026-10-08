@@ -7,6 +7,7 @@ import { CapacityMonitor } from "../../src/components/training-week/CapacityMoni
 import { sessionCapacity } from "../../src/lib/training-week/capacity";
 import { RegistrationCounts } from "../../src/components/dashboards/RegistrationCounts";
 import { WorkshopRegistrationControl } from "../../src/components/training-week/WorkshopRegistrationControl";
+import { TrainingWeekCapacity } from "../../src/components/training-week/TrainingWeekCapacity";
 
 const seats = (n: number, status = "pending", internal = false) => Array.from({ length: n }, () => ({ status, internal }));
 
@@ -88,10 +89,16 @@ test("empty and over-approved workshops keep finite track dimensions and explici
 test("symposium precedes capacity; total people and per-session controls stay separate from seat counts", () => {
   const session = { id: "one", slug: "one", title: "Workshop", start: "2026-10-26T10:00:00Z", cap: sessionCapacity(20, seats(5)), registration: { state: "open" as const, message: "" } };
   const save = async () => ({ ok: true });
-  const html = renderToStaticMarkup(createElement(RegistrationCounts, { sessions: [session], saveWorkshopState: save }));
+  const html = renderToStaticMarkup(createElement(RegistrationCounts, { sessions: [session], saveWorkshopState: save, saveCapacity: save }));
   assert.ok(html.indexOf("Annual Symposium registration") < html.indexOf("Training Week capacity"));
   assert.match(html, /people registered/);
   assert.match(html, /Registration for Workshop/);
+  assert.match(html, /aria-label="Seat capacity for Workshop"/);
+  assert.match(html, /type="number" min="0" max="1000" step="1"/);
+  const shared = renderToStaticMarkup(createElement(TrainingWeekCapacity, { sessions: [session], registered: 49, saveWorkshopState: save, saveCapacity: save }));
+  assert.match(shared, /Seat capacity for Workshop/);
+  assert.match(shared, /Registration for Workshop/);
+  assert.match(shared, /people registered/);
   for (const label of ["Open", "Pause", "Close"]) assert.ok(html.includes(`${label}</button>`));
   const paused = renderToStaticMarkup(createElement(WorkshopRegistrationControl, { slug: "one", title: "Workshop", initial: "paused", save }));
   assert.match(paused, /<strong class="text-fg">Paused<\/strong>/);

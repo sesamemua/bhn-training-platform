@@ -202,6 +202,7 @@ export async function updateWorkshop(id: string, patch: Partial<WorkshopInput>) 
     },
   });
   revalidatePath(PAGE);
+  revalidatePath("/dashboard");
   return { ok: true as const };
 }
 

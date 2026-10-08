@@ -11,9 +11,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, RefreshCw, Users } from "lucide-react";
 import type { RegistrationCount } from "@/lib/events/registrations";
-import { CapacityMonitor } from "@/components/training-week/CapacityMonitor";
+import { TrainingWeekCapacity, type SaveWorkshopCapacity } from "@/components/training-week/TrainingWeekCapacity";
 import type { MonitorSession } from "@/lib/training-week/capacity";
-import { WorkshopRegistrationControl, type SaveWorkshopRegistration } from "@/components/training-week/WorkshopRegistrationControl";
+import type { SaveWorkshopRegistration } from "@/components/training-week/WorkshopRegistrationControl";
 
 /*
  * Five minutes, and the answer is held on the server for four (see
@@ -23,7 +23,7 @@ import { WorkshopRegistrationControl, type SaveWorkshopRegistration } from "@/co
  */
 const EVERY_MS = 5 * 60_000;
 
-export function RegistrationCounts({ sessions, saveWorkshopState }: { sessions: MonitorSession[]; saveWorkshopState: SaveWorkshopRegistration }) {
+export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity }: { sessions: MonitorSession[]; saveWorkshopState: SaveWorkshopRegistration; saveCapacity: SaveWorkshopCapacity }) {
   const [events, setEvents] = useState<RegistrationCount[] | null>(null);
   const [at, setAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,9 +109,9 @@ export function RegistrationCounts({ sessions, saveWorkshopState }: { sessions: 
       </div>
     </article>
     {sessions.length > 0 && <article className="aero-frame"><div className="aero-card">
-      <CapacityMonitor sessions={sessions} registered={events?.find((e) => e.key === "training")?.count ?? null}
+      <TrainingWeekCapacity sessions={sessions} registered={events?.find((e) => e.key === "training")?.count ?? null}
+        saveWorkshopState={saveWorkshopState} saveCapacity={saveCapacity}
         action={<Link href="/admin/workspace/training-admin?tab=capacity" className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">Open Training Week →</Link>}
-        controls={(s) => s.registration && <WorkshopRegistrationControl key={`${s.id}:${s.registration.state}`} slug={s.slug} title={s.title} initial={s.registration.state} save={saveWorkshopState} />}
       />
       {failed && <p role="status" className="text-[12px] text-rose-600">Registration count could not refresh. Please try Refresh above.</p>}
     </div></article>}

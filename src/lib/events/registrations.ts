@@ -128,7 +128,7 @@ async function lumaWaitingFor(apiId: string, force = false): Promise<LumaWaiting
 }
 
 /** People registered for Training Week on any version of the form: one per address, test rows left out. */
-async function trainingWeekCount(): Promise<number> {
+export async function trainingWeekCount(): Promise<number> {
   const forms = (await prisma.eventForm.findMany({ where: REGISTRATION_FORM_WHERE, select: { id: true, slug: true } }))
     .filter((f) => versionRoot(f.slug) === REGISTRATION_FORM_SLUG);
   const rows = await prisma.eventFormSubmission.findMany({

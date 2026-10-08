@@ -8,7 +8,7 @@
  * capacity, then write to the people it just let in — and a navigation
  * between each of those is four chances to lose your place.
  */
-import { SeatProjection } from "@/components/training-week/SeatProjection";
+import { NumberField } from "@/components/training-week/TrainingWeekCapacity";
 import { projectWeekSeats } from "@/lib/allocation/seat-projection";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
@@ -93,8 +93,9 @@ export interface EligibilitySummary {
 }
 
 export function TrainingAdmin({
-  eventId, eventTitle, rules: initialRules, views, cateringSent, workshops, initialTab, eligibility, internalPeople, internalStaff, switches,
+  eventId, eventTitle, rules: initialRules, views, cateringSent, workshops, initialTab, eligibility, internalPeople, internalStaff, switches, capacityPanel,
 }: {
+  capacityPanel: React.ReactNode;
   /** Open / Full / Closed per session, with what the switches need. */
   switches: React.ComponentProps<typeof WorkshopSwitches>;
   eventId: string; eventTitle: string; rules: Rule[]; views: View[]; cateringSent: SentRecord; workshops: AdminWorkshop[];
@@ -132,7 +133,7 @@ export function TrainingAdmin({
 
       <div className="mt-5">
         {tab === "dashboard" && (
-          <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} eligibility={eligibility} />
+          <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} eligibility={eligibility} capacityPanel={capacityPanel} />
         )}
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
@@ -158,23 +159,24 @@ export function TrainingAdmin({
  * What an organiser wants on opening the tab: how the week is filling,
  * what the policy currently is, and when everything happens.
  *
- * Read-only on purpose. Every number here is a door into the panel that
- * can change it, so the landing page never has to be the place where
- * something is edited by accident.
+ * Capacity and registration controls are shared with the home dashboard.
  */
 function Dashboard({
-  rules, workshops, onOpen, eligibility,
-}: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void; eligibility: EligibilitySummary }) {
+  rules, workshops, onOpen, eligibility, capacityPanel,
+}: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void; eligibility: EligibilitySummary; capacityPanel: React.ReactNode }) {
   const live = workshops.filter((w) => w.isActive);
   const active = rules.filter((r) => r.isActive);
   const projection = useMemo(() => projectWeekSeats(workshops, rules), [workshops, rules]);
 
   return (
     <div className="space-y-5">
-      <SeatProjection
-        projection={projection} workshops={workshops}
-        onReview={() => onOpen("suggest")} onCapacity={() => onOpen("capacity")}
-      />
+      {capacityPanel}
+      {projection.problem && <p role="alert" className="text-[13px] text-fg">Projection unavailable: {projection.problem}</p>}
+      {projection.rows.filter((row) => row.warnings.length > 0).map((row) => <p key={row.id} role="alert" className="text-[12px] text-fg">{workshops.find((w) => w.id === row.id)?.title}: {row.warnings.join(" ")}</p>)}
+      <div className="flex flex-wrap gap-3">
+        <button type="button" className={BTN} onClick={() => onOpen("suggest")}>Review seat suggestions</button>
+        <button type="button" className={BTN} onClick={() => onOpen("capacity")}>Manage workshops &amp; waitlists</button>
+      </div>
 
       <EligibilityCard summary={eligibility} />
 
@@ -818,27 +820,6 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
   );
 }
 
-/** A number that saves on blur rather than on every keystroke. */
-function NumberField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number, revert: () => void) => void }) {
-  const [v, setV] = useState(String(value));
-  return (
-    <label className="block">
-      <span className="text-[10.5px] uppercase tracking-wide text-subtle">{label}</span>
-      <input
-        type="number"
-        min={0}
-        value={v}
-        onChange={(e) => setV(e.target.value)}
-        onBlur={() => {
-          const n = Number(v);
-          if (Number.isFinite(n) && n >= 0 && n !== value) onCommit(n, () => setV(String(value)));
-          else setV(String(value));
-        }}
-        className="mt-0.5 w-20 rounded-md border border-line bg-elevated px-2 py-1 text-[13px] text-fg outline-none focus-visible:border-brand-500"
-      />
-    </label>
-  );
-}
 
 function NewWorkshop({ eventId, onDone }: { eventId: string; onDone: () => void }) {
   const [pending, start] = useTransition();

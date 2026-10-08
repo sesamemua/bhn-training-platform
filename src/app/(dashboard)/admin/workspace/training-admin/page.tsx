@@ -17,7 +17,11 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { TrainingAdmin } from "@/components/workspace/TrainingAdmin";
-import { loadRules } from "./actions";
+import { loadRules, updateWorkshop } from "./actions";
+import { TrainingWeekCapacity } from "@/components/training-week/TrainingWeekCapacity";
+import { loadCapacityMonitor } from "@/lib/training-week/capacity-server";
+import { saveWorkshopRegistration } from "@/lib/training-week/workshop-registration";
+import { trainingWeekCount } from "@/lib/events/registrations";
 import { applicantFor } from "@/lib/allocation/applicants";
 import { letterDue } from "@/lib/allocation/decisions";
 import { REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
@@ -64,7 +68,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     );
   }
 
-  const [rules, workshops, forms, savedViews, cateringCopy] = await Promise.all([
+  const [rules, workshops, forms, savedViews, cateringCopy, capacity, registered] = await Promise.all([
     loadRules(),
     prisma.workshop.findMany({
       where: { eventId: event.id },
@@ -91,6 +95,8 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     prisma.eventForm.findMany({ where: REGISTRATION_FORM_WHERE, select: { fields: true } }),
     prisma.platformSetting.findUnique({ where: { key: REGISTRANT_VIEWS_KEY }, select: { value: true } }),
     prisma.platformSetting.findUnique({ where: { key: CATERING_SENT_KEY }, select: { value: true } }),
+    loadCapacityMonitor(),
+    trainingWeekCount().catch(() => null),
   ]);
   const accessKeys = new Set(
     forms.flatMap((f) => ((f.fields as { fields?: { key?: string; label?: string }[] } | null)?.fields ?? []))
@@ -189,6 +195,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         icon={<SlidersHorizontal />}
       />
       <TrainingAdmin
+        capacityPanel={<TrainingWeekCapacity sessions={capacity} registered={registered} saveCapacity={updateWorkshop} saveWorkshopState={saveWorkshopRegistration} />}
         switches={{
           initial: parseStatusMap(workshopStatus?.value),
           sessions: switchable(),

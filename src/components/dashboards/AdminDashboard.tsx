@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { saveWorkshopRegistration } from "@/lib/training-week/workshop-registration";
 import { loadCapacityMonitor } from "@/lib/training-week/capacity-server";
+import { updateWorkshop } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import {
   ArrowRight, ClipboardList,
   Building2, Briefcase, BookOpen, Inbox, Rocket,
@@ -221,7 +222,7 @@ export async function AdminDashboard({
         : {
             headline: (
               <>
-                Hi, {firstName} — the platform reads <em>healthy</em>.
+                Hi, {firstName}.
               </>
             ),
             dek: `Nothing in the queue. ${totalUsers.toLocaleString()} active user${totalUsers === 1 ? "" : "s"}, ${activePostings} live posting${activePostings === 1 ? "" : "s"}, ${totalApplications} talent application${totalApplications === 1 ? "" : "s"} in flight.`,
@@ -311,7 +312,7 @@ export async function AdminDashboard({
 
       {committeeBadge}
 
-      <RegistrationCounts sessions={capacity} saveWorkshopState={saveWorkshopRegistration} />
+      <RegistrationCounts sessions={capacity} saveWorkshopState={saveWorkshopRegistration} saveCapacity={updateWorkshop} />
       <RegistrationSwitch />
       <MarketingMetrics />
 
@@ -622,23 +623,23 @@ const AERO_CSS = `
 .adash-aero .aero-frame > * { position: relative; z-index: 1; }
 
 /* ── Magazine cover ───────────────────────────────────────────── */
-.adash-aero .cover-wrap { display: grid; grid-template-columns: 1.7fr 1fr; min-height: 360px; }
+.adash-aero .cover-wrap { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
 @media (max-width: 900px) { .adash-aero .cover-wrap { grid-template-columns: 1fr; } }
-.adash-aero .cover { padding: 36px 40px 32px; display: flex; flex-direction: column; justify-content: space-between; }
+.adash-aero .cover { padding: 20px 24px; display: flex; flex-direction: column; justify-content: center; }
 .adash-aero .cover .issue {
   font-family: ui-monospace, 'IBM Plex Mono', monospace;
-  font-size: 10.5px; letter-spacing: 0.4em; text-transform: uppercase;
-  color: var(--fg-muted); margin: 0 0 14px; font-weight: 700;
+  font-size: 10.5px; letter-spacing: 0; text-transform: uppercase;
+  color: var(--fg-muted); margin: 0 0 8px; font-weight: 700;
 }
 .adash-aero .cover .headline {
-  font-size: 52px; font-weight: 800; letter-spacing: -0.03em;
-  line-height: 0.98; margin: 0 0 12px; color: var(--fg);
+  font-size: 28px; font-weight: 800; letter-spacing: 0;
+  line-height: 1.2; margin: 0 0 8px; color: var(--fg); overflow-wrap: anywhere;
   text-shadow: 0 1px 0 rgba(255,255,255,0.45);
 }
 .adash-aero .cover .headline em {
   font-style: italic; color: var(--brand-700);
 }
-.adash-aero .cover .dek { font-size: 15.5px; color: var(--fg-muted); max-width: 50ch; line-height: 1.5; margin: 0 0 18px; }
+.adash-aero .cover .dek { font-size: 13px; color: var(--fg-muted); max-width: 70ch; line-height: 1.4; margin: 0 0 8px; }
 .adash-aero .stamps { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .adash-aero .pill {
   display: inline-block; padding: 4px 11px; border-radius: 999px;
@@ -652,14 +653,14 @@ const AERO_CSS = `
 }
 .adash-aero .signoff {
   font-family: ui-monospace, 'IBM Plex Mono', monospace;
-  font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--fg-subtle); margin: 20px 0 0;
+  font-size: 10.5px; letter-spacing: 0; text-transform: uppercase;
+  color: var(--fg-subtle); margin: 10px 0 0;
 }
 
 .adash-aero .toc {
   background: var(--card);
   border-left: 1px solid var(--line);
-  padding: 32px 28px; display: flex; flex-direction: column; gap: 14px;
+  padding: 16px 20px; display: flex; flex-direction: column; gap: 8px;
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
 }
@@ -673,8 +674,8 @@ const AERO_CSS = `
    into that pillar's main admin surface. */
 .adash-aero .toc .pillar {
   display: block;
-  padding: 14px 16px;
-  border-radius: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--card-solid);
   text-decoration: none;
