@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19e";
+export const TOUR_VERSION = "2026.10.19f";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.overlap-guard-and-history",
+    title: "Overlaps are caught, and every action has a name",
+    body: "Approving a session that clashes with one the person already has now stops with a warning — **Approve anyway** overrides it. And each seat shows who approved, waitlisted or declined it, who sent the letter, and who took it out of a letter round, with a **History** link for the lot.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.19f",
   },
   {
     id: "training-week.travel-eligibility",

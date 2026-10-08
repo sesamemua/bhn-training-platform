@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: no approving overlapping sessions by accident, and who did what",
+    body: "**Overlap guard.** Approving a session that runs at the same time as one the person is **already approved for** is now stopped, with a warning naming the other session. **Approve anyway** overrides it (and is recorded as an override). Bulk approve skips overlapping seats and tells you how many.\n\n**Who did it.** Every seat under **Registrants** now shows its last action and who took it \u2014 *Approved by Epshita \u00b7 Oct 5* \u2014 with a **History** link for the full list: each approval, waitlist, decline, letter sent, and each time it was taken out of or put back into a letter round. The **mailbox** shows who made each decision and who took a seat out of the round.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Travel follow-up: open a person, approve their eligibility, write to them in the row",
     body: "In **Training Week \u2192 Travel follow-up**, click a **name** to open the row \u2014 it shows their full registration, as under Registrants.\n\n**Travel eligibility.** Press **Checked \u2014 approve eligibility** once you have confirmed their journey is over two hours. The row then shows **Travel eligibility approved \u00b7 Checked and approved by {name} \u00b7 date**. It can be taken back.\n\n**A letter for everyone.** Each row has its letter in an **editable box**: a **clarifying question** for a False OOT, and **next steps** for everybody else (do they need a hotel room booked, and how are they travelling). Edit it right there and press Send \u2014 nothing goes until you confirm. The new wording lives under Email \u2192 Standing letters as *Travel support \u2014 reviewed, next steps*.",
     kind: "feature",

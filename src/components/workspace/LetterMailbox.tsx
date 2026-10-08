@@ -177,8 +177,8 @@ export function LetterMailbox() {
                     {/* What their one email covers — each session removable on its own. */}
                     <div className="mt-1 flex flex-wrap gap-1">
                       {o.seats.map((x) => (
-                        <span key={x.bookingId} className={`inline-flex items-center gap-1 rounded py-0.5 pl-1.5 pr-0.5 text-[11px] font-semibold ${TONE[x.change] ?? "bg-elevated text-fg"}`}>
-                          {x.change}: {x.session}
+                        <span key={x.bookingId} title={x.decidedBy ? `${x.change} by ${x.decidedBy}` : undefined} className={`inline-flex items-center gap-1 rounded py-0.5 pl-1.5 pr-0.5 text-[11px] font-semibold ${TONE[x.change] ?? "bg-elevated text-fg"}`}>
+                          {x.change}: {x.session}{x.decidedBy && <span className="font-normal opacity-75"> · {x.decidedBy}</span>}
                           {o.seats.length > 1 && (
                             <button type="button" disabled={!!busy} onClick={() => hold([x.bookingId], true)} aria-label={`Leave ${x.session} out of ${o.name}'s letter`} title="Leave this session out of the letter" className="rounded px-0.5 opacity-60 hover:opacity-100 disabled:opacity-30">
                               <X size={11} />
@@ -206,6 +206,7 @@ export function LetterMailbox() {
                     <li key={o.key} className="flex flex-wrap items-center gap-1.5 text-[12px]">
                       <span className="font-semibold text-fg">{o.name}</span>
                       {o.removed.map((x) => <span key={x.bookingId} className="rounded bg-elevated px-1.5 py-0.5 text-[11px] text-muted">{x.change}: {x.session}</span>)}
+                      {o.removed[0]?.heldBy && <span className="text-[11px] text-subtle">taken out by {o.removed[0].heldBy}</span>}
                       <button type="button" disabled={!!busy} onClick={() => hold(o.removed.map((x) => x.bookingId), false)} className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] font-semibold text-muted hover:bg-elevated hover:text-fg disabled:opacity-40">
                         <RotateCcw size={11} /> Put back
                       </button>

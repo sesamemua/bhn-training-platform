@@ -193,6 +193,8 @@ export interface SubmissionRow {
     /** They told us they can't make it — when, and why. */
     withdrawnAt?: string | null;
     withdrawReason?: string | null;
+    /** Who did what to this seat, oldest first: decisions, letters sent, taken out of a round. */
+    history?: { what: string; by: string; at: string }[];
   }[];
   /** Everything else, by question label, for the expanded view. */
   answers: Record<string, string>;

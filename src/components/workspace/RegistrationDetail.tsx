@@ -251,13 +251,20 @@ function Seat({ seat, who, registrationId, onDone }: { seat: SubmissionRow["seat
   const [noteOpen, setNoteOpen] = useState(Boolean(seat.note));
   const [said, setSaid] = useState<string | null>(null);
   const [mail, setMail] = useState<string | null>(null);
+  const [overlap, setOverlap] = useState<string[] | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [pending, start] = useTransition();
+  const history = seat.history ?? [];
+  const stamp = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
   // Deciding records the decision only; the letter waits (seat.letterOwed)
   // until it is sent here, per workshop, or all at once.
-  const decide = (to: Decision) =>
+  const decide = (to: Decision, allowOverlap = false) =>
     start(async () => {
-      const r = await decideSeat(seat.id, to, note);
+      const r = await decideSeat(seat.id, to, note, { allowOverlap });
+      // Runs at the same time as a session they already have: ask, do not just refuse.
+      if (!r.ok && r.overlap) { setOverlap(r.overlap); setSaid(null); return; }
+      setOverlap(null);
       setSaid(
         !r.ok ? r.problem ?? "Could not record that."
         : r.letterOwed ? `${r.said ?? "Saved"} — saved. Their letter waits in the mailbox; nobody has been emailed.`
@@ -354,8 +361,33 @@ function Seat({ seat, who, registrationId, onDone }: { seat: SubmissionRow["seat
         )}
       </div>
 
+      {overlap && (
+        <div role="alert" className="mt-1.5 rounded-md border border-amber-500/50 bg-amber-500/10 px-2 py-1.5 text-[11.5px] leading-snug text-amber-800">
+          <p className="font-bold">Not approved — it overlaps with {overlap.join(" and ")}, which {who} is already approved for.</p>
+          <p className="mt-0.5">Nobody can be in both. Decline or waitlist the other one first, or approve anyway.</p>
+          <p className="mt-1 flex gap-2">
+            <button type="button" disabled={pending} onClick={() => decide("confirmed", true)} className="rounded border border-amber-600 px-2 py-0.5 font-bold text-amber-800 hover:bg-amber-500/20 disabled:opacity-40">Approve anyway</button>
+            <button type="button" onClick={() => setOverlap(null)} className="font-semibold text-muted hover:text-fg">Leave it</button>
+          </p>
+        </div>
+      )}
       {said && <p role="status" className="mt-1 text-[11px] text-fg">{said}</p>}
       {mail && <p className="mt-0.5 text-[11px] text-muted">{mail}</p>}
+      {history.length > 0 && (
+        <div className="mt-1 text-[11px] text-subtle">
+          <span>{history.at(-1)!.what} by <strong className="font-semibold text-muted">{history.at(-1)!.by}</strong> · {stamp(history.at(-1)!.at)}</span>
+          {history.length > 1 && (
+            <button type="button" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory} className="ml-2 font-semibold text-muted underline underline-offset-2 hover:text-fg">
+              {showHistory ? "Hide history" : `History (${history.length})`}
+            </button>
+          )}
+          {showHistory && (
+            <ol className="mt-1 space-y-0.5 border-l border-line pl-2">
+              {history.map((h, i) => <li key={i}>{stamp(h.at)} — {h.what} by {h.by}</li>)}
+            </ol>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -40,6 +40,7 @@ import { rankedSessions } from "@/lib/formbuilder/submit";
 import { personLetterDraft, sendComposed, sendPersonCombined } from "@/lib/formbuilder/acknowledge";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import {
+  DECISION_LABEL,
   describe as describeDecision, isDecision, letterDue, type Decision,
 } from "@/lib/allocation/decisions";
 import type { Receipt, SentMail } from "@/lib/formbuilder/receipt";
@@ -739,6 +740,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
 
   const internalSet = (await loadInternalSet()).keys;
 
+  const history = await seatHistory(rows.flatMap((r) => r.bookings.map((b) => ({ id: b.id, email: r.email ?? r.user?.email ?? null }))));
   return rows.flatMap((r) => {
     const own = byForm.get(r.formId);
     if (!own) return [];
@@ -771,6 +773,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
         toldAt: b.notifiedAt ? b.notifiedAt.toISOString() : null,
         withdrawnAt: b.withdrawnAt ? b.withdrawnAt.toISOString() : null,
         withdrawReason: b.withdrawReason ?? null,
+        history: history.get(b.id) ?? [],
       })),
       answers: Object.fromEntries(
         doc.fields
@@ -917,20 +920,30 @@ export async function decideSeat(
   bookingId: string,
   to: string,
   note?: string,
-  opts?: { send?: boolean; expectedStatuses?: string[] },
-): Promise<{ ok: boolean; problem?: string; said?: string; letterOwed?: boolean; receipt?: Receipt }> {
+  opts?: { send?: boolean; expectedStatuses?: string[]; allowOverlap?: boolean },
+): Promise<{ ok: boolean; problem?: string; said?: string; letterOwed?: boolean; receipt?: Receipt; overlap?: string[] }> {
   const admin = await requireAdmin();
   if (!isDecision(to)) return { ok: false, problem: "That is not a decision." };
   if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
 
   const decision = to as Decision;
+  // Nobody can be in two rooms at once: approving a session that runs at
+  // the same time as one this person already has is refused, unless the
+  // admin says to do it anyway.
+  if (decision === "confirmed" && !opts?.allowOverlap) {
+    const overlap = await overlappingApproved(bookingId);
+    if (overlap.length) {
+      return { ok: false, overlap, problem: `Not approved: it runs at the same time as ${overlap.join(" and ")}, which they are already approved for.` };
+    }
+  }
   const written = await writeSeatDecision(bookingId, decision, admin.id, note, opts?.expectedStatuses);
   if (!written.ok) return written;
   const booking = written.booking;
   const from = isDecision(booking.status) ? booking.status : "pending";
 
-  await logSend(admin.id, "training_admin.seat_decided", {
+  await logSend(admin.id, SEAT_DECIDED, {
     bookingId, from, to: decision, workshop: booking.workshop.title, note: note ?? null,
+    ...(opts?.allowOverlap ? { overlapOverridden: true } : {}),
   });
 
   const said = `${booking.workshop.title}: ${describeDecision(from, decision)}`;
@@ -942,6 +955,75 @@ export async function decideSeat(
     return { ok: true, said, letterOwed: !sent.delivered && !!sent.receipt, receipt: sent.receipt };
   }
   return { ok: true, said, letterOwed: !!letterDue(booking.notifiedStatus, decision) };
+}
+
+/** The sessions this seat's person is already approved for that run at the same time as it. */
+async function overlappingApproved(bookingId: string): Promise<string[]> {
+  const seat = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: { submissionId: true, userId: true, submission: { select: { email: true } }, workshop: { select: { eventId: true, startDateTime: true, endDateTime: true } } },
+  });
+  if (!seat) return [];
+  const email = seat.submission?.email;
+  const same = [
+    ...(seat.submissionId ? [{ submissionId: seat.submissionId }] : []),
+    ...(seat.userId ? [{ userId: seat.userId }] : []),
+    ...(email ? [{ submission: { email: { equals: email, mode: "insensitive" as const } } }] : []),
+  ];
+  if (!same.length) return [];
+  const others = await prisma.workshopBooking.findMany({
+    where: {
+      id: { not: bookingId }, status: "confirmed", OR: same,
+      // Touching end-to-start is not an overlap.
+      workshop: { eventId: seat.workshop.eventId, startDateTime: { lt: seat.workshop.endDateTime }, endDateTime: { gt: seat.workshop.startDateTime } },
+    },
+    select: { workshop: { select: { title: true } } },
+  });
+  return [...new Set(others.map((o) => o.workshop.title))];
+}
+
+const SEAT_DECIDED = "training_admin.seat_decided";
+const LETTER_HELD = "training_admin.letter_held";
+const LETTER_UNHELD = "training_admin.letter_unheld";
+
+/** One thing somebody did to a seat: who, when, and what. */
+export interface SeatEvent { what: string; by: string; at: string }
+
+/**
+ * Who did what to these seats, oldest first — every decision, every
+ * letter sent, every time a seat was taken out of (or put back into) a
+ * round of letters. Read from the audit log, which has recorded the
+ * person behind each of these all along.
+ */
+async function seatHistory(seats: { id: string; email: string | null }[]): Promise<Map<string, SeatEvent[]>> {
+  const out = new Map<string, SeatEvent[]>(seats.map((s) => [s.id, []]));
+  if (!seats.length) return out;
+  const byEmail = new Map<string, string[]>();
+  for (const s of seats) { const k = (s.email ?? "").toLowerCase(); if (k) byEmail.set(k, [...(byEmail.get(k) ?? []), s.id]); }
+  const logs = await prisma.auditLog.findMany({
+    where: { action: { in: [SEAT_DECIDED, LETTER_HELD, LETTER_UNHELD, PERSON_LETTER] } },
+    select: { action: true, detail: true, createdAt: true, actor: { select: { name: true, email: true } } },
+    orderBy: { createdAt: "asc" },
+    take: 20000,
+  });
+  for (const l of logs) {
+    let d: { bookingId?: string; bookingIds?: string[]; from?: string; to?: string; email?: string; state?: string; overlapOverridden?: boolean };
+    try { d = JSON.parse(l.detail ?? "{}"); } catch { continue; }
+    const by = l.actor.name || l.actor.email;
+    const at = l.createdAt.toISOString();
+    const add = (id: string | undefined, what: string) => { if (id && out.has(id)) out.get(id)!.push({ what, by, at }); };
+    if (l.action === SEAT_DECIDED) {
+      if (d.from === d.to) continue; // pressed the button it was already on
+      const label = d.to === "pending" ? "Set back to not decided" : isDecision(d.to) ? DECISION_LABEL[d.to] : String(d.to);
+      add(d.bookingId, d.overlapOverridden ? `${label} (overlap overridden)` : label);
+    } else if (l.action === LETTER_HELD || l.action === LETTER_UNHELD) {
+      for (const id of d.bookingIds ?? []) add(id, l.action === LETTER_HELD ? "Taken out of the letter round" : "Put back in the letter round");
+    } else if (d.state === "sent" || d.state === "sent-to-you") {
+      // Older log lines name the person, not the seats: their letter covers their seats.
+      for (const id of d.bookingIds ?? byEmail.get((d.email ?? "").toLowerCase()) ?? []) add(id, "Letter sent");
+    }
+  }
+  return out;
 }
 
 /** The name on a platform account with this email, if any. */
@@ -1032,7 +1114,7 @@ async function letterFor(rows: SeatRow[], makePass: boolean, skip: (r: SeatRow) 
   return { to, name, token, seats, letter: personLetter({ name, seats, passLink }) };
 }
 
-export interface OwedSeat { bookingId: string; session: string; change: string }
+export interface OwedSeat { bookingId: string; session: string; change: string; /** Who made this decision, and who took it out of the round (if anyone). */ decidedBy?: string; heldBy?: string }
 export interface OwedLetter {
   key: string;
   name: string;
@@ -1053,12 +1135,18 @@ const changeOf = (r: SeatRow) => (r.status === "cancelled" && r.notifiedStatus =
 export async function lettersOwed(): Promise<OwedLetter[]> {
   await requireAdmin();
   const [rows, held] = await Promise.all([twSeats(), heldSeats()]);
+  const acts = await seatHistory(rows.filter((r) => letterDue(r.notifiedStatus, r.status)).map((r) => ({ id: r.id, email: r.submission?.email ?? r.user?.email ?? null })));
   const out: OwedLetter[] = [];
   for (const [key, list] of byPerson(rows)) {
     const due = list.filter((r) => letterDue(r.notifiedStatus, r.status));
     if (!due.length) continue;
     const made = await letterFor(list, false, (r) => isHeld(held, r));
-    const owedSeat = (r: SeatRow): OwedSeat => ({ bookingId: r.id, session: r.workshop.title, change: changeOf(r) });
+    const last = (r: SeatRow, f: (e: SeatEvent) => boolean) => { const e = (acts.get(r.id) ?? []).filter(f).at(-1); return e ? `${e.by} · ${new Date(e.at).toLocaleDateString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" })}` : undefined; };
+    const owedSeat = (r: SeatRow): OwedSeat => ({
+      bookingId: r.id, session: r.workshop.title, change: changeOf(r),
+      decidedBy: last(r, (e) => !/letter/i.test(e.what)),
+      heldBy: isHeld(held, r) ? last(r, (e) => e.what === "Taken out of the letter round") : undefined,
+    });
     out.push({
       key, name: made.name || made.to || "No name given", email: made.to ?? "",
       summary: letterSummary(made.seats), subject: made.letter?.subject ?? "", body: made.letter?.body ?? "",
@@ -1078,7 +1166,7 @@ export async function holdLetters(bookingIds: string[], hold: boolean): Promise<
   for (const r of rows) { if (hold) held.set(r.id, r.status); else held.delete(r.id); }
   const value = JSON.stringify([...held].map(([bookingId, status]) => ({ bookingId, status })).slice(-2000));
   await prisma.platformSetting.upsert({ where: { key: HELD_KEY }, create: { key: HELD_KEY, value }, update: { value } });
-  await logSend(admin.id, hold ? "training_admin.letter_held" : "training_admin.letter_unheld", { bookingIds: rows.map((r) => r.id) });
+  await logSend(admin.id, hold ? LETTER_HELD : LETTER_UNHELD, { bookingIds: rows.map((r) => r.id) });
   return { ok: true };
 }
 
@@ -1104,7 +1192,7 @@ export async function sendPersonLetterFor(key: string): Promise<{ ok: boolean; d
       where: { id: s.bookingId }, data: { notifiedStatus: s.status, notifiedAt: new Date() },
     })));
   }
-  await logSend(admin.id, PERSON_LETTER, { key, email: made.to, seats: made.letter.seats.map((s) => `${s.session}: ${s.status}`), state: receipt.state });
+  await logSend(admin.id, PERSON_LETTER, { key, email: made.to, bookingIds: made.letter.seats.map((s) => s.bookingId), seats: made.letter.seats.map((s) => `${s.session}: ${s.status}`), state: receipt.state });
   revalidatePath(PAGE);
   return { ok: true, delivered: delivered(receipt), receipt };
 }
@@ -1191,19 +1279,20 @@ export async function decideSeats(
   bookingIds: string[],
   to: string,
   opts?: { send?: boolean },
-): Promise<{ ok: boolean; problem?: string; done: number; failed: number; sent: number }> {
+): Promise<{ ok: boolean; problem?: string; done: number; failed: number; sent: number; overlapped?: number }> {
   await requireAdmin();
   if (!isDecision(to)) return { ok: false, problem: "That is not a decision.", done: 0, failed: 0, sent: 0 };
   const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
-  let done = 0, failed = 0, sent = 0;
+  let done = 0, failed = 0, sent = 0, overlapped = 0;
   for (const id of ids) {
     const r = await decideSeat(id, to);
-    if (!r.ok) { failed += 1; continue; }
+    // An overlap is never overridden in bulk: that is a choice made one person at a time.
+    if (!r.ok) { if (r.overlap) overlapped += 1; else failed += 1; continue; }
     done += 1;
   }
   // Then one letter per person, not one per seat.
   if (opts?.send) sent = (await sendLettersForBookings(ids)).sent;
-  return { ok: true, done, failed, sent };
+  return { ok: true, done, failed, sent, overlapped };
 }
 
 /** Which travel letter: the clarifying question, or the next steps for somebody who qualifies. */
