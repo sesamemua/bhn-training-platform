@@ -16,7 +16,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
 
   return (
     <section>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">Training Week capacity</p>
         {action}
       </div>

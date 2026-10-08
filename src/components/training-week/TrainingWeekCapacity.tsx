@@ -1,21 +1,30 @@
 "use client";
 
 import { useState, useTransition, type ComponentProps } from "react";
+import { Check, Pencil } from "lucide-react";
 import { CapacityMonitor } from "./CapacityMonitor";
 import { WorkshopRegistrationControl, type SaveWorkshopRegistration } from "./WorkshopRegistrationControl";
 
 export type SaveWorkshopCapacity = (id: string, patch: { capacity: number }) => Promise<{ ok: boolean; problem?: string }>;
 
-export function TrainingWeekCapacity({ sessions, registered, action, saveCapacity, saveWorkshopState }: Omit<ComponentProps<typeof CapacityMonitor>, "controls"> & {
+export function TrainingWeekCapacity({ sessions, registered, saveCapacity, saveWorkshopState }: Omit<ComponentProps<typeof CapacityMonitor>, "controls" | "action"> & {
   saveCapacity: SaveWorkshopCapacity;
   saveWorkshopState: SaveWorkshopRegistration;
 }) {
   const [busy, start] = useTransition();
+  const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   return <>
-    <CapacityMonitor sessions={sessions} registered={registered} action={action} controls={(s) => (
+    <CapacityMonitor sessions={sessions} registered={registered} action={
+      <button type="button" aria-label={editing ? "Done editing capacity" : "Edit capacity"} aria-expanded={editing}
+        onClick={() => setEditing((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[12px] font-semibold text-fg hover:bg-elevated">
+        {editing ? <Check size={12} aria-hidden="true" /> : <Pencil size={12} aria-hidden="true" />}
+        {editing ? "Done" : "Edit"}
+      </button>
+    } controls={(s) => (
       <div className="flex flex-wrap items-end gap-x-3 gap-y-1.5">
-        <NumberField key={`${s.id}:${s.cap.capacity}`} label="Seats" ariaLabel={`Seat capacity for ${s.title}`} value={s.cap.capacity} disabled={busy}
+        {editing && <NumberField key={`${s.id}:${s.cap.capacity}`} label="Seats" ariaLabel={`Seat capacity for ${s.title}`} value={s.cap.capacity} disabled={busy}
           onCommit={(capacity, revert) => start(async () => {
             setProblem(null);
             try {
@@ -23,7 +32,7 @@ export function TrainingWeekCapacity({ sessions, registered, action, saveCapacit
               if (!result.ok) { revert(); setProblem(`${s.title}: ${result.problem ?? "Could not save."}`); }
             } catch { revert(); setProblem(`${s.title}: Could not save. Please try again.`); }
           })}
-        />
+        />}
         {s.registration && <WorkshopRegistrationControl key={`${s.id}:${s.registration.state}`} slug={s.slug} title={s.title} initial={s.registration.state} save={saveWorkshopState} />}
       </div>
     )} />
@@ -32,7 +41,7 @@ export function TrainingWeekCapacity({ sessions, registered, action, saveCapacit
   </>;
 }
 
-/** Shared with the Capacity tab: save on blur, revert a refused write. */
+/** Save on blur; revert a refused write. */
 export function NumberField({ label, ariaLabel, value, disabled, onCommit }: {
   label: string; ariaLabel?: string; value: number; disabled?: boolean;
   onCommit: (v: number, revert: () => void) => void;

@@ -8,7 +8,7 @@
  */
 import { useState, useTransition } from "react";
 import { Check, ExternalLink, Loader2 } from "lucide-react";
-import { DEFAULT_MESSAGE, STATES, STATE_LABEL, statusOf, type StatusMap, type WorkshopState } from "@/lib/training-week/workshop-status";
+import { DEFAULT_MESSAGE, STATE_LABEL, statusOf, type StatusMap, type WorkshopState } from "@/lib/training-week/workshop-status";
 import { saveWorkshopStatus } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 
 const TONE: Record<WorkshopState, string> = {
@@ -44,7 +44,7 @@ export function WorkshopSwitches({ initial, sessions, feedUrl, formUrl }: {
   return (
     <section className="rounded-lg border border-line bg-card p-4">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="text-[15px] font-bold text-fg">Registration, per session</h2>
+        <h2 className="text-[15px] font-bold text-fg">Registration messages</h2>
         <span className="text-[12px] text-subtle" role="status">
           {saved === "saving" ? <><Loader2 size={11} className="inline animate-spin" /> Saving…</>
             : saved === "saved" ? <><Check size={11} className="inline text-emerald-600" /> Saved — the form and biohubnet.ca update within a minute</>
@@ -65,20 +65,7 @@ export function WorkshopSwitches({ initial, sessions, feedUrl, formUrl }: {
                 <p className="text-[13.5px] font-semibold text-fg">{s.title}</p>
                 <p className="text-[11.5px] text-subtle">{s.option.split(" · ").slice(0, 2).join(" · ")}</p>
               </div>
-              <div role="radiogroup" aria-label={`Registration for ${s.title}`} className="inline-flex overflow-hidden rounded-lg border border-line">
-                {STATES.map((st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    role="radio"
-                    aria-checked={e.state === st}
-                    onClick={() => e.state !== st && set(s.slug, { state: st })}
-                    className={`px-3 py-1 text-[12.5px] font-semibold transition-colors ${e.state === st ? TONE[st] : "text-muted hover:bg-elevated hover:text-fg"}`}
-                  >
-                    {STATE_LABEL[st]}
-                  </button>
-                ))}
-              </div>
+              <span className={`rounded px-2 py-1 text-[12px] font-semibold ${TONE[e.state]}`}>{STATE_LABEL[e.state]}</span>
               {e.state !== "open" && (
                 <label className="basis-full text-[11.5px] text-muted">
                   Message people see

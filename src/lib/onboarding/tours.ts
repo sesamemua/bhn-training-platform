@@ -211,11 +211,11 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "training.open-closed",
     title: "Close one session without closing the form",
-    body: "Training Admin → **Open / closed**: mark a session **Full** or **Closed** with your own message. The form shows it and won't let anyone pick it, and biohubnet.ca picks it up within a minute.",
+    body: "Use **Open / Pause / Close** on the Training Week dashboard. Custom registration messages are under **Workshop settings**. The form and biohubnet.ca share the same status.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["admin", "superadmin"],
-    cta: { label: "Open Training Admin", href: "/admin/workspace/training-admin?tab=open" },
+    cta: { label: "Open Training Admin", href: "/admin/workspace/training-admin" },
     since: "2026.10.18t",
   },
   {
@@ -456,11 +456,11 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "training-admin.internal-people",
     title: "Internal people",
-    body: "Staff and guests go on **Capacity \u2192 Internal people**: name, address, dietary needs, and a tick per session. They sit **beside** capacity, never in it, are never ranked against students, and are in the caterer\u2019s numbers. Anyone @biohubnet.ca counts automatically.",
+    body: "Staff and guests go under **Dashboard > Workshop settings > Internal people**: name, address, dietary needs, and a tick per session. They sit **beside** capacity, never in it, are never ranked against students, and are in the caterer\u2019s numbers. Anyone @biohubnet.ca counts automatically.",
     path: "/admin/workspace/training-admin",
     placement: "center",
     roles: ["admin", "superadmin"],
-    cta: { label: "Open Capacity", href: "/admin/workspace/training-admin?tab=capacity" },
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
     since: "2026.10.17n",
   },
   {

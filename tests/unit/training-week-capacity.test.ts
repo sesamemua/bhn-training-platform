@@ -93,12 +93,15 @@ test("symposium precedes capacity; total people and per-session controls stay se
   assert.ok(html.indexOf("Annual Symposium registration") < html.indexOf("Training Week capacity"));
   assert.match(html, /people registered/);
   assert.match(html, /Registration for Workshop/);
-  assert.match(html, /aria-label="Seat capacity for Workshop"/);
-  assert.match(html, /type="number" min="0" max="1000" step="1"/);
+  assert.match(html, /aria-label="Edit capacity" aria-expanded="false"/);
+  assert.doesNotMatch(html, /type="number"/);
   const shared = renderToStaticMarkup(createElement(TrainingWeekCapacity, { sessions: [session], registered: 49, saveWorkshopState: save, saveCapacity: save }));
-  assert.match(shared, /Seat capacity for Workshop/);
+  assert.match(shared, /aria-label="Edit capacity" aria-expanded="false"/);
+  assert.doesNotMatch(shared, /type="number"/);
   assert.match(shared, /Registration for Workshop/);
   assert.match(shared, /people registered/);
+  const identicalPanel = renderToStaticMarkup(createElement(TrainingWeekCapacity, { sessions: [session], registered: null, saveWorkshopState: save, saveCapacity: save }));
+  assert.ok(html.includes(identicalPanel), "Home embeds the identical shared panel without custom controls");
   for (const label of ["Open", "Pause", "Close"]) assert.ok(html.includes(`${label}</button>`));
   const paused = renderToStaticMarkup(createElement(WorkshopRegistrationControl, { slug: "one", title: "Workshop", initial: "paused", save }));
   assert.match(paused, /<strong class="text-fg">Paused<\/strong>/);

@@ -111,7 +111,6 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity }
     {sessions.length > 0 && <article className="aero-frame"><div className="aero-card">
       <TrainingWeekCapacity sessions={sessions} registered={events?.find((e) => e.key === "training")?.count ?? null}
         saveWorkshopState={saveWorkshopState} saveCapacity={saveCapacity}
-        action={<Link href="/admin/workspace/training-admin?tab=capacity" className="text-[12px] font-semibold text-brand-400 hover:text-brand-200">Open Training Week →</Link>}
       />
       {failed && <p role="status" className="text-[12px] text-rose-600">Registration count could not refresh. Please try Refresh above.</p>}
     </div></article>}

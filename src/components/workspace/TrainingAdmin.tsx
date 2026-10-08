@@ -52,17 +52,15 @@ import { WorkshopSwitches } from "./WorkshopSwitches";
 import type { View } from "@/lib/allocation/registrant-views";
 import type { SentRecord } from "@/lib/allocation/catering-sent";
 
-type Tab = "dashboard" | "model" | "suggest" | "capacity" | "open" | "registrants" | "catering" | "travel" | "email";
+type Tab = "dashboard" | "model" | "suggest" | "registrants" | "catering" | "travel" | "email";
 const isTab = (v: unknown): v is Tab =>
-  typeof v === "string" && ["dashboard", "model", "suggest", "capacity", "open", "registrants", "catering", "travel", "email"].includes(v);
+  typeof v === "string" && ["dashboard", "model", "suggest", "registrants", "catering", "travel", "email"].includes(v);
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "registrants", label: "Registrants" },
   { id: "model", label: "Decision model" },
   { id: "suggest", label: "Seat suggestions" },
-  { id: "capacity", label: "Capacity" },
-  { id: "open", label: "Open / closed" },
   { id: "catering", label: "Catering & accessibility" },
   { id: "travel", label: "Travel follow-up" },
   { id: "email", label: "Email" },
@@ -133,17 +131,16 @@ export function TrainingAdmin({
 
       <div className="mt-5">
         {tab === "dashboard" && (
-          <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} eligibility={eligibility} capacityPanel={capacityPanel} />
+          <Dashboard rules={initialRules} workshops={workshops} onOpen={setTab} eligibility={eligibility} capacityPanel={capacityPanel}
+            settings={<>
+              <Capacity eventId={eventId} workshops={workshops} />
+              <WorkshopSwitches key={JSON.stringify(switches.initial)} {...switches} />
+              <InternalPeople initial={internalPeople} staff={internalStaff} workshops={workshops} />
+            </>}
+          />
         )}
         {tab === "model" && <DecisionModel initial={initialRules} workshops={workshops} />}
         {tab === "suggest" && <SeatSuggestions rules={initialRules} workshops={workshops} />}
-        {tab === "capacity" && (
-          <>
-            <Capacity eventId={eventId} workshops={workshops} />
-            <InternalPeople initial={internalPeople} staff={internalStaff} workshops={workshops} />
-          </>
-        )}
-        {tab === "open" && <WorkshopSwitches {...switches} />}
         {tab === "registrants" && <Registrants workshops={workshops} views={views} />}
         {tab === "catering" && <CateringTab workshops={workshops} sent={cateringSent} />}
         {tab === "travel" && <TravelTab workshops={workshops} />}
@@ -162,8 +159,8 @@ export function TrainingAdmin({
  * Capacity and registration controls are shared with the home dashboard.
  */
 function Dashboard({
-  rules, workshops, onOpen, eligibility, capacityPanel,
-}: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void; eligibility: EligibilitySummary; capacityPanel: React.ReactNode }) {
+  rules, workshops, onOpen, eligibility, capacityPanel, settings,
+}: { rules: Rule[]; workshops: AdminWorkshop[]; onOpen: (t: Tab) => void; eligibility: EligibilitySummary; capacityPanel: React.ReactNode; settings: React.ReactNode }) {
   const live = workshops.filter((w) => w.isActive);
   const active = rules.filter((r) => r.isActive);
   const projection = useMemo(() => projectWeekSeats(workshops, rules), [workshops, rules]);
@@ -175,8 +172,11 @@ function Dashboard({
       {projection.rows.filter((row) => row.warnings.length > 0).map((row) => <p key={row.id} role="alert" className="text-[12px] text-fg">{workshops.find((w) => w.id === row.id)?.title}: {row.warnings.join(" ")}</p>)}
       <div className="flex flex-wrap gap-3">
         <button type="button" className={BTN} onClick={() => onOpen("suggest")}>Review seat suggestions</button>
-        <button type="button" className={BTN} onClick={() => onOpen("capacity")}>Manage workshops &amp; waitlists</button>
       </div>
+      <details className="border-y border-line py-3">
+        <summary className="cursor-pointer text-[13px] font-semibold text-fg">Workshop settings</summary>
+        <div className="mt-4 space-y-5">{settings}</div>
+      </details>
 
       <EligibilityCard summary={eligibility} />
 
@@ -722,8 +722,7 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-prose text-[12.5px] leading-relaxed text-muted">
-          Seats taken against seats available, per room. Change a number and it
-          saves when you leave the field.
+          Workshops &amp; waitlist limits
         </p>
         <button className={BTN} onClick={() => setAdding((v) => !v)}>
           <Plus size={12} /> Add a workshop
@@ -741,8 +740,6 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
       <ul className="mt-4 space-y-2">
         {workshops.map((w) => {
           const seats = seatsOf(w);
-          const over = seats > w.capacity;
-          const pct = w.capacity > 0 ? Math.min(100, (seats / w.capacity) * 100) : 0;
           return (
             <li key={w.id} className={`${CARD} ${w.isActive ? "" : "opacity-60"}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -758,12 +755,10 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
                 </div>
                 <div className="flex shrink-0 items-end gap-3">
                   <NumberField
-                    label="Seats"
-                    value={w.capacity}
-                    onCommit={(v, revert) => commit(w.id, { capacity: v }, revert)}
-                  />
-                  <NumberField
+                    key={`${w.id}:${w.waitlistCapacity}`}
                     label="Waitlist"
+                    ariaLabel={`Waitlist limit for ${w.title}`}
+                    disabled={pending}
                     value={w.waitlistCapacity}
                     onCommit={(v, revert) => commit(w.id, { waitlistCapacity: v }, revert)}
                   />
@@ -797,16 +792,9 @@ function Capacity({ eventId, workshops }: { eventId: string; workshops: AdminWor
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-elevated">
-                  <div
-                    className={`h-full rounded-full ${over ? "bg-red-500" : pct >= 100 ? "bg-amber-500" : "bg-brand-500"}`}
-                    style={{ width: `${Math.max(pct, seats > 0 ? 4 : 0)}%` }}
-                  />
-                </div>
-                <p className={`shrink-0 text-[12px] ${over ? "font-bold text-red-500" : "text-muted"}`}>
-                  {seats}/{w.capacity} seats
-                  {over && ` · ${seats - w.capacity} over`}
+              <div className="mt-3">
+                <p className="text-[12px] text-muted">
+                  {seats} actual approved
                   {waitOf(w) > 0 && ` · ${waitOf(w)} waiting`}
                   {pendingOf(w) > 0 && ` · ${pendingOf(w)} to approve`}
                 </p>
