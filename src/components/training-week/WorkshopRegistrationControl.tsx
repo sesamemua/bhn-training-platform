@@ -18,7 +18,7 @@ export function WorkshopRegistrationControl({ slug, title, initial, save }: {
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-muted">Registration: <strong className="text-fg">{STATE_LABEL[state]}</strong></span>
       <div role="group" aria-label={`Registration for ${title}`} className="inline-flex rounded-md border border-line p-0.5">
-        {choices.map(({ state: next, label, Icon }) => <button key={next} type="button" aria-pressed={state === next} disabled={busy} onClick={() => { setProblem(null); setArmed(next === state ? null : next); }} className={`inline-flex items-center gap-1 rounded px-2 py-1.5 font-semibold disabled:opacity-50 ${state === next ? "bg-fg text-bg" : "text-muted hover:bg-elevated"}`}><Icon size={12} />{label}</button>)}
+        {choices.map(({ state: next, label, Icon }) => <button key={next} type="button" aria-pressed={state === next} disabled={busy} onClick={() => { setProblem(null); setArmed(next === state ? null : next); }} className={`inline-flex items-center gap-1 rounded px-2 py-1.5 font-semibold disabled:opacity-50 ${state === next ? "bg-teal-700 text-white" : "text-muted hover:bg-elevated"}`}><Icon size={12} />{label}</button>)}
       </div>
     </div>
     {armed && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-line bg-elevated p-2" role="group" aria-label={`Confirm registration change for ${title}`}>
