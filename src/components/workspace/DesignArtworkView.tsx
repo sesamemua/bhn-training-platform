@@ -111,7 +111,8 @@ export function DesignArtworkView({ artwork, me, approver }: {
           </label>
         </div>
 
-        <div className="max-h-[78vh] overflow-auto rounded-xl border border-line bg-elevated/40 p-3">
+        {/* Room under the last page, so a comment card opened low on a short artwork is not cut off. */}
+        <div className="max-h-[78vh] overflow-auto rounded-xl border border-line bg-elevated/40 p-3 pb-80">
           <div className="mx-auto space-y-4" style={{ width: `${zoom * 100}%` }}>
             {artwork.pages.map((pg, i) => (
               <div key={pg.key}>
