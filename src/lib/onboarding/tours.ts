@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19c";
+export const TOUR_VERSION = "2026.10.19d";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.self-check-in",
+    title: "Self check-in in the reminders",
+    body: "The three-day and on-the-day reminders now have a **Check in** button — it opens 30 minutes before the session — and a **Cancel my place** button that asks for no reason. Self check-ins are marked *self* on the door list.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19d",
   },
   {
     id: "training-week.one-decision-email",

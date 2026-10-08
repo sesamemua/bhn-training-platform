@@ -101,12 +101,14 @@ export default async function TrainingWeekPassPage({ params }: { params: Promise
                   {s.workshop.locationName && <p className="text-[13px]">{s.workshop.locationName}</p>}
                   {s.workshop.attendeeNote && <p className="mt-1 whitespace-pre-wrap text-[13px]">{s.workshop.attendeeNote}</p>}
                   {!s.checkedInAt && (
-                    <Link
-                      href={`/training-week/pass/${token}/cant-attend/${s.id}`}
-                      className="mt-2 inline-block text-[13px] font-semibold text-emerald-900 underline underline-offset-2 print:hidden"
-                    >
-                      I can&apos;t make it
-                    </Link>
+                    <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 print:hidden">
+                      <Link href={`/training-week/pass/${token}/check-in/${s.id}`} className="text-[13px] font-semibold text-emerald-900 underline underline-offset-2">
+                        Check in
+                      </Link>
+                      <Link href={`/training-week/pass/${token}/cant-attend/${s.id}`} className="text-[13px] font-semibold text-emerald-900 underline underline-offset-2">
+                        Cancel my place
+                      </Link>
+                    </span>
                   )}
                 </li>
               ))}

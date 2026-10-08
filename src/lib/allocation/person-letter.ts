@@ -85,11 +85,11 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
     out.push(`Please put ${placed.length > 1 ? "them" : "it"} in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.`, "");
     const links = placed.filter((s) => s.cantAttendLink);
     if (links.length) {
-      out.push(`Can't make ${placed.length > 1 ? "one" : "it"} after all? Cancel ${placed.length > 1 ? "that session" : "it"} here, so the place can go to somebody else:`);
+      out.push(`Not coming to ${placed.length > 1 ? "one of them" : "it"} after all? Please cancel ${placed.length > 1 ? "that session" : "your place"}, so it can go to somebody else:`);
       for (const s of links) out.push(`  ${cancelLabel(s.session)}: ${s.cantAttendLink}`);
       out.push("");
     }
-    out.push("Please tell us rather than not turning up: a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.", "");
+    out.push("A no-show may affect your eligibility for future BioHubNet training and programmes.", "");
   }
   if (waiting.length) {
     out.push(`${waiting.length > 1 ? "These sessions are" : "This session is"} full, so you are on the waitlist:`, ...waiting.map(line), "");

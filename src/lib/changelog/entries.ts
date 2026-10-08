@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: self check-in, and cancelling with no reason",
+    body: "**Self check-in.** The **Three days before** and **On the day** reminders now carry a **Check in** button (merge field {{check_in_link}}). It opens **30 minutes before the session starts**; earlier than that the page says when to come back. Self check-ins show as **self** on the door list. The pass page has the same Check in link.\n\n**Cancel, no reason.** Every letter\u2019s **Cancel my place** button now cancels in two taps \u2014 no reason is asked for, in the letters or on the page. The no-show line reads *A no-show may affect your eligibility for future BioHubNet training and programmes.*\n\nAll Training Week emails now go out as **HTML with a plain-text copy**, with check-in and cancel links drawn as buttons.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week decisions: one email per person, with the reason and \u201cfinal\u201d",
     body: "Each registrant now gets **one email** for their decisions \u2014 no separate calendar emails. Approved sessions come with their calendar entry in that same email (several sessions arrive as attached calendar files, one each); sessions not offered get none.\n\nFor sessions not offered, the letter now says why \u2014 **full, or overlapping with a session they were approved for, where only one can be approved based on their ranking** \u2014 and that **the decision is final**. The location line reads *Location information will be provided in future communications.*\n\nBecause of that, the standing letters **Not able to offer a place**, **Not able to offer one session** and **On the waitlist** are gone from Email \u2192 Standing letters.",
     kind: "improvement",

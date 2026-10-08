@@ -1,9 +1,9 @@
 /**
  * "I can't make it" for one session, from a registrant's pass or letter.
  *
- * Not a cancel button. It asks why — a reason is required — releases the
- * place so somebody waiting can have it, and tells the team. Phone-first,
- * like the pass it comes from.
+ * A cancel button: no reason asked. It releases the place so somebody
+ * waiting can have it, and tells the team. Phone-first, like the pass it
+ * comes from.
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,7 +13,7 @@ import { NO_SHOW_NOTE } from "@/lib/training-week/check-in";
 import { CantAttendForm } from "@/components/training-week/CantAttendForm";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "I can't make it", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Cancel my place", robots: { index: false, follow: false } };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#ffffff" };
 
 const tz = "America/Toronto";
@@ -39,7 +39,7 @@ export default async function CantAttendPage({ params }: { params: Promise<{ tok
         <Link href={`/training-week/pass/${token}`} className="text-[13px] font-semibold text-slate-600 underline underline-offset-2">
           ← Back to your pass
         </Link>
-        <h1 className="mt-3 text-[clamp(1.35rem,6vw,1.75rem)] font-bold leading-tight tracking-tight">I can&apos;t make it</h1>
+        <h1 className="mt-3 text-[clamp(1.35rem,6vw,1.75rem)] font-bold leading-tight tracking-tight">Cancel my place</h1>
         <div className="mt-3 rounded-xl border border-slate-200 px-3.5 py-3">
           <p className="text-[15px] font-bold leading-snug">{seat.workshop.title}</p>
           <p className="text-[13px] text-slate-600">{when(seat.workshop.startDateTime)}</p>
@@ -48,7 +48,7 @@ export default async function CantAttendPage({ params }: { params: Promise<{ tok
 
         {seat.withdrawnAt ? (
           <p className="mt-4 rounded-xl bg-emerald-50 px-3.5 py-3 text-[14px] leading-relaxed text-emerald-900">
-            You told us on {when(seat.withdrawnAt)} that you can&apos;t make it. Your place has been released — thank you for letting us know.
+            You cancelled this place on {when(seat.withdrawnAt)}. It has been released — thank you for letting us know.
           </p>
         ) : seat.status !== "confirmed" ? (
           <p className="mt-4 rounded-xl bg-slate-50 px-3.5 py-3 text-[14px] leading-relaxed text-slate-700">
@@ -57,8 +57,8 @@ export default async function CantAttendPage({ params }: { params: Promise<{ tok
         ) : (
           <>
             <p className="mt-4 text-[14px] leading-relaxed text-slate-700">
-              Please tell us why you can&apos;t come. Your place will be released so somebody waiting for it can have it, and the
-              BioHubNet team will see your reason.
+              Not coming? Cancel here — you don&apos;t need to give a reason. Your place will be released so somebody waiting for it
+              can have it.
             </p>
             <CantAttendForm token={token} bookingId={bookingId} />
             <p className="mt-4 rounded-xl bg-amber-50 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-900">{NO_SHOW_NOTE}</p>

@@ -29,7 +29,8 @@ import { HIGHLIGHTS_KEY, highlightProblem, highlightsOf, type Highlight } from "
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
 import { registrantName } from "@/lib/allocation/registrant-name";
-import { cantAttendUrl, passTokenFor, passUrl } from "@/lib/training-week/pass";
+import { cantAttendUrl, checkInUrl, passTokenFor, passUrl } from "@/lib/training-week/pass";
+import { letterHtml, type LetterButton } from "@/lib/training-week/letter-html";
 import { withPassQr } from "@/lib/training-week/pass-qr";
 import { EntrySchema } from "@/lib/allocation/catering";
 import { CATERING_SENT_KEY, parseSent, recordSent, type SentRecord } from "@/lib/allocation/catering-sent";
@@ -459,12 +460,14 @@ export async function sendToAudience(input: {
           const text = `${input.subject}\n${input.body}`;
           const wantsPass = /\{\{\s*pass_link\s*\}\}/.test(text);
           const wantsCant = /\{\{\s*cant_attend_link\s*\}\}/.test(text);
-          if (!r.submissionId || (!wantsPass && !wantsCant)) return {};
+          const wantsCheckIn = /\{\{\s*check_in_link\s*\}\}/.test(text);
+          if (!r.submissionId || (!wantsPass && !wantsCant && !wantsCheckIn)) return {};
           const token = await passTokenFor(r.submissionId);
           passToken = token;
           return {
             pass_link: wantsPass ? passUrl(token) : undefined,
             cant_attend_link: wantsCant && r.bookingId ? cantAttendUrl(token, r.bookingId) : undefined,
+            check_in_link: wantsCheckIn && r.bookingId ? checkInUrl(token, r.bookingId) : undefined,
           };
         })()),
       };
@@ -499,9 +502,15 @@ export async function sendToAudience(input: {
       // message as failed — and an admin told "0 sent, 240 failed" sends
       // the whole thing again.
       try {
-        // With a pass link in it, the QR goes in too — under the link.
-        const qr = passToken && vars.pass_link ? withPassQr(text, vars.pass_link, passToken) : null;
-        await sendMail({ to: r.email, subject, text, html: qr?.html, attachments: qr ? [qr.attachment] : undefined });
+        // HTML with the text as its backup: check-in and cancel links are
+        // buttons, and with a pass link in it the QR goes in too, under the link.
+        const v = vars as { pass_link?: string; cant_attend_link?: string; check_in_link?: string };
+        const buttons: LetterButton[] = [
+          ...(v.check_in_link ? [{ url: v.check_in_link, label: "Check in", tone: "primary" as const }] : []),
+          ...(v.cant_attend_link ? [{ url: v.cant_attend_link, label: "Cancel my place" }] : []),
+        ];
+        const qr = passToken && v.pass_link ? withPassQr(text, v.pass_link, passToken, buttons) : null;
+        await sendMail({ to: r.email, subject, text, html: qr?.html ?? letterHtml(text, buttons), attachments: qr ? [qr.attachment] : undefined });
         sent += 1;
       } catch (err) {
         failed += 1;

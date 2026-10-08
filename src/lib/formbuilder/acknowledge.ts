@@ -61,7 +61,7 @@ export async function sendAcknowledgement(
   if (!mailConfigured()) return { state: "not-configured", preview };
 
   try {
-    await sendMail({ to: opts.to, subject: preview.subject, text: preview.body });
+    await sendMail({ to: opts.to, subject: preview.subject, text: preview.body, html: letterHtml(preview.body) });
     return { state: opts.asTest ? "sent-to-you" : "sent", preview };
   } catch (err) {
     // The row is already written. A registration is not lost because
@@ -229,7 +229,7 @@ export async function personLetterDraft(
 export async function sendComposed(mail: SentMail): Promise<Receipt> {
   if (!mailConfigured()) return { state: "not-configured", preview: mail };
   try {
-    await sendMail({ to: mail.to, subject: mail.subject, text: mail.body });
+    await sendMail({ to: mail.to, subject: mail.subject, text: mail.body, html: letterHtml(mail.body) });
     return { state: "sent", preview: mail };
   } catch (err) {
     return { state: "failed", why: (err as Error)?.message ?? "unknown", preview: mail };

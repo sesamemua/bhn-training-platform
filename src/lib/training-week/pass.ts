@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { absolute } from "@/lib/notify/email";
 import { registrantName } from "@/lib/allocation/registrant-name";
-import { doorVerdict, hasSpace, withdrawProblem, type DoorVerdict } from "./check-in";
+import { doorVerdict, hasSpace, selfCheckIn, withdrawProblem, type DoorVerdict, type SelfCheckIn } from "./check-in";
 import { isInternal } from "./internal";
 import { loadInternalSet } from "./internal-server";
 import { mailConfigured, sendMail } from "@/lib/mail";
@@ -23,6 +23,10 @@ export const passUrl = (token: string) => absolute(`/training-week/pass/${token}
 /** "I can't make it" for one seat — the pass code says who, the seat says which session. */
 export const cantAttendUrl = (token: string, bookingId: string) =>
   absolute(`/training-week/pass/${token}/cant-attend/${bookingId}`);
+
+/** Self check-in for one seat; it opens 30 minutes before the session. */
+export const checkInUrl = (token: string, bookingId: string) =>
+  absolute(`/training-week/pass/${token}/check-in/${bookingId}`);
 
 /**
  * The pass code for a registration, made the first time it is needed.
@@ -264,22 +268,22 @@ const TEAM = () => process.env.SMTP_FROM_EMAIL ?? "info@biohubnet.ca";
 const ALSO = "engage@biohubnet.ca";
 
 /**
- * A registrant releases their own seat, with a reason.
+ * A registrant cancels their own seat. No reason is asked for.
  *
  * The seat is freed at once (status "cancelled") so the room count and
  * the waitlist see it, and it is marked as told — the "declined" letter
  * a cancelled seat would otherwise owe is not what happened, and must
- * never go out on top of this. The team is emailed the reason so
+ * never go out on top of this. The team is emailed so
  * somebody can offer the place on; the registrant gets the "place
  * released" letter as their receipt, which also takes the session back
  * out of their calendar.
  */
-export async function withdrawSeat(input: { token: string; bookingId: string; reason: string }): Promise<
+export async function withdrawSeat(input: { token: string; bookingId: string; reason?: string }): Promise<
   { ok: true } | { ok: false; problem: string }
 > {
-  const problem = withdrawProblem(input.reason);
+  const reason = (input.reason ?? "").trim();
+  const problem = withdrawProblem(reason);
   if (problem) return { ok: false, problem };
-  const reason = input.reason.trim();
 
   const sub = await prisma.eventFormSubmission.findUnique({
     where: { checkInToken: input.token },
@@ -304,7 +308,7 @@ export async function withdrawSeat(input: { token: string; bookingId: string; re
     data: {
       status: "cancelled",
       withdrawnAt: now,
-      withdrawReason: reason.slice(0, 2000),
+      withdrawReason: reason || null,
       // Told — by themselves. Nothing further is owed on this seat.
       notifiedStatus: "cancelled",
       notifiedAt: now,
@@ -320,8 +324,8 @@ export async function withdrawSeat(input: { token: string; bookingId: string; re
       signature: false,
       subject: `Training Week: ${name} can't make ${seat.workshop.title}`,
       text:
-        `${name} (${sub.email ?? "no address"}) has released their place at ${seat.workshop.title}, ${when(seat.workshop.startDateTime)}.\n\n` +
-        `Their reason:\n${reason}\n\n` +
+        `${name} (${sub.email ?? "no address"}) has cancelled their place at ${seat.workshop.title}, ${when(seat.workshop.startDateTime)}.\n\n` +
+        (reason ? `Their reason:\n${reason}\n\n` : "") +
         `The seat is free again. If somebody is waiting for it, offer it from Training admin → Registrants:\n` +
         `${absolute("/admin/workspace/training-admin?tab=registrants")}\n`,
     }).catch(() => { /* the seat is released either way; the admin page shows it */ });
@@ -342,4 +346,27 @@ export async function withdrawSeat(input: { token: string; bookingId: string; re
   }).catch(() => null);
 
   return { ok: true };
+}
+
+/* ── self check-in ──────────────────────────────────────────────── */
+
+/**
+ * Somebody checks themselves in from the button in their reminder.
+ * Only a confirmed seat, and only from 30 minutes before the session
+ * until it ends; recorded with the method "self" so the door list shows
+ * how they got in.
+ */
+export async function selfCheckInSeat(input: { token: string; bookingId: string }): Promise<{ state: SelfCheckIn | "unknown"; at?: Date }> {
+  const seat = await prisma.workshopBooking.findFirst({
+    where: { id: input.bookingId, submission: { checkInToken: input.token } },
+    select: { id: true, status: true, checkedInAt: true, workshop: { select: { startDateTime: true, endDateTime: true } } },
+  });
+  if (!seat) return { state: "unknown" };
+  const state = selfCheckIn({ status: seat.status, checkedInAt: seat.checkedInAt, start: seat.workshop.startDateTime, end: seat.workshop.endDateTime });
+  if (state !== "open") return { state, at: seat.checkedInAt ?? undefined };
+  const at = new Date();
+  // Only if still unchecked and still confirmed: a tap and a door scan at the same moment record once.
+  await prisma.workshopBooking.updateMany({ where: { id: seat.id, checkedInAt: null, status: "confirmed" }, data: { checkedInAt: at, checkInMethod: "self" } });
+  const now = await prisma.workshopBooking.findUnique({ where: { id: seat.id }, select: { checkedInAt: true } });
+  return now?.checkedInAt ? { state: "already", at: now.checkedInAt } : { state: "no_place" };
 }

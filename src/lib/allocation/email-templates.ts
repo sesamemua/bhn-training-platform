@@ -50,7 +50,8 @@ export const MERGE_FIELDS: MergeField[] = [
   { key: "session_time", means: "The hours it runs, Toronto time", sample: "11:00–13:30", perSession: true },
   { key: "session_venue", means: "Where it is, or “to be confirmed”", sample: "CCRM (to be confirmed)", perSession: true },
   { key: "reply_by", means: "The date a reply is needed by", sample: "Monday 19 October" },
-  { key: "cant_attend_link", means: "Where they tell us they can't make this session, with a reason", sample: "https://…/training-week/pass/…/cant-attend/…", perSession: true },
+  { key: "check_in_link", means: "Self check-in for this session — it opens 30 minutes before the start. Drawn as a button", sample: "https://…/training-week/pass/…/check-in/…", perSession: true },
+  { key: "cant_attend_link", means: "Where they cancel their place in this session. Drawn as a button; no reason is asked for", sample: "https://…/training-week/pass/…/cant-attend/…", perSession: true },
   { key: "pass_link", means: "Their Training Week pass — the QR they show at the door of every session", sample: "https://…/training-week/pass/…" },
   { key: "postcode", means: "The first three characters of the postal code they gave", sample: "M5V" },
   { key: "travel_time", means: "How long that postal code is from 144 College Street", sample: "about 15\u201345 minutes" },
@@ -193,10 +194,10 @@ Your Training Week pass, with your sessions:
 
 Please put it in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.
 
-Can't make it after all? Tell us here, with the reason, so the place can go to somebody else:
+Not coming after all? Please cancel your place, so it can go to somebody else:
 {{cant_attend_link}}
 
-Please tell us rather than not turning up: a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
+A no-show may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
   },
   // No standing letters for "no place", "not this session" or "on the
   // waitlist": those go in the one decision email each person gets
@@ -221,7 +222,7 @@ No reply or further confirmation is required to keep your seat. Please add the s
 Your pass:
 {{pass_link}}
 
-If you can no longer attend, please release your seat here:
+Not coming? Please cancel your place:
 {{cant_attend_link}}` + SIGN_OFF,
   },
   {
@@ -233,7 +234,7 @@ If you can no longer attend, please release your seat here:
     body:
       `Hello {{first_name}},
 
-Your place at {{session}} has been released, so it can go to somebody who is waiting for one. Thank you for letting us know, and for telling us why — that is what makes the waitlist work.
+Your place at {{session}} has been released, so it can go to somebody who is waiting for one. Thank you for letting us know — that is what makes the waitlist work.
 
 Nothing else is affected: any other sessions you have a place at still stand, and your pass still works for them.` + SIGN_OFF,
   },
@@ -338,7 +339,7 @@ If that makes attending impossible, tell us. We would rather know early enough t
     id: "reminder_3day",
     stage: "reminders",
     name: "Three days before",
-    when: "Three days out. The last chance to tell us they cannot come.",
+    when: "Three days out. A self check-in button and a cancel button.",
     subject: "{{session}} is in three days",
     body:
       `Hello {{first_name}},
@@ -348,13 +349,16 @@ A reminder that {{session}} is in three days.
   When:  {{session_date}}, {{session_time}}
   Where: {{session_venue}}
 
-Please arrive ten minutes early, with your pass ready to show at the door:
-{{pass_link}}
+On the day, check yourself in here — it opens 30 minutes before the session starts:
+{{check_in_link}}
 
-If something has changed and you can't come, tell us today, with the reason — at this notice we can usually still fill the place:
+Not coming? Please cancel your place, so it can go to somebody else:
 {{cant_attend_link}}
 
-Please tell us rather than not turning up: a no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
+Your pass, in case you are asked for it at the door:
+{{pass_link}}
+
+A no-show may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
   },
   {
     id: "reminder_same_day",
@@ -370,13 +374,16 @@ Please tell us rather than not turning up: a no-show without a valid reason may 
   Time:  {{session_time}}
   Where: {{session_venue}}
 
-Your pass — have it open on your phone at the door:
+Check yourself in here — it opens 30 minutes before the session starts:
+{{check_in_link}}
+
+Not coming? Please cancel your place:
+{{cant_attend_link}}
+
+Your pass, in case you are asked for it at the door:
 {{pass_link}}
 
 Please arrive ten minutes early. If you are running late, reply to this message and we will let the room know.
-
-If you can't make it after all, tell us here, with the reason:
-{{cant_attend_link}}
 
 See you there.` + SIGN_OFF,
   },

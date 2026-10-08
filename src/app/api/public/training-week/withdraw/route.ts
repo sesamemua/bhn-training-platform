@@ -1,9 +1,9 @@
 /**
  * POST /api/public/training-week/withdraw   { token, bookingId, reason }
  *
- * "I can't make it", from a registrant's pass. The pass code is the
+ * Cancel a place, from a registrant's pass or letter. The pass code is the
  * authorisation — there is no account — and it only reaches seats on
- * its own registration. A reason is required; see withdrawSeat.
+ * its own registration. No reason is needed; see withdrawSeat.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { callerIp, limited } from "@/lib/eligibility/limit";

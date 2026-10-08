@@ -112,25 +112,31 @@ export function sessionNow(sessions: SessionWindow[], now: Date = new Date()): s
 
 /* ── "I can't make it" ──────────────────────────────────────────── */
 
-/** A reason has to be a reason: a couple of sentences, not "busy". */
-export const WITHDRAW_MIN_CHARS = 40;
+/** Cancelling asks for no reason. One may still be sent (older links did); it is only kept to a sane length. */
 export const WITHDRAW_MAX_CHARS = 2000;
-
-/** Why a reason cannot be accepted yet, or null when it can. */
 export function withdrawProblem(raw: string): string | null {
-  const r = raw.trim();
-  if (r.length === 0) return "Please tell us why you can't make it.";
-  if (r.length < WITHDRAW_MIN_CHARS) {
-    return `Please say a little more — at least ${WITHDRAW_MIN_CHARS} characters (${WITHDRAW_MIN_CHARS - r.length} to go).`;
-  }
-  if (r.length > WITHDRAW_MAX_CHARS) return `Please keep it under ${WITHDRAW_MAX_CHARS} characters.`;
-  return null;
+  return raw.trim().length > WITHDRAW_MAX_CHARS ? `Please keep it under ${WITHDRAW_MAX_CHARS} characters.` : null;
+}
+
+/* ── self check-in ──────────────────────────────────────────────── */
+
+/** Self check-in opens this long before a session starts, and closes when it ends. */
+export const SELF_CHECK_IN_EARLY_MS = 30 * 60_000;
+export type SelfCheckIn = "open" | "early" | "over" | "already" | "no_place";
+/** Whether somebody may check themselves in to a session right now. */
+export function selfCheckIn(seat: { status: string; checkedInAt: Date | null; start: Date; end: Date }, now: Date = new Date()): SelfCheckIn {
+  if (seat.checkedInAt) return "already";
+  if (seat.status !== "confirmed") return "no_place";
+  if (now.getTime() < seat.start.getTime() - SELF_CHECK_IN_EARLY_MS) return "early";
+  if (now.getTime() > seat.end.getTime()) return "over";
+  return "open";
 }
 
 /**
  * Said wherever somebody might decide not to come: on the pass, on the
  * "I can't make it" page and in the letters. Not a threat — the point is
- * that telling us is always fine, and silence is what costs.
+ * that cancelling is always fine, and silence is what costs. No reason
+ * is asked for.
  */
 export const NO_SHOW_NOTE =
-  "Please tell us if you can't come. A no-show without a valid reason may affect your eligibility for future BioHubNet training and programmes.";
+  "If you can't come, please cancel your place. A no-show may affect your eligibility for future BioHubNet training and programmes.";

@@ -16,6 +16,7 @@
 import { deflateSync } from "node:zlib";
 import QRCode from "qrcode-svg";
 import { passQrContent } from "./check-in";
+import { letterHtml, type LetterButton } from "./letter-html";
 
 /** The QR's modules, true = dark. Indexed [x][y], as qrcode-svg lays them out. */
 export function qrModules(content: string): boolean[][] {
@@ -83,8 +84,6 @@ export function qrPng(content: string, scale = 8, quiet = 4): Buffer {
 /** The content-id the HTML points at. */
 export const PASS_QR_CID = "training-week-pass-qr";
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
 /**
  * A letter's HTML, made from its text, with the pass QR placed right
  * under the line that carries the pass link — and the PNG to attach.
@@ -94,7 +93,7 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
  * no pass link in it, so nothing is added to letters that are not
  * about getting through a door.
  */
-export function withPassQr(text: string, passLink: string, token: string): {
+export function withPassQr(text: string, passLink: string, token: string, buttons: LetterButton[] = []): {
   html: string;
   attachment: { filename: string; content: Buffer; contentType: string; cid: string };
 } | null {
@@ -105,24 +104,15 @@ export function withPassQr(text: string, passLink: string, token: string): {
    */
   const exact = new RegExp(`${passLink.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`);
   if (!exact.test(text)) return null;
-  const link = (u: string) => `<a href="${u}" style="color:#1f4b5b">${u}</a>`;
   let placed = false;
-  const lines = text.split("\n").map((line) => {
-    const safe = esc(line).replace(/https?:\/\/[^\s<]+/g, (u) => link(u));
-    if (placed || !exact.test(line)) return safe;
+  const html = letterHtml(text, buttons, (line) => {
+    if (placed || !exact.test(line)) return "";
     placed = true;
     return (
-      `${safe}<br>` +
-      `<img src="cid:${PASS_QR_CID}" width="220" height="220" alt="Your Training Week pass QR code" ` +
+      `<br><img src="cid:${PASS_QR_CID}" width="220" height="220" alt="Your Training Week pass QR code" ` +
       `style="display:block;margin:12px 0 4px;border:1px solid #e5e7eb;border-radius:8px">`
     );
   });
-  const html =
-    // pre-wrap keeps the letters' indented "When: / Where:" lines; the
-    // wrap rule stops a long link from pushing a phone screen sideways.
-    `<div style="font:15px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827;white-space:pre-wrap;overflow-wrap:anywhere">` +
-    lines.join("<br>") +
-    `</div>`;
   return {
     html,
     attachment: { filename: "training-week-pass.png", content: qrPng(passQrContent(token)), contentType: "image/png", cid: PASS_QR_CID },

@@ -488,7 +488,7 @@ function RosterList({
               {r.checkedInAt ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-emerald-700">
-                    <Check size={13} /> {clock(r.checkedInAt)}{r.method === "manual" ? " · list" : ""}
+                    <Check size={13} /> {clock(r.checkedInAt)}{r.method === "manual" ? " · list" : r.method === "self" ? " · self" : ""}
                   </span>
                   <button type="button" onClick={() => onUndo(r)} disabled={busy === r.bookingId}
                     className="inline-flex items-center gap-1 rounded border border-line px-2 py-1 text-[11.5px] font-semibold text-muted hover:text-fg disabled:opacity-50">
