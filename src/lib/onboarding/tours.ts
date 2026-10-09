@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19w";
+export const TOUR_VERSION = "2026.10.19x";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "design-review.questions",
+    title: "Ask the team a question on a design",
+    body: "Each artwork in Design Review has **Questions for the team**. Add one with choices (or leave it open), and everybody answers for themselves — you see who picked what. Try it on **Name tags** in the symposium project.",
+    path: "/admin/workspace/design-review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Design Review", href: "/admin/workspace/design-review" },
+    since: "2026.10.19x",
   },
   {
     id: "design-review.panel-stays",

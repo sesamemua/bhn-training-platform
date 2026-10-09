@@ -6892,8 +6892,9 @@ model DesignArtwork {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  pins    DesignPin[]
-  reviews DesignReview[]
+  pins      DesignPin[]
+  reviews   DesignReview[]
+  questions DesignQuestion[]
 
   @@index([projectId, order])
 }
@@ -6954,4 +6955,37 @@ model MailLog {
   createdAt DateTime @default(now())
 
   @@index([to, createdAt])
+}
+
+/// A question put to the team about an artwork ("who gets a name tag?"),
+/// with optional choices to pick from.
+model DesignQuestion {
+  id            String        @id @default(cuid())
+  artworkId     String
+  artwork       DesignArtwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  text          String
+  /// Choices to pick from, as a list of strings; empty for a free answer.
+  options       Json          @default("[]")
+  order         Int           @default(0)
+  createdByName String        @default("")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt
+
+  answers DesignAnswer[]
+
+  @@index([artworkId, order])
+}
+
+/// One person's answer to a design question: a choice, a note, or both.
+model DesignAnswer {
+  id         String         @id @default(cuid())
+  questionId String
+  question   DesignQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userId     String
+  userName   String
+  choice     String?
+  text       String         @default("")
+  updatedAt  DateTime       @default(now()) @updatedAt
+
+  @@unique([questionId, userId])
 }

@@ -1,7 +1,7 @@
 /** Design review: who has seen / OK'd an artwork, which pages are accepted, and where a pin may sit. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PinInput, PagesSchema, designBrief, givenNames, initials, isReviewer, isWide, isApproval, pagesOf, reviewerStates } from "../../src/lib/design-review/types";
+import { PinInput, PagesSchema, QuestionInput, designBrief, givenNames, initials, isReviewer, isWide, optionsFromText, isApproval, pagesOf, reviewerStates } from "../../src/lib/design-review/types";
 
 const page = { key: "design-review/a.jpg", url: "https://cdn.example.com/design-review/a.jpg", w: 3200, h: 828 };
 
@@ -56,4 +56,12 @@ test("short names, the review team, and which artworks get the full width", () =
   assert.equal(isReviewer("Alison Stirling"), true);
   assert.equal(isWide({ w: 3600, h: 932 }), true); // the one-pagers
   assert.equal(isWide({ w: 3600, h: 2182 }), false); // the banners
+});
+
+test("a question's choices come from one typed line; a question needs wording", () => {
+  assert.deepEqual(optionsFromText("Brass, White metal ,, brass , Brass"), ["Brass", "White metal", "brass"]);
+  assert.deepEqual(optionsFromText("Brass (black/white print)\nWhite metal"), ["Brass (black/white print)", "White metal"], "a slash stays inside a choice");
+  assert.deepEqual(optionsFromText("  "), []);
+  assert.equal(QuestionInput.safeParse({ text: " Who gets a tag? " }).success, true);
+  assert.equal(QuestionInput.safeParse({ text: "  ", options: ["Yes"] }).success, false);
 });

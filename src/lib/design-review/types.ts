@@ -91,3 +91,16 @@ export const givenNames = (name: string) => { const w = name.trim().split(/\s+/)
 
 /** Much wider than tall (a strip of one-pagers): it needs the full width, so the panels go above it, not beside. */
 export const isWide = (page: { w: number; h: number } | undefined) => !!page && page.w / page.h >= 2;
+
+/** A question for the team: its wording, and choices to pick from (none = a free answer). */
+export const QuestionInput = z.object({
+  text: z.string().trim().min(1, "Write the question.").max(300),
+  options: z.array(z.string().trim().min(1).max(120)).max(8).default([]),
+});
+/** "Yes, No, Not sure" typed on one line → the choices. Blank entries and repeats are dropped. */
+export const optionsFromText = (raw: string) => [...new Set(raw.split(/[\n,]+/).map((o) => o.trim()).filter(Boolean))].slice(0, 8);
+export const optionsOf = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((o): o is string => typeof o === "string") : []);
+export const AnswerInput = z.object({
+  choice: z.string().trim().max(120).nullable().default(null),
+  text: z.string().trim().max(600).default(""),
+});

@@ -12,7 +12,8 @@ import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { DesignArtworkBar, DesignProjectList, DesignProjectView } from "@/components/workspace/DesignReviewBoard";
 import { DesignArtworkView } from "@/components/workspace/DesignArtworkView";
-import { isApproval, isReviewer, isWide, pagesOf, reviewerStates, type Approval } from "@/lib/design-review/types";
+import { isApproval, isReviewer, isWide, optionsOf, pagesOf, reviewerStates, type Approval } from "@/lib/design-review/types";
+import { DesignQuestions } from "@/components/workspace/DesignQuestions";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,10 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
   if (a) {
     const art = await prisma.designArtwork.findUnique({
       where: { id: a },
-      include: { project: { select: { id: true, name: true, approverId: true } }, pins: { orderBy: { createdAt: "asc" } }, reviews: true },
+      include: {
+        project: { select: { id: true, name: true, approverId: true } }, pins: { orderBy: { createdAt: "asc" } }, reviews: true,
+        questions: { orderBy: { order: "asc" }, include: { answers: { orderBy: { updatedAt: "asc" } } } },
+      },
     });
     if (!art) redirect(BASE);
     const approverName = nameOf(art.project.approverId);
@@ -62,6 +66,14 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
         {hero}
         {back(`${BASE}?p=${art.project.id}`, art.project.name)}
         <DesignArtworkBar artwork={{ id: art.id, title: art.title, description: art.description, sourceName: art.sourceName, empty: pagesOf(art.pages).length === 0 }} projectId={art.project.id} />
+        <DesignQuestions
+          artworkId={art.id}
+          meId={me.id}
+          questions={art.questions.map((q) => ({
+            id: q.id, text: q.text, options: optionsOf(q.options), createdByName: q.createdByName,
+            answers: q.answers.map((n) => ({ userId: n.userId, userName: n.userName, choice: n.choice, text: n.text })),
+          }))}
+        />
         {pagesOf(art.pages).length === 0 && (
           <p className="rounded-xl border border-dashed border-line p-8 text-center text-[13px] text-muted">
             This is a placeholder — nothing has been uploaded yet. Press <strong className="text-fg">Upload the artwork</strong> above when the design is ready, and it opens for comments.

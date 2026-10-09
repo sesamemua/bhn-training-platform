@@ -12,7 +12,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteR2ObjectByUrl } from "@/lib/r2";
 import { mailConfigured, sendMail } from "@/lib/mail";
-import { ArtworkInput, PagesSchema, PinInput, ProjectInput, isApproval, pagesOf } from "@/lib/design-review/types";
+import { AnswerInput, ArtworkInput, PagesSchema, PinInput, ProjectInput, QuestionInput, isApproval, optionsOf, pagesOf } from "@/lib/design-review/types";
 
 const PAGE = "/admin/workspace/design-review";
 type Result = { ok: true; id?: string } | { ok: false; error: string };
@@ -262,4 +262,53 @@ export async function deleteDesignPin(id: string): Promise<Result> {
   if (pin.authorId !== u.id && !u.admin) return fail("Only its author can delete a comment.");
   await prisma.designPin.delete({ where: { id } });
   return done();
+}
+
+// ── questions for the team ───────────────────────────────────────────
+export async function addDesignQuestion(artworkId: string, input: unknown): Promise<Result> {
+  const u = await me();
+  const p = QuestionInput.safeParse(input);
+  if (!p.success) return fail(p.error.issues[0]?.message ?? "Check the question.");
+  if (!(await prisma.designArtwork.count({ where: { id: artworkId } }))) return fail("That artwork no longer exists.");
+  const last = await prisma.designQuestion.findFirst({ where: { artworkId }, orderBy: { order: "desc" }, select: { order: true } });
+  const row = await prisma.designQuestion.create({ data: { artworkId, text: p.data.text, options: p.data.options, order: (last?.order ?? -1) + 1, createdByName: u.name }, select: { id: true } });
+  return done(row.id);
+}
+
+/** Reword a question or change its choices. An answer that picked a choice no longer offered keeps its note but loses the pick. */
+export async function updateDesignQuestion(id: string, input: unknown): Promise<Result> {
+  await me();
+  const p = QuestionInput.safeParse(input);
+  if (!p.success) return fail(p.error.issues[0]?.message ?? "Check the question.");
+  const row = await prisma.designQuestion.update({ where: { id }, data: { text: p.data.text, options: p.data.options } }).catch(() => null);
+  if (!row) return fail("That question is gone.");
+  await prisma.designAnswer.updateMany({ where: { questionId: id, choice: { notIn: p.data.options } }, data: { choice: null } });
+  await prisma.designAnswer.deleteMany({ where: { questionId: id, choice: null, text: "" } });
+  return done(id);
+}
+
+export async function deleteDesignQuestion(id: string): Promise<Result> {
+  await me();
+  const row = await prisma.designQuestion.delete({ where: { id } }).catch(() => null);
+  return row ? done() : fail("That question is already gone.");
+}
+
+/** My answer to a question — a choice, a note, or both. Clearing both takes the answer away. */
+export async function answerDesignQuestion(id: string, input: unknown): Promise<Result> {
+  const u = await me();
+  const p = AnswerInput.safeParse(input);
+  if (!p.success) return fail("That answer is too long.");
+  const q = await prisma.designQuestion.findUnique({ where: { id }, select: { options: true } });
+  if (!q) return fail("That question is gone.");
+  const choice = p.data.choice && optionsOf(q.options).includes(p.data.choice) ? p.data.choice : null;
+  if (!choice && !p.data.text) {
+    await prisma.designAnswer.deleteMany({ where: { questionId: id, userId: u.id } });
+    return done(id);
+  }
+  await prisma.designAnswer.upsert({
+    where: { questionId_userId: { questionId: id, userId: u.id } },
+    create: { questionId: id, userId: u.id, userName: u.name, choice, text: p.data.text },
+    update: { userName: u.name, choice, text: p.data.text },
+  });
+  return done(id);
 }

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Design Review: questions for the team",
+    body: "Every artwork now has **Questions for the team**. Add a question \u2014 with **choices to pick from** or as a written answer \u2014 and each person answers for themselves; you can see who picked what, with notes. Questions can be **added, reworded and deleted** by anyone on staff.\n\nThe first to use it is **Name tags** in the 2026 Annual Symposium project: the supplier\u2019s proof is uploaded, and the team is asked who gets a tag, whether titles are included, and which material.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Design Review: the review panel stays in view",
     body: "While you look at an artwork, the panel with the **approval, who has looked and the comments** now stays on screen. For a wide piece (the one-pagers) it is pinned to the top as you scroll; for everything else it stays beside the artwork, including on smaller windows where it used to drop underneath. Jumping to a comment from the list now moves only the artwork, not the whole page.\n\nDeleting a comment now asks **Delete? / Keep** on the same line, instead of a pop-up you had to scroll to reach.",
     kind: "fix",
