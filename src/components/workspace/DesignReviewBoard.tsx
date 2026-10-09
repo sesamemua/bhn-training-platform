@@ -17,6 +17,7 @@ import {
 } from "@/lib/design-review/actions";
 import { uploadFile } from "@/lib/design-review/render";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
+import { linkify } from "@/lib/formbuilder/linkify";
 
 const BASE = "/admin/workspace/design-review";
 const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp";
@@ -301,7 +302,14 @@ export function DesignArtworkBar({ artwork, projectId }: { artwork: { id: string
         <div className="flex flex-wrap items-start gap-2">
           <div className="min-w-0 flex-1">
             <h2 className="text-[17px] font-bold text-fg"><span>{artwork.title}</span></h2>
-            {artwork.description && <p className="mt-0.5 whitespace-pre-wrap text-[13px] text-muted">{artwork.description}</p>}
+            {/* Links in the notes (a supplier's page, a quote) open in a new tab. */}
+            {artwork.description && (
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] text-muted">
+                {linkify(artwork.description).map((piece, i) => ("href" in piece
+                  ? <a key={i} href={piece.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline underline-offset-2">{piece.text}</a>
+                  : <span key={i}>{piece.text}</span>))}
+              </p>
+            )}
             {artwork.sourceName && <p className="mt-0.5 text-[11.5px] text-subtle">{artwork.sourceName}</p>}
           </div>
           <button type="button" onClick={() => setEditing(true)} className={ghost}><Pencil size={12} /> Edit</button>
