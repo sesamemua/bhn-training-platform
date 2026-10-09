@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Home: a way to the registrants; approval email: withdraw from the session\u2019s own row",
+    body: "The **Training Week capacity** card on the home page now has an **Open registrants** button that goes straight to Training Week \u2192 Registrants.\n\nIn the approval email, each confirmed session\u2019s **I can\u2019t attend** button now sits **inside the green box, under its own session**, with taller rows \u2014 so nobody presses the button for the wrong session.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Travel follow-up: a \u201cverify your travel\u201d letter, and where a registration was sent from",
     body: "Somebody who said **over two hours** but gave **no postal code** now gets the right letter: **Travel support \u2014 verifying the journey**, which says we need to verify their travel time and asks where they are travelling from and how. (It is under Email \u2192 Standing letters if you want to reword it.)\n\nThe open row also shows **Registration sent from** \u2014 the city, region and IP address the form was submitted from. This is recorded for registrations from **2 October 2026** onward; earlier ones say so.",
     kind: "improvement",

@@ -112,6 +112,12 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity }
       <TrainingWeekCapacity sessions={sessions} registered={events?.find((e) => e.key === "training")?.count ?? null}
         saveWorkshopState={saveWorkshopState} saveCapacity={saveCapacity}
       />
+      {/* Beside the panel, not in it: the panel is the same one the Training Week dashboard shows. */}
+      <p className="mt-3 flex justify-end">
+        <Link href="/admin/workspace/training-admin?tab=registrants" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-brand-700">
+          Open registrants <ArrowRight size={13} aria-hidden="true" />
+        </Link>
+      </p>
       {failed && <p role="status" className="text-[12px] text-rose-600">Registration count could not refresh. Please try Refresh above.</p>}
     </div></article>}
     </>

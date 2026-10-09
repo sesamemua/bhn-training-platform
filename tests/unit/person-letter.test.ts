@@ -60,7 +60,7 @@ test("every place gets its own cancel link, drawn as a button, and the workshop'
     { url: a.cantAttendLink, label: "I can't attend A" },
     { url: b.cantAttendLink, label: "I can't attend B" },
   ]);
-  assert.match(l.body, /I can't attend A: https:\/\/x\/pass\/abc\/cant-attend\/a/);
+  assert.match(l.body, /• A — [^\n]+\n    I can't attend A: https:\/\/x\/pass\/abc\/cant-attend\/a\n  • B — /, "each cancel link sits under its own session");
   assert.match(l.body, /A: Bring photo ID\./);
   const html = letterHtml(l.body, l.buttons);
   assert.equal((html.match(/font-size:13px;color:#475569/g) ?? []).length, 2, "two small, quiet buttons");
@@ -68,6 +68,7 @@ test("every place gets its own cancel link, drawn as a button, and the workshop'
   assert.match(html, /<strong[^>]*>A<\/strong><br><span[^>]*>Monday 26 October/, "each session is its own row");
   assert.match(html, /border-left:4px solid #059669[^>]*><div[^>]*>Your seat in these sessions has been confirmed:/, "confirmed seats sit in a green box");
   assert.match(html, /border-left:4px solid #d97706/, "the waitlist in an amber one");
+  assert.match(html, /<strong[^>]*>A<\/strong><br><span[^>]*>[^<]+<\/span><div[^>]*><a href="https:\/\/x\/pass\/abc\/cant-attend\/a"/, "the button is inside its session's row, in the green box");
   assert.match(html, /BioHubNet Training Week 2026/);
   assert.match(letterHtml("  • Discovery to Delivery — CCRM — Monday 26 October, 11:00–13:30"), /<strong[^>]*>Discovery to Delivery — CCRM<\/strong><br><span[^>]*>Monday 26 October/);
   assert.doesNotMatch(html, /<img/);

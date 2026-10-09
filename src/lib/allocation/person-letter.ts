@@ -80,16 +80,19 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
 
   if (placed.length) {
     const many = placed.length > 1;
-    out.push(`Your seat in ${many ? "these sessions has" : "this session has"} been confirmed:`, ...placed.map(line), "");
+    // Each session carries its own "I can't attend" link, directly under it — in the email
+    // that is one row per session with its button, well apart from the next.
+    out.push(
+      `Your seat in ${many ? "these sessions has" : "this session has"} been confirmed:`,
+      ...placed.flatMap((s) => (s.cantAttendLink ? [line(s), `    ${cancelLabel(s.session)}: ${s.cantAttendLink}`] : [line(s)])),
+      "",
+    );
     out.push(LOCATION_LATER, "");
     for (const s of placed) if (s.workshopNote?.trim()) out.push(`${s.session}: ${s.workshopNote.trim()}`, "");
     // No pass link: the pass is not part of these letters any more.
     out.push(`Please add ${many ? "them" : "it"} to your calendar — ${many ? "a calendar file for each is" : "the calendar file is"} attached. You don't need to reply.`, "");
-    const links = placed.filter((s) => s.cantAttendLink);
-    if (links.length) {
-      out.push(`If your plans change and you can't attend${placed.length > 1 ? " one of them" : ""}, let us know here so the place can go to somebody else:`);
-      for (const s of links) out.push(`  ${cancelLabel(s.session)}: ${s.cantAttendLink}`);
-      out.push("");
+    if (placed.some((s) => s.cantAttendLink)) {
+      out.push(`If your plans change and you can't attend${many ? " one of them" : ""}, use the link under that session so the place can go to somebody else.`, "");
     }
     out.push("A no-show may affect your eligibility for future BioHubNet training and programmes.", "");
   }

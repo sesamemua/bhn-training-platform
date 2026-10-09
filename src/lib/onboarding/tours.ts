@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19n";
+export const TOUR_VERSION = "2026.10.19o";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "home.open-registrants",
+    title: "From the capacity card to the registrants",
+    body: "The Training Week capacity card on the home page has an **Open registrants** button. And in approval emails, each session’s “I can’t attend” button now sits under that session, inside the green box, with room around it.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.19o",
   },
   {
     id: "training-week.travel-verify",
