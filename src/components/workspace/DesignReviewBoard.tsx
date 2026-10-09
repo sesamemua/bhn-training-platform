@@ -142,6 +142,8 @@ export function DesignProjectView({ project, artworks, staff }: {
   const [progress, setProgress] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  /** A title with no file yet: a reminder of something still to be designed. */
+  const addPlaceholder = () => run(() => createDesignArtwork(project.id, { title: title.trim(), description: "" }, [], ""), () => setTitle(""));
   const upload = async () => {
     if (!file) return;
     setError(null);
@@ -196,33 +198,44 @@ export function DesignProjectView({ project, artworks, staff }: {
           <button type="button" disabled={!file || pending || !!progress} onClick={upload} className={primary}>
             {progress ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />} {progress ?? "Upload"}
           </button>
+          <button type="button" disabled={!!file || !title.trim() || pending || !!progress} onClick={addPlaceholder} className={ghost} title="Add it to the list now and upload the artwork later">
+            Add as placeholder
+          </button>
         </div>
-        <p className="mt-1.5 text-[11.5px] text-subtle">Every page of a PDF becomes a picture people can comment on.</p>
+        <p className="mt-1.5 text-[11.5px] text-subtle">Every page of a PDF becomes a picture people can comment on. Nothing to upload yet? Type a title and add it as a placeholder.</p>
       </section>
       {error && <p role="alert" className="text-[12.5px] font-semibold text-rose-600">{error}</p>}
 
       {artworks.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line p-6 text-center text-[13px] text-muted">Nothing to review yet — upload the first artwork above.</p>
       ) : (
-        <ol className="space-y-3">
+        <ol className="grid gap-3 md:grid-cols-2">
           {artworks.map((a, i) => (
-            <li key={a.id} className={`grid gap-3 rounded-xl border border-line bg-card p-3 ${a.wide ? "" : "md:grid-cols-[16rem_minmax(0,1fr)]"}`}>
-              {/* A wide strip gets the whole width, at its own height, so its text is readable; anything else sits beside its details. */}
-              <Link href={`${BASE}?a=${a.id}`} className={`grid place-items-center rounded-lg bg-elevated/60 p-2 hover:ring-2 hover:ring-brand-400 ${a.wide ? "" : "h-40"}`}>
+            <li key={a.id} className={`flex flex-col gap-3 rounded-xl border bg-card p-3 ${a.pages === 0 ? "border-dashed border-line" : "border-line"}`}>
+              {/* Every preview gets the same frame — the same height, the card's width — so a wide strip
+                  and a tall banner read at a similar size instead of one dwarfing the other. */}
+              <Link href={`${BASE}?a=${a.id}`} className="grid h-56 place-items-center rounded-lg bg-elevated/60 p-2 hover:ring-2 hover:ring-brand-400">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {a.thumb ? <img src={a.thumb} alt={a.title} loading="lazy" className={a.wide ? "w-full shadow" : "max-h-full max-w-full object-contain shadow"} /> : <span className="text-[12px] text-subtle">No preview</span>}
+                {a.thumb ? <img src={a.thumb} alt={a.title} loading="lazy" className="max-h-full max-w-full object-contain shadow" />
+                  : <span className="text-center text-[12.5px] text-subtle"><span className="block text-[13px] font-semibold text-muted">To do</span>Nothing uploaded yet</span>}
               </Link>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] font-bold tabular-nums text-subtle">{i + 1}</span>
                   <Link href={`${BASE}?a=${a.id}`} className="text-[15px] font-bold text-fg hover:underline">{a.title}</Link>
-                  <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${TONE[a.approval]}`}>{project.approverName ? `${givenNames(project.approverName)}: ${APPROVAL_LABEL[a.approval]}` : APPROVAL_LABEL[a.approval]}</span>
-                  <span className="inline-flex items-center gap-1 text-[12px] text-muted"><MessageSquare size={12} /> {a.openComments} open</span>
-                  <span className="text-[12px] text-muted">Round {a.round}{a.locked ? " · locked" : ""}</span>
+                  {a.pages === 0 ? (
+                    <span className="rounded-full bg-elevated px-2 py-0.5 text-[11.5px] font-semibold text-muted">Placeholder — to be designed</span>
+                  ) : (
+                    <>
+                      <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${TONE[a.approval]}`}>{project.approverName ? `${givenNames(project.approverName)}: ${APPROVAL_LABEL[a.approval]}` : APPROVAL_LABEL[a.approval]}</span>
+                      <span className="inline-flex items-center gap-1 text-[12px] text-muted"><MessageSquare size={12} /> {a.openComments} open</span>
+                      <span className="text-[12px] text-muted">Round {a.round}{a.locked ? " · locked" : ""}</span>
+                    </>
+                  )}
                   {a.pages > 1 && <span className="text-[12px] text-muted">{a.pages} pages</span>}
                 </div>
                 {a.description && <p className="mt-0.5 text-[12.5px] text-muted">{a.description}</p>}
-                <ul className="mt-2 flex flex-wrap gap-1.5">
+                <ul className={`mt-2 flex flex-wrap gap-1.5 ${a.pages === 0 ? "hidden" : ""}`}>
                   {a.reviewers.map((r) => (
                     <li key={r.id} title={`${r.name} — ${SEEN_WORD[r.state]}`} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] ${r.state === "none" ? "border-line text-subtle" : "border-line text-fg"}`}>
                       <SeenIcon state={r.state} /> <span className="font-semibold">{initials(r.name)}</span> <span className="text-subtle">{r.state === "none" && r.asked ? "asked" : SEEN_WORD[r.state]}</span>
@@ -230,7 +243,7 @@ export function DesignProjectView({ project, artworks, staff }: {
                   ))}
                 </ul>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  <Link href={`${BASE}?a=${a.id}`} className={primary}>Open and comment</Link>
+                  <Link href={`${BASE}?a=${a.id}`} className={primary}>{a.pages === 0 ? "Open and upload" : "Open and comment"}</Link>
                   <button type="button" aria-label="Move up" disabled={pending || i === 0} onClick={() => run(() => moveDesignArtwork(a.id, -1))} className={ghost}><ArrowUp size={12} /></button>
                   <button type="button" aria-label="Move down" disabled={pending || i === artworks.length - 1} onClick={() => run(() => moveDesignArtwork(a.id, 1))} className={ghost}><ArrowDown size={12} /></button>
                   <ConfirmPopover message={`Delete “${a.title}”?`} detail="Its comments and review marks go too." confirmLabel="Delete" tone="danger" align="start" onConfirm={() => run(() => deleteDesignArtwork(a.id))}>
@@ -247,7 +260,7 @@ export function DesignProjectView({ project, artworks, staff }: {
 }
 
 // ── the bar over one open artwork ────────────────────────────────────
-export function DesignArtworkBar({ artwork, projectId }: { artwork: { id: string; title: string; description: string; sourceName: string }; projectId: string }) {
+export function DesignArtworkBar({ artwork, projectId }: { artwork: { id: string; title: string; description: string; sourceName: string; /** A placeholder: nothing uploaded yet. */ empty?: boolean }; projectId: string }) {
   const { pending, error, setError, run, router } = useRun();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: artwork.title, description: artwork.description });
@@ -292,9 +305,13 @@ export function DesignArtworkBar({ artwork, projectId }: { artwork: { id: string
           </div>
           <button type="button" onClick={() => setEditing(true)} className={ghost}><Pencil size={12} /> Edit</button>
           <input ref={fileRef} id="replace-artwork-file" type="file" accept={ACCEPT} hidden aria-label="Replace with a new file" onChange={(e) => replace(e.target.files?.[0])} />
+          {artwork.empty ? (
+            <button type="button" disabled={!!progress || pending} onClick={() => fileRef.current?.click()} className={primary}>{progress ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} {progress ?? "Upload the artwork"}</button>
+          ) : (
           <ConfirmPopover message="Replace with a new version?" detail="Comments stay where they are. Everyone's seen and OK marks, and the approval, start again." confirmLabel="Choose file" onConfirm={() => fileRef.current?.click()}>
             {(o) => <button type="button" disabled={!!progress || pending} onClick={o} className={ghost}>{progress ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} {progress ?? "Replace file"}</button>}
           </ConfirmPopover>
+          )}
           <ConfirmPopover message={`Delete “${artwork.title}”?`} detail="Its comments and review marks go too." confirmLabel="Delete" tone="danger" onConfirm={() => run(() => deleteDesignArtwork(artwork.id), () => router.push(`${BASE}?p=${projectId}`))}>
             {(o) => <button type="button" onClick={o} className={ghost}><Trash2 size={12} /> Delete</button>}
           </ConfirmPopover>

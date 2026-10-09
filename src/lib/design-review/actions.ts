@@ -60,7 +60,8 @@ export async function createDesignArtwork(projectId: string, input: unknown, pag
   const u = await me();
   const p = ArtworkInput.safeParse(input);
   if (!p.success) return fail(p.error.issues[0]?.message ?? "Check the fields.");
-  const pg = PagesSchema.safeParse(pages);
+  // No pages at all is a placeholder: a title to come back to, with the artwork uploaded later.
+  const pg = Array.isArray(pages) && pages.length === 0 ? { success: true as const, data: [] } : PagesSchema.safeParse(pages);
   if (!pg.success) return fail("The artwork's pages didn't upload properly — try again.");
   const last = await prisma.designArtwork.findFirst({ where: { projectId }, orderBy: { order: "desc" }, select: { order: true } });
   const project = await prisma.designProject.findUnique({ where: { id: projectId }, select: { id: true } });

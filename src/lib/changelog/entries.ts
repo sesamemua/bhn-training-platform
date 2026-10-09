@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Design Review: even-sized previews, and placeholders for what is still to come",
+    body: "Inside a project, every artwork now sits in a **card of the same size** \u2014 the one-pagers no longer tower over the stand-up banners.\n\nYou can also add a **placeholder**: type a title and press **Add as placeholder** to keep a reminder of something still to be designed. It shows as *To do \u2014 nothing uploaded yet*; open it and press **Upload the artwork** when it is ready. The 2026 Annual Symposium project has placeholders for **Foam boards, Sandwich boards, Badges, Trophies and Name cards**.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: no room shown on the withdraw and pass pages",
     body: "The page a registrant lands on from **I can\u2019t make it \u2014 withdraw** was still showing the session\u2019s room (for example *MaRS Jewel Box*), as was the pass page. Both now show only the session and its time, in line with the emails saying the location will follow. The self check-in page shows the room only once check-in is open.",
     kind: "fix",

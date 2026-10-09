@@ -61,7 +61,13 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
       <div className="space-y-4">
         {hero}
         {back(`${BASE}?p=${art.project.id}`, art.project.name)}
-        <DesignArtworkBar artwork={{ id: art.id, title: art.title, description: art.description, sourceName: art.sourceName }} projectId={art.project.id} />
+        <DesignArtworkBar artwork={{ id: art.id, title: art.title, description: art.description, sourceName: art.sourceName, empty: pagesOf(art.pages).length === 0 }} projectId={art.project.id} />
+        {pagesOf(art.pages).length === 0 && (
+          <p className="rounded-xl border border-dashed border-line p-8 text-center text-[13px] text-muted">
+            This is a placeholder — nothing has been uploaded yet. Press <strong className="text-fg">Upload the artwork</strong> above when the design is ready, and it opens for comments.
+          </p>
+        )}
+        {pagesOf(art.pages).length > 0 && (
         <DesignArtworkView
           me={me}
           approver={art.project.approverId && approverName ? { id: art.project.approverId, name: approverName } : null}
@@ -73,6 +79,7 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
             reviewers: reviewerStates(reviewers, art.reviews),
           }}
         />
+        )}
       </div>
     );
   }

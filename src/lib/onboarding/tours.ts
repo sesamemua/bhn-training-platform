@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19s";
+export const TOUR_VERSION = "2026.10.19t";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "design-review.placeholders",
+    title: "Placeholders for designs still to come",
+    body: "In a Design Review project, type a title and press **Add as placeholder** to remember something that still needs designing. Previews are now the same size for every artwork, and the symposium project lists what is next: foam boards, sandwich boards, badges, trophies and name cards.",
+    path: "/admin/workspace/design-review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open Design Review", href: "/admin/workspace/design-review" },
+    since: "2026.10.19t",
   },
   {
     id: "training-week.no-room-on-public-pages",
