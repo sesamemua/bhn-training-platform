@@ -98,7 +98,7 @@ export default async function TrainingWeekPassPage({ params }: { params: Promise
                   <p className="mt-0.5 text-[13px]">
                     {day(s.workshop.startDateTime)} · {time(s.workshop.startDateTime)}–{time(s.workshop.endDateTime)}
                   </p>
-                  {s.workshop.locationName && <p className="text-[13px]">{s.workshop.locationName}</p>}
+                  {/* No room here: locations are sent out separately, closer to the date. */}
                   {s.workshop.attendeeNote && <p className="mt-1 whitespace-pre-wrap text-[13px]">{s.workshop.attendeeNote}</p>}
                   {!s.checkedInAt && (
                     <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 print:hidden">

@@ -43,7 +43,7 @@ export default async function CantAttendPage({ params }: { params: Promise<{ tok
         <div className="mt-3 rounded-xl border border-slate-200 px-3.5 py-3">
           <p className="text-[15px] font-bold leading-snug">{seat.workshop.title}</p>
           <p className="text-[13px] text-slate-600">{when(seat.workshop.startDateTime)}</p>
-          {seat.workshop.locationName && <p className="text-[13px] text-slate-600">{seat.workshop.locationName}</p>}
+          {/* No room here: locations are sent out separately, closer to the date. */}
         </div>
 
         {seat.withdrawnAt ? (

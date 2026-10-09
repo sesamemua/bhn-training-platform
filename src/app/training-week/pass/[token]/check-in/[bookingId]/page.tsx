@@ -49,7 +49,8 @@ export default async function SelfCheckInPage({ params }: { params: Promise<{ to
         <div className="mt-3 rounded-xl border border-slate-200 px-3.5 py-3">
           <p className="text-[15px] font-bold leading-snug">{w.title}</p>
           <p className="text-[13px] text-slate-600">{when(w.startDateTime)}</p>
-          {w.locationName && <p className="text-[13px] text-slate-600">{w.locationName}</p>}
+          {/* The room only once check-in is open — by then it has been sent to them. */}
+          {w.locationName && (state === "open" || state === "already") && <p className="text-[13px] text-slate-600">{w.locationName}</p>}
         </div>
 
         {state === "already" ? (

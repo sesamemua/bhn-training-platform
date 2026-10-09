@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: no room shown on the withdraw and pass pages",
+    body: "The page a registrant lands on from **I can\u2019t make it \u2014 withdraw** was still showing the session\u2019s room (for example *MaRS Jewel Box*), as was the pass page. Both now show only the session and its time, in line with the emails saying the location will follow. The self check-in page shows the room only once check-in is open.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Dashboard: a notice when registrants release their seats",
     body: "When somebody cancels their own place, the **home dashboard** and the **Training Week dashboard** now show a notice: **N seats released by registrants**, listing who released which session and when, and whether that session has a seat free to give to somebody else. **Assign from registrants** takes you straight there. It covers the last three weeks and disappears when there is nothing to show.",
     kind: "feature",

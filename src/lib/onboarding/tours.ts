@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19r";
+export const TOUR_VERSION = "2026.10.19s";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.no-room-on-public-pages",
+    title: "Rooms stay off the withdraw and pass pages",
+    body: "The withdraw page and the pass page no longer show a session’s room — only its name and time — so they match the emails. The self check-in page shows the room once check-in opens.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19s",
   },
   {
     id: "home.released-seats",
