@@ -51,6 +51,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
   const [openId, setOpenId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(true);
   const [note, setNote] = useState(artwork.approvalNote);
   const [error, setError] = useState<string | null>(null);
@@ -191,12 +192,20 @@ export function DesignArtworkView({ artwork, me, approver }: {
                               <p className="whitespace-pre-wrap leading-snug text-fg">{c.body}</p>
                             )}
                             {!locked && (c.authorId === me.id || me.admin) && editing?.id !== c.id && (
-                              <p className="mt-0.5 flex gap-2 text-[11px]">
-                                <button type="button" onClick={() => setEditing({ id: c.id, text: c.body })} className="font-semibold text-muted hover:text-fg">Edit</button>
-                                <ConfirmPopover message={c.parentId ? "Delete this reply?" : "Delete this comment and its replies?"} confirmLabel="Delete" tone="danger" align="start" onConfirm={() => run(() => deleteDesignPin(c.id), () => { if (!c.parentId) setOpenId(null); })}>
-                                  {(o) => <button type="button" onClick={o} className="font-semibold text-muted hover:text-rose-600">Delete</button>}
-                                </ConfirmPopover>
-                              </p>
+                              deleting === c.id ? (
+                                // Asked on the same line, in place: a pop-up here opened inside the
+                                // scrolling list and hid its own Delete button.
+                                <p className="mt-1 flex flex-wrap items-center gap-2 rounded-md bg-rose-500/10 px-1.5 py-1 text-[11px]">
+                                  <span className="font-semibold text-rose-700">{c.parentId ? "Delete this reply?" : "Delete this comment and its replies?"}</span>
+                                  <button type="button" disabled={pending} onClick={() => run(() => deleteDesignPin(c.id), () => { setDeleting(null); if (!c.parentId) setOpenId(null); })} className="rounded bg-rose-600 px-2 py-0.5 font-bold text-white hover:bg-rose-700 disabled:opacity-50">Delete</button>
+                                  <button type="button" onClick={() => setDeleting(null)} className="font-semibold text-muted hover:text-fg">Keep</button>
+                                </p>
+                              ) : (
+                                <p className="mt-0.5 flex gap-2 text-[11px]">
+                                  <button type="button" onClick={() => setEditing({ id: c.id, text: c.body })} className="font-semibold text-muted hover:text-fg">Edit</button>
+                                  <button type="button" onClick={() => setDeleting(c.id)} className="font-semibold text-muted hover:text-rose-600">Delete</button>
+                                </p>
+                              )
                             )}
                           </li>
                         ))}

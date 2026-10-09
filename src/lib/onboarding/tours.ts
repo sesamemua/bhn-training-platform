@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19v";
+export const TOUR_VERSION = "2026.10.19w";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -75,12 +75,12 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "design-review.panel-stays",
     title: "The review panel stays put",
-    body: "In Design Review, the approval, people and comments panel now stays on screen while you scroll or zoom an artwork — pinned above a wide piece, beside everything else.",
+    body: "In Design Review, the approval, people and comments panel now stays on screen while you scroll or zoom an artwork — pinned above a wide piece, beside everything else. Deleting a comment now confirms on the same line.",
     path: "/admin/workspace/design-review",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],
     cta: { label: "Open Design Review", href: "/admin/workspace/design-review" },
-    since: "2026.10.19v",
+    since: "2026.10.19w",
   },
   {
     id: "platform.graphite-header",
