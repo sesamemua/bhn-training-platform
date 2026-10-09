@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week reminders no longer carry a withdraw link",
+    body: "The **Three days before** and **On the day** reminders no longer include the **I can\u2019t make it \u2014 withdraw** link. They keep the session\u2019s time and place and the **Check in** button. The approval email still lets people withdraw.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Design Review: links in an artwork\u2019s notes are clickable",
     body: "A web address typed into an artwork\u2019s notes \u2014 a supplier\u2019s product page, a quote \u2014 now opens in a new tab when clicked. The **Trophies** entry in the 2026 Annual Symposium project uses it: it now holds the crystal award being considered, with its sizes, prices and a link to the supplier.",
     kind: "improvement",

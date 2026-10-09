@@ -62,3 +62,11 @@ test("calendar copy confirms the seat and the ICS never requests an RSVP", () =>
   const ics = readFileSync(new URL("../../src/lib/events/ics.ts", import.meta.url), "utf8");
   assert.match(ics, /PARTSTAT=ACCEPTED;RSVP=FALSE/);
 });
+
+test("the reminders carry no withdraw link: this close to the session there is nobody to give the place to", () => {
+  for (const id of ["reminder_3day", "reminder_same_day"]) {
+    const template = templateById(id)!;
+    assert.doesNotMatch(template.body, /\{\{cant_attend_link\}\}|withdraw/i, id);
+    assert.match(template.body, /\{\{check_in_link\}\}/, id);
+  }
+});

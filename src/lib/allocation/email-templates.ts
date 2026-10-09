@@ -372,7 +372,7 @@ If that makes attending impossible, tell us. We would rather know early enough t
     id: "reminder_3day",
     stage: "reminders",
     name: "Three days before",
-    when: "Three days out. A self check-in button and a cancel button.",
+    when: "Three days out. A self check-in button; no withdraw link.",
     subject: "{{session}} is in three days",
     body:
       `Hello {{first_name}},
@@ -384,9 +384,6 @@ A reminder that {{session}} is in three days.
 
 On the day, check yourself in here — it opens 30 minutes before the session starts:
 {{check_in_link}}
-
-If you can't make it, withdraw here so the place can go to somebody else:
-{{cant_attend_link}}
 
 A no-show may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
   },
@@ -406,9 +403,6 @@ A no-show may affect your eligibility for future BioHubNet training and programm
 
 Check yourself in here — it opens 30 minutes before the session starts:
 {{check_in_link}}
-
-If you can't make it, withdraw here:
-{{cant_attend_link}}
 
 Please arrive ten minutes early. If you are running late, reply to this message and we will let the room know.
 

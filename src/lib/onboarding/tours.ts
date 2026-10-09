@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19z";
+export const TOUR_VERSION = "2026.10.20a";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.reminders-no-withdraw",
+    title: "Reminders: check-in only",
+    body: "The three-day and on-the-day reminders no longer offer a withdraw link — just the session details and the **Check in** button. Withdrawing stays in the approval email.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin?tab=email" },
+    since: "2026.10.20a",
   },
   {
     id: "design-review.note-links",
