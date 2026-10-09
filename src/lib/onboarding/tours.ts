@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19t";
+export const TOUR_VERSION = "2026.10.19u";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,15 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "platform.graphite-header",
+    title: "A new header",
+    body: "The page header is now graphite, with a microfluidic chip etched into it — channels, mixers, chambers and droplets. Same information as before, in a new look.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["trainee", "evaluating", "employer", "instructor", "admin", "superadmin"],
+    since: "2026.10.19u",
   },
   {
     id: "design-review.placeholders",

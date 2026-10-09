@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "A new page header: graphite, with a microfluidic chip etched in",
+    body: "The header at the top of every page has a new look: a **graphite** surface \u2014 dark, with a soft metallic sheen and fine grain \u2014 with a **microfluidic chip** etched into it: channels, serpentine mixers, chambers and a droplet generator, with the fluid in the brand colour. The pattern fades out behind the title so the text stays clear. Nothing about what the header contains has changed.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Design Review: even-sized previews, and placeholders for what is still to come",
     body: "Inside a project, every artwork now sits in a **card of the same size** \u2014 the one-pagers no longer tower over the stand-up banners.\n\nYou can also add a **placeholder**: type a title and press **Add as placeholder** to keep a reminder of something still to be designed. It shows as *To do \u2014 nothing uploaded yet*; open it and press **Upload the artwork** when it is ready. The 2026 Annual Symposium project has placeholders for **Foam boards, Sandwich boards, Badges, Trophies and Name cards**.",
     kind: "improvement",

@@ -3,15 +3,13 @@
  * Page header primitive. Adapts to the active design system.
  *
  *   Classic     — title + eyebrow + description stacked, no chrome
- *   Cinematic   — full-bleed THEME-DRIVEN gradient mesh stage. Eyebrow
- *                 + title + description render directly OVER the
- *                 gradient (no paper body underneath). Each theme
- *                 paints its own stage via its own `--hero-bg` +
- *                 `--hero-mesh-{1..4}` + `--hero-fg` tokens (defined
- *                 in globals.css); the `.hero-mesh-brand` utility
- *                 reads them and the existing per-theme contrast
- *                 layer (bottom scrim + light-hero text overrides
- *                 for icecream) ensures readable text everywhere.
+ *   Cinematic   — full-bleed GRAPHITE stage with a microfluidic chip
+ *                 etched into it (channels, mixers, chambers, a
+ *                 droplet generator). Eyebrow + title + description
+ *                 render directly over it, in white. The same on
+ *                 every theme: the header paints its own ground, and
+ *                 only the fluid in the channels takes the brand
+ *                 colour.
  *   Studio      — full-bleed gradient-mesh hero with two drifting
  *                 blob shapes + a curve-down divider. Eyebrow on
  *                 brand-light text, gradient-text accent on the
@@ -147,101 +145,101 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
 
     return (
       <>
-      <header className="full-bleed relative overflow-hidden -mt-8 mb-10 hero-mesh-brand">
-        {/* Decoration layer — wraps the auroras + noise inside ONE
-            absolute container. This is load-bearing: globals.css has
-            `.hero-mesh-brand > * { position: relative }` which forces
-            every direct child into the flow. If the four aurora divs
-            sat directly under `<header>`, that rule would turn them
-            into 14–22 rem tall block elements stacked vertically,
-            and the hero would balloon to ~1500 px tall. Wrapping them
-            in an absolutely-positioned div takes the children out of
-            the in-flow path — only the wrapper itself is the direct
-            child of `.hero-mesh-brand`, and it's flattened to inset:0. */}
+      {/* GRAPHITE STAGE — a slab of graphite with a microfluidic chip
+          etched into it. The same header on every theme: it paints its
+          own ground and sets its own title gradient, so it does not
+          take the theme's hero colours (and needs none of the
+          per-theme text overrides that go with them). */}
+      <header
+        className="full-bleed relative overflow-hidden -mt-8 mb-10 text-white"
+        style={{
+          backgroundColor: "#1b1d20",
+          backgroundImage: "linear-gradient(118deg, #15171a 0%, #26292e 42%, #1d1f23 68%, #131517 100%)",
+          ["--hero-title-gradient" as string]: "linear-gradient(120deg, #ffffff 0%, #c9d1d9 50%, #ffffff 100%)",
+        }}
+      >
         <div aria-hidden className="absolute inset-0 pointer-events-none">
-          {/* ── ATMOSPHERIC STAGE — built to feel like the /login
-                page's spotlight stage but theme-aware. Layers,
-                top-to-bottom in z-order:
-                  (1) deep radial dome from the theme's hero-mesh-1
-                  (2) aurora wash — cyan + green theme-tinted glows
-                      around the top centre, like the /login stage
-                  (3) tighter warm-white spotlight cone at top-centre
-                  (4) visible reeded / fluted glass ribs (the
-                      "fractal glass" effect — vertical lines at
-                      strong contrast so the texture really reads)
-                  (5) edge vignette so the stage feels theatrical
-                  (6) fine SVG noise for editorial grain
-                NO floating glyphs / draggables — strictly static. */}
-
-          {/* (1) Deep radial dome from theme hero-mesh-1 — gives the
-                  stage its theme-flavored sky. */}
+          {/* (1) Graphite sheen — the soft metallic band a pencil-lead
+                  surface shows where the light crosses it. */}
           <div
             className="absolute inset-0"
+            style={{ background: "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.07) 47%, rgba(255,255,255,0.02) 56%, transparent 70%)" }}
+          />
+          {/* (2) Brushed grain — hair-fine diagonal strokes, the way
+                  graphite lies down on paper. */}
+          <div
+            className="absolute inset-0 opacity-70"
             style={{
               backgroundImage:
-                "radial-gradient(ellipse 80% 110% at 50% -10%, color-mix(in srgb, var(--hero-mesh-1, #56bdf8) 60%, transparent) 0%, transparent 60%)",
+                "repeating-linear-gradient(118deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 4px), repeating-linear-gradient(118deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 9px)",
             }}
           />
 
-          {/* (2) Aurora wash — two soft theme-tinted radial glows at
-                  the top centre, mirroring the /login spotlight pool. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(circle 600px at 50% 22%, color-mix(in srgb, var(--hero-mesh-1, #56bdf8) 35%, transparent) 0%, transparent 60%), radial-gradient(circle 480px at 50% 30%, color-mix(in srgb, var(--hero-mesh-3, #4ade80) 28%, transparent) 0%, transparent 65%)",
-            }}
-          />
-
-          {/* (3) Spotlight cone — tighter warm-white ellipse over the
-                  aurora wash, like a theatre's key light. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 32% 28% at 50% 18%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 50%, transparent 75%)",
-            }}
-          />
-
-          {/* (4) Reeded / fluted glass ribs — repeating vertical
-                  stripe pattern with strong soft-light highlight +
-                  overlay shadow per rib. This is the "fractal glass"
-                  effect the user wanted — visible vertical-line
-                  texture across the whole stage. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(90deg, rgba(255,255,255,0.14) 0px, rgba(255,255,255,0.14) 1.5px, transparent 1.5px, transparent 6px, rgba(0,0,0,0.18) 7px, rgba(0,0,0,0.18) 8.5px, transparent 8.5px, transparent 10px)",
-              mixBlendMode: "overlay",
-            }}
-          />
-          {/* Finer rib micro-texture between the main grooves */}
-          <div
-            className="absolute inset-0 opacity-60"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 3px)",
-              mixBlendMode: "soft-light",
-            }}
-          />
-
-          {/* (5) Edge vignette — gentle darkening at corners so the
-                  stage feels framed. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 110% 130% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.32) 100%)",
-            }}
-          />
-
-          {/* (6) Fine SVG noise grain — keeps the gradients from
-                  banding, gives editorial print feel. */}
+          {/* (3) The microfluidic chip — channels, serpentine mixers,
+                  chambers, a T-junction and a droplet generator, etched
+                  as one repeating tile. It fades out toward the left so
+                  it never sits behind the title and description. */}
           <svg
-            className="absolute inset-0 w-full h-full opacity-[0.14] mix-blend-overlay"
+            className="absolute inset-0 h-full w-full"
             xmlns="http://www.w3.org/2000/svg"
+            style={{
+              maskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.25) 38%, #000 68%)",
+              WebkitMaskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.25) 38%, #000 68%)",
+            }}
           >
+            <defs>
+              <pattern id="ds-microfluidic" width="480" height="180" patternUnits="userSpaceOnUse">
+                {/* Channels: a dark groove with a lighter lip, so they read as cut into the surface. */}
+                <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <g stroke="#0c0d0f" strokeWidth="5" opacity="0.55">
+                    <path d="M0 50 H60 V26 H78 V74 H96 V26 H114 V74 H132 V50 H170" />
+                    <path d="M210 50 H360 M260 50 V130 M345 20 V80 M360 50 H480" />
+                    <path d="M0 130 H100 M160 130 H300 V150 H318 V110 H336 V150 H354 V110 H372 V130 H480" />
+                  </g>
+                  <g stroke="#8b949e" strokeWidth="1.25" opacity="0.5">
+                    <path d="M0 50 H60 V26 H78 V74 H96 V26 H114 V74 H132 V50 H170" />
+                    <path d="M210 50 H360 M260 50 V130 M345 20 V80 M360 50 H480" />
+                    <path d="M0 130 H100 M160 130 H300 V150 H318 V110 H336 V150 H354 V110 H372 V130 H480" />
+                    {/* Reaction chambers */}
+                    <circle cx="190" cy="50" r="20" />
+                    <rect x="100" y="116" width="60" height="28" rx="14" />
+                    {/* Inlet ports on the droplet generator */}
+                    <circle cx="345" cy="15" r="5" />
+                    <circle cx="345" cy="85" r="5" />
+                  </g>
+                  {/* Fluid in the system — the one accent, in the brand colour. */}
+                  <g stroke="var(--brand-400, #38bdf8)" strokeWidth="2" opacity="0.55">
+                    <path d="M132 50 H170 M210 50 H260 V130 H300" />
+                    <circle cx="190" cy="50" r="13" fill="var(--brand-400, #38bdf8)" fillOpacity="0.14" />
+                  </g>
+                </g>
+                {/* Droplets leaving the generator */}
+                <g fill="var(--brand-400, #38bdf8)" opacity="0.6">
+                  <circle cx="378" cy="50" r="3" />
+                  <circle cx="400" cy="50" r="3" />
+                  <circle cx="422" cy="50" r="3" />
+                  <circle cx="444" cy="50" r="3" />
+                  <circle cx="466" cy="50" r="3" />
+                </g>
+                {/* Junction nodes */}
+                <g fill="#8b949e" opacity="0.55">
+                  <circle cx="260" cy="50" r="2.5" />
+                  <circle cx="260" cy="130" r="2.5" />
+                  <circle cx="345" cy="50" r="2.5" />
+                </g>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#ds-microfluidic)" />
+          </svg>
+
+          {/* (4) Edge vignette — the slab darkens toward its edges. */}
+          <div
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 110% 140% at 50% 45%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.4) 100%)" }}
+          />
+
+          {/* (5) Fine mineral grain, so the gradients do not band. */}
+          <svg className="absolute inset-0 w-full h-full opacity-[0.16] mix-blend-overlay" xmlns="http://www.w3.org/2000/svg">
             <filter id="ds-cinematic-noise">
               <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" />
               <feColorMatrix
@@ -254,6 +252,9 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
             </filter>
             <rect width="100%" height="100%" filter="url(#ds-cinematic-noise)" />
           </svg>
+
+          {/* (6) A hairline at the foot — the cut edge of the slab. */}
+          <div className="absolute inset-x-0 bottom-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22) 30%, rgba(255,255,255,0.22) 70%, transparent)" }} />
         </div>
 
         {/* CONTENT — compact banner. `min-h` is small (10/11/12rem)
@@ -274,8 +275,9 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
                   aria-hidden
                   className="absolute -inset-4 rounded-full opacity-60 blur-2xl"
                   style={{
+                    // A cool glow, not a rainbow: it sits on graphite now.
                     background:
-                      "conic-gradient(from 0deg, rgba(56,189,248,0.5), rgba(244,114,182,0.5), rgba(250,204,21,0.4), rgba(74,222,128,0.4), rgba(56,189,248,0.5))",
+                      "radial-gradient(circle, color-mix(in srgb, var(--brand-400, #38bdf8) 55%, transparent) 0%, rgba(255,255,255,0.18) 45%, transparent 72%)",
                   }}
                 />
                 <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white ring-4 ring-white shadow-cover-disc flex items-center justify-center text-brand-700">
