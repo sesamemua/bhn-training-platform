@@ -6,6 +6,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { isInternal } from "./internal";
+import { registrantName } from "@/lib/allocation/registrant-name";
 import { loadInternalSet } from "./internal-server";
 import { sessionCapacity, type MonitorSession } from "./capacity";
 import { currentSeatSuggestions } from "@/lib/allocation/seat-suggestions-server";
@@ -82,11 +83,10 @@ export async function loadReleasedSeats(): Promise<ReleasedSeat[]> {
   });
   const confirmed = new Map(taken.map((t) => [t.workshopId, t._count._all]));
   return rows.map((r) => {
-    const d = (r.submission?.data ?? {}) as Record<string, unknown>;
-    const typed = [d.first_name, d.last_name].filter((x) => typeof x === "string" && x.trim()).join(" ") || (typeof d.trainee_name === "string" ? d.trainee_name : "");
+    const typed = registrantName((r.submission?.data ?? {}) as Record<string, unknown>);
     return {
       bookingId: r.id,
-      name: typed.trim() || r.user?.name?.trim() || r.submission?.email || r.user?.email || "A registrant",
+      name: typed || r.user?.name?.trim() || r.submission?.email || r.user?.email || "A registrant",
       session: r.workshop.title,
       at: r.withdrawnAt!.toISOString(),
       free: Math.max(0, r.workshop.capacity - (confirmed.get(r.workshop.id) ?? 0)),
