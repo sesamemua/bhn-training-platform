@@ -21,9 +21,10 @@ import { toCsv } from "@/lib/formbuilder/csv";
 import { downloadText, fileDate } from "@/lib/download";
 import { rowsFrom } from "./RegistrantViews";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
-import { draftTravelCheck, loadSubmissions, loadTravelStatus, sendTravelCheck, setTravelEligibility } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { applyTravelTemplate, deleteTravelTemplate, draftTravelCheck, loadSubmissions, loadTravelStatus, loadTravelTemplates, saveTravelTemplate, sendTravelCheck, setTravelEligibility } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
 import { placeOf } from "@/lib/formbuilder/origin";
+import type { TravelTemplate } from "@/lib/travel/letter-templates";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 
 const TONE: Record<string, string> = {
@@ -83,6 +84,42 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   const kindOf = (t: Traveller): Kind =>
     t.ootAccepted || approvals[t.bookingId] ? "next" : t.falseOot ? "clarify" : travelFromPostcode(t.postcode) ? "next" : "verify";
 
+  /* Letters the team has saved to use again. "" = the standard letter for this person's status. */
+  const [templates, setTemplates] = useState<TravelTemplate[]>([]);
+  const [picked, setPicked] = useState("");
+  useEffect(() => { loadTravelTemplates().then(setTemplates).catch(() => {}); }, []);
+  const pickedTpl = templates.find((x) => x.id === picked) ?? null;
+
+  function pickTemplate(t: Traveller, id: string) {
+    setPicked(id);
+    if (!id) { writeDraft(t); return; }
+    start(async () => {
+      const r = await applyTravelTemplate(id, t.bookingId);
+      if (!r.ok) { setSaid(r.problem ?? "That template could not be used."); return; }
+      setDraft({ kind: kindOf(t), to: r.to ?? "", subject: r.subject ?? "", body: r.body ?? "" });
+      setSaid(r.missing?.length ? `This person has nothing for ${r.missing.map((m) => `{{${m}}}`).join(", ")} — fill it in by hand before sending.` : null);
+    });
+  }
+  function saveTemplate(t: Traveller, name: string, id?: string) {
+    if (!draft) return;
+    const d = draft;
+    start(async () => {
+      const r = await saveTravelTemplate({ id, name, subject: d.subject, body: d.body, bookingId: t.bookingId });
+      if (!r.ok || !r.templates) { setSaid(r.problem ?? "That template could not be saved."); return; }
+      setTemplates(r.templates);
+      setPicked(r.id ?? "");
+      setSaid(id ? `Template “${name}” updated.` : `Saved as the template “${name}”. Their name was put back as a merge field, so it fits the next person.`);
+    });
+  }
+  function removeTemplate(id: string) {
+    start(async () => {
+      const r = await deleteTravelTemplate(id);
+      setTemplates(r.templates);
+      setPicked("");
+      setSaid("Template deleted.");
+    });
+  }
+
   function writeDraft(t: Traveller) {
     setDraft(null);
     setDrafting(true);
@@ -98,6 +135,7 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
     setSaid(null);
     if (openKey === t.personKey) { setOpenKey(null); setDraft(null); return; }
     setOpenKey(t.personKey);
+    setPicked("");
     if (subs === null) reloadSubs();
     writeDraft(t);
   }
@@ -279,6 +317,14 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                               {draft ? (
                                 <div className="mt-1 space-y-2">
                                   <p className="text-[12px] text-muted">To {draft.to}</p>
+                                  <label className="flex flex-wrap items-center gap-2 text-[12px] text-muted" htmlFor={`travel-template-${t.bookingId}`}>
+                                    Start from
+                                    <select id={`travel-template-${t.bookingId}`} value={picked} disabled={pending} onChange={(e) => pickTemplate(t, e.target.value)}
+                                      className="min-w-[14rem] flex-1 rounded-lg border border-line bg-card px-2 py-1.5 text-[12.5px] text-fg">
+                                      <option value="">Standard letter — {KIND_LABEL[kindOf(t)]}</option>
+                                      {templates.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                                    </select>
+                                  </label>
                                   <input id={`travel-subject-${t.bookingId}`} aria-label="Subject" value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
                                     className="w-full rounded-lg border border-line bg-card px-3 py-2 text-[13.5px] text-fg focus:outline-none focus:ring-2 focus:ring-brand-400" />
                                   <textarea id={`travel-body-${t.bookingId}`} aria-label="Message" rows={12} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })}
@@ -292,10 +338,30 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                                         </button>
                                       )}
                                     </ConfirmPopover>
-                                    <button type="button" disabled={pending} onClick={() => writeDraft(t)} className="text-[12px] font-semibold text-muted underline underline-offset-2 hover:text-fg">Start again from the template</button>
+                                    <button type="button" disabled={pending} onClick={() => pickTemplate(t, picked)} className="text-[12px] font-semibold text-muted underline underline-offset-2 hover:text-fg">Start again</button>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2 text-[12px]">
+                                    <span className="text-muted">Templates:</span>
+                                    <ConfirmPopover message="Save this letter as a new template" detail="Their name and postal-code details become merge fields, so it fits anybody." confirmLabel="Save template" align="start" input={{ placeholder: "A name for it, e.g. Verify travel — short", maxLength: 80 }} onConfirm={(name) => saveTemplate(t, name)}>
+                                      {(o) => <button type="button" disabled={pending || !draft.subject.trim() || !draft.body.trim()} onClick={o} className="rounded-md border border-line px-2 py-1 font-semibold text-fg hover:bg-elevated disabled:opacity-40">Save as new template</button>}
+                                    </ConfirmPopover>
+                                    {pickedTpl && (
+                                      <>
+                                        <ConfirmPopover message={`Update “${pickedTpl.name}” with this wording?`} detail="Everybody who uses this template gets the new wording." confirmLabel="Update template" align="start" onConfirm={() => saveTemplate(t, pickedTpl.name, pickedTpl.id)}>
+                                          {(o) => <button type="button" disabled={pending} onClick={o} className="rounded-md border border-line px-2 py-1 font-semibold text-fg hover:bg-elevated disabled:opacity-40">Update “{pickedTpl.name}”</button>}
+                                        </ConfirmPopover>
+                                        <ConfirmPopover message={`Rename “${pickedTpl.name}”`} confirmLabel="Rename" align="start" input={{ initial: pickedTpl.name, maxLength: 80 }} onConfirm={(name) => saveTemplate(t, name, pickedTpl.id)}>
+                                          {(o) => <button type="button" disabled={pending} onClick={o} className="font-semibold text-muted underline underline-offset-2 hover:text-fg">Rename</button>}
+                                        </ConfirmPopover>
+                                        <ConfirmPopover message={`Delete the template “${pickedTpl.name}”?`} confirmLabel="Delete" tone="danger" align="start" onConfirm={() => removeTemplate(pickedTpl.id)}>
+                                          {(o) => <button type="button" disabled={pending} onClick={o} className="font-semibold text-muted underline underline-offset-2 hover:text-rose-600">Delete</button>}
+                                        </ConfirmPopover>
+                                        {pickedTpl.byName && <span className="text-subtle">last saved by {pickedTpl.byName}</span>}
+                                      </>
+                                    )}
                                   </div>
                                   <p className="text-[11.5px] leading-snug text-subtle">
-                                    Edits here go to this one message only. To change the wording for everybody, edit the travel letters under the Email tab.
+                                    Edits here go to this one message only, unless you save them as a template. The standard letters themselves are under the Email tab.
                                   </p>
                                 </div>
                               ) : (

@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19p";
+export const TOUR_VERSION = "2026.10.19q";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.travel-templates",
+    title: "Save travel letters as templates",
+    body: "Reworded a letter in **Travel follow-up**? Press **Save as new template**. It then appears under **Start from** on every row, filled in for whoever you are writing to. Update, rename or delete the one you have picked, and keep as many as you need.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Travel follow-up", href: "/admin/workspace/training-admin?tab=travel" },
+    since: "2026.10.19q",
   },
   {
     id: "home.open-registrants",

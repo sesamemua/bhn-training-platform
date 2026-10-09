@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Travel follow-up: save your letters as templates",
+    body: "In **Travel follow-up**, once you have reworded a letter in the box, press **Save as new template** and give it a name. Saved templates appear in the **Start from** list on every person\u2019s row \u2014 pick one and it is filled in for that person. You can keep as many as you need (up to 40), and **Update**, **Rename** or **Delete** the one you have picked.\n\nWhen a letter is saved, the person\u2019s name and postal-code details are turned back into merge fields, so the template fits whoever it is used for next. Templates are shared by the whole team, and show who last saved them.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Home: a way to the registrants; approval email: withdraw from the session\u2019s own row",
     body: "The **Training Week capacity** card on the home page now has an **Open registrants** button that goes straight to Training Week \u2192 Registrants.\n\nIn the approval email, each confirmed session\u2019s **I can\u2019t attend** button now sits **inside the green box, under its own session**, with taller rows \u2014 so nobody presses the button for the wrong session. The button reads **I can\u2019t make it \u2014 withdraw**.",
     kind: "improvement",

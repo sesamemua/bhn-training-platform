@@ -39,6 +39,7 @@ import { StatusMapSchema, WORKSHOP_STATUS_KEY, switchable } from "@/lib/training
 import { rankedSessions } from "@/lib/formbuilder/submit";
 import { personLetterDraft, sendComposed, sendPersonCombined } from "@/lib/formbuilder/acknowledge";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
+import { MAX_TRAVEL_TEMPLATES, TRAVEL_TEMPLATES_KEY, TravelTemplateSchema, parseTravelTemplates, toTemplate, type TravelTemplate } from "@/lib/travel/letter-templates";
 import {
   DECISION_LABEL,
   describe as describeDecision, isDecision, letterDue, type Decision,
@@ -1908,4 +1909,95 @@ export async function sendStatusLetter(submissionId: string): Promise<{ ok: bool
   await logSend(admin.id, PERSON_LETTER, { key, email: made.to, bookingIds: made.letter.seats.map((s) => s.bookingId), seats: made.letter.seats.map((s) => `${s.session}: ${s.status}`), state: receipt.state, everything: true });
   revalidatePath(PAGE);
   return { ok: true, delivered: delivered(receipt), receipt };
+}
+
+/* ── saved travel letters ────────────────────────────────────────── */
+
+/** Who a travel letter is for, and what its merge fields hold for them. */
+async function travelPerson(bookingId: string): Promise<{ to: string | null; vars: Record<string, string> } | null> {
+  if (!isId(bookingId)) return null;
+  const booking = await prisma.workshopBooking.findUnique({
+    where: { id: bookingId },
+    select: { submission: { select: { data: true, email: true } }, user: { select: { name: true, email: true } } },
+  });
+  if (!booking) return null;
+  const answers = (booking.submission?.data ?? {}) as Record<string, unknown>;
+  const to = booking.submission?.email ?? booking.user?.email ?? null;
+  const name = registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(to)) || "";
+  const estimate = travelFromPostcode(String(answers.postcode ?? "").trim());
+  return {
+    to,
+    vars: {
+      first_name: name.split(/\s+/)[0] || "there",
+      name: name || "there",
+      event: "BioHubNet Training Week 2026",
+      coordinator: "The BioHubNet team",
+      ...(estimate ? { postcode: estimate.fsa, travel_time: travelWords(estimate) } : {}),
+    },
+  };
+}
+
+async function readTravelTemplates(): Promise<TravelTemplate[]> {
+  const row = await prisma.platformSetting.findUnique({ where: { key: TRAVEL_TEMPLATES_KEY }, select: { value: true } });
+  return parseTravelTemplates(row?.value);
+}
+async function writeTravelTemplates(list: TravelTemplate[]) {
+  const value = JSON.stringify(list.slice(0, MAX_TRAVEL_TEMPLATES));
+  await prisma.platformSetting.upsert({ where: { key: TRAVEL_TEMPLATES_KEY }, create: { key: TRAVEL_TEMPLATES_KEY, value }, update: { value } });
+}
+
+/** The team's saved travel letters, newest change first. */
+export async function loadTravelTemplates(): Promise<TravelTemplate[]> {
+  await requireAdmin();
+  return (await readTravelTemplates()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+/**
+ * Save the letter in the box as a template — a new one, or over an
+ * existing one (`id`). The letter is addressed to somebody, so their
+ * name and postal-code details are turned back into merge fields first:
+ * the next person it is used for gets their own.
+ */
+export async function saveTravelTemplate(input: { id?: string; name: string; subject: string; body: string; bookingId: string }): Promise<{ ok: boolean; problem?: string; templates?: TravelTemplate[]; id?: string }> {
+  const admin = await requireAdmin();
+  const person = await travelPerson(input.bookingId);
+  // Only the person's own details go back to fields; the event name and sign-off stay as written.
+  const mine = person ? { name: person.vars.name === "there" ? undefined : person.vars.name, first_name: person.vars.first_name === "there" ? undefined : person.vars.first_name, postcode: person.vars.postcode, travel_time: person.vars.travel_time } : {};
+  const list = await readTravelTemplates();
+  const id = input.id && list.some((t) => t.id === input.id) ? input.id : `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const parsed = TravelTemplateSchema.safeParse({
+    id, name: input.name, subject: toTemplate(String(input.subject ?? "").replace(/[\r\n]+/g, " "), mine), body: toTemplate(String(input.body ?? ""), mine),
+    byName: admin.name || admin.email || "", updatedAt: new Date().toISOString(),
+  });
+  if (!parsed.success) return { ok: false, problem: parsed.error.issues[0]?.path[0] === "name" ? "Give the template a name." : "A template needs a subject and a message." };
+  const exists = list.some((t) => t.id === id);
+  if (!exists && list.length >= MAX_TRAVEL_TEMPLATES) return { ok: false, problem: `There are already ${MAX_TRAVEL_TEMPLATES} templates — delete one first.` };
+  const next = exists ? list.map((t) => (t.id === id ? parsed.data : t)) : [parsed.data, ...list];
+  await writeTravelTemplates(next);
+  await logSend(admin.id, "training_admin.travel_template_saved", { id, name: parsed.data.name, updated: exists });
+  return { ok: true, id, templates: next.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) };
+}
+
+export async function deleteTravelTemplate(id: string): Promise<{ ok: boolean; templates: TravelTemplate[] }> {
+  const admin = await requireAdmin();
+  const list = await readTravelTemplates();
+  const next = list.filter((t) => t.id !== id);
+  if (next.length !== list.length) {
+    await writeTravelTemplates(next);
+    await logSend(admin.id, "training_admin.travel_template_deleted", { id, name: list.find((t) => t.id === id)?.name });
+  }
+  return { ok: true, templates: next.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) };
+}
+
+/** A saved template, filled in for the person on this row — what the box shows when it is picked. */
+export async function applyTravelTemplate(id: string, bookingId: string): Promise<{ ok: boolean; problem?: string; to?: string; subject?: string; body?: string; missing?: string[] }> {
+  await requireAdmin();
+  const tpl = (await readTravelTemplates()).find((t) => t.id === id);
+  if (!tpl) return { ok: false, problem: "That template has been deleted." };
+  const person = await travelPerson(bookingId);
+  if (!person) return { ok: false, problem: "That registration no longer exists." };
+  if (!person.to) return { ok: false, problem: "There is no email address on that registration." };
+  const subject = render(tpl.subject, person.vars);
+  const body = render(tpl.body, person.vars);
+  return { ok: true, to: person.to, subject: subject.text, body: body.text, missing: [...new Set([...subject.missing, ...body.missing])] };
 }
