@@ -284,7 +284,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
       if (!r.ok) { setSaid(r.problem ?? "That did not go through."); return; }
       if (!alsoEmail && r.done) queueLetterFx(); else lettersChanged();
       setSaid(`${label}: ${r.done} seat${r.done === 1 ? "" : "s"}${r.sent ? `, ${r.sent} emailed` : ""}${r.failed ? `, ${r.failed} failed` : ""}.${
-        r.overlapped ? ` ${r.overlapped} not approved: ${r.overlapped === 1 ? "it overlaps" : "they overlap"} with a session that person is already approved for. Open the person to approve anyway.` : ""}`);
+        r.overlapped ? ` ${r.overlapped} not approved: ${r.overlapped === 1 ? "it overlaps" : "they overlap"} with a session that person is already approved for. Open the person to choose which to keep.` : ""}`);
       clearPick();
     });
   }

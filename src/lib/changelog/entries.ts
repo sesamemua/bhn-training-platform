@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registrants: overlapping choices are joined, and approving one declines the rest",
+    body: "Open a person under **Registrants**: the sessions they chose that **run at the same time** are now joined by an **amber line** down the left. Press **Approved** on one of them and you are asked what to do with the others \u2014 **Approve, and decline the others** (they are declined automatically, recorded as such in the history) or **Approve anyway** to leave them as they are.\n\nAlso: the sidebar group holding Website Review and Design Review is now called **Review**.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week emails: boxed and colour-coded, no pass link, \u201cyour seat has been confirmed\u201d",
     body: "Decision emails are now one **card**: confirmed seats in a **green** box, the waitlist in **amber**, sessions not offered in **grey**, the location note in **blue**, and the \u201cI can\u2019t attend\u201d buttons in their own panel.\n\nThe **Training Week pass link is gone** from the decision letter and from the standing letters (approval, a place has opened up, both reminders). The wording no longer says *your attendance is confirmed* \u2014 it says **your seat in these sessions has been confirmed**.",
     kind: "improvement",

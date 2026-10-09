@@ -195,6 +195,9 @@ export interface SubmissionRow {
     withdrawReason?: string | null;
     /** Who did what to this seat, oldest first: decisions, letters sent, taken out of a round. */
     history?: { what: string; by: string; at: string }[];
+    /** When the session runs — what tells two of their choices apart as overlapping. */
+    start?: string;
+    end?: string;
   }[];
   /** Everything else, by question label, for the expanded view. */
   answers: Record<string, string>;

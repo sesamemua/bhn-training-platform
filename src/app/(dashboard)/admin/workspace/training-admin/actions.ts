@@ -723,7 +723,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
         select: {
           id: true, status: true, rank: true, decisionNote: true, approvedAt: true, notifiedStatus: true, notifiedAt: true,
           withdrawnAt: true, withdrawReason: true,
-          workshop: { select: { title: true, capacity: true } },
+          workshop: { select: { title: true, capacity: true, startDateTime: true, endDateTime: true } },
         },
       },
     },
@@ -774,6 +774,8 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
         withdrawnAt: b.withdrawnAt ? b.withdrawnAt.toISOString() : null,
         withdrawReason: b.withdrawReason ?? null,
         history: history.get(b.id) ?? [],
+        start: b.workshop.startDateTime.toISOString(),
+        end: b.workshop.endDateTime.toISOString(),
       })),
       answers: Object.fromEntries(
         doc.fields
@@ -920,8 +922,16 @@ export async function decideSeat(
   bookingId: string,
   to: string,
   note?: string,
-  opts?: { send?: boolean; expectedStatuses?: string[]; allowOverlap?: boolean },
-): Promise<{ ok: boolean; problem?: string; said?: string; letterOwed?: boolean; receipt?: Receipt; overlap?: string[] }> {
+  opts?: {
+    send?: boolean; expectedStatuses?: string[];
+    /** Approve although it runs at the same time as another of their sessions; that one is left as it is. */
+    allowOverlap?: boolean;
+    /** Approve, and decline their other sessions that run at the same time. */
+    declineOverlapping?: boolean;
+    /** From a bulk action: only an overlap with an already-APPROVED session stops it. */
+    bulk?: boolean;
+  },
+): Promise<{ ok: boolean; problem?: string; said?: string; letterOwed?: boolean; receipt?: Receipt; overlap?: string[]; overlapApproved?: boolean }> {
   const admin = await requireAdmin();
   if (!isDecision(to)) return { ok: false, problem: "That is not a decision." };
   if (!isId(bookingId)) return { ok: false, problem: "That is not a seat." };
@@ -930,12 +940,29 @@ export async function decideSeat(
   // Nobody can be in two rooms at once: approving a session that runs at
   // the same time as one this person already has is refused, unless the
   // admin says to do it anyway.
+  let autoDeclined: string[] = [];
   if (decision === "confirmed" && !opts?.allowOverlap) {
-    const overlap = await overlappingApproved(bookingId);
-    if (overlap.length) {
-      return { ok: false, overlap, problem: `Not approved: it runs at the same time as ${overlap.join(" and ")}, which they are already approved for.` };
+    const live = await overlappingLive(bookingId);
+    if (opts?.declineOverlapping) {
+      // One of an overlapping set is approved; the others are declined with it.
+      for (const o of live) {
+        const w = await writeSeatDecision(o.id, "cancelled", admin.id, undefined, undefined);
+        if (!w.ok) continue;
+        autoDeclined.push(o.title);
+        await logSend(admin.id, SEAT_DECIDED, { bookingId: o.id, from: o.status, to: "cancelled", workshop: o.title, note: null, autoDeclined: true });
+      }
+    } else {
+      const blocking = opts?.bulk ? live.filter((o) => o.status === "confirmed") : live;
+      if (blocking.length) {
+        const overlap = [...new Set(blocking.map((o) => o.title))];
+        return {
+          ok: false, overlap, overlapApproved: blocking.some((o) => o.status === "confirmed"),
+          problem: `Not approved: it runs at the same time as ${overlap.join(" and ")}.`,
+        };
+      }
     }
   }
+  autoDeclined = [...new Set(autoDeclined)];
   const written = await writeSeatDecision(bookingId, decision, admin.id, note, opts?.expectedStatuses);
   if (!written.ok) return written;
   const booking = written.booking;
@@ -946,7 +973,7 @@ export async function decideSeat(
     ...(opts?.allowOverlap ? { overlapOverridden: true } : {}),
   });
 
-  const said = `${booking.workshop.title}: ${describeDecision(from, decision)}`;
+  const said = `${booking.workshop.title}: ${describeDecision(from, decision)}${autoDeclined.length ? `; ${autoDeclined.join(" and ")} declined (same time)` : ""}`;
   revalidatePath(PAGE);
 
   if (opts?.send) {
@@ -957,8 +984,8 @@ export async function decideSeat(
   return { ok: true, said, letterOwed: !!letterDue(booking.notifiedStatus, decision) };
 }
 
-/** The sessions this seat's person is already approved for that run at the same time as it. */
-async function overlappingApproved(bookingId: string): Promise<string[]> {
+/** This seat's person's other sessions that run at the same time as it and are still live (not declined). */
+async function overlappingLive(bookingId: string): Promise<{ id: string; title: string; status: string }[]> {
   const seat = await prisma.workshopBooking.findUnique({
     where: { id: bookingId },
     select: { submissionId: true, userId: true, submission: { select: { email: true } }, workshop: { select: { eventId: true, startDateTime: true, endDateTime: true } } },
@@ -973,13 +1000,13 @@ async function overlappingApproved(bookingId: string): Promise<string[]> {
   if (!same.length) return [];
   const others = await prisma.workshopBooking.findMany({
     where: {
-      id: { not: bookingId }, status: "confirmed", OR: same,
+      id: { not: bookingId }, status: { not: "cancelled" }, OR: same,
       // Touching end-to-start is not an overlap.
       workshop: { eventId: seat.workshop.eventId, startDateTime: { lt: seat.workshop.endDateTime }, endDateTime: { gt: seat.workshop.startDateTime } },
     },
-    select: { workshop: { select: { title: true } } },
+    select: { id: true, status: true, workshop: { select: { title: true } } },
   });
-  return [...new Set(others.map((o) => o.workshop.title))];
+  return others.map((o) => ({ id: o.id, title: o.workshop.title, status: o.status }));
 }
 
 const SEAT_DECIDED = "training_admin.seat_decided";
@@ -1007,7 +1034,7 @@ async function seatHistory(seats: { id: string; email: string | null }[]): Promi
     take: 20000,
   });
   for (const l of logs) {
-    let d: { bookingId?: string; bookingIds?: string[]; from?: string; to?: string; email?: string; state?: string; overlapOverridden?: boolean };
+    let d: { bookingId?: string; bookingIds?: string[]; from?: string; to?: string; email?: string; state?: string; overlapOverridden?: boolean; autoDeclined?: boolean };
     try { d = JSON.parse(l.detail ?? "{}"); } catch { continue; }
     const by = l.actor.name || l.actor.email;
     const at = l.createdAt.toISOString();
@@ -1015,7 +1042,7 @@ async function seatHistory(seats: { id: string; email: string | null }[]): Promi
     if (l.action === SEAT_DECIDED) {
       if (d.from === d.to) continue; // pressed the button it was already on
       const label = d.to === "pending" ? "Set back to not decided" : isDecision(d.to) ? DECISION_LABEL[d.to] : String(d.to);
-      add(d.bookingId, d.overlapOverridden ? `${label} (overlap overridden)` : label);
+      add(d.bookingId, d.overlapOverridden ? `${label} (overlap overridden)` : d.autoDeclined ? `${label} automatically (an overlapping session was approved)` : label);
     } else if (l.action === LETTER_HELD || l.action === LETTER_UNHELD) {
       for (const id of d.bookingIds ?? []) add(id, l.action === LETTER_HELD ? "Taken out of the letter round" : "Put back in the letter round");
     } else if (d.state === "sent" || d.state === "sent-to-you") {
@@ -1286,7 +1313,7 @@ export async function decideSeats(
   const ids = [...new Set(bookingIds)].filter(isId).slice(0, MAX_BULK);
   let done = 0, failed = 0, sent = 0, overlapped = 0;
   for (const id of ids) {
-    const r = await decideSeat(id, to);
+    const r = await decideSeat(id, to, undefined, { bulk: true });
     // An overlap is never overridden in bulk: that is a choice made one person at a time.
     if (!r.ok) { if (r.overlap) overlapped += 1; else failed += 1; continue; }
     done += 1;

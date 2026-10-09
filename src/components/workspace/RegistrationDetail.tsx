@@ -15,6 +15,7 @@ import { decideSeat, deleteSubmission, draftDistanceCheck, holdLetters, loadComm
 import { AnchoredCard } from "@/components/ui/AnchoredCard";
 import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import type { SubmissionRow } from "@/lib/allocation/admin-types";
+import { clashGroups, type SeatTimes } from "@/lib/allocation/clash-groups";
 import { DECISION_LABEL, type Decision } from "@/lib/allocation/decisions";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 import { ordinal } from "./SessionCalendar";
@@ -125,8 +126,16 @@ export function RegistrationDetail({ sub, onChanged, where }: {
       {sub.seats.length > 0 && (
         <div className="min-w-0 space-y-1.5">
           <NoMailPromise />
-          {sub.seats.map((s) => (
-            <Seat key={s.id} seat={s} who={who} registrationId={sub.id} onDone={onChanged} />
+          {clashGroups(sub.seats).length > 0 && (
+            <p className="flex items-center gap-1.5 text-[11.5px] text-muted">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden /> Joined sessions run at the same time — they can only attend one. Approving one offers to decline the others.
+            </p>
+          )}
+          {sub.seats.map((s, i) => (
+            <div key={s.id} className="relative" style={{ paddingLeft: clashLanes(sub.seats) * 12 }}>
+              <ClashRail seats={sub.seats} index={i} />
+              <Seat seat={s} who={who} registrationId={sub.id} onDone={onChanged} />
+            </div>
           ))}
         </div>
       )}
@@ -134,6 +143,27 @@ export function RegistrationDetail({ sub, onChanged, where }: {
         <CommunicationsPanel submissionId={sub.id} who={who} onChanged={onChanged} />
       </div>
     </div>
+  );
+}
+
+const clashLanes = (seats: SeatTimes[]) => clashGroups(seats).length;
+
+/** The line down the left that joins overlapping choices: a dot on each, a rail between the first and the last. */
+function ClashRail({ seats, index }: { seats: SeatTimes[]; index: number }) {
+  return (
+    <>
+      {clashGroups(seats).map((g, lane) => {
+        const first = g[0], last = g[g.length - 1];
+        if (index < first || index > last) return null;
+        const member = g.includes(index);
+        return (
+          <span key={lane} aria-hidden className="pointer-events-none absolute" style={{ left: lane * 12 + 2, top: index === first ? "50%" : -6, bottom: index === last ? "50%" : 0, width: 8 }}>
+            <span className="absolute inset-y-0 left-[3px] w-0.5 bg-amber-500" />
+            {member && <span className="absolute left-0 h-2 w-2 rounded-full bg-amber-500" style={index === first ? { top: -4 } : index === last ? { bottom: -4 } : { top: "50%", marginTop: -1 }} />}
+          </span>
+        );
+      })}
+    </>
   );
 }
 
@@ -345,7 +375,7 @@ function Seat({ seat, who, registrationId, onDone }: { seat: SubmissionRow["seat
   const [noteOpen, setNoteOpen] = useState(Boolean(seat.note));
   const [said, setSaid] = useState<string | null>(null);
   const [mail, setMail] = useState<string | null>(null);
-  const [overlap, setOverlap] = useState<string[] | null>(null);
+  const [overlap, setOverlap] = useState<{ with: string[]; approved: boolean } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [pending, start] = useTransition();
   const history = seat.history ?? [];
@@ -353,11 +383,11 @@ function Seat({ seat, who, registrationId, onDone }: { seat: SubmissionRow["seat
 
   // Deciding records the decision only; the letter waits (seat.letterOwed)
   // until it is sent here, per workshop, or all at once.
-  const decide = (to: Decision, allowOverlap = false) =>
+  const decide = (to: Decision, how?: "allow" | "decline") =>
     start(async () => {
-      const r = await decideSeat(seat.id, to, note, { allowOverlap });
-      // Runs at the same time as a session they already have: ask, do not just refuse.
-      if (!r.ok && r.overlap) { setOverlap(r.overlap); setSaid(null); return; }
+      const r = await decideSeat(seat.id, to, note, { allowOverlap: how === "allow", declineOverlapping: how === "decline" });
+      // Runs at the same time as another of their choices: ask what to do with that one.
+      if (!r.ok && r.overlap) { setOverlap({ with: r.overlap, approved: Boolean(r.overlapApproved) }); setSaid(null); return; }
       setOverlap(null);
       setSaid(
         !r.ok ? r.problem ?? "Could not record that."
@@ -457,10 +487,11 @@ function Seat({ seat, who, registrationId, onDone }: { seat: SubmissionRow["seat
 
       {overlap && (
         <div role="alert" className="mt-1.5 rounded-md border border-amber-500/50 bg-amber-500/10 px-2 py-1.5 text-[11.5px] leading-snug text-amber-800">
-          <p className="font-bold">Not approved — it overlaps with {overlap.join(" and ")}, which {who} is already approved for.</p>
-          <p className="mt-0.5">Nobody can be in both. Decline or waitlist the other one first, or approve anyway.</p>
-          <p className="mt-1 flex gap-2">
-            <button type="button" disabled={pending} onClick={() => decide("confirmed", true)} className="rounded border border-amber-600 px-2 py-0.5 font-bold text-amber-800 hover:bg-amber-500/20 disabled:opacity-40">Approve anyway</button>
+          <p className="font-bold">Not approved yet — it runs at the same time as {overlap.with.join(" and ")}{overlap.approved ? `, which ${who} is already approved for` : ""}.</p>
+          <p className="mt-0.5">Nobody can be in both. Approve this one and decline {overlap.with.length > 1 ? "the others" : "the other"}, or approve it anyway and leave {overlap.with.length > 1 ? "them" : "it"} as {overlap.with.length > 1 ? "they are" : "it is"}.</p>
+          <p className="mt-1 flex flex-wrap gap-2">
+            <button type="button" disabled={pending} onClick={() => decide("confirmed", "decline")} className="rounded bg-amber-600 px-2 py-0.5 font-bold text-white hover:bg-amber-700 disabled:opacity-40">Approve, and decline {overlap.with.join(" and ")}</button>
+            <button type="button" disabled={pending} onClick={() => decide("confirmed", "allow")} className="rounded border border-amber-600 px-2 py-0.5 font-bold text-amber-800 hover:bg-amber-500/20 disabled:opacity-40">Approve anyway</button>
             <button type="button" onClick={() => setOverlap(null)} className="font-semibold text-muted hover:text-fg">Leave it</button>
           </p>
         </div>
