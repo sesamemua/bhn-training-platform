@@ -57,14 +57,14 @@ test("every place gets its own cancel link, drawn as a button, and the workshop'
   const b = { ...seat("B", "confirmed", null, 16), cantAttendLink: "https://x/pass/abc/cant-attend/b" };
   const l = personLetter({ name: "X", seats: [a, b, seat("C", "waitlist", null, 18)] })!;
   assert.deepEqual(l.buttons, [
-    { url: a.cantAttendLink, label: "I can't attend A" },
-    { url: b.cantAttendLink, label: "I can't attend B" },
+    { url: a.cantAttendLink, label: "I can't make it — withdraw" },
+    { url: b.cantAttendLink, label: "I can't make it — withdraw" },
   ]);
-  assert.match(l.body, /• A — [^\n]+\n    I can't attend A: https:\/\/x\/pass\/abc\/cant-attend\/a\n  • B — /, "each cancel link sits under its own session");
+  assert.match(l.body, /• A — [^\n]+\n    I can't make it — withdraw: https:\/\/x\/pass\/abc\/cant-attend\/a\n  • B — /, "each cancel link sits under its own session");
   assert.match(l.body, /A: Bring photo ID\./);
   const html = letterHtml(l.body, l.buttons);
   assert.equal((html.match(/font-size:13px;color:#475569/g) ?? []).length, 2, "two small, quiet buttons");
-  assert.match(html, /href="https:\/\/x\/pass\/abc\/cant-attend\/b"[^>]*>I can't attend B</);
+  assert.match(html, /href="https:\/\/x\/pass\/abc\/cant-attend\/b"[^>]*>I can't make it — withdraw</);
   assert.match(html, /<strong[^>]*>A<\/strong><br><span[^>]*>Monday 26 October/, "each session is its own row");
   assert.match(html, /border-left:4px solid #059669[^>]*><div[^>]*>Your seat in these sessions has been confirmed:/, "confirmed seats sit in a green box");
   assert.match(html, /border-left:4px solid #d97706/, "the waitlist in an amber one");

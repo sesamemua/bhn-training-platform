@@ -24,7 +24,7 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     title: "Home: a way to the registrants; approval email: withdraw from the session\u2019s own row",
-    body: "The **Training Week capacity** card on the home page now has an **Open registrants** button that goes straight to Training Week \u2192 Registrants.\n\nIn the approval email, each confirmed session\u2019s **I can\u2019t attend** button now sits **inside the green box, under its own session**, with taller rows \u2014 so nobody presses the button for the wrong session.",
+    body: "The **Training Week capacity** card on the home page now has an **Open registrants** button that goes straight to Training Week \u2192 Registrants.\n\nIn the approval email, each confirmed session\u2019s **I can\u2019t attend** button now sits **inside the green box, under its own session**, with taller rows \u2014 so nobody presses the button for the wrong session. The button reads **I can\u2019t make it \u2014 withdraw**.",
     kind: "improvement",
     visibleTo: ADMINS,
     daysAgo: 0,

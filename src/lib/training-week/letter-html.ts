@@ -7,7 +7,7 @@
  * its own box where it is one — sessions ("  • Name — when") in a box
  * coloured by what it says (green for a confirmed seat, amber for the
  * waitlist, grey for not offered), a blue strip for "information will
- * follow", and a quiet panel for the "I can't attend" buttons.
+ * follow", and a quiet "I can't make it — withdraw" button under each confirmed session.
  *
  * Inline styles only, one column, no images: what every mail client shows.
  *

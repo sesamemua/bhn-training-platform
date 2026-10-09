@@ -52,7 +52,8 @@ const clock = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour
 // No room in these lines: locations are sent closer to the date, once they are settled.
 const line = (s: LetterSeat) => `  • ${s.session} — ${day(s.start)}, ${clock(s.start)}–${clock(s.end)}`;
 export const LOCATION_LATER = "Location information will be provided in future communications.";
-export const cancelLabel = (session: string) => `I can't attend ${session}`;
+/** The same words under every session: the row it sits in already says which one. */
+export const cancelLabel = (_session?: string) => "I can't make it — withdraw";
 
 /** The seats that owe a letter, of all a person has. */
 export const owed = (seats: LetterSeat[]) => seats.filter((s) => letterDue(s.told, s.status));
@@ -80,7 +81,7 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
 
   if (placed.length) {
     const many = placed.length > 1;
-    // Each session carries its own "I can't attend" link, directly under it — in the email
+    // Each session carries its own "I can't make it — withdraw" link, directly under it — in the email
     // that is one row per session with its button, well apart from the next.
     out.push(
       `Your seat in ${many ? "these sessions has" : "this session has"} been confirmed:`,
@@ -92,7 +93,7 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
     // No pass link: the pass is not part of these letters any more.
     out.push(`Please add ${many ? "them" : "it"} to your calendar — ${many ? "a calendar file for each is" : "the calendar file is"} attached. You don't need to reply.`, "");
     if (placed.some((s) => s.cantAttendLink)) {
-      out.push(`If your plans change and you can't attend${many ? " one of them" : ""}, use the link under that session so the place can go to somebody else.`, "");
+      out.push(`If you can't make it${many ? " to one of them" : ""}, use the withdraw link under that session so the place can go to somebody else.`, "");
     }
     out.push("A no-show may affect your eligibility for future BioHubNet training and programmes.", "");
   }

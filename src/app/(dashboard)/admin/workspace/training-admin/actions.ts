@@ -508,7 +508,7 @@ export async function sendToAudience(input: {
         const v = vars as { pass_link?: string; cant_attend_link?: string; check_in_link?: string };
         const buttons: LetterButton[] = [
           ...(v.check_in_link ? [{ url: v.check_in_link, label: "Check in", tone: "primary" as const }] : []),
-          ...(v.cant_attend_link ? [{ url: v.cant_attend_link, label: "I can't attend" }] : []),
+          ...(v.cant_attend_link ? [{ url: v.cant_attend_link, label: "I can't make it — withdraw" }] : []),
         ];
         const qr = passToken && v.pass_link ? withPassQr(text, v.pass_link, passToken, buttons) : null;
         await sendMail({ to: r.email, subject, text, html: qr?.html ?? letterHtml(text, buttons), attachments: qr ? [qr.attachment] : undefined, log: { kind: "Email to a group (Email tab)", byName: admin.name || admin.email } });

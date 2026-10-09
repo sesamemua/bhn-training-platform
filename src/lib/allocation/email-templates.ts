@@ -191,7 +191,7 @@ Location information will be provided in future communications.
 
 Your seat in this session has been confirmed. Please add it to your calendar. You don't need to reply.
 
-If your plans change and you can't attend, let us know here so the place can go to somebody else:
+If you can't make it, withdraw here so the place can go to somebody else:
 {{cant_attend_link}}
 
 A no-show may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
@@ -216,7 +216,7 @@ Location information will be provided in future communications.
 
 Please add the session to your calendar. You don't need to reply.
 
-If you can't attend, let us know here:
+If you can't make it, withdraw here:
 {{cant_attend_link}}` + SIGN_OFF,
   },
   {
@@ -385,7 +385,7 @@ A reminder that {{session}} is in three days.
 On the day, check yourself in here — it opens 30 minutes before the session starts:
 {{check_in_link}}
 
-If you can't attend, let us know here so the place can go to somebody else:
+If you can't make it, withdraw here so the place can go to somebody else:
 {{cant_attend_link}}
 
 A no-show may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
@@ -407,7 +407,7 @@ A no-show may affect your eligibility for future BioHubNet training and programm
 Check yourself in here — it opens 30 minutes before the session starts:
 {{check_in_link}}
 
-If you can't attend, let us know here:
+If you can't make it, withdraw here:
 {{cant_attend_link}}
 
 Please arrive ten minutes early. If you are running late, reply to this message and we will let the room know.

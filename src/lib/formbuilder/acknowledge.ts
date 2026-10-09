@@ -159,7 +159,7 @@ export async function sendDecisionLetter(
   // it" link is drawn as a button.
   const messages = trainingWeekMessages({
     to: about.to, subject: preview.subject, text: preview.body,
-    html: letterHtml(preview.body, about.cantAttendLink ? [{ url: about.cantAttendLink, label: "I can't attend" }] : []),
+    html: letterHtml(preview.body, about.cantAttendLink ? [{ url: about.cantAttendLink, label: "I can't make it — withdraw" }] : []),
   }, calendarFor(about) ?? []);
 
   try {
