@@ -269,9 +269,8 @@ export function calendarFor(about: {
     uid: `seat-${about.bookingId}@biohubnet.ca`,
     title: `${about.session} — BioHubNet Training Week`,
     description: "Your seat in this session is confirmed.",
-    // No location on the invitation: rooms are sent closer to the date,
-    // and a calendar entry is the one copy nobody goes back to correct.
-    location: null,
+    // The session's place, as the team has set it (Training Week → workshop → location).
+    location: about.venue,
     start: about.start,
     end: about.end,
     organizerEmail: mailSenderAddress(),

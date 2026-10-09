@@ -295,15 +295,15 @@ test("each session keeps the kind it is presented as", () => {
 
 test("a venue that is not booked says so, and a room with no name stays empty", () => {
   const venue = (slug: string) => workshopRows().find((r) => r.slug === slug)!.locationName;
-  // The room with a booking must appear somewhere a person can read.
-  assert.match(venue("innovation-showcase-2026")!, /POD220/);
-  assert.match(venue("innovation-showcase-2026")!, /to be confirmed/);
-  // Booked rooms are stated plainly, with no hedge.
-  assert.equal(venue("communication-chameleon-2026"), "Room 850");
-  // The grid names the facility for the Monday workshop but has not
-  // booked it. The Monday tour's host is confirmed: Microbix, booked.
-  assert.equal(venue("cl3-workshop-2026"), "Toronto High Containment Facility (to be confirmed)");
-  assert.equal(venue("catalent-tour-lunch-learn-2026"), "Microbix Biosystems Inc., 265 Watline Ave, Mississauga");
+  // Every session now has its confirmed place, stated plainly with no hedge.
+  assert.equal(venue("cl3-workshop-2026"), "Rm 2377, Medical Sciences Building, 1 King's College Rd, Toronto ON M5S 1A8");
+  assert.equal(venue("ccrm-tour-lunch-learn-2026"), "Meet in front of Starbucks, MaRS Centre, 661 University Ave, Toronto ON M5G 0A3");
+  assert.equal(venue("communication-chameleon-2026"), "Top of POD (3rd floor), Leslie L. Dan Pharmacy Building, 144 College St, Toronto, ON M5S 3M2");
+  assert.equal(venue("negotiation-skills-2026"), venue("communication-chameleon-2026"));
+  assert.equal(venue("innovation-showcase-2026"), "Rm B250 (basement level 2), Leslie L. Dan Pharmacy Building, 144 College St, Toronto, ON M5S 3M2");
+  assert.equal(venue("catalent-tour-lunch-learn-2026"), "Microbix Biosystems, 265 Watline Ave., Mississauga ON L4Z 1P3. Meet-up location TBD");
+  // A venue that is not booked still says so.
+  assert.equal(displayVenue({ name: "Room 1", alternative: "Room 2", status: "options", note: null }), "Room 1 or Room 2 (to be confirmed)");
   // A room with no name stays empty — the render sites fall back to TBA
   // rather than to an invented building.
   assert.equal(displayVenue({ name: null, status: "inquiry", note: null }), null);

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: confirmed locations, on the calendar files and the website",
+    body: "All six sessions now carry their **confirmed location**: Pandemic Preparedness (Rm 2377, Medical Sciences Building), CCRM (meet in front of Starbucks, MaRS Centre), Communication Chameleon and Negotiation Navigator (top of POD, 3rd floor, Pharmacy Building), Innovation Ignited (Rm B250, Pharmacy Building) and Microbix (265 Watline Ave., Mississauga \u2014 meet-up location still to come).\n\nThe **calendar file** attached to an approval now includes the location, and the **feed biohubnet.ca reads** shows it too. The approval email\u2019s own wording and the withdraw and pass pages are unchanged.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Design Review: questions for the team",
     body: "Every artwork now has **Questions for the team**. Add a question \u2014 with **choices to pick from** or as a written answer \u2014 and each person answers for themselves; you can see who picked what, with notes. Questions can be **added, reworded and deleted** by anyone on staff.\n\nThe first to use it is **Name tags** in the 2026 Annual Symposium project: the supplier\u2019s proof is uploaded, and the team is asked who gets a tag, whether titles are included, and which material.",
     kind: "feature",

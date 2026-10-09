@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19x";
+export const TOUR_VERSION = "2026.10.19y";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.locations-confirmed",
+    title: "Locations are on the calendar files and the website",
+    body: "Each Training Week session now has its confirmed location. Calendar files sent with approvals include it, and so does the schedule on biohubnet.ca. To change one, use **Edit location, time and note** on the workshop.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19y",
   },
   {
     id: "design-review.questions",
