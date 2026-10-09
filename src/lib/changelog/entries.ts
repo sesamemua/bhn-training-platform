@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Design Review: the review panel stays in view",
+    body: "While you look at an artwork, the panel with the **approval, who has looked and the comments** now stays on screen. For a wide piece (the one-pagers) it is pinned to the top as you scroll; for everything else it stays beside the artwork, including on smaller windows where it used to drop underneath. Jumping to a comment from the list now moves only the artwork, not the whole page.",
+    kind: "fix",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "A new page header: graphite, with a microfluidic chip etched in",
     body: "The header at the top of every page has a new look: a **graphite** surface \u2014 dark, with a soft metallic sheen and fine grain \u2014 with a **microfluidic chip** etched into it: channels, serpentine mixers, chambers and a droplet generator, with the fluid in the brand colour. The pattern fades out behind the title so the text stays clear. Nothing about what the header contains has changed.",
     kind: "improvement",

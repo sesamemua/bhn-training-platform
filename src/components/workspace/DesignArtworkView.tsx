@@ -59,6 +59,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
   // A wide strip (the one-pagers) needs the whole width to be readable: its panels go on top, in a row.
   const wide = isWide(artwork.pages[0]);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Seen — recorded once the page is really on screen, not when it is merely fetched.
   useEffect(() => {
@@ -105,7 +106,13 @@ export function DesignArtworkView({ artwork, me, approver }: {
     setDraft(null);
     setOpenId(t.id);
     if (t.status !== "open") setShowResolved(true);
-    pageRefs.current.get(t.page)?.querySelector(`[data-pin="${t.id}"]`)?.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+    // Scroll the artwork's own frame to the pin — never the page around it. scrollIntoView moves
+    // every scrollable ancestor, which can slide the whole layout sideways.
+    const pin = pageRefs.current.get(t.page)?.querySelector<HTMLElement>(`[data-pin="${t.id}"]`);
+    const frame = scrollerRef.current;
+    if (!pin || !frame) return;
+    const p = pin.getBoundingClientRect(), f = frame.getBoundingClientRect();
+    frame.scrollTo({ left: frame.scrollLeft + p.left - f.left - f.width / 2, top: frame.scrollTop + p.top - f.top - f.height / 2, behavior: "smooth" });
   };
   /** A card beside a point: to its right and below, flipped near the right or bottom edge. */
   const beside = (x: number, y: number): React.CSSProperties => ({
@@ -114,7 +121,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
   });
 
   return (
-    <div className={wide ? "flex flex-col-reverse gap-4" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]"}>
+    <div className={wide ? "flex flex-col-reverse gap-4" : "grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]"}>
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-muted">
           {locked
@@ -131,7 +138,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
         </div>
 
         {/* Room under the last page, so a comment card opened low on a short artwork is not cut off. */}
-        <div className="max-h-[78vh] overflow-auto rounded-xl border border-line bg-elevated/40 p-3 pb-80">
+        <div ref={scrollerRef} className={`overflow-auto rounded-xl border border-line bg-elevated/40 p-3 pb-80 ${wide ? "max-h-[62vh]" : "max-h-[78vh]"}`}>
           <div className="mx-auto space-y-4" style={{ width: `${zoom * 100}%` }}>
             {artwork.pages.map((pg, i) => (
               <div key={pg.key}>
@@ -231,7 +238,12 @@ export function DesignArtworkView({ artwork, me, approver }: {
         {error && <p role="alert" className="mt-2 text-[12.5px] font-semibold text-rose-600">{error}</p>}
       </div>
 
-      <aside className={wide ? "grid items-start gap-3 md:grid-cols-3" : "space-y-3 lg:sticky lg:top-4 lg:self-start"}>
+      {/* The review panel stays in view while you look at the artwork: pinned to the top for a
+          wide piece (where it sits above), pinned beside it otherwise — from tablet width up, so
+          it does not drop underneath on a smaller window. */}
+      <aside className={wide
+        ? "sticky top-0 z-30 grid items-start gap-3 rounded-xl bg-card-solid p-2 shadow-lg md:grid-cols-3"
+        : "space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-2rem)] md:self-start md:overflow-y-auto"}>
         <section className="rounded-xl border border-line bg-card p-3">
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-subtle">Approval</h3>
           <p className={`mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${APPROVAL_TONE[artwork.approval]}`}>{APPROVAL_LABEL[artwork.approval]}</p>
