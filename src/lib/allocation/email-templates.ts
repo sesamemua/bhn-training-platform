@@ -224,13 +224,16 @@ If you can't attend, let us know here:
     stage: "registration",
     name: "Place released",
     when: "When somebody tells us they cannot come and their seat is released.",
-    subject: "Your place at {{session}} has been released",
+    subject: "Update: your place at {{session}} has been released",
     body:
       `Hello {{first_name}},
 
-Your place at {{session}} has been released, so it can go to somebody who is waiting for one. Thank you for letting us know — that is what makes the waitlist work.
+Your place in this session has been released, so it can go to somebody who is waiting for one:
+  • {{session}} — {{session_date}}, {{session_time}}
 
-Nothing else is affected: any other sessions you have a place at still stand, and your pass still works for them.` + SIGN_OFF,
+If it is in your calendar, please remove it.
+
+Thank you for letting us know — that is what makes the waitlist work. Nothing else is affected: any other sessions you have a place at still stand.` + SIGN_OFF,
   },
   {
     id: "support_invite",

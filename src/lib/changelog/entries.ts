@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week: \u201cUpdate\u201d emails, a Send current status button, no misleading calendar file on release",
+    body: "**Send current status.** Open a registrant and press **Send current status** (beside Communications): one email listing every decided session \u2014 confirmed, waitlisted, not offered \u2014 whether or not anything changed since the last email.\n\n**Update in the subject.** Anyone who has already had a decision email now gets later ones titled **Update: \u2026**.\n\n**Released places.** The release email no longer attaches a calendar file \u2014 opening one was *adding* the session instead of removing it. It now asks them to remove it from their calendar, and shows the session in a grey box like the other letters.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Registrants: overlapping choices are joined, and approving one declines the rest",
     body: "Open a person under **Registrants**: the sessions they chose that **run at the same time** are now joined by an **amber line** down the left. Press **Approved** on one of them and you are asked what to do with the others \u2014 **Approve, and decline the others** (they are declined automatically, recorded as such in the history) or **Approve anyway** to leave them as they are.\n\nAlso: the sidebar group holding Website Review and Design Review is now called **Review**.",
     kind: "feature",

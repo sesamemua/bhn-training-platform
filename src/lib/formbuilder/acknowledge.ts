@@ -257,7 +257,9 @@ export function calendarFor(about: {
   decidedAt?: Date;
   calendar?: "add" | "remove";
 }) {
-  if (!about.calendar || !about.bookingId || !about.to) return undefined;
+  // Nothing is attached for a removal: opened by hand, a cancellation file is
+  // imported as a new entry by most calendars rather than taking one out.
+  if (about.calendar !== "add" || !about.bookingId || !about.to) return undefined;
 
   const seconds = about.bookedAt && about.decidedAt
     ? Math.max(0, Math.floor((about.decidedAt.getTime() - about.bookedAt.getTime()) / 1000))
@@ -266,9 +268,7 @@ export function calendarFor(about: {
   const ics = buildIcs({
     uid: `seat-${about.bookingId}@biohubnet.ca`,
     title: `${about.session} — BioHubNet Training Week`,
-    description: about.calendar === "add"
-      ? "Your seat in this session is confirmed."
-      : "This session has been removed from your Training Week schedule.",
+    description: "Your seat in this session is confirmed.",
     // No location on the invitation: rooms are sent closer to the date,
     // and a calendar entry is the one copy nobody goes back to correct.
     location: null,
@@ -279,16 +279,15 @@ export function calendarFor(about: {
     attendeeEmail: about.to,
     attendeeName: about.name || undefined,
     sequence: seconds,
-    cancel: about.calendar === "remove",
     // An entry to add, not a meeting to accept — see buildIcs.
-    publish: about.calendar === "add",
+    publish: true,
   });
 
   return [{
     title: about.session,
     filename: icsName(about.session),
     content: ics,
-    method: about.calendar === "remove" ? "CANCEL" as const : "REQUEST" as const,
+    method: "REQUEST" as const,
   }];
 }
 

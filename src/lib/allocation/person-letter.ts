@@ -62,7 +62,7 @@ export const owed = (seats: LetterSeat[]) => seats.filter((s) => letterDue(s.tol
  * `all` is every seat they have (for "your other places stand"); the
  * letter is about the ones that owe it.
  */
-export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: string }): PersonLetter | null {
+export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: string; /** They have had a letter from us before: the subject says so. */ update?: boolean }): PersonLetter | null {
   const due = owed(p.seats);
   if (!due.length) return null;
   const first = p.name.split(/\s+/)[0] || "there";
@@ -99,6 +99,7 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
   }
   if (released.length) {
     out.push(`Your place at ${released.length > 1 ? "these sessions has" : "this session has"} been released, so it can go to somebody who is waiting for one:`, ...released.map(line), "");
+    out.push(`If ${released.length > 1 ? "they are" : "it is"} in your calendar, please remove ${released.length > 1 ? "them" : "it"}.`, "");
   }
   if (declined.length) {
     out.push(`We are not able to offer you a place at:`, ...declined.map(line), "");
@@ -119,13 +120,16 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
     : waiting.length && !noPlace.length ? `You are on the waitlist — ${EVENT}`
     : `About your registration for ${EVENT}`;
 
+  // Somebody who has heard from us before is reading a change, not a first answer.
+  const update = p.update ?? p.seats.some((s) => s.told);
   return {
-    subject,
+    subject: update ? `Update: ${subject}` : subject,
     body: out.join("\n"),
     seats: due,
     calendar: [
+      // Only seats they have: a calendar file can add an entry, but opening one does not
+      // reliably remove an entry, so a released place is said in words instead.
       ...placed.map((seat) => ({ seat, action: "add" as const })),
-      ...due.filter((s) => s.told === "confirmed" && s.status !== "confirmed").map((seat) => ({ seat, action: "remove" as const })),
     ],
     hasPlace: placed.length > 0,
     buttons: placed.filter((s) => s.cantAttendLink).map((s) => ({ url: s.cantAttendLink!, label: cancelLabel(s.session) })),

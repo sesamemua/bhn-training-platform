@@ -68,6 +68,10 @@ export function letterHtml(text: string, buttons: LetterButton[] = [], after?: (
     if (lines.some((l) => buttonOf(l))) {
       return `<div style="${BOX};background:#f8fafc;border:1px solid #e2e8f0">${lines.map((l) => { const b = buttonOf(l); return b ? button(b) : plain(l); }).join("")}</div>`;
     }
+    // "  When:  …" / "  Where: …" — the facts of a session, kept together.
+    if (lines.every((l) => /^\s{2,}\S/.test(l))) {
+      return `<div style="${BOX};background:#f3f8fa;border:1px solid #cfe3ea;border-left:4px solid ${TEAL}">${lines.map((l) => plain(l.trim())).join("")}</div>`;
+    }
     if (/^location information/i.test(block.trim())) {
       return `<div style="${BOX};background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a">${lines.map(plain).join("")}</div>`;
     }

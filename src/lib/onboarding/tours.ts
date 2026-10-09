@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19l";
+export const TOUR_VERSION = "2026.10.19m";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.send-current-status",
+    title: "Send somebody their current status",
+    body: "Open a registrant and press **Send current status**: one email with every decided session and where it stands, even if nothing has changed. Emails after the first are titled **Update:**, and a released place no longer comes with a calendar file that re-adds it.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.19m",
   },
   {
     id: "training-week.overlap-line",

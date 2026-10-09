@@ -11,7 +11,7 @@ import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { useEffect, useState, useTransition } from "react";
 import { Check, ChevronDown, Loader2, Mail } from "lucide-react";
 import { LaunchSwitch } from "@/components/ui/LaunchSwitch";
-import { decideSeat, deleteSubmission, draftDistanceCheck, holdLetters, loadCommunications, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendLetterForRegistration, type Communications } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
+import { decideSeat, deleteSubmission, draftDistanceCheck, holdLetters, loadCommunications, sendStatusLetter, loadDistanceChecks, loadSubmissions, sendDistanceCheck, sendLetterForRegistration, type Communications } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { AnchoredCard } from "@/components/ui/AnchoredCard";
 import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import type { SubmissionRow } from "@/lib/allocation/admin-types";
@@ -185,6 +185,14 @@ function CommunicationsPanel({ submissionId, who, onChanged }: { submissionId: s
     if (r.ok && r.data) { setData(r.data); setProblem(null); } else setProblem(r.problem ?? "Could not load.");
   });
   const toggle = () => { if (!open && !data) load(); setOpen((v) => !v); };
+  const [sentNote, setSentNote] = useState<string | null>(null);
+  const sendStatus = () => start(async () => {
+    const r = await sendStatusLetter(submissionId).catch(() => ({ ok: false as const, delivered: false, problem: "Could not send — you may have been signed out.", receipt: undefined }));
+    setSentNote(r.receipt ? receiptLine(r.receipt) : r.problem ?? "Nothing was sent.");
+    lettersChanged();
+    onChanged();
+    if (open) load();
+  });
   const putBack = (ids: string[]) => start(async () => {
     await holdLetters(ids, false);
     lettersChanged();
@@ -198,6 +206,12 @@ function CommunicationsPanel({ submissionId, who, onChanged }: { submissionId: s
         <Mail size={13} /> Communications with {who}
         {pending && <Loader2 size={12} className="animate-spin" />}
       </button>
+      <span className="ml-3 inline-flex">
+        <ConfirmPopover message={`Email ${who} where all their sessions stand now?`} detail="One update email listing every decided session — confirmed, waitlisted and not offered — even if nothing has changed since the last one." confirmLabel="Send update" align="start" onConfirm={sendStatus}>
+          {(o) => <button type="button" disabled={pending} onClick={o} className="inline-flex items-center gap-1 rounded border border-line px-2 py-0.5 text-[11.5px] font-semibold text-fg hover:bg-elevated disabled:opacity-40"><Mail size={11} /> Send current status</button>}
+        </ConfirmPopover>
+      </span>
+      {sentNote && <p role="status" className="mt-1 text-[11.5px] text-muted">{sentNote}</p>}
       {open && problem && <p role="alert" className="mt-1 text-[12px] font-semibold text-rose-600">{problem}</p>}
       {open && data && (
         <div className="mt-2 grid gap-3 md:grid-cols-2">

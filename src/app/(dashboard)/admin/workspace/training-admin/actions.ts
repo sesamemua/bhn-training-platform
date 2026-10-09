@@ -1082,7 +1082,7 @@ function personKeyOf(b: { id: string; submissionId: string | null; userId: strin
 }
 
 const SEAT_SELECT = {
-  id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true,
+  id: true, status: true, notifiedStatus: true, decisionNote: true, bookedAt: true, approvedAt: true, withdrawnAt: true,
   submissionId: true, userId: true,
   workshop: { select: { title: true, startDateTime: true, endDateTime: true, locationName: true, attendeeNote: true, eventId: true } },
   user: { select: { name: true, email: true } },
@@ -1119,7 +1119,7 @@ function byPerson(rows: SeatRow[]) {
  * holding their first place. `makePass` creates pass codes where missing
  * (only when actually sending).
  */
-async function letterFor(rows: SeatRow[], makePass: boolean, skip: (r: SeatRow) => boolean = () => false) {
+async function letterFor(rows: SeatRow[], makePass: boolean, skip: (r: SeatRow) => boolean = () => false, everything = false) {
   const b = rows.find((r) => r.submission) ?? rows[0];
   const answers = ((b.submission?.data ?? {}) as Record<string, unknown>) as Answers;
   const to = b.submission?.email ?? b.user?.email ?? null;
@@ -1132,13 +1132,17 @@ async function letterFor(rows: SeatRow[], makePass: boolean, skip: (r: SeatRow) 
   const tokenOf = (r: SeatRow) => (r.submission ? tokens.get(r.submission.id) ?? null : null);
   const seats: LetterSeat[] = rows.filter((r) => !skip(r)).map((r) => ({
     bookingId: r.id, session: r.workshop.title, start: r.workshop.startDateTime, end: r.workshop.endDateTime,
-    venue: r.workshop.locationName, status: r.status, told: r.notifiedStatus, note: r.decisionNote, workshopNote: r.workshop.attendeeNote,
+    venue: r.workshop.locationName, status: r.status,
+    // "Everything": written as if nothing had been said yet, so every decided seat is in it —
+    // except a place they gave up themselves, which reads as released, not as declined by us.
+    told: everything ? (r.withdrawnAt ? "confirmed" : null) : r.notifiedStatus,
+    note: r.decisionNote, workshopNote: r.workshop.attendeeNote,
     cantAttendLink: tokenOf(r) ? cantAttendUrl(tokenOf(r)!, r.id) : undefined, bookedAt: r.bookedAt, decidedAt: r.approvedAt ?? new Date(),
   }));
   const placed = rows.find((r) => r.status === "confirmed" && tokenOf(r)) ?? rows.find((r) => tokenOf(r));
   const token = placed ? tokenOf(placed) : null;
   const passLink = token ? passUrl(token) : "(their pass link — made when the letter is sent)";
-  return { to, name, token, seats, letter: personLetter({ name, seats, passLink }) };
+  return { to, name, token, seats, letter: personLetter({ name, seats, passLink, update: rows.some((r) => r.notifiedStatus) }) };
 }
 
 export interface OwedSeat { bookingId: string; session: string; change: string; /** Who made this decision, and who took it out of the round (if anyone). */ decidedBy?: string; heldBy?: string }
@@ -1869,4 +1873,33 @@ export async function loadCommunications(submissionId: string): Promise<{ ok: bo
     heldSeatsOfTheirs = mine?.removed ?? [];
   }
   return { ok: true, data: { past, outbox, held: heldSeatsOfTheirs, fullSince: fullSince.toISOString() } };
+}
+
+/**
+ * Send somebody where ALL their sessions stand right now — whether or not
+ * anything has changed since they were last written to. For a person
+ * whose seats have moved back and forth, or who asks "what do I have?".
+ * Sessions still undecided are left out; held seats are not.
+ */
+export async function sendStatusLetter(submissionId: string): Promise<{ ok: boolean; delivered: boolean; receipt?: Receipt; problem?: string }> {
+  const admin = await requireAdmin();
+  if (!isId(submissionId)) return { ok: false, delivered: false, problem: "That is not a registration." };
+  const seat = await prisma.workshopBooking.findFirst({ where: { submissionId }, select: { id: true } });
+  const key = seat ? await personKeyForSeat(seat.id) : null;
+  const list = key ? byPerson(await twSeats()).get(key) : null;
+  if (!key || !list?.length) return { ok: false, delivered: false, problem: "That registration has no seats." };
+  const made = await letterFor(list, true, () => false, true);
+  if (!made.letter) return { ok: false, delivered: false, problem: "None of their sessions has been decided yet, so there is nothing to tell them." };
+  const receipt = await sendPersonCombined({
+    to: made.to, name: made.name, subject: made.letter.subject, body: made.letter.body,
+    calendar: made.letter.calendar, buttons: made.letter.buttons, byName: admin.name || admin.email,
+  });
+  if (delivered(receipt)) {
+    await prisma.$transaction(made.letter.seats.map((s) => prisma.workshopBooking.update({
+      where: { id: s.bookingId }, data: { notifiedStatus: s.status, notifiedAt: new Date() },
+    })));
+  }
+  await logSend(admin.id, PERSON_LETTER, { key, email: made.to, bookingIds: made.letter.seats.map((s) => s.bookingId), seats: made.letter.seats.map((s) => `${s.session}: ${s.status}`), state: receipt.state, everything: true });
+  revalidatePath(PAGE);
+  return { ok: true, delivered: delivered(receipt), receipt };
 }

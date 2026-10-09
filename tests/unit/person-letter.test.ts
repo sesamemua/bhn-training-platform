@@ -25,7 +25,7 @@ test("three decisions, one letter: approved, waitlisted, declined — and no pas
   assert.match(l.body, /not able to offer you a place at:\n  • C/);
   assert.match(l.body, /either full, or overlaps with a session you have been approved for\. Where your choices overlap, we can only approve one, based on your ranking\./);
   assert.match(l.body, /This decision is final\. Your other sessions are unaffected/);
-  assert.equal(l.subject, "Your sessions at BioHubNet Training Week 2026");
+  assert.equal(l.subject, "Your sessions at BioHubNet Training Week 2026", "a first letter is not an update");
   assert.deepEqual(l.calendar.map((c) => `${c.action}:${c.seat.session}`), ["add:A"]);
 });
 
@@ -37,10 +37,12 @@ test("only seats that owe a letter; nothing owed, no letter", () => {
   assert.match(l.body, /Your other sessions are unaffected/, "they still hold A");
 });
 
-test("a place taken back is released, and its calendar entry removed", () => {
+test("a place taken back is released, and they are asked to remove it from their calendar", () => {
   const l = personLetter({ name: "X", seats: [seat("A", "cancelled", "confirmed")] })!;
   assert.match(l.body, /been released/);
-  assert.deepEqual(l.calendar.map((c) => c.action), ["remove"]);
+  assert.match(l.body, /please remove it/, "said in words: a file cannot take an entry out");
+  assert.deepEqual(l.calendar, [], "no calendar file for a removal");
+  assert.match(l.subject, /^Update: /, "they have heard from us before");
   assert.deepEqual(letterSummary([seat("A", "cancelled", "confirmed"), seat("B", "confirmed", null)]).map((g) => g.label), ["Approved", "Released"]);
 });
 
