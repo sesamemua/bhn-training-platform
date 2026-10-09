@@ -98,9 +98,9 @@ export function DesignProjectList({ projects, staff, defaultApproverId }: { proj
           {projects.map((p) => (
             <li key={p.id}>
               <Link href={`${BASE}?p=${p.id}`} className="block overflow-hidden rounded-xl border border-line bg-card hover:border-brand-400">
-                <div className="grid h-36 place-items-center bg-elevated/60 p-2">
+                <div className="flex h-36 items-center justify-center overflow-hidden bg-elevated/60 p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {p.cover ? <img src={p.cover} alt="" className="max-h-full max-w-full object-contain shadow" /> : <span className="text-[12px] text-subtle">Nothing uploaded yet</span>}
+                  {p.cover ? <img src={p.cover} alt="" className="h-full w-full object-contain" /> : <span className="text-[12px] text-subtle">Nothing uploaded yet</span>}
                 </div>
                 <div className="p-3">
                   <p className="text-[14px] font-bold text-fg">{p.name}</p>
@@ -214,9 +214,10 @@ export function DesignProjectView({ project, artworks, staff }: {
             <li key={a.id} className={`flex flex-col gap-3 rounded-xl border bg-card p-3 ${a.pages === 0 ? "border-dashed border-line" : "border-line"}`}>
               {/* Every preview gets the same frame — the same height, the card's width — so a wide strip
                   and a tall banner read at a similar size instead of one dwarfing the other. */}
-              <Link href={`${BASE}?a=${a.id}`} className="grid h-56 place-items-center rounded-lg bg-elevated/60 p-2 hover:ring-2 hover:ring-brand-400">
+              <Link href={`${BASE}?a=${a.id}`} className="flex h-56 items-center justify-center overflow-hidden rounded-lg bg-elevated/60 p-2 hover:ring-2 hover:ring-brand-400">
+                {/* The image fills the frame and is fitted inside it — it can never spill over the title below. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {a.thumb ? <img src={a.thumb} alt={a.title} loading="lazy" className="max-h-full max-w-full object-contain shadow" />
+                {a.thumb ? <img src={a.thumb} alt={a.title} loading="lazy" className="h-full w-full object-contain" />
                   : <span className="text-center text-[12.5px] text-subtle"><span className="block text-[13px] font-semibold text-muted">To do</span>Nothing uploaded yet</span>}
               </Link>
               <div className="min-w-0">
