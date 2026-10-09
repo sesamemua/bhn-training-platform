@@ -180,11 +180,12 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
                   as one repeating tile. It fades out toward the left so
                   it never sits behind the title and description. */}
           <svg
-            className="absolute inset-0 h-full w-full"
+            // On a narrow screen the text runs the full width, so the whole etching is held back there.
+            className="absolute inset-0 h-full w-full opacity-45 lg:opacity-100"
             xmlns="http://www.w3.org/2000/svg"
             style={{
-              maskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.25) 38%, #000 68%)",
-              WebkitMaskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.25) 38%, #000 68%)",
+              maskImage: "linear-gradient(90deg, transparent 0%, transparent 18%, rgba(0,0,0,0.2) 45%, #000 75%)",
+              WebkitMaskImage: "linear-gradient(90deg, transparent 0%, transparent 18%, rgba(0,0,0,0.2) 45%, #000 75%)",
             }}
           >
             <defs>
