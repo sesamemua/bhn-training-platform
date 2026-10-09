@@ -18,9 +18,9 @@ test("no attendance reconfirmation template survives, including a saved override
 test("approval and waitlist promotion are final but voluntary cancellation remains", () => {
   for (const id of ["approved", "waitlist_promoted"]) {
     const template = templateById(id)!;
-    assert.match(template.body, /No reply or further confirmation is required/);
+    assert.match(template.body, /You don't need to reply/);
     assert.match(template.body, /\{\{cant_attend_link\}\}/);
-    assert.match(template.body, /\{\{pass_link\}\}/);
+    assert.doesNotMatch(template.body, /\{\{pass_link\}\}/, "the pass is no longer part of the letters");
     assert.doesNotMatch(template.body, /\{\{reply_by\}\}/);
   }
 });
@@ -28,7 +28,7 @@ test("approval and waitlist promotion are final but voluntary cancellation remai
 test("combined letters do not condition seats on another reply", () => {
   const seat: LetterSeat = { bookingId: "one", session: "Workshop", start: new Date("2026-10-26T14:00:00Z"), end: new Date("2026-10-26T15:00:00Z"), venue: null, status: "confirmed", told: null, note: null, cantAttendLink: "https://example.org/cant-attend" };
   const letter = personLetter({ name: "Test", seats: [seat, { ...seat, bookingId: "two", status: "waitlist" }] })!;
-  assert.match(letter.body, /No reply or further confirmation is required/);
+  assert.match(letter.body, /You don't need to reply/);
   assert.match(letter.body, /https:\/\/example.org\/cant-attend/);
   assert.doesNotMatch(letter.body, obsolete);
   assert.deepEqual(letter.calendar.map((c) => c.action), ["add"]);
@@ -55,9 +55,9 @@ test("dashboard counts approved seats without a reconfirmation deadline", () => 
   assert.ok(!("byCutOff" in counts));
 });
 
-test("calendar copy confirms attendance and the ICS never requests an RSVP", () => {
+test("calendar copy confirms the seat and the ICS never requests an RSVP", () => {
   const copy = readFileSync(new URL("../../src/lib/formbuilder/acknowledge.ts", import.meta.url), "utf8");
-  assert.match(copy, /No reply or further confirmation is required/);
+  assert.match(copy, /Your seat in this session is confirmed/);
   assert.doesNotMatch(copy, obsolete);
   const ics = readFileSync(new URL("../../src/lib/events/ics.ts", import.meta.url), "utf8");
   assert.match(ics, /PARTSTAT=ACCEPTED;RSVP=FALSE/);

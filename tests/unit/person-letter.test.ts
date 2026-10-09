@@ -10,15 +10,15 @@ const seat = (session: string, status: string, told: string | null, h = 13): Let
   start: new Date(`2026-10-26T${h}:00:00Z`), end: new Date(`2026-10-26T${h + 2}:00:00Z`),
 });
 
-test("three decisions, one letter: approved, waitlisted, declined — with the pass", () => {
+test("three decisions, one letter: approved, waitlisted, declined — and no pass", () => {
   const l = personLetter({
     name: "Amara Okonkwo", passLink: "https://x/pass/abc",
     seats: [seat("A", "confirmed", null), seat("B", "waitlist", null, 16), seat("C", "cancelled", null, 18)],
   })!;
   assert.equal(l.seats.length, 3);
   assert.match(l.body, /^Hello Amara,/);
-  assert.match(l.body, /You have a place at:\n  • A — /);
-  assert.match(l.body, /https:\/\/x\/pass\/abc/);
+  assert.match(l.body, /Your seat in this session has been confirmed:\n  • A — /);
+  assert.doesNotMatch(l.body, /https:\/\/x\/pass\/abc|attendance is confirmed/, "no pass link, and no promise about attendance");
   assert.doesNotMatch(l.body, /Room 1|QR/, "no room and no QR in the letter");
   assert.match(l.body, /Location information will be provided in future communications\./);
   assert.match(l.body, /on the waitlist:\n  • B/);
@@ -64,6 +64,8 @@ test("every place gets its own cancel link, drawn as a button, and the workshop'
   assert.equal((html.match(/font-size:13px;color:#475569/g) ?? []).length, 2, "two small, quiet buttons");
   assert.match(html, /href="https:\/\/x\/pass\/abc\/cant-attend\/b"[^>]*>I can't attend B</);
   assert.match(html, /<strong[^>]*>A<\/strong><br><span[^>]*>Monday 26 October/, "each session is its own row");
+  assert.match(html, /border-left:4px solid #059669[^>]*><div[^>]*>Your seat in these sessions has been confirmed:/, "confirmed seats sit in a green box");
+  assert.match(html, /border-left:4px solid #d97706/, "the waitlist in an amber one");
   assert.match(html, /BioHubNet Training Week 2026/);
   assert.match(letterHtml("  • Discovery to Delivery — CCRM — Monday 26 October, 11:00–13:30"), /<strong[^>]*>Discovery to Delivery — CCRM<\/strong><br><span[^>]*>Monday 26 October/);
   assert.doesNotMatch(html, /<img/);

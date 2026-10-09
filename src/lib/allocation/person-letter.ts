@@ -39,7 +39,7 @@ export interface PersonLetter {
   seats: LetterSeat[];
   /** What each seat's calendar entry does: added for a new place, removed for a place taken away. */
   calendar: { seat: LetterSeat; action: "add" | "remove" }[];
-  /** A place is in it, so it carries the pass link. */
+  /** A confirmed seat is in it. */
   hasPlace: boolean;
   /** Links the HTML letter draws as buttons: one "cancel" per place. */
   buttons: { url: string; label: string }[];
@@ -79,10 +79,12 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
   out.push(due.length > 1 ? `Here is where your sessions at ${EVENT} stand.` : `An update on your registration for ${EVENT}.`, "");
 
   if (placed.length) {
-    out.push("You have a place at:", ...placed.map(line), "", LOCATION_LATER, "");
+    const many = placed.length > 1;
+    out.push(`Your seat in ${many ? "these sessions has" : "this session has"} been confirmed:`, ...placed.map(line), "");
+    out.push(LOCATION_LATER, "");
     for (const s of placed) if (s.workshopNote?.trim()) out.push(`${s.session}: ${s.workshopNote.trim()}`, "");
-    if (p.passLink) out.push("Your Training Week pass, with your sessions:", p.passLink, "");
-    out.push(`Please put ${placed.length > 1 ? "them" : "it"} in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.`, "");
+    // No pass link: the pass is not part of these letters any more.
+    out.push(`Please add ${many ? "them" : "it"} to your calendar — ${many ? "a calendar file for each is" : "the calendar file is"} attached. You don't need to reply.`, "");
     const links = placed.filter((s) => s.cantAttendLink);
     if (links.length) {
       out.push(`If your plans change and you can't attend${placed.length > 1 ? " one of them" : ""}, let us know here so the place can go to somebody else:`);

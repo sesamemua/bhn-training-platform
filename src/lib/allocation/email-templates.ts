@@ -178,7 +178,7 @@ Current BioHubNet trainees are given priority consideration. If you asked for tr
     id: "approved",
     stage: "registration",
     name: "Place approved",
-    when: "When a seat is granted. Approval confirms attendance; no further response is required.",
+    when: "When a seat is granted. No further response is required.",
     subject: "Your place at {{event}}: {{session}}",
     body:
       `Hello {{first_name}},
@@ -189,10 +189,7 @@ You have a place at {{session}}.
 
 Location information will be provided in future communications.
 
-Your Training Week pass, with your sessions:
-{{pass_link}}
-
-Please put it in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.
+Your seat in this session has been confirmed. Please add it to your calendar. You don't need to reply.
 
 If your plans change and you can't attend, let us know here so the place can go to somebody else:
 {{cant_attend_link}}
@@ -211,16 +208,13 @@ A no-show may affect your eligibility for future BioHubNet training and programm
     body:
       `Hello {{first_name}},
 
-A place has come free at {{session}}, and your attendance is now confirmed.
+A place has come free at {{session}}, and your seat in this session has been confirmed.
 
   When:  {{session_date}}, {{session_time}}
 
 Location information will be provided in future communications.
 
-No reply or further confirmation is required to keep your seat. Please add the session to your calendar.
-
-Your pass:
-{{pass_link}}
+Please add the session to your calendar. You don't need to reply.
 
 If you can't attend, let us know here:
 {{cant_attend_link}}` + SIGN_OFF,
@@ -373,9 +367,6 @@ On the day, check yourself in here — it opens 30 minutes before the session st
 If you can't attend, let us know here so the place can go to somebody else:
 {{cant_attend_link}}
 
-Your pass, in case you are asked for it at the door:
-{{pass_link}}
-
 A no-show may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
   },
   {
@@ -397,9 +388,6 @@ Check yourself in here — it opens 30 minutes before the session starts:
 
 If you can't attend, let us know here:
 {{cant_attend_link}}
-
-Your pass, in case you are asked for it at the door:
-{{pass_link}}
 
 Please arrive ten minutes early. If you are running late, reply to this message and we will let the room know.
 

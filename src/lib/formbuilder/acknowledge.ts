@@ -267,7 +267,7 @@ export function calendarFor(about: {
     uid: `seat-${about.bookingId}@biohubnet.ca`,
     title: `${about.session} — BioHubNet Training Week`,
     description: about.calendar === "add"
-      ? "Your attendance at this session is confirmed. No reply or further confirmation is required to keep your seat."
+      ? "Your seat in this session is confirmed."
       : "This session has been removed from your Training Week schedule.",
     // No location on the invitation: rooms are sent closer to the date,
     // and a calendar entry is the one copy nobody goes back to correct.

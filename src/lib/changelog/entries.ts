@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week emails: boxed and colour-coded, no pass link, \u201cyour seat has been confirmed\u201d",
+    body: "Decision emails are now one **card**: confirmed seats in a **green** box, the waitlist in **amber**, sessions not offered in **grey**, the location note in **blue**, and the \u201cI can\u2019t attend\u201d buttons in their own panel.\n\nThe **Training Week pass link is gone** from the decision letter and from the standing letters (approval, a place has opened up, both reminders). The wording no longer says *your attendance is confirmed* \u2014 it says **your seat in these sessions has been confirmed**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week emails: a cleaner design, a gentler cancel, named calendar files",
     body: "Training Week emails have a **cleaner layout**: a header, each session in its own row with its date and time, and clear spacing. The red **Cancel my place** button is now a **small, quiet \u201cI can\u2019t attend {workshop}\u201d** button, introduced by \u201cIf your plans change\u2026\u201d. Attached calendar files are **named after the workshop** (for example *Microbix tour - Lunch - Learn.ics*) instead of training-week-1.ics.",
     kind: "improvement",

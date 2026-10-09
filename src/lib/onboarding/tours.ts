@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19j";
+export const TOUR_VERSION = "2026.10.19k";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.letter-boxes",
+    title: "Decision emails, boxed and colour-coded",
+    body: "Each decision email is now a single card: green for confirmed seats, amber for the waitlist, grey for sessions not offered. The pass link is no longer included, and the letter says the seat — not attendance — has been confirmed.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19k",
   },
   {
     id: "training-week.letter-design",
