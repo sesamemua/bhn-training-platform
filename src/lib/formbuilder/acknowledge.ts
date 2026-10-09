@@ -21,7 +21,7 @@ import type { Receipt, SentMail } from "./receipt";
 import type { BuiltForm } from "./types";
 import { buildIcs } from "@/lib/events/ics";
 import { letterHtml } from "@/lib/training-week/letter-html";
-import { trainingWeekMessages } from "@/lib/training-week/calendar-mail";
+import { icsName, trainingWeekMessages } from "@/lib/training-week/calendar-mail";
 
 export async function sendAcknowledgement(
   doc: BuiltForm,
@@ -159,7 +159,7 @@ export async function sendDecisionLetter(
   // it" link is drawn as a button.
   const messages = trainingWeekMessages({
     to: about.to, subject: preview.subject, text: preview.body,
-    html: letterHtml(preview.body, about.cantAttendLink ? [{ url: about.cantAttendLink, label: "Cancel my place" }] : []),
+    html: letterHtml(preview.body, about.cantAttendLink ? [{ url: about.cantAttendLink, label: "I can't attend" }] : []),
   }, calendarFor(about) ?? []);
 
   try {
@@ -286,7 +286,7 @@ export function calendarFor(about: {
 
   return [{
     title: about.session,
-    filename: "training-week.ics",
+    filename: icsName(about.session),
     content: ics,
     method: about.calendar === "remove" ? "CANCEL" as const : "REQUEST" as const,
   }];
@@ -313,8 +313,8 @@ export async function sendPersonCombined(mail: {
   if (!mail.to) return { state: "no-address" };
   const preview = { to: mail.to, subject: mail.subject.replace(/[\r\n]+/g, " ").trim(), body: mail.body };
   if (!mailConfigured()) return { state: "not-configured", preview };
-  const calendars = mail.calendar.flatMap(({ seat, action }, i) =>
-    (calendarFor({ to: mail.to, name: mail.name, ...seat, calendar: action }) ?? []).map((a) => ({ ...a, filename: `training-week-${i + 1}.ics` })),
+  const calendars = mail.calendar.flatMap(({ seat, action }) =>
+    (calendarFor({ to: mail.to, name: mail.name, ...seat, calendar: action }) ?? []),
   );
   const messages = trainingWeekMessages({
     to: mail.to, subject: preview.subject, text: preview.body,

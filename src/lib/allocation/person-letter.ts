@@ -52,7 +52,7 @@ const clock = (d: Date) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour
 // No room in these lines: locations are sent closer to the date, once they are settled.
 const line = (s: LetterSeat) => `  • ${s.session} — ${day(s.start)}, ${clock(s.start)}–${clock(s.end)}`;
 export const LOCATION_LATER = "Location information will be provided in future communications.";
-export const cancelLabel = (session: string) => `Cancel my place — ${session}`;
+export const cancelLabel = (session: string) => `I can't attend ${session}`;
 
 /** The seats that owe a letter, of all a person has. */
 export const owed = (seats: LetterSeat[]) => seats.filter((s) => letterDue(s.told, s.status));
@@ -85,7 +85,7 @@ export function personLetter(p: { name: string; seats: LetterSeat[]; passLink?: 
     out.push(`Please put ${placed.length > 1 ? "them" : "it"} in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.`, "");
     const links = placed.filter((s) => s.cantAttendLink);
     if (links.length) {
-      out.push(`Not coming to ${placed.length > 1 ? "one of them" : "it"} after all? Please cancel ${placed.length > 1 ? "that session" : "your place"}, so it can go to somebody else:`);
+      out.push(`If your plans change and you can't attend${placed.length > 1 ? " one of them" : ""}, let us know here so the place can go to somebody else:`);
       for (const s of links) out.push(`  ${cancelLabel(s.session)}: ${s.cantAttendLink}`);
       out.push("");
     }

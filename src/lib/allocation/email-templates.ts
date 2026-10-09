@@ -194,7 +194,7 @@ Your Training Week pass, with your sessions:
 
 Please put it in your calendar now. Your attendance is confirmed. No reply or further confirmation is required to keep your seat.
 
-Not coming after all? Please cancel your place, so it can go to somebody else:
+If your plans change and you can't attend, let us know here so the place can go to somebody else:
 {{cant_attend_link}}
 
 A no-show may affect your eligibility for future BioHubNet training and programmes.` + SIGN_OFF,
@@ -222,7 +222,7 @@ No reply or further confirmation is required to keep your seat. Please add the s
 Your pass:
 {{pass_link}}
 
-Not coming? Please cancel your place:
+If you can't attend, let us know here:
 {{cant_attend_link}}` + SIGN_OFF,
   },
   {
@@ -370,7 +370,7 @@ A reminder that {{session}} is in three days.
 On the day, check yourself in here — it opens 30 minutes before the session starts:
 {{check_in_link}}
 
-Not coming? Please cancel your place, so it can go to somebody else:
+If you can't attend, let us know here so the place can go to somebody else:
 {{cant_attend_link}}
 
 Your pass, in case you are asked for it at the door:
@@ -395,7 +395,7 @@ A no-show may affect your eligibility for future BioHubNet training and programm
 Check yourself in here — it opens 30 minutes before the session starts:
 {{check_in_link}}
 
-Not coming? Please cancel your place:
+If you can't attend, let us know here:
 {{cant_attend_link}}
 
 Your pass, in case you are asked for it at the door:

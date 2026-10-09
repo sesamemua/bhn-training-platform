@@ -2,6 +2,10 @@ import type { MailCalendar, sendMail } from "@/lib/mail";
 
 type Message = Parameters<typeof sendMail>[0];
 
+/** "Microbix tour + Lunch & Learn" → "Microbix tour - Lunch - Learn.ics": the workshop's name, safe as a file name. */
+export const icsName = (session: string) =>
+  `${session.normalize("NFKD").replace(/[^\w\s-]+/g, " - ").replace(/\s+/g, " ").replace(/( - )+/g, " - ").trim().replace(/^-\s*|\s*-$/g, "").slice(0, 80) || "Training Week session"}.ics`;
+
 /**
  * One email per person: the letter, with a calendar file attached for
  * each session. Never a meeting invitation — Outlook turns the whole

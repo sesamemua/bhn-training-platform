@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19i";
+export const TOUR_VERSION = "2026.10.19j";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.letter-design",
+    title: "A cleaner Training Week email",
+    body: "Letters now have a header and a row per session, and the cancel control is a small “I can’t attend” button rather than a red one. Calendar attachments carry the workshop’s name. Send yourself a test approval to see it.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Training Week", href: "/admin/workspace/training-admin" },
+    since: "2026.10.19j",
   },
   {
     id: "training-week.no-meeting-requests",

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week emails: a cleaner design, a gentler cancel, named calendar files",
+    body: "Training Week emails have a **cleaner layout**: a header, each session in its own row with its date and time, and clear spacing. The red **Cancel my place** button is now a **small, quiet \u201cI can\u2019t attend {workshop}\u201d** button, introduced by \u201cIf your plans change\u2026\u201d. Attached calendar files are **named after the workshop** (for example *Microbix tour - Lunch - Learn.ics*) instead of training-week-1.ics.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week letters no longer arrive as meeting requests",
     body: "An approval for a single session was arriving in **Outlook as a meeting request**, and accepting it moved the whole email \u2014 letter, pass link and cancel button \u2014 to **Deleted Items**. Decision letters are now always an ordinary email with a **calendar file attached** for each approved session: opening the file adds the session to the calendar, and the email stays in the inbox.",
     kind: "fix",

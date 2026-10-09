@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { letterSummary, personLetter, type LetterSeat } from "../../src/lib/allocation/person-letter";
 import { letterHtml } from "../../src/lib/training-week/letter-html";
+import { icsName } from "../../src/lib/training-week/calendar-mail";
 
 const seat = (session: string, status: string, told: string | null, h = 13): LetterSeat => ({
   bookingId: session, session, status, told, note: null, venue: "Room 1",
@@ -54,13 +55,22 @@ test("every place gets its own cancel link, drawn as a button, and the workshop'
   const b = { ...seat("B", "confirmed", null, 16), cantAttendLink: "https://x/pass/abc/cant-attend/b" };
   const l = personLetter({ name: "X", seats: [a, b, seat("C", "waitlist", null, 18)] })!;
   assert.deepEqual(l.buttons, [
-    { url: a.cantAttendLink, label: "Cancel my place — A" },
-    { url: b.cantAttendLink, label: "Cancel my place — B" },
+    { url: a.cantAttendLink, label: "I can't attend A" },
+    { url: b.cantAttendLink, label: "I can't attend B" },
   ]);
-  assert.match(l.body, /Cancel my place — A: https:\/\/x\/pass\/abc\/cant-attend\/a/);
+  assert.match(l.body, /I can't attend A: https:\/\/x\/pass\/abc\/cant-attend\/a/);
   assert.match(l.body, /A: Bring photo ID\./);
   const html = letterHtml(l.body, l.buttons);
-  assert.equal((html.match(/border:1px solid #b91c1c/g) ?? []).length, 2);
-  assert.match(html, /href="https:\/\/x\/pass\/abc\/cant-attend\/b"[^>]*>Cancel my place — B</);
+  assert.equal((html.match(/font-size:13px;color:#475569/g) ?? []).length, 2, "two small, quiet buttons");
+  assert.match(html, /href="https:\/\/x\/pass\/abc\/cant-attend\/b"[^>]*>I can't attend B</);
+  assert.match(html, /<strong[^>]*>A<\/strong><br><span[^>]*>Monday 26 October/, "each session is its own row");
+  assert.match(html, /BioHubNet Training Week 2026/);
+  assert.match(letterHtml("  • Discovery to Delivery — CCRM — Monday 26 October, 11:00–13:30"), /<strong[^>]*>Discovery to Delivery — CCRM<\/strong><br><span[^>]*>Monday 26 October/);
   assert.doesNotMatch(html, /<img/);
+});
+
+test("a calendar file is named after its workshop", () => {
+  assert.equal(icsName("Microbix tour + Lunch & Learn"), "Microbix tour - Lunch - Learn.ics");
+  assert.equal(icsName("Discovery to Delivery — CCRM"), "Discovery to Delivery - CCRM.ics");
+  assert.equal(icsName("///"), "Training Week session.ics");
 });
