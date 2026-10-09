@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Travel follow-up: a \u201cverify your travel\u201d letter, and where a registration was sent from",
+    body: "Somebody who said **over two hours** but gave **no postal code** now gets the right letter: **Travel support \u2014 verifying the journey**, which says we need to verify their travel time and asks where they are travelling from and how. (It is under Email \u2192 Standing letters if you want to reword it.)\n\nThe open row also shows **Registration sent from** \u2014 the city, region and IP address the form was submitted from. This is recorded for registrations from **2 October 2026** onward; earlier ones say so.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week: \u201cUpdate\u201d emails, a Send current status button, no misleading calendar file on release",
     body: "**Send current status.** Open a registrant and press **Send current status** (beside Communications): one email listing every decided session \u2014 confirmed, waitlisted, not offered \u2014 whether or not anything changed since the last email.\n\n**Update in the subject.** Anyone who has already had a decision email now gets later ones titled **Update: \u2026**.\n\n**Released places.** The release email no longer attaches a calendar file \u2014 opening one was *adding* the session instead of removing it. It now asks them to remove it from their calendar, and shows the session in a grey box like the other letters.",
     kind: "improvement",

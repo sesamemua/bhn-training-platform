@@ -23,6 +23,7 @@ import { rowsFrom } from "./RegistrantViews";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import { draftTravelCheck, loadSubmissions, loadTravelStatus, sendTravelCheck, setTravelEligibility } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
+import { placeOf } from "@/lib/formbuilder/origin";
 import { receiptLine } from "@/lib/formbuilder/receipt";
 
 const TONE: Record<string, string> = {
@@ -34,10 +35,10 @@ const TONE: Record<string, string> = {
 const LABEL: Record<string, string> = { pending: "Not decided", confirmed: "Approved", waitlist: "Waitlisted", cancelled: "Declined" };
 const BTN = "inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[13px] font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 
-type Kind = "clarify" | "next";
+type Kind = "clarify" | "verify" | "next";
 /** The letter, written into the row's box and not yet sent. */
 interface Draft { kind: Kind; to: string; subject: string; body: string }
-const KIND_LABEL: Record<Kind, string> = { clarify: "Clarifying question", next: "Next steps" };
+const KIND_LABEL: Record<Kind, string> = { clarify: "Clarifying question", verify: "Verify travel", next: "Next steps" };
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 
 export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
@@ -76,7 +77,11 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [drafting, setDrafting] = useState(false);
-  const kindOf = (t: Traveller): Kind => (t.falseOot ? "clarify" : "next");
+  /* Which letter fits: a postal code under two hours gets the clarifying question; nothing to
+     check against (no postal code) gets asked where they are travelling from; anybody approved,
+     or whose postal code already says over two hours, gets the next steps. */
+  const kindOf = (t: Traveller): Kind =>
+    t.ootAccepted || approvals[t.bookingId] ? "next" : t.falseOot ? "clarify" : travelFromPostcode(t.postcode) ? "next" : "verify";
 
   function writeDraft(t: Traveller) {
     setDraft(null);
@@ -251,7 +256,14 @@ export function TravelTab({ workshops }: { workshops: AdminWorkshop[] }) {
                               ) : (
                                 <>
                                   <p className="mt-1 text-[12.5px] text-muted">
-                                    {t.falseOot ? "Their postal code is under two hours. Approve only if their explanation holds up." : "Check their journey really is over two hours each way, then approve."}
+                                    {t.falseOot ? "Their postal code is under two hours. Approve only if their explanation holds up."
+                                      : travelFromPostcode(t.postcode) ? "Check their journey really is over two hours each way, then approve."
+                                      : "They gave no postal code, so there is nothing to check their two hours against. Ask where they are travelling from, then approve."}
+                                  </p>
+                                  <p className="mt-1 text-[12px] text-muted">
+                                    Registration sent from:{" "}
+                                    {sub?.origin ? <strong className="text-fg">{placeOf(sub.origin) ?? "Unknown area"}{sub.origin.ip ? ` · ${sub.origin.ip}` : ""}</strong>
+                                      : subs === null ? "loading…" : <span>not recorded — the sending location is kept for registrations from 2 Oct 2026 onward.</span>}
                                   </p>
                                   <ConfirmPopover message={`Approve ${t.name}'s travel eligibility?`} detail="Your name and the time are recorded and shown on this row." confirmLabel="Checked — approve" align="start" onConfirm={() => approve(t, true)}>
                                     {(o) => <button type="button" disabled={pending} onClick={o} className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[12.5px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><ShieldCheck size={13} /> Checked — approve eligibility</button>}

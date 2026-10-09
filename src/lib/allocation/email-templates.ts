@@ -270,6 +270,24 @@ We are able to support your travel to {{event}}. The details of what is covered,
 Please keep your receipts — we cannot reimburse anything we have no record of. If your plans change and you no longer need the support, tell us, because it can go to somebody else.` + SIGN_OFF,
   },
   {
+    id: "support_verify_travel",
+    stage: "support",
+    name: "Travel support — verifying the journey",
+    when: "When somebody said their journey is over two hours but gave nothing to check it against (no postal code).",
+    subject: "About your travel to {{event}} — a quick check",
+    body:
+      `Hello {{first_name}},
+
+When you registered for {{event}}, you told us your one-way journey is more than two hours. Before we arrange travel support, we need to verify that.
+
+Please reply to this message and tell us:
+
+  1. Where will you be travelling from? (city, and the first three characters of your postal code)
+  2. How will you travel — train, bus, car or flight?
+
+Travel support is for journeys over two hours each way. Your place at the sessions is not affected by this.` + SIGN_OFF,
+  },
+  {
     id: "support_next_steps",
     stage: "support",
     name: "Travel support — reviewed, next steps",

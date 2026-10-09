@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19m";
+export const TOUR_VERSION = "2026.10.19n";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "training-week.travel-verify",
+    title: "No postal code? Ask where they are coming from",
+    body: "In **Travel follow-up**, somebody who claimed over two hours without a postal code now gets a **Verify travel** letter asking where they are travelling from. The open row also shows where the registration was sent from (city and IP), for registrations from 2 October onward.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Travel follow-up", href: "/admin/workspace/training-admin?tab=travel" },
+    since: "2026.10.19n",
   },
   {
     id: "training-week.send-current-status",

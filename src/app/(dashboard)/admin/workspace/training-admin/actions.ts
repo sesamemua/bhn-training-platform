@@ -1327,8 +1327,14 @@ export async function decideSeats(
   return { ok: true, done, failed, sent, overlapped };
 }
 
-/** Which travel letter: the clarifying question, or the next steps for somebody who qualifies. */
-type TravelLetterKind = "clarify" | "next";
+/** Which travel letter: the clarifying question (postal code under two hours), the verification (nothing to check against), or the next steps for somebody who qualifies. */
+type TravelLetterKind = "clarify" | "verify" | "next";
+
+const TRAVEL_TEMPLATE: Record<TravelLetterKind, { id: string; label: string }> = {
+  clarify: { id: "support_check_postcode", label: "Travel — clarifying question" },
+  verify: { id: "support_verify_travel", label: "Travel — verifying the journey" },
+  next: { id: "support_next_steps", label: "Travel — next steps" },
+};
 
 /**
  * Ask somebody about a travel claim their postal code does not support.
@@ -1348,7 +1354,7 @@ export async function sendTravelCheck(
   kind: TravelLetterKind = "clarify",
 ): Promise<{ ok: boolean; problem?: string; receipt?: Receipt }> {
   const admin = await requireAdmin();
-  if (kind !== "clarify" && kind !== "next") return { ok: false, problem: "That is not a letter." };
+  if (!TRAVEL_TEMPLATE[kind]) return { ok: false, problem: "That is not a letter." };
   const made = await travelCheckFor(bookingId, kind);
   if ("problem" in made) return { ok: false, problem: made.problem };
 
@@ -1364,7 +1370,7 @@ export async function sendTravelCheck(
 
   const receipt = await sendComposed(
     edited ? { to: made.mail.to, subject: subject!, body: body! } : made.mail,
-    { kind: kind === "next" ? "Travel — next steps" : "Travel — clarifying question", byName: admin.name || admin.email },
+    { kind: TRAVEL_TEMPLATE[kind].label, byName: admin.name || admin.email },
   );
 
   await logSend(admin.id, TRAVEL_CHECK, {
@@ -1380,7 +1386,7 @@ export async function draftTravelCheck(
   kind: TravelLetterKind = "clarify",
 ): Promise<{ ok: boolean; problem?: string; to?: string; name?: string; subject?: string; body?: string }> {
   await requireAdmin();
-  if (kind !== "clarify" && kind !== "next") return { ok: false, problem: "That is not a letter." };
+  if (!TRAVEL_TEMPLATE[kind]) return { ok: false, problem: "That is not a letter." };
   const made = await travelCheckFor(bookingId, kind);
   if ("problem" in made) return { ok: false, problem: made.problem };
   return { ok: true, to: made.mail.to, name: made.name, subject: made.mail.subject, body: made.mail.body };
@@ -1409,7 +1415,7 @@ async function travelCheckFor(
 
   const to = booking.submission?.email ?? booking.user?.email ?? null;
   const name = registrantName(answers) || booking.user?.name?.trim() || (await accountNameFor(to)) || "";
-  const draft = await personLetterDraft(kind === "clarify" ? "support_check_postcode" : "support_next_steps", {
+  const draft = await personLetterDraft(TRAVEL_TEMPLATE[kind].id, {
     to, name,
     vars: estimate ? { postcode: estimate.fsa, travel_time: travelWords(estimate) } : {},
   });
@@ -1450,7 +1456,7 @@ export async function loadTravelStatus(bookingIds: string[]): Promise<{
       const d = JSON.parse(r.detail ?? "{}") as { email?: string; state?: string; kind?: string };
       // Only a letter that actually went counts.
       if (!d.email || (d.state !== "sent" && d.state !== "sent-to-you")) continue;
-      const kind: TravelLetterKind = d.kind === "next" ? "next" : "clarify";
+      const kind: TravelLetterKind = d.kind === "next" || d.kind === "verify" ? d.kind : "clarify";
       const k = d.email.toLowerCase();
       if (!sent[k]?.includes(kind)) sent[k] = [...(sent[k] ?? []), kind];
     } catch { /* a log line we cannot read is not a reason to fail the page */ }
