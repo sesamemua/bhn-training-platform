@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Dashboard: a notice when registrants release their seats",
+    body: "When somebody cancels their own place, the **home dashboard** and the **Training Week dashboard** now show a notice: **N seats released by registrants**, listing who released which session and when, and whether that session has a seat free to give to somebody else. **Assign from registrants** takes you straight there. It covers the last three weeks and disappears when there is nothing to show.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Travel follow-up: save your letters as templates",
     body: "In **Travel follow-up**, once you have reworded a letter in the box, press **Save as new template** and give it a name. Saved templates appear in the **Start from** list on every person\u2019s row \u2014 pick one and it is filled in for that person. You can keep as many as you need (up to 40), and **Update**, **Rename** or **Delete** the one you have picked.\n\nWhen a letter is saved, the person\u2019s name and postal-code details are turned back into merge fields, so the template fits whoever it is used for next. Templates are shared by the whole team, and show who last saved them.",
     kind: "feature",

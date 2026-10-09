@@ -54,3 +54,42 @@ export async function loadCapacityMonitor(): Promise<MonitorSession[]> {
     ),
   }));
 }
+
+/** A place somebody gave up themselves, and whether its session has room again. */
+export interface ReleasedSeat { bookingId: string; name: string; session: string; at: string; free: number }
+
+/**
+ * Seats released by registrants in the last three weeks, newest first —
+ * what the dashboards announce, so a freed place gets offered to
+ * somebody else rather than sitting empty.
+ */
+export async function loadReleasedSeats(): Promise<ReleasedSeat[]> {
+  const since = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
+  const rows = await prisma.workshopBooking.findMany({
+    where: { withdrawnAt: { gte: since }, workshop: { isActive: true, endDateTime: { gte: new Date() } } },
+    orderBy: { withdrawnAt: "desc" },
+    take: 30,
+    select: {
+      id: true, withdrawnAt: true,
+      user: { select: { name: true, email: true } },
+      submission: { select: { email: true, data: true } },
+      workshop: { select: { id: true, title: true, capacity: true } },
+    },
+  });
+  if (!rows.length) return [];
+  const taken = await prisma.workshopBooking.groupBy({
+    by: ["workshopId"], where: { workshopId: { in: [...new Set(rows.map((r) => r.workshop.id))] }, status: "confirmed" }, _count: { _all: true },
+  });
+  const confirmed = new Map(taken.map((t) => [t.workshopId, t._count._all]));
+  return rows.map((r) => {
+    const d = (r.submission?.data ?? {}) as Record<string, unknown>;
+    const typed = [d.first_name, d.last_name].filter((x) => typeof x === "string" && x.trim()).join(" ") || (typeof d.trainee_name === "string" ? d.trainee_name : "");
+    return {
+      bookingId: r.id,
+      name: typed.trim() || r.user?.name?.trim() || r.submission?.email || r.user?.email || "A registrant",
+      session: r.workshop.title,
+      at: r.withdrawnAt!.toISOString(),
+      free: Math.max(0, r.workshop.capacity - (confirmed.get(r.workshop.id) ?? 0)),
+    };
+  });
+}

@@ -20,6 +20,7 @@ import { TrainingAdmin } from "@/components/workspace/TrainingAdmin";
 import { loadRules, updateWorkshop } from "./actions";
 import { TrainingWeekCapacity } from "@/components/training-week/TrainingWeekCapacity";
 import { loadCapacityMonitor } from "@/lib/training-week/capacity-server";
+import { ReleasedSeats } from "@/components/training-week/ReleasedSeats";
 import { saveWorkshopRegistration } from "@/lib/training-week/workshop-registration";
 import { trainingWeekCount } from "@/lib/events/registrations";
 import { applicantFor } from "@/lib/allocation/applicants";
@@ -194,6 +195,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         description="Seat allocation, workshop capacity, registrants and email for Training Week."
         icon={<SlidersHorizontal />}
       />
+      <ReleasedSeats />
       <TrainingAdmin
         capacityPanel={<TrainingWeekCapacity sessions={capacity} registered={registered} saveCapacity={updateWorkshop} saveWorkshopState={saveWorkshopRegistration} />}
         switches={{

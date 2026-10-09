@@ -10,6 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 import { RegistrationCounts } from "@/components/dashboards/RegistrationCounts";
+import { ReleasedSeats } from "@/components/training-week/ReleasedSeats";
 import { RegistrationSwitch } from "@/components/dashboards/RegistrationSwitch";
 import { MarketingMetrics } from "@/components/dashboards/MarketingMetrics";
 
@@ -312,6 +313,8 @@ export async function AdminDashboard({
 
       {committeeBadge}
 
+      {/* Below the hero, above the counts: a freed place is the thing to act on first. */}
+      <ReleasedSeats framed />
       <RegistrationCounts sessions={capacity} saveWorkshopState={saveWorkshopRegistration} saveCapacity={updateWorkshop} />
       <RegistrationSwitch />
       <MarketingMetrics />

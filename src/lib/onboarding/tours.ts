@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.19q";
+export const TOUR_VERSION = "2026.10.19r";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,16 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "home.released-seats",
+    title: "Released seats show up on the dashboard",
+    body: "When a registrant cancels their own place, a notice appears here and on the Training Week dashboard: who released which session, when, and whether a seat is free to offer to somebody else. **Assign from registrants** opens the list.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.19r",
   },
   {
     id: "training-week.travel-templates",
