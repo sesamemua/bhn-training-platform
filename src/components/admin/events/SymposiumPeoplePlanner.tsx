@@ -15,11 +15,11 @@ const INPUT = "w-full min-w-0 rounded-md border border-line bg-card-solid px-2.5
 const BUTTON = "inline-flex items-center justify-center gap-1.5 rounded-md border border-line px-2.5 py-2 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 type Draft = PersonInput & { session: PlanSession; key: string };
 
-export function SymposiumPeopleTabs({ children }: { children: ReactNode }) {
-  const [tab, setTab] = useState("people");
-  const [publicationOpened, setPublicationOpened] = useState(false);
+export function SymposiumPeopleTabs({ children, initialReview }: { children: ReactNode; initialReview?: { id: string; session: PlanSession | null } }) {
+  const [tab, setTab] = useState(initialReview ? "publication" : "people");
+  const [publicationOpened, setPublicationOpened] = useState(!!initialReview);
   const [publicationDirty, setPublicationDirty] = useState(false);
-  const [intakeReview, setIntakeReview] = useState<{ id: string; session: PlanSession | null; key: number } | null>(null);
+  const [intakeReview, setIntakeReview] = useState<{ id: string; session: PlanSession | null; key: number } | null>(initialReview ? { ...initialReview, key: 0 } : null);
   const router = useRouter();
   return <div className="mx-auto w-full max-w-[1500px] pb-12">
     <nav aria-label="Speaker workspace" className="mb-5 flex flex-wrap gap-2 border-b border-line">

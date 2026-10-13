@@ -9,10 +9,9 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
-import { RegistrationCounts } from "@/components/dashboards/RegistrationCounts";
+import { AdminDashboardCards } from "@/components/dashboards/AdminDashboardCards";
+import { loadDashboardLayout } from "@/lib/dashboard/card-order-store";
 import { ReleasedSeats } from "@/components/training-week/ReleasedSeats";
-import { RegistrationSwitch } from "@/components/dashboards/RegistrationSwitch";
-import { MarketingMetrics } from "@/components/dashboards/MarketingMetrics";
 
 /**
  * Admin / superadmin dashboard.
@@ -78,6 +77,7 @@ export async function AdminDashboard({
     recentAudit,
     aiCalls7d,
     capacity,
+    dashboardLayout,
   ] = await Promise.all([
     prisma.user.count({ where: { isActive: true, accountKind: "real" } }),
     prisma.course.count({ where: { status: "published" } }),
@@ -104,6 +104,7 @@ export async function AdminDashboard({
       : Promise.resolve(0),
     // Never lets the dashboard fail: no monitor rather than no page.
     loadCapacityMonitor().catch(() => []),
+    loadDashboardLayout().catch(() => null),
   ]);
 
   // ENGAGE / EXPERIENCE links drop out where those pillars are paused on
@@ -313,11 +314,8 @@ export async function AdminDashboard({
 
       {committeeBadge}
 
-      {/* Below the hero, above the counts: a freed place is the thing to act on first. */}
-      <ReleasedSeats framed />
-      <RegistrationCounts sessions={capacity} saveWorkshopState={saveWorkshopRegistration} saveCapacity={updateWorkshop} />
-      <RegistrationSwitch />
-      <MarketingMetrics />
+      <AdminDashboardCards sessions={capacity} saveWorkshopState={saveWorkshopRegistration} saveCapacity={updateWorkshop}
+        initialLayout={dashboardLayout} releasedSeats={<ReleasedSeats framed showEmpty />} />
 
       {/* ════ SIDEBAR RIGHT — content LEFT, quick-action rail RIGHT ═ */}
       <article className="aero-frame">

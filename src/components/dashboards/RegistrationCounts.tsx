@@ -7,7 +7,7 @@
  * tab is visible, and on Refresh — which asks the server to read Luma
  * again rather than serve what it holds.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, RefreshCw, Users } from "lucide-react";
 import type { RegistrationCount } from "@/lib/events/registrations";
@@ -23,7 +23,7 @@ import type { SaveWorkshopRegistration } from "@/components/training-week/Worksh
  */
 const EVERY_MS = 5 * 60_000;
 
-export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity }: { sessions: MonitorSession[]; saveWorkshopState: SaveWorkshopRegistration; saveCapacity: SaveWorkshopCapacity }) {
+export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity, renderCards }: { sessions: MonitorSession[]; saveWorkshopState: SaveWorkshopRegistration; saveCapacity: SaveWorkshopCapacity; renderCards?: (cards: { registration: ReactNode; capacity: ReactNode }) => ReactNode }) {
   const [events, setEvents] = useState<RegistrationCount[] | null>(null);
   const [at, setAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,8 +54,7 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity }
     return () => clearInterval(timer);
   }, [load]);
 
-  return (
-    <>
+  const registration = (
     <article className="aero-frame">
       <div className="aero-card">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -108,7 +107,8 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity }
         </div>
       </div>
     </article>
-    {sessions.length > 0 && <article className="aero-frame"><div className="aero-card">
+  );
+  const capacity = sessions.length > 0 && <article className="aero-frame"><div className="aero-card">
       <TrainingWeekCapacity sessions={sessions} registered={events?.find((e) => e.key === "training")?.count ?? null}
         saveWorkshopState={saveWorkshopState} saveCapacity={saveCapacity}
       />
@@ -119,9 +119,8 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity }
         </Link>
       </p>
       {failed && <p role="status" className="text-[12px] text-rose-600">Registration count could not refresh. Please try Refresh above.</p>}
-    </div></article>}
-    </>
-  );
+    </div></article>;
+  return renderCards ? renderCards({ registration, capacity }) : <>{registration}{capacity}</>;
 }
 
 /** What the tiles say before the first answer arrives. */

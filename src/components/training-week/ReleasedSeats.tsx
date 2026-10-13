@@ -13,9 +13,9 @@ import { loadReleasedSeats } from "@/lib/training-week/capacity-server";
 const when = (iso: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 
-export async function ReleasedSeats({ framed = false }: { framed?: boolean }) {
-  const seats = await loadReleasedSeats().catch(() => []);
-  if (!seats.length) return null;
+export async function ReleasedSeats({ framed = false, showEmpty = false }: { framed?: boolean; showEmpty?: boolean }) {
+  const seats = await loadReleasedSeats().catch(() => null);
+  if (!seats?.length) return showEmpty ? <article className="aero-frame"><div className="aero-card"><h3 className="aero-h"><Armchair size={14} /> Seats released</h3><p className="text-sm text-muted">{seats ? "No recently released seats." : "Couldn't load released seats. Reload the dashboard to retry."}</p></div></article> : null;
   const open = seats.filter((s) => s.free > 0);
   const body = (
     <>

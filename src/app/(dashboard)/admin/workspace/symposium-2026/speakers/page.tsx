@@ -24,14 +24,18 @@ import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
 import { speakerLimits } from "@/lib/events/limits";
 import { speakerFields } from "@/lib/events/fields";
 import { SymposiumPeopleTabs } from "@/components/admin/events/SymposiumPeoplePlanner";
+import { SessionSchema } from "@/lib/events/people-plan";
 
 export const dynamic = "force-dynamic";
 
 const HERE = "/admin/workspace/symposium-2026/speakers";
 
-export default async function SymposiumSpeakersPage() {
+export default async function SymposiumSpeakersPage({ searchParams }: { searchParams: Promise<{ reviewPerson?: string; reviewSession?: string }> }) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect(await deniedRedirect(HERE));
+  const params = await searchParams;
+  const initialReview = typeof params.reviewPerson === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(params.reviewPerson)
+    ? { id: params.reviewPerson, session: SessionSchema.safeParse(params.reviewSession).data ?? null } : undefined;
 
   const event = await prisma.bhnEvent.findUnique({
     where: { slug: EVENT_SLUG },
@@ -79,7 +83,7 @@ export default async function SymposiumSpeakersPage() {
       {/* "Seen" is recorded by the browser once the page is on screen —
           never by rendering, which prefetches and previews also do. */}
       <MarkSpeakersSeen slug={EVENT_SLUG} />
-      <SymposiumPeopleTabs>
+      <SymposiumPeopleTabs key={initialReview ? `${initialReview.id}:${initialReview.session}` : "planner"} initialReview={initialReview}>
         <SpeakersManager
           key={rows.map((s) => `${s.id}:${s.submittedAt}`).join(",")}
           slug={EVENT_SLUG}

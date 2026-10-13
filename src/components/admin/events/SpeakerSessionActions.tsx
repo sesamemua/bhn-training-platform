@@ -9,7 +9,7 @@ import { speakerSessionActions, type WebsitePeople } from "@/lib/events/speaker-
 type Data = { roster: PlanSnapshot; state: PublicationState; website: WebsitePeople };
 const BUTTON = "inline-flex items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 
-export default function SpeakerSessionActions({ onReview, reviewDisabled = false }: { onReview: (id: string, session: PlanSession | null) => void; reviewDisabled?: boolean }) {
+export default function SpeakerSessionActions({ onReview, reviewDisabled = false, framed = false }: { onReview: (id: string, session: PlanSession | null) => void; reviewDisabled?: boolean; framed?: boolean }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -56,9 +56,9 @@ export default function SpeakerSessionActions({ onReview, reviewDisabled = false
     finally { busyRef.current = false; setBusy(""); }
   }
   const actions = data ? speakerSessionActions(data.roster, data.state, data.website) : [];
-  return <section aria-label="Speaker action items" className="mb-5 border-l-4 border-brand bg-elevated/50 p-4 [overflow-wrap:anywhere]">
+  return <section aria-label="Speaker action items" className={framed ? "aero-frame [overflow-wrap:anywhere]" : "mb-5 border-l-4 border-brand bg-elevated/50 p-4 [overflow-wrap:anywhere]"}><div className={framed ? "aero-card" : ""}>
     <div className="flex items-center justify-between gap-3">
-      <h2 className="text-base font-bold text-fg">Speaker action items{data ? ` (${actions.length})` : ""}</h2>
+      <h2 className="text-base font-bold text-fg">Headshots &amp; bios action items{data ? ` (${actions.length})` : ""}</h2>
       <button type="button" className={BUTTON} title="Check website again" aria-label="Check website again" disabled={!!busy} onClick={() => setRetry((n) => n + 1)}><RefreshCw size={16} /></button>
     </div>
     {error && <p role="alert" className="mt-3 text-sm text-fg">{error}</p>}
@@ -81,5 +81,5 @@ export default function SpeakerSessionActions({ onReview, reviewDisabled = false
         </div>}
       </div>;
     })}</div>
-  </section>;
+  </div></section>;
 }
