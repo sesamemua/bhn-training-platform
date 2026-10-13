@@ -35,7 +35,7 @@ test("graphic upload requires admin, validates images, and preserves the current
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
   const require = createRequire(import.meta.url);
   let authorized = true;
-  let post = { id: "event-1", stream: "events", status: "approved", assetUrl: "https://images.example/original.png" };
+  let post = { id: "event-1", stream: "events", status: "approved", editVersion: 4, assetUrl: "https://images.example/original.png" };
   let raced = false;
   const writes: unknown[] = [];
   const uploads: string[] = [];
@@ -47,6 +47,7 @@ test("graphic upload requires admin, validates images, and preserves the current
       updateMany: async ({ where, data }: { where: typeof post; data: unknown }) => {
         assert.equal(where.status, post.status);
         assert.equal(where.assetUrl, post.assetUrl);
+        assert.equal(where.editVersion, post.editVersion);
         if (raced) return { count: 0 };
         writes.push(data); return { count: 1 };
       },
@@ -83,8 +84,9 @@ test("graphic upload requires admin, validates images, and preserves the current
   assert.equal(uploads.length, 0);
   const response = await send(png);
   assert.equal(response.status, 200);
-  const { url } = await response.json();
-  assert.deepEqual(writes, [{ assetUrl: url, status: "draft", approvedAt: null, approvedById: null }]);
+  const { url, editVersion } = await response.json();
+  assert.equal(editVersion, 5);
+  assert.deepEqual(writes, [{ assetUrl: url, editVersion: { increment: 1 }, status: "draft", approvedAt: null, approvedById: null }]);
   raced = true;
   assert.equal((await send(png)).status, 409);
   assert.equal(writes.length, 1);

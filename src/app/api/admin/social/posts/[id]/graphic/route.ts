@@ -38,8 +38,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     await putR2Object(key, bytes, file.type);
     const saved = await prisma.socialPost.updateMany({
-      where: { id, status: post.status, assetUrl: post.assetUrl },
-      data: { assetUrl: url, status: "draft", approvedAt: null, approvedById: null },
+      where: { id, status: post.status, assetUrl: post.assetUrl, editVersion: post.editVersion },
+      data: { assetUrl: url, editVersion: { increment: 1 }, status: "draft", approvedAt: null, approvedById: null },
     });
     if (!saved.count) {
       await deleteR2ObjectByUrl(url);
@@ -49,5 +49,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     console.error("Social graphic upload failed", error);
     return NextResponse.json({ error: "Couldn't save the graphic. Please try again." }, { status: 500 });
   }
-  return NextResponse.json({ url });
+  return NextResponse.json({ url, editVersion: post.editVersion + 1 });
 }

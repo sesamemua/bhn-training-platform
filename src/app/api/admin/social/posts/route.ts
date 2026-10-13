@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   const post = await prisma.socialPost.findUnique({
     where: { id: data.id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, editVersion: true },
   });
   if (!post) return NextResponse.json({ error: "Unknown post." }, { status: 404 });
 
@@ -84,15 +84,17 @@ export async function POST(req: NextRequest) {
 
   switch (data.action) {
     case "approve": {
+      if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       if (TERMINAL_STATUSES.includes(post.status as SocialStatus)) {
         return NextResponse.json({ error: "That post can no longer be approved." }, { status: 409 });
       }
+      const approvedAt = new Date();
       const approved = await prisma.socialPost.updateMany({
         where: { id: post.id, editVersion: data.expectedVersion, status: post.status },
-        data: { status: "approved", approvedAt: new Date(), approvedById: actorId },
+        data: { status: "approved", approvedAt, approvedById: actorId },
       });
       if (!approved.count) return NextResponse.json({ error: "The post changed. Refresh before approving." }, { status: 409 });
-      break;
+      return NextResponse.json({ ok: true, approvedAt: approvedAt.toISOString(), approvedByName: session.user?.name ?? null });
     }
     case "unapprove":
       await prisma.socialPost.update({
@@ -131,9 +133,15 @@ export async function POST(req: NextRequest) {
         data: { status: "published", publishedAt: new Date() },
       });
       break;
-    case "setAsset":
-      await prisma.socialPost.update({ where: { id: post.id }, data: { assetUrl: data.assetUrl } });
+    case "setAsset": {
+      if (TERMINAL_STATUSES.includes(post.status as SocialStatus)) return NextResponse.json({ error: "This post can no longer be edited." }, { status: 409 });
+      const saved = await prisma.socialPost.updateMany({
+        where: { id: post.id, editVersion: post.editVersion, status: post.status },
+        data: { assetUrl: data.assetUrl, editVersion: { increment: 1 }, status: "draft", approvedAt: null, approvedById: null },
+      });
+      if (!saved.count) return NextResponse.json({ error: "The post changed. Refresh and try again." }, { status: 409 });
       break;
+    }
   }
 
   return NextResponse.json({ ok: true });

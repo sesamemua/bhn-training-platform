@@ -12,7 +12,8 @@
  * in the UI would be the worst of both.
  */
 import { useCallback, useState } from "react";
-import { Check, Copy, Clock, Download, RefreshCw, X, Image as ImageIcon } from "lucide-react";
+import { Check, Copy, Clock, Download, RefreshCw, X, Link as LinkIcon, ArrowLeft, Image as ImageIcon } from "lucide-react";
+import Link from "next/link";
 import { LogoMark } from "@/components/ui/Logo";
 import { useInputDialog } from "@/components/ui/InputDialog";
 import { SocialPostEditor } from "./SocialPostEditor";
@@ -25,6 +26,8 @@ export interface QueuePost {
   stream: string;
   kind: string;
   status: string;
+  approvedAt?: string | null;
+  approvedByName?: string | null;
   cycleLabel: string;
   daysBefore: number;
   body: string;
@@ -56,9 +59,10 @@ const STATUS_TONE: Record<string, string> = {
   skipped: "bg-elevated text-subtle ring-line",
 };
 
-export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
+export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMode = false }: {
   initial: QueuePost[];
   initialGroup?: "symposium_2026" | "venture_connect" | "events";
+  reviewMode?: boolean;
 }) {
   const [posts, setPosts] = useState(initial);
   const [group, setGroup] = useState(initialGroup);
@@ -84,13 +88,14 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, id, expectedVersion: posts.find((post) => post.id === id)?.editVersion, ...extra }),
       });
-      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      const j = (await res.json().catch(() => ({}))) as { error?: string; approvedAt?: string; approvedByName?: string | null };
       if (!res.ok) throw new Error(j.error ?? "Couldn't save.");
       setPosts((all) =>
         all.map((p) =>
           p.id === id
             ? {
                 ...p,
+                ...(action === "approve" ? { approvedAt: j.approvedAt, approvedByName: j.approvedByName } : {}),
                 status:
                   action === "approve" ? "approved"
                   : action === "unapprove" ? "draft"
@@ -157,9 +162,9 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
       const form = new FormData();
       form.set("graphic", file);
       const response = await fetch(`/api/admin/social/posts/${post.id}/graphic`, { method: "POST", body: form });
-      const result = await response.json() as { url?: string; error?: string };
-      if (!response.ok || !result.url) throw new Error(result.error ?? "Couldn't upload the graphic.");
-      setPosts((all) => all.map((item) => item.id === post.id ? { ...item, assetUrl: result.url!, status: "draft" } : item));
+      const result = await response.json() as { url?: string; editVersion?: number; error?: string };
+      if (!response.ok || !result.url || typeof result.editVersion !== "number") throw new Error(result.error ?? "Couldn't upload the graphic.");
+      setPosts((all) => all.map((item) => item.id === post.id ? { ...item, assetUrl: result.url!, editVersion: result.editVersion!, status: "draft", approvedAt: null, approvedByName: null } : item));
       setNote("Graphic saved.");
     } catch (error) {
       setNote(error instanceof Error ? error.message : "Couldn't upload the graphic.");
@@ -168,11 +173,26 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
     }
   }
 
-  const visible = posts.filter((post) => post.stream === group);
+  async function copyReviewLink(id: string) {
+    const url = new URL(`/admin/workspace/marketing/social?post=${encodeURIComponent(id)}`, window.location.origin).href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setNote("Review link copied.");
+    } catch {
+      await inputDialog({ title: "Review link", defaultValue: url, confirmLabel: "Done", allowEmpty: true, maxLength: 1000 });
+    }
+  }
+
+  const visible = reviewMode ? posts : posts.filter((post) => post.stream === group);
 
   return (
     <div className="space-y-4">
       {inputNode}
+      {reviewMode ? (
+        <Link href={`/admin/workspace/marketing/social?tab=${encodeURIComponent(posts[0]?.stream ?? "events")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+          <ArrowLeft size={16} /> All social posts
+        </Link>
+      ) : (<>
       <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
         {([
           ["symposium_2026", "2026 Symposium speakers"],
@@ -205,6 +225,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
           ? "Drafts use the speaker bios and headshots saved for the symposium. Review each person's details and permission before posting."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
       </p>
+      </>)}
       {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
@@ -235,6 +256,9 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
             >
               {p.status}
             </span>
+            {p.status === "approved" && p.approvedAt && (
+              <span className="text-[12px] text-muted">Approved{p.approvedByName ? ` by ${p.approvedByName}` : ""} on {new Date(p.approvedAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}</span>
+            )}
             {p.overdue && p.status === "draft" && (
               <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-amber-700">
                 <Clock size={12} /> due {new Date(p.scheduledFor).toLocaleDateString("en-CA")}
@@ -327,6 +351,8 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026" }: {
 
           <footer className="flex flex-col gap-2 px-1 pb-6 pt-1">
             <div className="flex flex-wrap items-center gap-2">
+            {!reviewMode && <Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(p.id)}`} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-brand-700"><LinkIcon size={16} /> Review</Link>}
+            <button type="button" onClick={() => void copyReviewLink(p.id)} title="Copy review link" aria-label={`Copy review link for ${p.cycleLabel}`} className="inline-flex size-10 items-center justify-center rounded-[6px] border border-line text-brand-700 hover:bg-brand-50"><LinkIcon size={16} /></button>
             <button
               type="button"
               onClick={() => void copy(p)}

@@ -41,6 +41,13 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
   const readOnly = post.status === "published" || post.status === "skipped";
 
   useLayoutEffect(() => {
+    // An image-only update advances the shared revision without changing the text.
+    if (post.body === saved.current.body && post.editVersion > saved.current.editVersion) {
+      saved.current = { ...saved.current, editVersion: post.editVersion };
+    }
+  }, [post.body, post.editVersion]);
+
+  useLayoutEffect(() => {
     const el = textarea.current;
     if (!el) return;
     const resize = () => {

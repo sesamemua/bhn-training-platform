@@ -7,7 +7,7 @@
  * facts correct, and to stop a reminder going out with last month's
  * date on it.
  */
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Megaphone } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -22,11 +22,12 @@ import { CRS_EVENT_POST } from "@/lib/social/events";
 
 export const dynamic = "force-dynamic";
 
-export default async function SocialPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function SocialPage({ searchParams }: { searchParams: Promise<{ tab?: string; post?: string }> }) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect("/dashboard");
 
-  const { tab } = await searchParams;
+  const { tab, post: postId } = await searchParams;
+  if (postId !== undefined && (!postId || typeof postId !== "string")) notFound();
   // Create once; revisiting the page must never overwrite someone's draft or graphic.
   await prisma.socialPost.createMany({ data: [CRS_EVENT_POST], skipDuplicates: true });
 
@@ -56,7 +57,8 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     : []);
 
   const rows = await prisma.socialPost.findMany({
-    where: { status: { in: ["draft", "approved", "scheduled"] } },
+    where: postId ? { id: postId } : { status: { in: ["draft", "approved", "scheduled"] } },
+    include: { approvedBy: { select: { name: true } } },
     orderBy: [{ scheduledFor: "asc" }],
     take: 200,
   });
@@ -73,6 +75,8 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       stream: r.stream,
       kind: r.kind,
       status: r.status,
+      approvedAt: r.approvedAt?.toISOString() ?? null,
+      approvedByName: r.approvedBy?.name ?? null,
       cycleLabel: r.stream === "events"
         ? (r.assetSpec as { title?: string } | null)?.title ?? "Event"
         : speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
@@ -104,18 +108,19 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
           ) > 36 * 3_600_000,
     };
   });
+  if (postId && !posts.length) notFound();
 
   return (
     <>
       <FullWidthWhenCollapsed />
       <PageHero
         eyebrow="Workspace · Marketing"
-        title="Social"
-        description="Draft, review and prepare social posts for events, VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."
+        title={postId ? "Post review" : "Social"}
+        description={postId ? undefined : "Draft, review and prepare social posts for events, VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."}
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue initial={posts} initialGroup={tab === "events" ? "events" : "symposium_2026"} />
+        <SocialQueue key={postId ?? tab ?? "social"} initial={posts} reviewMode={!!postId} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} />
       </div>
     </>
   );
