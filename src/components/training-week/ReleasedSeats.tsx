@@ -19,7 +19,7 @@ export async function ReleasedSeats({ framed = false, showEmpty = false }: { fra
   const open = seats.filter((s) => s.free > 0);
   const body = (
     <>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-500/15 text-amber-600"><Armchair size={16} aria-hidden="true" /></span>
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-bold text-fg">
@@ -28,7 +28,7 @@ export async function ReleasedSeats({ framed = false, showEmpty = false }: { fra
           </p>
           <p className="text-[12px] text-muted">People who told us they can&apos;t make it, in the last three weeks. Their place is free to offer to somebody waiting.</p>
         </div>
-        <Link href="/admin/workspace/training-admin?tab=registrants" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-brand-700">
+        <Link href="/admin/workspace/training-admin?tab=registrants" className="col-span-2 inline-flex items-center justify-self-start gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-brand-700 sm:col-span-1">
           Assign from registrants <ArrowRight size={13} aria-hidden="true" />
         </Link>
       </div>
