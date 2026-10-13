@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Dashboard: the Symposium count no longer goes blank",
+    body: "The **Annual Symposium registration** card could show **\u2014** instead of a number for several minutes \u2014 one slow reply from Luma was being remembered as if it were the answer, and Refresh could not get past it. A failed read is now retried within twenty seconds, and the card keeps showing the **last number it had** in the meantime.\n\nThe **awaiting approval** figure is separate: it needs a Luma host sign-in stored in the platform\u2019s settings, and shows \u2014 when that sign-in is missing or has expired.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week reminders no longer carry a withdraw link",
     body: "The **Three days before** and **On the day** reminders no longer include the **I can\u2019t make it \u2014 withdraw** link. They keep the session\u2019s time and place and the **Check in** button. The approval email still lets people withdraw.",
     kind: "improvement",

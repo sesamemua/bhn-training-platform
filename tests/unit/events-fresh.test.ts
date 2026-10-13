@@ -45,3 +45,23 @@ test("two keys are two answers", async () => {
   assert.equal(await fresh("b", async () => "two"), "two");
   assert.equal(await fresh("a", async () => "three"), "one");
 });
+
+test("a failed read is not held like an answer: it is retried soon, and the last good value stays up meanwhile", async () => {
+  let t = 0;
+  const replies: (number | null)[] = [null, 172, null, 180];
+  let calls = 0;
+  const fresh = freshly<number | null>({ ttlMs: 240_000, forceEveryMs: 60_000, now: () => t });
+  const read = (force = false) => fresh("k", async () => replies[calls++], force);
+
+  assert.equal(await read(), null, "nothing known yet, and the read failed");
+  t += 5_000;
+  assert.equal(await read(true), null, "a failure is held briefly, even from Refresh");
+  assert.equal(calls, 1);
+  t += 20_000;
+  assert.equal(await read(), 172, "retried after twenty seconds, not after four minutes");
+  t += 240_000;
+  assert.equal(await read(), 172, "the next read failed: the last good number stays");
+  assert.equal(calls, 3);
+  t += 20_000;
+  assert.equal(await read(), 180, "and it recovers on the retry");
+});

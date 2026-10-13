@@ -87,7 +87,7 @@ async function lumaCount(apiId: string, force = false): Promise<number | null> {
     try {
       const res = await fetch(`https://api2.luma.com/event/get?event_api_id=${apiId}`, {
         cache: "no-store",
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(8000),
       });
       return res.ok ? lumaTotal(await res.json()) : null;
     } catch {
@@ -116,7 +116,7 @@ async function lumaWaitingFor(apiId: string, force = false): Promise<LumaWaiting
     const res = await fetch(`https://api.luma.com/event/admin/get?event_api_id=${apiId}`, {
       headers: { cookie: `luma.auth-session-key=${session}` },
       cache: "no-store",
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
     });
     // 401: the sign-in has ended (signed out, or expired) — paste a fresh one.
     if (!res.ok) console.warn("[registrations] Luma host view", res.status);

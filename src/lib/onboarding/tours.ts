@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.20a";
+export const TOUR_VERSION = "2026.10.24a";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -71,6 +71,15 @@ export const TOUR_STEPS: TourStep[] = [
     roles: ["admin", "superadmin"],
     cta: { label: "Open Video Production", href: "/admin/workspace/marketing/video" },
     since: "2026.10.16t",
+  },
+  {
+    id: "home.symposium-count-steady",
+    title: "The Symposium count stays put",
+    body: "The Annual Symposium registration card no longer drops to a dash when Luma is slow — it keeps the last number and tries again within seconds.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24a",
   },
   {
     id: "training-week.reminders-no-withdraw",

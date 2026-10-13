@@ -27,7 +27,10 @@ export interface FreshOptions {
   now?: () => number;
 }
 
-interface Held<T> { at: number; value: T }
+interface Held<T> { at: number; value: T; failed: boolean }
+
+/** How long a failed read is held before the next one is tried: long enough not to hammer, short enough to recover. */
+const FAILED_FOR_MS = 20_000;
 
 /**
  * A memo with an age limit.
@@ -35,15 +38,26 @@ interface Held<T> { at: number; value: T }
  * `force` asks for a fresh read and gets one — unless the last read is
  * newer than `forceEveryMs`, which is what stops somebody holding the
  * Refresh button from making the same requests a poll would.
+ *
+ * A read that comes back empty (null or undefined — the other side timed
+ * out, or refused) is a FAILURE, not an answer. It used to be held like
+ * any other value, so one slow reply left every dashboard showing "—"
+ * for four minutes, and Refresh could not get past it. Now a failure is
+ * retried after twenty seconds, and until a read succeeds the last good
+ * value is what people see: an hour-old number is more use than none.
  */
 export function freshly<T>({ ttlMs, forceEveryMs = 30_000, now = Date.now }: FreshOptions) {
   const held = new Map<string, Held<T>>();
   return async function fresh(key: string, make: () => Promise<T>, force = false): Promise<T> {
     const was = held.get(key);
     const age = was ? now() - was.at : Infinity;
-    if (was && (force ? age < forceEveryMs : age < ttlMs)) return was.value;
+    const limit = was?.failed ? FAILED_FOR_MS : force ? forceEveryMs : ttlMs;
+    if (was && age < limit) return was.value;
     const value = await make();
-    held.set(key, { at: now(), value });
-    return value;
+    const failed = value === null || value === undefined;
+    // Nothing came back: keep showing what we last knew, and try again soon.
+    const shown = failed && was && was.value !== null && was.value !== undefined ? was.value : value;
+    held.set(key, { at: now(), value: shown, failed });
+    return shown;
   };
 }
