@@ -73,8 +73,8 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity, 
           <div>
             <h3 className="aero-h"><Users size={14} /> Annual Symposium registration</h3>
             <p className="aero-gloss">
-              {failed
-                ? "Couldn’t reach the counts just now — they will retry."
+              {failed || events?.find((e) => e.key === "symposium")?.count === null
+                ? "Luma counts are temporarily unavailable. Retrying automatically."
                 : at
                   ? `Updated ${new Date(at).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })} · refreshes every 5 minutes`
                   : "Reading the counts…"}
@@ -109,7 +109,7 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity, 
                 </p>
                 {e.waiting !== undefined && (
                   <p className={`text-[11.5px] ${e.waiting?.approval ? "font-semibold text-amber-700" : "text-muted"}`}>
-                    {e.waiting ? `+${e.waiting.approval}` : "—"} awaiting approval
+                    {e.waiting ? `+${e.waiting.approval} awaiting approval` : "Pending approvals unavailable; check Luma's host dashboard."}
                     {e.waiting?.waitlist ? ` · ${e.waiting.waitlist} on the waitlist` : ""}
                   </p>
                 )}

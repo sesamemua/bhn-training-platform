@@ -1,0 +1,529 @@
+{
+  "steps": [
+    {
+      "id": "w_start",
+      "kind": "start",
+      "next": "w_trainee",
+      "when": [],
+      "label": "Registration opens"
+    },
+    {
+      "id": "w_trainee",
+      "kind": "check",
+      "next": "w_roster",
+      "when": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ],
+      "label": "Says they are a current trainee?",
+      "otherwise": "w_full"
+    },
+    {
+      "id": "w_roster",
+      "kind": "action",
+      "next": "w_full",
+      "note": "A match sets the confirmed-trainee status. Not being found does not stop the registration.",
+      "when": [],
+      "label": "Checked against the trainee roster"
+    },
+    {
+      "id": "w_full",
+      "kind": "check",
+      "next": "w_elig",
+      "when": [
+        {
+          "op": "answered",
+          "field": "sessions"
+        }
+      ],
+      "label": "Any chosen session full?",
+      "otherwise": "w_wait"
+    },
+    {
+      "id": "w_wait",
+      "kind": "action",
+      "next": "w_elig",
+      "when": [],
+      "label": "Added to the waitlist"
+    },
+    {
+      "id": "w_elig",
+      "kind": "action",
+      "next": "w_eligible",
+      "when": [],
+      "label": "Checked against the eligibility sheet"
+    },
+    {
+      "id": "w_eligible",
+      "kind": "check",
+      "next": "w_seat",
+      "when": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ],
+      "label": "Eligible?",
+      "otherwise": "w_declined"
+    },
+    {
+      "id": "w_declined",
+      "kind": "end",
+      "when": [],
+      "label": "Declined, with a reason"
+    },
+    {
+      "id": "w_seat",
+      "kind": "action",
+      "next": "w_attends",
+      "note": "No reply or further confirmation is required. The registrant can release their seat using the cancellation link if they can no longer attend.",
+      "when": [],
+      "label": "Place approved, attendance confirmed, info pack emailed"
+    },
+    {
+      "id": "w_attends",
+      "kind": "end",
+      "when": [],
+      "label": "Attends"
+    }
+  ],
+  "fields": [
+    {
+      "id": "f_trainee",
+      "key": "bhn_status",
+      "help": "Training Week is open to participants who are already in a BioHubNet program. Please note: Creating a BioHubNet training platform account alone does not constitute program participation.\nSubmitting an EQUIP application qualifies you for Training Week.",
+      "type": "choice",
+      "label": "What is your current BioHubNet program status?",
+      "slots": [],
+      "stage": "registration",
+      "options": [
+        "I have been accepted into the ENGAGE or EXPERIENCE program",
+        "I have previously submitted an EQUIP application",
+        "I have created a BioHubNet training platform account but have not been accepted into a program",
+        "I have not participated in a BioHubNet program"
+      ],
+      "required": true,
+      "showWhen": []
+    },
+    {
+      "id": "f_needprog",
+      "key": "need_programme_note",
+      "help": "Training Week is open to participants accepted into ENGAGE, EXPERIENCE, or EQUIP. For information about the programs and the eligibility requirements, please visit biohubnet.ca. Return to this form once you are accepted into a program.",
+      "type": "note",
+      "label": "Step 1: Join a BioHubNet program",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "is",
+          "field": "bhn_status",
+          "value": "I have created a BioHubNet training platform account but have not been accepted into a program"
+        }
+      ],
+      "stopsHere": true
+    },
+    {
+      "id": "f_needacct",
+      "key": "need_account_note",
+      "help": "Create a BioHubNet training platform account, then proceed to apply to either ENGAGE or EXPERIENCE. Both programs are administered through the training platform, so create an account on the training platform before submitting your application.\nFor information about the programs and their eligibility requirements, please visit biohubnet.ca. Return to this form once you are accepted into a program.",
+      "type": "note",
+      "label": "Step 1: Create an account and apply",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "is",
+          "field": "bhn_status",
+          "value": "I have not participated in a BioHubNet program"
+        }
+      ],
+      "stopsHere": true
+    },
+    {
+      "id": "f_fullname",
+      "key": "full_name",
+      "help": "First and last name, as you would like it on your name badge.",
+      "type": "short_text",
+      "label": "Full name",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": true,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ]
+    },
+    {
+      "id": "f_temail",
+      "key": "trainee_email",
+      "help": "Please enter your institutional email address, or secondary email address registered with BioHubNet for verification.",
+      "type": "email",
+      "label": "Email registered with BioHubNet",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": true,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ]
+    },
+    {
+      "id": "f_sessions",
+      "key": "sessions",
+      "help": "Select as many sessions as you wish and rank them in order of preference. Sessions will be allocated based on your stated order of preference, subject to availability.\nPlease note: Sessions displayed side by side in the calendar take place at the same time. You may select both sessions if you would be willing to attend either; however, you can only be approved for one.\nAll the workshops are in person, at or close to the University of Toronto St. George (downtown) campus.",
+      "type": "multi",
+      "label": "Choose and Rank Your Sessions",
+      "slots": [
+        {
+          "day": "2026-10-26",
+          "end": "15:30",
+          "start": "09:30",
+          "option": "Mon 26 Oct · 09:30–15:30 · Microbix tour + Lunch & Learn",
+          "capacity": 12,
+          "subtitle": "Microbix Biosystems, Mississauga"
+        },
+        {
+          "day": "2026-10-26",
+          "end": "14:00",
+          "start": "09:30",
+          "breaks": [
+            {
+              "end": "10:00",
+              "label": "Breakfast",
+              "start": "09:30"
+            },
+            {
+              "end": "12:30",
+              "label": "Lunch",
+              "start": "11:30"
+            }
+          ],
+          "option": "Mon 26 Oct · 09:30–14:00 · Pandemic Preparedness",
+          "capacity": 20,
+          "subtitle": "Toronto High Containment Facility (CL3)"
+        },
+        {
+          "day": "2026-10-27",
+          "end": "16:30",
+          "start": "12:00",
+          "breaks": [
+            {
+              "end": "13:00",
+              "label": "Lunch",
+              "start": "12:00"
+            }
+          ],
+          "option": "Tue 27 Oct · 12:00–16:30 · Communication Chameleon",
+          "capacity": 30
+        },
+        {
+          "day": "2026-10-27",
+          "end": "16:30",
+          "start": "12:00",
+          "breaks": [
+            {
+              "end": "13:00",
+              "label": "Lunch",
+              "start": "12:00"
+            }
+          ],
+          "option": "Tue 27 Oct · 12:00–16:30 · Negotiation Navigator",
+          "capacity": 30
+        },
+        {
+          "day": "2026-10-27",
+          "end": "17:00",
+          "start": "15:00",
+          "option": "Tue 27 Oct · 15:00–17:00 · Discovery to Delivery — CCRM",
+          "capacity": 18
+        },
+        {
+          "day": "2026-10-28",
+          "end": "13:30",
+          "start": "10:00",
+          "option": "Wed 28 Oct · 10:00–13:30 · Innovation Ignited",
+          "capacity": 100
+        }
+      ],
+      "stage": "registration",
+      "options": [
+        "Mon 26 Oct · 09:30–15:30 · Microbix tour + Lunch & Learn",
+        "Mon 26 Oct · 09:30–14:00 · Pandemic Preparedness",
+        "Tue 27 Oct · 12:00–16:30 · Communication Chameleon",
+        "Tue 27 Oct · 12:00–16:30 · Negotiation Navigator",
+        "Tue 27 Oct · 15:00–17:00 · Discovery to Delivery — CCRM",
+        "Wed 28 Oct · 10:00–13:30 · Innovation Ignited"
+      ],
+      "required": true,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ],
+      "cannotCombine": []
+    },
+    {
+      "id": "f_symp",
+      "key": "symposium_signup",
+      "help": "The Symposium is on Thursday 29 October 2026 and needs its own registration: [BioHubNet 2026 Annual Symposium · Luma](https://luma.com/wh30nh1n)\nMost people come to both — the Symposium builds on Training Week.",
+      "type": "choice",
+      "label": "Have you registered for the 2026 Annual Symposium?",
+      "slots": [],
+      "stage": "registration",
+      "options": [
+        "Yes — I have already registered",
+        "Not yet — I plan to register",
+        "No — I do not plan to attend"
+      ],
+      "required": true,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ],
+      "openOnSelect": {
+        "Not yet — I plan to register": "https://luma.com/wh30nh1n"
+      }
+    },
+    {
+      "id": "f_symp_link",
+      "key": "symposium_link_note",
+      "help": "Register whenever you are ready. It is a separate form, and nothing here waits on it: [BioHubNet 2026 Annual Symposium · Luma](https://luma.com/wh30nh1n)",
+      "type": "note",
+      "label": "The Symposium page is open in a new tab",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "is",
+          "field": "symposium_signup",
+          "value": "Not yet — I plan to register"
+        }
+      ]
+    },
+    {
+      "id": "f_diet",
+      "key": "dietary",
+      "help": "Select all that apply.",
+      "type": "multi",
+      "label": "Dietary requirements for Training Week meals",
+      "slots": [],
+      "stage": "registration",
+      "options": [
+        "No dietary requirements",
+        "Vegan",
+        "Halal",
+        "Kosher",
+        "Gluten-free",
+        "Dairy-free",
+        "Other — please describe"
+      ],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ],
+      "exclusiveOption": "No dietary requirements"
+    },
+    {
+      "id": "f_diet_other",
+      "key": "dietary_other",
+      "help": "What you cannot eat, and whether it is an allergy. The caterer is told; severe allergies are handled separately.",
+      "type": "long_text",
+      "label": "Tell us about it",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": true,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        },
+        {
+          "op": "contains",
+          "field": "dietary",
+          "value": "Other — please describe"
+        }
+      ]
+    },
+    {
+      "id": "f_4uugo8n",
+      "key": "question",
+      "type": "short_text",
+      "label": "Accessibility requirements",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ],
+      "noneLabel": "N/A — none"
+    },
+    {
+      "id": "f_news",
+      "key": "newsletter_optin",
+      "type": "choice",
+      "label": "BioHubNet newsletter",
+      "slots": [],
+      "stage": "registration",
+      "options": [
+        "Yes, sign me up",
+        "No thanks",
+        "I am already subscribed"
+      ],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ]
+    },
+    {
+      "id": "f_travel2h",
+      "key": "travel_over_2h",
+      "help": "If yes, you may be eligible for travel assistance. We will email you the details.",
+      "type": "yesno",
+      "label": "Is your one-way, door-to-door travel time to downtown Toronto > 2 hours?",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        }
+      ]
+    },
+    {
+      "id": "f_postcode",
+      "key": "postcode",
+      "help": "For example K5V. Used only to estimate your travel distance.",
+      "type": "short_text",
+      "label": "Postal code — first 3 characters",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": true,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        },
+        {
+          "op": "is",
+          "field": "travel_over_2h",
+          "value": "Yes"
+        }
+      ]
+    },
+    {
+      "id": "f_travel_note",
+      "key": "travel_note",
+      "help": "Where you would be starting from, and the first train or bus you could take that gets you here in time. We will look at it. We cannot promise travel support in advance.",
+      "type": "long_text",
+      "label": "Tell us about your journey (optional)",
+      "slots": [],
+      "stage": "registration",
+      "options": [],
+      "required": false,
+      "showWhen": [
+        {
+          "op": "any of",
+          "field": "bhn_status",
+          "value": "I have been accepted into the ENGAGE or EXPERIENCE program,I have previously submitted an EQUIP application"
+        },
+        {
+          "op": "is",
+          "field": "travel_over_2h",
+          "value": "Yes"
+        },
+        {
+          "op": "is",
+          "field": "travel_explain",
+          "value": "Yes"
+        }
+      ]
+    }
+  ],
+  "sources": [],
+  "version": 1,
+  "submitNote": "**PLEASE NOTE:** Photography, audio and video recording may occur throughout this event. Therefore, by attending Training Week events, you hereby authorize the University of Toronto to take your photograph, video and/or record your voice and grant the university all rights to these sounds, still or moving images in any medium for educational, promotional, marketing, advertising or other such purposes that support the mission of the university.",
+  "presentation": {
+    "facts": [
+      {
+        "text": "Training Week is open to HQPs accepted into ENGAGE, EXPERIENCE or EQUIP.",
+        "label": "Who can register"
+      },
+      {
+        "text": "Choose and rank the sessions you want. We will email seat offers in the last week of September.",
+        "label": "Seat offers"
+      },
+      {
+        "text": "The Symposium on 29 October 2026 is a separate event with its own registration: [BioHubNet 2026 Annual Symposium · Luma](https://luma.com/wh30nh1n)",
+        "label": "Annual Symposium"
+      }
+    ],
+    "theme": "site",
+    "actions": [
+      {
+        "href": "#registration",
+        "label": "Start registration"
+      },
+      {
+        "href": "https://luma.com/wh30nh1n",
+        "label": "Symposium registration"
+      }
+    ],
+    "heading": "BioHubNet Training Week",
+    "homeLink": {
+      "href": "https://biohubnet.ca/2026-annual-symposium/",
+      "label": "2026 Symposium"
+    },
+    "progress": "bar",
+    "richText": true,
+    "formIntro": "Questions marked * are required.",
+    "gateInline": true,
+    "subheading": "26–28 October 2026 | Toronto",
+    "hideRankNote": true,
+    "hideWaitingHint": true,
+    "confirmationNote": "**We will email you with seat offers in the last week of September.** Places are limited, and every registration is read together rather than in the order it arrives — so you will hear from us either way. Nothing by early October? Reply to that email and we will chase it.",
+    "hideCalendarHint": true
+  }
+}

@@ -16,9 +16,7 @@
  * EQUIP by typing addresses at it.
  */
 export const NOT_ON_LIST_MESSAGE =
-  "We can't find that address on the programme lists for Training Week. " +
-  "That is usually our lists being behind rather than anything about you — " +
-  "you can carry on and register, and a coordinator will check it by hand.";
+  "We can't find that address on the ENGAGE/EXPERIENCE/EQUIP participant list.";
 
 /** Toronto, because that is where the week is and where the lists are kept. */
 const WHEN = new Intl.DateTimeFormat("en-CA", {
@@ -43,8 +41,8 @@ export function listUpdatedSentence(at: Date | string | null | undefined): strin
   // Not "on {when}. If…": the formatted time ends in "p.m." and brings
   // its own full stop, which reads as a typo doubled up.
   return (
-    `Our programme lists were last updated on ${WHEN.format(when)} — ` +
-    "so if you were accepted into ENGAGE or EXPERIENCE, or submitted an EQUIP application, " +
-    "after that, tell us here and we will approve you by hand."
+    `Our program lists were last updated on ${WHEN.format(when)} — ` +
+    "so if you were accepted into ENGAGE or EXPERIENCE or submitted an EQUIP application after this date " +
+    "OR if you have not participated in a BioHubNet program, tell us here and proceed with your selections."
   );
 }

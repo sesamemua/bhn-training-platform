@@ -144,7 +144,7 @@ test("gateInline: the message dates the lists, and says thank you once told", ()
   const dated = emailQuestion(look(V1, { gateInline: true }), true, { gateUpdatedAt: at });
   // The date is the point: accepted last week, lists a fortnight old.
   assert.match(dated, /September 22, 2026/);
-  assert.match(dated, /approve you by hand/);
+  assert.match(dated, /proceed with your selections/);
   assert.ok(listUpdatedSentence(at)?.includes("September 22, 2026"));
   assert.doesNotMatch(listUpdatedSentence(at)!, /\.\./, "the time brings its own full stop");
   assert.equal(listUpdatedSentence(null), null);
@@ -531,13 +531,13 @@ test("gateInline: with nothing left to open, the box names Submit rather than Co
   assert.match(emailQuestion(look(V1, { gateInline: true }), true), /press Continue again/, "the Continue check keeps its words");
 });
 
-test("what the registrant is told never names a list, and never says they are refused", () => {
+test("the combined-list notice does not disclose an individual program or refuse registration", () => {
   const msg = NOT_ON_LIST_MESSAGE.toLowerCase();
-  for (const leak of ["engage", "experience", "equip", "venture", "sharepoint", "google", "sheet"]) {
+  for (const leak of ["venture", "sharepoint", "google", "sheet"]) {
     assert.ok(!msg.includes(leak), `the message mentions ${leak}`);
   }
-  assert.match(NOT_ON_LIST_MESSAGE, /carry on and register/i);
-  assert.match(NOT_ON_LIST_MESSAGE, /coordinator/i);
+  assert.match(NOT_ON_LIST_MESSAGE, /ENGAGE\/EXPERIENCE\/EQUIP participant list/);
+  assert.match(listUpdatedSentence("2026-10-01T01:42:00Z")!, /proceed with your selections/i);
 });
 
 /* ── the thank-you screen's timeline ─────────────────────────────── */

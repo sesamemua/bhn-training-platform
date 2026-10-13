@@ -89,8 +89,10 @@ async function lumaCount(apiId: string, force = false): Promise<number | null> {
         cache: "no-store",
         signal: AbortSignal.timeout(8000),
       });
+      if (!res.ok) console.warn("[registrations] Luma public count", res.status);
       return res.ok ? lumaTotal(await res.json()) : null;
-    } catch {
+    } catch (error) {
+      console.warn("[registrations] Luma public count failed", error instanceof Error ? error.name : "unknown");
       return null;
     }
   }, force);

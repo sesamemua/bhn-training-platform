@@ -91,11 +91,12 @@ test("between them the sources cover ENGAGE, EXPERIENCE and EQUIP", () => {
 
 /* ── What the registrant is told ─────────────────────────────────── */
 
-test("the message never names which list they are missing from", () => {
+test("the message names the combined participant list, never a person's individual program", () => {
   // Naming it would turn the form into a way to find out who applied
   // to EQUIP by typing addresses at it.
   const msg = NOT_ON_LIST_MESSAGE.toLowerCase();
-  for (const leak of ["engage", "experience", "equip", "venture", "sharepoint", "google", "sheet"]) {
+  assert.match(NOT_ON_LIST_MESSAGE, /ENGAGE\/EXPERIENCE\/EQUIP participant list/);
+  for (const leak of ["venture", "sharepoint", "google", "sheet"]) {
     assert.ok(!msg.includes(leak), `the message mentions ${leak}`);
   }
 });
@@ -103,8 +104,8 @@ test("the message never names which list they are missing from", () => {
 test("the message says they can carry on, and who settles it", () => {
   // A dead end with no next step is how a real applicant gives up —
   // and this one is not even a dead end any more.
-  assert.match(NOT_ON_LIST_MESSAGE, /carry on and register/i);
-  assert.match(NOT_ON_LIST_MESSAGE, /coordinator/i);
+  assert.match(listUpdatedSentence("2026-10-01T01:42:00Z")!, /proceed with your selections/i);
+  assert.match(listUpdatedSentence("2026-10-01T01:42:00Z")!, /have not participated in a BioHubNet program/i);
   assert.doesNotMatch(NOT_ON_LIST_MESSAGE, /cannot register|not eligible|stops here/i);
 });
 
