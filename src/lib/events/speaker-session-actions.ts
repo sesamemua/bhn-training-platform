@@ -27,6 +27,8 @@ export function speakerSessionActions(roster: PlanSnapshot, state: PublicationSt
     if (website.people.some((p) => p.id === person.id || names.includes(normalizedName(p.fullName)))) return [];
     const approved = state.approved.find((p) => p.id === person.id);
     const draft = state.drafts.find((p) => p.id === person.id);
+    // Never hide an explicit symposium assignment or an existing publication review.
+    if (person.participation2026 === "training-week" && !person.session && !draft && !approved) return [];
     return [{ person, speaker, draft, awaitingSync: Boolean(approved && state.initialized && website.revision < approved.approvedRevision) }];
   });
 }

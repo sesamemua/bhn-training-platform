@@ -10,6 +10,13 @@ export const ROSTER_EVENTS = {
   "2025-annual-symposium": "2025 Annual Symposium",
   "2026-industry-insights": "2026 Industry Insights",
   "2026-annual-symposium": "2026 Annual Symposium",
+  "2026-training-week": "2026 Training Week",
+} as const;
+export const PARTICIPATION_2026 = {
+  unknown: "Not yet classified",
+  symposium: "Annual Symposium only (October 29)",
+  "training-week": "Training Week only (October 26-28)",
+  both: "Training Week and Annual Symposium",
 } as const;
 export const TagsSchema = z.array(z.string().trim().min(1).max(80)).max(30);
 export const PersonInput = z.object({
@@ -19,6 +26,7 @@ export const PersonInput = z.object({
   bio: z.string().trim().max(10000).default(""),
   email: z.union([z.literal(""), z.string().trim().email().max(254)]).default(""),
   tags: TagsSchema.optional(),
+  participation2026: z.enum(["unknown", "symposium", "training-week", "both"]).optional(),
 });
 export type PersonInput = z.infer<typeof PersonInput>;
 export const PlanPersonSchema = PersonInput.extend({
@@ -78,7 +86,11 @@ export function matchPlanPeople(people: PlanPerson[], speakers: Submission[]): M
 }
 
 export function personEvents(p: PlanPerson): string[] {
-  return [...new Set([...(p.eventTags ?? []), ...(p.source === "2025" ? ["2025-annual-symposium"] : []), ...(p.session ? ["2026-annual-symposium"] : [])])];
+  // Intake uses a shared symposium URL; an explicit workshop-only classification overrides that inferred tag.
+  const events = (p.eventTags ?? []).filter((event) => !(event === "2026-annual-symposium" && p.participation2026 === "training-week" && !p.session));
+  return [...new Set([...events, ...(p.source === "2025" ? ["2025-annual-symposium"] : []),
+    ...(p.session || p.participation2026 === "symposium" || p.participation2026 === "both" ? ["2026-annual-symposium"] : []),
+    ...(p.participation2026 === "training-week" || p.participation2026 === "both" ? ["2026-training-week"] : [])])];
 }
 
 export function duplicatePeople(a: PersonInput, b: PersonInput): boolean {

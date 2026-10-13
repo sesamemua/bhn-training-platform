@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Archive, Check, CloudUpload, Copy, GripVertical, Loader2, Pencil, Plus, RefreshCw, Save, Search, Trash2, Unlink, X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
-import { PLAN_SESSIONS, ROSTER_EVENTS, personEvents, matchPlanPeople, type PlanPerson, type PersonInput, type PlanSession, type PlanSnapshot, type Match } from "@/lib/events/people-plan";
+import { PLAN_SESSIONS, ROSTER_EVENTS, PARTICIPATION_2026, personEvents, matchPlanPeople, type PlanPerson, type PersonInput, type PlanSession, type PlanSnapshot, type Match } from "@/lib/events/people-plan";
 import type { PlanAction } from "@/lib/events/people-plan-store";
 import PeoplePublicationPanel from "./PeoplePublicationPanel";
 import PlannerPublicationDialog from "./PlannerPublicationDialog";
@@ -99,6 +99,7 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
 
   const matches = useMemo(() => matchPlanPeople(snapshot?.people ?? [], snapshot?.speakers ?? []), [snapshot]);
   const visible = (p: PlanPerson) => !p.archived && (!eventFilter || personEvents(p).includes(eventFilter))
+    && (view === "roster" || p.participation2026 !== "training-week" || !!p.session)
     && `${p.fullName} ${p.organization} ${p.tags?.join(" ") ?? ""} ${matches.get(p.id)?.speaker?.fullName ?? ""} ${matches.get(p.id)?.speaker?.organization ?? ""}`.toLowerCase().includes(query.toLowerCase());
 
   async function mutate(change: PlanAction, version = snapshot?.version) {
@@ -185,7 +186,13 @@ export function SymposiumPeoplePlanner({ view = "planner" }: { view?: "planner" 
     <Dialog.Root open={!!editing} onOpenChange={(open) => { if (!open) setEditing(null); }}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" /><Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[calc(100%_-_2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-card-solid p-5">
       <div className="mb-4 flex justify-between"><Dialog.Title className="font-bold text-fg">Planning details</Dialog.Title><Dialog.Close aria-label="Close editor"><X size={18} /></Dialog.Close></div>
       <Dialog.Description className="mb-3 text-[12px] text-muted">Submitted details remain unchanged.</Dialog.Description>
-      {editing && <><PersonFields person={editing} onChange={(p) => setEditing({ ...editing, ...p })} /><TagEditor key={editing.id} tags={editing.tags ?? []} onChange={(tags) => setEditing({ ...editing, tags })} />{error && <p role="alert" className="mt-2 text-[12px] text-fg">{error}</p>}<button type="button" className={`${BUTTON} mt-4`} disabled={busy} onClick={async () => { if (await mutate({ action: "edit", id: editing.id, person: editing }, editVersion.current)) setEditing(null); }}><Save size={14} />Save profile</button></>}
+      {editing && <><PersonFields person={editing} onChange={(p) => setEditing({ ...editing, ...p })} />
+        <label className="mt-3 block text-[11px] text-muted">2026 event participation
+          <select className={INPUT} value={editing.participation2026 ?? "unknown"} onChange={(e) => setEditing({ ...editing, participation2026: e.target.value as NonNullable<PersonInput["participation2026"]> })}>
+            {Object.entries(PARTICIPATION_2026).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          </select>
+        </label>
+        <TagEditor key={editing.id} tags={editing.tags ?? []} onChange={(tags) => setEditing({ ...editing, tags })} />{error && <p role="alert" className="mt-2 text-[12px] text-fg">{error}</p>}<button type="button" className={`${BUTTON} mt-4`} disabled={busy} onClick={async () => { if (await mutate({ action: "edit", id: editing.id, person: editing }, editVersion.current)) setEditing(null); }}><Save size={14} />Save profile</button></>}
     </Dialog.Content></Dialog.Portal></Dialog.Root>
     {publishing && <PlannerPublicationDialog onClose={() => setPublishing(false)} returnFocus={() => publishButton.current?.focus()} />}
   </div>;
@@ -223,7 +230,7 @@ function PersonCard({ person: p, match, speakers, disabled, onChange, onEdit, on
     <p className="mt-2 flex items-center gap-1 text-[11px] text-muted">{s ? <><Check size={12} />{s.submittedAt ? "Submission matched" : "Event profile linked"}{match.kind === "manual" ? " manually" : ""}</> : match.kind === "review" ? "Possible submission match: review needed" : "Awaiting submission"}</p>
     {p.source === "2025" && <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="text-[11px] text-muted underline">2025 profile · verify current details</a>}
     {p.source !== "2025" && p.sourceUrl && <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="text-[11px] text-muted underline">Official event source</a>}
-    <label className="mt-2 block text-[11px] text-muted">Session<select className={INPUT} aria-label={`Session for ${p.fullName}`} value={p.session ?? ""} disabled={disabled} onChange={(e) => void onChange({ action: "assign", id: p.id, session: e.target.value as PlanSession || null })}><option value="">Unassigned</option>{Object.entries(PLAN_SESSIONS).map(([id, title]) => <option key={id} value={id}>{title}</option>)}</select></label>
+    <label className="mt-2 block text-[11px] text-muted">Symposium session<select className={INPUT} aria-label={`Session for ${p.fullName}`} value={p.session ?? ""} disabled={disabled} onChange={(e) => void onChange({ action: "assign", id: p.id, session: e.target.value as PlanSession || null })}><option value="">{p.participation2026 === "training-week" ? "No symposium assignment" : "Unassigned"}</option>{Object.entries(PLAN_SESSIONS).map(([id, title]) => <option key={id} value={id}>{title}</option>)}</select></label>
     <details className="mt-2 text-[12px] text-muted"><summary className="cursor-pointer font-medium text-fg">Profile details</summary><p className="mt-2 whitespace-pre-wrap break-words">{s?.bio || p.bio || "No biography yet."}</p>{s?.sessionTitle && <p className="mt-2">Session title: {s.sessionTitle}</p>}{s?.submittedAt && <p className="mt-2">Submitted {new Date(s.submittedAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}</p>}{p.email && <p className="mt-2 break-all">{p.email}</p>}{s && p.bio && <details className="mt-2"><summary>Original planning notes</summary><p className="whitespace-pre-wrap break-words">{p.bio}</p></details>}</details>
     <div className="mt-3 flex flex-wrap items-center gap-2"><button className={BUTTON} type="button" disabled={disabled} title="Edit planning details" aria-label={`Edit ${p.fullName}`} onClick={onEdit}><Pencil size={13} /></button><button className={BUTTON} type="button" disabled={disabled} title="Archive profile" aria-label={`Archive ${p.fullName}`} onClick={() => void onChange({ action: "archive", id: p.id, archived: true })}><Archive size={13} /></button>{s ? <button className={BUTTON} type="button" disabled={disabled} onClick={() => void onChange({ action: "link", id: p.id, speakerId: null })}><Unlink size={13} />Unlink</button> : <button className={BUTTON} type="button" onClick={() => setLinkOpen(!linkOpen)}>Match submission</button>}</div>
     {linkOpen && !s && <div className="mt-3 space-y-2 border-t border-line pt-2"><label className="block text-[11px] text-muted">Existing submission<select className={INPUT} value={candidate} onChange={(e) => setCandidate(e.target.value)}><option value="">Choose a person</option>{speakers.filter((s) => s.submittedAt).map((s) => <option value={s.id} key={s.id}>{s.fullName} · {s.organization} · {s.contactEmail || new Date(s.submittedAt!).toLocaleDateString("en-CA")}</option>)}</select></label><button className={BUTTON} type="button" disabled={!candidate || disabled} onClick={async () => { if (await onChange({ action: "link", id: p.id, speakerId: candidate })) setLinkOpen(false); }}><Check size={13} />Confirm match</button></div>}

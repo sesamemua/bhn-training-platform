@@ -45,3 +45,27 @@ test("website schema rejects inactive, incomplete, wrong-event or malformed feed
   }
   assert.deepEqual(WebsitePeopleSchema.parse({ snapshot: { ...website, people: [{ id: "person", fullName: "Liz", bio: "unneeded" }] } }).snapshot.people, [{ id: "person", fullName: "Liz" }]);
 });
+
+test("workshop-only classification suppresses symposium actions without discarding the submitted profile", () => {
+  const workshop = structuredClone(roster);
+  workshop.people[0].participation2026 = "training-week";
+  const before = structuredClone(workshop);
+  assert.deepEqual(speakerSessionActions(workshop, EMPTY_PUBLICATION, website), []);
+  assert.deepEqual(workshop, before);
+  for (const participation2026 of ["both", "symposium", "unknown"] as const) {
+    workshop.people[0].participation2026 = participation2026;
+    assert.equal(speakerSessionActions(workshop, EMPTY_PUBLICATION, website).length, 1);
+  }
+});
+
+test("workshop classification cannot hide an explicit symposium assignment, draft or approved profile", () => {
+  const workshop = structuredClone(roster);
+  workshop.people[0].participation2026 = "training-week";
+  workshop.people[0].session = "discussion";
+  assert.equal(speakerSessionActions(workshop, EMPTY_PUBLICATION, website).length, 1);
+  workshop.people[0].session = null;
+  const draft = { ...EMPTY_PUBLICATION, drafts: [{ id: "person", profile }] };
+  assert.equal(speakerSessionActions(workshop, draft, website).length, 1);
+  const approved = { ...EMPTY_PUBLICATION, approved: [{ id: "person", profile, approvedRevision: 32 }] };
+  assert.equal(speakerSessionActions(workshop, approved, website).length, 1);
+});

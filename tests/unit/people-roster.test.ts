@@ -55,3 +55,21 @@ test("tags are optional for old records and bounded for new edits", () => {
   assert.ok(!PersonInput.safeParse({ ...person, tags: Array(31).fill("tag") }).success);
   assert.deepEqual(personEvents({ ...person, source: "2025", session: "networking" }), ["2025-annual-symposium", "2026-annual-symposium"]);
 });
+
+test("workshop classification survives roster refresh and replaces only the shared intake event tag", () => {
+  const saved: PlanPerson = { ...person, participation2026: "training-week", tags: ["Communication Chameleon"], speakerIds: ["s"], eventTags: ["2025-annual-symposium"] };
+  const parsed = BoardSchema.parse({ people: [saved] }).people;
+  const refreshed = buildPeopleRoster(parsed, [], [speaker]);
+  assert.equal(refreshed[0].participation2026, "training-week");
+  assert.deepEqual(refreshed[0].tags, ["Communication Chameleon"]);
+  assert.deepEqual(personEvents(refreshed[0]), ["2025-annual-symposium", "2026-training-week"]);
+  assert.equal(matchPlanPeople(refreshed, [speaker]).get("p")?.speaker?.id, "s");
+  assert.equal(refreshed[0].archived, false);
+  assert.ok(!PersonInput.safeParse({ ...person, participation2026: "typo" }).success);
+});
+
+test("both roles and explicit symposium assignments retain both event associations", () => {
+  for (const value of [{ ...person, participation2026: "both" as const }, { ...person, participation2026: "training-week" as const, session: "networking" as const }]) {
+    assert.deepEqual(personEvents(value), ["2026-annual-symposium", "2026-training-week"]);
+  }
+});
