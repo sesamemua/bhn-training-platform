@@ -8,6 +8,7 @@ import { PLAN_SESSIONS, ROSTER_EVENTS, personEvents, matchPlanPeople, type PlanP
 import type { PlanAction } from "@/lib/events/people-plan-store";
 import PeoplePublicationPanel from "./PeoplePublicationPanel";
 import PlannerPublicationDialog from "./PlannerPublicationDialog";
+import SpeakerSessionActions from "./SpeakerSessionActions";
 
 const API = "/api/admin/symposium-people";
 const INPUT = "w-full min-w-0 rounded-md border border-line bg-card-solid px-2.5 py-2 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-brand";
@@ -17,13 +18,18 @@ type Draft = PersonInput & { session: PlanSession; key: string };
 export function SymposiumPeopleTabs({ children }: { children: ReactNode }) {
   const [tab, setTab] = useState("people");
   const [publicationOpened, setPublicationOpened] = useState(false);
+  const [publicationDirty, setPublicationDirty] = useState(false);
+  const [intakeReview, setIntakeReview] = useState<{ id: string; session: PlanSession | null; key: number } | null>(null);
   const router = useRouter();
   return <div className="mx-auto w-full max-w-[1500px] pb-12">
     <nav aria-label="Speaker workspace" className="mb-5 flex flex-wrap gap-2 border-b border-line">
       {[["people", "People planner"], ["roster", "People roster"], ["submissions", "Headshots & bios"], ["publication", "Website publishing"]].map(([key, label]) => <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => { setTab(key); if (key === "publication") setPublicationOpened(true); if (key === "submissions") router.refresh(); }} className={`border-b-2 px-2 py-3 text-[14px] font-semibold ${tab === key ? "border-brand text-fg" : "border-transparent text-muted"}`}>{label}</button>)}
     </nav>
+    {tab !== "publication" && <SpeakerSessionActions reviewDisabled={publicationDirty} onReview={(id, session) => {
+      setIntakeReview({ id, session, key: Date.now() }); setPublicationOpened(true); setTab("publication");
+    }} />}
     <div hidden={tab !== "people" && tab !== "roster"}><SymposiumPeoplePlanner view={tab === "roster" ? "roster" : "planner"} /></div>
-    <div hidden={tab !== "publication"}>{publicationOpened && <PeoplePublicationPanel />}</div>
+    <div hidden={tab !== "publication"}>{publicationOpened && <PeoplePublicationPanel key={intakeReview?.key ?? "default"} initialPersonId={intakeReview?.id} initialSession={intakeReview?.session} onDirtyChange={setPublicationDirty} />}</div>
     {tab === "submissions" && <div className="mx-auto max-w-3xl">{children}</div>}
   </div>;
 }

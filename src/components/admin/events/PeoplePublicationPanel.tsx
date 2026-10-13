@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Check, Eye, Globe, Loader2, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { WEBSITE_SESSIONS, type PublicProfileInput, type PublicationState, type PublicationAction } from "@/lib/events/people-publication";
-import { matchPlanPeople, type PlanPerson, type PlanSnapshot } from "@/lib/events/people-plan";
+import { matchPlanPeople, type PlanPerson, type PlanSnapshot, type PlanSession } from "@/lib/events/people-plan";
 
 const API = "/api/admin/symposium-people/publication";
 const INPUT = "w-full min-w-0 rounded-md border border-line bg-card-solid px-3 py-2 text-sm text-fg";
@@ -30,7 +30,7 @@ export function sourcePublicProfile(person: PlanPerson, roster: PlanSnapshot): P
   };
 }
 
-export default function PeoplePublicationPanel() {
+export default function PeoplePublicationPanel({ initialPersonId, initialSession, onDirtyChange }: { initialPersonId?: string; initialSession?: PlanSession | null; onDirtyChange?: (dirty: boolean) => void } = {}) {
   const [data, setData] = useState<Data | null>(null);
   const [selected, setSelected] = useState("");
   const [editor, setEditor] = useState<PublicProfileInput | null>(null);
@@ -43,6 +43,7 @@ export default function PeoplePublicationPanel() {
   const saved = data?.state.drafts.find((p) => p.id === selected);
   const approved = data?.state.approved.find((p) => p.id === selected);
   const dirty = Boolean(editor && JSON.stringify(editor) !== JSON.stringify(saved?.profile));
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   async function load() {
     try {
@@ -53,11 +54,24 @@ export default function PeoplePublicationPanel() {
   }
   useEffect(() => {
     let cancelled = false;
-    readPublication().then((body) => { if (!cancelled) setData(body); })
+    readPublication().then((body) => {
+      if (cancelled) return;
+      setData(body);
+      const person = body.roster.people.find((p) => p.id === initialPersonId && !p.archived);
+      if (person) {
+        const existing = body.state.drafts.find((p) => p.id === person.id)?.profile;
+        const profile = structuredClone(existing ?? sourcePublicProfile(person, body.roster));
+        if (!existing && initialSession) {
+          const orders = [...body.state.drafts, ...body.state.approved].flatMap((p) => p.profile.placements.filter((s) => s.sessionId === initialSession).map((s) => s.order));
+          profile.placements = [{ sessionId: initialSession, order: Math.min(999, Math.max(-1, ...orders) + 1) }];
+        }
+        setSelected(person.id); setEditor(profile);
+      }
+    })
       .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't load website publishing."); })
       .finally(() => { if (!cancelled) setBusy(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [initialPersonId, initialSession]);
 
   async function mutate(change: PublicationAction) {
     if (!data || busy) return;
