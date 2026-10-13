@@ -7,7 +7,7 @@
  * tab is visible, and on Refresh — which asks the server to read Luma
  * again rather than serve what it holds.
  */
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, RefreshCw, Users } from "lucide-react";
 import type { RegistrationCount } from "@/lib/events/registrations";
@@ -53,6 +53,18 @@ export function RegistrationCounts({ sessions, saveWorkshopState, saveCapacity, 
     }, EVERY_MS);
     return () => clearInterval(timer);
   }, [load]);
+
+  // A count that came back empty is a read that failed, and the server tries again
+  // within half a minute — so ask again then, rather than leave a dash up until the
+  // next five-minute poll. A few tries only: a real outage should not become a loop.
+  const retries = useRef(0);
+  const missing = events?.some((e) => e.count === null) ?? false;
+  useEffect(() => {
+    if (!missing) { retries.current = 0; return; }
+    if (retries.current >= 4) return;
+    const again = setTimeout(() => { retries.current += 1; void load(); }, 25_000);
+    return () => clearTimeout(again);
+  }, [missing, at, load]);
 
   const registration = (
     <article className="aero-frame">
