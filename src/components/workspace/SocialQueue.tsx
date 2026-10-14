@@ -37,6 +37,10 @@ export interface QueuePost {
   organization: string | null;
   companyLogoUrl: string | null;
   assetSpec: unknown;
+  campaign?: boolean;
+  requiresPhoto?: boolean;
+  visualBrief?: string;
+  publicationNote?: string;
   scheduledFor: string;
   overdue: boolean;
   /** The cycle's deadline moved after this post was approved. */
@@ -58,6 +62,10 @@ const STATUS_TONE: Record<string, string> = {
   published: "bg-violet-50 text-violet-800 ring-violet-200",
   skipped: "bg-elevated text-subtle ring-line",
 };
+
+function postGroup(post: QueuePost) {
+  return post.campaign ? "symposium_2026" : post.stream;
+}
 
 export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMode = false }: {
   initial: QueuePost[];
@@ -183,19 +191,22 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
     }
   }
 
-  const visible = reviewMode ? posts : posts.filter((post) => post.stream === group);
+  const active = posts.filter((post) => !["published", "skipped"].includes(post.status));
+  const visible = reviewMode ? posts : active.filter((post) => postGroup(post) === group);
+  const campaignPosts = posts.filter((post) => post.campaign)
+    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
 
   return (
     <div className="space-y-4">
       {inputNode}
       {reviewMode ? (
-        <Link href={`/admin/workspace/marketing/social?tab=${encodeURIComponent(posts[0]?.stream ?? "events")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+        <Link href={`/admin/workspace/marketing/social?tab=${encodeURIComponent(posts[0] ? postGroup(posts[0]) : "events")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
           <ArrowLeft size={16} /> All social posts
         </Link>
       ) : (<>
       <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
         {([
-          ["symposium_2026", "2026 Symposium speakers"],
+          ["symposium_2026", "2026 Symposium & Training Week"],
           ["venture_connect", "VentureConnect"],
           ["events", "Events"],
         ] as const).map(([key, label]) => (
@@ -211,20 +222,43 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
               group === key ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-fg",
             )}
           >
-            {label} <span className="ml-1 text-subtle">{posts.filter((post) => post.stream === key).length}</span>
+            {label} <span className="ml-1 text-subtle">{active.filter((post) => postGroup(post) === key).length}</span>
           </button>
         ))}
       </div>
       <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
-        {group === "events" ? "Events" : group === "symposium_2026" ? "2026 Annual Symposium" : "VentureConnect"}
+        {group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
       </h2>
       <p className="text-[14px] text-muted">
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
           : group === "symposium_2026"
-          ? "Drafts use the speaker bios and headshots saved for the symposium. Review each person's details and permission before posting."
+          ? "October 14-29 · Weekdays only · Toronto time · Planned dates, not automatic publishing."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
       </p>
+      {group === "symposium_2026" && campaignPosts.length > 0 && (
+        <div className="overflow-x-auto border-y border-line">
+          <table className="w-full text-left text-[13px]">
+            <caption className="sr-only">Weekday campaign plan through the symposium</caption>
+            <thead className="bg-elevated text-muted">
+              <tr><th scope="col" className="px-3 py-2">Planned</th><th scope="col" className="px-3 py-2">Post</th><th scope="col" className="px-3 py-2">Image</th><th scope="col" className="px-3 py-2">Status</th></tr>
+            </thead>
+            <tbody>
+              {campaignPosts.map((post) => (
+                <tr key={post.id} className="border-t border-line align-top">
+                  <th scope="row" className="whitespace-nowrap px-3 py-2 font-medium text-fg">
+                    <time dateTime={post.scheduledFor}>{new Date(post.scheduledFor).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Toronto" })}</time>
+                    <span className="block text-[12px] font-normal text-muted">{new Date(post.scheduledFor).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" })}</span>
+                  </th>
+                  <td className="min-w-40 px-3 py-2"><Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(post.id)}`} className="font-semibold text-brand-700 underline underline-offset-2">{post.cycleLabel}</Link></td>
+                  <td className="px-3 py-2 text-muted">{post.assetUrl ? "Image ready" : post.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}</td>
+                  <td className="px-3 py-2 capitalize text-fg">{post.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       </>)}
       {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
       {visible.length === 0 && (
@@ -232,7 +266,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
           {group === "events"
             ? "No event drafts are waiting for review."
             : group === "symposium_2026"
-            ? "No speaker highlights are ready yet. Add a bio and headshot in 2026 Symposium → Speakers; the draft will appear here."
+            ? "No campaign drafts are waiting for review."
             : "No VentureConnect drafts yet. They appear when a cycle opens."}
         </p>
       )}
@@ -276,7 +310,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
             )}
             {p.stream !== "symposium_2026" && (
               <span className="ml-auto text-[12px] tabular-nums text-muted">
-                {new Date(p.scheduledFor).toLocaleDateString("en-CA")}
+                {new Date(p.scheduledFor).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}
               </span>
             )}
           </div>
@@ -301,6 +335,14 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
               <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-t border-line object-contain" />
             )}
           </article>
+
+          {p.campaign && (
+            <details className="border-b border-line px-1 py-2 text-[13px] text-muted">
+              <summary className="cursor-pointer font-semibold text-fg">Image & publication brief</summary>
+              <p className="mt-2 leading-relaxed">{p.visualBrief}</p>
+              <p className="mt-2 leading-relaxed">{p.publicationNote}</p>
+            </details>
+          )}
 
           {p.stream === "events" && p.status !== "published" && p.status !== "skipped" && (
             <div className="flex flex-wrap items-center gap-3 px-1 py-2">

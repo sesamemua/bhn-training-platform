@@ -17,8 +17,10 @@ import { SocialQueue, type QueuePost } from "@/components/workspace/SocialQueue"
 import { openCycles } from "@/lib/social/cycles";
 import { EVENT_SLUG } from "@/lib/allocation/symposium-2026";
 import { findCompanyLogo, logoOverride } from "@/lib/social/company-logo";
-import { SYMPOSIUM_SOCIAL_STREAM, syncSpeakerHighlights } from "@/lib/social/speakers";
+import { SYMPOSIUM_SOCIAL_STREAM } from "@/lib/social/speakers";
 import { CRS_EVENT_POST } from "@/lib/social/events";
+import { SYMPOSIUM_CAMPAIGN_PLAN } from "@/lib/social/symposium-campaign";
+import { withSocialTags } from "@/lib/social/tags";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,14 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   const { tab, post: postId } = await searchParams;
   if (postId !== undefined && (!postId || typeof postId !== "string")) notFound();
   // Create once; revisiting the page must never overwrite someone's draft or graphic.
-  await prisma.socialPost.createMany({ data: [CRS_EVENT_POST], skipDuplicates: true });
+  const campaignByKey = new Map(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => [`events:event:${post.slug}:0`, post]));
+  await prisma.socialPost.createMany({ data: [CRS_EVENT_POST, ...SYMPOSIUM_CAMPAIGN_PLAN.map((post) => ({
+    stream: "events", kind: "event", deadlineId: post.slug,
+    key: `events:event:${post.slug}:0`, body: withSocialTags(post.body),
+    scheduledFor: new Date(post.suggestedDate),
+    assetSpec: { title: post.title, campaign: "2026-symposium-training-week", sourceUrl: post.sourceUrl,
+      graphicBrief: post.graphicBrief, ...(post.photoBrief ? { photoBrief: post.photoBrief } : {}) },
+  }))], skipDuplicates: true });
 
   const now = new Date();
   const cycles = await openCycles(prisma, now);
@@ -49,7 +58,6 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         },
       })
     : [];
-  await syncSpeakerHighlights(prisma, speakers, now);
   const speakersById = new Map(speakers.map((speaker) => [speaker.id, speaker]));
   const organizations = [...new Set(speakers.map((speaker) => speaker.organization).filter((name): name is string => !!name))];
   const companyLogos = new Map(event
@@ -57,7 +65,10 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     : []);
 
   const rows = await prisma.socialPost.findMany({
-    where: postId ? { id: postId } : { status: { in: ["draft", "approved", "scheduled"] } },
+    where: postId ? { id: postId } : { OR: [
+      { status: { in: ["draft", "approved", "scheduled"] } },
+      { key: { in: [...campaignByKey.keys()] } },
+    ] },
     include: { approvedBy: { select: { name: true } } },
     orderBy: [{ scheduledFor: "asc" }],
     take: 200,
@@ -67,6 +78,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     .filter((r) => r.stream !== SYMPOSIUM_SOCIAL_STREAM || speakersById.has(r.deadlineId))
     .map((r) => {
     const cycle = byId.get(r.deadlineId);
+    const campaign = campaignByKey.get(r.key);
     const speaker = r.stream === SYMPOSIUM_SOCIAL_STREAM
       ? speakersById.get(r.deadlineId)
       : undefined;
@@ -88,6 +100,15 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       organization: speaker?.organization ?? null,
       companyLogoUrl: logoOverride(r.assetSpec) ?? (speaker?.organization ? companyLogos.get(speaker.organization) ?? null : null),
       assetSpec: r.assetSpec,
+      campaign: !!campaign,
+      requiresPhoto: !!campaign?.photoBrief,
+      visualBrief: campaign?.photoBrief ?? campaign?.graphicBrief,
+      publicationNote: campaign ? campaign.photoBrief
+        ? "Hold until real photos are uploaded and the pictured activity is confirmed. Check participant consent and host permission before approval."
+        : campaign.workshopSlug
+        ? "Recheck registration status and the recommended seat plan before sharing. Do not promise a seat."
+        : "Verify the current program and registration link before sharing."
+        : undefined,
       scheduledFor: r.scheduledFor.toISOString(),
       overdue: r.stream === "venture_connect" && r.scheduledFor.getTime() < now.getTime(),
       /*
