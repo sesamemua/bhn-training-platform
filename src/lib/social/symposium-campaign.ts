@@ -35,20 +35,26 @@ https://biohubnet.ca/2026-annual-symposium/
   },
   {
     slug: "symposium-2026-careers-connections-oct22",
-    title: "2026 Symposium | Careers and connections",
+    title: "2026 Symposium | Panel 2: Expanding Career Horizons",
     workshopSlug: null,
     suggestedDate: "2026-10-22T13:00:00Z",
     sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium heading, Discover your next direction, Oct 29 | Toronto, Register now. Soft blurred twisting-glass background; no individual speaker portraits or bios.",
-    body: `Your next career direction might begin with a conversation you haven't had yet.
+    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium heading, Panel 2: Expanding Career Horizons, Oct 29 | Toronto, Register now. Three smaller submitted headshots: Angela Davoud (PeakR&D), Jasmine Hamilton (Health Emergency Readiness Canada), Sven Ansorge (CASTL). Soft blurred twisting-glass edge, generous whitespace, readable names, no full bios. All three headshots and bios verified October 13, 2026; recheck the panel lineup before publication.",
+    body: `Where could your life sciences career take you next?
 
-At BioHubNet's 2026 Annual Symposium, explore career paths across the life sciences ecosystem through the Expanding Career Horizons panel. Then choose between Structured Networking with Industry Professionals and the Interactive Discussion Session.
+Join BioHubNet's 2026 Annual Symposium for Panel 2: Expanding Career Horizons - Discovering Hidden Career Opportunities.
 
-Meet people working across research, industry and innovation, and discover perspectives beyond your own lab or role.
+Hear perspectives from:
+@Angela Davoud, Co-founder & CGO, PeakR&D
+@Jasmine Hamilton, Senior Advisor, Health Emergency Readiness Canada
+@Sven Ansorge, Director, Technical Training and Innovation, CASTL
+
+Explore possibilities beyond familiar career paths, bring your questions and connect with people across research, industry and innovation. Stay for the afternoon networking and discussion sessions.
 
 October 29, 2026 | Chelsea Hotel, Toronto
+Panel 2: 1:30-2:15 p.m. ET
 
-See the program and register:
+Discover the program and register:
 https://biohubnet.ca/2026-annual-symposium/
 
 #BioHubNet #LifeSciences #CareerDevelopment #Networking`,

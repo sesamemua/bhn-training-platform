@@ -90,7 +90,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       approvedAt: r.approvedAt?.toISOString() ?? null,
       approvedByName: r.approvedBy?.name ?? null,
       cycleLabel: r.stream === "events"
-        ? (r.assetSpec as { title?: string } | null)?.title ?? "Event"
+        ? campaign?.title ?? (r.assetSpec as { title?: string } | null)?.title ?? "Event"
         : speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
       daysBefore: r.daysBefore,
       body: r.body,

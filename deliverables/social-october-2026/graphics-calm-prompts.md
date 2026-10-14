@@ -17,8 +17,19 @@ Official logo input: `/Users/ruilinyuan/Desktop/Work Files/Assets/LOGO/biohubnet
 - `innovation-pitch-v2`: Replace the prominent helix with an illustrative, lightly desaturated pitch-competition photograph: a trainee founder presenting with a handheld microphone in a bright university conference room, a small attentive audience in neutral clothing, no invented readable slides or logos. Spacious white upper portion, faint teal glass at the edge. Exact text: "TRAINING WEEK 2026", "Innovation Ignited", "October 28 | Toronto", "Register now".
 - `ai-calm-v1`: Edit the new keynote template; remove the portrait and keynote-specific text. Exact text: "2026 Annual", "Symposium", "AI in the", "workplace", "October 29 | Toronto", "Register now". No portraits or decorative objects.
 - `careers-calm-v1`: Edit the new keynote template; remove the portrait and keynote-specific text. Exact text: "2026 Annual", "Symposium", "Careers &", "connections", "October 29 | Toronto", "Register now". No portraits or decorative objects.
+- `panel-2-careers-v1`: Composite the calm careers template, exact official BioHubNet logo, and submitted portraits of Angela Davoud, Jasmine Hamilton and Sven Ansorge. Preserve each likeness, hair, skin, expression, glasses and clothing. Three equal small portraits, readable names and organization labels, white/charcoal/teal, deeply defocused glass at the right edge, generous gaps and margins. Exact text: "2026 Annual", "Symposium", "PANEL 2", "Expanding Career", "Horizons", "Angela Davoud", "PeakR&D", "Jasmine Hamilton", "Health Emergency", "Readiness Canada", "Sven Ansorge", "CASTL", "October 29 | Toronto", "Register now". No full biographies or invented company logos. Replaces the October 22 graphic, not an additional posting slot.
 - `week-ahead-calm-v1`: Edit the new keynote template; remove the portrait and keynote-specific text. Two clearly separated, unframed date groups. Exact text: "Training Week 2026", "October 26-28", "2026 Annual Symposium", "October 29", "Toronto", "Explore the week".
 
 ## Publication Notes
 
 The Innovation Ignited picture is AI-generated promotional illustration, not documentation of an actual event. The October 26-29 coverage drafts still require real, permission-cleared event photos. Recheck workshop availability before publishing any seat-request promotion. Every post remains a draft for human review.
+
+## Panel Readiness Check
+
+Checked the official symposium program, public people feed revision 34, and raw headshot/biography submissions on October 13, 2026 (Toronto time).
+
+- Panel 1: Morgan Cramm and Mona Abu Nameh have photos and bios. Dimitrije Jankovic has neither; no complete-panel portrait graphic prepared.
+- Panel 2: Angela Davoud, Jasmine Hamilton and Sven Ansorge all have photos and bios. Complete-panel highlight prepared for October 22.
+- Panel 3: Geoff Evans and Christopher Procyshyn have photos and bios. Yannick Dupe has neither; no complete-panel portrait graphic prepared.
+
+Sources: https://biohubnet.ca/2026-annual-symposium/ and https://bhn-training-platform.vercel.app/api/public/events/2026-annual-symposium/people. This is a point-in-time check, not automatic social-post generation. Company names are verified; unverified company logos were not invented. Human approval remains required before sharing.

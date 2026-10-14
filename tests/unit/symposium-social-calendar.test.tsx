@@ -39,6 +39,20 @@ test("each event day has a real-photo brief with permission and a factual review
   assert.match(photos[1].photoBrief!, /CCRM host clearance/);
 });
 
+test("the career slot highlights the complete Panel 2 without creating extra speaker posts", () => {
+  const panel = SYMPOSIUM_CAMPAIGN_PLAN.find((post) => post.slug === "symposium-2026-careers-connections-oct22")!;
+  assert.match(panel.title, /Panel 2: Expanding Career Horizons/);
+  assert.equal(panel.suggestedDate, "2026-10-22T13:00:00Z");
+  for (const name of ["Angela Davoud", "Jasmine Hamilton", "Sven Ansorge"]) {
+    assert.ok(panel.body.includes(`@${name}`));
+    assert.ok(panel.graphicBrief.includes(name));
+  }
+  assert.match(panel.body, /1:30-2:15 p\.m\. ET/);
+  assert.match(panel.body, /register:/);
+  assert.doesNotMatch(panel.body, /Dimitrije Jankovic|Yannick Dupe/);
+  assert.ok(panel.body.length < 1100, "promote attendance, not full biographies");
+});
+
 const example: QueuePost = {
   id: "campaign-1", stream: "events", kind: "event", status: "draft", cycleLabel: "Day 1 in pictures",
   daysBefore: 0, body: "Photo caption draft.", editVersion: 0, trackChanges: true,
@@ -112,6 +126,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   assert.equal(creations, 0);
   authorized = true;
   const html = renderToStaticMarkup(await render());
+  assert.ok(html.includes(SYMPOSIUM_CAMPAIGN_PLAN[0].title), "known campaign titles must update without overwriting saved drafts");
   assert.match(html, /A colleague&#x27;s edited keynote post/);
   assert.match(html, /src="https:\/\/images.example\/chris.png"/);
   assert.match(html, /Awaiting event photos/);
