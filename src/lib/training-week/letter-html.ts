@@ -45,7 +45,7 @@ export function letterHtml(text: string, buttons: LetterButton[] = [], after?: (
   const button = (b: { url: string; label: string; tone?: "quiet" | "primary" }) =>
     `<div style="margin:6px 0 0"><a href="${esc(b.url)}" style="display:inline-block;text-decoration:none;${BUTTON[b.tone ?? "quiet"]}">${esc(b.label)}</a></div>`;
   /** One session's row: its name and time, and — if the letter gives one — its own button underneath. */
-  const session = (raw: string, t: (typeof TONES)[keyof typeof TONES], own: LetterButton[]) => {
+  const session = (raw: string, t: (typeof TONES)[keyof typeof TONES], own: LetterButton[], details: string[] = []) => {
     const body = raw.replace(/^\s*•\s+/, "");
     // The name may itself hold a dash ("Discovery to Delivery — CCRM"): the when is after the LAST one.
     const cut = body.lastIndexOf(" — ");
@@ -55,6 +55,8 @@ export function letterHtml(text: string, buttons: LetterButton[] = [], after?: (
       // Tall rows, so one session's button is nowhere near the next one's.
       `<div style="margin:12px 0 0;padding:14px 0 ${own.length ? 6 : 2}px;border-top:1px solid ${t.line}">` +
       `<strong style="color:#0f172a">${esc(name)}</strong>${when ? `<br><span style="font-size:14px;color:#475569">${esc(when)}</span>` : ""}` +
+      // Lines under a session (its room and address) belong to its row.
+      details.map((d) => `<br><span style="font-size:14px;color:#475569">${esc(d.trim())}</span>`).join("") +
       own.map((b) => `<div style="margin:12px 0 0"><a href="${esc(b.url)}" style="display:inline-block;text-decoration:none;${BUTTON[b.tone ?? "quiet"]}">${esc(b.label)}</a></div>`).join("") +
       `</div>`
     );
@@ -67,16 +69,17 @@ export function letterHtml(text: string, buttons: LetterButton[] = [], after?: (
       // Lines before the first session introduce the box; a button line after a session belongs to it.
       const firstBullet = lines.findIndex(isBullet);
       const heading = lines.slice(0, firstBullet).join(" ");
-      const rows: { line: string; own: LetterButton[] }[] = [];
+      const rows: { line: string; own: LetterButton[]; details: string[] }[] = [];
       for (const l of lines.slice(firstBullet)) {
-        if (isBullet(l)) rows.push({ line: l, own: [] });
-        else { const b = buttonOf(l); if (b && rows.length) rows[rows.length - 1].own.push(b); }
+        if (isBullet(l)) { rows.push({ line: l, own: [], details: [] }); continue; }
+        const b = buttonOf(l);
+        if (rows.length) { if (b) rows[rows.length - 1].own.push(b); else if (l.trim()) rows[rows.length - 1].details.push(l); }
       }
       const t = TONES[toneOf(heading)];
       return (
         `<div style="${BOX};background:${t.bg};border:1px solid ${t.line};border-left:4px solid ${t.bar}">` +
         (heading.trim() ? `<div style="font-weight:700;color:${t.head}">${esc(heading.trim())}</div>` : "") +
-        rows.map((r) => session(r.line, t, r.own)).join("") + `</div>`
+        rows.map((r) => session(r.line, t, r.own, r.details)).join("") + `</div>`
       );
     }
     if (lines.some((l) => buttonOf(l))) {

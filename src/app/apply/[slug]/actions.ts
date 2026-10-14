@@ -23,6 +23,8 @@ import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
 import { checkEligibility } from "@/lib/eligibility/check";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
+import { INNOVATION_IGNITED_SLUG } from "@/lib/formbuilder/innovation-ignited";
+import { confirmInnovationRegistration } from "@/lib/training-week/innovation-confirmation";
 import { backupRegistration } from "@/lib/events/registration-backup";
 import { makeSeats } from "@/lib/formbuilder/seats";
 import { since, tooMany } from "@/lib/formbuilder/throttle";
@@ -137,6 +139,9 @@ export async function submitPublicForm(
    */
   await backupRegistration(row.id);
 
-  const receipt = await sendAcknowledgement(doc, verdict.clean, { to: email });
+  // Innovation Ignited approves on registration: its confirmation is the letter.
+  const receipt = form.slug === INNOVATION_IGNITED_SLUG
+    ? await confirmInnovationRegistration(row.id, verdict.clean as Record<string, unknown>, email)
+    : await sendAcknowledgement(doc, verdict.clean, { to: email });
   return { ok: true, receipt };
 }

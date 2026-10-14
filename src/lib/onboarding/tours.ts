@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24a";
+export const TOUR_VERSION = "2026.10.24b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "registration.innovation-auto-approve",
+    title: "Innovation Ignited confirms on registration",
+    body: "Registering through the Innovation Ignited link now gives a confirmed seat right away and a confirmation email with the room, address, a withdraw button and their dietary answers. Earlier registrations through the link are left pending.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.24b",
+  },
   {
     id: "registration.innovation-ignited",
     title: "Innovation Ignited has its own registration",

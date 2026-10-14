@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Innovation Ignited: approved on registration, with its own confirmation email",
+    body: "Anyone registering through the **Innovation Ignited** link (/apply/innovation-ignited-2026) now gets a **confirmed seat straight away** \u2014 or the waitlist if all seats are taken \u2014 and a confirmation email of its own instead of the generic \u201cwe have your registration\u201d letter. It is addressed by name and gives the date, time, room and address (Rm B250, Leslie L. Dan Pharmacy Building, 144 College St), an **I can\u2019t make it \u2014 withdraw** button and a calendar file, and plays back the **dietary needs and allergies** they gave on the form so they can reply with a correction.\n\nThe five people who registered through this link before today are unchanged: still pending, nothing sent.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Dashboard: the Symposium count no longer goes blank",
     body: "The **Annual Symposium registration** card could show **\u2014** instead of a number for several minutes \u2014 one slow reply from Luma was being remembered as if it were the answer, and Refresh could not get past it. A failed read is now retried within twenty seconds, and the card keeps showing the **last number it had** in the meantime.\n\nThe **awaiting approval** figure is separate: it needs a Luma host sign-in stored in the platform\u2019s settings, and shows \u2014 when that sign-in is missing or has expired.",
     kind: "fix",
