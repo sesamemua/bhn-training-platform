@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registration thank-you screen: no more \u201ctwo to three weeks\u201d",
+    body: "The screen people see after registering no longer promises an answer **within two to three weeks**. It now says: *We will review your registration and send you additional information as soon as possible.* On the **Innovation Ignited** page, which confirms on registration, it says the confirmation with the time and place is on its way to their email.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Innovation Ignited: approved on registration, with its own confirmation email",
     body: "Anyone registering through the **Innovation Ignited** link (/apply/innovation-ignited-2026) now gets a **confirmed seat straight away** \u2014 or the waitlist if all seats are taken \u2014 and a confirmation email of its own instead of the generic \u201cwe have your registration\u201d letter. It is addressed by name and gives the date, time, room and address (Rm B250, Leslie L. Dan Pharmacy Building, 144 College St), an **I can\u2019t make it \u2014 withdraw** button and a calendar file, and plays back the **dietary needs and allergies** they gave on the form so they can reply with a correction.\n\nThe five people who registered through this link before today are unchanged: still pending, nothing sent.",
     kind: "feature",

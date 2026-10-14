@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24b";
+export const TOUR_VERSION = "2026.10.24c";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "registration.thank-you-wording",
+    title: "The thank-you screen, updated",
+    body: "After registering, people now read “We will review your registration and send you additional information as soon as possible” instead of the old two-to-three-weeks promise.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24c",
+  },
   {
     id: "registration.innovation-auto-approve",
     title: "Innovation Ignited confirms on registration",

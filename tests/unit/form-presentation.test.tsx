@@ -543,7 +543,7 @@ test("the combined-list notice does not disclose an individual program or refuse
 /* ── the thank-you screen's timeline ─────────────────────────────── */
 
 test("confirmationNote: the thank-you screen gives the form's own timeline, and only a form with one", () => {
-  const DEFAULT = /We will come back to you within two to three weeks\./;
+  const DEFAULT = /We will review your registration and send you additional information as soon as possible\./;
   const note =
     "The BioHubNet team will email you with seat offers during the **last week of September**.\nQuestions? Visit [biohubnet.ca](https://biohubnet.ca).";
   const receipt = (doc: BuiltForm, mode: "preview" | "test" | "live") =>
@@ -553,7 +553,7 @@ test("confirmationNote: the thank-you screen gives the form's own timeline, and 
     for (const mode of ["preview", "live"] as const) {
       assert.match(receipt(V1, mode), DEFAULT);
       const html = receipt(doc, mode);
-      assert.doesNotMatch(html, /two to three weeks|after three weeks/);
+      assert.doesNotMatch(html, /two to three weeks|after three weeks|as soon as possible/);
       assert.match(
         html,
         /<div class="mt-4 rounded-xl border border-line bg-card p-4"><p class="text-\[13px\] leading-relaxed text-fg"><span class="block">[\s\S]*?<strong class="font-semibold text-fg">last week of September<\/strong>/,

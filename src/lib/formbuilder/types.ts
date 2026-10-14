@@ -299,7 +299,7 @@ export const PresentationSchema = z.object({
   hideWaitingHint: z.boolean().optional(),
   /**
    * What the thank-you screen says happens next, in RichText syntax.
-   * Replaces the default "within two to three weeks" paragraph, which a
+   * Replaces the default "we will review your registration" line, which a
    * form that promises a date in its intro must not contradict a screen
    * later.
    */

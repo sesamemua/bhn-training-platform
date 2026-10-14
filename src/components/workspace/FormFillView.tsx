@@ -1313,13 +1313,11 @@ export function Confirmation({
                   // the last week of September and "two to three weeks" one
                   // screen later cannot both be true.
                   <RichText text={look.confirmationNote} />
+                ) : look?.session ? (
+                  // A form that IS one session (Innovation Ignited) confirms on registration.
+                  <>Your confirmation, with the time and place, is on its way to your email.</>
                 ) : (
-                  <>
-                    <strong>We will come back to you within two to three weeks.</strong> Places are limited
-                    and every registration is reviewed together rather than as it arrives, so it takes that
-                    long. We will write to you either way — whether or not we can offer you a place. If you
-                    have not heard after three weeks, reply to the email and we will chase it.
-                  </>
+                  <>We will review your registration and send you additional information as soon as possible.</>
                 )}
               </p>
             </div>
