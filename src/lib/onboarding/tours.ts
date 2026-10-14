@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24c";
+export const TOUR_VERSION = "2026.10.24d";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "registrants.innovation-rows-open",
+    title: "Innovation Ignited registrants open in full",
+    body: "Under Registrants, people from the Innovation Ignited page now open to their full registration and can be deleted like any other.",
+    path: "/admin/workspace/training-admin",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Registrants", href: "/admin/workspace/training-admin?tab=registrants" },
+    since: "2026.10.24d",
+  },
   {
     id: "registration.thank-you-wording",
     title: "The thank-you screen, updated",

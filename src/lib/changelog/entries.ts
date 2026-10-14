@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Registrants: people from the Innovation Ignited page open like everyone else",
+    body: "Under **Registrants**, people who registered through the **Innovation Ignited** page now open to their full registration \u2014 answers, seat, history, communications \u2014 and can be **deleted** with the same protected switch as any other registration. Their form shows as *Innovation Ignited page*.",
+    kind: "fix",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Registration thank-you screen: no more \u201ctwo to three weeks\u201d",
     body: "The screen people see after registering no longer promises an answer **within two to three weeks**. It now says: *We will review your registration and send you additional information as soon as possible.* On the **Innovation Ignited** page, which confirms on registration, it says the confirmation with the time and place is on its way to their email.",
     kind: "improvement",

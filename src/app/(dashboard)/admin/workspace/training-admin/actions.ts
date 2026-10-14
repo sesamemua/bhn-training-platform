@@ -23,6 +23,7 @@ import {
   type Audience, type EmailPlan, type SubmissionRow, type TemplateBundle, type WorkshopInput,
 } from "@/lib/allocation/admin-types";
 import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_WHERE } from "@/lib/allocation/symposium-2026";
+import { INNOVATION_IGNITED_SLUG } from "@/lib/formbuilder/innovation-ignited";
 import { INTERNAL_KEY, InternalPersonSchema, isInternal, parseInternal, type InternalPerson } from "@/lib/training-week/internal";
 import { loadInternalSet } from "@/lib/training-week/internal-server";
 import { HIGHLIGHTS_KEY, highlightProblem, highlightsOf, type Highlight } from "@/lib/allocation/highlights";
@@ -692,10 +693,12 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
   // that shows only one of them is half a queue. By version root, not a
   // fixed list: seats are made from whatever form was submitted, so a
   // v3 made with Duplicate books seats and has to show up here too.
+  // And the Innovation Ignited page, whose registrations book seats in the
+  // same week: without it those people had no detail view, so no delete.
   const forms = (await prisma.eventForm.findMany({
-    where: REGISTRATION_FORM_WHERE,
+    where: { OR: [REGISTRATION_FORM_WHERE, { slug: INNOVATION_IGNITED_SLUG }] },
     select: { id: true, slug: true, fields: true },
-  })).filter((f) => versionRoot(f.slug) === REGISTRATION_FORM_SLUG);
+  })).filter((f) => versionRoot(f.slug) === REGISTRATION_FORM_SLUG || f.slug === INNOVATION_IGNITED_SLUG);
   if (forms.length === 0) return [];
 
   /*
@@ -707,7 +710,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
    */
   const byForm = new Map(forms.map((f) => [f.id, {
     doc: parseForm(f.fields),
-    form: versionLabel(f.slug),
+    form: f.slug === INNOVATION_IGNITED_SLUG ? "Innovation Ignited page" : versionLabel(f.slug),
   }]));
 
   const rows = await prisma.eventFormSubmission.findMany({
