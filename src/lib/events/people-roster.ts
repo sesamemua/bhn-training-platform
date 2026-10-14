@@ -12,7 +12,7 @@ const aliases: Record<string, string> = {
 function comparable(p: PlanPerson) {
   const raw = identityText(p.organization);
   const company = aliases[raw] ?? raw.replace(/ (inc|incorporated|canada)$/, "");
-  return { ...p, organization: aliases[company] ?? company };
+  return { ...p, organization: (aliases[company] ?? company).replace(/\s+/g, "") };
 }
 
 /** Reconcile live sources without overwriting edits, assignments or archived records. */

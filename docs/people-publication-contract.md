@@ -1,4 +1,4 @@
-# Approved symposium people feed v1
+# Symposium people feed v1
 
 Implementation route: GET /api/public/events/2026-annual-symposium/people
 Production URL (available only after the platform deployment):
@@ -36,6 +36,9 @@ The roster admin endpoint is private and is NOT this feed.
 - Placement IDs are `personId:sessionId`; order is a nonnegative integer.
 - Titles/times/anchors/styles remain website-owned. Unknown session IDs must not be silently substituted.
 - All profile text is plain text. Render with textContent, never innerHTML. Structured links are separately approved HTTPS links; do not infer links inside bios.
+- Submitted headshots, bios, names, roles and organizations automatically update people already published on the website when the roster identifies exactly one matching person. Company punctuation/spacing variants are tolerated. Existing session placements and structured links remain unchanged; unknown, ambiguous, archived or explicitly unlinked submissions are not automatically published.
+- The public intake attempts synchronization after saving. Feed reads retry pending synchronization and backfill existing submissions. Copied headshots and snapshot updates must succeed before the public revision advances; concurrent administrator changes cannot be overwritten.
+- The private sourceSubmissionId marks a synchronized submission and never appears in this public feed.
 - photoUrl and linkedinUrl are nullable. Images are copied to content-addressed publication assets before approval, outside mutable speaker-upload paths.
 - approvedRevision is the global publication revision when that person's snapshot was last approved.
 - revision is a monotonically increasing global safe integer, advancing on approval, unpublish and initial activation. Draft saves do not change it.

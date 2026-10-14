@@ -23,6 +23,8 @@ import { MAX_PHOTO_BYTES, ALLOWED_PHOTO_TYPES, photoExtFor } from "@/lib/showcas
 import { countWords } from "@/lib/events/bio";
 import { speakerFields } from "@/lib/events/fields";
 import { speakerLimits, maxCharsFor } from "@/lib/events/limits";
+import { PUBLICATION_EVENT } from "@/lib/events/people-publication";
+import { syncPublishedSpeakerSubmissions } from "@/lib/events/speaker-auto-publication";
 import { sendMail, mailConfigured } from "@/lib/mail";
 import {
   speakerSubmissionEmail,
@@ -233,6 +235,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     console.error("[speaker-intake] DB insert failed:", err);
     await deleteR2ObjectByUrl(photoKey).catch(() => {});
     return NextResponse.json({ error: "Couldn't save your details. Try again." }, { status: 500 });
+  }
+
+  if (slug === PUBLICATION_EVENT) {
+    await syncPublishedSpeakerSubmissions()
+      .catch((error) => console.error("[speaker-intake] website sync pending:", error));
   }
 
   /*

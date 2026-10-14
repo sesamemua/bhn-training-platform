@@ -30,6 +30,15 @@ test("known company aliases match, conflicting emails and namesakes do not", () 
   assert.equal(buildPeopleRoster([{ ...person, email: "a@example.org" }], [], [{ ...speaker, contactEmail: "b@example.org" }]).length, 2);
   assert.equal(buildPeopleRoster([person], [], [{ ...speaker, organization: "Other company" }]).length, 2);
 });
+test("company spacing variants attach the submission to the existing person", () => {
+  const existing = { ...person, fullName: "Angela Davoud", organization: "Peak R&D", session: "networking" as const };
+  const submitted = { ...speaker, fullName: "Angela Davoud", organization: "PeakR&D" };
+  const people = buildPeopleRoster([existing], [], [submitted]);
+  assert.equal(people.length, 1);
+  assert.equal(people[0].id, existing.id);
+  assert.equal(people[0].session, "networking");
+  assert.equal(matchPlanPeople(people, [submitted]).get(existing.id)?.speaker?.id, submitted.id);
+});
 test("archived records, custom tags, edits and assignments survive source refresh", () => {
   const saved: PlanPerson = { ...person, archived: true, tags: ["Moderator"], session: "discussion", speakerIds: ["s"] };
   const people = buildPeopleRoster([saved], [], [{ ...speaker, fullName: "Updated Name" }]);

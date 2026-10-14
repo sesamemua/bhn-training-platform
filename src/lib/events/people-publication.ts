@@ -28,7 +28,10 @@ export const PublicProfileInput = z.object({
 export type PublicProfileInput = z.infer<typeof PublicProfileInput>;
 const PersonId = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/);
 export const PublicationDraft = z.object({ id: PersonId, profile: PublicProfileInput });
-export const ApprovedPerson = PublicationDraft.extend({ approvedRevision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) });
+export const ApprovedPerson = PublicationDraft.extend({
+  approvedRevision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  sourceSubmissionId: z.string().min(1).max(100).optional(),
+});
 export const PublicationStateSchema = z.object({
   initialized: z.boolean(),
   revision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
