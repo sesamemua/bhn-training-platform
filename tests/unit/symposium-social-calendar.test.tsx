@@ -9,6 +9,7 @@ import { SYMPOSIUM_CAMPAIGN_PLAN } from "../../src/lib/social/symposium-campaign
 import { withSocialTags, SOCIAL_MENTIONS } from "../../src/lib/social/tags";
 import { CRS_EVENT_POST } from "../../src/lib/social/events";
 import { SocialQueue, type QueuePost } from "../../src/components/workspace/SocialQueue";
+import { DEFAULT_SOCIAL_ORDER } from "../../src/lib/social/order";
 
 test("campaign covers every weekday through the symposium, without individual speaker spotlights except Chris", () => {
   const dates = SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.suggestedDate.slice(0, 10));
@@ -118,6 +119,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
     "@/lib/social/events": { CRS_EVENT_POST },
     "@/lib/social/symposium-campaign": { SYMPOSIUM_CAMPAIGN_PLAN },
     "@/lib/social/tags": { withSocialTags },
+    "@/lib/social/order-store": { loadSocialOrder: async () => ({ order: DEFAULT_SOCIAL_ORDER, version: null }) },
   };
   const exports: { default?: (props: unknown) => Promise<React.ReactNode> } = {};
   new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), exports);

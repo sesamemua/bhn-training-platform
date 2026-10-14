@@ -12,7 +12,7 @@
  * in the UI would be the worst of both.
  */
 import { useCallback, useState } from "react";
-import { Check, Copy, Clock, Download, RefreshCw, X, Link as LinkIcon, ArrowLeft, Image as ImageIcon } from "lucide-react";
+import { Check, Copy, Clock, Download, RefreshCw, X, Link as LinkIcon, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { LogoMark } from "@/components/ui/Logo";
 import { useInputDialog } from "@/components/ui/InputDialog";
@@ -20,6 +20,7 @@ import { SocialPostEditor } from "./SocialPostEditor";
 import type { SavedSocialText } from "@/lib/social/edit-history";
 import { withSocialTags } from "@/lib/social/tags";
 import { cn } from "@/lib/utils";
+import { DEFAULT_SOCIAL_ORDER, moveSocialPost, sortSocialPosts, type SocialOrder } from "@/lib/social/order";
 
 export interface QueuePost {
   id: string;
@@ -38,6 +39,7 @@ export interface QueuePost {
   companyLogoUrl: string | null;
   assetSpec: unknown;
   campaign?: boolean;
+  campaignSlug?: string;
   requiresPhoto?: boolean;
   visualBrief?: string;
   publicationNote?: string;
@@ -80,8 +82,9 @@ export async function approveSeries(posts: QueuePost[], approve: (id: string) =>
   return approved;
 }
 
-export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMode = false, seriesReview = false }: {
+export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_ORDER, version: null }, initialGroup = "symposium_2026", reviewMode = false, seriesReview = false }: {
   initial: QueuePost[];
+  initialOrder?: SocialOrder | null;
   initialGroup?: "symposium_2026" | "venture_connect" | "events";
   reviewMode?: boolean;
   seriesReview?: boolean;
@@ -93,6 +96,9 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
   const [copied, setCopied] = useState<string | null>(null);
   const [selected, setSelected] = useState(() => initial.filter(canApproveInSeries).map((post) => post.id));
   const [seriesBusy, setSeriesBusy] = useState(false);
+  const [layout, setLayout] = useState(initialOrder ?? { order: DEFAULT_SOCIAL_ORDER, version: null });
+  const [orderUnavailable, setOrderUnavailable] = useState(initialOrder === null);
+  const [orderBusy, setOrderBusy] = useState(false);
   const { inputDialog, node: inputNode } = useInputDialog();
   const [drafts, setDrafts] = useState<Record<string, { body: string; pending: boolean }>>({});
   const onSaved = useCallback((saved: SavedSocialText) => {
@@ -208,11 +214,38 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
   }
 
   const active = posts.filter((post) => !["published", "skipped"].includes(post.status));
-  const visible = seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : active.filter((post) => postGroup(post) === group);
-  const campaignPosts = posts.filter((post) => post.campaign)
-    .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+  const visible = sortSocialPosts(seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : active.filter((post) => postGroup(post) === group), layout.order);
+  const campaignPosts = sortSocialPosts(posts.filter((post) => post.campaign), layout.order);
   const ready = visible.filter(canApproveInSeries);
   const chosen = ready.filter((post) => selected.includes(post.id));
+
+  async function movePost(post: QueuePost, direction: -1 | 1, scope: QueuePost[]) {
+    if (!post.campaignSlug || orderBusy || orderUnavailable || hasUnsavedChanges || seriesBusy || busy) return;
+    const order = moveSocialPost(layout.order, post.campaignSlug, direction, scope.flatMap((item) => item.campaignSlug ? [item.campaignSlug] : []));
+    setOrderBusy(true);
+    setNote(null);
+    try {
+      const response = await fetch("/api/admin/social/order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order, version: layout.version }) });
+      const result = await response.json() as { layout?: SocialOrder; error?: string };
+      if (response.status === 409 && result.layout) {
+        setLayout(result.layout);
+        setNote("Another admin changed the order. The latest order is loaded; try your move again.");
+      } else if (!response.ok || !result.layout) throw new Error(result.error ?? "Couldn't save the post order.");
+      else { setLayout(result.layout); setNote("Post order saved for all admins."); }
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : "Couldn't save the post order.");
+      setOrderUnavailable(true);
+    } finally { setOrderBusy(false); }
+  }
+
+  function orderControls(post: QueuePost, scope: QueuePost[]) {
+    const index = scope.findIndex((item) => item.id === post.id);
+    const disabled = orderBusy || orderUnavailable || hasUnsavedChanges || seriesBusy || !!busy || !post.campaignSlug;
+    return <span className="inline-flex shrink-0 gap-1">
+      <button type="button" aria-label={`Move ${post.cycleLabel} up`} title="Move up" disabled={disabled || index === 0} onClick={() => void movePost(post, -1, scope)} className="inline-flex size-8 items-center justify-center rounded-md border border-line text-brand-700 hover:bg-brand-50 disabled:opacity-30"><ArrowUp size={16} /></button>
+      <button type="button" aria-label={`Move ${post.cycleLabel} down`} title="Move down" disabled={disabled || index === scope.length - 1} onClick={() => void movePost(post, 1, scope)} className="inline-flex size-8 items-center justify-center rounded-md border border-line text-brand-700 hover:bg-brand-50 disabled:opacity-30"><ArrowDown size={16} /></button>
+    </span>;
+  }
 
   async function approveSelected() {
     if (seriesBusy || busy || hasUnsavedChanges || !chosen.length) return;
@@ -278,11 +311,12 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
           <table className="w-full text-left text-[13px]">
             <caption className="sr-only">Weekday campaign plan through the symposium</caption>
             <thead className="bg-elevated text-muted">
-              <tr><th scope="col" className="px-3 py-2">Planned</th><th scope="col" className="px-3 py-2">Post</th><th scope="col" className="px-3 py-2">Image</th><th scope="col" className="px-3 py-2">Status</th></tr>
+              <tr><th scope="col" className="px-3 py-2">Order</th><th scope="col" className="px-3 py-2">Planned</th><th scope="col" className="px-3 py-2">Post</th><th scope="col" className="px-3 py-2">Image</th><th scope="col" className="px-3 py-2">Status</th></tr>
             </thead>
             <tbody>
               {campaignPosts.map((post) => (
                 <tr key={post.id} className="border-t border-line align-top">
+                  <td className="px-3 py-2">{orderControls(post, campaignPosts)}</td>
                   <th scope="row" className="whitespace-nowrap px-3 py-2 font-medium text-fg">
                     <time dateTime={post.scheduledFor}>{new Date(post.scheduledFor).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Toronto" })}</time>
                     <span className="block text-[12px] font-normal text-muted">{new Date(post.scheduledFor).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" })}</span>
@@ -308,6 +342,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
         <button type="button" disabled={seriesBusy || !!busy || hasUnsavedChanges || !chosen.length} onClick={() => void approveSelected()} className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-40"><Check size={16} />{seriesBusy ? "Approving..." : `Approve selected (${chosen.length})`}</button>
       </div>}
       {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
+      {orderUnavailable && (group === "symposium_2026" || seriesReview) && <p role="status" className="text-[13px] text-amber-700">Shared post order is unavailable. Refresh before moving posts.</p>}
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
           {group === "events"
@@ -317,7 +352,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
             : "No VentureConnect drafts yet. They appear when a cycle opens."}
         </p>
       )}
-      <fieldset disabled={seriesBusy} className="min-w-0 space-y-4 border-0 p-0">
+      <fieldset disabled={seriesBusy || orderBusy} className="min-w-0 space-y-4 border-0 p-0">
       <legend className="sr-only">{seriesReview ? "Series posts" : "Social posts"}</legend>
       {visible.map((p) => (
         <section key={p.id} className="mx-auto w-full max-w-[555px] space-y-2">
@@ -329,6 +364,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
             {!canApproveInSeries(p) && p.status === "draft" && <span className="text-xs font-semibold text-muted">{!p.assetUrl ? p.requiresPhoto ? "Awaiting event photos" : "Graphic needed" : "Changes need review"}</span>}
           </div>}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-1 py-1">
+            {p.campaign && !reviewMode && orderControls(p, visible.filter((post) => post.campaign))}
             <span className="text-[12px] font-bold text-muted">
               {KIND_LABEL[p.kind] ?? p.kind}
               {p.kind === "reminder" && (

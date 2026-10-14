@@ -21,6 +21,7 @@ import { SYMPOSIUM_SOCIAL_STREAM } from "@/lib/social/speakers";
 import { CRS_EVENT_POST } from "@/lib/social/events";
 import { SYMPOSIUM_CAMPAIGN_PLAN } from "@/lib/social/symposium-campaign";
 import { withSocialTags } from "@/lib/social/tags";
+import { loadSocialOrder } from "@/lib/social/order-store";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   const seriesReview = series === "symposium_2026";
   if (postId !== undefined && (!postId || typeof postId !== "string")) notFound();
   if (series !== undefined && (!seriesReview || postId !== undefined)) notFound();
+  const socialOrder = await loadSocialOrder().catch(() => null);
   // Create once; revisiting the page must never overwrite someone's draft or graphic.
   const campaignByKey = new Map(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => [`events:event:${post.slug}:0`, post]));
   await prisma.socialPost.createMany({ data: [CRS_EVENT_POST, ...SYMPOSIUM_CAMPAIGN_PLAN.map((post) => ({
@@ -103,6 +105,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       companyLogoUrl: logoOverride(r.assetSpec) ?? (speaker?.organization ? companyLogos.get(speaker.organization) ?? null : null),
       assetSpec: r.assetSpec,
       campaign: !!campaign,
+      campaignSlug: campaign?.slug,
       requiresPhoto: !!campaign?.photoBrief,
       visualBrief: campaign?.photoBrief ?? campaign?.graphicBrief,
       publicationNote: campaign ? campaign.photoBrief
@@ -143,7 +146,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} />
+        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} />
       </div>
     </>
   );
