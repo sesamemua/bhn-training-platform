@@ -24,12 +24,14 @@ import { withSocialTags } from "@/lib/social/tags";
 
 export const dynamic = "force-dynamic";
 
-export default async function SocialPage({ searchParams }: { searchParams: Promise<{ tab?: string; post?: string }> }) {
+export default async function SocialPage({ searchParams }: { searchParams: Promise<{ tab?: string; post?: string; series?: string }> }) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) redirect("/dashboard");
 
-  const { tab, post: postId } = await searchParams;
+  const { tab, post: postId, series } = await searchParams;
+  const seriesReview = series === "symposium_2026";
   if (postId !== undefined && (!postId || typeof postId !== "string")) notFound();
+  if (series !== undefined && (!seriesReview || postId !== undefined)) notFound();
   // Create once; revisiting the page must never overwrite someone's draft or graphic.
   const campaignByKey = new Map(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => [`events:event:${post.slug}:0`, post]));
   await prisma.socialPost.createMany({ data: [CRS_EVENT_POST, ...SYMPOSIUM_CAMPAIGN_PLAN.map((post) => ({
@@ -65,7 +67,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     : []);
 
   const rows = await prisma.socialPost.findMany({
-    where: postId ? { id: postId } : { OR: [
+    where: seriesReview ? { key: { in: [...campaignByKey.keys()] } } : postId ? { id: postId } : { OR: [
       { status: { in: ["draft", "approved", "scheduled"] } },
       { key: { in: [...campaignByKey.keys()] } },
     ] },
@@ -136,12 +138,12 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       <FullWidthWhenCollapsed />
       <PageHero
         eyebrow="Workspace · Marketing"
-        title={postId ? "Post review" : "Social"}
-        description={postId ? undefined : "Draft, review and prepare social posts for events, VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."}
+        title={seriesReview ? "Series review" : postId ? "Post review" : "Social"}
+        description={postId || seriesReview ? undefined : "Draft, review and prepare social posts for events, VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."}
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue key={postId ?? tab ?? "social"} initial={posts} reviewMode={!!postId} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} />
+        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} />
       </div>
     </>
   );

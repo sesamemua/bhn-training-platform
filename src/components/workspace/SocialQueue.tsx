@@ -67,16 +67,32 @@ function postGroup(post: QueuePost) {
   return post.campaign ? "symposium_2026" : post.stream;
 }
 
-export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMode = false }: {
+export function canApproveInSeries(post: QueuePost): boolean {
+  return post.campaign === true && post.status === "draft" && !!post.assetUrl && !post.stale;
+}
+
+export async function approveSeries(posts: QueuePost[], approve: (id: string) => Promise<boolean>): Promise<number> {
+  let approved = 0;
+  for (const post of posts.filter(canApproveInSeries)) {
+    if (!await approve(post.id)) break;
+    approved++;
+  }
+  return approved;
+}
+
+export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMode = false, seriesReview = false }: {
   initial: QueuePost[];
   initialGroup?: "symposium_2026" | "venture_connect" | "events";
   reviewMode?: boolean;
+  seriesReview?: boolean;
 }) {
   const [posts, setPosts] = useState(initial);
   const [group, setGroup] = useState(initialGroup);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [selected, setSelected] = useState(() => initial.filter(canApproveInSeries).map((post) => post.id));
+  const [seriesBusy, setSeriesBusy] = useState(false);
   const { inputDialog, node: inputNode } = useInputDialog();
   const [drafts, setDrafts] = useState<Record<string, { body: string; pending: boolean }>>({});
   const onSaved = useCallback((saved: SavedSocialText) => {
@@ -192,17 +208,37 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
   }
 
   const active = posts.filter((post) => !["published", "skipped"].includes(post.status));
-  const visible = reviewMode ? posts : active.filter((post) => postGroup(post) === group);
+  const visible = seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : active.filter((post) => postGroup(post) === group);
   const campaignPosts = posts.filter((post) => post.campaign)
     .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+  const ready = visible.filter(canApproveInSeries);
+  const chosen = ready.filter((post) => selected.includes(post.id));
+
+  async function approveSelected() {
+    if (seriesBusy || busy || hasUnsavedChanges || !chosen.length) return;
+    setSeriesBusy(true);
+    try {
+      const approved = await approveSeries(chosen, (id) => act(id, "approve"));
+      const approvedIds = chosen.slice(0, approved).map((post) => post.id);
+      setSelected((all) => all.filter((id) => !approvedIds.includes(id)));
+      setNote((message) => approved === chosen.length
+        ? `${approved} posts approved.`
+        : `${approved} of ${chosen.length} posts approved. Remaining posts need review. ${message ?? ""}`);
+    } finally {
+      setSeriesBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
       {inputNode}
-      {reviewMode ? (
-        <Link href={`/admin/workspace/marketing/social?tab=${encodeURIComponent(posts[0] ? postGroup(posts[0]) : "events")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+      {reviewMode || seriesReview ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href={`/admin/workspace/marketing/social?tab=${encodeURIComponent(seriesReview ? "symposium_2026" : posts[0] ? postGroup(posts[0]) : "events")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
           <ArrowLeft size={16} /> All social posts
         </Link>
+        {!seriesReview && posts[0]?.campaign && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review full series</Link>}
+        </div>
       ) : (<>
       <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
         {([
@@ -229,6 +265,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
       <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
         {group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
       </h2>
+      {group === "symposium_2026" && campaignPosts.length > 0 && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review & approve series</Link>}
       <p className="text-[14px] text-muted">
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
@@ -260,6 +297,16 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
         </div>
       )}
       </>)}
+      {seriesReview && <div className="sticky top-0 z-20 mx-auto flex w-full max-w-[555px] flex-wrap items-center justify-between gap-3 border-y border-line bg-card-solid px-3 py-3">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-fg">{visible.length} posts · {ready.length} ready for approval</p>
+          <label className="flex items-center gap-2 text-sm text-fg">
+            <input type="checkbox" aria-label="Select all ready posts" checked={ready.length > 0 && chosen.length === ready.length} ref={(input) => { if (input) input.indeterminate = chosen.length > 0 && chosen.length < ready.length; }} disabled={seriesBusy || !!busy || hasUnsavedChanges || !ready.length} onChange={(event) => setSelected(event.target.checked ? ready.map((post) => post.id) : [])} className="size-4 accent-emerald-700" />
+            Select all ready posts
+          </label>
+        </div>
+        <button type="button" disabled={seriesBusy || !!busy || hasUnsavedChanges || !chosen.length} onClick={() => void approveSelected()} className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-40"><Check size={16} />{seriesBusy ? "Approving..." : `Approve selected (${chosen.length})`}</button>
+      </div>}
       {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
@@ -270,8 +317,17 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
             : "No VentureConnect drafts yet. They appear when a cycle opens."}
         </p>
       )}
+      <fieldset disabled={seriesBusy} className="min-w-0 space-y-4 border-0 p-0">
+      <legend className="sr-only">{seriesReview ? "Series posts" : "Social posts"}</legend>
       {visible.map((p) => (
         <section key={p.id} className="mx-auto w-full max-w-[555px] space-y-2">
+          {seriesReview && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-1 pt-4">
+            <label className="flex items-center gap-2 text-sm font-semibold text-fg">
+              <input type="checkbox" aria-label={`Select ${p.cycleLabel} for approval`} checked={canApproveInSeries(p) && selected.includes(p.id)} disabled={!canApproveInSeries(p) || !!busy || hasUnsavedChanges} onChange={(event) => setSelected((all) => event.target.checked ? [...all, p.id] : all.filter((id) => id !== p.id))} className="size-4 accent-emerald-700" />
+              {p.cycleLabel}
+            </label>
+            {!canApproveInSeries(p) && p.status === "draft" && <span className="text-xs font-semibold text-muted">{!p.assetUrl ? p.requiresPhoto ? "Awaiting event photos" : "Graphic needed" : "Changes need review"}</span>}
+          </div>}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-1 py-1">
             <span className="text-[12px] font-bold text-muted">
               {KIND_LABEL[p.kind] ?? p.kind}
@@ -281,7 +337,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
                 </span>
               )}
             </span>
-            <span className="text-[14px] font-semibold text-fg">{p.cycleLabel}</span>
+            {!seriesReview && <span className="text-[14px] font-semibold text-fg">{p.cycleLabel}</span>}
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-inset",
@@ -347,7 +403,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
           {p.stream === "events" && p.status !== "published" && p.status !== "skipped" && (
             <div className="flex flex-wrap items-center gap-3 px-1 py-2">
               <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50 focus-within:ring-2 focus-within:ring-brand-500">
-                <ImageIcon size={16} /> {busy === p.id ? "Uploading…" : p.assetUrl ? "Replace graphic" : "Upload graphic"}
+                <ImageIcon size={16} /> {busy === p.id && !seriesBusy ? "Uploading…" : p.assetUrl ? "Replace graphic" : "Upload graphic"}
                 <input
                   type="file"
                   aria-label={`Upload graphic for ${p.cycleLabel}`}
@@ -393,7 +449,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
 
           <footer className="flex flex-col gap-2 px-1 pb-6 pt-1">
             <div className="flex flex-wrap items-center gap-2">
-            {!reviewMode && <Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(p.id)}`} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-brand-700"><LinkIcon size={16} /> Review</Link>}
+            {!reviewMode && !seriesReview && <Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(p.id)}`} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-brand-700"><LinkIcon size={16} /> Review</Link>}
             <button type="button" onClick={() => void copyReviewLink(p.id)} title="Copy review link" aria-label={`Copy review link for ${p.cycleLabel}`} className="inline-flex size-10 items-center justify-center rounded-[6px] border border-line text-brand-700 hover:bg-brand-50"><LinkIcon size={16} /></button>
             <button
               type="button"
@@ -428,7 +484,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
             {p.status === "draft" && (
               <button
                 type="button"
-                disabled={busy === p.id || drafts[p.id]?.pending}
+                disabled={busy === p.id || drafts[p.id]?.pending || (seriesReview && !canApproveInSeries(p))}
                 onClick={() => void act(p.id, "approve")}
                 className="ml-auto inline-flex items-center gap-1.5 rounded-[6px] bg-emerald-700 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-40"
               >
@@ -459,6 +515,7 @@ export function SocialQueue({ initial, initialGroup = "symposium_2026", reviewMo
           </footer>
         </section>
       ))}
+      </fieldset>
     </div>
   );
 }

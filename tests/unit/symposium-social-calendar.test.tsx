@@ -86,13 +86,14 @@ test("calendar groups campaign posts separately from other events and keeps post
 
 test("page creates missing drafts once, preserves edits and graphics, and no longer generates speaker posts", async () => {
   const source = readFileSync("src/app/(dashboard)/admin/workspace/marketing/social/page.tsx", "utf8");
-  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
+  const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const require = createRequire(import.meta.url);
   const existingKey = `events:event:${SYMPOSIUM_CAMPAIGN_PLAN[0].slug}:0`;
   const existing = { id: "chris", key: existingKey, body: "A colleague's edited keynote post", assetUrl: "https://images.example/chris.png" as string | null, status: "approved", stream: "events", kind: "event", deadlineId: SYMPOSIUM_CAMPAIGN_PLAN[0].slug, assetSpec: { title: "Keynote" }, scheduledFor: new Date(SYMPOSIUM_CAMPAIGN_PLAN[0].suggestedDate), updatedAt: new Date(), approvedAt: null, approvedBy: null, editVersion: 4 };
   const saved = new Map<string, typeof existing>([[existingKey, existing]]);
   let authorized = true;
   let creations = 0;
+  let lastWhere: unknown;
   const mocks: Record<string, unknown> = {
     "next/navigation": { redirect: () => { throw new Error("redirect"); }, notFound: () => { throw new Error("not found"); } },
     "@/lib/auth": { requireRole: async () => { if (!authorized) throw new Error("unauthorized"); return { user: { id: "admin" } }; } },
@@ -105,7 +106,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
           if (!saved.has(post.key)) { saved.set(post.key, { ...existing, ...post, id: post.key, status: "draft", assetUrl: null }); creations++; }
         }
       },
-      findMany: async () => [...saved.values()],
+      findMany: async ({ where }: { where: unknown }) => { lastWhere = where; return [...saved.values()]; },
     }, bhnEvent: { findUnique: async () => null } } },
     "@/components/ui/PageHero": { PageHero: () => null },
     "@/components/workspace/FullWidthWhenCollapsed": { FullWidthWhenCollapsed: () => null },
@@ -120,7 +121,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   };
   const exports: { default?: (props: unknown) => Promise<React.ReactNode> } = {};
   new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), exports);
-  const render = () => exports.default!({ searchParams: Promise.resolve({}) });
+  const render = (params = {}) => exports.default!({ searchParams: Promise.resolve(params) });
   authorized = false;
   await assert.rejects(render, /redirect/);
   assert.equal(creations, 0);
@@ -134,4 +135,14 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   await render();
   assert.equal(creations, 12, "revisiting must not duplicate or overwrite drafts");
   assert.equal(saved.get(existingKey), existing);
+  for (const post of SYMPOSIUM_CAMPAIGN_PLAN.slice(1, 8)) {
+    saved.get(`events:event:${post.slug}:0`)!.assetUrl = "https://images.example/campaign.png";
+  }
+  const series = renderToStaticMarkup(await render({ series: "symposium_2026" }));
+  assert.deepEqual(lastWhere, { key: { in: SYMPOSIUM_CAMPAIGN_PLAN.map((post) => `events:event:${post.slug}:0`) } });
+  assert.match(series, /A colleague&#x27;s edited keynote post/);
+  assert.match(series, /Approve selected \(7\)/);
+  assert.doesNotMatch(series, /<table|role="tablist"/);
+  await assert.rejects(render({ series: "unsupported" }), /not found/);
+  await assert.rejects(render({ series: "symposium_2026", post: "chris" }), /not found/);
 });
