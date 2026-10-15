@@ -44,7 +44,7 @@ export function SocialPublishControls({ post, connection, pending, onResult }: {
     <div className="flex flex-wrap items-center justify-end gap-2">
       {post.status === "approved" && <button type="button" disabled={busy || pending || post.stale || !connection?.ready}
         onClick={() => void act("publish")} aria-label={`Post ${post.cycleLabel} to LinkedIn`}
-        className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-40">
+        className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40">
         <Send size={16} />{busy ? "Posting..." : "Post to LinkedIn"}
       </button>}
       {locked && <span className="mr-auto text-sm text-muted">{post.publishError ? "Delivery needs attention" : "Sending to LinkedIn"}</span>}

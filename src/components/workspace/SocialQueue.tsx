@@ -551,7 +551,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             )}
 
             </div>
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
             {["draft", "approved"].includes(p.status) && (
               <button
                 type="button"
