@@ -175,9 +175,8 @@ export interface Session {
  * Three readings are worth calling out because they changed what a
  * registrant sees:
  *
- *   • Monday offers ONE company tour, 09:30–15:30, with the host still
- *     to be chosen. The Catalent tour is gone, and the CCRM tour has
- *     moved to Tuesday afternoon.
+ *   • Monday's Microbix tour reserves 09:00–14:00 including travel;
+ *     the on-site session is 10:00–13:00. CCRM is Tuesday afternoon.
  *   • Monday's other option is the Pandemic Preparedness workshop and
  *     tour at the THCF, 09:30–14:00 — it used to be "CL3 workshop",
  *     with no facility named and ten places.
@@ -187,31 +186,27 @@ export interface Session {
 export const SESSIONS: Session[] = [
   {
     /*
-     * The slug is Catalent's because the Workshop row is. October's
-     * grid keeps Monday's tour and replaces the host with "TBD", so
-     * this is the same session with a host still to be chosen — and a
-     * slug names a row, not a company. Renaming it would leave the row
-     * and its bookings behind.
+     * Keep the original Workshop slug so existing bookings stay attached.
      */
     slug: "catalent-tour-lunch-learn-2026",
     // The host is Microbix Biosystems (confirmed 1 Oct 2026). "Microbix
     // tour", not the full company name: the option label has 60
     // characters and the day and time take 27 of them.
     title: "Microbix tour + Lunch & Learn",
-    subtitle: "Microbix Biosystems, Mississauga",
+    subtitle: "Microbix Biosystems, Mississauga · On-site 10:00 AM–1:00 PM Eastern",
     kind: "tour",
-    day: "2026-10-26", start: "09:30", end: "15:30", track: 1,
+    day: "2026-10-26", start: "09:00", end: "14:00", track: 1,
     capacity: 12,
-    venue: { name: "Microbix Biosystems, 265 Watline Ave., Mississauga ON L4Z 1P3. Meet-up location TBD", status: "booked", note: null },
+    venue: { name: "Microbix Biosystems, 265 Watline Ave., Mississauga ON L4Z 1P3", status: "booked", note: null },
     partner: "Microbix Biosystems",
     facilitator: null,
     lead: "Epshita",
     summary: "Microbix Biosystems is a Canadian biotechnology company that develops and manufactures infectious disease diagnostic products, quality control materials, and biomanufacturing solutions used by healthcare and diagnostic organizations around the world. A Lunch & Learn, a tour of its Mississauga site, and time to talk to the people who work there. Transportation will be provided.",
     notes: ["12 spots", "Lunch & Learn", "Company tour", "Talk to employees", "Transportation provided"],
-    transport: "Transportation will be provided",
+    transport: "Transportation will be provided. Total attendance including travel: 9:00 AM–2:00 PM Eastern. Gathering point: Chelsea Hotel. Bus departs Chelsea Hotel at 9:00 AM Eastern.",
     tentative: false,
     previousTitles: ["Catalent tour + Lunch & Learn", "Company tour + Lunch & Learn"],
-    previousOptions: ["Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn", "Mon 26 Oct · 09:30–15:30 · Company tour + Lunch & Learn"],
+    previousOptions: ["Mon 26 Oct · 14:00–16:30 · Catalent tour + Lunch & Learn", "Mon 26 Oct · 09:30–15:30 · Company tour + Lunch & Learn", "Mon 26 Oct · 09:30–15:30 · Microbix tour + Lunch & Learn"],
   },
   {
     slug: "cl3-workshop-2026",

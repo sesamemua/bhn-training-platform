@@ -22,7 +22,7 @@ test("Monday is one company tour against the THCF workshop, and they overlap", (
   // facility's name, an end at 14:30 and twice the places.
   const tour = bySlug("catalent-tour-lunch-learn-2026");
   const thcf = bySlug("cl3-workshop-2026");
-  assert.deepEqual([tour.day, tour.start, tour.end, tour.capacity], ["2026-10-26", "09:30", "15:30", 12]);
+  assert.deepEqual([tour.day, tour.start, tour.end, tour.capacity], ["2026-10-26", "09:00", "14:00", 12]);
   assert.deepEqual([thcf.day, thcf.start, thcf.end, thcf.capacity], ["2026-10-26", "09:30", "14:00", 20]);
   assert.equal(clashes(
     { option: "a", day: tour.day, start: tour.start, end: tour.end },
@@ -134,7 +134,7 @@ test("the offset is read, not assumed — November is EST, an hour further back"
 });
 
 test("the week's bounds span the first start to the last end", () => {
-  assert.equal(WEEK_START.toISOString(), "2026-10-26T13:30:00.000Z"); // Monday, 09:30 EDT
+  assert.equal(WEEK_START.toISOString(), "2026-10-26T13:00:00.000Z"); // Monday, 09:00 EDT
   assert.equal(WEEK_END.toISOString(), "2026-10-28T17:30:00.000Z");   // Innovation Ignited, 13:30 EDT
 });
 
@@ -149,6 +149,17 @@ test("an option string names the day, the hours and the session", () => {
 
 test("an option string round-trips back to its session", () => {
   for (const s of SESSIONS) assert.equal(sessionForOption(optionLabel(s))?.slug, s.slug);
+});
+
+test("Microbix reserves travel time and still matches existing registrations", () => {
+  const tour = bySlug("catalent-tour-lunch-learn-2026");
+  assert.equal(optionLabel(tour), "Mon 26 Oct · 09:00–14:00 · Microbix tour + Lunch & Learn");
+  assert.equal(sessionForOption("Mon 26 Oct · 09:30–15:30 · Microbix tour + Lunch & Learn"), tour);
+  assert.match(tour.subtitle!, /On-site 10:00 AM–1:00 PM Eastern/);
+  assert.match(tour.transport!, /Total attendance including travel: 9:00 AM–2:00 PM Eastern/);
+  assert.match(tour.transport!, /Gathering point: Chelsea Hotel/);
+  assert.match(tour.transport!, /Bus departs Chelsea Hotel at 9:00 AM Eastern/);
+  assert.match(SESSION_SLOTS.find((s) => s.option === optionLabel(tour))!.subtitle!, /On-site/);
 });
 
 /* ── Communication Chameleon: 16:00 → 16:30 → 16:00 → noon–16:30 ─── */
@@ -265,7 +276,9 @@ test("workshop rows carry the schedule's times as instants", () => {
   assert.equal(ccrm.startDateTime.toISOString(), "2026-10-27T19:00:00.000Z");
   assert.equal(ccrm.endDateTime.toISOString(), "2026-10-27T21:00:00.000Z");
   const tour = rows.find((r) => r.slug === "catalent-tour-lunch-learn-2026")!;
-  assert.equal(tour.startDateTime.toISOString(), "2026-10-26T13:30:00.000Z");
+  assert.equal(tour.startDateTime.toISOString(), "2026-10-26T13:00:00.000Z");
+  assert.equal(tour.endDateTime.toISOString(), "2026-10-26T18:00:00.000Z");
+  assert.match(tour.departureLocation!, /Chelsea Hotel/);
 });
 
 test("workshop rows are in display order with no gaps", () => {
@@ -301,7 +314,7 @@ test("a venue that is not booked says so, and a room with no name stays empty", 
   assert.equal(venue("communication-chameleon-2026"), "Top of POD (3rd floor), Leslie L. Dan Pharmacy Building, 144 College St, Toronto, ON M5S 3M2");
   assert.equal(venue("negotiation-skills-2026"), venue("communication-chameleon-2026"));
   assert.equal(venue("innovation-showcase-2026"), "Rm B250 (basement level 2), Leslie L. Dan Pharmacy Building, 144 College St, Toronto, ON M5S 3M2");
-  assert.equal(venue("catalent-tour-lunch-learn-2026"), "Microbix Biosystems, 265 Watline Ave., Mississauga ON L4Z 1P3. Meet-up location TBD");
+  assert.equal(venue("catalent-tour-lunch-learn-2026"), "Microbix Biosystems, 265 Watline Ave., Mississauga ON L4Z 1P3");
   // A venue that is not booked still says so.
   assert.equal(displayVenue({ name: "Room 1", alternative: "Room 2", status: "options", note: null }), "Room 1 or Room 2 (to be confirmed)");
   // A room with no name stays empty — the render sites fall back to TBA

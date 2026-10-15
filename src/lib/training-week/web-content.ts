@@ -15,6 +15,8 @@
  * the website's own classes (workshop-subtitle, entity-link,
  * facilitator-list, workshop-facilitator, profile-trigger).
  */
+import { SESSIONS } from "./schedule-2026";
+
 export interface WebContent {
   /** The id of the session's card on the page — "View details" links to #anchor. */
   anchor: string;
@@ -29,15 +31,17 @@ export interface WebContent {
 const link = (href: string, text: string) =>
   `<a class="entity-link" href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
 
+const microbix = SESSIONS.find((s) => s.slug === "catalent-tour-lunch-learn-2026")!;
+
 export const WEB_CONTENT: Record<string, WebContent> = {
   "catalent-tour-lunch-learn-2026": {
     anchor: "company-tour",
     host: "Microbix Biosystems",
     detailsHtml: [
-      `<p class="workshop-subtitle">Microbix Biosystems</p>`,
+      `<p class="workshop-subtitle">${microbix.subtitle}</p>`,
       `<p>${link("https://microbix.com/", "Microbix Biosystems")} is a Canadian biotechnology company that develops and manufactures infectious disease diagnostic products, quality control materials, and biomanufacturing solutions used by healthcare and diagnostic organizations around the world.</p>`,
-      `<p><strong>Location:</strong> Microbix Biosystems Inc.<br>${link("https://microbix.com/contact", "265 Watline Ave, Mississauga, ON")}</p>`,
-      `<p><strong>Getting there:</strong> Transportation will be provided.</p>`,
+      `<p><strong>Location:</strong> ${link("https://microbix.com/contact", microbix.venue.name!)}</p>`,
+      `<p><strong>Getting there:</strong> ${microbix.transport}</p>`,
     ].join("\n"),
   },
   "cl3-workshop-2026": {

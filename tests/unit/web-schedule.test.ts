@@ -13,15 +13,29 @@ test("every session, with the website's words and a position", () => {
   const tour = w.sessions.find((s) => s.slug === "catalent-tour-lunch-learn-2026")!;
   assert.equal(tour.anchor, "company-tour");
   assert.equal(tour.host, "Microbix Biosystems");
-  assert.equal(tour.offsetMinutes, 30);
-  assert.equal(tour.durationMinutes, 360);
-  assert.equal(tour.time12, "9:30 AM–3:30 PM");
+  assert.equal(tour.offsetMinutes, 0);
+  assert.equal(tour.durationMinutes, 300);
+  assert.equal(tour.time12, "9:00 AM–2:00 PM");
   assert.match(tour.detailsHtml!, /Transportation will be provided/);
   assert.equal(tour.seats, 12);
   // Two Monday sessions overlap, so they sit in different lanes.
   const cl3 = w.sessions.find((s) => s.slug === "cl3-workshop-2026")!;
   assert.notEqual(cl3.lane, tour.lane);
   assert.equal(w.sessions.find((s) => s.slug === "ccrm-tour-lunch-learn-2026")!.webTitle, "Discovery to Delivery");
+});
+
+test("both public schedule versions distinguish the Microbix session from travel", () => {
+  for (const version of ["website", "registration"] as const) {
+    const tour = webSchedule(version).sessions.find((s) => s.slug === "catalent-tour-lunch-learn-2026")!;
+    assert.equal(tour.start, "09:00");
+    assert.equal(tour.end, "14:00");
+    assert.match(tour.detailsHtml!, /On-site 10:00 AM–1:00 PM Eastern/);
+    assert.match(tour.detailsHtml!, /Total attendance including travel: 9:00 AM–2:00 PM Eastern/);
+    assert.match(tour.detailsHtml!, /Gathering point: Chelsea Hotel/);
+    assert.match(tour.detailsHtml!, /Bus departs Chelsea Hotel at 9:00 AM Eastern/);
+    assert.match(tour.detailsHtml!, /265 Watline Ave\., Mississauga ON L4Z 1P3/);
+    assert.doesNotMatch(JSON.stringify(tour), /TBD|09:30|15:30/);
+  }
 });
 
 test("lunch only in the registration version", () => {
