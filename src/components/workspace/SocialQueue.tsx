@@ -103,6 +103,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState(() => initial.filter(canApproveInSeries).map((post) => post.id));
   const [seriesBusy, setSeriesBusy] = useState(false);
   const [layout, setLayout] = useState(initialOrder ?? { order: DEFAULT_SOCIAL_ORDER, version: null });
@@ -227,6 +228,31 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   const campaignPosts = sortSocialPosts(posts.filter((post) => post.campaign), layout.order);
   const ready = visible.filter(canApproveInSeries);
   const chosen = ready.filter((post) => selected.includes(post.id));
+  const downloadable = visible.filter((post) => !!post.assetUrl);
+
+  async function downloadGraphics(items: QueuePost[], zip = false) {
+    if (downloadBusy || !items.length) return;
+    setDownloadBusy(zip ? "all" : items[0].id);
+    setNote(null);
+    try {
+      const params = new URLSearchParams({ ids: items.map((post) => post.id).join(","), ...(zip ? { zip: "1" } : {}) });
+      const response = await fetch(`/api/admin/social/graphics?${params}`);
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(result.error ?? "Couldn't download the graphics.");
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") ?? "")?.[1] ?? "biohubnet-social-graphics.zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : "Couldn't download the graphics.");
+    } finally { setDownloadBusy(null); }
+  }
 
   async function movePost(post: QueuePost, direction: -1 | 1, scope: QueuePost[]) {
     if (!post.campaignSlug || orderBusy || orderUnavailable || hasUnsavedChanges || seriesBusy || busy) return;
@@ -349,6 +375,11 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
           </label>
         </div>
         <button type="button" disabled={seriesBusy || !!busy || hasUnsavedChanges || !chosen.length} onClick={() => void approveSelected()} className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-40"><Check size={16} />{seriesBusy ? "Approving..." : `Approve selected (${chosen.length})`}</button>
+      </div>}
+      {!reviewMode && <div className="flex justify-end">
+        <button type="button" disabled={!!downloadBusy || !downloadable.length} onClick={() => void downloadGraphics(downloadable, true)} className="inline-flex items-center gap-2 rounded-md border border-line px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-40">
+          <Download size={16} /> {downloadBusy === "all" ? "Preparing download..." : `Download all graphics (${downloadable.length})`}
+        </button>
       </div>}
       {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
       {orderUnavailable && (group === "symposium_2026" || seriesReview) && <p role="status" className="text-[13px] text-amber-700">Shared post order is unavailable. Refresh before moving posts.</p>}
@@ -506,13 +537,16 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
               <Copy size={16} /> {copied === p.id ? "Copied" : "Copy post"}
             </button>
 
-            {p.stream === "symposium_2026" && p.assetUrl && (
-              <a
-                href={`${p.assetUrl}${p.assetUrl.includes("?") ? "&" : "?"}download=1`}
+            {p.assetUrl && (
+              <button
+                type="button"
+                aria-label={`Download graphic for ${p.cycleLabel}`}
+                disabled={!!downloadBusy}
+                onClick={() => void downloadGraphics([p])}
                 className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
               >
-                <Download size={16} /> Download graphic
-              </a>
+                <Download size={16} /> {downloadBusy === p.id ? "Downloading..." : "Download graphic"}
+              </button>
             )}
 
             </div>
