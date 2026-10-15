@@ -17,6 +17,8 @@ import Link from "next/link";
 import { LogoMark } from "@/components/ui/Logo";
 import { useInputDialog } from "@/components/ui/InputDialog";
 import { SocialPostEditor } from "./SocialPostEditor";
+import { SocialGraphicReview } from "./SocialGraphicReview";
+import type { ArtworkViewData } from "./DesignArtworkView";
 import type { SavedSocialText } from "@/lib/social/edit-history";
 import { withSocialTags } from "@/lib/social/tags";
 import { cn } from "@/lib/utils";
@@ -47,6 +49,8 @@ export interface QueuePost {
   overdue: boolean;
   /** The cycle's deadline moved after this post was approved. */
   stale: boolean;
+  /** Comments pinned on its graphic (Design Review's records), once someone has started. */
+  graphicReview?: ArtworkViewData | null;
 }
 
 const KIND_LABEL: Record<string, string> = {
@@ -82,14 +86,19 @@ export async function approveSeries(posts: QueuePost[], approve: (id: string) =>
   return approved;
 }
 
-export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_ORDER, version: null }, initialGroup = "symposium_2026", reviewMode = false, seriesReview = false }: {
+export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_ORDER, version: null }, initialGroup = "symposium_2026", reviewMode = false, seriesReview = false, me = null }: {
   initial: QueuePost[];
+  /** Who is looking — for commenting on graphics. */
+  me?: { id: string; name: string; admin: boolean } | null;
   initialOrder?: SocialOrder | null;
   initialGroup?: "symposium_2026" | "venture_connect" | "events";
   reviewMode?: boolean;
   seriesReview?: boolean;
 }) {
   const [posts, setPosts] = useState(initial);
+  // Graphic comments change underneath the queue (a pin, a reply): read them from the latest
+  // server render, not from the queue's own copy, which only tracks text and approval.
+  const graphicReviewOf = new Map(initial.map((p) => [p.id, p.graphicReview ?? null]));
   const [group, setGroup] = useState(initialGroup);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -427,6 +436,8 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
               <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-t border-line object-contain" />
             )}
           </article>
+
+          {p.assetUrl && <SocialGraphicReview postId={p.id} assetUrl={p.assetUrl} label={p.cycleLabel} artwork={graphicReviewOf.get(p.id) ?? null} me={me} />}
 
           {p.campaign && (
             <details className="border-b border-line px-1 py-2 text-[13px] text-muted">

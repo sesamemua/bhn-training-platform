@@ -38,10 +38,13 @@ const APPROVAL_TONE: Record<Approval, string> = {
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const ZOOMS = [0.5, 0.75, 1, 1.5, 2, 3];
 
-export function DesignArtworkView({ artwork, me, approver }: {
+export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
   artwork: ArtworkViewData;
   me: { id: string; name: string; admin: boolean };
   approver: { id: string; name: string } | null;
+  /** Inside another page's card (a social post): stacked, nothing pinned, and no approval —
+   *  the host page keeps its own. */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -122,7 +125,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
   });
 
   return (
-    <div className={wide ? "flex flex-col-reverse gap-4" : "grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]"}>
+    <div className={embedded ? "flex flex-col gap-3" : wide ? "flex flex-col-reverse gap-4" : "grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]"}>
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-muted">
           {locked
@@ -139,7 +142,7 @@ export function DesignArtworkView({ artwork, me, approver }: {
         </div>
 
         {/* Room under the last page, so a comment card opened low on a short artwork is not cut off. */}
-        <div ref={scrollerRef} className={`overflow-auto rounded-xl border border-line bg-elevated/40 p-3 pb-80 ${wide ? "max-h-[62vh]" : "max-h-[78vh]"}`}>
+        <div ref={scrollerRef} className={`overflow-auto rounded-xl border border-line bg-elevated/40 p-3 pb-80 ${embedded ? "max-h-[60vh]" : wide ? "max-h-[62vh]" : "max-h-[78vh]"}`}>
           <div className="mx-auto space-y-4" style={{ width: `${zoom * 100}%` }}>
             {artwork.pages.map((pg, i) => (
               <div key={pg.key}>
@@ -250,10 +253,12 @@ export function DesignArtworkView({ artwork, me, approver }: {
       {/* The review panel stays in view while you look at the artwork: pinned to the top for a
           wide piece (where it sits above), pinned beside it otherwise — from tablet width up, so
           it does not drop underneath on a smaller window. */}
-      <aside className={wide
+      <aside className={embedded
+        ? "grid items-start gap-3 sm:grid-cols-2"
+        : wide
         ? "sticky top-0 z-30 grid items-start gap-3 rounded-xl bg-card-solid p-2 shadow-lg md:grid-cols-3"
         : "space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-2rem)] md:self-start md:overflow-y-auto"}>
-        <section className="rounded-xl border border-line bg-card p-3">
+        <section className={`rounded-xl border border-line bg-card p-3 ${embedded ? "hidden" : ""}`}>
           <h3 className="text-[12px] font-bold uppercase tracking-wide text-subtle">Approval</h3>
           <p className={`mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${APPROVAL_TONE[artwork.approval]}`}>{APPROVAL_LABEL[artwork.approval]}</p>
           <p className="mt-1 text-[12px] text-muted">

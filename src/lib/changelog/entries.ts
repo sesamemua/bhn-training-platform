@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Social: comment on a post\u2019s graphic without leaving Social",
+    body: "Every post with a graphic in **Marketing \u2192 Social** now has **Comment on the graphic**. It opens right inside the post\u2019s card: click anywhere on the graphic to pin a comment, reply, resolve, and copy the round\u2019s feedback for the designer \u2014 the same tools as Design Review, without going there. The post\u2019s text is still edited in its own box, and the post\u2019s **Approve** is still the approval.\n\nAfter replacing a graphic, **Use the current graphic** brings the new version in; the comments stay.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Registrants: people from the Innovation Ignited page open like everyone else",
     body: "Under **Registrants**, people who registered through the **Innovation Ignited** page now open to their full registration \u2014 answers, seat, history, communications \u2014 and can be **deleted** with the same protected switch as any other registration. Their form shows as *Innovation Ignited page*.",
     kind: "fix",

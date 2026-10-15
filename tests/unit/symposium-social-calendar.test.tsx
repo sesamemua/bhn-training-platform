@@ -108,7 +108,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
         }
       },
       findMany: async ({ where }: { where: unknown }) => { lastWhere = where; return [...saved.values()]; },
-    }, bhnEvent: { findUnique: async () => null } } },
+    }, bhnEvent: { findUnique: async () => null }, designArtwork: { findMany: async () => [] } } },
     "@/components/ui/PageHero": { PageHero: () => null },
     "@/components/workspace/FullWidthWhenCollapsed": { FullWidthWhenCollapsed: () => null },
     "@/components/workspace/SocialQueue": { SocialQueue },

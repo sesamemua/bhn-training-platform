@@ -22,6 +22,9 @@ import { CRS_EVENT_POST } from "@/lib/social/events";
 import { SYMPOSIUM_CAMPAIGN_PLAN } from "@/lib/social/symposium-campaign";
 import { withSocialTags } from "@/lib/social/tags";
 import { loadSocialOrder } from "@/lib/social/order-store";
+import { SOCIAL_SOURCE_PREFIX, socialSource } from "@/lib/social/graphic-source";
+import { isApproval, isReviewer, pagesOf, reviewerStates } from "@/lib/design-review/types";
+import type { ArtworkViewData } from "@/components/workspace/DesignArtworkView";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +81,27 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     take: 200,
   });
 
+  // Comments pinned on each post's graphic, kept in Design Review's records and shown in the post's card.
+  const reviewed = await prisma.designArtwork.findMany({
+    where: { sourceName: { in: rows.map((r) => socialSource(r.id)) } },
+    include: { project: { select: { name: true } }, pins: { orderBy: { createdAt: "asc" } }, reviews: true },
+  });
+  const reviewers = reviewed.length
+    ? (await prisma.user.findMany({
+        where: { role: { in: ["instructor", "admin", "superadmin"] }, NOT: [{ email: { contains: "demo" } }, { email: { endsWith: ".test" } }] },
+        select: { id: true, name: true, email: true }, orderBy: { name: "asc" },
+      })).map((u) => ({ id: u.id, name: u.name || u.email || "Team member" })).filter((u) => isReviewer(u.name))
+    : [];
+  const reviewOf = new Map(reviewed.map((a): [string, ArtworkViewData] => [a.sourceName.slice(SOCIAL_SOURCE_PREFIX.length), {
+    id: a.id, title: a.title, description: a.description, pages: pagesOf(a.pages),
+    approval: isApproval(a.approval) ? a.approval : "pending", approvalNote: a.approvalNote, approvalAt: a.approvalAt?.toISOString() ?? null,
+    round: a.round, locked: !!a.lockedAt, project: a.project.name,
+    pins: a.pins.map((n) => ({ id: n.id, page: n.page, x: n.x, y: n.y, parentId: n.parentId, authorId: n.authorId, authorName: n.authorName, body: n.body, status: n.status, round: n.round, createdAt: n.createdAt.toISOString() })),
+    reviewers: reviewerStates(reviewers, a.reviews),
+  }]));
+  const u = session.user as { id?: string; name?: string | null; email?: string | null; role?: string };
+  const me = { id: u.id ?? "", name: u.name || u.email || "Team member", admin: u.role === "admin" || u.role === "superadmin" };
+
   const posts: QueuePost[] = rows
     .filter((r) => r.stream !== SYMPOSIUM_SOCIAL_STREAM || speakersById.has(r.deadlineId))
     .map((r) => {
@@ -115,6 +139,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         : "Verify the current program and registration link before sharing."
         : undefined,
       scheduledFor: r.scheduledFor.toISOString(),
+      graphicReview: reviewOf.get(r.id) ?? null,
       overdue: r.stream === "venture_connect" && r.scheduledFor.getTime() < now.getTime(),
       /*
        * The one thing the queue knows that the post does not.
@@ -146,7 +171,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} />
+        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} me={me} />
       </div>
     </>
   );

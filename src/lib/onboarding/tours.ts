@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24d";
+export const TOUR_VERSION = "2026.10.24e";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "social.graphic-comments",
+    title: "Comment on graphics right in Social",
+    body: "Under a post’s graphic, **Comment on the graphic** opens the pin-a-comment tool inside the card — reply, resolve and copy feedback without leaving Social. The post’s own Approve stays the approval.",
+    path: "/admin/workspace/marketing/social",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Social", href: "/admin/workspace/marketing/social" },
+    since: "2026.10.24e",
+  },
   {
     id: "registrants.innovation-rows-open",
     title: "Innovation Ignited registrants open in full",
