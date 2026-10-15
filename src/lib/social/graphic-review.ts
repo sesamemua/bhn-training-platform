@@ -14,22 +14,47 @@
  * artwork's picture: comments stay, marks and approval start again.
  */
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { deleteR2ObjectByUrl } from "@/lib/r2";
+import { deleteR2ObjectByUrl, putR2Object, r2PublicUrl } from "@/lib/r2";
+import { imageSize } from "@/lib/images/size";
 import { PagesSchema, pagesOf } from "@/lib/design-review/types";
 import { socialSource } from "./graphic-source";
 
 const PROJECT = "Social graphics";
 const BASE = (process.env.NEXTAUTH_URL ?? "https://bhn-training-platform.vercel.app").replace(/\/$/, "");
 
-export async function reviewSocialGraphic(postId: string, pages: unknown): Promise<{ ok: boolean; problem?: string; artworkId?: string }> {
+/**
+ * Bring a post's current graphic into its review — the first time, or as a
+ * new version. Copied on the server: the browser cannot read the image
+ * store directly. Only the post's own graphic is ever fetched: its stored
+ * address, or the speaker-graphic route for that post.
+ */
+export async function reviewSocialGraphic(postId: string, assetUrl: string): Promise<{ ok: boolean; problem?: string; artworkId?: string }> {
   const session = await requireRole("admin");
   const me = session.user as { id?: string };
-  const pg = PagesSchema.safeParse(pages);
-  if (!pg.success) return { ok: false, problem: "The graphic didn't upload properly — try again." };
-  const post = await prisma.socialPost.findUnique({ where: { id: postId }, select: { id: true, body: true, assetSpec: true } });
+  const post = await prisma.socialPost.findUnique({ where: { id: postId }, select: { id: true, body: true, assetSpec: true, assetUrl: true } });
   if (!post) return { ok: false, problem: "That post no longer exists." };
+  const own = `/api/admin/social/posts/${post.id}/image`;
+  const bare = (u: string | null) => (u ?? "").split("?")[0];
+  if (bare(assetUrl) !== own && bare(assetUrl) !== bare(post.assetUrl)) return { ok: false, problem: "That is not this post's graphic." };
+
+  // A route of ours needs the caller's sign-in; the image store does not.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const url = bare(assetUrl) === own ? `${h.get("x-forwarded-proto") ?? "https"}://${host}${own}` : bare(post.assetUrl);
+  const res = await fetch(url, { cache: "no-store", headers: bare(assetUrl) === own ? { cookie: h.get("cookie") ?? "" } : {}, signal: AbortSignal.timeout(15000) }).catch(() => null);
+  if (!res?.ok) return { ok: false, problem: "The graphic couldn't be read — try again." };
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.length > 15 * 1024 * 1024) return { ok: false, problem: "That graphic is too large to review here." };
+  const size = imageSize(bytes);
+  if (!size) return { ok: false, problem: "That graphic isn't a PNG, JPEG, GIF or WebP." };
+  const key = `design-review/${randomUUID()}.${size.type.split("/")[1]}`;
+  await putR2Object(key, bytes, size.type);
+  const pg = PagesSchema.safeParse([{ key, url: r2PublicUrl(key), w: size.w, h: size.h }]);
+  if (!pg.success) return { ok: false, problem: "The graphic couldn't be stored." };
 
   let project = await prisma.designProject.findFirst({ where: { name: PROJECT }, select: { id: true } });
   if (!project) {

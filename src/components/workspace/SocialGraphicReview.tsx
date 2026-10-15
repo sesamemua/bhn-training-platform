@@ -13,7 +13,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, MessageSquare } from "lucide-react";
-import { uploadFile } from "@/lib/design-review/render";
 import { reviewSocialGraphic } from "@/lib/social/graphic-review";
 import { DesignArtworkView, type ArtworkViewData } from "./DesignArtworkView";
 
@@ -28,17 +27,12 @@ export function SocialGraphicReview({ postId, assetUrl, label, artwork, me }: {
   const [problem, setProblem] = useState<string | null>(null);
   const openComments = artwork?.pins.filter((p) => !p.parentId && p.status === "open").length ?? 0;
 
-  /** Copy the post's current graphic in — the first time, or as a new version. */
+  /** Bring the post's current graphic in — the first time, or as a new version (copied on the server). */
   async function bringIn() {
     setProblem(null);
     setBusy("Preparing the graphic…");
     try {
-      const res = await fetch(assetUrl, { cache: "no-store" });
-      if (!res.ok) throw new Error("The graphic couldn't be read.");
-      const blob = await res.blob();
-      const file = new File([blob], `${label.replace(/[^\w-]+/g, "-").slice(0, 60) || "social-graphic"}.${blob.type.split("/")[1] || "png"}`, { type: blob.type || "image/png" });
-      const pages = await uploadFile(file, setBusy);
-      const r = await reviewSocialGraphic(postId, pages);
+      const r = await reviewSocialGraphic(postId, assetUrl);
       if (!r.ok) throw new Error(r.problem ?? "That didn't work — try again.");
       setOpen(true);
       setRefresh((n) => n + 1);
