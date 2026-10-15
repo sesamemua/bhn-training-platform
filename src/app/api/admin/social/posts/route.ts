@@ -78,10 +78,11 @@ export async function POST(req: NextRequest) {
    * this queue disagree with what people actually read, which is worse
    * than having no record at all.
    */
-  if (post.status === "published" && data.action !== "setAsset") {
+  if (["publishing", "scheduled"].includes(post.status) || (post.status === "published" && data.action !== "setAsset")) {
     return NextResponse.json({ error: "That post has already gone out." }, { status: 409 });
   }
 
+  let changed: { count: number } | undefined;
   switch (data.action) {
     case "approve": {
       if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -97,17 +98,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, approvedAt: approvedAt.toISOString(), approvedByName: session.user?.name ?? null });
     }
     case "unapprove":
-      await prisma.socialPost.update({
-        where: { id: post.id },
+      changed = await prisma.socialPost.updateMany({
+        where: { id: post.id, status: post.status, editVersion: post.editVersion },
         data: { status: "draft", approvedAt: null, approvedById: null },
       });
       break;
     case "skip":
-      await prisma.socialPost.update({ where: { id: post.id }, data: { status: "skipped" } });
+      changed = await prisma.socialPost.updateMany({ where: { id: post.id, status: post.status, editVersion: post.editVersion }, data: { status: "skipped" } });
       break;
     case "schedule":
-      await prisma.socialPost.update({
-        where: { id: post.id },
+      changed = await prisma.socialPost.updateMany({
+        where: { id: post.id, status: post.status, editVersion: post.editVersion },
         data: { status: "scheduled", scheduledFor: new Date(data.at) },
       });
       break;
@@ -115,21 +116,15 @@ export async function POST(req: NextRequest) {
       /*
        * RECORDED, NOT PERFORMED.
        *
-       * Nothing in this codebase can post to LinkedIn: there is no
-       * OAuth token store and no third-party publishing integration of
-       * any kind. Direct publishing needs a LinkedIn app, OAuth and
-       * their app review, which is a decision about credentials rather
-       * than a piece of work. Until then a coordinator copies the words
-       * and the image, posts them, and presses this — so the queue
-       * still knows what went out and the reminder ladder does not
-       * re-offer it.
+       * Used only for a post shared manually outside the platform.
+       * Direct publishing and delivery confirmation live in /social/publish.
        */
       /* Conditional, so a double-click or two coordinators pressing at
          once cannot stamp two different publishedAt values on one post.
          The same claim-before-send discipline the newsletter reminders
          use, applied to a human action instead of a send. */
-      await prisma.socialPost.updateMany({
-        where: { id: post.id, status: { not: "published" } },
+      changed = await prisma.socialPost.updateMany({
+        where: { id: post.id, status: post.status, editVersion: post.editVersion },
         data: { status: "published", publishedAt: new Date() },
       });
       break;
@@ -144,5 +139,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (changed && !changed.count) return NextResponse.json({ error: "The post changed or is sending. Refresh before continuing." }, { status: 409 });
   return NextResponse.json({ ok: true });
 }

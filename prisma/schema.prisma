@@ -4298,6 +4298,8 @@ model SocialPost {
   approvedAt   DateTime?
   approvedById String?
   publishedAt  DateTime?
+  bufferPostId String? @unique
+  publishError String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

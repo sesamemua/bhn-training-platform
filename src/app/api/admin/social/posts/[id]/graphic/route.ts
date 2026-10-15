@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const post = await prisma.socialPost.findUnique({ where: { id } });
   if (!post || post.stream !== "events") return NextResponse.json({ error: "Event post not found." }, { status: 404 });
-  if (post.status === "published" || post.status === "skipped") {
+  if (["published", "skipped", "publishing", "scheduled"].includes(post.status)) {
     return NextResponse.json({ error: "This post can no longer be edited." }, { status: 409 });
   }
   if (!R2_PUBLIC_URL) return NextResponse.json({ error: "Image storage is unavailable." }, { status: 503 });

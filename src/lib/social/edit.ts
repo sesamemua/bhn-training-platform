@@ -11,7 +11,7 @@ export async function editSocialPost(
 ): Promise<{ status: number; result: SocialEditResponse }> {
   const post = await tx.socialPost.findUnique({ where: { id: input.id }, select: selectText });
   if (!post) return { status: 404, result: { error: "Post not found." } };
-  if (post.status === "published" || post.status === "skipped") {
+  if (["published", "skipped", "publishing", "scheduled"].includes(post.status)) {
     return { status: 409, result: { error: "This post can no longer be edited.", post } };
   }
   if (post.editVersion !== input.expectedVersion) {

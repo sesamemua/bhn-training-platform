@@ -2,10 +2,8 @@
  * Workspace → Marketing → Social.
  *
  * The queue of posts drafted from live EQUIP cycles. Everything here is
- * a draft until a person approves it, and nothing on this platform can
- * publish to a network — the queue's job is to make the words and the
- * facts correct, and to stop a reminder going out with last month's
- * date on it.
+ * a draft until a person approves it. Direct publishing uses Buffer
+ * and requires a separate, explicit publishing confirmation.
  */
 import { notFound, redirect } from "next/navigation";
 import { Megaphone } from "lucide-react";
@@ -73,7 +71,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
 
   const rows = await prisma.socialPost.findMany({
     where: seriesReview ? { key: { in: [...campaignByKey.keys()] } } : postId ? { id: postId } : { OR: [
-      { status: { in: ["draft", "approved", "scheduled"] } },
+      { status: { in: ["draft", "approved", "scheduled", "publishing"] } },
       { key: { in: [...campaignByKey.keys()] } },
     ] },
     include: { approvedBy: { select: { name: true } } },
@@ -115,6 +113,8 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       stream: r.stream,
       kind: r.kind,
       status: r.status,
+      bufferPostId: r.bufferPostId,
+      publishError: r.publishError,
       approvedAt: r.approvedAt?.toISOString() ?? null,
       approvedByName: r.approvedBy?.name ?? null,
       cycleLabel: r.stream === "events"

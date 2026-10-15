@@ -25,10 +25,10 @@ function isImage(bytes: Buffer, mime: string): boolean {
 async function editablePost(id: string) {
   const post = await prisma.socialPost.findUnique({
     where: { id },
-    select: { id: true, stream: true, kind: true, status: true, deadlineId: true, assetSpec: true },
+    select: { id: true, stream: true, kind: true, status: true, deadlineId: true, assetSpec: true, editVersion: true },
   });
   if (post?.stream !== SYMPOSIUM_SOCIAL_STREAM || post.kind !== "speaker" ||
-      post.status === "published" || post.status === "skipped") return null;
+      ["published", "skipped", "publishing", "scheduled"].includes(post.status)) return null;
   const speaker = await prisma.speaker.findUnique({
     where: { id: post.deadlineId },
     select: { event: { select: { slug: true } } },
@@ -59,12 +59,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const spec = post.assetSpec && typeof post.assetSpec === "object" && !Array.isArray(post.assetSpec)
     ? post.assetSpec as Record<string, unknown> : {};
   const previous = logoOverride(spec);
-  await prisma.socialPost.update({
-    where: { id },
-    data: { assetSpec: { ...spec, companyLogoUrl: url } },
+  const saved = await prisma.socialPost.updateMany({
+    where: { id, status: post.status, editVersion: post.editVersion },
+    data: { assetSpec: { ...spec, companyLogoUrl: url }, editVersion: { increment: 1 }, status: "draft", approvedAt: null, approvedById: null },
   });
+  if (!saved.count) {
+    await deleteR2ObjectByUrl(url);
+    return NextResponse.json({ error: "The post changed. Refresh and try again." }, { status: 409 });
+  }
   if (previous?.includes(`/social/symposium-2026/company-logos/${id}/`)) {
     await deleteR2ObjectByUrl(previous);
   }
-  return NextResponse.json({ url });
+  return NextResponse.json({ url, editVersion: post.editVersion + 1 });
 }

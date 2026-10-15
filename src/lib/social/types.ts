@@ -35,7 +35,7 @@ export type SocialKind = (typeof SOCIAL_KINDS)[number];
  * `skipped` exists so a coordinator can decline a post without it being
  * regenerated on the next run. Deleting it would just come back.
  */
-export const SOCIAL_STATUSES = ["draft", "approved", "scheduled", "published", "skipped"] as const;
+export const SOCIAL_STATUSES = ["draft", "approved", "publishing", "scheduled", "published", "skipped"] as const;
 export type SocialStatus = (typeof SOCIAL_STATUSES)[number];
 
 /** A post that has left the building cannot be edited or regenerated. */

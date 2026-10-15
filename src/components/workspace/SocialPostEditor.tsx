@@ -38,7 +38,7 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
   const latest = useRef({ body: post.body, trackChanges: post.trackChanges });
   const inFlight = useRef<Promise<void> | null>(null);
   const blocked = useRef(false);
-  const readOnly = post.status === "published" || post.status === "skipped";
+  const readOnly = ["published", "skipped", "publishing", "scheduled"].includes(post.status);
 
   useLayoutEffect(() => {
     // An image-only update advances the shared revision without changing the text.

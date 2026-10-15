@@ -1,23 +1,13 @@
 "use client";
 
-/**
- * The social queue — drafts waiting for a person.
- *
- * Every post here was written from a cycle's own facts and none of it
- * goes anywhere until somebody approves it. The copy button is the
- * publish button: you take the words and the image and post them
- * yourself, then mark it done. That is not a placeholder for a proper
- * integration so much as an honest description of what the platform can
- * do — there is no LinkedIn app behind this, and pretending otherwise
- * in the UI would be the worst of both.
- */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Clock, Download, RefreshCw, X, Link as LinkIcon, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { LogoMark } from "@/components/ui/Logo";
 import { useInputDialog } from "@/components/ui/InputDialog";
 import { SocialPostEditor } from "./SocialPostEditor";
 import { SocialGraphicReview } from "./SocialGraphicReview";
+import { SocialPublishControls, type PublishingConnection } from "./SocialPublishControls";
 import type { ArtworkViewData } from "./DesignArtworkView";
 import type { SavedSocialText } from "@/lib/social/edit-history";
 import { withSocialTags } from "@/lib/social/tags";
@@ -29,6 +19,8 @@ export interface QueuePost {
   stream: string;
   kind: string;
   status: string;
+  bufferPostId?: string | null;
+  publishError?: string | null;
   approvedAt?: string | null;
   approvedByName?: string | null;
   cycleLabel: string;
@@ -65,6 +57,7 @@ const STATUS_TONE: Record<string, string> = {
   draft: "bg-elevated text-muted ring-line",
   approved: "bg-emerald-50 text-emerald-800 ring-emerald-200",
   scheduled: "bg-brand-50 text-brand-800 ring-brand-200",
+  publishing: "bg-amber-50 text-amber-800 ring-amber-200",
   published: "bg-violet-50 text-violet-800 ring-violet-200",
   skipped: "bg-elevated text-subtle ring-line",
 };
@@ -104,6 +97,13 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [downloadBusy, setDownloadBusy] = useState<string | null>(null);
+  const [connection, setConnection] = useState<PublishingConnection | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/admin/social/publish", { signal: controller.signal }).then(response => response.json()).then(setConnection)
+      .catch(() => { if (!controller.signal.aborted) setConnection({ ready: false, error: "Couldn't check the LinkedIn connection. Refresh to try again." }); });
+    return () => controller.abort();
+  }, []);
   const [selected, setSelected] = useState(() => initial.filter(canApproveInSeries).map((post) => post.id));
   const [seriesBusy, setSeriesBusy] = useState(false);
   const [layout, setLayout] = useState(initialOrder ?? { order: DEFAULT_SOCIAL_ORDER, version: null });
@@ -168,10 +168,10 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       const response = await fetch(`/api/admin/social/posts/${post.id}/company-logo`, {
         method: "POST", body: form,
       });
-      const result = await response.json() as { url?: string; error?: string };
+      const result = await response.json() as { url?: string; editVersion?: number; error?: string };
       if (!response.ok || !result.url) throw new Error(result.error ?? "Couldn't upload the logo.");
       setPosts((all) => all.map((item) => item.id === post.id
-        ? { ...item, companyLogoUrl: result.url!, assetUrl: post.assetUrl ? `${post.assetUrl.split("?")[0]}?v=${Date.now()}` : null }
+        ? { ...item, companyLogoUrl: result.url!, editVersion: result.editVersion ?? item.editVersion, status: "draft", approvedAt: null, approvedByName: null, assetUrl: post.assetUrl ? `${post.assetUrl.split("?")[0]}?v=${Date.now()}` : null }
         : item));
     } catch (error) {
       setNote(error instanceof Error ? error.message : "Couldn't upload the logo.");
@@ -381,6 +381,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
           <Download size={16} /> {downloadBusy === "all" ? "Preparing download..." : `Download all graphics (${downloadable.length})`}
         </button>
       </div>}
+      {connection && <p role="status" className="text-[13px] text-fg">{connection.ready ? "LinkedIn: BioHubNet Page connected" : connection.error ?? "LinkedIn connection unavailable"}</p>}
       {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
       {orderUnavailable && (group === "symposium_2026" || seriesReview) && <p role="status" className="text-[13px] text-amber-700">Shared post order is unavailable. Refresh before moving posts.</p>}
       {visible.length === 0 && (
@@ -478,7 +479,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             </details>
           )}
 
-          {p.stream === "events" && p.status !== "published" && p.status !== "skipped" && (
+          {p.stream === "events" && ["draft", "approved"].includes(p.status) && (
             <div className="flex flex-wrap items-center gap-3 px-1 py-2">
               <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50 focus-within:ring-2 focus-within:ring-brand-500">
                 <ImageIcon size={16} /> {busy === p.id && !seriesBusy ? "Uploading…" : p.assetUrl ? "Replace graphic" : "Upload graphic"}
@@ -506,7 +507,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={p.companyLogoUrl} alt={`${p.organization ?? "Organization"} logo`} className="h-16 w-40 object-contain" />
               ) : <span className="text-[13px] text-muted">No organization logo selected</span>}
-              {p.status !== "published" && p.status !== "skipped" && (
+              {["draft", "approved"].includes(p.status) && (
                 <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50">
                   <ImageIcon size={16} /> {p.companyLogoUrl ? "Replace organization logo" : "Upload organization logo"}
                   <input
@@ -551,7 +552,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
 
             </div>
             <div className="flex items-center justify-end gap-2">
-            {p.status !== "published" && p.status !== "skipped" && (
+            {["draft", "approved"].includes(p.status) && (
               <button
                 type="button"
                 disabled={busy === p.id || drafts[p.id]?.pending}
@@ -578,9 +579,9 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
                   type="button"
                   disabled={busy === p.id || drafts[p.id]?.pending}
                   onClick={() => void act(p.id, "markPublished")}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-[12px] font-bold text-white transition hover:brightness-110 disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-muted hover:bg-elevated disabled:opacity-40"
                 >
-                  <Check size={12} /> Mark posted
+                  <Check size={12} /> Already posted manually
                 </button>
                 <button
                   type="button"
@@ -593,6 +594,10 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
               </>
             )}
             </div>
+            <SocialPublishControls post={p} connection={connection} pending={!!busy || hasUnsavedChanges || seriesBusy} onResult={(saved, message) => {
+              setPosts(all => all.map(item => item.id === saved.id ? { ...item, ...saved } : item));
+              setNote(message);
+            }} />
           </footer>
         </section>
       ))}
