@@ -338,7 +338,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
           : group === "symposium_2026"
-          ? "October 14-29 · Weekdays only · Toronto time · Planned dates, not automatic publishing."
+          ? "Dates are left blank for now. Nothing is published automatically."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
       </p>
       {group === "symposium_2026" && campaignPosts.length > 0 && (
@@ -352,10 +352,8 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
               {campaignPosts.map((post) => (
                 <tr key={post.id} className="border-t border-line align-top">
                   <td className="px-3 py-2">{orderControls(post, campaignPosts)}</td>
-                  <th scope="row" className="whitespace-nowrap px-3 py-2 font-medium text-fg">
-                    <time dateTime={post.scheduledFor}>{new Date(post.scheduledFor).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", timeZone: "America/Toronto" })}</time>
-                    <span className="block text-[12px] font-normal text-muted">{new Date(post.scheduledFor).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit", timeZone: "America/Toronto" })}</span>
-                  </th>
+                  {/* Planned dates are left blank for now; the order column is the plan. */}
+                  <td className="px-3 py-2" aria-label="No planned date" />
                   <td className="min-w-40 px-3 py-2"><Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(post.id)}`} className="font-semibold text-brand-700 underline underline-offset-2">{post.cycleLabel}</Link></td>
                   <td className="px-3 py-2 text-muted">{post.assetUrl ? "Image ready" : post.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}</td>
                   <td className="px-3 py-2 capitalize text-fg">{post.status}</td>
@@ -428,7 +426,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             )}
             {p.overdue && p.status === "draft" && (
               <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-amber-700">
-                <Clock size={12} /> due {new Date(p.scheduledFor).toLocaleDateString("en-CA")}
+                <Clock size={12} /> overdue
               </span>
             )}
             {/* The one thing the queue can tell you that the post cannot
@@ -439,11 +437,6 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
                 <RefreshCw size={12} /> {p.stream === "symposium_2026"
                   ? "Speaker details changed; review this draft and graphic again"
                   : "the deadline moved since this was approved"}
-              </span>
-            )}
-            {p.stream !== "symposium_2026" && (
-              <span className="ml-auto text-[12px] tabular-nums text-muted">
-                {new Date(p.scheduledFor).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}
               </span>
             )}
           </div>

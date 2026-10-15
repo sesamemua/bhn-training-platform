@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Social: planned dates left blank",
+    body: "Posts in **Marketing \u2192 Social** no longer show a planned date: the campaign table\u2019s **Planned** column is empty, and the date in the corner of each post is gone. The order of the posts is the plan. A VentureConnect reminder that is past its moment still says **overdue**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Social: comment on a post\u2019s graphic without leaving Social",
     body: "Every post with a graphic in **Marketing \u2192 Social** now has **Comment on the graphic**. It opens right inside the post\u2019s card: click anywhere on the graphic to pin a comment, reply, resolve, and copy the round\u2019s feedback for the designer \u2014 the same tools as Design Review, without going there. The post\u2019s text is still edited in its own box, and the post\u2019s **Approve** is still the approval.\n\nAfter replacing a graphic, **Use the current graphic** brings the new version in; the comments stay.",
     kind: "feature",

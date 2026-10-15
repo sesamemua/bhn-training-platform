@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24e";
+export const TOUR_VERSION = "2026.10.24f";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "social.no-planned-dates",
+    title: "Social posts: no planned dates",
+    body: "Planned dates are left blank on social posts for now — the order of the posts is the plan.",
+    path: "/admin/workspace/marketing/social",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24f",
+  },
   {
     id: "social.graphic-comments",
     title: "Comment on graphics right in Social",

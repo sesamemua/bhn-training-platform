@@ -69,7 +69,8 @@ test("calendar groups campaign posts separately from other events and keeps post
   const skipped = { ...example, id: "skipped", status: "skipped", cycleLabel: "Declined post", body: "Declined caption" };
   const html = renderToStaticMarkup(createElement(SocialQueue, { initial: [example, other, published, skipped] }));
   assert.match(html, /Weekday campaign plan through the symposium/);
-  assert.match(html, /4:30 p\.m\./);
+  assert.doesNotMatch(html, /4:30 p\.m\.|Oct 26/, "planned dates are left blank");
+  assert.match(html, /aria-label="No planned date"/);
   assert.match(html, /Awaiting event photos/);
   assert.match(html, /Already posted/);
   assert.match(html, /href="\/admin\/workspace\/marketing\/social\?post=campaign-1"/);
