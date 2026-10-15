@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24f";
+export const TOUR_VERSION = "2026.10.24g";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "themes.pumpkin-winter",
+    title: "Pumpkin and Winter themes",
+    body: "Two seasonal themes are in the theme picker: **Pumpkin** for Halloween, with bats over a low fog, and **Winter**, with falling snow.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["trainee", "evaluating", "employer", "instructor", "admin", "superadmin"],
+    since: "2026.10.24g",
+  },
   {
     id: "social.no-planned-dates",
     title: "Social posts: no planned dates",

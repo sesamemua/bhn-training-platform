@@ -1,0 +1,179 @@
+/* ═════════════════════════════════════════════════════════════════
+ *  Seasonal themes — Winter and Pumpkin (Halloween).
+ *
+ *  Kept in their own stylesheet (imported from the root layout after
+ *  globals.css) so a new season can be added or retired as one file.
+ *  Token-for-token the same contract as the themes in globals.css:
+ *  ground, mesh, surfaces, text, lines, a brand ramp, all six corner
+ *  steps, and the dashboard hero. Contrast figures are computed:
+ *  brand-600 carries white text at AA, fg-subtle is AA on --raised.
+ *  ═════════════════════════════════════════════════════════════════ */
+
+/* ── Winter: frost white, glacier blue, navy ink ─────────────────── */
+[data-theme="winter"] {
+  --popover-bg: #eef4fa;
+  --bg:        #f4f8fc;
+  --bg-mesh:
+    radial-gradient(at 12% 8%,   rgba(71, 145, 207, 0.12) 0px, transparent 52%),
+    radial-gradient(at 88% 22%,  rgba(168, 208, 240, 0.22) 0px, transparent 48%),
+    radial-gradient(at 20% 85%,  rgba(27, 82, 130, 0.07) 0px, transparent 46%),
+    radial-gradient(at 50% 100%, rgba(220, 234, 246, 0.6) 0px, transparent 60%);
+  --card:      rgba(255, 255, 255, 0.92);
+  --card-solid: #ffffff;
+  --elevated:  #e8f0f8;
+  --raised:    #dbe7f3;
+  --fg:        #0f2236;
+  --fg-muted:  #3f5870;
+  --fg-subtle: #4b6378;        /* AA: 5.0:1 on raised */
+  --line:      rgba(15, 34, 54, 0.11);
+  --line-strong: rgba(15, 34, 54, 0.21);
+  --backdrop:  rgba(15, 34, 54, 0.42);
+
+  /* Glacier blue. 600 (#22659f) + white = 6.2:1. */
+  --brand-50:  #eaf4fc;
+  --brand-100: #d3e8f8;
+  --brand-200: #a8d0f0;
+  --brand-300: #74b2e3;
+  --brand-400: #4791cf;
+  --brand-500: #2f78bb;
+  --brand-600: #22659f;
+  --brand-700: #1b5282;
+  --brand-800: #163f63;
+  --brand-900: #102d47;
+
+  --radius-sm:  10px;
+  --radius:     14px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  26px;
+  --radius-2xl: 26px;
+  --radius-3xl: 29px;
+
+  /* Dashboard hero — a clear night after snowfall. */
+  --hero-bg:     #0f2a44;
+  --hero-mesh-1: #4791cf;
+  --hero-mesh-2: #a8d0f0;
+  --hero-mesh-3: #1b5282;
+  --hero-mesh-4: #091a2c;
+}
+
+/* ── Pumpkin: pumpkin orange and dusk purple on candlelit parchment ─ */
+[data-theme="pumpkin"] {
+  --popover-bg: #f6e8d4;
+  --bg:        #fbf3e8;
+  --bg-mesh:
+    radial-gradient(at 10% 10%,  rgba(240, 125, 31, 0.12) 0px, transparent 50%),
+    radial-gradient(at 90% 25%,  rgba(107, 63, 160, 0.08) 0px, transparent 46%),
+    radial-gradient(at 18% 80%,  rgba(184, 83, 10, 0.07) 0px, transparent 44%),
+    radial-gradient(at 50% 100%, rgba(42, 22, 54, 0.10) 0px, transparent 58%);
+  --card:      rgba(255, 252, 246, 0.92);
+  --card-solid: #fffcf6;
+  --elevated:  #f3e4cf;
+  --raised:    #ead3b3;
+  --fg:        #1f1426;        /* aubergine ink, warmer than black */
+  --fg-muted:  #5a4560;
+  --fg-subtle: #5e4a57;        /* AA: 6.0:1 on raised */
+  --line:      rgba(31, 20, 38, 0.12);
+  --line-strong: rgba(31, 20, 38, 0.22);
+  --backdrop:  rgba(31, 20, 38, 0.45);
+
+  /* Pumpkin. 600 (#b8530a) + white = 4.9:1; 500 is a decorative accent only. */
+  --brand-50:  #fff1e3;
+  --brand-100: #ffdcb8;
+  --brand-200: #ffbc7a;
+  --brand-300: #fb9a45;
+  --brand-400: #f07d1f;
+  --brand-500: #e06a10;
+  --brand-600: #b8530a;
+  --brand-700: #93410a;
+  --brand-800: #6e310b;
+  --brand-900: #4a210a;
+
+  --radius-sm:  10px;
+  --radius:     14px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+  --radius-2xl: 28px;
+  --radius-3xl: 32px;
+
+  /* Dashboard hero — dusk purple with a jack-o'-lantern glow. */
+  --hero-bg:     #2a1636;
+  --hero-mesh-1: #f07d1f;
+  --hero-mesh-2: #6b3fa0;
+  --hero-mesh-3: #b8530a;
+  --hero-mesh-4: #140a1c;
+}
+[data-theme="pumpkin"] {
+  --color-violet-50:  rgba(107, 63, 160, 0.10);
+  --color-violet-100: rgba(107, 63, 160, 0.16);
+  --color-amber-50:   rgba(240, 125, 31, 0.10);
+  --color-amber-100:  rgba(240, 125, 31, 0.16);
+}
+
+/* ── Atmospheres ─────────────────────────────────────────────────── */
+@keyframes winter-flake-fall {
+  0%   { transform: translate3d(0, -8vh, 0); opacity: 0; }
+  8%   { opacity: 1; }
+  50%  { transform: translate3d(var(--flake-sway, 40px), 50vh, 0); }
+  92%  { opacity: 1; }
+  100% { transform: translate3d(calc(var(--flake-sway, 40px) * -0.4), 108vh, 0); opacity: 0; }
+}
+.winter-flake {
+  position: absolute;
+  top: 0;
+  display: block;
+  border-radius: 9999px;
+  color: #a8d0f0;
+  background: radial-gradient(circle, #ffffff 0%, #dcebf8 60%, rgba(220, 235, 248, 0) 72%);
+  animation: winter-flake-fall linear infinite;
+  will-change: transform;
+}
+.winter-flake:has(svg) { background: none; }
+.winter-frost {
+  position: absolute; inset: auto 0 0 0; height: 26vh;
+  background: linear-gradient(to top, rgba(220, 235, 248, 0.55), rgba(220, 235, 248, 0));
+  animation: seasonal-breathe 14s ease-in-out infinite;
+}
+
+@keyframes pumpkin-bat-fly {
+  0%   { transform: translate3d(-10vw, 0, 0); }
+  25%  { transform: translate3d(22vw, calc(var(--bat-bob, 20px) * -1), 0); }
+  50%  { transform: translate3d(50vw, var(--bat-bob, 20px), 0); }
+  75%  { transform: translate3d(78vw, calc(var(--bat-bob, 20px) * -0.6), 0); }
+  100% { transform: translate3d(110vw, 0, 0); }
+}
+@keyframes pumpkin-bat-flap {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(0.35); }
+}
+.pumpkin-bat {
+  position: absolute; left: 0; display: block; color: #2a1636;
+  animation: pumpkin-bat-fly linear infinite;
+  will-change: transform;
+}
+.pumpkin-bat-reverse { animation-direction: reverse; }
+.pumpkin-bat-wings { display: block; transform-origin: 50% 40%; animation: pumpkin-bat-flap ease-in-out infinite; }
+.pumpkin-fog {
+  position: absolute; inset: auto 0 0 0; height: 30vh;
+  background:
+    radial-gradient(ellipse 60% 100% at 25% 100%, rgba(107, 63, 160, 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 100% at 80% 100%, rgba(240, 125, 31, 0.12), transparent 70%);
+  animation: seasonal-breathe 16s ease-in-out infinite;
+}
+
+@keyframes seasonal-breathe {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+@keyframes seasonal-caption-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+.seasonal-caption {
+  position: absolute; right: 18px; bottom: 14px;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: lowercase;
+}
+.winter-caption  { color: rgba(27, 82, 130, 0.62); }
+.pumpkin-caption { color: rgba(110, 49, 11, 0.62); }
+.seasonal-caption-text { display: inline-block; animation: seasonal-caption-in 1.2s ease-out both; }

@@ -98,6 +98,22 @@ export const THEMES = [
     endsOn: "2026-11-30",
     limited: true,
   },
+  {
+    id: "pumpkin",
+    name: "Pumpkin",
+    description: "Pumpkin orange and dusk purple on candlelit parchment, with bats crossing over a low fog. A limited Halloween engagement.",
+    category: "limited",
+    endsOn: "2026-11-02",
+    limited: true,
+  },
+  {
+    id: "winter",
+    name: "Winter",
+    description: "Frost white and glacier blue with navy ink, and snow coming down over a low frost haze. A limited winter engagement.",
+    category: "limited",
+    endsOn: "2027-02-28",
+    limited: true,
+  },
 ] as const;
 
 /** Display labels for each category — surfaced as section headers

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Two new themes: Pumpkin for Halloween, and Winter",
+    body: "Two limited-time themes are in the theme picker. **Pumpkin** \u2014 pumpkin orange and dusk purple on candlelit parchment, with bats crossing over a low fog \u2014 runs until **2 November**. **Winter** \u2014 frost white and glacier blue with navy ink, and snow coming down over a frost haze \u2014 runs until the **end of February**. Nothing moves for anyone who has reduced motion turned on.",
+    kind: "feature",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Social: planned dates left blank",
     body: "Posts in **Marketing \u2192 Social** no longer show a planned date: the campaign table\u2019s **Planned** column is empty, and the date in the corner of each post is gone. The order of the posts is the plan. A VentureConnect reminder that is past its moment still says **overdue**.",
     kind: "improvement",

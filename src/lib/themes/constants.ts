@@ -30,6 +30,8 @@ export const VALID_THEME_IDS = [
   "canada",
   "endofsummer",
   "harvest",
+  "pumpkin",
+  "winter",
 ] as const;
 
 export type ThemeId = (typeof VALID_THEME_IDS)[number];

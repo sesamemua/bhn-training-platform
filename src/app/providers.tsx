@@ -14,6 +14,8 @@ import { IceCreamAtmosphere } from "@/components/themes/IceCreamAtmosphere";
 import { CanadaAtmosphere } from "@/components/themes/CanadaAtmosphere";
 import { EndOfSummerAtmosphere } from "@/components/themes/EndOfSummerAtmosphere";
 import { HarvestAtmosphere } from "@/components/themes/HarvestAtmosphere";
+import { PumpkinAtmosphere } from "@/components/themes/PumpkinAtmosphere";
+import { WinterAtmosphere } from "@/components/themes/WinterAtmosphere";
 import { DemoTourProvider } from "@/lib/demo/tourContext";
 import type { DesignSystemId } from "@/lib/design-system/registry";
 
@@ -64,6 +66,9 @@ export function Providers({
                   replaced End of Summer once August ended). Returns
                   null for every other theme — free while inactive. */}
               <HarvestAtmosphere />
+              {/* Bats over a low dusk fog (Pumpkin), snow over frost haze (Winter). Free while inactive. */}
+              <PumpkinAtmosphere />
+              <WinterAtmosphere />
               {/* DemoTourProvider — global state + navigation side-effects
                   for the guided platform demo (admin/demo). Wraps children
                   so both the DemoHub launcher and the DemoOverlay visual
