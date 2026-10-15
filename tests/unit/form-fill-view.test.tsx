@@ -159,11 +159,10 @@ function boxTop(title: string): number {
 }
 
 test("a session's height is how long it runs", () => {
-  // The whole point. Monday's company tour runs 09:30-15:30 and the
-  // CCRM tour 15:00-17:00 — three times as long, and it has to look it.
+  // Microbix reserves five hours including travel; CCRM reserves two.
   const tour = boxHeight("Microbix tour");
   const ccrm = boxHeight("Discovery to Delivery");
-  assert.ok(tour > ccrm * 2.5, `the day is ${tour}% and the tour is ${ccrm}% — not to scale`);
+  assert.equal(tour, ccrm * 2.5, "the five-hour block must be 2.5 times the two-hour block");
 });
 
 test("the Tuesday pair, both 13:00–16:00, are drawn the same height", () => {
