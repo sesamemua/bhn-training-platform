@@ -39,7 +39,7 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24j";
+export const TOUR_VERSION = "2026.10.24k";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -52,13 +52,13 @@ export const TOUR_STEPS: TourStep[] = [
     since: "2026.10.24j",
   },
   {
-    id: "platform.header-flowing",
+    id: "platform.header-assays",
     title: "The header flows",
-    body: "The microfluidic chip in the page header is now animated — fluid moving through its channels and droplets leaving the generator. It stays still if you have reduced motion turned on.",
+    body: "The microfluidic chips in the page header now run assays: sample in, reagent added, mixed, incubated, a positive or negative result, and droplets read by a detector — a different run every time. Still if you have reduced motion turned on.",
     path: "/dashboard",
     placement: "center",
     roles: ["trainee", "evaluating", "employer", "instructor", "admin", "superadmin"],
-    since: "2026.10.24i",
+    since: "2026.10.24k",
   },
   {
     id: "home.released-seats-two-days",

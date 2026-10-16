@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "The header\u2019s microfluidic chips now run real assays",
+    body: "Instead of the same pulse looping, each chip etched into the page header now runs an assay from start to finish: the **sample** is drawn in, a **reagent** joins at the junction, the two **mix** through the serpentine, the **reaction chamber** fills and incubates, the result comes out **positive (green) or negative (grey)**, and oil pinches the product into **droplets** that run past a **detector**, which flashes for each positive one. Then the chip clears and starts a new run. Every run differs \u2014 reagent, result, number of droplets, pauses \u2014 and each chip keeps its own time. Still for anyone with reduced motion turned on.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Dashboard: new speaker submissions open to the speaker screen to choose a session",
     body: "On the dashboard\u2019s **Headshots & bios action items**, a newly submitted speaker no longer has a session picker. **Choose a session & review profile** opens the speaker screen, where every session option is available. In Symposium \u2192 Speakers the picker is unchanged.",
     kind: "improvement",
