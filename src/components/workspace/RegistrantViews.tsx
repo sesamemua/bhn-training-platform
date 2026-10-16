@@ -8,13 +8,14 @@
  * views are shared by every admin.
  */
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
-import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendLettersForBookings } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
-import { CoordinatorInfoSummary } from "./CoordinatorInfoSummary";
+import { CoordinatorInfoCells } from "./CoordinatorInfoSummary";
+import { WorkshopRegistrationSummary } from "@/components/training-week/WorkshopRegistrationSummary";
 import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { farSchoolOf } from "@/lib/travel/far-email";
@@ -22,7 +23,7 @@ import { travelWords } from "@/lib/travel/from-postcode";
 import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/allocation/highlights";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import type { AdminWorkshop, SubmissionRow } from "@/lib/allocation/admin-types";
-import { registrationSummary, sessionCapacity } from "@/lib/training-week/capacity";
+import { sessionCapacity } from "@/lib/training-week/capacity";
 import {
   BUILT_IN_VIEWS, GROUP_BY, GROUP_LABEL, LETTERS, LETTER_LABEL, STATUSES, TRAVELS, TRAVEL_LABEL,
   applyView, isBuiltIn, workshopRegistrantView, type Filters, type RegistrantRow, type ShownRow, type View,
@@ -323,6 +324,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
     return m;
   }, [subs]);
   const subOf = (r: ShownRow) => [r.bookingId, ...(r.bookingIds ?? [])].map((id) => subByBooking.get(id)).find(Boolean) ?? null;
+  const infoOf = useCallback((r: ShownRow) => [r.bookingId, ...r.bookingIds].map((id) => subByBooking.get(id)?.coordinatorInfo).find(Boolean), [subByBooking]);
   const afterDecision = () => { reloadSubs(); router.refresh(); };
 
   // Seats each person still has to have decided — across all of theirs, whatever the view shows.
@@ -370,14 +372,17 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   }
 
   const csv = useMemo(() => {
-    const head = ["Group", "Name", "Email", draft.perPerson ? "Workshops" : "Workshop", "Day", "Decision", "Email status", "Distance", "Postcode", "Dietary", "Accessibility"];
+    const head = ["Group", "Name", "Email", "Name on Roshni's list", "Institution (Roshni)", "Current role (Roshni)", "Company / venture (Roshni)", "Participation (Roshni)", draft.perPerson ? "Workshops" : "Workshop", "Day", "Decision", "Email status", "Distance", "Postcode", "Dietary", "Accessibility"];
     const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-    const lines = groups.flatMap((g) => g.rows.map((r) => [
-      g.label, r.name, r.email, r.workshops.join("; "), r.dayLabel, STATUS_LABEL[r.status] ?? r.status, LETTER_LABEL[r.letter],
-      r.falseOot ? "Claimed out of town — postal code is local" : TRAVEL_LABEL[r.travel], r.postcode, [...r.dietary, r.dietaryOther].filter(Boolean).join("; "), r.accessibility,
-    ]));
+    const lines = groups.flatMap((g) => g.rows.map((r) => {
+      const info = infoOf(r);
+      return [
+        g.label, r.name, r.email, info?.name ?? "", info?.institution ?? "", info?.position ?? "", info?.company ?? "", info?.participation ?? "", r.workshops.join("; "), r.dayLabel, STATUS_LABEL[r.status] ?? r.status, LETTER_LABEL[r.letter],
+        r.falseOot ? "Claimed out of town — postal code is local" : TRAVEL_LABEL[r.travel], r.postcode, [...r.dietary, r.dietaryOther].filter(Boolean).join("; "), r.accessibility,
+      ];
+    }));
     return [head, ...lines].map((l) => l.map((c) => esc(String(c))).join(",")).join("\n");
-  }, [groups, draft.perPerson]);
+  }, [groups, draft.perPerson, infoOf]);
 
   return (
     <section className="rounded-lg border border-line bg-card p-4">
@@ -516,11 +521,11 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               <Star size={11} className="-mt-0.5 mr-1 inline text-amber-500" />Highlighted only · {highlightedPeople}
             </button>
           )}
-          <span className="ml-auto inline-flex items-baseline gap-1.5 rounded-lg bg-brand-500/12 px-3 py-1">
+          {draft.groupBy !== "workshop" && <span className="ml-auto inline-flex items-baseline gap-1.5 rounded-lg bg-brand-500/12 px-3 py-1">
             <span className="text-[13px] font-semibold text-fg">Total</span>
             <span className="text-[26px] font-extrabold leading-none tabular-nums text-brand-400">{shownCount}</span>
             {draft.perPerson && <span className="text-[13px] font-semibold text-fg">{shownCount === 1 ? "person" : "people"}</span>}
-          </span>
+          </span>}
         </div>
       </div>
 
@@ -590,17 +595,21 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
             {rows.length === 0 ? "Nobody has registered yet." : "Nobody matches this view."}
           </p>
         )}
-        {groups.map((g) => (
+        {groups.map((g) => {
+          const workshop = draft.groupBy === "workshop" ? workshops.find((w) => w.id === g.key) : undefined;
+          const hasCoordinatorInfo = g.rows.some((r) => infoOf(r));
+          const coordinatorHeadings = hasCoordinatorInfo ? ["Institution", "Current role", "Company / venture", "Participation"] : [];
+          return (
           <div key={g.key}>
             {draft.groupBy !== "none" && (
               <h4 className="mb-1.5 flex items-center gap-2 text-[13px] font-bold text-fg">
                 {draft.groupBy === "workshop" && <span className={`h-2.5 w-2.5 rounded-full ${toneOf(g.key).dot}`} aria-hidden />}
-                {g.label} {(draft.groupBy !== "workshop" || draft.perPerson) && <span className="text-[11.5px] font-normal text-muted">Total: {g.rows.length}</span>}
+                {g.label} {draft.groupBy !== "workshop" && <span className="text-[11.5px] font-normal text-muted">Total: {g.rows.length}</span>}
               </h4>
             )}
-            {draft.groupBy === "workshop" && !draft.perPerson && (
-              <p className="mb-1.5 text-[11.5px] text-muted">{registrationSummary(sessionCapacity(0, g.rows))}</p>
-            )}
+            {workshop && <WorkshopRegistrationSummary cap={sessionCapacity(workshop.capacity, workshop.bookings)} />}
+            {workshop && g.rows.length < workshop.bookings.length && <p className="mb-2 text-[12px] text-muted">Showing {g.rows.length} matching {draft.perPerson ? "people" : "registrations"}</p>}
+            {hasCoordinatorInfo && <p className="mb-2 text-[13px] font-semibold text-fg">Institution, current role, company and participation from Roshni&apos;s email</p>}
             <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full min-w-[720px] border-collapse text-[12px]">
                 <thead>
@@ -615,8 +624,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                       />
                     </th>
                     {(draft.perPerson
-                      ? ["Name", "", "Workshops", "Distance", "Dietary", "Accessibility"]
-                      : ["Name", "", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"]
+                      ? ["Name", ...coordinatorHeadings, "", "Workshops", "Distance", "Dietary", "Accessibility"]
+                      : ["Name", ...coordinatorHeadings, "", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"]
                     ).map((h) => (
                       <th key={h} className="whitespace-nowrap px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-subtle">{h}</th>
                     ))}
@@ -627,6 +636,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                     const rowKey = draft.perPerson ? r.personKey : r.bookingId;
                     const open = openRow === rowKey;
                     const sub = subOf(r);
+                    const coordinatorInfo = infoOf(r);
                     return (
                     <Fragment key={rowKey}>
                     <tr
@@ -677,7 +687,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           {!r.email && <span className="rounded border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 font-semibold text-fg">Email missing</span>}
                           <span>{shortStamp(r.appliedAt)}</span>
                         </div>
-                        <CoordinatorInfoSummary info={sub?.coordinatorInfo} />
+                        {coordinatorInfo && coordinatorInfo.name !== r.name && <p className="mt-1 text-[11px] text-muted">Name on Roshni&apos;s list: {coordinatorInfo.name}</p>}
                         {/* Who highlighted them and why — each admin's note its own line. */}
                         {(r.highlights ?? []).map((h) => (
                           <div key={h.id} className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-fg/85">
@@ -691,6 +701,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           </div>
                         ))}
                       </td>
+                      {hasCoordinatorInfo && <CoordinatorInfoCells info={coordinatorInfo} />}
                       {/* A big target of its own, right before the workshops: opens the whole registration. */}
                       <td className="px-1 py-1 align-middle">
                         <button
@@ -763,7 +774,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                     </tr>
                     {open && (
                       <tr className="border-t border-line">
-                        <td colSpan={draft.perPerson ? 7 : 11} className="p-0">
+                        <td colSpan={(draft.perPerson ? 7 : 11) + coordinatorHeadings.length} className="p-0">
                           {sub ? (
                             <RegistrationDetail sub={sub} onChanged={afterDecision} where={{ postcode: r.postcode, email: r.email, said: r.travel }} />
                           ) : (
@@ -781,7 +792,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               </table>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

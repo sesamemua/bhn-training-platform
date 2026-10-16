@@ -4,7 +4,8 @@
  * home dashboard. No client code — it renders on the server too.
  */
 import type { ReactNode } from "react";
-import { registrationSummary, type MonitorSession } from "@/lib/training-week/capacity";
+import type { MonitorSession } from "@/lib/training-week/capacity";
+import { WorkshopRegistrationSummary } from "./WorkshopRegistrationSummary";
 
 export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
@@ -48,7 +49,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 </div>
                 {controls && controls(s)}
               </div>
-              <p className="mt-1 text-[11.5px] text-muted">{registrationSummary(c)}</p>
+              <WorkshopRegistrationSummary cap={c} />
               <div className="mt-1.5 space-y-1.5 text-[12px] leading-snug tabular-nums" role="group" aria-label={detail}>
                 <div className="relative overflow-hidden rounded bg-elevated px-2 py-2 pb-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-fg">

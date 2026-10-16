@@ -1,6 +1,16 @@
 import { Fragment } from "react";
 import type { CoordinatorInfo } from "@/lib/training-week/coordinator-info";
 
+export function CoordinatorInfoCells({ info }: { info?: CoordinatorInfo }) {
+  return (
+    <>
+      {Object.entries({ institution: info?.institution, position: info?.position, company: info?.company, participation: info?.participation }).map(([field, value]) => (
+        <td key={field} className="min-w-[8rem] max-w-[14rem] break-words px-2 py-2 text-[13px] text-fg">{value || (info ? "Not supplied" : "—")}</td>
+      ))}
+    </>
+  );
+}
+
 export function CoordinatorInfoSummary({ info }: { info?: CoordinatorInfo }) {
   if (!info) return null;
   return (

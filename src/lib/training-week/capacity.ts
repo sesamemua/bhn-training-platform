@@ -31,6 +31,8 @@ export interface SessionCapacity {
   projectedWaitlisted: number;
   waitlisted: number;
   capacity: number;
+  /** Unfilled trainee seats; recommendations do not reserve seats. */
+  remaining: number;
   /** Projected approvals beyond capacity (e.g. existing overbooking). */
   over: number;
   level: CapacityLevel;
@@ -64,6 +66,7 @@ export function sessionCapacity(capacity: number, seats: SeatLike[]): SessionCap
     projectedWaitlisted: live.filter((s) => s.suggestion === "waitlist" || s.status === "waitlist" && s.suggestion !== "approve").length,
     waitlisted: live.filter((s) => s.status === "waitlist").length,
     capacity: cap,
+    remaining: Math.max(0, cap - confirmed),
     over: Math.max(0, projectedApproved - cap),
     level,
   };
@@ -74,7 +77,7 @@ export function registrationSummary(c: SessionCapacity): string {
   return [
     `Approved: ${d.approved}`, `To be decided: ${d.undecided}`, `Declined: ${d.declined}`,
     ...(d.waitlisted ? [`Waitlisted: ${d.waitlisted}`] : []),
-    ...(d.withdrawn ? [`Can't attend: ${d.withdrawn}`] : []), `Total: ${c.records}`,
+    ...(d.withdrawn ? [`Can't attend: ${d.withdrawn}`] : []), `Total: ${c.records}`, `Remaining seats: ${c.remaining}`,
   ].join(" · ");
 }
 
