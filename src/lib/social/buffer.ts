@@ -36,14 +36,16 @@ export async function connectedBufferPage() {
 
 export const BufferPostSchema = z.object({ id: z.string().min(1), channelId: z.literal(BUFFER_CHANNEL_ID),
   status: z.enum(["draft", "error", "needs_approval", "scheduled", "sending", "sent"]), sentAt: z.iso.datetime().nullable(),
+  dueAt: z.iso.datetime().nullable().optional(),
 });
 export type BufferPost = z.infer<typeof BufferPostSchema>;
 
-export async function createBufferPost(text: string, image: string, alt: string): Promise<BufferPost> {
+export async function createBufferPost(text: string, image: string, alt: string, dueAt?: string): Promise<BufferPost> {
   const data = await bufferRequest(`mutation Publish($input: CreatePostInput!) {
-    createPost(input: $input) { ... on PostActionSuccess { post { id channelId status sentAt } }
+    createPost(input: $input) { ... on PostActionSuccess { post { id channelId status sentAt dueAt } }
       ... on MutationError { message } }
-  }`, { input: { channelId: BUFFER_CHANNEL_ID, text, schedulingType: "automatic", mode: "shareNow",
+  }`, { input: { channelId: BUFFER_CHANNEL_ID, text, schedulingType: "automatic", mode: dueAt ? "customScheduled" : "shareNow",
+    ...(dueAt ? { dueAt } : {}),
     needsApproval: false, saveToDraft: false, assets: [{ image: { url: image, metadata: { altText: alt } } }],
   } });
   if (data.createPost?.message) throw new BufferRejected(String(data.createPost.message).slice(0, 500));
@@ -51,6 +53,6 @@ export async function createBufferPost(text: string, image: string, alt: string)
 }
 
 export async function readBufferPost(id: string): Promise<BufferPost> {
-  const data = await bufferRequest(`query Status($input: PostInput!) { post(input: $input) { id channelId status sentAt } }`, { input: { id } });
+  const data = await bufferRequest(`query Status($input: PostInput!) { post(input: $input) { id channelId status sentAt dueAt } }`, { input: { id } });
   return BufferPostSchema.parse(data.post);
 }

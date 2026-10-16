@@ -12,14 +12,16 @@ export const runtime = "nodejs";
 
 const Input = z.discriminatedUnion("action", [
   z.object({ action: z.literal("publish"), id: z.string().min(1).max(100), expectedVersion: z.number().int().nonnegative() }),
+  z.object({ action: z.literal("schedule"), id: z.string().min(1).max(100), expectedVersion: z.number().int().nonnegative(), at: z.string().datetime() }),
   z.object({ action: z.literal("refresh"), id: z.string().min(1).max(100) }),
 ]);
-const select = { id: true, status: true, bufferPostId: true, publishError: true } as const;
+const select = { id: true, status: true, bufferPostId: true, publishError: true, scheduledFor: true } as const;
 
 function delivered(post: BufferPost) {
   return { bufferPostId: post.id, status: post.status === "sent" ? "published" : "scheduled",
     publishedAt: post.status === "sent" ? new Date(post.sentAt ?? Date.now()) : null,
     publishError: post.status === "error" ? "LinkedIn delivery failed. Check this post in Buffer before taking further action." : null,
+    ...(post.dueAt ? { scheduledFor: new Date(post.dueAt) } : {}),
   };
 }
 
@@ -40,6 +42,8 @@ export async function POST(req: NextRequest) {
   if (req.headers.get("origin") && req.headers.get("origin") !== req.nextUrl.origin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const input = Input.safeParse(await req.json().catch(() => null));
   if (!input.success) return NextResponse.json({ error: "Invalid input." }, { status: 400 });
+  const dueAt = input.data.action === "schedule" ? input.data.at : undefined;
+  if (dueAt && Date.parse(dueAt) < Date.now() + 60_000) return NextResponse.json({ error: "Choose a time at least one minute in the future." }, { status: 400 });
   const post = await prisma.socialPost.findUnique({ where: { id: input.data.id } });
   if (!post) return NextResponse.json({ error: "Post not found." }, { status: 404 });
   if (input.data.action === "refresh") {
@@ -64,6 +68,7 @@ export async function POST(req: NextRequest) {
   }
   try { await connectedBufferPage(); }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Buffer unavailable." }, { status: 503 }); }
+  if (dueAt && Date.parse(dueAt) < Date.now() + 60_000) return NextResponse.json({ error: "That time is too close. Choose a later time." }, { status: 400 });
   const claimed = await prisma.socialPost.updateMany({
     where: { id: post.id, status: "approved", editVersion: input.data.expectedVersion, bufferPostId: null, body: post.body, assetUrl: post.assetUrl },
     data: { status: "publishing", publishError: null },
@@ -90,10 +95,10 @@ export async function POST(req: NextRequest) {
       const base = new URL(prefix);
       return url.protocol === "https:" && !url.username && !url.password && url.origin === base.origin && url.pathname.startsWith(`${base.pathname.replace(/\/$/, "")}/`);
     })) throw new Error("Upload a graphic to the platform before publishing.");
-    await prisma.auditLog.create({ data: { actorId, action: "social.post.publish", targetType: "socialPost", targetId: post.id, detail: JSON.stringify({ version: post.editVersion, destination: "BioHubNet LinkedIn Page", assetUrl: image }) } });
+    await prisma.auditLog.create({ data: { actorId, action: dueAt ? "social.post.schedule" : "social.post.publish", targetType: "socialPost", targetId: post.id, detail: JSON.stringify({ version: post.editVersion, destination: "BioHubNet LinkedIn Page", assetUrl: image, ...(dueAt ? { dueAt } : {}) }) } });
     attempted = true;
-    remote = await createBufferPost(text, url.href, (post.assetSpec as { title?: string } | null)?.title ?? "BioHubNet social graphic");
-    const saved = await prisma.socialPost.update({ where: { id: post.id }, data: delivered(remote), select });
+    remote = await createBufferPost(text, url.href, (post.assetSpec as { title?: string } | null)?.title ?? "BioHubNet social graphic", dueAt);
+    const saved = await prisma.socialPost.update({ where: { id: post.id }, data: { ...(dueAt ? { scheduledFor: new Date(dueAt) } : {}), ...delivered(remote) }, select });
     return NextResponse.json({ post: saved });
   } catch (error) {
     const uncertain = attempted && !(error instanceof BufferRejected);
@@ -101,6 +106,7 @@ export async function POST(req: NextRequest) {
     const message = uncertain ? "Delivery is unconfirmed. Check the BioHubNet queue in Buffer before posting again." : error instanceof Error ? error.message : "Couldn't prepare the post.";
     const saved = await prisma.socialPost.update({ where: { id: post.id }, data: {
       status: uncertain ? "publishing" : "approved", bufferPostId: remote?.id ?? null, publishError: message,
+      ...(uncertain && dueAt ? { scheduledFor: new Date(dueAt) } : {}),
     }, select }).catch(() => null);
     return NextResponse.json({ error: message, post: saved }, { status: uncertain ? 202 : 502 });
   }

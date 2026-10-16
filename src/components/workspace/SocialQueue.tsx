@@ -334,26 +334,23 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
         {group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
       </h2>
       {group === "symposium_2026" && campaignPosts.length > 0 && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review & approve series</Link>}
-      <p className="text-[14px] text-muted">
+      {group !== "symposium_2026" && <p className="text-[14px] text-muted">
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
-          : group === "symposium_2026"
-          ? "Dates are left blank for now. Nothing is published automatically."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
-      </p>
+      </p>}
       {group === "symposium_2026" && campaignPosts.length > 0 && (
         <div className="overflow-x-auto border-y border-line">
           <table className="w-full text-left text-[13px]">
             <caption className="sr-only">Weekday campaign plan through the symposium</caption>
             <thead className="bg-elevated text-muted">
-              <tr><th scope="col" className="px-3 py-2">Order</th><th scope="col" className="px-3 py-2">Planned</th><th scope="col" className="px-3 py-2">Post</th><th scope="col" className="px-3 py-2">Image</th><th scope="col" className="px-3 py-2">Status</th></tr>
+              <tr><th scope="col" className="px-3 py-2">Order</th><th scope="col" className="px-3 py-2">Scheduled</th><th scope="col" className="px-3 py-2">Post</th><th scope="col" className="px-3 py-2">Image</th><th scope="col" className="px-3 py-2">Status</th></tr>
             </thead>
             <tbody>
               {campaignPosts.map((post) => (
                 <tr key={post.id} className="border-t border-line align-top">
                   <td className="px-3 py-2">{orderControls(post, campaignPosts)}</td>
-                  {/* Planned dates are left blank for now; the order column is the plan. */}
-                  <td className="px-3 py-2" aria-label="No planned date" />
+                  <td className="px-3 py-2" aria-label={post.status === "scheduled" && post.bufferPostId ? undefined : "No scheduled date"}>{post.status === "scheduled" && post.bufferPostId && <time dateTime={post.scheduledFor}>{new Date(post.scheduledFor).toLocaleString("en-CA", { timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "long" })}</time>}</td>
                   <td className="min-w-40 px-3 py-2"><Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(post.id)}`} className="font-semibold text-brand-700 underline underline-offset-2">{post.cycleLabel}</Link></td>
                   <td className="px-3 py-2 text-muted">{post.assetUrl ? "Image ready" : post.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}</td>
                   <td className="px-3 py-2 capitalize text-fg">{post.status}</td>

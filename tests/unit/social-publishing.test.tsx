@@ -35,6 +35,7 @@ function harness() {
   const state = {
     post: { ...initial }, authorized: true, rejectClaim: false, rejectProvider: false, timeout: false,
     connected: true, creates: 0, uploads: 0, audits: 0, result: { ...remote },
+    dueAt: undefined as string | undefined,
     speakerAt: new Date("2026-10-14T12:00:00Z"),
   };
   const mocks: Record<string, unknown> = {
@@ -57,8 +58,9 @@ function harness() {
     "@/lib/social/buffer": {
       BUFFER_CHANNEL_URL: "https://publish.buffer.com/company", BufferRejected,
       connectedBufferPage: async () => { if (!state.connected) throw new Error("Reconnect BioHubNet"); },
-      createBufferPost: async (text: string, image: string, alt: string) => {
+      createBufferPost: async (text: string, image: string, alt: string, dueAt?: string) => {
         state.creates++;
+        state.dueAt = dueAt;
         assert.match(text, /Join our symposium/); assert.match(text, /@BioHubNet/);
         assert.match(image, /^https:\/\/images.example\/social\//); assert.equal(alt, "Annual Symposium");
         if (state.rejectProvider) throw new BufferRejected("Post rejected");
@@ -99,6 +101,10 @@ test("Buffer API sends the saved text and public image only to the verified comp
       assets: [{ image: { url: initial.assetUrl, metadata: { altText: "The approved graphic" } } }] });
     await readBufferPost(remote.id);
     assert.deepEqual(calls[2].variables.input, { id: remote.id });
+    await createBufferPost("The approved words", initial.assetUrl, "The approved graphic", "2030-10-23T13:00:00.000Z");
+    assert.equal(calls[3].variables.input.mode, "customScheduled");
+    assert.equal(calls[3].variables.input.dueAt, "2030-10-23T13:00:00.000Z");
+    assert.equal(calls[3].variables.input.channelId, BUFFER_CHANNEL_ID);
     for (const change of [{ type: "profile" }, { isDisconnected: true }, { isLocked: true }, { id: "personal" }, { name: "Someone else", displayName: "Someone else" }]) {
       const original = channel; channel = { ...channel, ...change };
       await assert.rejects(connectedBufferPage(), /reconnected/); channel = original;
@@ -148,6 +154,55 @@ test("two simultaneous clicks create one post; delivery is confirmed separately,
   const confirmed = await send({ action: "refresh" });
   assert.equal(confirmed.status, 200); assert.equal((await confirmed.json()).post.status, "published");
   assert.equal(state.creates, 1);
+});
+
+test("scheduling requires approval and a future instant, queues once in Buffer and preserves the chosen time", async () => {
+  const { state, send } = harness();
+  const at = new Date(Date.now() + 86400000).toISOString();
+  for (const bad of ["invalid", "2020-01-01T00:00:00.000Z", new Date(Date.now() + 1000).toISOString()]) {
+    assert.equal((await send({ action: "schedule", at: bad })).status, 400);
+  }
+  assert.equal((await send({ action: "schedule" })).status, 400);
+  state.post.status = "draft";
+  assert.equal((await send({ action: "schedule", at })).status, 409);
+  state.post.status = "approved";
+  assert.equal(state.creates, 0);
+  state.result.status = "scheduled";
+  const results = await Promise.all([send({ action: "schedule", at }), send({ action: "schedule", at })]);
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 409]);
+  assert.equal(state.creates, 1);
+  assert.equal(state.dueAt, at);
+  assert.equal(state.post.scheduledFor.toISOString(), at);
+  assert.equal(state.post.status, "scheduled");
+  assert.equal(state.post.bufferPostId, remote.id);
+  assert.equal((await send({ action: "schedule", at })).status, 409);
+});
+
+test("unconfirmed scheduling stays locked while an explicit rejection restores approval", async () => {
+  const at = new Date(Date.now() + 86400000).toISOString();
+  const uncertain = harness(); uncertain.state.timeout = true;
+  assert.equal((await uncertain.send({ action: "schedule", at })).status, 202);
+  assert.equal(uncertain.state.post.status, "publishing");
+  assert.equal(uncertain.state.post.scheduledFor.toISOString(), at);
+  assert.equal((await uncertain.send({ action: "schedule", at })).status, 409);
+  const rejected = harness(); rejected.state.rejectProvider = true;
+  assert.equal((await rejected.send({ action: "schedule", at })).status, 502);
+  assert.equal(rejected.state.post.status, "approved");
+  assert.equal(rejected.state.post.scheduledFor.toISOString(), initial.scheduledFor.toISOString());
+});
+
+test("the old date-only scheduling route cannot label a post scheduled without Buffer", async () => {
+  const { state, mocks } = harness();
+  const route = load("src/app/api/admin/social/posts/route.ts", { ...mocks,
+    "@/lib/social/cycles": {}, "@/lib/social/sync": {}, "@/lib/social/edit": {},
+  });
+  const response = await route.POST(new NextRequest("https://platform.test/api/admin/social/posts", {
+    method: "POST", body: JSON.stringify({ action: "schedule", id: initial.id, at: new Date(Date.now() + 86400000).toISOString() }),
+  }));
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Buffer/);
+  assert.equal(state.post.status, "approved");
+  assert.equal(state.creates, 0);
 });
 
 test("invalid images and explicit provider rejections may retry; uncertain delivery must stay locked", async () => {
@@ -213,13 +268,17 @@ test("company logo changes invalidate approval and cannot race a publish claim",
 });
 
 test("only ready, approved, saved posts offer publishing; sending posts offer a status check", () => {
-  const post = { ...initial, cycleLabel: "Annual Symposium", stale: false } as unknown as QueuePost;
+  const post = { ...initial, scheduledFor: initial.scheduledFor.toISOString(), cycleLabel: "Annual Symposium", stale: false } as unknown as QueuePost;
   const render = (changed: Partial<QueuePost> = {}, ready = true, pending = false) => renderToStaticMarkup(createElement(SocialPublishControls, {
     post: { ...post, ...changed }, connection: { ready, url: "https://publish.buffer.com/company" }, pending, onResult: () => {},
   }));
   assert.match(render(), /Post Annual Symposium to LinkedIn/); assert.doesNotMatch(render(), /disabled=""/);
   for (const html of [render({}, false), render({}, true, true), render({ stale: true })]) assert.match(html, /disabled=""/);
-  assert.equal(render({ status: "draft" }), "");
+  assert.match(render({ status: "draft" }), /Approve the latest version before scheduling/);
+  assert.match(render({ status: "draft" }), /disabled=""/);
+  assert.match(render(), /Schedule Annual Symposium/);
   const sending = render({ status: "scheduled", bufferPostId: remote.id });
   assert.match(sending, /Check status/); assert.doesNotMatch(sending, /Post Annual Symposium to LinkedIn/);
+  assert.match(sending, /Scheduled for/);
+  assert.match(sending, /dateTime="2026-10-15T13:00:00.000Z"/);
 });

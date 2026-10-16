@@ -10,11 +10,12 @@ import { withSocialTags, SOCIAL_MENTIONS } from "../../src/lib/social/tags";
 import { CRS_EVENT_POST } from "../../src/lib/social/events";
 import { SocialQueue, type QueuePost } from "../../src/components/workspace/SocialQueue";
 import { DEFAULT_SOCIAL_ORDER } from "../../src/lib/social/order";
+import { SYMPOSIUM_PANEL_POSTS } from "../../src/lib/social/symposium-panel-posts";
 
 test("campaign covers every weekday through the symposium, without individual speaker spotlights except Chris", () => {
-  const dates = SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.suggestedDate.slice(0, 10));
+  const dates = [...new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.suggestedDate.slice(0, 10)))].sort();
   assert.deepEqual(dates, ["2026-10-14", "2026-10-15", "2026-10-16", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"]);
-  assert.equal(new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.slug)).size, 12);
+  assert.equal(new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.slug)).size, 15);
   for (const post of SYMPOSIUM_CAMPAIGN_PLAN) {
     const body = withSocialTags(post.body);
     assert.ok(body.length < 2000);
@@ -70,7 +71,7 @@ test("calendar groups campaign posts separately from other events and keeps post
   const html = renderToStaticMarkup(createElement(SocialQueue, { initial: [example, other, published, skipped] }));
   assert.match(html, /Weekday campaign plan through the symposium/);
   assert.doesNotMatch(html, /4:30 p\.m\.|Oct 26/, "planned dates are left blank");
-  assert.match(html, /aria-label="No planned date"/);
+  assert.match(html, /aria-label="No scheduled date"/);
   assert.match(html, /Awaiting event photos/);
   assert.match(html, /Already posted/);
   assert.match(html, /href="\/admin\/workspace\/marketing\/social\?post=campaign-1"/);
@@ -84,6 +85,10 @@ test("calendar groups campaign posts separately from other events and keeps post
   const events = renderToStaticMarkup(createElement(SocialQueue, { initial: [example, other], initialGroup: "events" }));
   assert.match(events, /Unrelated sponsor post/);
   assert.doesNotMatch(events, /Photo caption draft/);
+  const scheduled = renderToStaticMarkup(createElement(SocialQueue, { initial: [{ ...example, status: "scheduled", bufferPostId: "buffer-confirmed" }] }));
+  assert.match(scheduled, /dateTime="2026-10-26T20:30:00Z"/);
+  assert.match(scheduled, /Oct 26, 2026/);
+  assert.doesNotMatch(scheduled, /Dates are left blank/);
 });
 
 test("page creates missing drafts once, preserves edits and graphics, and no longer generates speaker posts", async () => {
@@ -134,9 +139,9 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   assert.match(html, /A colleague&#x27;s edited keynote post/);
   assert.match(html, /src="https:\/\/images.example\/chris.png"/);
   assert.match(html, /Awaiting event photos/);
-  assert.equal(creations, 12);
+  assert.equal(creations, 15);
   await render();
-  assert.equal(creations, 12, "revisiting must not duplicate or overwrite drafts");
+  assert.equal(creations, 15, "revisiting must not duplicate or overwrite drafts");
   assert.equal(saved.get(existingKey), existing);
   for (const post of SYMPOSIUM_CAMPAIGN_PLAN.slice(1, 8)) {
     saved.get(`events:event:${post.slug}:0`)!.assetUrl = "https://images.example/campaign.png";
@@ -148,4 +153,21 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   assert.doesNotMatch(series, /<table|role="tablist"/);
   await assert.rejects(render({ series: "unsupported" }), /not found/);
   await assert.rejects(render({ series: "symposium_2026", post: "chris" }), /not found/);
+});
+
+test("fresh panel drafts include professional titles, reuse original graphics and include Yannick without inventing a photo", () => {
+  assert.equal(SYMPOSIUM_PANEL_POSTS.length, 3);
+  const [ai, careers, manufacturing] = SYMPOSIUM_PANEL_POSTS;
+  for (const line of ["@Morgan Cramm, Senior Director Operations, OmniaBio", "@Dimitrije Jankovic, Global Head of Digital Strategy and Operations, Sanofi", "@Mona Abu Nameh, CMC Regulatory Affairs Manager", "@Alice Feng, Computational Scientist and HQP Representative, BoutIQ Solutions"]) assert.ok(ai.body.includes(line));
+  assert.match(careers.body, /@Angela Davoud, Co-founder & Chief Growth Officer, PeakR&D/);
+  assert.match(careers.body, /@Jasmine Hamilton, Senior Advisor, Health Emergency Readiness Canada/);
+  assert.match(careers.body, /@Sven Ansorge, Director, Technical Training and Innovation, CASTL/);
+  assert.match(ai.assetUrl!, /^https:\/\/pub-.*\.r2\.dev\/social\/events\//);
+  assert.match(careers.assetUrl!, /^https:\/\/pub-.*\.r2\.dev\/social\/events\//);
+  assert.match(manufacturing.body, /Moderated by @Gilbert Walker, Professor, University of Toronto/);
+  assert.match(manufacturing.body, /@Geoff Evans, President, Eurofins CDMO Alphora Inc\./);
+  assert.match(manufacturing.body, /former CEO, Vanrx Pharmasystems/);
+  assert.match(manufacturing.body, /@Yannick Dupe, Head of Site Operational Excellence & Smart Factory, Sanofi/);
+  assert.match(manufacturing.graphicBrief, /no portraits or missing-photo placeholders/);
+  assert.match(manufacturing.body, /2:15-3:00 p\.m\. ET/);
 });

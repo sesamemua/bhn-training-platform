@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_SOCIAL_ORDER, SocialOrderSchema, type SocialOrder } from "./order";
+import { DEFAULT_SOCIAL_ORDER, readSocialOrder, SocialOrderSchema, type SocialOrder } from "./order";
 
 const KEY = "admin.social.symposium2026.order.v1";
 export async function loadSocialOrder(): Promise<SocialOrder> {
   const row = await prisma.platformSetting.findUnique({ where: { key: KEY } });
-  return { order: row ? SocialOrderSchema.parse(JSON.parse(row.value)) : [...DEFAULT_SOCIAL_ORDER], version: row?.updatedAt.toISOString() ?? null };
+  return { order: row ? readSocialOrder(JSON.parse(row.value)) : [...DEFAULT_SOCIAL_ORDER], version: row?.updatedAt.toISOString() ?? null };
 }
 export async function saveSocialOrder(order: string[], version: string | null) {
   SocialOrderSchema.parse(order);

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DEFAULT_SOCIAL_ORDER, SocialOrderSchema, moveSocialPost, sortSocialPosts } from "../../src/lib/social/order";
+import { DEFAULT_SOCIAL_ORDER, SocialOrderSchema, moveSocialPost, readSocialOrder, sortSocialPosts } from "../../src/lib/social/order";
+import { SYMPOSIUM_PANEL_POSTS } from "../../src/lib/social/symposium-panel-posts";
 import { SYMPOSIUM_CAMPAIGN_PLAN } from "../../src/lib/social/symposium-campaign";
 import { SocialQueue, type QueuePost } from "../../src/components/workspace/SocialQueue";
 
@@ -18,9 +19,11 @@ test("default order follows the symposium agenda first, then Training Week days,
   assert.deepEqual(sorted.map((post) => post.campaignSlug), DEFAULT_SOCIAL_ORDER);
   assert.match(sorted[0].cycleLabel, /Keynote/);
   assert.match(sorted[1].cycleLabel, /AI/);
-  assert.match(sorted[2].cycleLabel, /Panel 2/);
-  assert.ok(sorted.slice(0, 4).every((post) => post.cycleLabel.startsWith("2026 Symposium")));
-  assert.ok(sorted.slice(4).every((post) => post.cycleLabel.startsWith("Training Week")));
+  assert.match(sorted[2].cycleLabel, /Panel 1/);
+  assert.match(sorted[3].cycleLabel, /Panel 2/);
+  assert.match(sorted[5].cycleLabel, /Panel 3/);
+  assert.ok(sorted.slice(0, 7).every((post) => post.cycleLabel.startsWith("2026 Symposium")));
+  assert.ok(sorted.slice(7).every((post) => post.cycleLabel.startsWith("Training Week")));
   assert.deepEqual(posts.map((post) => post.scheduledFor), SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.suggestedDate));
 });
 
@@ -40,7 +43,7 @@ test("manual moves persist a complete permutation, skip hidden posts and cannot 
 });
 
 test("table, full cards and series review use the same shared order with accessible arrow controls", () => {
-  const order = moveSocialPost(DEFAULT_SOCIAL_ORDER, DEFAULT_SOCIAL_ORDER[2], -1);
+  const order = moveSocialPost(DEFAULT_SOCIAL_ORDER, DEFAULT_SOCIAL_ORDER[3], -1, [DEFAULT_SOCIAL_ORDER[0], DEFAULT_SOCIAL_ORDER[1], DEFAULT_SOCIAL_ORDER[3]]);
   for (const seriesReview of [false, true]) {
     const html = renderToStaticMarkup(createElement(SocialQueue, { initial: posts, initialOrder: { order, version: null }, seriesReview }));
     assert.ok(html.indexOf('Post text for 2026 Symposium | Panel 2') < html.indexOf('Post text for 2026 Symposium | AI'));
@@ -53,4 +56,16 @@ test("table, full cards and series review use the same shared order with accessi
   assert.match(unavailable, /aria-label="Move 2026 Symposium \| Panel 2: Expanding Career Horizons up"[^>]*disabled/);
   const single = renderToStaticMarkup(createElement(SocialQueue, { initial: [posts[0]], reviewMode: true }));
   assert.doesNotMatch(single, /aria-label="Move /);
+});
+
+test("new panel drafts are inserted without discarding colleagues' saved order", () => {
+  const added = new Set(SYMPOSIUM_PANEL_POSTS.map(p => p.slug));
+  const legacy = DEFAULT_SOCIAL_ORDER.filter(slug => !added.has(slug)).reverse();
+  const migrated = readSocialOrder(legacy);
+  assert.deepEqual(migrated.filter(slug => !added.has(slug)), legacy);
+  assert.equal(SocialOrderSchema.safeParse(migrated).success, true);
+  assert.equal(migrated.indexOf("symposium-2026-biomanufacturing-panel"), migrated.indexOf("symposium-2026-careers-panel-with-titles") + 1);
+  assert.deepEqual(readSocialOrder(migrated), migrated);
+  assert.throws(() => readSocialOrder(["unknown"]));
+  assert.throws(() => readSocialOrder([...legacy, legacy[0]]));
 });

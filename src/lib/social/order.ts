@@ -4,7 +4,10 @@ import { SYMPOSIUM_CAMPAIGN_PLAN } from "./symposium-campaign";
 export const DEFAULT_SOCIAL_ORDER = [
   "symposium-2026-keynote-promotion-oct13",
   "symposium-2026-ai-panel-oct21",
+  "symposium-2026-ai-panel-with-titles",
   "symposium-2026-careers-connections-oct22",
+  "symposium-2026-careers-panel-with-titles",
+  "symposium-2026-biomanufacturing-panel",
   "symposium-2026-on-the-day-photo-oct29",
   "symposium-2026-week-ahead-oct23",
   "training-week-2026-pandemic-promotion-oct13",
@@ -19,6 +22,16 @@ const campaignSlugs = new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.slug));
 export const SocialOrderSchema = z.array(z.string().max(160)).length(campaignSlugs.size)
   .refine((order) => new Set(order).size === campaignSlugs.size && order.every((slug) => campaignSlugs.has(slug)), "Include every campaign post exactly once.");
 export type SocialOrder = { order: string[]; version: string | null };
+
+export function readSocialOrder(value: unknown): string[] {
+  const order = z.array(z.string().max(160)).max(campaignSlugs.size).parse(value);
+  for (const [slug, after] of [
+    ["symposium-2026-ai-panel-with-titles", "symposium-2026-ai-panel-oct21"],
+    ["symposium-2026-careers-panel-with-titles", "symposium-2026-careers-connections-oct22"],
+    ["symposium-2026-biomanufacturing-panel", "symposium-2026-careers-panel-with-titles"],
+  ]) if (!order.includes(slug)) order.splice(order.indexOf(after) + 1, 0, slug);
+  return SocialOrderSchema.parse(order);
+}
 
 export function sortSocialPosts<T extends { campaignSlug?: string; scheduledFor: string; id: string }>(posts: T[], order: string[]) {
   const rank = new Map(order.map((slug, index) => [slug, index]));

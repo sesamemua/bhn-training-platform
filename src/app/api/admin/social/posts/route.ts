@@ -107,11 +107,7 @@ export async function POST(req: NextRequest) {
       changed = await prisma.socialPost.updateMany({ where: { id: post.id, status: post.status, editVersion: post.editVersion }, data: { status: "skipped" } });
       break;
     case "schedule":
-      changed = await prisma.socialPost.updateMany({
-        where: { id: post.id, status: post.status, editVersion: post.editVersion },
-        data: { status: "scheduled", scheduledFor: new Date(data.at) },
-      });
-      break;
+      return NextResponse.json({ error: "Use Schedule on an approved post to queue it with Buffer. Saving a date alone does not schedule publication." }, { status: 409 });
     case "markPublished":
       /*
        * RECORDED, NOT PERFORMED.

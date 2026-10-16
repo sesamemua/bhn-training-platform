@@ -41,6 +41,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     stream: "events", kind: "event", deadlineId: post.slug,
     key: `events:event:${post.slug}:0`, body: withSocialTags(post.body),
     scheduledFor: new Date(post.suggestedDate),
+    assetUrl: post.assetUrl ?? null,
     assetSpec: { title: post.title, campaign: "2026-symposium-training-week", sourceUrl: post.sourceUrl,
       graphicBrief: post.graphicBrief, ...(post.photoBrief ? { photoBrief: post.photoBrief } : {}) },
   }))], skipDuplicates: true });
