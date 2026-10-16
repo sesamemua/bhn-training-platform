@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Dashboard: your most-used pages",
+    body: "Your dashboard now shows **Your most-used pages** for the last 30 days: the pages you open most, how long you spent on each (time counts only while the tab is in view), your total time on the platform, and a link to pick up where you left off. Only you see it, and it fills in only if you allowed analytics cookies.",
+    kind: "feature",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Print queue: preview a batch\u2019s PDF before printing",
     body: "Open any batch in **Symposium \u2192 Print jobs \u2192 Print queue** and its PDF now shows right there, exactly as it will print \u2014 badges on their Avery sheets, table tents, the agenda. **Open full screen** opens it in its own tab; **Download PDF** still downloads it.",
     kind: "improvement",

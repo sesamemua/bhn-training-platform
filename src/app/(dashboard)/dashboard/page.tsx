@@ -16,6 +16,7 @@ import { CreditApplicationCallout } from "@/components/dashboards/CreditApplicat
 import { RewardsDistanceCard } from "@/components/dashboards/RewardsDistanceCard";
 import { CREDIT_GRANT_TTL_DAYS } from "@/lib/credits/expiry";
 import { LatestNewsCard } from "@/components/dashboards/LatestNewsCard";
+import { PageUsageCard } from "@/components/dashboards/PageUsageCard";
 import { getDisplayName } from "@/lib/user/display-name";
 import { PreferredNameEditor } from "@/components/profile/PreferredNameEditor";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
@@ -104,6 +105,7 @@ export default async function DashboardPage() {
         user={{ id: userId, name: session!.user?.name ?? null }}
         role={role}
         committeeBadge={<CommitteeBadgeStrip userId={userId} />}
+        pageUsage={<PageUsageCard userId={userId} />}
       />
     );
   }
@@ -111,7 +113,7 @@ export default async function DashboardPage() {
     return (
       <InstructorDashboard
         user={{ id: userId, name: session!.user?.name ?? null }}
-        committeeBadge={<CommitteeBadgeStrip userId={userId} />}
+        committeeBadge={<><CommitteeBadgeStrip userId={userId} /><PageUsageCard userId={userId} /></>}
       />
     );
   }
@@ -998,6 +1000,7 @@ export default async function DashboardPage() {
         <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
           <CreditUsageScoreboard userId={userId} />
           <LatestNewsCard role={role} />
+          <div className="lg:col-span-2"><PageUsageCard userId={userId} /></div>
         </div>
       </section>
 

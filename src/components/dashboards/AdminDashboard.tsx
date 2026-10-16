@@ -53,7 +53,7 @@ import { ReleasedSeats } from "@/components/training-week/ReleasedSeats";
  * constant at the bottom of this file — no leakage to other surfaces.
  */
 export async function AdminDashboard({
-  user, role, committeeBadge,
+  user, role, committeeBadge, pageUsage,
 }: {
   user: { id: string; name: string | null };
   role: string;
@@ -61,6 +61,7 @@ export async function AdminDashboard({
    *  the dashboard page to inject CommitteeBadgeStrip without
    *  pushing the editorial hero off the top of the page. */
   committeeBadge?: React.ReactNode;
+  pageUsage?: React.ReactNode;
 }) {
   const firstName = user.name?.split(" ")[0] ?? "there";
   const isSuperAdmin = role === "superadmin";
@@ -316,6 +317,8 @@ export async function AdminDashboard({
 
       <AdminDashboardCards sessions={capacity} saveWorkshopState={saveWorkshopRegistration} saveCapacity={updateWorkshop}
         initialLayout={dashboardLayout} releasedSeats={<ReleasedSeats framed showEmpty />} />
+
+      {pageUsage}
 
       {/* ════ SIDEBAR RIGHT — content LEFT, quick-action rail RIGHT ═ */}
       <article className="aero-frame">

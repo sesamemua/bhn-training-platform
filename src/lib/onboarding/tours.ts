@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24o";
+export const TOUR_VERSION = "2026.10.24p";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.page-usage",
+    title: "Your most-used pages",
+    body: "Your dashboard lists the pages you use most, with time spent on each and a link back to where you left off. Only you see it.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["trainee", "evaluating", "instructor", "admin", "superadmin"],
+    since: "2026.10.24p",
+  },
   {
     id: "print.pdf-preview",
     title: "Preview print PDFs",
