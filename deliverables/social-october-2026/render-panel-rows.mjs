@@ -52,13 +52,6 @@ for (const panel of panels) {
   tx.fillStyle = fade; tx.fillRect(940, 0, 260, 1372); ctx.drawImage(texture, 0, 0);
   ctx.drawImage(logo, 72, 56, 390, 390 * logo.height / logo.width);
   bounds.push([72, 56, 390, 390 * logo.height / logo.width, "BioHubNet logo"]);
-  if (panel.number === 3) {
-    const motif = await loadImage(new URL("source-assets/biomanufacturing-corner.png", root));
-    // Trim only transparent margins so the supporting vessel stays legible at feed size.
-    assert.ok(motif.width >= 1312 && motif.height >= 1090, "Corner art crop must fit its source");
-    ctx.drawImage(motif, 530, 40, 782, 1050, 992, 40, 136, 182);
-    bounds.push([992, 40, 136, 182, "Biomanufacturing corner art"]);
-  }
 
   function text(value, size, weight, x, baseline, width, color = ink, centered = false) {
     assert.ok(size >= 32, "Do not shrink information to fit");
@@ -140,7 +133,7 @@ for (const panel of panels) {
   }
   const output = await canvas.encode("png");
   assert.ok(output.length < 3_000_000, "Fit the platform upload limit");
-  const filename = `panel-${panel.number}-photos-titles-row-v${panel.number === 3 ? 3 : 1}.png`;
+  const filename = `panel-${panel.number}-photos-titles-row-v${panel.number === 3 ? 2 : 1}.png`;
   await writeFile(new URL(`graphics/${filename}`, root), output);
   const mobile = createCanvas(360, 450); mobile.getContext("2d").drawImage(canvas, 0, 0, 360, 450);
   await writeFile(new URL(`graphics/${filename.replace(".png", "-360-preview.png")}`, root), await mobile.encode("png"));

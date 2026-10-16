@@ -1,6 +1,8 @@
 # Panel 3 Corner Art
 
-Generated with the built-in imagegen tool on October 16, 2026, with a transparent background. The native canvas renderer places only this supporting illustration in the top-right corner. Speaker portraits are composited from their unchanged original files.
+The current Panel 3 graphic is `panel-3-photos-titles-row-v2.png`: the bioreactor has been removed at the user's request, with all other pixels unchanged. The following generation notes are historical; this illustration is no longer rendered.
+
+Generated with the built-in imagegen tool on October 16, 2026, with a transparent background. Speaker portraits are composited from their unchanged original files.
 
 Sanofi's official logo was exported from the homepage SVG at https://www.sanofi.com/en. Its paths and colors are unchanged; only the intrinsic export dimensions were increased for crisp raster rendering. It replaces the initials in Yannick Dupe's headshot position.
 
