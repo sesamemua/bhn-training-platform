@@ -37,7 +37,7 @@ function fitted(doc: jsPDF, value: string, x: number, y: number, width: number, 
 }
 
 export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?: Uint8Array): Promise<Uint8Array> {
-  if (template && job.kind !== "badges") {
+  if (template && (job.kind === "tents" || job.kind === "agenda")) {
     const source = await PDFDocument.load(template), output = await PDFDocument.create();
     // Valid blank separator pages also need a content stream before embedding.
     for (const page of source.getPages()) page.drawRectangle({ x: 0, y: 0, width: 0, height: 0, opacity: 0 });
@@ -87,6 +87,23 @@ export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?:
       sheet.drawPage(face, { x: 612, y: 792, rotate: degrees(180) });
     }
     return output.save();
+  } else if (job.kind === "signage") {
+    if (!job.signage) throw new Error("Choose a signage event.");
+    const sign = job.signage;
+    for (let copy = 0; copy < job.copies; copy++) {
+      if (copy) doc.addPage();
+      doc.addImage(logo, "PNG", 196, 48, 220, 220 * doc.getImageProperties(logo).height / doc.getImageProperties(logo).width);
+      doc.setTextColor(36, 100, 108);
+      fitted(doc, "TRAINING WEEK 2026", 48, 145, 516, 28, 17, 17);
+      doc.setTextColor(25, 34, 40);
+      fitted(doc, sign.title, 48, 225, 516, 160, 46, 32);
+      if (sign.facilitator) fitted(doc, sign.facilitator, 48, 390, 516, 30, 22, 18);
+      doc.setDrawColor(36, 100, 108); doc.setLineWidth(2); doc.line(240, 453, 372, 453);
+      fitted(doc, sign.date, 48, 484, 516, 38, 23, 18);
+      fitted(doc, sign.time, 48, 533, 516, 40, 28, 22);
+      doc.setTextColor(60, 74, 80);
+      fitted(doc, sign.venue, 60, 613, 492, 125, 23, 18);
+    }
   } else {
     for (let copy = 0; copy < job.copies; copy++) {
       if (copy) doc.addPage();

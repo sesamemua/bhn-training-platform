@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, X } from "lucide-react";
 import type { BadgeEdit, PrintAction, PrintJob, PrintPerson, PrintWorkspace } from "@/lib/events/print-jobs";
+import { PRINT_SIGNS } from "@/lib/events/print-signage";
 
 const API = "/api/admin/symposium-print";
 const HERE = "/admin/workspace/symposium-2026/print";
@@ -14,7 +15,7 @@ const eligible = (p: PrintPerson) => ["approved", "going", "checked_in"].include
 const blocked = (p: PrintPerson) => p.issues.some(issue => !issue.includes("additional guests"));
 const date = (v: string) => new Date(v).toLocaleString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const printLabels = { unprinted: "Not printed", queued: "Queued", printed: "Printed", changed: "Changed since print" };
-type View = "badges" | "tents" | "agenda" | "queue";
+type View = "badges" | "tents" | "agenda" | "signage" | "queue";
 type Edit = { id: string | null; badge: BadgeEdit; email: string; version: string | null };
 
 export function SymposiumPrintJobs() {
@@ -22,6 +23,7 @@ export function SymposiumPrintJobs() {
   const [busy, setBusy] = useState(false), working = useRef(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState("");
   const [view, setView] = useState<View>("badges");
+  const [signageSlug, setSignageSlug] = useState(PRINT_SIGNS[0].slug);
   const [query, setQuery] = useState(""), [filter, setFilter] = useState("all"), [allStatuses, setAllStatuses] = useState(false);
   const [selected, setSelected] = useState<string[]>([]), [editing, setEditing] = useState<Edit | null>(null);
   const [activeJob, setActiveJob] = useState<string | null>(null), [printIds, setPrintIds] = useState<string[]>([]);
@@ -99,19 +101,19 @@ export function SymposiumPrintJobs() {
   const job = board.jobs.find(j => j.id === activeJob);
   const documentDraft = documents ?? { tentText: board.tentText, agendaText: board.agendaText, version: snapshot.version };
   const template = view === "tents" ? board.tentTemplate : board.agendaTemplate;
-  const kind = view === "tents" ? "tents" : view === "agenda" ? "agenda" : "badges";
+  const kind = view === "queue" ? "badges" : view;
   const draftPerson = editing ? people.find(p => p.id === editing.id) : null;
   function openPerson(p?: PrintPerson) {
     setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version });
   }
-  const makeJob = () => mutate({ action: "create", kind, label: label.trim() || (kind === "badges" ? "Badge" : kind === "tents" ? "Table tent" : "Agenda") + " batch " + (board.jobs.length + 1), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
+  const makeJob = () => mutate({ action: "create", kind, signageSlug: kind === "signage" ? signageSlug : undefined, label: label.trim() || (kind === "signage" ? PRINT_SIGNS.find(s => s.slug === signageSlug)!.title + " - Letter signage" : (kind === "badges" ? "Badge" : kind === "tents" ? "Table tent" : "Agenda") + " batch " + (board.jobs.length + 1)), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
   async function copyLink(id: string) {
     try { await navigator.clipboard.writeText(location.origin + HERE + "?job=" + id); setNotice("Admin print-job link copied."); }
     catch { setError("Could not copy the link."); }
   }
 
   const batchControls = <form className="space-y-3 border-t border-line pt-4" onSubmit={e => { e.preventDefault(); void makeJob(); }}>
-    <h3 className="text-sm font-semibold">New {kind === "badges" ? "badge" : kind === "tents" ? "table tent" : "agenda"} batch</h3>
+    <h3 className="text-sm font-semibold">New {kind === "badges" ? "badge" : kind === "tents" ? "table tent" : kind === "signage" ? "signage" : "agenda"} batch</h3>
     <label className="block text-xs">Batch name<input className={INPUT + " mt-1"} value={label} onChange={e => setLabel(e.target.value)} placeholder={"Batch " + (board.jobs.length + 1)} maxLength={120} /></label>
     <div className="grid grid-cols-2 gap-3">
       <label className="text-xs">Print colleague<input className={INPUT + " mt-1"} value={assignedTo} onChange={e => setAssignedTo(e.target.value)} maxLength={200} /></label>
@@ -131,7 +133,7 @@ export function SymposiumPrintJobs() {
 
   return <div className="mx-auto w-full max-w-[1600px] pb-12 text-fg">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <nav aria-label="Print materials" className="flex flex-wrap gap-1 border-b border-line">{([["badges", "Name badges"], ["tents", "Table tents"], ["agenda", "Agenda"], ["queue", "Print queue (" + board.jobs.filter(j => j.status === "ready").length + ")"]] as [View, string][]).map(([key, title]) => <button type="button" key={key} aria-current={view === key ? "page" : undefined} className={"border-b-2 px-3 py-2 text-sm font-semibold " + (view === key ? "border-brand" : "border-transparent text-muted")} onClick={() => { setView(key); setLabel(""); if (key === "tents") setCopies(22); if (key === "agenda") setCopies(1); }}>{title}</button>)}</nav>
+      <nav aria-label="Print materials" className="flex flex-wrap gap-1 border-b border-line">{([["badges", "Name badges"], ["tents", "Table tents"], ["agenda", "Agenda"], ["signage", "Signage"], ["queue", "Print queue (" + board.jobs.filter(j => j.status === "ready").length + ")"]] as [View, string][]).map(([key, title]) => <button type="button" key={key} aria-current={view === key ? "page" : undefined} className={"border-b-2 px-3 py-2 text-sm font-semibold " + (view === key ? "border-brand" : "border-transparent text-muted")} onClick={() => { setView(key); setLabel(""); if (key === "tents") setCopies(22); if (key === "agenda" || key === "signage") setCopies(1); }}>{title}</button>)}</nav>
       <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-muted">{board.syncedAt ? (board.syncSource === "csv" || !snapshot.autoSyncAvailable ? "CSV imported " : "Luma synced ") + date(board.syncedAt) : "No guest list imported"}</span><button type="button" className={BUTTON} disabled={busy} onClick={() => snapshot.autoSyncAvailable ? void mutate({ action: "sync" }) : csvInput.current?.click()}>{snapshot.autoSyncAvailable ? <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> : <FileUp size={14} />} {snapshot.autoSyncAvailable ? "Sync Luma" : "Import Luma CSV"}</button></div>
     </div>
     {!snapshot.autoSyncAvailable && <p className="mb-4 border-l-2 border-amber-500 pl-3 text-sm">Automatic Luma sync is not connected. <a className="font-semibold underline underline-offset-2" href="https://luma.com/event/manage/evt-az4yQOZR33DBiid/guests" target="_blank" rel="noreferrer">Export the current guest list from Luma</a>, then import the CSV.</p>}
@@ -219,6 +221,19 @@ export function SymposiumPrintJobs() {
         </aside>
       </div>
     </>}
+    {view === "signage" && <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <section>
+        <h2 className="text-base font-semibold">Letter-size signage</h2>
+        <p className="mt-1 text-xs text-muted">8.5 × 11 inches · Portrait · All times Eastern</p>
+        <fieldset className="mt-4"><legend className="text-xs font-semibold">Event</legend>
+          {PRINT_SIGNS.map(sign => <label key={sign.slug} className="flex cursor-pointer items-start gap-3 border-b border-line py-4">
+            <input type="radio" name="signage-event" checked={signageSlug === sign.slug} onChange={() => { setSignageSlug(sign.slug); setLabel(""); }} className="mt-1" />
+            <span className="min-w-0"><strong className="block text-sm">{sign.title}</strong><span className="mt-1 block text-xs">{sign.date} · {sign.time}</span><span className="mt-1 block text-xs text-muted">{sign.venue}</span>{sign.facilitator && <span className="mt-1 block text-xs text-muted">{sign.facilitator}</span>}</span>
+          </label>)}
+        </fieldset>
+      </section>
+      <aside>{batchControls}</aside>
+    </div>}
     {(view === "tents" || view === "agenda") && <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -238,7 +253,7 @@ export function SymposiumPrintJobs() {
     {view === "queue" && <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.3fr)]">
       <section>{board.jobs.length ? board.jobs.map(j => <button key={j.id} type="button" onClick={() => chooseJob(j)} className={"block w-full border-b border-line px-3 py-4 text-left " + (activeJob === j.id ? "bg-elevated" : "hover:bg-elevated/60")}>
         <span className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm">{j.label}</strong><span className="text-xs capitalize">{j.status}</span></span>
-        <span className="mt-1 block text-xs text-muted">{j.kind === "badges" ? j.badges.length + " badges · " + j.printedIds.length + " printed" : j.copies + " copies · " + (j.kind === "tents" ? "table tents" : "agenda")} · {date(j.createdAt)}</span>
+        <span className="mt-1 block text-xs text-muted">{j.kind === "badges" ? j.badges.length + " badges · " + j.printedIds.length + " printed" : j.copies + " copies · " + (j.kind === "tents" ? "table tents" : j.kind === "signage" ? "signage" : "agenda")} · {date(j.createdAt)}</span>
         {j.assignedTo && <span className="mt-1 block text-xs">Print colleague: {j.assignedTo}</span>}
       </button>) : <p className="py-10 text-sm text-muted">No print batches yet.</p>}</section>
       <section>{job ? <div className="space-y-4">

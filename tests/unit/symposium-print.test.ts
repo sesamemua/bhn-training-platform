@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { extractText } from "unpdf";
-import { applyPrintAction, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
+import { applyPrintAction, capitalizeName, mergePrintGuests, printPeople, standardOrganization, PrintActionSchema, PrintBoardSchema, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
 import { fetchLumaPrintGuests, lumaPrintPage, parseLumaPrintCsv } from "../../src/lib/events/print-luma";
 import { badgePosition, buildPrintPdf } from "../../src/lib/events/print-pdf";
 import { DEFAULT_PRINT_AGENDA } from "../../src/lib/events/print-agenda";
+import { PRINT_SIGNS } from "../../src/lib/events/print-signage";
+import { SESSIONS } from "../../src/lib/training-week/schedule-2026";
 
 const at = "2026-10-16T15:00:00.000Z";
 const id = "00000000-0000-4000-8000-000000000001";
@@ -191,4 +193,38 @@ test("table tents default to 22 copies of one design; agenda and uploaded artwor
   const original = await PDFDocument.create(); original.addPage([612, 792]);
   const custom = await PDFDocument.load(await buildPrintPdf(job, b, await original.save()));
   assert.equal(custom.getPageCount(), 22);
+});
+
+test("signage uses the three requested schedule entries and rejects missing or unknown events", () => {
+  assert.deepEqual(PRINT_SIGNS.map(s => s.title), ["Communication Chameleon", "Negotiation Navigator", "Innovation Ignited"]);
+  for (const sign of PRINT_SIGNS) assert.equal(sign.venue, SESSIONS.find(s => s.slug === sign.slug)!.venue.name);
+  assert.match(PRINT_SIGNS[0].date, /Tuesday, October 27, 2026/);
+  assert.match(PRINT_SIGNS[2].date, /Wednesday, October 28, 2026/);
+  assert.throws(() => change(board(), create({ kind: "signage", ids: [] })), /Choose a signage/);
+  assert.equal(PrintActionSchema.safeParse({ ...create({ kind: "signage" }), signageSlug: "unknown" }).success, false);
+  assert.doesNotThrow(() => PrintBoardSchema.parse(change(board(), create()).board));
+});
+
+test("all signage PDFs are Letter, one page per copy, with frozen event details and no guest data", async () => {
+  for (const sign of PRINT_SIGNS) {
+    const original = board();
+    const result = change(original, create({ kind: "signage", signageSlug: sign.slug, ids: [], copies: 2 }));
+    const job = result.job!;
+    assert.equal(original.jobs.length, 0);
+    assert.equal(job.status, "ready");
+    assert.equal(job.badges.length, 0);
+    assert.equal(job.printedAt, null);
+    assert.notEqual(job.signage, sign);
+    const bytes = await buildPrintPdf(job, result.board);
+    const pdf = await PDFDocument.load(bytes);
+    assert.equal(pdf.getPageCount(), 2);
+    for (const page of pdf.getPages()) assert.deepEqual(page.getSize(), { width: 612, height: 792 });
+    const text = (await extractText(bytes, { mergePages: true })).text;
+    for (const expected of [sign.title, sign.date, sign.time, sign.facilitator]) assert.ok(text.includes(expected));
+    assert.ok(text.includes("144 College St"));
+    assert.ok(!text.includes("Jane Smith"));
+    assert.ok(!text.includes("jane.smith@example.org"));
+    const printed = change(result.board, { action: "printed", jobId: id, ids: [] }).board;
+    assert.equal(printed.jobs[0].status, "printed");
+  }
 });
