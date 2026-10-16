@@ -90,3 +90,12 @@ export function toShortcutPath(input: string, origin: string): string | null {
     return null;
   }
 }
+
+/** Only the page path and on-screen milliseconds survive for shortcut events. */
+export function shortcutProps(raw: unknown) {
+  const p = (raw && typeof raw === "object" ? raw : {}) as { path?: unknown; ms?: unknown };
+  return {
+    path: typeof p.path === "string" ? p.path.slice(0, 512) : null,
+    ...(typeof p.ms === "number" && Number.isFinite(p.ms) ? { ms: Math.max(0, Math.round(p.ms)) } : {}),
+  };
+}

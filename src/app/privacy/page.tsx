@@ -31,6 +31,7 @@ export default function PrivacyPage() {
             <li><strong>Learning data</strong> — courses you enroll in, progress, assessment scores, certificates, BHN credit transactions.</li>
             <li><strong>Application data</strong> — credit applications, role-change requests, supporting documents you upload.</li>
             <li><strong>Activity data</strong> — only with your analytics consent: page views, feature usage, theme choice, device class. Used to improve the platform; never sold.</li>
+            <li><strong>Your shortcuts</strong> — while you are signed in, which platform pages you open and how long each stays on screen, so your dashboard can show your own shortcuts and most-used pages. Stored with your account only (no IP address, device or referrer), shown only to you, and not used for analytics.</li>
             <li><strong>Optional</strong> — newsletter subscription preference.</li>
           </ul>
 

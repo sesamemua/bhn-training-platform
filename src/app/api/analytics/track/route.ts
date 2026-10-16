@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { deviceClass } from "@/lib/analytics";
+import { shortcutProps } from "@/lib/page-usage";
 
 /**
  * Public ingest endpoint. Anonymous users can post too — we tag with
@@ -24,8 +25,15 @@ export async function POST(req: NextRequest) {
 
     const valid = events
       .filter((e) => typeof e.name === "string")
+      // shortcut_* = personal dashboard shortcuts, sent without analytics
+      // consent: keep them only for signed-in users and store nothing else.
+      .filter((e) => userId || !String(e.name).startsWith("shortcut_"))
       .slice(0, 50)
-      .map((e) => ({
+      .map((e) => String(e.name).startsWith("shortcut_") ? {
+        userId,
+        name: String(e.name).slice(0, 64),
+        props: shortcutProps(e.props),
+      } : ({
         userId,
         role,
         sessionId: typeof e.sessionId === "string" ? e.sessionId : null,
@@ -46,3 +54,4 @@ export async function POST(req: NextRequest) {
   }
   return new NextResponse(null, { status: 204 });
 }
+

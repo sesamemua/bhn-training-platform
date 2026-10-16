@@ -41,7 +41,23 @@ export function track(name: string, props?: Record<string, unknown>) {
     props,
     sessionId: getSessionId(),
   };
-  const body = JSON.stringify(payload);
+  send(JSON.stringify(payload));
+}
+
+/**
+ * Page visits / visible time for the user's own dashboard shortcuts. A site
+ * feature rather than analytics, so it runs without analytics consent: with
+ * consent it is the normal page_view / page_time event; without, a bare
+ * shortcut_* event (no session id, referrer or device) that the server keeps
+ * only for signed-in users.
+ */
+export function trackUsage(kind: "view" | "time", props: { path: string; ms?: number }) {
+  if (typeof window === "undefined") return;
+  if (isAnalyticsAllowed()) return track(`page_${kind}`, props);
+  send(JSON.stringify({ name: kind === "view" ? "shortcut_visit" : "shortcut_time", props }));
+}
+
+function send(body: string) {
   try {
     if (navigator.sendBeacon) {
       const blob = new Blob([body], { type: "application/json" });

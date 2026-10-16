@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { track } from "@/lib/track";
+import { trackUsage } from "@/lib/track";
 
 // ponytail: a tab left open and visible overnight would count as hours;
 // cap each flush at 30 min until we add idle detection.
@@ -22,7 +22,7 @@ export function PageViewTracker() {
     const url = pathname + (search?.toString() ? `?${search.toString()}` : "");
     if (url === lastPath.current) return;
     lastPath.current = url;
-    track("page_view", { path: pathname });
+    trackUsage("view", { path: pathname });
   }, [pathname, search]);
 
   useEffect(() => {
@@ -56,6 +56,6 @@ function flush(t: { path: string; ms: number; since: number | null } | null) {
     t.ms += Date.now() - t.since;
     t.since = document.visibilityState === "visible" ? Date.now() : null;
   }
-  if (t.ms >= 1000) track("page_time", { path: t.path, ms: Math.min(Math.round(t.ms), MAX_CHUNK_MS) });
+  if (t.ms >= 1000) trackUsage("time", { path: t.path, ms: Math.min(Math.round(t.ms), MAX_CHUNK_MS) });
   t.ms = 0;
 }

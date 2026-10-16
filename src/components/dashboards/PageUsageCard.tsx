@@ -12,12 +12,12 @@ const DAYS = 30;
 export const loadPageUsage = cache(async (userId: string): Promise<PageUsageRow[]> => {
   const rows = await prisma.$queryRaw<{ path: string; visits: number; ms: bigint; last: Date }[]>`
     SELECT props->>'path' AS path,
-      COUNT(*) FILTER (WHERE name = 'page_view')::int AS visits,
-      COALESCE(SUM(CASE WHEN name = 'page_time' AND props->>'ms' ~ '^[0-9]{1,9}$'
+      COUNT(*) FILTER (WHERE name IN ('page_view', 'shortcut_visit'))::int AS visits,
+      COALESCE(SUM(CASE WHEN name IN ('page_time', 'shortcut_time') AND props->>'ms' ~ '^[0-9]{1,9}$'
         THEN (props->>'ms')::bigint END), 0)::bigint AS ms,
       MAX("createdAt") AS last
     FROM "Event"
-    WHERE "userId" = ${userId} AND name IN ('page_view', 'page_time')
+    WHERE "userId" = ${userId} AND name IN ('page_view', 'page_time', 'shortcut_visit', 'shortcut_time')
       AND "createdAt" > now() - make_interval(days => ${DAYS}::int)
       AND props->>'path' IS NOT NULL
     GROUP BY 1`.catch((e) => { console.error("page usage:", (e as Error).message); return []; });
@@ -41,8 +41,8 @@ export async function ShortcutBar({ userId }: { userId: string }) {
 
 /**
  * "Your most-used pages" — the signed-in user's own top pages over the last
- * 30 days, ranked by visits with visible-tab time alongside. Built only from
- * events the user consented to (see `track()`), so it is empty until then.
+ * 30 days, ranked by visits with visible-tab time alongside (see
+ * `trackUsage()` — recorded for every signed-in user).
  */
 export async function PageUsageCard({ userId }: { userId: string }) {
   const usage = summarizePageUsage(await loadPageUsage(userId));
@@ -61,7 +61,6 @@ export async function PageUsageCard({ userId }: { userId: string }) {
       {usage.pages.length === 0 ? (
         <p className="text-sm text-fg-muted">
           Nothing yet. Pages you open will show up here, with how long you spent on each.
-          Stats are collected only if you allowed analytics cookies.
         </p>
       ) : (
         <>

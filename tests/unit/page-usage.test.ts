@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ShortcutPrefsSchema, buildShortcuts, formatDuration, pageLabel, summarizePageUsage, toShortcutPath } from "../../src/lib/page-usage";
+import { ShortcutPrefsSchema, buildShortcuts, shortcutProps, formatDuration, pageLabel, summarizePageUsage, toShortcutPath } from "../../src/lib/page-usage";
 
 const d = (s: string) => new Date(`2026-10-${s}T12:00:00Z`);
 
@@ -42,4 +42,10 @@ test("shortcut paths stay on this site", () => {
   assert.equal(toShortcutPath("//evil.example/x", o), null);
   assert.equal(toShortcutPath("javascript:alert(1)", o), null);
   assert.equal(ShortcutPrefsSchema.safeParse({ pinned: [{ path: "//evil.example", label: "x" }], hidden: [] }).success, false);
+});
+
+test("consent-free shortcut events keep only the page path and on-screen time", () => {
+  assert.deepEqual(shortcutProps({ path: "/events", ms: 1234.6, email: "a@b.c", referrer: "x" }), { path: "/events", ms: 1235 });
+  assert.deepEqual(shortcutProps({ path: 42, ms: "9" }), { path: null });
+  assert.deepEqual(shortcutProps(null), { path: null });
 });

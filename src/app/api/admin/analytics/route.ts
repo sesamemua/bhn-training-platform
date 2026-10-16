@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 
+const NOT_SHORTCUT = { NOT: { name: { startsWith: "shortcut_" } } };
+
 export async function GET(req: NextRequest) {
   const session = await requireRole("admin").catch(() => null);
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -52,27 +54,28 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     prisma.user.count({ where: { accountKind: "real" } }),
     prisma.user.count({ where: { createdAt: { gte: since }, accountKind: "real" } }),
-    prisma.event.count(),
-    prisma.event.count({ where: { createdAt: { gte: since } } }),
+    // shortcut_* rows are the consent-free personal-shortcut feature, not analytics.
+    prisma.event.count({ where: NOT_SHORTCUT }),
+    prisma.event.count({ where: { createdAt: { gte: since }, ...NOT_SHORTCUT } }),
     // distinct active users via raw SQL for speed
     prisma.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(DISTINCT "userId") AS count
       FROM "Event"
-      WHERE "createdAt" >= ${since} AND "userId" IS NOT NULL
+      WHERE "createdAt" >= ${since} AND "userId" IS NOT NULL AND name NOT LIKE 'shortcut\_%'
     `.then((r) => Number(r[0]?.count ?? 0)),
     prisma.enrollment.count({ where: { status: "completed", completedAt: { gte: since } } }),
     prisma.enrollment.count({ where: { enrolledAt: { gte: since } } }),
     prisma.certificate.count({ where: { issueDate: { gte: since }, revokedAt: null } }),
     prisma.event.groupBy({
       by: ["name"],
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, ...NOT_SHORTCUT },
       _count: { _all: true },
       orderBy: { _count: { name: "desc" } },
       take: 10,
     }),
     prisma.event.groupBy({
       by: ["device"],
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, ...NOT_SHORTCUT },
       _count: { _all: true },
     }),
     prisma.user.groupBy({

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Your shortcuts now fill in for everyone signed in",
+    body: "**Your shortcuts** and **Your most-used pages** on the dashboard now work whether or not you accepted analytics cookies. While you’re signed in, the platform notes which of its pages you open and how long each stays on screen — stored with your account only, with no IP address, device or referrer, and used only for your own shortcuts. The [privacy policy](/privacy) explains it under **Your shortcuts**.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Dashboard: your own shortcuts",
     body: "Just under the top of your dashboard there’s now a **Your shortcuts** row: your five most-used pages, one click away (if you live in Social, Social is there). **See more** shows the next ones. Press **Edit** to keep a shortcut on the list for good, rename it or point it at another page, or remove it; **Add** puts any page there — paste a link from the address bar. Your shortcuts are yours alone.",
     kind: "feature",

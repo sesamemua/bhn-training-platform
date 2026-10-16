@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24q";
+export const TOUR_VERSION = "2026.10.24r";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.shortcuts-for-everyone",
+    title: "Shortcuts that learn from you",
+    body: "Your shortcuts now fill in from the pages you use while signed in, even without analytics cookies. Only you see them; the privacy policy explains what is kept.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["trainee", "evaluating", "instructor", "admin", "superadmin"],
+    since: "2026.10.24r",
+  },
   {
     id: "dashboard.shortcuts",
     title: "Your shortcuts",
