@@ -43,6 +43,8 @@ export const PrintActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create"), kind: z.enum(["badges", "tents", "agenda"]), label: text(120).min(1), ids: z.array(text(150)).max(2000), copies: z.number().int().min(1).max(500), assignedTo: text(200), notes: text(1000), allowReprint: z.boolean(), skip: z.number().int().min(0).max(5), offsetX: z.number().min(-5).max(5), offsetY: z.number().min(-5).max(5) }),
   z.object({ action: z.literal("printed"), jobId: z.string().uuid(), ids: z.array(text(150)).max(2000) }),
   z.object({ action: z.literal("cancel"), jobId: z.string().uuid() }),
+  /** Remove a batch and its PDF entirely — including its print record. */
+  z.object({ action: z.literal("delete"), jobId: z.string().uuid() }),
 ]);
 export type PrintAction = z.infer<typeof PrintActionSchema>;
 
@@ -148,6 +150,9 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
     const job: PrintJob = { id, label: action.label, kind: action.kind, createdAt: at, createdBy: actor, assignedTo: action.assignedTo, notes: action.notes, copies: action.kind === "badges" ? 1 : action.copies, status: "ready", badges, printedIds: [], printedAt: null, printedBy: null, skip: action.skip, offsetX: action.offsetX, offsetY: action.offsetY };
     next.jobs.unshift(job);
     return { board: PrintBoardSchema.parse(next), job };
+  } else if (action.action === "delete") {
+    if (!next.jobs.some(j => j.id === action.jobId)) throw new Error("This batch has already been deleted.");
+    next.jobs = next.jobs.filter(j => j.id !== action.jobId);
   } else {
     const job = next.jobs.find(j => j.id === action.jobId);
     if (!job || job.status !== "ready") throw new Error("This batch is no longer waiting to print.");

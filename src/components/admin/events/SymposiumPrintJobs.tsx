@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, X } from "lucide-react";
+import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { ATTENTION_LABELS, attentionItems, type AttentionKind, type BadgeEdit, type PrintAction, type PrintJob, type PrintPerson, type PrintWorkspace } from "@/lib/events/print-jobs";
 
 const API = "/api/admin/symposium-print";
@@ -48,7 +49,7 @@ export function SymposiumPrintJobs() {
         chooseJob(body.snapshot.board.jobs.find((j: PrintJob) => j.id === body.jobId));
         setView("queue"); setSelected([]); setLabel("");
       }
-      setNotice(change.action === "sync" ? "Luma guest list updated." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
+      setNotice(change.action === "sync" ? "Luma guest list updated." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "delete" ? "Batch deleted." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
       return true;
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); return false; }
     finally { working.current = false; setBusy(false); }
@@ -251,6 +252,10 @@ export function SymposiumPrintJobs() {
           <a className={PRIMARY} href={API + "/" + job.id + "/pdf"}><Download size={14} /> Download PDF</a>
           <button type="button" className={BUTTON} onClick={() => void copyLink(job.id)}><Copy size={14} /> Copy colleague link</button>
           {job.status === "ready" && <button type="button" className={BUTTON} disabled={busy} onClick={() => void mutate({ action: "cancel", jobId: job.id })}><X size={14} /> Cancel remaining print</button>}
+          <ConfirmPopover message={`Delete “${job.label}”?`} detail={job.kind === "badges" && job.printedIds.length ? `Its PDF and its print record go too: ${job.printedIds.length} badge${job.printedIds.length === 1 ? "" : "s"} will show as not printed.` : "Its PDF goes too. This can't be undone."} confirmLabel="Delete batch" tone="danger" align="start"
+            onConfirm={async () => { if (await mutate({ action: "delete", jobId: job.id })) { setActiveJob(null); setPrintIds([]); } }}>
+            {(o) => <button type="button" className={BUTTON} disabled={busy} onClick={o}><Trash2 size={14} /> Delete batch</button>}
+          </ConfirmPopover>
         </div>
         <dl className="grid grid-cols-2 gap-3 border-y border-line py-3 text-xs">
           <div><dt className="text-muted">Stock</dt><dd className="mt-1">{job.kind === "badges" ? "Avery 5393 · Letter · 100% actual size" : "Letter · " + job.copies + " copies"}</dd></div>

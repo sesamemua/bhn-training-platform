@@ -219,3 +219,11 @@ test("the position prints above the organization, comes from Luma or the CSV, an
   b.edits[page.guests[0].id] = { name: "Lee Park", position: "Research Associate", organization: "University of Toronto", extra: "", reviewed: true };
   assert.equal(printPeople(b)[0].position, "Research Associate");
 });
+
+test("a batch can be deleted outright, whatever its state, and only once", () => {
+  const job = { id: "11111111-1111-4111-8111-111111111111", label: "Agenda draft", kind: "agenda" as const, createdAt: new Date().toISOString(), createdBy: "A", assignedTo: "", notes: "", copies: 1, status: "printed" as const, badges: [], printedIds: [], printedAt: null, printedBy: null, skip: 0, offsetX: 0, offsetY: 0 };
+  const b = PrintBoardSchema.parse({ guests: [], edits: {}, jobs: [job], syncedAt: null, tentText: "", agendaText: "x", tentTemplate: null, agendaTemplate: null });
+  const after = applyPrintAction(b, [], { action: "delete", jobId: job.id }, "Admin", "new", new Date().toISOString()).board;
+  assert.equal(after.jobs.length, 0);
+  assert.throws(() => applyPrintAction(after, [], { action: "delete", jobId: job.id }, "Admin", "new", new Date().toISOString()), /already been deleted/);
+});

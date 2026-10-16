@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Print queue: delete a batch",
+    body: "Every batch in **Symposium \u2192 Print jobs \u2192 Print queue** now has **Delete batch**, whatever its state. It asks once, beside the button, then removes the batch and its PDF. Deleting a badge batch that was partly printed also removes its print record, so those badges show as not printed again.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Name badges: the person\u2019s position, just above their organization",
     body: "Badges now print the **Current Primary Affiliation Position** from the Luma registration on its own line **just above the organization**. It comes in with every Luma sync or CSV import, shows in the guest list and the badge preview, and can be edited in **Badge details** like the name and organization. Badges printed before this have no position line, so any of those people who gave a position now show as **changed since printed**.",
     kind: "improvement",
