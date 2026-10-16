@@ -26,6 +26,7 @@ test("released-seat actions stack below a readable heading on mobile", async () 
   assert.match(html, /col-span-2 inline-flex/);
   assert.match(html, /sm:col-span-1/);
   assert.match(html, /1 seat released/);
+  assert.match(html, /href="\/admin\/workspace\/training-admin"/, "the button goes to the Training Week dashboard");
   assert.match(html, /2 seats free in this session/);
   assert.match(html, /Example Person/);
 });
@@ -37,4 +38,14 @@ test("homepage keeps an empty slot while Training Week keeps its previous hidden
   failed = true;
   assert.equal(await ReleasedSeats({}), null);
   assert.match(renderToStaticMarkup(await ReleasedSeats({ framed: true, showEmpty: true })), /Couldn&#x27;t load released seats/);
+});
+
+test("only the last two days lead; older releases sit behind See all", async () => {
+  const { ReleasedSeats } = await component;
+  empty = false; failed = false;
+  const html = renderToStaticMarkup(await ReleasedSeats({ framed: true }));
+  // The fixture's release is days old: not in the headline, but in the full list.
+  assert.match(html, /No seats released in the last 2 days/);
+  assert.match(html, /<details[^>]*><summary[^>]*>See all 1 seat released in the last three weeks/);
+  assert.match(html, /Example Person/);
 });

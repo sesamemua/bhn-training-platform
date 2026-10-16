@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24g";
+export const TOUR_VERSION = "2026.10.24h";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "home.released-seats-two-days",
+    title: "Released seats: last two days",
+    body: "The released-seats notice shows the last two days; **See all** opens the last three weeks. Its button opens the Training Week dashboard.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24h",
+  },
   {
     id: "themes.pumpkin-winter",
     title: "Pumpkin and Winter themes",

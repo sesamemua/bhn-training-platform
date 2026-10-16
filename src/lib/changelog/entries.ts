@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Released seats: the last two days first, everything else one click away",
+    body: "The **seats released by registrants** notice now lists only the **last 2 days**. **See all** opens every release from the last three weeks. Its button now goes to the **Training Week dashboard**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Two new themes: Pumpkin for Halloween, and Winter",
     body: "Two limited-time themes are in the theme picker. **Pumpkin** \u2014 pumpkin orange and dusk purple on candlelit parchment, with bats crossing over a low fog \u2014 runs until **2 November**. **Winter** \u2014 frost white and glacier blue with navy ink, and snow coming down over a frost haze \u2014 runs until the **end of February**. Nothing moves for anyone who has reduced motion turned on.",
     kind: "feature",
