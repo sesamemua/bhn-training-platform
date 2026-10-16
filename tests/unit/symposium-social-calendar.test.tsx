@@ -175,6 +175,6 @@ test("fresh panel drafts include titles and original photos in one row without i
     assert.match(panel.graphicBrief, /no retouching or color changes/);
     assert.match(panel.graphicBrief, /Moderator .* above the panelists/);
   }
-  assert.match(manufacturing.graphicBrief, /Yannick has no headshot: use typographic initials, never an invented portrait/);
+  assert.match(manufacturing.graphicBrief, /official Sanofi company logo in Yannick's headshot position, never initials or an invented portrait/);
   assert.match(manufacturing.body, /2:15-3:00 p\.m\. ET/);
 });

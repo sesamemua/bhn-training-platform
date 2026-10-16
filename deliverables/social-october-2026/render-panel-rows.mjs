@@ -35,8 +35,7 @@ const panels = [
     people: [
       { file: "geoff-evans.png", name: ["Geoff", "Evans"], role: "President", company: "Eurofins CDMO Alphora Inc." },
       { file: "christopher-panel.jpg", name: ["Christopher", "Procyshyn"], role: "Technology executive and life sciences leader; Former CEO", company: "Vanrx Pharmasystems" },
-      // shortcut: no submitted headshot as of October 16; replace the initials when one arrives.
-      { initials: "YD", name: ["Yannick", "Dupe"], role: "Head of Site Operational Excellence & Smart Factory", company: "Sanofi" },
+      { logo: "sanofi-logo.svg", name: ["Yannick", "Dupe"], role: "Head of Site Operational Excellence & Smart Factory", company: "Sanofi" },
     ],
   },
 ];
@@ -53,6 +52,13 @@ for (const panel of panels) {
   tx.fillStyle = fade; tx.fillRect(940, 0, 260, 1372); ctx.drawImage(texture, 0, 0);
   ctx.drawImage(logo, 72, 56, 390, 390 * logo.height / logo.width);
   bounds.push([72, 56, 390, 390 * logo.height / logo.width, "BioHubNet logo"]);
+  if (panel.number === 3) {
+    const motif = await loadImage(new URL("source-assets/biomanufacturing-corner.png", root));
+    // Trim only transparent margins so the supporting vessel stays legible at feed size.
+    assert.ok(motif.width >= 1312 && motif.height >= 1090, "Corner art crop must fit its source");
+    ctx.drawImage(motif, 530, 40, 782, 1050, 992, 40, 136, 182);
+    bounds.push([992, 40, 136, 182, "Biomanufacturing corner art"]);
+  }
 
   function text(value, size, weight, x, baseline, width, color = ink, centered = false) {
     assert.ok(size >= 32, "Do not shrink information to fit");
@@ -107,8 +113,11 @@ for (const panel of panels) {
     row.push(photoY);
     if (person.file) await portrait(person, center - photoSize / 2, photoY, photoSize);
     else {
-      ctx.fillStyle = "#edf4f4"; ctx.beginPath(); ctx.arc(center, photoY + photoSize / 2, photoSize / 2, 0, Math.PI * 2); ctx.fill();
-      text(person.initials, 54, 700, center, photoY + photoSize / 2 + 18, photoSize, teal, true);
+      const companyLogo = await loadImage(await readFile(new URL(`source-assets/${person.logo}`, root)));
+      const logoWidth = photoSize - 24, logoHeight = logoWidth * companyLogo.height / companyLogo.width;
+      assert.ok(logoHeight <= photoSize, "Company logo must fit the headshot space without cropping");
+      ctx.drawImage(companyLogo, center - logoWidth / 2, photoY + (photoSize - logoHeight) / 2, logoWidth, logoHeight);
+      bounds.push([center - logoWidth / 2, photoY + (photoSize - logoHeight) / 2, logoWidth, logoHeight, person.logo]);
     }
     person.name.forEach((line, j) => text(line, 42, 700, center, 1030 + j * 48, width, ink, true));
     const role = wrap(person.role, width);
@@ -131,7 +140,7 @@ for (const panel of panels) {
   }
   const output = await canvas.encode("png");
   assert.ok(output.length < 3_000_000, "Fit the platform upload limit");
-  const filename = `panel-${panel.number}-photos-titles-row-v1.png`;
+  const filename = `panel-${panel.number}-photos-titles-row-v${panel.number === 3 ? 3 : 1}.png`;
   await writeFile(new URL(`graphics/${filename}`, root), output);
   const mobile = createCanvas(360, 450); mobile.getContext("2d").drawImage(canvas, 0, 0, 360, 450);
   await writeFile(new URL(`graphics/${filename.replace(".png", "-360-preview.png")}`, root), await mobile.encode("png"));

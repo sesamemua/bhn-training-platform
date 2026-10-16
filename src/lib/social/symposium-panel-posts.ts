@@ -65,8 +65,8 @@ https://biohubnet.ca/2026-annual-symposium/
     workshopSlug: null,
     suggestedDate: "2026-10-23T13:00:00Z",
     sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmvbgkn1r0008kx08a9l3ubpc/4468a17d-08fe-4cde-937d-ee7421ceae9d.png",
-    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium and Panel 3: Building Biomanufacturing Capacity in Canada headings. Original circular headshots, with no retouching or color changes. Moderator Gilbert Walker above the panelists. Geoff Evans, Christopher Procyshyn and Yannick Dupe in one horizontal row, each with their professional title and organization. Christopher is former CEO of Vanrx, not current CEO. Yannick has no headshot: use typographic initials, never an invented portrait. Spacious 4:5 layout, subtle glass edge, October 29 | Toronto | Register now.",
+    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmvbgkn1r0008kx08a9l3ubpc/80e59927-df19-48cd-b995-e5a5a38c7c83.png",
+    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium and Panel 3: Building Biomanufacturing Capacity in Canada headings. Original circular headshots, with no retouching or color changes. Moderator Gilbert Walker above the panelists. Geoff Evans, Christopher Procyshyn and Yannick Dupe in one horizontal row, each with their professional title and organization. Christopher is former CEO of Vanrx, not current CEO. Use the official Sanofi company logo in Yannick's headshot position, never initials or an invented portrait. Add a small bioreactor illustration in the top-right corner, separate from all lettering. Spacious 4:5 layout, subtle glass edge, October 29 | Toronto | Register now.",
     body: `Canada has bold life sciences ideas. What does it take to turn them into biomanufacturing capacity?
 
 Join BioHubNet's 2026 Annual Symposium for Panel 3: Building Biomanufacturing Capacity in Canada.
