@@ -70,7 +70,7 @@ test("sync preserves edits, previous batches, removed records and manual people"
 
 test("platform print-name edits survive Luma sync without changing the original registration name", () => {
   const original = board();
-  const edited = change(original, { action: "edit", id: "luma:gst-1", badge: { name: "Jane O'Neill", organization: "University of Toronto", extra: "HQP Representative", reviewed: true } }).board;
+  const edited = change(original, { action: "edit", id: "luma:gst-1", badge: { name: "Jane O'Neill", organization: "University of Toronto", extra: "HQP Representative", reviewed: true }, reason: "Correct surname confirmed by attendee", evidence: "Attendee email" }).board;
   assert.equal(original.guests[0].name, "Jane Smith");
   assert.equal(edited.guests[0].name, "Jane Smith");
   const synced = mergePrintGuests(edited, [guest({ name: "JANE SMITH" })], at);
@@ -79,6 +79,50 @@ test("platform print-name edits survive Luma sync without changing the original 
   assert.equal(person.sourceName, "JANE SMITH");
   assert.equal(person.extra, "HQP Representative");
   assert.equal(change(synced, create()).job!.badges[0].name, "Jane O'Neill");
+  assert.deepEqual(synced.nameHistory, [{ guestId: "luma:gst-1", from: "Jane Smith", to: "Jane O'Neill", reason: "Correct surname confirmed by attendee", evidence: "Attendee email", at, by: "Admin" }]);
+});
+
+test("surname checks accept agreeing exact-email sources, reject initials, repeated names and conflicts, and leave complete names and overrides alone", () => {
+  const b = board();
+  b.guests = [guest({ name: "Anna B" }), guest({ id: "repeat", name: "Reema", email: "repeat@example.org" }), guest({ id: "conflict", name: "Sam", email: "conflict@example.org" }), guest({ id: "complete", name: "jane smith", email: "complete@example.org" })];
+  const identities = [
+    { fullName: "Anna Bojagora", email: "jane.smith@example.org", organization: "", title: "", source: "Eligibility list" },
+    { fullName: "Anna Bojagora", email: "jane.smith@example.org", organization: "", title: "", source: "People roster" },
+    { fullName: "Reema Reema", email: "repeat@example.org", organization: "", title: "" },
+    { fullName: "Sam Smith", email: "conflict@example.org", organization: "", title: "" },
+    { fullName: "Sam Jones", email: "conflict@example.org", organization: "", title: "" },
+    { fullName: "Someone Else", email: "complete@example.org", organization: "", title: "" },
+  ];
+  const people = printPeople(b, identities);
+  assert.equal(people.find(p => p.id === "luma:gst-1")!.name, "Anna Bojagora");
+  assert.ok(people.find(p => p.id === "luma:gst-1")!.nameCorrection);
+  assert.ok(people.find(p => p.id === "repeat")!.issues.some(i => i.includes("incomplete")));
+  assert.ok(people.find(p => p.id === "conflict")!.issues.some(i => i.includes("Multiple")));
+  const verified = applyPrintAction(b, people, { action: "verify_names" }, "Admin", id, at).board;
+  assert.deepEqual(Object.keys(verified.edits), ["luma:gst-1"]);
+  assert.equal(verified.nameHistory?.length, 1);
+  assert.match(verified.nameHistory![0].evidence, /Eligibility list/);
+  assert.equal(verified.guests.find(g => g.id === "complete")!.name, "jane smith");
+  const synced = mergePrintGuests(verified, b.guests.map(g => ({ ...g, name: g.id === "luma:gst-1" ? "Anna" : g.name })), at);
+  assert.equal(printPeople(synced, identities).find(p => p.id === "luma:gst-1")!.name, "Anna Bojagora");
+  assert.deepEqual(synced.nameHistory, verified.nameHistory);
+  assert.equal(applyPrintAction(synced, printPeople(synced, identities), { action: "verify_names" }, "Other admin", id, at).board.nameHistory?.length, 1);
+});
+
+test("name changes require a reason and later edits append history without changing batch labels or PDFs", () => {
+  const b = change(board(), create()).board;
+  const action = { action: "edit" as const, id: "luma:gst-1", badge: { name: "Jane Doe", organization: "UofT", extra: "", reviewed: true } };
+  assert.throws(() => change(b, action), /reason/);
+  const first = change(b, { ...action, reason: "Attendee supplied missing surname", evidence: "Email" }).board;
+  const next = applyPrintAction(first, printPeople(first), { ...action, badge: { ...action.badge, name: "Jane O'Neill" }, reason: "Attendee corrected spelling" }, "Second admin", id, "2026-10-17T15:00:00.000Z").board;
+  assert.equal(next.nameHistory?.length, 2);
+  assert.equal(next.nameHistory?.[1].from, "Jane Doe");
+  assert.equal(next.nameHistory?.[1].by, "Second admin");
+  assert.deepEqual(next.jobs, b.jobs);
+  assert.equal(next.jobs[0].label, "First badge batch");
+  assert.equal(next.guests[0].name, "Jane Smith");
+  assert.equal(PrintActionSchema.parse({ ...action, reason: "Correction", nameHistory: [{ by: "Imposter" }] }).action, "edit");
+  assert.ok(!("nameHistory" in PrintActionSchema.parse({ ...action, reason: "Correction", nameHistory: [] })));
 });
 
 test("creating and downloading a batch is not printing; snapshots do not change with later edits", () => {

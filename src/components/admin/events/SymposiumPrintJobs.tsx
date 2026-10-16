@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { PRINT_SIGNS } from "@/lib/events/print-signage";
-import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { Check, CheckCheck, Copy, Download, FileUp, History, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
-import { ATTENTION_LABELS, attentionItems, type AttentionKind, type BadgeEdit, type PrintAction, type PrintJob, type PrintPerson, type PrintWorkspace } from "@/lib/events/print-jobs";
+import { ATTENTION_LABELS, attentionItems, type AttentionKind, type BadgeEdit, type PrintAction, type PrintJob, type PrintNameChange, type PrintPerson, type PrintWorkspace } from "@/lib/events/print-jobs";
 
 const API = "/api/admin/symposium-print";
 const HERE = "/admin/workspace/symposium-2026/print";
@@ -17,7 +17,7 @@ const blocked = (p: PrintPerson) => p.issues.some(issue => !issue.includes("addi
 const date = (v: string) => new Date(v).toLocaleString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const printLabels = { unprinted: "Not printed", queued: "Queued", printed: "Printed", changed: "Changed since print" };
 type View = "badges" | "tents" | "agenda" | "signage" | "queue";
-type Edit = { id: string | null; badge: BadgeEdit; email: string; version: string | null };
+type Edit = { id: string | null; badge: BadgeEdit; email: string; version: string | null; reason: string; evidence: string };
 
 export function SymposiumPrintJobs() {
   const [snapshot, setSnapshot] = useState<PrintWorkspace | null>(null), current = useRef<PrintWorkspace | null>(null);
@@ -51,7 +51,7 @@ export function SymposiumPrintJobs() {
         chooseJob(body.snapshot.board.jobs.find((j: PrintJob) => j.id === body.jobId));
         setView("queue"); setSelected([]); setLabel("");
       }
-      setNotice(change.action === "sync" ? "Luma guest list updated." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "delete" ? "Batch deleted." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
+      setNotice(change.action === "verify_names" ? "Verified missing surnames saved with history. Unresolved names remain flagged." : change.action === "sync" ? "Luma guest list updated. Local name corrections and history preserved." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "delete" ? "Batch deleted." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
       return true;
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); return false; }
     finally { working.current = false; setBusy(false); }
@@ -104,8 +104,9 @@ export function SymposiumPrintJobs() {
   const template = view === "tents" ? board.tentTemplate : board.agendaTemplate;
   const kind = view === "queue" ? "badges" : view;
   const draftPerson = editing ? people.find(p => p.id === editing.id) : null;
+  const nameChanged = !!(editing?.id && draftPerson && editing.badge.name !== (board.edits[editing.id]?.name ?? draftPerson.sourceName));
   function openPerson(p?: PrintPerson) {
-    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", position: p?.position ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version });
+    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", position: p?.position ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version, reason: p?.nameCorrection?.reason ?? "", evidence: p?.nameCorrection?.evidence ?? "" });
   }
   const makeJob = () => mutate({ action: "create", kind, signageSlug: kind === "signage" ? signageSlug : undefined, label: label.trim() || (kind === "signage" ? PRINT_SIGNS.find(s => s.slug === signageSlug)!.title + " - Letter signage" : (kind === "badges" ? "Badge" : kind === "tents" ? "Table tent" : "Agenda") + " batch " + (board.jobs.length + 1)), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
   async function copyLink(id: string) {
@@ -152,6 +153,7 @@ export function SymposiumPrintJobs() {
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center gap-2">
+            <button type="button" className={BUTTON} disabled={busy || !!editing || !approved.some(p => p.nameCorrection)} onClick={() => void mutate({ action: "verify_names" })}><ShieldCheck size={14} /> Verify missing surnames ({approved.filter(p => p.nameCorrection).length})</button>
             <label className="relative min-w-[180px] flex-1"><Search size={14} className="absolute left-2.5 top-3 text-muted" /><input aria-label="Search badge guests" className={INPUT + " pl-8"} value={query} onChange={e => setQuery(e.target.value)} placeholder="Search names, email or organization" /></label>
             <select aria-label="Badge status filter" className={INPUT + " !w-auto"} value={filter} onChange={e => setFilter(e.target.value)}>{[["all", "All badges"], ["review", "Needs review"], ...Object.entries(printLabels)].map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
             <button type="button" className={BUTTON} onClick={() => csvInput.current?.click()} disabled={busy}><FileUp size={14} /> Import CSV</button>
@@ -187,6 +189,7 @@ export function SymposiumPrintJobs() {
                   </div>}
                   <div className="break-all text-[11px] text-muted">{p.email}</div>
                   {p.name !== p.sourceName && <div className="text-[11px] text-muted">Luma: {p.sourceName}</div>}
+                  <BadgeNameHistory person={p} changes={board.nameHistory?.filter(c => c.guestId === p.id) ?? []} local={!!board.edits[p.id]} />
                   {!eligible(p) && <div className="text-[11px]">{p.status.replace(/_/g, " ")}</div>}
                   {p.issues.map(issue => <div className="mt-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200" key={issue}>{issue}</div>)}
                 </td>
@@ -200,7 +203,7 @@ export function SymposiumPrintJobs() {
         <aside className="min-w-0 space-y-4 xl:sticky xl:top-5">
           {editing ? <form id="print-badge-editor" className="space-y-3" onSubmit={async e => {
             e.preventDefault();
-            const ok = await mutate(editing.id ? { action: "edit", id: editing.id, badge: editing.badge } : { action: "add", badge: editing.badge, email: editing.email }, editing.version);
+            const ok = await mutate(editing.id ? { action: "edit", id: editing.id, badge: editing.badge, reason: editing.reason, evidence: editing.evidence } : { action: "add", badge: editing.badge, email: editing.email }, editing.version);
             if (ok) setEditing(null);
           }}>
             <div className="flex items-center justify-between"><h2 className="text-sm font-semibold">{editing.id ? "Badge details" : "Add person"}</h2><button type="button" title="Close badge editor" aria-label="Close badge editor" className={BUTTON} onClick={() => setEditing(null)}><X size={14} /></button></div>
@@ -210,6 +213,11 @@ export function SymposiumPrintJobs() {
               {key === "extra" ? <textarea className={INPUT + " mt-1"} rows={2} value={editing.badge[key] ?? ""} maxLength={200} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} /> : <input className={INPUT + " mt-1"} required={key === "name"} minLength={key === "name" ? 2 : undefined} maxLength={key === "name" ? 160 : 250} value={editing.badge[key] ?? ""} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} />}
             </label>)}
             {!editing.id && <label className="block text-xs">Email<input type="email" className={INPUT + " mt-1"} value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></label>}
+            {nameChanged && <>
+              <label className="block text-xs">Reason for name correction<input className={INPUT + " mt-1"} required maxLength={500} value={editing.reason} onChange={e => setEditing({ ...editing, reason: e.target.value })} /></label>
+              <label className="block text-xs">Verification source<input className={INPUT + " mt-1"} maxLength={500} value={editing.evidence} onChange={e => setEditing({ ...editing, evidence: e.target.value })} /></label>
+            </>}
+            {draftPerson && <BadgeNameHistory person={draftPerson} changes={board.nameHistory?.filter(c => c.guestId === draftPerson.id) ?? []} local={!!board.edits[draftPerson.id]} />}
             {draftPerson?.suggestion && blocked(draftPerson) && <button type="button" className={BUTTON} onClick={() => setEditing({ ...editing, badge: { ...editing.badge, name: draftPerson.suggestion! } })}>Use email suggestion: {draftPerson.suggestion}</button>}
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={editing.badge.extra.split("\n").includes("HQP Representative")} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, extra: e.target.checked ? [editing.badge.extra, "HQP Representative"].filter(Boolean).join("\n") : editing.badge.extra.split("\n").filter(line => line !== "HQP Representative").join("\n") } })} /> HQP Representative</label>
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={editing.badge.reviewed} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, reviewed: e.target.checked } })} /> Name and organization checked</label>
@@ -299,6 +307,21 @@ export function SymposiumPrintJobs() {
       </div> : <p className="py-10 text-sm text-muted">Choose a batch.</p>}</section>
     </div>}
   </div>;
+}
+
+function BadgeNameHistory({ person, changes, local }: { person: PrintPerson; changes: PrintNameChange[]; local: boolean }) {
+  if (!changes.length && !local && !person.nameCorrection) return null;
+  return <details className="mt-1 min-w-0 text-[11px]">
+    <summary className="cursor-pointer text-teal-800 dark:text-teal-200"><span className="inline-flex items-center gap-1"><History size={12} />{changes.length ? `Name corrected (${changes.length})` : local ? "Local badge saved" : "Surname match ready"}</span></summary>
+    {local && <p className="mt-1 font-medium">Protected from Luma sync</p>}
+    {local && !changes.length && person.name !== person.sourceName && <p className="mt-1 text-muted">Earlier name edit; editor and time were not recorded.</p>}
+    {person.nameCorrection && <p className="mt-1 break-words text-muted">{person.nameCorrection.evidence} Not yet saved as a local correction.</p>}
+    <ol className="space-y-2 pt-1">{[...changes].reverse().map((c, i) => <li className="break-words border-l border-line pl-2" key={c.at + i}>
+      <p><span className="text-muted">{c.from || "Blank name"}</span> → <strong>{c.to}</strong></p>
+      <p>{c.reason}</p>{c.evidence && <p className="text-muted">Source: {c.evidence}</p>}
+      <p className="text-muted">{c.by} · <time dateTime={c.at}>{new Date(c.at).toLocaleString("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}</time></p>
+    </li>)}</ol>
+  </details>;
 }
 
 /**

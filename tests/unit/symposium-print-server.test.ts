@@ -8,6 +8,8 @@ let rows = new Map<string, Row>(), race = false, transactions = 0;
 const prisma = {
   platformSetting: { findUnique: async ({ where }: { where: { key: string } }) => rows.get(where.key) ?? null },
   bhnEvent: { findUnique: async () => ({ speakers: [] }) },
+  eligibilityEntry: { findMany: async () => [{ name: "Jane Smith", email: "jane.smith@example.org", sourceId: "engage-experience" }] },
+  user: { findMany: async () => [] },
   $transaction: async (fn: (tx: unknown) => Promise<void>) => {
     transactions++;
     const staged = new Map(rows);
@@ -73,6 +75,20 @@ test("stale versions cannot overwrite shared badge edits", async () => {
   reset(); const { changePrintStore } = await server;
   const result = await changePrintStore(null, create, "Admin");
   assert.equal(result.conflict, true); assert.equal(transactions, 0);
+});
+
+test("verified surnames and their history persist and stale requests cannot replace them", async () => {
+  reset();
+  const original = board(); original.guests[0].name = "Jane";
+  rows.set(key, { key, value: JSON.stringify(original), updatedAt: new Date(version) });
+  const { changePrintStore } = await server;
+  const result = await changePrintStore(version, { action: "verify_names" }, "Ruilin Yuan");
+  assert.equal(result.conflict, false);
+  assert.equal(result.snapshot.people[0].name, "Jane Smith");
+  assert.equal(result.snapshot.board.nameHistory?.[0].by, "Ruilin Yuan");
+  assert.match(result.snapshot.board.nameHistory![0].evidence, /engage-experience/);
+  assert.equal((await changePrintStore(version, { action: "verify_names" }, "Other admin")).conflict, true);
+  assert.equal(JSON.parse(rows.get(key)!.value).nameHistory.length, 1);
 });
 
 test("PDF bytes and queue metadata are committed atomically and remain fixed after edits", async () => {

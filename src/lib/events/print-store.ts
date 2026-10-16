@@ -6,6 +6,7 @@ import { fetchLumaPrintGuests, parseLumaPrintCsv } from "./print-luma";
 import { buildPrintPdf } from "./print-pdf";
 import { PDFDocument } from "pdf-lib";
 import { DEFAULT_PRINT_AGENDA } from "./print-agenda";
+import { emailKey } from "@/lib/eligibility/email-key";
 
 export const PRINT_BOARD_KEY = "symposium2026.printJobs.v1";
 const artifactKey = (id: string) => `symposium2026.printPdf.${id}`;
@@ -20,7 +21,16 @@ export async function loadPrintStore(): Promise<{ snapshot: PrintWorkspace; raw:
     agendaText: DEFAULT_PRINT_AGENDA,
     tentTemplate: null, agendaTemplate: null,
   };
-  const identities = plan.snapshot.people.filter(p => !p.archived).map(p => ({ fullName: p.fullName, email: p.email, organization: p.organization, title: p.title, tags: p.tags }));
+  const emails = [...new Set(board.guests.map(g => g.email.trim()).filter(Boolean))];
+  const [entries, accounts] = emails.length ? await Promise.all([
+    prisma.eligibilityEntry.findMany({ where: { emailKey: { in: emails.map(emailKey).filter((v): v is string => !!v) }, name: { not: null } }, select: { name: true, email: true, sourceId: true } }),
+    prisma.user.findMany({ where: { email: { in: emails, mode: "insensitive" }, name: { not: null } }, select: { name: true, email: true } }),
+  ]) : [[], []];
+  const identities: PrintIdentity[] = [
+    ...plan.snapshot.people.filter(p => !p.archived).map(p => ({ fullName: p.fullName, email: p.email, organization: p.organization, title: p.title, tags: p.tags, source: "People roster" })),
+    ...entries.map(p => ({ fullName: p.name!, email: p.email, organization: "", title: "", source: `Eligibility list: ${p.sourceId}` })),
+    ...accounts.map(p => ({ fullName: p.name!, email: p.email, organization: "", title: "", source: "Platform account" })),
+  ];
   return { snapshot: { board, people: printPeople(board, identities), version: saved?.updatedAt.toISOString() ?? null, autoSyncAvailable: !!process.env.LUMA_SESSION_KEY?.trim() }, raw: saved?.value ?? null, identities };
 }
 
