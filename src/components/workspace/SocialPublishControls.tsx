@@ -35,7 +35,7 @@ export function SocialPublishControls({ post, connection, pending, onResult }: {
       });
       const result = await response.json() as { error?: string; post?: PublicationState };
       if (result.post) onResult(result.post, result.error ?? (result.post.status === "published"
-        ? "Published to BioHubNet's LinkedIn Page." : scheduled ? "Scheduled in Buffer for LinkedIn publication." : "Sent to Buffer for LinkedIn delivery. Check status for confirmation."));
+        ? "Published to BioHubNet's LinkedIn Page." : scheduled && result.post.status === "scheduled" ? "Scheduled in Buffer for LinkedIn publication." : "Sent to Buffer for LinkedIn delivery. Check status for confirmation."));
       if (!response.ok || result.error) throw new Error(result.error ?? "Couldn't complete the publishing request.");
       setScheduling(false);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't publish the post."); }

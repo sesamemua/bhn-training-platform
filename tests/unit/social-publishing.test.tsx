@@ -148,7 +148,7 @@ test("two simultaneous clicks create one post; delivery is confirmed separately,
   const responses = await Promise.all([send(), send()]);
   assert.deepEqual(responses.map(r => r.status).sort(), [200, 409]);
   assert.equal(state.creates, 1); assert.equal(state.audits, 1);
-  assert.equal(state.post.status, "scheduled"); assert.equal(state.post.bufferPostId, remote.id);
+  assert.equal(state.post.status, "publishing"); assert.equal(state.post.bufferPostId, remote.id);
   assert.equal((await send()).status, 409);
   state.result = { ...remote, status: "sent", sentAt: "2026-10-15T16:30:00Z" };
   const confirmed = await send({ action: "refresh" });
@@ -189,6 +189,17 @@ test("unconfirmed scheduling stays locked while an explicit rejection restores a
   assert.equal((await rejected.send({ action: "schedule", at })).status, 502);
   assert.equal(rejected.state.post.status, "approved");
   assert.equal(rejected.state.post.scheduledFor.toISOString(), initial.scheduledFor.toISOString());
+});
+
+test("only Buffer-confirmed scheduled posts are labelled scheduled", async () => {
+  const at = new Date(Date.now() + 86400000).toISOString();
+  for (const status of ["draft", "needs_approval", "error", "sending"]) {
+    const { state, send } = harness(); state.result.status = status;
+    assert.equal((await send({ action: "schedule", at })).status, 200);
+    assert.equal(state.post.status, "publishing");
+    assert.equal(state.post.bufferPostId, remote.id);
+    if (status !== "sending") assert.ok(state.post.publishError);
+  }
 });
 
 test("the old date-only scheduling route cannot label a post scheduled without Buffer", async () => {

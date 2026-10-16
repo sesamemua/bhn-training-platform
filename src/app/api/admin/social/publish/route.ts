@@ -18,9 +18,9 @@ const Input = z.discriminatedUnion("action", [
 const select = { id: true, status: true, bufferPostId: true, publishError: true, scheduledFor: true } as const;
 
 function delivered(post: BufferPost) {
-  return { bufferPostId: post.id, status: post.status === "sent" ? "published" : "scheduled",
+  return { bufferPostId: post.id, status: post.status === "sent" ? "published" : post.status === "scheduled" ? "scheduled" : "publishing",
     publishedAt: post.status === "sent" ? new Date(post.sentAt ?? Date.now()) : null,
-    publishError: post.status === "error" ? "LinkedIn delivery failed. Check this post in Buffer before taking further action." : null,
+    publishError: post.status === "error" ? "LinkedIn delivery failed. Check this post in Buffer before taking further action." : ["draft", "needs_approval"].includes(post.status) ? "Buffer has not queued this post. Check its approval and schedule in Buffer." : null,
     ...(post.dueAt ? { scheduledFor: new Date(post.dueAt) } : {}),
   };
 }
