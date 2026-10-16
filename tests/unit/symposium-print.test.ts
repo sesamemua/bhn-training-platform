@@ -263,3 +263,15 @@ test("a batch can be deleted outright, whatever its state, and only once", () =>
   assert.equal(after.jobs.length, 0);
   assert.throws(() => applyPrintAction(after, [], { action: "delete", jobId: job.id }, "Admin", "new", new Date().toISOString()), /already been deleted/);
 });
+
+test("a last name added to a badge survives every Luma sync, even when Luma's own name changes", () => {
+  const g = { id: "luma:gst-7", name: "Echo", email: "echo.jing@example.org", organization: "UofT", status: "approved", tickets: 1, source: "luma" as const, badgeRole: "" };
+  let b = PrintBoardSchema.parse({ guests: [g], edits: {}, jobs: [], syncedAt: null, tentText: "", agendaText: "", tentTemplate: null, agendaTemplate: null });
+  b.edits[g.id] = { name: "Echo Jing", organization: "University of Toronto", extra: "", reviewed: true };
+  b = mergePrintGuests(b, [{ ...g }], new Date().toISOString());
+  assert.equal(printPeople(b)[0].name, "Echo Jing", "an unchanged sync keeps the edit");
+  b = mergePrintGuests(b, [{ ...g, name: "Echo J." }], new Date().toISOString());
+  assert.equal(printPeople(b)[0].name, "Echo Jing", "a changed Luma name still does not replace the edit");
+  assert.equal(b.guests[0].name, "Echo J.", "Luma's own record is kept as Luma has it");
+  assert.equal(b.edits[g.id].reviewed, false, "and the change is flagged for a second look");
+});
