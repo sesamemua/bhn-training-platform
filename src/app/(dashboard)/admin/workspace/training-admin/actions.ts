@@ -26,6 +26,7 @@ import { REGISTRATION_FORM_SLUG, REGISTRATION_FORM_SLUG_V2, REGISTRATION_FORM_WH
 import { INNOVATION_IGNITED_SLUG } from "@/lib/formbuilder/innovation-ignited";
 import { INTERNAL_KEY, InternalPersonSchema, isInternal, parseInternal, type InternalPerson } from "@/lib/training-week/internal";
 import { loadInternalSet } from "@/lib/training-week/internal-server";
+import { coordinatorInfoFor } from "@/lib/training-week/coordinator-info";
 import { HIGHLIGHTS_KEY, highlightProblem, highlightsOf, type Highlight } from "@/lib/allocation/highlights";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
@@ -725,7 +726,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
       bookings: {
         orderBy: { rank: "asc" },
         select: {
-          id: true, status: true, rank: true, decisionNote: true, approvedAt: true, notifiedStatus: true, notifiedAt: true,
+          id: true, workshopId: true, status: true, rank: true, decisionNote: true, approvedAt: true, notifiedStatus: true, notifiedAt: true,
           withdrawnAt: true, withdrawReason: true,
           workshop: { select: { title: true, capacity: true, startDateTime: true, endDateTime: true } },
         },
@@ -744,6 +745,12 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
 
   const internalSet = (await loadInternalSet()).keys;
 
+  const coordinatorImports = await prisma.auditLog.findMany({
+    where: { action: "training_admin.roshni_import" },
+    orderBy: { createdAt: "desc" },
+    select: { detail: true, createdAt: true, actor: { select: { name: true } } },
+  });
+
   const history = await seatHistory(rows.flatMap((r) => r.bookings.map((b) => ({ id: b.id, email: r.email ?? r.user?.email ?? null }))));
   return rows.flatMap((r) => {
     const own = byForm.get(r.formId);
@@ -753,6 +760,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
     const answers = data as Answers;
     return [{
       id: r.id,
+      coordinatorInfo: coordinatorInfoFor(coordinatorImports, r.email ?? r.user?.email ?? "", r.bookings.map((b) => b.workshopId)),
       // Submitted timestamp: what first-come-first-served is decided on.
       at: r.createdAt.toISOString(),
       isTest: data.__test === true,

@@ -150,6 +150,7 @@ export interface TemplateBundle {
 /** One row of the registrant sheet, as submitted. */
 export interface SubmissionRow {
   id: string;
+  coordinatorInfo?: import("../training-week/coordinator-info").CoordinatorInfo;
   /** When it arrived — what first-come-first-served is decided on. */
   at: string;
   /** Filed from the admin preview rather than by a registrant. */
