@@ -9,7 +9,11 @@ import { speakerSessionActions, type WebsitePeople } from "@/lib/events/speaker-
 type Data = { roster: PlanSnapshot; state: PublicationState; website: WebsitePeople };
 const BUTTON = "inline-flex items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-fg hover:bg-elevated disabled:opacity-40";
 
-export default function SpeakerSessionActions({ onReview, reviewDisabled = false, framed = false }: { onReview: (id: string, session: PlanSession | null) => void; reviewDisabled?: boolean; framed?: boolean }) {
+export default function SpeakerSessionActions({ onReview, reviewDisabled = false, framed = false, chooseSession = true }: {
+  onReview: (id: string, session: PlanSession | null) => void; reviewDisabled?: boolean; framed?: boolean;
+  /** Off on the dashboard: there each person is just a way into the speaker screen, which has every session option. */
+  chooseSession?: boolean;
+}) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -72,12 +76,15 @@ export default function SpeakerSessionActions({ onReview, reviewDisabled = false
           <p className="mt-1 text-sm text-fg">{awaitingSync ? "Approved; waiting for the website to update." : "Submitted, but not listed on the symposium website."}</p>
         </div>
         {!awaitingSync && <div className="min-w-0 space-y-2">
-          {!draft && <label className="block text-sm font-medium text-fg" htmlFor={`speaker-session-${person.id}`}>Choose a session
+          {!draft && chooseSession && <label className="block text-sm font-medium text-fg" htmlFor={`speaker-session-${person.id}`}>Choose a session
             <select id={`speaker-session-${person.id}`} className="mt-1 w-full min-w-0 rounded-md border border-line bg-card-solid px-2 py-2 text-sm text-fg" disabled={!!busy} value={choice} onChange={(e) => setChoices((p) => ({ ...p, [person.id]: e.target.value as PlanSession | "" }))}>
               <option value="">Select a session</option>{Object.entries(PLAN_SESSIONS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </label>}
-          <button type="button" className={BUTTON} disabled={reviewDisabled || !!busy || (!draft && !choice)} onClick={() => void review(person.id, choice || null, !!draft)}><ArrowRight size={16} />{busy === person.id ? "Saving..." : draft ? "Review website draft" : "Save session & review profile"}</button>
+          {chooseSession || draft
+            ? <button type="button" className={BUTTON} disabled={reviewDisabled || !!busy || (!draft && !choice)} onClick={() => void review(person.id, choice || null, !!draft)}><ArrowRight size={16} />{busy === person.id ? "Saving..." : draft ? "Review website draft" : "Save session & review profile"}</button>
+            // Nothing saved from here: the next screen is where the session is chosen.
+            : <button type="button" className={BUTTON} disabled={reviewDisabled || !!busy} onClick={() => onReview(person.id, null)}><ArrowRight size={16} />Choose a session &amp; review profile</button>}
         </div>}
       </div>;
     })}</div>

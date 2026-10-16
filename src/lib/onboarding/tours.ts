@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24i";
+export const TOUR_VERSION = "2026.10.24j";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "home.speaker-actions-open",
+    title: "Choose speaker sessions on the speaker screen",
+    body: "New headshot-and-bio submissions on the dashboard now open straight to the speaker screen, where all the session options are — no session picker on the dashboard.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24j",
+  },
   {
     id: "platform.header-flowing",
     title: "The header flows",

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Dashboard: new speaker submissions open to the speaker screen to choose a session",
+    body: "On the dashboard\u2019s **Headshots & bios action items**, a newly submitted speaker no longer has a session picker. **Choose a session & review profile** opens the speaker screen, where every session option is available. In Symposium \u2192 Speakers the picker is unchanged.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "The page header\u2019s microfluidic chip now flows",
     body: "The microfluidic pattern in the header at the top of every page is now **animated**: pulses of fluid travel along the channels and through the serpentine mixers, the reaction chamber slowly fills and empties, and droplets pinch off the generator one after another. It stays faint behind the title, and it is drawn still for anyone with **reduced motion** turned on.",
     kind: "improvement",

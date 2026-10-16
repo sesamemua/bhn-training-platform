@@ -65,7 +65,7 @@ export function AdminDashboardCards({ releasedSeats, initialLayout, ...registrat
     <RegistrationCounts {...registrationProps} renderCards={({ registration, capacity }) => {
       const cards: Record<DashboardCard, ReactNode> = {
         symposium: registration,
-        speakers: <SpeakerSessionActions framed onReview={(id, session) => {
+        speakers: <SpeakerSessionActions framed chooseSession={false} onReview={(id, session) => {
           const params = new URLSearchParams({ reviewPerson: id });
           if (session) params.set("reviewSession", session);
           router.push(`/admin/workspace/symposium-2026/speakers?${params}`);
