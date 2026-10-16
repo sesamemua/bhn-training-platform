@@ -21,7 +21,7 @@ export async function loadPrintStore(): Promise<{ snapshot: PrintWorkspace; raw:
     tentTemplate: null, agendaTemplate: null,
   };
   const identities = plan.snapshot.people.filter(p => !p.archived).map(p => ({ fullName: p.fullName, email: p.email, organization: p.organization, title: p.title, tags: p.tags }));
-  return { snapshot: { board, people: printPeople(board, identities), version: saved?.updatedAt.toISOString() ?? null }, raw: saved?.value ?? null, identities };
+  return { snapshot: { board, people: printPeople(board, identities), version: saved?.updatedAt.toISOString() ?? null, autoSyncAvailable: !!process.env.LUMA_SESSION_KEY?.trim() }, raw: saved?.value ?? null, identities };
 }
 
 class PrintConflict extends Error {}
@@ -38,7 +38,7 @@ async function persistPrintStore(current: Awaited<ReturnType<typeof loadPrintSto
       if (!result.count) throw new PrintConflict();
     }
   }, { timeout: 15000 });
-  return { board, people: printPeople(board, current.identities), version: now.toISOString() } satisfies PrintWorkspace;
+  return { board, people: printPeople(board, current.identities), version: now.toISOString(), autoSyncAvailable: current.snapshot.autoSyncAvailable } satisfies PrintWorkspace;
 }
 
 export async function changePrintStore(version: string | null, action: PrintAction, actor: string) {
@@ -53,7 +53,7 @@ export async function changePrintStore(version: string | null, action: PrintActi
       const matches = current.snapshot.board.guests.filter(old => old.source === "luma" && old.email && old.email === g.email);
       if (matches.length === 1 && (g.id.startsWith("luma-email:") || matches[0].id.startsWith("luma-email:"))) g.id = matches[0].id;
     }
-    next = mergePrintGuests(current.snapshot.board, guests, at);
+    next = mergePrintGuests(current.snapshot.board, guests, at, action.action === "import" ? "csv" : "luma");
   } else {
     const result = applyPrintAction(current.snapshot.board, current.snapshot.people, action, actor, id, at);
     next = result.board;

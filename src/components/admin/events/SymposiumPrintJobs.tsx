@@ -48,7 +48,7 @@ export function SymposiumPrintJobs() {
         chooseJob(body.snapshot.board.jobs.find((j: PrintJob) => j.id === body.jobId));
         setView("queue"); setSelected([]); setLabel("");
       }
-      setNotice(change.action === "sync" ? "Luma guest list updated." : change.action === "printed" ? "Print confirmation saved." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
+      setNotice(change.action === "sync" ? "Luma guest list updated." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
       return true;
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); return false; }
     finally { working.current = false; setBusy(false); }
@@ -65,14 +65,14 @@ export function SymposiumPrintJobs() {
       const job = body.board.jobs.find((j: PrintJob) => j.id === id);
       if (job) { chooseJob(job); setView("queue"); }
       working.current = false;
-      if (!body.board.syncedAt) await mutate({ action: "sync" }, body.version);
+      if (!body.board.syncedAt && body.autoSyncAvailable) await mutate({ action: "sync" }, body.version);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load Print Jobs."); }
     finally { working.current = false; setBusy(false); }
   }
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load awaits the network before updating state.
     void load();
-    const timer = setInterval(() => { if (!document.hidden && !working.current && current.current) void mutate({ action: "sync" }); }, 300000);
+    const timer = setInterval(() => { if (!document.hidden && !working.current && current.current?.autoSyncAvailable) void mutate({ action: "sync" }); }, 300000);
     return () => clearInterval(timer);
     // Requests use the latest version through current, not the initial render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,8 +132,9 @@ export function SymposiumPrintJobs() {
   return <div className="mx-auto w-full max-w-[1600px] pb-12 text-fg">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <nav aria-label="Print materials" className="flex flex-wrap gap-1 border-b border-line">{([["badges", "Name badges"], ["tents", "Table tents"], ["agenda", "Agenda"], ["queue", "Print queue (" + board.jobs.filter(j => j.status === "ready").length + ")"]] as [View, string][]).map(([key, title]) => <button type="button" key={key} aria-current={view === key ? "page" : undefined} className={"border-b-2 px-3 py-2 text-sm font-semibold " + (view === key ? "border-brand" : "border-transparent text-muted")} onClick={() => { setView(key); setLabel(""); if (key === "tents") setCopies(22); if (key === "agenda") setCopies(1); }}>{title}</button>)}</nav>
-      <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-muted">{board.syncedAt ? "Luma synced " + date(board.syncedAt) : "Luma not synced"}</span><button type="button" className={BUTTON} disabled={busy} onClick={() => void mutate({ action: "sync" })}><RefreshCw size={14} className={busy ? "animate-spin" : ""} /> Sync Luma</button></div>
+      <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-muted">{board.syncedAt ? (board.syncSource === "csv" || !snapshot.autoSyncAvailable ? "CSV imported " : "Luma synced ") + date(board.syncedAt) : "No guest list imported"}</span><button type="button" className={BUTTON} disabled={busy} onClick={() => snapshot.autoSyncAvailable ? void mutate({ action: "sync" }) : csvInput.current?.click()}>{snapshot.autoSyncAvailable ? <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> : <FileUp size={14} />} {snapshot.autoSyncAvailable ? "Sync Luma" : "Import Luma CSV"}</button></div>
     </div>
+    {!snapshot.autoSyncAvailable && <p className="mb-4 border-l-2 border-amber-500 pl-3 text-sm">Automatic Luma sync is not connected. <a className="font-semibold underline underline-offset-2" href="https://luma.com/event/manage/evt-az4yQOZR33DBiid/guests" target="_blank" rel="noreferrer">Export the current guest list from Luma</a>, then import the CSV.</p>}
     {error && <p role="alert" className="mb-4 rounded-md border border-red-400/50 bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950 dark:text-red-100">{error}</p>}
     {notice && <p role="status" className="mb-4 text-sm">{notice}</p>}
     <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" aria-label="Import Luma CSV" onChange={async e => { const file = e.target.files?.[0]; if (file) { if (file.size > 1000000) setError("Choose a CSV smaller than 1 MB."); else await mutate({ action: "import", csv: await file.text() }); } e.target.value = ""; }} />

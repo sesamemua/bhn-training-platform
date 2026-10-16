@@ -23,13 +23,13 @@ export const PrintJobSchema = z.object({
 export type PrintJob = z.infer<typeof PrintJobSchema>;
 export const PrintBoardSchema = z.object({
   guests: z.array(GuestSchema).max(2000), edits: z.record(z.string(), BadgeEditSchema),
-  jobs: z.array(PrintJobSchema).max(150), syncedAt: z.string().datetime().nullable(),
+  jobs: z.array(PrintJobSchema).max(150), syncedAt: z.string().datetime().nullable(), syncSource: z.enum(["luma", "csv"]).optional(),
   tentText: text(2000), agendaText: text(30000),
   tentTemplate: TemplateSchema.nullable(), agendaTemplate: TemplateSchema.nullable(),
 });
 export type PrintBoard = z.infer<typeof PrintBoardSchema>;
 export type PrintPerson = PrintBadge & { email: string; sourceName: string; sourceOrganization: string; status: string; source: PrintGuest["source"]; tickets: number; issues: string[]; suggestion: string | null; printStatus: "unprinted" | "queued" | "printed" | "changed" };
-export type PrintWorkspace = { board: PrintBoard; people: PrintPerson[]; version: string | null };
+export type PrintWorkspace = { board: PrintBoard; people: PrintPerson[]; version: string | null; autoSyncAvailable: boolean };
 export type PrintIdentity = { fullName: string; email: string; organization: string; title: string; tags?: string[] };
 
 export const PrintActionSchema = z.discriminatedUnion("action", [
@@ -105,7 +105,7 @@ export function printPeople(board: PrintBoard, identities: PrintIdentity[] = [])
   }).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function mergePrintGuests(board: PrintBoard, incoming: PrintGuest[], at: string): PrintBoard {
+export function mergePrintGuests(board: PrintBoard, incoming: PrintGuest[], at: string, source: "luma" | "csv" = "luma"): PrintBoard {
   if (new Set(incoming.map(g => g.id)).size !== incoming.length) throw new Error("Luma returned duplicate guest IDs. Nothing was replaced.");
   const next = structuredClone(board);
   const ids = new Set(incoming.map(g => g.id));
@@ -114,7 +114,7 @@ export function mergePrintGuests(board: PrintBoard, incoming: PrintGuest[], at: 
     const old = board.guests.find(g => g.id === guest.id);
     if (old && (old.name !== guest.name || old.email !== guest.email || old.organization !== guest.organization) && next.edits[guest.id]) next.edits[guest.id].reviewed = false;
   }
-  next.syncedAt = at;
+  next.syncedAt = at; next.syncSource = source;
   return PrintBoardSchema.parse(next);
 }
 

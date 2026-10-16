@@ -38,6 +38,37 @@ test("empty storage reads the verified 2026 agenda and never writes during GET",
   assert.equal(rows.size, 0);
 });
 
+test("connection status reflects configuration without exposing the Luma credential", async () => {
+  reset(); const { loadPrintStore } = await server;
+  const previous = process.env.LUMA_SESSION_KEY;
+  try {
+    delete process.env.LUMA_SESSION_KEY;
+    assert.equal((await loadPrintStore()).snapshot.autoSyncAvailable, false);
+    process.env.LUMA_SESSION_KEY = "  ";
+    assert.equal((await loadPrintStore()).snapshot.autoSyncAvailable, false);
+    process.env.LUMA_SESSION_KEY = "private-test-session";
+    const result = (await loadPrintStore()).snapshot;
+    assert.equal(result.autoSyncAvailable, true);
+    assert.ok(!JSON.stringify(result).includes("private-test-session"));
+  } finally {
+    if (previous === undefined) delete process.env.LUMA_SESSION_KEY;
+    else process.env.LUMA_SESSION_KEY = previous;
+  }
+});
+
+test("CSV import records its source while retaining badge edits and print history", async () => {
+  reset(); const { changePrintStore } = await server;
+  const edited = await changePrintStore(version, { action: "edit", id: "one", badge: { name: "Jane Smith", organization: "University of Toronto", extra: "HQP Representative", reviewed: true } }, "Admin");
+  const queued = await changePrintStore(edited.snapshot.version, create, "Admin");
+  const result = await changePrintStore(queued.snapshot.version, { action: "import", csv: "name,email,approval_status,organization\nJane Smith,jane.smith@example.org,approved,UofT" }, "Admin");
+  assert.equal(result.snapshot.board.syncSource, "csv");
+  assert.equal(result.snapshot.board.jobs.length, 1);
+  assert.equal(result.snapshot.board.jobs[0].printedIds.length, 0);
+  assert.equal(result.snapshot.people[0].id, "one");
+  assert.equal(result.snapshot.people[0].extra, "HQP Representative");
+  assert.equal(result.snapshot.people[0].printStatus, "queued");
+});
+
 test("stale versions cannot overwrite shared badge edits", async () => {
   reset(); const { changePrintStore } = await server;
   const result = await changePrintStore(null, create, "Admin");
