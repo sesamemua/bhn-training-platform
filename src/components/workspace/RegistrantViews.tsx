@@ -14,6 +14,7 @@ import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plu
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendLettersForBookings } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
+import { CoordinatorInfoSummary } from "./CoordinatorInfoSummary";
 import { lettersChanged, queueLetterFx } from "./LetterMailbox";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { farSchoolOf } from "@/lib/travel/far-email";
@@ -516,8 +517,9 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
             </button>
           )}
           <span className="ml-auto inline-flex items-baseline gap-1.5 rounded-lg bg-brand-500/12 px-3 py-1">
+            <span className="text-[13px] font-semibold text-fg">Total</span>
             <span className="text-[26px] font-extrabold leading-none tabular-nums text-brand-400">{shownCount}</span>
-            <span className="text-[13px] font-semibold text-fg">{draft.perPerson ? (shownCount === 1 ? "person" : "people") : shownCount === 1 ? "record" : "records"}</span>
+            {draft.perPerson && <span className="text-[13px] font-semibold text-fg">{shownCount === 1 ? "person" : "people"}</span>}
           </span>
         </div>
       </div>
@@ -593,7 +595,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
             {draft.groupBy !== "none" && (
               <h4 className="mb-1.5 flex items-center gap-2 text-[13px] font-bold text-fg">
                 {draft.groupBy === "workshop" && <span className={`h-2.5 w-2.5 rounded-full ${toneOf(g.key).dot}`} aria-hidden />}
-                {g.label} <span className="text-[11.5px] font-normal text-muted">{g.rows.length} {draft.perPerson ? "people" : "records"}</span>
+                {g.label} {(draft.groupBy !== "workshop" || draft.perPerson) && <span className="text-[11.5px] font-normal text-muted">Total: {g.rows.length}</span>}
               </h4>
             )}
             {draft.groupBy === "workshop" && !draft.perPerson && (
@@ -624,7 +626,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                   {g.rows.map((r) => {
                     const rowKey = draft.perPerson ? r.personKey : r.bookingId;
                     const open = openRow === rowKey;
-                    const sub = open ? subOf(r) : null;
+                    const sub = subOf(r);
                     return (
                     <Fragment key={rowKey}>
                     <tr
@@ -672,8 +674,10 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                             with two badges is still two lines and not three. */}
                         <div className="flex flex-wrap items-baseline gap-x-1.5 text-[10.5px] leading-tight text-subtle">
                           {r.email && r.email !== r.name && <span className="font-mono">{r.email}</span>}
+                          {!r.email && <span className="rounded border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 font-semibold text-fg">Email missing</span>}
                           <span>{shortStamp(r.appliedAt)}</span>
                         </div>
+                        <CoordinatorInfoSummary info={sub?.coordinatorInfo} />
                         {/* Who highlighted them and why — each admin's note its own line. */}
                         {(r.highlights ?? []).map((h) => (
                           <div key={h.id} className="mt-0.5 flex items-start gap-1 text-[11px] leading-snug text-fg/85">
@@ -727,7 +731,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           <td className="whitespace-nowrap px-2 py-1 text-muted">{r.dayLabel}</td>
                           <td className="px-2 py-1"><span className={`${chip} ${STATUS_TONE[r.status] ?? "bg-elevated text-subtle"}`}>{r.withdrawn ? "Can't attend" : STATUS_LABEL[r.status] ?? r.status}</span></td>
                           <td className="whitespace-nowrap px-2 py-1">
-                            {r.letter === "owed" ? <span className={`${chip} bg-amber-500/12 text-amber-600`}>Not sent</span> : <span className="text-[11.5px] text-subtle">{r.letter === "sent" ? "Sent" : "—"}</span>}
+                            {!r.email ? <span className="font-semibold text-fg">Email missing</span> : r.letter === "owed" ? <span className={`${chip} bg-amber-500/12 text-amber-600`}>Not sent</span> : <span className="text-[11.5px] text-subtle">{r.letter === "sent" ? "Sent" : "—"}</span>}
                           </td>
                         </>
                       )}

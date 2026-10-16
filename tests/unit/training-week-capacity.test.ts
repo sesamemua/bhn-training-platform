@@ -149,13 +149,30 @@ test("Ignited reconciles all registration records with student demand without ch
   assert.equal(cap.internal, 6);
   assert.equal(cap.inactive, 4);
   assert.equal(cap.records, cap.requested + cap.internal + cap.inactive);
-  assert.equal(registrationSummary(cap), "62 registration records: 52 active trainee requests + 6 staff/guests + 4 cancelled/withdrawn");
+  assert.deepEqual(cap.decisions, { approved: 54, undecided: 4, declined: 1, waitlisted: 0, withdrawn: 3 });
+  assert.equal(registrationSummary(cap), "Approved: 54 · To be decided: 4 · Declined: 1 · Can't attend: 3 · Total: 62");
   const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
     { id: "ignited & workshop", slug: "ignited", title: "Innovation Ignited", start: "2026-10-27T10:00:00Z", cap },
   ] }));
-  assert.ok(html.includes(registrationSummary(cap)));
+  assert.match(html, /Approved: 54 · To be decided: 4 · Declined: 1/);
+  assert.match(html, /Total: 62/);
   assert.match(html, /href="\/admin\/workspace\/training-admin\?tab=registrants&amp;workshop=ignited%20%26%20workshop"/);
   assert.match(html, /aria-label="View registrants for Innovation Ignited"/);
   assert.equal(sessionCapacity(10, [{ status: "cancelled", internal: true, withdrawn: true }]).inactive, 1);
   assert.equal(sessionCapacity(10, [{ status: "cancelled", internal: true }]).internal, 0);
+});
+
+test("decision summaries distinguish waitlisted and self-withdrawn people without changing trainee capacity", () => {
+  const input = [
+    ...seats(2, "confirmed"), ...seats(1, "confirmed", true), ...seats(2),
+    ...seats(2, "cancelled"), ...seats(1, "waitlist"),
+    { status: "confirmed", withdrawn: true }, { status: "cancelled", withdrawn: true },
+  ];
+  const cap = sessionCapacity(20, input);
+  assert.equal(registrationSummary(cap), "Approved: 3 · To be decided: 2 · Declined: 2 · Waitlisted: 1 · Can't attend: 2 · Total: 10");
+  assert.equal(Object.values(cap.decisions).reduce((sum, n) => sum + n, 0), cap.records);
+  assert.equal(cap.confirmed, 2);
+  assert.equal(cap.internal, 1);
+  assert.equal(input.length, 10);
+  assert.equal(registrationSummary(sessionCapacity(0, [])), "Approved: 0 · To be decided: 0 · Declined: 0 · Total: 0");
 });

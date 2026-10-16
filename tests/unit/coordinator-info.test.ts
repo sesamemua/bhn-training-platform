@@ -26,3 +26,11 @@ test("ignores malformed imports and unresolved addresses without exposing raw au
   assert.equal(coordinatorInfoFor(bad, "person@utoronto.ca", ["ignited"]), undefined);
   assert.equal(coordinatorInfoFor([...bad, audit], "person@utoronto.ca", ["ignited"])?.name, "Person Name");
 });
+
+test("no-email registrations match only their exact submission and workshop, never another blank email", () => {
+  const noEmail = { ...audit, detail: JSON.stringify({ ...JSON.parse(audit.detail), email: null, submissionId: "named-guest" }) };
+  assert.equal(coordinatorInfoFor([noEmail], "", ["ignited"], "named-guest")?.company, "Venture");
+  assert.equal(coordinatorInfoFor([noEmail], "", ["ignited"], "another-guest"), undefined);
+  assert.equal(coordinatorInfoFor([noEmail], "", ["other"], "named-guest"), undefined);
+  assert.equal(coordinatorInfoFor([noEmail], "", ["ignited"]), undefined);
+});

@@ -21,6 +21,7 @@ import { receiptLine } from "@/lib/formbuilder/receipt";
 import { ordinal } from "./SessionCalendar";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import { institutionOf } from "@/lib/travel/far-email";
+import { CoordinatorInfoSummary } from "./CoordinatorInfoSummary";
 
 const BAND_TONE: Record<string, string> = {
   local: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700",
@@ -78,22 +79,7 @@ export function RegistrationDetail({ sub, onChanged, where }: {
   return (
     <div className="grid gap-4 bg-elevated/30 px-3 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="min-w-0">
-        {sub.coordinatorInfo && (
-          <section aria-label="Information from Roshni" className="mb-3 border-l-2 border-brand-500 pl-3">
-            <h4 className="text-[12px] font-bold text-fg">Innovation Ignited · Information from Roshni</h4>
-            <p className="mt-0.5 text-[11px] text-muted">Supplied by email, separately from the registrant&apos;s answers.</p>
-            <dl className="mt-1.5 grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-x-2 gap-y-1 text-[12px]">
-              {Object.entries({ "Name on list": sub.coordinatorInfo.name, Institution: sub.coordinatorInfo.institution, "Current role": sub.coordinatorInfo.position, "Company / venture": sub.coordinatorInfo.company, Participation: sub.coordinatorInfo.participation }).map(([label, value]) => (
-                <Fragment key={label}><dt className="text-subtle">{label}</dt><dd className="min-w-0 break-words text-fg">{value || "Not supplied"}</dd></Fragment>
-              ))}
-            </dl>
-            <details className="mt-1.5 text-[11px] text-muted">
-              <summary className="cursor-pointer">Source and matching details</summary>
-              <p className="mt-1 break-words">Email match: {sub.coordinatorInfo.emailSource}</p>
-              <p>Recorded by {sub.coordinatorInfo.recordedBy} · {new Date(sub.coordinatorInfo.recordedAt).toLocaleString("en-CA", { timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "short" })} Toronto</p>
-            </details>
-          </section>
-        )}
+        <CoordinatorInfoSummary info={sub.coordinatorInfo} />
         {where && <GettingHere {...where} />}
         <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px]">
           <span className="font-semibold text-subtle">Registered from</span>

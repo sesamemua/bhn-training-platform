@@ -760,7 +760,7 @@ export async function loadSubmissions(): Promise<SubmissionRow[]> {
     const answers = data as Answers;
     return [{
       id: r.id,
-      coordinatorInfo: coordinatorInfoFor(coordinatorImports, r.email ?? r.user?.email ?? "", r.bookings.map((b) => b.workshopId)),
+      coordinatorInfo: coordinatorInfoFor(coordinatorImports, r.email ?? r.user?.email ?? "", r.bookings.map((b) => b.workshopId), r.id),
       // Submitted timestamp: what first-come-first-served is decided on.
       at: r.createdAt.toISOString(),
       isTest: data.__test === true,
