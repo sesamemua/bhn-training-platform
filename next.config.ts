@@ -221,6 +221,7 @@ const nextConfig: NextConfig = {
     ],
   },
   outputFileTracingIncludes: {
+    "/api/admin/symposium-print": ["./public/print/*.ttf", "./public/biohubnet-logo.png"],
     "/admin/security": ["./docs/security/**/*"],
     // Same reason: the AV clip route reads PNGs from private/av-clips/ at
     // runtime. They are outside app/, so without this the route 404s in

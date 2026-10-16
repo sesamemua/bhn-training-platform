@@ -27,6 +27,7 @@ import {
   Megaphone,
   ShieldCheck,
   ClipboardList,
+  Printer,
   UsersRound,
   Link2,
   Layers,
@@ -524,6 +525,14 @@ const workspaceSpeakersItem: NavItem = {
   badgeKey: "speakers-new-symposium",
   description:
     "Send invited speakers one link and they fill in their own headshot, bio, LinkedIn and what their session offers — no account needed. Review what comes back before it goes on the website.",
+};
+
+const workspacePrintItem: NavItem = {
+  label: "Print Jobs",
+  href: "/admin/workspace/symposium-2026/print",
+  icon: Printer,
+  minRole: "admin",
+  description: "Name badges, table tents, agendas and shared print batches.",
 };
 
 // WORKSPACE → 2026 Symposium → AV. Three Livecast documents compared:
@@ -2163,6 +2172,7 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspacePrintItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAv2026Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAv2025Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
