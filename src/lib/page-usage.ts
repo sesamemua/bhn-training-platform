@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Per-user page usage, built from the user's own `page_view` (one per
  * navigation) and `page_time` (visible-tab milliseconds) events. Pure so
@@ -45,4 +47,46 @@ export function formatDuration(ms: number): string {
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60), m = min % 60;
   return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+// ── Personal dashboard shortcuts ─────────────────────────────────────────
+// Pinned shortcuts always show, in the user's order; the most-used pages
+// (2+ visits) fill the row up to SHORTCUT_LIMIT, and the next ones sit
+// behind "See more". Removing an automatic one hides it for good.
+export const SHORTCUT_LIMIT = 5;
+export const SHORTCUT_MORE = 10;
+const ShortcutPathSchema = z.string().trim().max(300).regex(/^\/(?!\/)[^\s\\]*$/, "Use a page on this platform, starting with /");
+export const ShortcutPrefsSchema = z.object({
+  pinned: z.array(z.object({ path: ShortcutPathSchema, label: z.string().trim().min(1).max(40) })).max(20)
+    .refine((list) => new Set(list.map((p) => p.path)).size === list.length, "That page is already a shortcut."),
+  hidden: z.array(z.string().max(300)).max(200),
+});
+export type ShortcutPrefs = z.infer<typeof ShortcutPrefsSchema>;
+export type ShortcutCandidate = { path: string; label: string; visits: number };
+export type Shortcut = ShortcutCandidate & { pinned: boolean };
+export const EMPTY_SHORTCUTS: ShortcutPrefs = { pinned: [], hidden: [] };
+
+export function buildShortcuts(candidates: ShortcutCandidate[], prefs: ShortcutPrefs) {
+  const pinnedPaths = new Set(prefs.pinned.map((p) => p.path));
+  const hidden = new Set(prefs.hidden);
+  const visits = new Map(candidates.map((c) => [c.path, c.visits]));
+  const pinned: Shortcut[] = prefs.pinned.map((p) => ({ ...p, visits: visits.get(p.path) ?? 0, pinned: true }));
+  const auto: Shortcut[] = candidates
+    .filter((c) => c.visits >= 2 && !pinnedPaths.has(c.path) && !hidden.has(c.path))
+    .map((c) => ({ ...c, pinned: false }));
+  const fill = Math.max(0, SHORTCUT_LIMIT - pinned.length);
+  return { shown: [...pinned, ...auto.slice(0, fill)], more: auto.slice(fill, fill + SHORTCUT_MORE) };
+}
+
+/** Accepts "/social", "admin/x" or a pasted full link to this site; returns a path or null. */
+export function toShortcutPath(input: string, origin: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw.startsWith("/") || /^[a-z]+:/i.test(raw) ? raw : `/${raw}`, origin);
+    if (url.origin !== origin) return null;
+    return url.pathname + url.search;
+  } catch {
+    return null;
+  }
 }

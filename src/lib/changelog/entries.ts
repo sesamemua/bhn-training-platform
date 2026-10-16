@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Dashboard: your own shortcuts",
+    body: "Just under the top of your dashboard there’s now a **Your shortcuts** row: your five most-used pages, one click away (if you live in Social, Social is there). **See more** shows the next ones. Press **Edit** to keep a shortcut on the list for good, rename it or point it at another page, or remove it; **Add** puts any page there — paste a link from the address bar. Your shortcuts are yours alone.",
+    kind: "feature",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Dashboard: your most-used pages",
     body: "Your dashboard now shows **Your most-used pages** for the last 30 days: the pages you open most, how long you spent on each (time counts only while the tab is in view), your total time on the platform, and a link to pick up where you left off. Only you see it, and it fills in only if you allowed analytics cookies.",
     kind: "feature",

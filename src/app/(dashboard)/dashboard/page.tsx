@@ -16,7 +16,7 @@ import { CreditApplicationCallout } from "@/components/dashboards/CreditApplicat
 import { RewardsDistanceCard } from "@/components/dashboards/RewardsDistanceCard";
 import { CREDIT_GRANT_TTL_DAYS } from "@/lib/credits/expiry";
 import { LatestNewsCard } from "@/components/dashboards/LatestNewsCard";
-import { PageUsageCard } from "@/components/dashboards/PageUsageCard";
+import { PageUsageCard, ShortcutBar } from "@/components/dashboards/PageUsageCard";
 import { getDisplayName } from "@/lib/user/display-name";
 import { PreferredNameEditor } from "@/components/profile/PreferredNameEditor";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
       <AdminDashboard
         user={{ id: userId, name: session!.user?.name ?? null }}
         role={role}
-        committeeBadge={<CommitteeBadgeStrip userId={userId} />}
+        committeeBadge={<><div className="my-4"><ShortcutBar userId={userId} /></div><CommitteeBadgeStrip userId={userId} /></>}
         pageUsage={<PageUsageCard userId={userId} />}
       />
     );
@@ -113,7 +113,7 @@ export default async function DashboardPage() {
     return (
       <InstructorDashboard
         user={{ id: userId, name: session!.user?.name ?? null }}
-        committeeBadge={<><CommitteeBadgeStrip userId={userId} /><PageUsageCard userId={userId} /></>}
+        committeeBadge={<><ShortcutBar userId={userId} /><CommitteeBadgeStrip userId={userId} /><PageUsageCard userId={userId} /></>}
       />
     );
   }
@@ -705,6 +705,11 @@ export default async function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* Personal shortcuts — the pages this user opens most. */}
+      <div className="max-w-screen-2xl mx-auto px-6 mt-4">
+        <ShortcutBar userId={userId} />
+      </div>
 
       {/* ── ENGAGE training credits — prominent dashboard callout ──
           Sits directly under the hero so a trainee who's never

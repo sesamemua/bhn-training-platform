@@ -1,16 +1,15 @@
 import Link from "next/link";
+import { cache } from "react";
 import { ArrowRight, MousePointerClick } from "lucide-react";
+import { ShortcutsEditor } from "./ShortcutsEditor";
 import { prisma } from "@/lib/prisma";
-import { formatDuration, summarizePageUsage, type PageUsageRow } from "@/lib/page-usage";
+import { EMPTY_SHORTCUTS, ShortcutPrefsSchema, formatDuration, summarizePageUsage, type PageUsageRow } from "@/lib/page-usage";
 
 const DAYS = 30;
 
-/**
- * "Your most-used pages" — the signed-in user's own top pages over the last
- * 30 days, ranked by visits with visible-tab time alongside. Built only from
- * events the user consented to (see `track()`), so it is empty until then.
- */
-export async function PageUsageCard({ userId }: { userId: string }) {
+/** The user's per-path visits and visible-tab time. Cached per request so
+ *  the shortcut bar and this card share one query. */
+export const loadPageUsage = cache(async (userId: string): Promise<PageUsageRow[]> => {
   const rows = await prisma.$queryRaw<{ path: string; visits: number; ms: bigint; last: Date }[]>`
     SELECT props->>'path' AS path,
       COUNT(*) FILTER (WHERE name = 'page_view')::int AS visits,
@@ -22,7 +21,31 @@ export async function PageUsageCard({ userId }: { userId: string }) {
       AND "createdAt" > now() - make_interval(days => ${DAYS}::int)
       AND props->>'path' IS NOT NULL
     GROUP BY 1`.catch((e) => { console.error("page usage:", (e as Error).message); return []; });
-  const usage = summarizePageUsage(rows.map((r): PageUsageRow => ({ ...r, ms: Number(r.ms) })));
+  return rows.map((r) => ({ ...r, ms: Number(r.ms) }));
+});
+
+/**
+ * Personal shortcuts under the dashboard hero: the user's kept shortcuts plus
+ * the pages they open most, so a Social-heavy user gets Social one click away.
+ */
+export async function ShortcutBar({ userId }: { userId: string }) {
+  const [rows, saved] = await Promise.all([
+    loadPageUsage(userId),
+    prisma.platformSetting.findUnique({ where: { key: `dashboard.shortcuts.v1.${userId}` } }).catch(() => null),
+  ]);
+  let prefs = EMPTY_SHORTCUTS;
+  try { if (saved) prefs = ShortcutPrefsSchema.parse(JSON.parse(saved.value)); } catch { /* bad row: start fresh */ }
+  const candidates = summarizePageUsage(rows, 40).pages.map(({ path, label, visits }) => ({ path, label, visits }));
+  return <ShortcutsEditor candidates={candidates} initialPrefs={prefs} />;
+}
+
+/**
+ * "Your most-used pages" — the signed-in user's own top pages over the last
+ * 30 days, ranked by visits with visible-tab time alongside. Built only from
+ * events the user consented to (see `track()`), so it is empty until then.
+ */
+export async function PageUsageCard({ userId }: { userId: string }) {
+  const usage = summarizePageUsage(await loadPageUsage(userId));
   const maxMs = Math.max(1, ...usage.pages.map((p) => p.ms));
 
   return (

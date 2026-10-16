@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24p";
+export const TOUR_VERSION = "2026.10.24q";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.shortcuts",
+    title: "Your shortcuts",
+    body: "Your most-used pages sit at the top of your dashboard. Press Edit to keep, rename or remove one, or Add to put any page there.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["trainee", "evaluating", "instructor", "admin", "superadmin"],
+    since: "2026.10.24q",
+  },
   {
     id: "dashboard.page-usage",
     title: "Your most-used pages",
