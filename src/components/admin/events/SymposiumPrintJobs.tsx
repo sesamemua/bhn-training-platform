@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, X } from "lucide-react";
-import type { BadgeEdit, PrintAction, PrintJob, PrintPerson, PrintWorkspace } from "@/lib/events/print-jobs";
+import { ATTENTION_LABELS, attentionItems, type AttentionKind, type BadgeEdit, type PrintAction, type PrintJob, type PrintPerson, type PrintWorkspace } from "@/lib/events/print-jobs";
 
 const API = "/api/admin/symposium-print";
 const HERE = "/admin/workspace/symposium-2026/print";
@@ -140,6 +140,9 @@ export function SymposiumPrintJobs() {
     <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" aria-label="Import Luma CSV" onChange={async e => { const file = e.target.files?.[0]; if (file) { if (file.size > 1000000) setError("Choose a CSV smaller than 1 MB."); else await mutate({ action: "import", csv: await file.text() }); } e.target.value = ""; }} />
     <input ref={designInput} type="file" accept=".pdf,application/pdf" className="hidden" aria-label="Upload print design PDF" onChange={async e => { const file = e.target.files?.[0]; if (file) await upload(file); e.target.value = ""; }} />
     {view === "badges" && <>
+      <BadgeAttention people={people} busy={busy}
+        onOpen={(id) => { const p = people.find((x) => x.id === id); if (p) openPerson(p); }}
+        onReprint={(id) => { setAllowReprint(true); setSelected((s) => (s.includes(id) ? s : [...s, id])); }} />
       <div className="mb-4 flex flex-wrap gap-x-7 gap-y-2 border-b border-line pb-3 text-sm">
         {[["Approved registrations", approved.length], ["Not printed", approved.filter(p => p.printStatus === "unprinted").length], ["Needs review", approved.filter(blocked).length], ["Queued", approved.filter(p => p.printStatus === "queued").length], ["Printed", approved.filter(p => p.printStatus === "printed").length], ["Changed", approved.filter(p => p.printStatus === "changed").length], ["Additional unnamed tickets", approved.reduce((n, p) => n + Math.max(0, p.tickets - 1), 0)]].map(([label, count]) => <span key={String(label)}><strong className="mr-1.5 text-base">{count}</strong><span className="text-muted">{label}</span></span>)}
       </div>
@@ -267,4 +270,33 @@ export function SymposiumPrintJobs() {
       </div> : <p className="py-10 text-sm text-muted">Choose a batch.</p>}</section>
     </div>}
   </div>;
+}
+
+/**
+ * Name badges that need someone before they print: details to check,
+ * badges changed since printing, badges for people no longer registered,
+ * and extra tickets without names — grouped, with the action for each.
+ */
+function BadgeAttention({ people, busy, onOpen, onReprint }: { people: PrintPerson[]; busy: boolean; onOpen: (id: string) => void; onReprint: (id: string) => void }) {
+  const items = attentionItems(people);
+  if (!items.length) {
+    return <p className="mb-4 border-l-2 border-emerald-600 pl-3 text-sm">Nothing needs attention: every approved badge is ready to print.</p>;
+  }
+  const groups = (Object.keys(ATTENTION_LABELS) as AttentionKind[]).map((kind) => ({ kind, rows: items.filter((i) => i.kind === kind) })).filter((g) => g.rows.length);
+  return <section aria-label="Badges that need attention" className="mb-5 border-l-2 border-amber-500 bg-amber-500/[0.06] p-4">
+    <h2 className="text-sm font-semibold">Needs attention · {items.length}</h2>
+    <div className="mt-2 grid gap-4 lg:grid-cols-2">
+      {groups.map(({ kind, rows }) => <details key={kind} open={rows.length <= 8} className="min-w-0">
+        <summary className="cursor-pointer text-[13px] font-semibold">{ATTENTION_LABELS[kind].title} ({rows.length})</summary>
+        <ul className="mt-1.5 divide-y divide-line border-y border-line">
+          {rows.map((r) => <li key={kind + r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-[13px]">
+            <span className="min-w-0 flex-1"><strong>{r.name || "Name required"}</strong><span className="block text-xs text-amber-800 dark:text-amber-200">{r.detail}</span></span>
+            <button type="button" className={BUTTON} disabled={busy} onClick={() => (kind === "reprint" ? onReprint(r.id) : onOpen(r.id))}>
+              {kind === "reprint" ? <Printer size={13} /> : <Pencil size={13} />} {ATTENTION_LABELS[kind].action}
+            </button>
+          </li>)}
+        </ul>
+      </details>)}
+    </div>
+  </section>;
 }

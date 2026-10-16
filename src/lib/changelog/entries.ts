@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Print jobs: a Needs attention section for name badges",
+    body: "**Symposium \u2192 Print jobs \u2192 Name badges** now opens with **Needs attention**, grouped by what to do: **Check before printing** (a name that looks like an organization, a missing organization, a name that doesn\u2019t match the email\u2026) with **Fix badge**; **Changed since it was printed** with **Add to reprint**; **Has a badge but is no longer registered**; and **Extra tickets without names**. When nothing needs a person, it says every approved badge is ready to print.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "The header\u2019s microfluidic chips now run real assays",
     body: "Instead of the same pulse looping, each chip etched into the page header now runs an assay from start to finish: the **sample** is drawn in, a **reagent** joins at the junction, the two **mix** through the serpentine, the **reaction chamber** fills and incubates, the result comes out **positive (green) or negative (grey)**, and oil pinches the product into **droplets** that run past a **detector**, which flashes for each positive one. Then the chip clears and starts a new run. Every run differs \u2014 reagent, result, number of droplets, pauses \u2014 and each chip keeps its own time. Still for anyone with reduced motion turned on.",
     kind: "improvement",

@@ -160,3 +160,34 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
   }
   return { board: PrintBoardSchema.parse(next) };
 }
+
+/** Something on the badge list a person has to act on, grouped by what to do about it. */
+export type AttentionKind = "review" | "reprint" | "unregistered" | "guests";
+export interface AttentionItem { kind: AttentionKind; id: string; name: string; detail: string }
+export const ATTENTION_LABELS: Record<AttentionKind, { title: string; action: string }> = {
+  review: { title: "Check before printing", action: "Fix badge" },
+  reprint: { title: "Changed since it was printed", action: "Add to reprint" },
+  unregistered: { title: "Has a badge but is no longer registered", action: "Review" },
+  guests: { title: "Extra tickets without names", action: "Review" },
+};
+
+/**
+ * Everything on the badge list that needs a person: details to check
+ * before a badge can be printed, printed badges whose details have since
+ * changed, badges made for people who are no longer registered, and
+ * tickets bought for guests who have not been named. Ordered by group,
+ * then name.
+ */
+export function attentionItems(people: PrintPerson[]): AttentionItem[] {
+  const out: AttentionItem[] = [];
+  for (const p of people) {
+    const live = approved(p.status);
+    const flags = p.issues.filter((i) => !i.includes("additional guests"));
+    if (live && flags.length) out.push({ kind: "review", id: p.id, name: p.name || p.sourceName, detail: flags.join(" · ") });
+    if (live && p.printStatus === "changed") out.push({ kind: "reprint", id: p.id, name: p.name, detail: "The printed badge no longer matches the name or organization." });
+    if (!live && (p.printStatus === "printed" || p.printStatus === "queued")) out.push({ kind: "unregistered", id: p.id, name: p.name, detail: `Registration is ${p.status.replace(/_/g, " ")}; the badge is ${p.printStatus}.` });
+    if (live && p.tickets > 1) out.push({ kind: "guests", id: p.id, name: p.name, detail: `${p.tickets - 1} additional guest${p.tickets > 2 ? "s" : ""} need${p.tickets > 2 ? "" : "s"} a name for a badge.` });
+  }
+  const order: AttentionKind[] = ["review", "reprint", "unregistered", "guests"];
+  return out.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.name.localeCompare(b.name));
+}

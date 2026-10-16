@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24k";
+export const TOUR_VERSION = "2026.10.24l";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "print.badge-attention",
+    title: "Name badges: what needs attention",
+    body: "Print jobs → Name badges now starts with **Needs attention**: badges to check before printing, ones changed since printing, badges for people no longer registered, and extra tickets without names — each with its fix.",
+    path: "/admin/workspace/symposium-2026/print",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Print jobs", href: "/admin/workspace/symposium-2026/print" },
+    since: "2026.10.24l",
+  },
   {
     id: "home.speaker-actions-open",
     title: "Choose speaker sessions on the speaker screen",

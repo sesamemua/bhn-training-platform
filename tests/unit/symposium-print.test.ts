@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { extractText } from "unpdf";
-import { applyPrintAction, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
+import { applyPrintAction, attentionItems, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
 import { fetchLumaPrintGuests, lumaPrintPage, parseLumaPrintCsv } from "../../src/lib/events/print-luma";
 import { badgePosition, buildPrintPdf } from "../../src/lib/events/print-pdf";
 import { DEFAULT_PRINT_AGENDA } from "../../src/lib/events/print-agenda";
@@ -191,4 +191,19 @@ test("table tents default to 22 copies of one design; agenda and uploaded artwor
   const original = await PDFDocument.create(); original.addPage([612, 792]);
   const custom = await PDFDocument.load(await buildPrintPdf(job, b, await original.save()));
   assert.equal(custom.getPageCount(), 22);
+});
+
+test("needs attention: checks before printing, reprints, badges for people who left, unnamed guests", () => {
+  const person = (over: Record<string, unknown>) => ({ id: "x", name: "Ada Lovelace", organization: "Analytical Engines", extra: "", email: "ada@example.org", sourceName: "Ada Lovelace", sourceOrganization: "", status: "approved", source: "luma" as const, tickets: 1, issues: [] as string[], suggestion: null, printStatus: "unprinted" as const, ...over });
+  const items = attentionItems([
+    person({ id: "a", name: "Zed Quinn", issues: ["Organization missing"] }),
+    person({ id: "b", name: "Bo Chen", printStatus: "changed" }),
+    person({ id: "c", name: "Cy Diaz", status: "cancelled", printStatus: "printed" }),
+    person({ id: "d", name: "Di Evans", tickets: 3, issues: ["3 tickets: additional guests need individual names"] }),
+    person({ id: "e", name: "Ed Fox" }),
+    person({ id: "f", name: "Flo Gray", status: "pending", issues: ["Organization missing"] }),
+  ] as never);
+  assert.deepEqual(items.map((i) => `${i.kind}:${i.id}`), ["review:a", "reprint:b", "unregistered:c", "guests:d"]);
+  assert.match(items[3].detail, /2 additional guests need a name/);
+  assert.match(items[0].detail, /Organization missing/);
 });
