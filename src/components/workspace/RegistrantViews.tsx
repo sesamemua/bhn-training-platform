@@ -517,7 +517,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
           )}
           <span className="ml-auto inline-flex items-baseline gap-1.5 rounded-lg bg-brand-500/12 px-3 py-1">
             <span className="text-[26px] font-extrabold leading-none tabular-nums text-brand-400">{shownCount}</span>
-            <span className="text-[13px] font-semibold text-fg">{draft.perPerson ? (shownCount === 1 ? "person" : "people") : shownCount === 1 ? "seat" : "seats"}</span>
+            <span className="text-[13px] font-semibold text-fg">{draft.perPerson ? (shownCount === 1 ? "person" : "people") : shownCount === 1 ? "record" : "records"}</span>
           </span>
         </div>
       </div>
