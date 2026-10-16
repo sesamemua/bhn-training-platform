@@ -14,6 +14,8 @@ test("image sources reject arbitrary hosts, spoofed prefixes, credentials, ports
   const { publicationPhotoSource, freezePublicationPhoto } = await modulePromise;
   for (const value of ["http://images.example.org/speakers/a.png", "https://images.example.org.evil.test/a.png", "https://127.0.0.1/a.png", "https://user:pass@images.example.org/a.png", "https://images.example.org:444/a.png", "https://biohubnet.ca/private/a.png"]) assert.throws(() => publicationPhotoSource(value));
   assert.ok(publicationPhotoSource("https://biohubnet.ca/wp-content/uploads/2026/a.png"));
+  assert.ok(publicationPhotoSource("https://bhn-training-platform.vercel.app/people/sanofi-logo-2dbeef87c4acf176.png"));
+  for (const value of ["https://bhn-training-platform.vercel.app/people/other.png", "https://bhn-training-platform.vercel.app.evil.test/people/sanofi-logo-2dbeef87c4acf176.png"]) assert.throws(() => publicationPhotoSource(value));
   assert.throws(() => publicationPhotoSource("https://images.example.org/applications/private-document.png"));
   t.mock.method(globalThis, "fetch", async (_url, init) => { assert.equal(init.redirect, "error"); throw new Error("Redirect refused"); });
   await assert.rejects(freezePublicationPhoto("https://images.example.org/speakers/a.png"), /Redirect/);

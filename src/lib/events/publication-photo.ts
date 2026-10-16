@@ -14,7 +14,9 @@ export function publicationPhotoSource(value: string): URL {
       && (key.startsWith("speakers/") || key.startsWith("people-publication/"));
   });
   const website = ["biohubnet.ca", "www.biohubnet.ca"].includes(url.hostname) && url.pathname.startsWith("/wp-content/uploads/");
-  if (!trusted && !website) throw new Error("Use a BioHubNet uploaded headshot or a biohubnet.ca media-library image.");
+  // Exact, bundled logo from the social graphic, padded to survive the website's circular frame.
+  const companyLogo = url.href === "https://bhn-training-platform.vercel.app/people/sanofi-logo-2dbeef87c4acf176.png";
+  if (!trusted && !website && !companyLogo) throw new Error("Use a BioHubNet uploaded headshot or a biohubnet.ca media-library image.");
   return url;
 }
 
