@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Plus, Printer, RefreshCw, Save, Search, X } from "lucide-react";
+import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, X } from "lucide-react";
 import type { BadgeEdit, PrintAction, PrintJob, PrintPerson, PrintWorkspace } from "@/lib/events/print-jobs";
 
 const API = "/api/admin/symposium-print";
@@ -163,12 +163,22 @@ export function SymposiumPrintJobs() {
             <table className="w-full min-w-[620px] text-left text-[13px]">
               <thead className="bg-elevated text-xs text-muted"><tr>
                 <th className="w-9 p-2"><input aria-label="Select visible approved guests" type="checkbox" checked={filtered.some(eligible) && filtered.filter(eligible).every(p => selected.includes(p.id))} onChange={e => { const ids = filtered.filter(eligible).map(p => p.id); setSelected(e.target.checked ? [...new Set([...selected, ...ids])] : selected.filter(id => !ids.includes(id))); }} /></th>
-                <th className="p-2">Name / registration</th><th className="p-2">Organization / badge line</th><th className="p-2">Print status</th>
+                <th className="p-2">Print name / registration</th><th className="p-2">Organization / badge line</th><th className="p-2">Print status</th>
               </tr></thead>
               <tbody>{filtered.map(p => <tr key={p.id} className={"border-t border-line " + (editing?.id === p.id ? "bg-elevated" : "hover:bg-elevated/60")}>
                 <td className="p-2 align-top"><input aria-label={"Select " + p.name} disabled={!eligible(p)} type="checkbox" checked={selected.includes(p.id)} onChange={e => setSelected(e.target.checked ? [...selected, p.id] : selected.filter(id => id !== p.id))} /></td>
                 <td className="max-w-[250px] p-2 align-top">
-                  <button className="text-left font-semibold underline decoration-transparent underline-offset-2 hover:decoration-current" type="button" onClick={() => openPerson(p)}>{p.name || "Name required"}</button>
+                  {editing?.id === p.id ? <>
+                    <div className="flex min-w-0 items-center gap-1">
+                      <input form="print-badge-editor" className={INPUT + " flex-1"} aria-label={"Print name for " + p.sourceName} aria-describedby={error ? "print-name-error" : undefined} autoFocus required minLength={2} maxLength={160} value={editing.badge.name} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, name: e.target.value } })} />
+                      <button type="submit" form="print-badge-editor" className={BUTTON + " size-8 shrink-0 !p-0"} disabled={busy} title="Save print name" aria-label={"Save print name for " + p.sourceName}><Save size={14} /></button>
+                      <button type="button" className={BUTTON + " size-8 shrink-0 !p-0"} disabled={busy} title="Cancel name edit" aria-label={"Cancel name edit for " + p.sourceName} onClick={() => setEditing(null)}><X size={14} /></button>
+                    </div>
+                    {error && <p id="print-name-error" className="mt-1 text-xs text-red-700 dark:text-red-300">{error}</p>}
+                  </> : <div className="flex items-start gap-1">
+                    <button className="min-w-0 flex-1 text-left font-semibold underline decoration-transparent underline-offset-2 hover:decoration-current" type="button" disabled={busy} onClick={() => openPerson(p)}>{p.name || "Name required"}</button>
+                    <button type="button" className={BUTTON + " size-8 shrink-0 !p-0"} disabled={busy} title="Edit print name" aria-label={"Edit print name for " + p.name} onClick={() => openPerson(p)}><Pencil size={14} /></button>
+                  </div>}
                   <div className="break-all text-[11px] text-muted">{p.email}</div>
                   {p.name !== p.sourceName && <div className="text-[11px] text-muted">Luma: {p.sourceName}</div>}
                   {!eligible(p) && <div className="text-[11px]">{p.status.replace(/_/g, " ")}</div>}
@@ -182,7 +192,7 @@ export function SymposiumPrintJobs() {
           </div>
         </section>
         <aside className="min-w-0 space-y-4 xl:sticky xl:top-5">
-          {editing ? <form className="space-y-3" onSubmit={async e => {
+          {editing ? <form id="print-badge-editor" className="space-y-3" onSubmit={async e => {
             e.preventDefault();
             const ok = await mutate(editing.id ? { action: "edit", id: editing.id, badge: editing.badge } : { action: "add", badge: editing.badge, email: editing.email }, editing.version);
             if (ok) setEditing(null);
@@ -191,7 +201,7 @@ export function SymposiumPrintJobs() {
             {draftPerson && <p className="break-all text-xs text-muted">Source: {draftPerson.sourceName} · {draftPerson.email}</p>}
             {draftPerson && draftPerson.sourceOrganization !== draftPerson.organization && <p className="text-xs text-muted">Registration organization: {draftPerson.sourceOrganization || "Not supplied"}</p>}
             {([["name", "Full name"], ["organization", "Organization"], ["extra", "Additional badge line"]] as const).map(([key, label]) => <label key={key} className="block text-xs">{label}
-              {key === "extra" ? <textarea className={INPUT + " mt-1"} rows={2} value={editing.badge[key]} maxLength={200} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} /> : <input className={INPUT + " mt-1"} required={key === "name"} maxLength={key === "name" ? 160 : 250} value={editing.badge[key]} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} />}
+              {key === "extra" ? <textarea className={INPUT + " mt-1"} rows={2} value={editing.badge[key]} maxLength={200} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} /> : <input className={INPUT + " mt-1"} required={key === "name"} minLength={key === "name" ? 2 : undefined} maxLength={key === "name" ? 160 : 250} value={editing.badge[key]} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} />}
             </label>)}
             {!editing.id && <label className="block text-xs">Email<input type="email" className={INPUT + " mt-1"} value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></label>}
             {draftPerson?.suggestion && blocked(draftPerson) && <button type="button" className={BUTTON} onClick={() => setEditing({ ...editing, badge: { ...editing.badge, name: draftPerson.suggestion! } })}>Use email suggestion: {draftPerson.suggestion}</button>}

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { extractText } from "unpdf";
-import { applyPrintAction, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest, type PrintJob } from "../../src/lib/events/print-jobs";
+import { applyPrintAction, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
 import { fetchLumaPrintGuests, lumaPrintPage, parseLumaPrintCsv } from "../../src/lib/events/print-luma";
 import { badgePosition, buildPrintPdf } from "../../src/lib/events/print-pdf";
 import { DEFAULT_PRINT_AGENDA } from "../../src/lib/events/print-agenda";
@@ -64,6 +64,19 @@ test("sync preserves edits, previous batches, removed records and manual people"
   const missing = mergePrintGuests(next, [guest({ id: "new", name: "New Person", email: "new@example.org" })], at);
   assert.equal(missing.guests.find(g => g.id === "luma:gst-1")!.status, "removed");
   assert.throws(() => mergePrintGuests(b, [guest(), guest()], at), /duplicate/);
+});
+
+test("platform print-name edits survive Luma sync without changing the original registration name", () => {
+  const original = board();
+  const edited = change(original, { action: "edit", id: "luma:gst-1", badge: { name: "Jane O'Neill", organization: "University of Toronto", extra: "HQP Representative", reviewed: true } }).board;
+  assert.equal(original.guests[0].name, "Jane Smith");
+  assert.equal(edited.guests[0].name, "Jane Smith");
+  const synced = mergePrintGuests(edited, [guest({ name: "JANE SMITH" })], at);
+  const person = printPeople(synced)[0];
+  assert.equal(person.name, "Jane O'Neill");
+  assert.equal(person.sourceName, "JANE SMITH");
+  assert.equal(person.extra, "HQP Representative");
+  assert.equal(change(synced, create()).job!.badges[0].name, "Jane O'Neill");
 });
 
 test("creating and downloading a batch is not printing; snapshots do not change with later edits", () => {
