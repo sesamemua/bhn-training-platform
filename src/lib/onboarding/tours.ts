@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24h";
+export const TOUR_VERSION = "2026.10.24i";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "platform.header-flowing",
+    title: "The header flows",
+    body: "The microfluidic chip in the page header is now animated — fluid moving through its channels and droplets leaving the generator. It stays still if you have reduced motion turned on.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["trainee", "evaluating", "employer", "instructor", "admin", "superadmin"],
+    since: "2026.10.24i",
+  },
   {
     id: "home.released-seats-two-days",
     title: "Released seats: last two days",

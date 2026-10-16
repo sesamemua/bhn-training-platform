@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "The page header\u2019s microfluidic chip now flows",
+    body: "The microfluidic pattern in the header at the top of every page is now **animated**: pulses of fluid travel along the channels and through the serpentine mixers, the reaction chamber slowly fills and empties, and droplets pinch off the generator one after another. It stays faint behind the title, and it is drawn still for anyone with **reduced motion** turned on.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Released seats: the last two days first, everything else one click away",
     body: "The **seats released by registrants** notice now lists only the **last 2 days**. **See all** opens every release from the last three weeks. Its button now goes to the **Training Week dashboard**.",
     kind: "improvement",
