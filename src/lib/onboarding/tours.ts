@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24n";
+export const TOUR_VERSION = "2026.10.24o";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "print.pdf-preview",
+    title: "Preview print PDFs",
+    body: "In the Print queue, a batch’s PDF now previews in the page, exactly as it will print. Open full screen for a closer look.",
+    path: "/admin/workspace/symposium-2026/print",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24o",
+  },
   {
     id: "print.delete-batch",
     title: "Delete a print batch",

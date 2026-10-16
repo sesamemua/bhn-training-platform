@@ -276,6 +276,14 @@ export function SymposiumPrintJobs() {
           <div><dt className="text-muted">Stock</dt><dd className="mt-1">{job.kind === "badges" ? "Avery 5393 · Letter · 100% actual size" : "Letter · " + job.copies + " copies"}</dd></div>
           <div><dt className="text-muted">Print colleague</dt><dd className="mt-1">{job.assignedTo || "Unassigned"}</dd></div>
         </dl>
+        {/* The batch's PDF, as it will print — check it before sending it to the printer. */}
+        <div className="border border-line bg-elevated/40">
+          <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2 text-xs">
+            <strong>Preview</strong>
+            <a className="font-semibold underline underline-offset-2" href={API + "/" + job.id + "/pdf?view=1"} target="_blank" rel="noopener noreferrer">Open full screen</a>
+          </div>
+          <iframe key={job.id} title={"PDF preview of " + job.label} src={API + "/" + job.id + "/pdf?view=1#view=FitH"} className="block h-[70vh] w-full bg-white" />
+        </div>
         {job.notes && <p className="whitespace-pre-wrap text-sm">{job.notes}</p>}
         {job.printedAt && <p className="text-xs text-muted">Last print confirmation: {job.printedBy} · {date(job.printedAt)}</p>}
         {job.kind === "badges" && <>

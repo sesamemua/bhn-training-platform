@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Print queue: preview a batch\u2019s PDF before printing",
+    body: "Open any batch in **Symposium \u2192 Print jobs \u2192 Print queue** and its PDF now shows right there, exactly as it will print \u2014 badges on their Avery sheets, table tents, the agenda. **Open full screen** opens it in its own tab; **Download PDF** still downloads it.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Print queue: delete a batch",
     body: "Every batch in **Symposium \u2192 Print jobs \u2192 Print queue** now has **Delete batch**, whatever its state. It asks once, beside the button, then removes the batch and its PDF. Deleting a badge batch that was partly printed also removes its print record, so those badges show as not printed again.",
     kind: "improvement",
