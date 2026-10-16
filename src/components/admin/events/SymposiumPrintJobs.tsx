@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, X } from "lucide-react";
-import type { BadgeEdit, PrintAction, PrintJob, PrintPerson, PrintWorkspace } from "@/lib/events/print-jobs";
 import { PRINT_SIGNS } from "@/lib/events/print-signage";
+import { Check, CheckCheck, Copy, Download, FileUp, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
+import { ATTENTION_LABELS, attentionItems, type AttentionKind, type BadgeEdit, type PrintAction, type PrintJob, type PrintPerson, type PrintWorkspace } from "@/lib/events/print-jobs";
 
 const API = "/api/admin/symposium-print";
 const HERE = "/admin/workspace/symposium-2026/print";
@@ -50,7 +51,7 @@ export function SymposiumPrintJobs() {
         chooseJob(body.snapshot.board.jobs.find((j: PrintJob) => j.id === body.jobId));
         setView("queue"); setSelected([]); setLabel("");
       }
-      setNotice(change.action === "sync" ? "Luma guest list updated." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
+      setNotice(change.action === "sync" ? "Luma guest list updated." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "delete" ? "Batch deleted." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
       return true;
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); return false; }
     finally { working.current = false; setBusy(false); }
@@ -104,7 +105,7 @@ export function SymposiumPrintJobs() {
   const kind = view === "queue" ? "badges" : view;
   const draftPerson = editing ? people.find(p => p.id === editing.id) : null;
   function openPerson(p?: PrintPerson) {
-    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version });
+    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", position: p?.position ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version });
   }
   const makeJob = () => mutate({ action: "create", kind, signageSlug: kind === "signage" ? signageSlug : undefined, label: label.trim() || (kind === "signage" ? PRINT_SIGNS.find(s => s.slug === signageSlug)!.title + " - Letter signage" : (kind === "badges" ? "Badge" : kind === "tents" ? "Table tent" : "Agenda") + " batch " + (board.jobs.length + 1)), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
   async function copyLink(id: string) {
@@ -142,6 +143,9 @@ export function SymposiumPrintJobs() {
     <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" aria-label="Import Luma CSV" onChange={async e => { const file = e.target.files?.[0]; if (file) { if (file.size > 1000000) setError("Choose a CSV smaller than 1 MB."); else await mutate({ action: "import", csv: await file.text() }); } e.target.value = ""; }} />
     <input ref={designInput} type="file" accept=".pdf,application/pdf" className="hidden" aria-label="Upload print design PDF" onChange={async e => { const file = e.target.files?.[0]; if (file) await upload(file); e.target.value = ""; }} />
     {view === "badges" && <>
+      <BadgeAttention people={people} busy={busy}
+        onOpen={(id) => { const p = people.find((x) => x.id === id); if (p) openPerson(p); }}
+        onReprint={(id) => { setAllowReprint(true); setSelected((s) => (s.includes(id) ? s : [...s, id])); }} />
       <div className="mb-4 flex flex-wrap gap-x-7 gap-y-2 border-b border-line pb-3 text-sm">
         {[["Approved registrations", approved.length], ["Not printed", approved.filter(p => p.printStatus === "unprinted").length], ["Needs review", approved.filter(blocked).length], ["Queued", approved.filter(p => p.printStatus === "queued").length], ["Printed", approved.filter(p => p.printStatus === "printed").length], ["Changed", approved.filter(p => p.printStatus === "changed").length], ["Additional unnamed tickets", approved.reduce((n, p) => n + Math.max(0, p.tickets - 1), 0)]].map(([label, count]) => <span key={String(label)}><strong className="mr-1.5 text-base">{count}</strong><span className="text-muted">{label}</span></span>)}
       </div>
@@ -186,7 +190,7 @@ export function SymposiumPrintJobs() {
                   {!eligible(p) && <div className="text-[11px]">{p.status.replace(/_/g, " ")}</div>}
                   {p.issues.map(issue => <div className="mt-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200" key={issue}>{issue}</div>)}
                 </td>
-                <td className="max-w-[240px] p-2 align-top"><button type="button" className="text-left" onClick={() => openPerson(p)}>{p.organization || <span className="text-muted">Organization required</span>}</button>{p.extra && <div className="whitespace-pre-line text-[11px] text-muted">{p.extra}</div>}</td>
+                <td className="max-w-[240px] p-2 align-top">{p.position && <div className="text-[11.5px] text-muted">{p.position}</div>}<button type="button" className="text-left" onClick={() => openPerson(p)}>{p.organization || <span className="text-muted">Organization required</span>}</button>{p.extra && <div className="whitespace-pre-line text-[11px] text-muted">{p.extra}</div>}</td>
                 <td className="p-2 align-top text-xs"><span className={"inline-block border-l-2 pl-2 " + (p.printStatus === "printed" ? "border-emerald-600" : p.printStatus === "queued" ? "border-sky-600" : p.printStatus === "changed" ? "border-amber-600" : "border-line")}>{printLabels[p.printStatus]}</span></td>
               </tr>)}</tbody>
             </table>
@@ -202,8 +206,8 @@ export function SymposiumPrintJobs() {
             <div className="flex items-center justify-between"><h2 className="text-sm font-semibold">{editing.id ? "Badge details" : "Add person"}</h2><button type="button" title="Close badge editor" aria-label="Close badge editor" className={BUTTON} onClick={() => setEditing(null)}><X size={14} /></button></div>
             {draftPerson && <p className="break-all text-xs text-muted">Source: {draftPerson.sourceName} · {draftPerson.email}</p>}
             {draftPerson && draftPerson.sourceOrganization !== draftPerson.organization && <p className="text-xs text-muted">Registration organization: {draftPerson.sourceOrganization || "Not supplied"}</p>}
-            {([["name", "Full name"], ["organization", "Organization"], ["extra", "Additional badge line"]] as const).map(([key, label]) => <label key={key} className="block text-xs">{label}
-              {key === "extra" ? <textarea className={INPUT + " mt-1"} rows={2} value={editing.badge[key]} maxLength={200} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} /> : <input className={INPUT + " mt-1"} required={key === "name"} minLength={key === "name" ? 2 : undefined} maxLength={key === "name" ? 160 : 250} value={editing.badge[key]} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} />}
+            {([["name", "Full name"], ["position", "Current primary affiliation position"], ["organization", "Organization"], ["extra", "Additional badge line"]] as const).map(([key, label]) => <label key={key} className="block text-xs">{label}
+              {key === "extra" ? <textarea className={INPUT + " mt-1"} rows={2} value={editing.badge[key] ?? ""} maxLength={200} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} /> : <input className={INPUT + " mt-1"} required={key === "name"} minLength={key === "name" ? 2 : undefined} maxLength={key === "name" ? 160 : 250} value={editing.badge[key] ?? ""} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} />}
             </label>)}
             {!editing.id && <label className="block text-xs">Email<input type="email" className={INPUT + " mt-1"} value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></label>}
             {draftPerson?.suggestion && blocked(draftPerson) && <button type="button" className={BUTTON} onClick={() => setEditing({ ...editing, badge: { ...editing.badge, name: draftPerson.suggestion! } })}>Use email suggestion: {draftPerson.suggestion}</button>}
@@ -213,7 +217,8 @@ export function SymposiumPrintJobs() {
             <div className="aspect-[4/3] overflow-hidden border border-line bg-white p-4 text-center text-black">
               <Image src="/biohubnet-logo.png" alt="BioHubNet" width={140} height={40} unoptimized className="mx-auto mb-5 h-8 max-w-[140px] object-contain" />
               <p className="break-words text-xl font-semibold leading-tight">{editing.badge.name || "Full name"}</p>
-              <p className="mt-3 break-words text-[13px]">{editing.badge.organization}</p>
+              {editing.badge.position && <p className="mt-2 break-words text-[11.5px] text-neutral-600">{editing.badge.position}</p>}
+              <p className={(editing.badge.position ? "mt-1" : "mt-3") + " break-words text-[13px]"}>{editing.badge.organization}</p>
               <p className="mt-2 whitespace-pre-line break-words text-[12px] text-teal-800">{editing.badge.extra}</p>
             </div>
           </form> : <div className="border-b border-line pb-3"><h2 className="text-sm font-semibold">Avery 5393</h2><p className="mt-1 text-xs text-muted">4 × 3 inches · 6 per Letter sheet · Draft layout</p></div>}
@@ -262,6 +267,10 @@ export function SymposiumPrintJobs() {
           <a className={PRIMARY} href={API + "/" + job.id + "/pdf"}><Download size={14} /> Download PDF</a>
           <button type="button" className={BUTTON} onClick={() => void copyLink(job.id)}><Copy size={14} /> Copy colleague link</button>
           {job.status === "ready" && <button type="button" className={BUTTON} disabled={busy} onClick={() => void mutate({ action: "cancel", jobId: job.id })}><X size={14} /> Cancel remaining print</button>}
+          <ConfirmPopover message={`Delete “${job.label}”?`} detail={job.kind === "badges" && job.printedIds.length ? `Its PDF and its print record go too: ${job.printedIds.length} badge${job.printedIds.length === 1 ? "" : "s"} will show as not printed.` : "Its PDF goes too. This can't be undone."} confirmLabel="Delete batch" tone="danger" align="start"
+            onConfirm={async () => { if (await mutate({ action: "delete", jobId: job.id })) { setActiveJob(null); setPrintIds([]); } }}>
+            {(o) => <button type="button" className={BUTTON} disabled={busy} onClick={o}><Trash2 size={14} /> Delete batch</button>}
+          </ConfirmPopover>
         </div>
         <dl className="grid grid-cols-2 gap-3 border-y border-line py-3 text-xs">
           <div><dt className="text-muted">Stock</dt><dd className="mt-1">{job.kind === "badges" ? "Avery 5393 · Letter · 100% actual size" : "Letter · " + job.copies + " copies"}</dd></div>
@@ -282,4 +291,33 @@ export function SymposiumPrintJobs() {
       </div> : <p className="py-10 text-sm text-muted">Choose a batch.</p>}</section>
     </div>}
   </div>;
+}
+
+/**
+ * Name badges that need someone before they print: details to check,
+ * badges changed since printing, badges for people no longer registered,
+ * and extra tickets without names — grouped, with the action for each.
+ */
+function BadgeAttention({ people, busy, onOpen, onReprint }: { people: PrintPerson[]; busy: boolean; onOpen: (id: string) => void; onReprint: (id: string) => void }) {
+  const items = attentionItems(people);
+  if (!items.length) {
+    return <p className="mb-4 border-l-2 border-emerald-600 pl-3 text-sm">Nothing needs attention: every approved badge is ready to print.</p>;
+  }
+  const groups = (Object.keys(ATTENTION_LABELS) as AttentionKind[]).map((kind) => ({ kind, rows: items.filter((i) => i.kind === kind) })).filter((g) => g.rows.length);
+  return <section aria-label="Badges that need attention" className="mb-5 border-l-2 border-amber-500 bg-amber-500/[0.06] p-4">
+    <h2 className="text-sm font-semibold">Needs attention · {items.length}</h2>
+    <div className="mt-2 grid gap-4 lg:grid-cols-2">
+      {groups.map(({ kind, rows }) => <details key={kind} open={rows.length <= 8} className="min-w-0">
+        <summary className="cursor-pointer text-[13px] font-semibold">{ATTENTION_LABELS[kind].title} ({rows.length})</summary>
+        <ul className="mt-1.5 divide-y divide-line border-y border-line">
+          {rows.map((r) => <li key={kind + r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-[13px]">
+            <span className="min-w-0 flex-1"><strong>{r.name || "Name required"}</strong><span className="block text-xs text-amber-800 dark:text-amber-200">{r.detail}</span></span>
+            <button type="button" className={BUTTON} disabled={busy} onClick={() => (kind === "reprint" ? onReprint(r.id) : onOpen(r.id))}>
+              {kind === "reprint" ? <Printer size={13} /> : <Pencil size={13} />} {ATTENTION_LABELS[kind].action}
+            </button>
+          </li>)}
+        </ul>
+      </details>)}
+    </div>
+  </section>;
 }

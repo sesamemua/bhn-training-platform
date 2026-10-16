@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { extractText } from "unpdf";
-import { applyPrintAction, capitalizeName, mergePrintGuests, printPeople, standardOrganization, PrintActionSchema, PrintBoardSchema, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
+import { PrintActionSchema, PrintBoardSchema, applyPrintAction, attentionItems, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
 import { fetchLumaPrintGuests, lumaPrintPage, parseLumaPrintCsv } from "../../src/lib/events/print-luma";
 import { badgePosition, buildPrintPdf } from "../../src/lib/events/print-pdf";
 import { DEFAULT_PRINT_AGENDA } from "../../src/lib/events/print-agenda";
@@ -227,4 +227,39 @@ test("all signage PDFs are Letter, one page per copy, with frozen event details 
     const printed = change(result.board, { action: "printed", jobId: id, ids: [] }).board;
     assert.equal(printed.jobs[0].status, "printed");
   }
+});
+
+test("needs attention: checks before printing, reprints, badges for people who left, unnamed guests", () => {
+  const person = (over: Record<string, unknown>) => ({ id: "x", name: "Ada Lovelace", organization: "Analytical Engines", extra: "", email: "ada@example.org", sourceName: "Ada Lovelace", sourceOrganization: "", status: "approved", source: "luma" as const, tickets: 1, issues: [] as string[], suggestion: null, printStatus: "unprinted" as const, ...over });
+  const items = attentionItems([
+    person({ id: "a", name: "Zed Quinn", issues: ["Organization missing"] }),
+    person({ id: "b", name: "Bo Chen", printStatus: "changed" }),
+    person({ id: "c", name: "Cy Diaz", status: "cancelled", printStatus: "printed" }),
+    person({ id: "d", name: "Di Evans", tickets: 3, issues: ["3 tickets: additional guests need individual names"] }),
+    person({ id: "e", name: "Ed Fox" }),
+    person({ id: "f", name: "Flo Gray", status: "pending", issues: ["Organization missing"] }),
+  ] as never);
+  assert.deepEqual(items.map((i) => `${i.kind}:${i.id}`), ["review:a", "reprint:b", "unregistered:c", "guests:d"]);
+  assert.match(items[3].detail, /2 additional guests need a name/);
+  assert.match(items[0].detail, /Organization missing/);
+});
+
+test("the position prints above the organization, comes from Luma or the CSV, and an edit can change it", () => {
+  const page = lumaPrintPage({ entries: [{ api_id: "gst-9", name: "Lee Park", email: "lee@example.org", approval_status: "approved",
+    registration_answers: [{ label: "Current Primary Affiliation Position", value: "PhD Candidate" }, { label: "Primary Affiliated Organization Name", value: "UofT" }], event_tickets: [{}] }], has_more: false });
+  assert.equal(page.guests[0].position, "PhD Candidate");
+  const csv = parseLumaPrintCsv("Name,Email,Approval Status,Current Primary Affiliation Position,Primary Affiliated Organization Name\nLee Park,lee@example.org,Approved,Postdoctoral Fellow,UofT\n");
+  assert.equal(csv[0].position, "Postdoctoral Fellow");
+  const b = PrintBoardSchema.parse({ guests: page.guests, edits: {}, jobs: [], syncedAt: null, tentText: "", agendaText: "", tentTemplate: null, agendaTemplate: null });
+  assert.equal(printPeople(b)[0].position, "PhD Candidate");
+  b.edits[page.guests[0].id] = { name: "Lee Park", position: "Research Associate", organization: "University of Toronto", extra: "", reviewed: true };
+  assert.equal(printPeople(b)[0].position, "Research Associate");
+});
+
+test("a batch can be deleted outright, whatever its state, and only once", () => {
+  const job = { id: "11111111-1111-4111-8111-111111111111", label: "Agenda draft", kind: "agenda" as const, createdAt: new Date().toISOString(), createdBy: "A", assignedTo: "", notes: "", copies: 1, status: "printed" as const, badges: [], printedIds: [], printedAt: null, printedBy: null, skip: 0, offsetX: 0, offsetY: 0 };
+  const b = PrintBoardSchema.parse({ guests: [], edits: {}, jobs: [job], syncedAt: null, tentText: "", agendaText: "x", tentTemplate: null, agendaTemplate: null });
+  const after = applyPrintAction(b, [], { action: "delete", jobId: job.id }, "Admin", "new", new Date().toISOString()).board;
+  assert.equal(after.jobs.length, 0);
+  assert.throws(() => applyPrintAction(after, [], { action: "delete", jobId: job.id }, "Admin", "new", new Date().toISOString()), /already been deleted/);
 });

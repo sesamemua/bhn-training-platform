@@ -29,6 +29,7 @@
 import type { ReactNode } from "react";
 import { useDesignSystem } from "@/components/ui/DesignSystemProvider";
 import { DSEyebrow } from "./DSEyebrow";
+import { MicrofluidicEtching } from "./MicrofluidicEtching";
 import { LayoutBannersSlot } from "@/components/layout/LayoutBanners";
 
 interface Props {
@@ -175,63 +176,11 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
             }}
           />
 
-          {/* (3) The microfluidic chip — channels, serpentine mixers,
+          {/* (3) The microfluidic chip, with fluid moving through it — channels, serpentine mixers,
                   chambers, a T-junction and a droplet generator, etched
                   as one repeating tile. It fades out toward the left so
                   it never sits behind the title and description. */}
-          <svg
-            // On a narrow screen the text runs the full width, so the whole etching is held back there.
-            className="absolute inset-0 h-full w-full opacity-45 lg:opacity-100"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{
-              maskImage: "linear-gradient(90deg, transparent 0%, transparent 18%, rgba(0,0,0,0.2) 45%, #000 75%)",
-              WebkitMaskImage: "linear-gradient(90deg, transparent 0%, transparent 18%, rgba(0,0,0,0.2) 45%, #000 75%)",
-            }}
-          >
-            <defs>
-              <pattern id="ds-microfluidic" width="480" height="180" patternUnits="userSpaceOnUse">
-                {/* Channels: a dark groove with a lighter lip, so they read as cut into the surface. */}
-                <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-                  <g stroke="#0c0d0f" strokeWidth="5" opacity="0.55">
-                    <path d="M0 50 H60 V26 H78 V74 H96 V26 H114 V74 H132 V50 H170" />
-                    <path d="M210 50 H360 M260 50 V130 M345 20 V80 M360 50 H480" />
-                    <path d="M0 130 H100 M160 130 H300 V150 H318 V110 H336 V150 H354 V110 H372 V130 H480" />
-                  </g>
-                  <g stroke="#8b949e" strokeWidth="1.25" opacity="0.5">
-                    <path d="M0 50 H60 V26 H78 V74 H96 V26 H114 V74 H132 V50 H170" />
-                    <path d="M210 50 H360 M260 50 V130 M345 20 V80 M360 50 H480" />
-                    <path d="M0 130 H100 M160 130 H300 V150 H318 V110 H336 V150 H354 V110 H372 V130 H480" />
-                    {/* Reaction chambers */}
-                    <circle cx="190" cy="50" r="20" />
-                    <rect x="100" y="116" width="60" height="28" rx="14" />
-                    {/* Inlet ports on the droplet generator */}
-                    <circle cx="345" cy="15" r="5" />
-                    <circle cx="345" cy="85" r="5" />
-                  </g>
-                  {/* Fluid in the system — the one accent, in the brand colour. */}
-                  <g stroke="var(--brand-400, #38bdf8)" strokeWidth="2" opacity="0.55">
-                    <path d="M132 50 H170 M210 50 H260 V130 H300" />
-                    <circle cx="190" cy="50" r="13" fill="var(--brand-400, #38bdf8)" fillOpacity="0.14" />
-                  </g>
-                </g>
-                {/* Droplets leaving the generator */}
-                <g fill="var(--brand-400, #38bdf8)" opacity="0.6">
-                  <circle cx="378" cy="50" r="3" />
-                  <circle cx="400" cy="50" r="3" />
-                  <circle cx="422" cy="50" r="3" />
-                  <circle cx="444" cy="50" r="3" />
-                  <circle cx="466" cy="50" r="3" />
-                </g>
-                {/* Junction nodes */}
-                <g fill="#8b949e" opacity="0.55">
-                  <circle cx="260" cy="50" r="2.5" />
-                  <circle cx="260" cy="130" r="2.5" />
-                  <circle cx="345" cy="50" r="2.5" />
-                </g>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#ds-microfluidic)" />
-          </svg>
+          <MicrofluidicEtching />
 
           {/* (4) Edge vignette — the slab darkens toward its edges. */}
           <div

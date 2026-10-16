@@ -23,6 +23,55 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Print queue: delete a batch",
+    body: "Every batch in **Symposium \u2192 Print jobs \u2192 Print queue** now has **Delete batch**, whatever its state. It asks once, beside the button, then removes the batch and its PDF. Deleting a badge batch that was partly printed also removes its print record, so those badges show as not printed again.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
+    title: "Name badges: the person\u2019s position, just above their organization",
+    body: "Badges now print the **Current Primary Affiliation Position** from the Luma registration on its own line **just above the organization**. It comes in with every Luma sync or CSV import, shows in the guest list and the badge preview, and can be edited in **Badge details** like the name and organization. Badges printed before this have no position line, so any of those people who gave a position now show as **changed since printed**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
+    title: "Print jobs: a Needs attention section for name badges",
+    body: "**Symposium \u2192 Print jobs \u2192 Name badges** now opens with **Needs attention**, grouped by what to do: **Check before printing** (a name that looks like an organization, a missing organization, a name that doesn\u2019t match the email\u2026) with **Fix badge**; **Changed since it was printed** with **Add to reprint**; **Has a badge but is no longer registered**; and **Extra tickets without names**. When nothing needs a person, it says every approved badge is ready to print.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
+    title: "The header\u2019s microfluidic chips now run real assays",
+    body: "Instead of the same pulse looping, each chip etched into the page header now runs an assay from start to finish: the **sample** is drawn in, a **reagent** joins at the junction, the two **mix** through the serpentine, the **reaction chamber** fills and incubates, the result comes out **positive (green) or negative (grey)**, and oil pinches the product into **droplets** that run past a **detector**, which flashes for each positive one. Then the chip clears and starts a new run. Every run differs \u2014 reagent, result, number of droplets, pauses \u2014 and each chip keeps its own time. Still for anyone with reduced motion turned on.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
+    title: "Dashboard: new speaker submissions open to the speaker screen to choose a session",
+    body: "On the dashboard\u2019s **Headshots & bios action items**, a newly submitted speaker no longer has a session picker. **Choose a session & review profile** opens the speaker screen, where every session option is available. In Symposium \u2192 Speakers the picker is unchanged.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
+    title: "The page header\u2019s microfluidic chip now flows",
+    body: "The microfluidic pattern in the header at the top of every page is now **animated**: pulses of fluid travel along the channels and through the serpentine mixers, the reaction chamber slowly fills and empties, and droplets pinch off the generator one after another. It stays faint behind the title, and it is drawn still for anyone with **reduced motion** turned on.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
+    title: "Released seats: the last two days first, everything else one click away",
+    body: "The **seats released by registrants** notice now lists only the **last 2 days**. **See all** opens every release from the last three weeks. Its button now goes to the **Training Week dashboard**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Two new themes: Pumpkin for Halloween, and Winter",
     body: "Two limited-time themes are in the theme picker. **Pumpkin** \u2014 pumpkin orange and dusk purple on candlelit parchment, with bats crossing over a low fog \u2014 runs until **2 November**. **Winter** \u2014 frost white and glacier blue with navy ink, and snow coming down over a frost haze \u2014 runs until the **end of February**. Nothing moves for anyone who has reduced motion turned on.",
     kind: "feature",

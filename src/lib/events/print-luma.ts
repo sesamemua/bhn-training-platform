@@ -17,6 +17,7 @@ export function lumaPrintPage(input: unknown): { guests: PrintGuest[]; more: boo
   const guests = reply.entries.map(g => GuestSchema.parse({
     id: `luma:${g.api_id}`, name: g.name, email: g.email.trim().toLowerCase(), status: g.approval_status, source: "luma",
     organization: valueText(g.registration_answers.find(a => /^(primary affiliated organization name|organization|organisation|company|institution)$/i.test(a.label.trim()))?.value),
+    position: valueText(g.registration_answers.find(a => /^(current primary affiliation position|position|job title|title)$/i.test(a.label.trim()))?.value),
     tickets: Math.max(1, g.event_tickets.filter(t => !t.invalidated_at).length),
     badgeRole: g.registration_answers.some(a => /symposium participant|role/i.test(a.label) && /HQP Representative/i.test(valueText(a.value))) ? "HQP Representative" : "",
   }));
@@ -59,7 +60,7 @@ export function parseLumaPrintCsv(csv: string): PrintGuest[] {
     const name = read(row, ["name", "fullname", "guestname"]);
     const status = read(row, ["approvalstatus", "status"]).toLowerCase().replace(/\s+/g, "_");
     if (!name || (!apiId && !email) || !status) throw new Error("Use Luma's full guest export with Name, Email and Approval Status columns.");
-    return GuestSchema.parse({ id: apiId ? `luma:${apiId}` : `luma-email:${email}`, name, email, status, source: "luma", organization: read(row, ["primaryaffiliatedorganizationname", "organization", "organisation", "company", "institution"]), tickets: Number(read(row, ["ticketcount", "quantity", "tickets"]) || 1), badgeRole: /HQP Representative/i.test(read(row, ["symposiumparticipant"])) ? "HQP Representative" : "" });
+    return GuestSchema.parse({ id: apiId ? `luma:${apiId}` : `luma-email:${email}`, name, email, status, source: "luma", organization: read(row, ["primaryaffiliatedorganizationname", "organization", "organisation", "company", "institution"]), position: read(row, ["currentprimaryaffiliationposition", "position", "jobtitle", "title"]), tickets: Number(read(row, ["ticketcount", "quantity", "tickets"]) || 1), badgeRole: /HQP Representative/i.test(read(row, ["symposiumparticipant"])) ? "HQP Representative" : "" });
   });
   const grouped = new Map<string, PrintGuest>();
   for (const guest of guests) {

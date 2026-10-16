@@ -39,9 +39,65 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24g";
+export const TOUR_VERSION = "2026.10.24n";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "print.delete-batch",
+    title: "Delete a print batch",
+    body: "Open a batch in the Print queue and press **Delete batch** to remove it and its PDF.",
+    path: "/admin/workspace/symposium-2026/print",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24n",
+  },
+  {
+    id: "print.badge-position",
+    title: "Positions on name badges",
+    body: "Name badges now carry the person’s position from their registration, just above the organization. Edit it in Badge details if it needs tidying.",
+    path: "/admin/workspace/symposium-2026/print",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Print jobs", href: "/admin/workspace/symposium-2026/print" },
+    since: "2026.10.24m",
+  },
+  {
+    id: "print.badge-attention",
+    title: "Name badges: what needs attention",
+    body: "Print jobs → Name badges now starts with **Needs attention**: badges to check before printing, ones changed since printing, badges for people no longer registered, and extra tickets without names — each with its fix.",
+    path: "/admin/workspace/symposium-2026/print",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Print jobs", href: "/admin/workspace/symposium-2026/print" },
+    since: "2026.10.24l",
+  },
+  {
+    id: "home.speaker-actions-open",
+    title: "Choose speaker sessions on the speaker screen",
+    body: "New headshot-and-bio submissions on the dashboard now open straight to the speaker screen, where all the session options are — no session picker on the dashboard.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24j",
+  },
+  {
+    id: "platform.header-assays",
+    title: "The header flows",
+    body: "The microfluidic chips in the page header now run assays: sample in, reagent added, mixed, incubated, a positive or negative result, and droplets read by a detector — a different run every time. Still if you have reduced motion turned on.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["trainee", "evaluating", "employer", "instructor", "admin", "superadmin"],
+    since: "2026.10.24k",
+  },
+  {
+    id: "home.released-seats-two-days",
+    title: "Released seats: last two days",
+    body: "The released-seats notice shows the last two days; **See all** opens the last three weeks. Its button opens the Training Week dashboard.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.10.24h",
+  },
   {
     id: "themes.pumpkin-winter",
     title: "Pumpkin and Winter themes",

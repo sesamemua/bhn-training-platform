@@ -26,11 +26,13 @@ export async function loadPrintStore(): Promise<{ snapshot: PrintWorkspace; raw:
 
 class PrintConflict extends Error {}
 
-async function persistPrintStore(current: Awaited<ReturnType<typeof loadPrintStore>>, board: PrintBoard, pdf?: { id: string; bytes: Uint8Array }) {
+async function persistPrintStore(current: Awaited<ReturnType<typeof loadPrintStore>>, board: PrintBoard, pdf?: { id: string; bytes: Uint8Array }, dropPdf?: string) {
   const now = new Date(Math.max(Date.now(), Date.parse(current.snapshot.version ?? "") + 1 || 0));
   const value = JSON.stringify(PrintBoardSchema.parse(board));
   await prisma.$transaction(async tx => {
     if (pdf) await tx.platformSetting.create({ data: { key: artifactKey(pdf.id), value: Buffer.from(pdf.bytes).toString("base64") } });
+    // A deleted batch takes its PDF with it, in the same transaction as the queue change.
+    if (dropPdf) await tx.platformSetting.deleteMany({ where: { key: artifactKey(dropPdf) } });
     if (current.raw === null) {
       await tx.platformSetting.create({ data: { key: PRINT_BOARD_KEY, value, updatedAt: now } });
     } else {
@@ -66,7 +68,7 @@ export async function changePrintStore(version: string | null, action: PrintActi
       pdf = { id, bytes };
     }
   }
-  try { return { conflict: false, snapshot: await persistPrintStore(current, next, pdf), jobId: pdf?.id }; }
+  try { return { conflict: false, snapshot: await persistPrintStore(current, next, pdf, action.action === "delete" ? action.jobId : undefined), jobId: pdf?.id }; }
   catch (e) {
     if (e instanceof PrintConflict || (e as { code?: string }).code === "P2002") return { conflict: true, snapshot: (await loadPrintStore()).snapshot };
     throw e;
