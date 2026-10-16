@@ -10,7 +10,7 @@
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendLettersForBookings } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
@@ -24,6 +24,7 @@ import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/all
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import type { AdminWorkshop, SubmissionRow } from "@/lib/allocation/admin-types";
 import { sessionCapacity } from "@/lib/training-week/capacity";
+import { sortRegistrantRows, type RegistrantColumn, type RegistrantSort } from "@/lib/allocation/registrant-sort";
 import {
   BUILT_IN_VIEWS, GROUP_BY, GROUP_LABEL, LETTERS, LETTER_LABEL, STATUSES, TRAVELS, TRAVEL_LABEL,
   applyView, isBuiltIn, workshopRegistrantView, type Filters, type RegistrantRow, type ShownRow, type View,
@@ -216,6 +217,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
 
   const rows = useMemo(() => rowsFrom(workshops), [workshops]);
   const [onlyHighlighted, setOnlyHighlighted] = useState(false);
+  const [sort, setSort] = useState<RegistrantSort | null>(null);
   const groups = useMemo(() => {
     const all = applyView(rows, draft);
     // "Highlighted only" narrows whatever view is open, rather than being
@@ -325,6 +327,9 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   }, [subs]);
   const subOf = (r: ShownRow) => [r.bookingId, ...(r.bookingIds ?? [])].map((id) => subByBooking.get(id)).find(Boolean) ?? null;
   const infoOf = useCallback((r: ShownRow) => [r.bookingId, ...r.bookingIds].map((id) => subByBooking.get(id)?.coordinatorInfo).find(Boolean), [subByBooking]);
+  const sortedGroups = useMemo(() => sort
+    ? groups.map((g) => ({ ...g, rows: sortRegistrantRows(g.rows, sort, infoOf) }))
+    : groups, [groups, sort, infoOf]);
   const manuallyAdded = useMemo(() => new Set([
     ...workshops.flatMap((w) => w.bookings.filter((b) => b.internalMade).map((b) => b.id)),
     ...(subs ?? []).flatMap((s) => s.coordinatorInfo?.manuallyAddedBookingId ? [s.coordinatorInfo.manuallyAddedBookingId] : []),
@@ -378,7 +383,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   const csv = useMemo(() => {
     const head = ["Group", "Name", "Email", "Name on Roshni's list", "Institution (Roshni)", "Current role (Roshni)", "Company / venture (Roshni)", "Participation (Roshni)", draft.perPerson ? "Workshops" : "Workshop", "Day", "Decision", "Email status", "Distance", "Postcode", "Dietary", "Accessibility"];
     const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-    const lines = groups.flatMap((g) => g.rows.map((r) => {
+    const lines = sortedGroups.flatMap((g) => g.rows.map((r) => {
       const info = infoOf(r);
       return [
         g.label, r.name, r.email, info?.name ?? "", info?.institution ?? "", info?.position ?? "", info?.company ?? "", info?.participation ?? "", r.workshops.join("; "), r.dayLabel, STATUS_LABEL[r.status] ?? r.status, LETTER_LABEL[r.letter],
@@ -386,7 +391,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
       ];
     }));
     return [head, ...lines].map((l) => l.map((c) => esc(String(c))).join(",")).join("\n");
-  }, [groups, draft.perPerson, infoOf]);
+  }, [sortedGroups, draft.perPerson, infoOf]);
 
   return (
     <section className="rounded-lg border border-line bg-card p-4">
@@ -599,10 +604,13 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
             {rows.length === 0 ? "Nobody has registered yet." : "Nobody matches this view."}
           </p>
         )}
-        {groups.map((g) => {
+        {sortedGroups.map((g) => {
           const workshop = draft.groupBy === "workshop" ? workshops.find((w) => w.id === g.key) : undefined;
           const hasCoordinatorInfo = g.rows.some((r) => infoOf(r));
-          const coordinatorHeadings = hasCoordinatorInfo ? ["Institution", "Current role", "Company / venture", "Participation"] : [];
+          const coordinatorHeadings: RegistrantColumn[] = hasCoordinatorInfo ? ["Institution", "Current role", "Company / venture", "Participation"] : [];
+          const headings: (RegistrantColumn | "")[] = draft.perPerson
+            ? ["Name", ...coordinatorHeadings, "", "Workshops", "Distance", "Dietary", "Accessibility"]
+            : ["Name", ...coordinatorHeadings, "", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"];
           return (
           <div key={g.key}>
             {draft.groupBy !== "none" && (
@@ -627,12 +635,20 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         onChange={(e) => tickAll(g.rows, e.target.checked)}
                       />
                     </th>
-                    {(draft.perPerson
-                      ? ["Name", ...coordinatorHeadings, "", "Workshops", "Distance", "Dietary", "Accessibility"]
-                      : ["Name", ...coordinatorHeadings, "", "Workshop", "Day", "Decision", "Email", "Distance", "Dietary", "Accessibility", "Choice"]
-                    ).map((h) => (
-                      <th key={h} className="whitespace-nowrap px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-subtle">{h}</th>
-                    ))}
+                    {headings.map((h) => {
+                      const active = sort?.column === h;
+                      const nextDirection = active && sort.direction === "ascending" ? "descending" : "ascending";
+                      const Icon = active ? sort.direction === "ascending" ? ArrowUp : ArrowDown : ArrowUpDown;
+                      return (
+                        <th key={h} scope="col" aria-sort={h ? active ? sort.direction : "none" : undefined} className="whitespace-nowrap px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-subtle">
+                          {h && <button type="button" onClick={() => setSort({ column: h, direction: nextDirection })}
+                            title={`Sort by ${h.toLowerCase()}, ${nextDirection}`} aria-label={`Sort by ${h.toLowerCase()}, ${nextDirection}`}
+                            className={`inline-flex items-center gap-1 rounded py-1 text-left font-bold uppercase hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ${active ? "text-fg" : ""}`}>
+                            {h}<Icon size={12} className="shrink-0" aria-hidden="true" />
+                          </button>}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>

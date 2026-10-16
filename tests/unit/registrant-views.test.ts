@@ -5,6 +5,8 @@ import {
   BUILT_IN_VIEWS, ViewSchema, applyView, emptyFilters, parseViews, travellerCells, travellers, workshopRegistrantView, type RegistrantRow, type View,
 } from "../../src/lib/allocation/registrant-views";
 import { toCsv } from "../../src/lib/formbuilder/csv";
+import { sortRegistrantRows, type RegistrantColumn } from "../../src/lib/allocation/registrant-sort";
+import type { CoordinatorInfo } from "../../src/lib/training-week/coordinator-info";
 
 const row = (o: Partial<RegistrantRow>): RegistrantRow => ({
   bookingId: "b", personKey: "p", name: "N", email: "n@x.ca", workshopId: "w1", workshop: "GMP", day: "2026-10-26",
@@ -20,6 +22,75 @@ const rows = [
 ];
 const view = (id: string) => BUILT_IN_VIEWS.find((v) => v.id === id)!;
 const count = (g: ReturnType<typeof applyView>) => Object.fromEntries(g.map((x) => [x.label, x.rows.length]));
+
+test("column sorting is natural, case-insensitive, reversible and does not mutate rows", () => {
+  const shown = applyView([
+    row({ bookingId: "1", name: "person 10" }), row({ bookingId: "2", name: "Person 2" }), row({ bookingId: "3", name: "Alice" }),
+  ], view("by-workshop"))[0].rows;
+  const original = [...shown];
+  for (const direction of ["ascending", "descending"] as const) {
+    const sorted = sortRegistrantRows(shown, { column: "Name", direction }, () => undefined);
+    assert.deepEqual(sorted.map((r) => r.name), direction === "ascending" ? ["Alice", "Person 2", "person 10"] : ["person 10", "Person 2", "Alice"]);
+    assert.deepEqual(shown, original);
+    assert.notEqual(sorted, shown);
+  }
+});
+
+test("Choice sorts numerically and unanswered values remain last in both directions", () => {
+  const shown = applyView([row({ preference: 10 }), row({ preference: null }), row({ preference: 2 })], view("by-workshop"))[0].rows;
+  assert.deepEqual(sortRegistrantRows(shown, { column: "Choice", direction: "ascending" }, () => undefined).map((r) => r.preference), [2, 10, null]);
+  assert.deepEqual(sortRegistrantRows(shown, { column: "Choice", direction: "descending" }, () => undefined).map((r) => r.preference), [10, 2, null]);
+});
+
+test("Day sorts chronologically rather than by the weekday label", () => {
+  const shown = applyView([row({ day: "2026-10-30", dayLabel: "Fri 30 Oct" }), row({ day: "2026-10-26", dayLabel: "Mon 26 Oct" })], view("by-workshop"))[0].rows;
+  assert.deepEqual(sortRegistrantRows(shown, { column: "Day", direction: "ascending" }, () => undefined).map((r) => r.day), ["2026-10-26", "2026-10-30"]);
+  assert.deepEqual(sortRegistrantRows(shown, { column: "Day", direction: "descending" }, () => undefined).map((r) => r.day), ["2026-10-30", "2026-10-26"]);
+});
+
+test("all coordinator headings sort their actual source fields, leaving missing information last", () => {
+  const shown = applyView([row({ bookingId: "z" }), row({ bookingId: "missing" }), row({ bookingId: "a" })], view("by-workshop"))[0].rows;
+  const infoOf = (r: (typeof shown)[number]): CoordinatorInfo | undefined => r.bookingId === "missing" ? undefined : {
+    name: "Source name", institution: r.bookingId, position: r.bookingId, company: r.bookingId, participation: r.bookingId,
+    emailSource: "Roshni", recordedAt: "2026-10-16", recordedBy: "Admin",
+  };
+  for (const column of ["Institution", "Current role", "Company / venture", "Participation"] as const) {
+    for (const direction of ["ascending", "descending"] as const) {
+      assert.deepEqual(sortRegistrantRows(shown, { column, direction }, infoOf).map((r) => r.bookingId), direction === "ascending" ? ["a", "z", "missing"] : ["z", "a", "missing"]);
+    }
+  }
+});
+
+test("remaining headings sort the displayed values, not internal codes or email addresses", () => {
+  const examples: [RegistrantColumn, Partial<RegistrantRow>, Partial<RegistrantRow>][] = [
+    ["Workshop", { workshop: "Alpha" }, { workshop: "Zeta" }],
+    ["Workshops", { workshop: "Alpha" }, { workshop: "Zeta" }],
+    ["Decision", { status: "confirmed" }, { status: "pending" }],
+    ["Decision", { status: "cancelled", withdrawn: true }, { status: "cancelled" }],
+    ["Email", { email: "z@x.ca", letter: "owed" }, { email: "a@x.ca", letter: "sent" }],
+    ["Email", { email: "", letter: "sent" }, { email: "a@x.ca", letter: "owed" }],
+    ["Distance", { travel: "near" }, { travel: "far" }],
+    ["Distance", { travel: "far", falseOot: true }, { travel: "near" }],
+    ["Dietary", { dietary: ["Other"], dietaryOther: "Allergy" }, { dietary: ["Vegan"] }],
+    ["Accessibility", { accessibility: "Access ramp" }, { accessibility: "Quiet room" }],
+  ];
+  for (const [column, a, z] of examples) {
+    const shown = applyView([row({ ...z, bookingId: "z" }), row({ ...a, bookingId: "a" })], view("by-day"))[0].rows;
+    assert.deepEqual(sortRegistrantRows(shown, { column, direction: "ascending" }, () => undefined).map((r) => r.bookingId), ["a", "z"], column);
+    assert.deepEqual(sortRegistrantRows(shown, { column, direction: "descending" }, () => undefined).map((r) => r.bookingId), ["z", "a"], column);
+  }
+});
+
+test("sorting preserves groups, equal-value order and each person's booking identities", () => {
+  const groups = applyView(rows, view("distance"));
+  const before = structuredClone(groups);
+  const sorted = groups.map((g) => ({ ...g, rows: sortRegistrantRows(g.rows, { column: "Name", direction: "ascending" }, () => undefined) }));
+  assert.deepEqual(groups, before);
+  assert.deepEqual(sorted.map((g) => g.key), groups.map((g) => g.key));
+  assert.deepEqual(sorted[0].rows[0].bookingIds, ["1", "2"]);
+  const equal = applyView([row({ bookingId: "first" }), row({ bookingId: "second" })], view("by-workshop"))[0].rows;
+  assert.deepEqual(sortRegistrantRows(equal, { column: "Name", direction: "descending" }, () => undefined).map((r) => r.bookingId), ["first", "second"]);
+});
 
 test("all nine built-in views exist and are valid", () => {
   assert.deepEqual(BUILT_IN_VIEWS.map((v) => v.id), ["all", "by-workshop", "by-day", "dietary", "approved", "declined", "waitlisted", "letters", "distance"]);
