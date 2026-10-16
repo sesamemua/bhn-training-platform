@@ -186,6 +186,7 @@ export function rowsFrom(workshops: AdminWorkshop[]): RegistrantRow[] {
       highlights: b.highlights ?? [],
       emailFar: farSchoolOf(b.applicant.email),
       letter: b.letterOwed ? "owed" as const : b.status === "pending" ? "none" as const : "sent" as const,
+      hasEmailHistory: b.hasEmailHistory,
       travel: b.applicant.travel,
       postcode: b.registrant.postcode,
       dietary: b.registrant.dietary,
@@ -458,11 +459,18 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               <button key={s} type="button" className={pill(draft.filters.status.includes(s))} onClick={() => setF({ status: toggle(draft.filters.status, s) })}>{STATUS_LABEL[s]}</button>
             ))}
           </span>
-          <span className="inline-flex flex-wrap items-center gap-1 text-muted">Email
+          <span className="inline-flex flex-wrap items-center gap-1 text-muted">Decision email
             {LETTERS.map((l) => (
               <button key={l} type="button" className={pill(draft.filters.letter.includes(l))} onClick={() => setF({ letter: toggle(draft.filters.letter, l) })}>{LETTER_LABEL[l]}</button>
             ))}
           </span>
+          <label className="inline-flex items-center gap-1.5 text-muted" title="Recorded platform sends, including acknowledgements and group emails. Queued, failed and preview messages do not count. Older unrecorded or externally sent emails cannot be checked.">Email history
+            <select className={SELECT} value={draft.filters.emailHistory} onChange={(e) => setF({ emailHistory: e.target.value as Filters["emailHistory"] })}>
+              <option value="">Any</option>
+              <option value="sent">Previously emailed</option>
+              <option value="none">No recorded emails</option>
+            </select>
+          </label>
           <span className="inline-flex flex-wrap items-center gap-1 text-muted">Distance
             {TRAVELS.map((t) => (
               <button key={t} type="button" className={pill(draft.filters.travel.includes(t))} onClick={() => setF({ travel: toggle(draft.filters.travel, t) })}>{TRAVEL_LABEL[t]}</button>

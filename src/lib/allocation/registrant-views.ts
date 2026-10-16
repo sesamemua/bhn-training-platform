@@ -37,6 +37,8 @@ export interface RegistrantRow {
   emailFar?: FarSchool | null;
   /** "owed" = decided but not emailed; "sent" = emailed; "none" = nothing to send. */
   letter: "owed" | "sent" | "none";
+  /** Undefined means history has not been checked, never proof of no email. */
+  hasEmailHistory?: boolean;
   travel: Travel;
   postcode: string;
   /** Selected dietary options, verbatim. Empty = not answered. */
@@ -77,6 +79,7 @@ export const TRAVEL_LABEL: Record<Travel, string> = { far: "Out of town (over 2 
 export const FiltersSchema = z.object({
   status: z.array(z.enum(STATUSES)).default([]),
   letter: z.array(z.enum(LETTERS)).default([]),
+  emailHistory: z.enum(["", "sent", "none"]).default(""),
   travel: z.array(z.enum(TRAVELS)).default([]),
   workshopIds: z.array(z.string().max(60)).max(50).default([]),
   days: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(14).default([]),
@@ -146,6 +149,8 @@ const hasDiet = (r: RegistrantRow) => r.dietary.some((d) => !NO_DIET.test(d)) ||
 export function matches(r: RegistrantRow, f: Filters): boolean {
   if (f.status.length && !f.status.includes(r.status as (typeof STATUSES)[number])) return false;
   if (f.letter.length && !f.letter.includes(r.letter)) return false;
+  if (f.emailHistory === "sent" && r.hasEmailHistory !== true) return false;
+  if (f.emailHistory === "none" && r.hasEmailHistory !== false) return false;
   if (f.travel.length && !f.travel.includes(r.falseOot ? "near" : r.travel)) return false;
   if (f.workshopIds.length && !f.workshopIds.includes(r.workshopId)) return false;
   if (f.days.length && !f.days.includes(r.day)) return false;

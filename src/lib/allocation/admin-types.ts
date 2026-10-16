@@ -28,6 +28,8 @@ export interface AdminBooking {
   applicant: ApplicantInfo;
   /** The latest decision has not been emailed to them yet. */
   letterOwed: boolean;
+  /** Any successfully sent message recorded for this recipient, independent of the latest decision. */
+  hasEmailHistory?: boolean;
   /** They released the seat themselves ("I can't make it"). */
   withdrawn?: boolean;
   /** BioHubNet's own people (see lib/training-week/internal.ts): in the

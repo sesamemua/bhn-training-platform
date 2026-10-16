@@ -27,6 +27,7 @@ import { INNOVATION_IGNITED_SLUG } from "@/lib/formbuilder/innovation-ignited";
 import { INTERNAL_KEY, InternalPersonSchema, isInternal, parseInternal, type InternalPerson } from "@/lib/training-week/internal";
 import { loadInternalSet } from "@/lib/training-week/internal-server";
 import { coordinatorInfoFor } from "@/lib/training-week/coordinator-info";
+import { EmailHistoryAddresses, recordedEmailRecipients } from "@/lib/allocation/email-history";
 import { HIGHLIGHTS_KEY, highlightProblem, highlightsOf, type Highlight } from "@/lib/allocation/highlights";
 import { versionLabel, versionRoot } from "@/lib/formbuilder/versions";
 import { ViewSchema, isBuiltIn as isBuiltInView, type View } from "@/lib/allocation/registrant-views";
@@ -1825,6 +1826,17 @@ export async function saveWorkshopStatus(map: unknown) {
 }
 
 /* ── one person's communications ─────────────────────────────────── */
+
+export async function loadEmailHistory(addresses: string[]): Promise<string[]> {
+  await requireAdmin();
+  const wanted = [...new Set(EmailHistoryAddresses.parse(addresses).filter(Boolean))];
+  if (!wanted.length) return [];
+  const [copies, audits] = await Promise.all([
+    prisma.mailLog.findMany({ where: { to: { in: wanted, mode: "insensitive" } }, distinct: ["to"], select: { to: true } }),
+    prisma.auditLog.findMany({ where: { action: { in: [PERSON_LETTER, TRAVEL_CHECK, DISTANCE_CHECK] } }, select: { detail: true } }),
+  ]);
+  return [...recordedEmailRecipients(wanted, copies, audits)];
+}
 
 export interface Communication { at: string; kind: string; subject: string | null; body: string | null; by: string | null }
 export interface Communications {

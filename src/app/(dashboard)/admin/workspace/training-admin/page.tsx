@@ -17,7 +17,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { TrainingAdmin } from "@/components/workspace/TrainingAdmin";
-import { loadRules, updateWorkshop } from "./actions";
+import { loadEmailHistory, loadRules, updateWorkshop } from "./actions";
 import { TrainingWeekCapacity } from "@/components/training-week/TrainingWeekCapacity";
 import { loadCapacityMonitor } from "@/lib/training-week/capacity-server";
 import { ReleasedSeats } from "@/components/training-week/ReleasedSeats";
@@ -175,6 +175,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     select: { email: true, name: true },
   });
   const accountName = new Map(accounts.map((u) => [u.email.toLowerCase(), u.name]));
+  const emailed = new Set(await loadEmailHistory([...new Set(all.map(emailOf).filter(Boolean))]));
   const roster = (email: string) => {
     if (rosterSize === 0) return undefined;
     const k = emailKey(email);
@@ -225,6 +226,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
             approvedAt: b.approvedAt ? b.approvedAt.toISOString() : null,
             user: b.user ?? null,
             letterOwed: !!letterDue(b.notifiedStatus, b.status),
+            hasEmailHistory: emailed.has(emailOf(b).trim().toLowerCase()),
             withdrawn: Boolean(b.withdrawnAt),
             internal: internalOf(b),
             internalMade: ((b.submission?.data ?? {}) as Record<string, unknown>).__internal === true,

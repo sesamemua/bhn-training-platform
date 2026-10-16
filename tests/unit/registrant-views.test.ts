@@ -104,6 +104,30 @@ test("decision and letter views filter", () => {
   assert.deepEqual(count(applyView(rows, view("letters"))), { GMP: 1 });
 });
 
+test("email history is independent of the latest decision email and filters before folding people", () => {
+  const historyRows = [
+    row({ bookingId: "ack-only", personKey: "ack", status: "pending", letter: "none", hasEmailHistory: true }),
+    row({ bookingId: "new-decision", personKey: "ack", status: "confirmed", letter: "owed", hasEmailHistory: true }),
+    row({ bookingId: "manual-no-send", personKey: "manual", status: "confirmed", letter: "sent", hasEmailHistory: false }),
+    row({ bookingId: "missing-email", personKey: "missing", email: "", hasEmailHistory: false }),
+    row({ bookingId: "unchecked", personKey: "unknown" }),
+  ];
+  const emailed = ViewSchema.parse({ ...view("all"), filters: { emailHistory: "sent" } });
+  const neverRecorded = ViewSchema.parse({ ...view("all"), filters: { emailHistory: "none" } });
+  assert.deepEqual(applyView(historyRows, emailed)[0].rows.map((r) => r.bookingIds), [["ack-only", "new-decision"]]);
+  assert.deepEqual(applyView(historyRows, neverRecorded)[0].rows.map((r) => r.bookingId), ["manual-no-send", "missing-email"]);
+  assert.equal(applyView(historyRows, view("all"))[0].rows.length, 4);
+  const stillOwed = { ...emailed, filters: { ...emailed.filters, letter: ["owed" as const] } };
+  assert.deepEqual(applyView(historyRows, stillOwed)[0].rows[0].bookingIds, ["new-decision"]);
+});
+
+test("email-history filters survive saved views and older views default to Any", () => {
+  const saved = { id: "contacted", name: "Already contacted", filters: { emailHistory: "sent" } };
+  assert.equal(parseViews(JSON.stringify([saved]))[0].filters.emailHistory, "sent");
+  assert.equal(parseViews(JSON.stringify([{ id: "old", name: "Old saved view", filters: {} }]))[0].filters.emailHistory, "");
+  assert.equal(ViewSchema.safeParse({ ...saved, filters: { emailHistory: "invalid" } }).success, false);
+});
+
 test("by workshop / by day group seats", () => {
   assert.deepEqual(count(applyView(rows, view("by-workshop"))), { GMP: 3, "RA 101": 1 });
   assert.deepEqual(count(applyView(rows, view("by-day"))), { "Mon 26 Oct": 3, "Tue 27 Oct": 1 });
