@@ -5,11 +5,13 @@ const text = (max: number) => z.string().trim().max(max);
 export const GuestSchema = z.object({
   id: text(150).min(1), name: text(160), email: text(254), organization: text(250),
   status: text(50), tickets: z.number().int().min(0).max(500), source: z.enum(["luma", "manual"]), badgeRole: text(120).default(""),
+  /** "Current Primary Affiliation Position" from the registration — printed just above the organization. */
+  position: text(200).optional(),
 });
 export type PrintGuest = z.infer<typeof GuestSchema>;
-export const BadgeEditSchema = z.object({ name: text(160).min(2), organization: text(250), extra: text(200), reviewed: z.boolean() });
+export const BadgeEditSchema = z.object({ name: text(160).min(2), position: text(200).optional(), organization: text(250), extra: text(200), reviewed: z.boolean() });
 export type BadgeEdit = z.infer<typeof BadgeEditSchema>;
-export const BadgeSchema = z.object({ id: text(150), name: text(160), organization: text(250), extra: text(200) });
+export const BadgeSchema = z.object({ id: text(150), name: text(160), position: text(200).optional(), organization: text(250), extra: text(200) });
 export type PrintBadge = z.infer<typeof BadgeSchema>;
 const TemplateSchema = z.object({ key: text(150), name: text(200) });
 export const PrintJobSchema = z.object({
@@ -70,7 +72,8 @@ export function capitalizeName(value: string): string {
 
 const organizationName = /\b(hub|university|institute|laboratory|labs?|company|corporation|network|biohubnet|inc|llc|ltd|solutions|biosciences|biotech|pharma|centre|center|college|foundation)\b|\bhi[³3]\b/i;
 const approved = (status: string) => ["approved", "going", "checked_in"].includes(status.toLowerCase());
-export const badgeFingerprint = (b: PrintBadge) => JSON.stringify([b.name, b.organization, b.extra]);
+// The position joins the fingerprint only when there is one, so a badge printed before positions existed still matches while it has none.
+export const badgeFingerprint = (b: PrintBadge) => JSON.stringify([b.name, b.organization, b.extra, ...(b.position ? [b.position] : [])]);
 
 export function printPeople(board: PrintBoard, identities: PrintIdentity[] = []): PrintPerson[] {
   return board.guests.map(g => {
@@ -81,7 +84,7 @@ export function printPeople(board: PrintBoard, identities: PrintIdentity[] = [])
     const needsIdentity = organizationName.test(g.name) || g.name.trim().split(/\s+/).length < 2;
     const inferredName = verified ?? (needsIdentity && identity ? identity.fullName : g.name);
     const edit = board.edits[g.id];
-    const badge: PrintBadge = { id: g.id, name: edit?.name ?? capitalizeName(inferredName), organization: edit?.organization ?? standardOrganization(g.organization || identity?.organization || ""), extra: edit?.extra ?? (g.badgeRole || (/HQP Representative/i.test(`${identity?.title ?? ""} ${identity?.tags?.join(" ") ?? ""}`) ? "HQP Representative" : "")) };
+    const badge: PrintBadge = { id: g.id, name: edit?.name ?? capitalizeName(inferredName), position: edit?.position ?? (g.position || identity?.title || "").trim(), organization: edit?.organization ?? standardOrganization(g.organization || identity?.organization || ""), extra: edit?.extra ?? (g.badgeRole || (/HQP Representative/i.test(`${identity?.title ?? ""} ${identity?.tags?.join(" ") ?? ""}`) ? "HQP Representative" : "")) };
     const issues: string[] = [];
     const emailParts = g.email.split("@")[0].split(/[._-]+/).filter(w => /^[a-z]{3,}$/i.test(w));
     const suggestion = emailParts.length === 2 ? capitalizeName(emailParts.join(" ")) : null;
@@ -112,7 +115,7 @@ export function mergePrintGuests(board: PrintBoard, incoming: PrintGuest[], at: 
   next.guests = [...next.guests.filter(g => g.source === "manual" || !ids.has(g.id)).map(g => g.source === "luma" ? { ...g, status: "removed" } : g), ...incoming];
   for (const guest of incoming) {
     const old = board.guests.find(g => g.id === guest.id);
-    if (old && (old.name !== guest.name || old.email !== guest.email || old.organization !== guest.organization) && next.edits[guest.id]) next.edits[guest.id].reviewed = false;
+    if (old && (old.name !== guest.name || old.email !== guest.email || old.organization !== guest.organization || (old.position ?? "") !== (guest.position ?? "")) && next.edits[guest.id]) next.edits[guest.id].reviewed = false;
   }
   next.syncedAt = at; next.syncSource = source;
   return PrintBoardSchema.parse(next);
@@ -124,7 +127,7 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
     if (!next.guests.some(g => g.id === action.id)) throw new Error("This guest no longer exists.");
     next.edits[action.id] = { ...action.badge, organization: standardOrganization(action.badge.organization) };
   } else if (action.action === "add") {
-    next.guests.push({ id, name: action.badge.name, email: action.email, organization: action.badge.organization, status: "approved", source: "manual", tickets: 1, badgeRole: "" });
+    next.guests.push({ id, name: action.badge.name, email: action.email, organization: action.badge.organization, position: action.badge.position ?? "", status: "approved", source: "manual", tickets: 1, badgeRole: "" });
     next.edits[id] = { ...action.badge, organization: standardOrganization(action.badge.organization) };
   } else if (action.action === "documents") {
     next.tentText = action.tentText; next.agendaText = action.agendaText;
@@ -141,7 +144,7 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
       if (!action.allowReprint && selected.some(p => p!.printStatus === "printed" || p!.printStatus === "queued")) throw new Error("Some badges are printed or queued. Enable reprinting to include them deliberately.");
     }
     if (action.kind === "agenda" && !next.agendaText && !next.agendaTemplate) throw new Error("Add an agenda or upload the final PDF first.");
-    const badges = action.kind === "badges" ? selected.map(p => ({ id: p!.id, name: p!.name, organization: p!.organization, extra: p!.extra })) : [];
+    const badges = action.kind === "badges" ? selected.map(p => ({ id: p!.id, name: p!.name, ...(p!.position ? { position: p!.position } : {}), organization: p!.organization, extra: p!.extra })) : [];
     const job: PrintJob = { id, label: action.label, kind: action.kind, createdAt: at, createdBy: actor, assignedTo: action.assignedTo, notes: action.notes, copies: action.kind === "badges" ? 1 : action.copies, status: "ready", badges, printedIds: [], printedAt: null, printedBy: null, skip: action.skip, offsetX: action.offsetX, offsetY: action.offsetY };
     next.jobs.unshift(job);
     return { board: PrintBoardSchema.parse(next), job };

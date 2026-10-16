@@ -60,9 +60,11 @@ export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?:
       const properties = doc.getImageProperties(logo);
       doc.addImage(logo, "PNG", x + 96, y + 14, 96, 96 * properties.height / properties.width);
       doc.setTextColor(25, 34, 40);
-      fitted(doc, badge.name, x + 16, y + 62, 256, 68, 28, 16);
+      // Name, then the position just above the organization, then the organization.
+      fitted(doc, badge.name, x + 16, y + 58, 256, 62, 28, 16);
       doc.setTextColor(60, 74, 80);
-      fitted(doc, badge.organization, x + 18, y + 135, 252, 37, 13, 9);
+      if (badge.position) fitted(doc, badge.position, x + 18, y + 122, 252, 18, 11, 8);
+      fitted(doc, badge.organization, x + 18, y + (badge.position ? 142 : 135), 252, badge.position ? 32 : 37, 13, 9);
       doc.setTextColor(36, 100, 108);
       fitted(doc, badge.extra, x + 18, y + 178, 252, 24, 12, 9);
       doc.setFontSize(7); doc.setTextColor(70, 80, 86);

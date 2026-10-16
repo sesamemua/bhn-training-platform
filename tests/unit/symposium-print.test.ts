@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { extractText } from "unpdf";
-import { applyPrintAction, attentionItems, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
+import { PrintBoardSchema, applyPrintAction, attentionItems, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
 import { fetchLumaPrintGuests, lumaPrintPage, parseLumaPrintCsv } from "../../src/lib/events/print-luma";
 import { badgePosition, buildPrintPdf } from "../../src/lib/events/print-pdf";
 import { DEFAULT_PRINT_AGENDA } from "../../src/lib/events/print-agenda";
@@ -206,4 +206,16 @@ test("needs attention: checks before printing, reprints, badges for people who l
   assert.deepEqual(items.map((i) => `${i.kind}:${i.id}`), ["review:a", "reprint:b", "unregistered:c", "guests:d"]);
   assert.match(items[3].detail, /2 additional guests need a name/);
   assert.match(items[0].detail, /Organization missing/);
+});
+
+test("the position prints above the organization, comes from Luma or the CSV, and an edit can change it", () => {
+  const page = lumaPrintPage({ entries: [{ api_id: "gst-9", name: "Lee Park", email: "lee@example.org", approval_status: "approved",
+    registration_answers: [{ label: "Current Primary Affiliation Position", value: "PhD Candidate" }, { label: "Primary Affiliated Organization Name", value: "UofT" }], event_tickets: [{}] }], has_more: false });
+  assert.equal(page.guests[0].position, "PhD Candidate");
+  const csv = parseLumaPrintCsv("Name,Email,Approval Status,Current Primary Affiliation Position,Primary Affiliated Organization Name\nLee Park,lee@example.org,Approved,Postdoctoral Fellow,UofT\n");
+  assert.equal(csv[0].position, "Postdoctoral Fellow");
+  const b = PrintBoardSchema.parse({ guests: page.guests, edits: {}, jobs: [], syncedAt: null, tentText: "", agendaText: "", tentTemplate: null, agendaTemplate: null });
+  assert.equal(printPeople(b)[0].position, "PhD Candidate");
+  b.edits[page.guests[0].id] = { name: "Lee Park", position: "Research Associate", organization: "University of Toronto", extra: "", reviewed: true };
+  assert.equal(printPeople(b)[0].position, "Research Associate");
 });

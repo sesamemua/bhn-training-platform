@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Name badges: the person\u2019s position, just above their organization",
+    body: "Badges now print the **Current Primary Affiliation Position** from the Luma registration on its own line **just above the organization**. It comes in with every Luma sync or CSV import, shows in the guest list and the badge preview, and can be edited in **Badge details** like the name and organization. Badges printed before this have no position line, so any of those people who gave a position now show as **changed since printed**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Print jobs: a Needs attention section for name badges",
     body: "**Symposium \u2192 Print jobs \u2192 Name badges** now opens with **Needs attention**, grouped by what to do: **Check before printing** (a name that looks like an organization, a missing organization, a name that doesn\u2019t match the email\u2026) with **Fix badge**; **Changed since it was printed** with **Add to reprint**; **Has a badge but is no longer registered**; and **Extra tickets without names**. When nothing needs a person, it says every approved badge is ready to print.",
     kind: "feature",

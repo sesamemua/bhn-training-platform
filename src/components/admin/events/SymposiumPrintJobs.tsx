@@ -102,7 +102,7 @@ export function SymposiumPrintJobs() {
   const kind = view === "tents" ? "tents" : view === "agenda" ? "agenda" : "badges";
   const draftPerson = editing ? people.find(p => p.id === editing.id) : null;
   function openPerson(p?: PrintPerson) {
-    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version });
+    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", position: p?.position ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version });
   }
   const makeJob = () => mutate({ action: "create", kind, label: label.trim() || (kind === "badges" ? "Badge" : kind === "tents" ? "Table tent" : "Agenda") + " batch " + (board.jobs.length + 1), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
   async function copyLink(id: string) {
@@ -187,7 +187,7 @@ export function SymposiumPrintJobs() {
                   {!eligible(p) && <div className="text-[11px]">{p.status.replace(/_/g, " ")}</div>}
                   {p.issues.map(issue => <div className="mt-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200" key={issue}>{issue}</div>)}
                 </td>
-                <td className="max-w-[240px] p-2 align-top"><button type="button" className="text-left" onClick={() => openPerson(p)}>{p.organization || <span className="text-muted">Organization required</span>}</button>{p.extra && <div className="whitespace-pre-line text-[11px] text-muted">{p.extra}</div>}</td>
+                <td className="max-w-[240px] p-2 align-top">{p.position && <div className="text-[11.5px] text-muted">{p.position}</div>}<button type="button" className="text-left" onClick={() => openPerson(p)}>{p.organization || <span className="text-muted">Organization required</span>}</button>{p.extra && <div className="whitespace-pre-line text-[11px] text-muted">{p.extra}</div>}</td>
                 <td className="p-2 align-top text-xs"><span className={"inline-block border-l-2 pl-2 " + (p.printStatus === "printed" ? "border-emerald-600" : p.printStatus === "queued" ? "border-sky-600" : p.printStatus === "changed" ? "border-amber-600" : "border-line")}>{printLabels[p.printStatus]}</span></td>
               </tr>)}</tbody>
             </table>
@@ -203,8 +203,8 @@ export function SymposiumPrintJobs() {
             <div className="flex items-center justify-between"><h2 className="text-sm font-semibold">{editing.id ? "Badge details" : "Add person"}</h2><button type="button" title="Close badge editor" aria-label="Close badge editor" className={BUTTON} onClick={() => setEditing(null)}><X size={14} /></button></div>
             {draftPerson && <p className="break-all text-xs text-muted">Source: {draftPerson.sourceName} · {draftPerson.email}</p>}
             {draftPerson && draftPerson.sourceOrganization !== draftPerson.organization && <p className="text-xs text-muted">Registration organization: {draftPerson.sourceOrganization || "Not supplied"}</p>}
-            {([["name", "Full name"], ["organization", "Organization"], ["extra", "Additional badge line"]] as const).map(([key, label]) => <label key={key} className="block text-xs">{label}
-              {key === "extra" ? <textarea className={INPUT + " mt-1"} rows={2} value={editing.badge[key]} maxLength={200} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} /> : <input className={INPUT + " mt-1"} required={key === "name"} minLength={key === "name" ? 2 : undefined} maxLength={key === "name" ? 160 : 250} value={editing.badge[key]} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} />}
+            {([["name", "Full name"], ["position", "Current primary affiliation position"], ["organization", "Organization"], ["extra", "Additional badge line"]] as const).map(([key, label]) => <label key={key} className="block text-xs">{label}
+              {key === "extra" ? <textarea className={INPUT + " mt-1"} rows={2} value={editing.badge[key] ?? ""} maxLength={200} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} /> : <input className={INPUT + " mt-1"} required={key === "name"} minLength={key === "name" ? 2 : undefined} maxLength={key === "name" ? 160 : 250} value={editing.badge[key] ?? ""} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, [key]: e.target.value } })} />}
             </label>)}
             {!editing.id && <label className="block text-xs">Email<input type="email" className={INPUT + " mt-1"} value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} /></label>}
             {draftPerson?.suggestion && blocked(draftPerson) && <button type="button" className={BUTTON} onClick={() => setEditing({ ...editing, badge: { ...editing.badge, name: draftPerson.suggestion! } })}>Use email suggestion: {draftPerson.suggestion}</button>}
@@ -214,7 +214,8 @@ export function SymposiumPrintJobs() {
             <div className="aspect-[4/3] overflow-hidden border border-line bg-white p-4 text-center text-black">
               <Image src="/biohubnet-logo.png" alt="BioHubNet" width={140} height={40} unoptimized className="mx-auto mb-5 h-8 max-w-[140px] object-contain" />
               <p className="break-words text-xl font-semibold leading-tight">{editing.badge.name || "Full name"}</p>
-              <p className="mt-3 break-words text-[13px]">{editing.badge.organization}</p>
+              {editing.badge.position && <p className="mt-2 break-words text-[11.5px] text-neutral-600">{editing.badge.position}</p>}
+              <p className={(editing.badge.position ? "mt-1" : "mt-3") + " break-words text-[13px]"}>{editing.badge.organization}</p>
               <p className="mt-2 whitespace-pre-line break-words text-[12px] text-teal-800">{editing.badge.extra}</p>
             </div>
           </form> : <div className="border-b border-line pb-3"><h2 className="text-sm font-semibold">Avery 5393</h2><p className="mt-1 text-xs text-muted">4 × 3 inches · 6 per Letter sheet · Draft layout</p></div>}

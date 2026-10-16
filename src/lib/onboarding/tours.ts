@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24l";
+export const TOUR_VERSION = "2026.10.24m";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "print.badge-position",
+    title: "Positions on name badges",
+    body: "Name badges now carry the person’s position from their registration, just above the organization. Edit it in Badge details if it needs tidying.",
+    path: "/admin/workspace/symposium-2026/print",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open Print jobs", href: "/admin/workspace/symposium-2026/print" },
+    since: "2026.10.24m",
+  },
   {
     id: "print.badge-attention",
     title: "Name badges: what needs attention",
