@@ -171,10 +171,12 @@ test("fresh panel drafts include titles and original photos in one row without i
   for (const panel of SYMPOSIUM_PANEL_POSTS) {
     assert.match(panel.assetUrl, /^https:\/\/pub-.*\.r2\.dev\/social\/events\//);
     assert.match(panel.graphicBrief, /one horizontal row/);
-    assert.match(panel.graphicBrief, /professional title and organization/);
+    if (panel !== manufacturing) assert.match(panel.graphicBrief, /professional title and organization/);
     assert.match(panel.graphicBrief, /no retouching or color changes/);
     assert.match(panel.graphicBrief, /Moderator .* above the panelists/);
   }
   assert.match(manufacturing.graphicBrief, /official Sanofi company logo in Yannick's headshot position, never initials or an invented portrait/);
+  assert.match(manufacturing.graphicBrief, /Larger original circular headshots/);
+  assert.match(manufacturing.graphicBrief, /no job titles, including the moderator's/);
   assert.match(manufacturing.body, /2:15-3:00 p\.m\. ET/);
 });

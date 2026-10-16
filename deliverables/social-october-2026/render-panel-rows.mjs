@@ -41,6 +41,7 @@ const panels = [
 ];
 
 for (const panel of panels) {
+  const largeHeadshots = panel.number === 3;
   const canvas = createCanvas(1200, 1500), ctx = canvas.getContext("2d"), bounds = [];
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 1200, 1500);
   const texture = createCanvas(1200, 1500), tx = texture.getContext("2d");
@@ -92,15 +93,16 @@ for (const panel of panels) {
   text("2026 Annual Symposium", 70, 700, 72, 240, 1056);
   text(`PANEL ${panel.number}`, 32, 700, 72, 298, 1056, teal);
   panel.title.forEach((line, i) => text(line, 58, 700, 72, 370 + i * 66, 1056, teal));
-  await portrait(panel.moderator, 72, 550, 120);
-  text("MODERATOR", 32, 700, 224, 575, 904, secondary);
-  text(panel.moderator.name, 44, 700, 224, 626, 904);
-  text(panel.moderator.role, 32, 400, 224, 670, 904, secondary);
-  text(panel.moderator.company, 32, 400, 224, 714, 904, secondary);
+  await portrait(panel.moderator, 72, largeHeadshots ? 510 : 550, largeHeadshots ? 216 : 120);
+  const moderatorX = largeHeadshots ? 320 : 224, moderatorWidth = 1128 - moderatorX;
+  text("MODERATOR", 32, 700, moderatorX, largeHeadshots ? 550 : 575, moderatorWidth, secondary);
+  text(panel.moderator.name, 44, 700, moderatorX, largeHeadshots ? 605 : 626, moderatorWidth);
+  if (!largeHeadshots) text(panel.moderator.role, 32, 400, moderatorX, 670, moderatorWidth, secondary);
+  text(panel.moderator.company, 32, 400, moderatorX, largeHeadshots ? 655 : 714, moderatorWidth, secondary);
   ctx.strokeStyle = "#d5e2e2"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(72, 753); ctx.lineTo(1128, 753); ctx.stroke();
 
   const gap = 24, width = (1056 - gap * (panel.people.length - 1)) / panel.people.length;
-  const photoSize = panel.people.length === 4 ? 152 : 176, photoY = 800, row = [];
+  const photoSize = largeHeadshots ? 280 : panel.people.length === 4 ? 152 : 176, photoY = 800, row = [];
   for (const [i, person] of panel.people.entries()) {
     const center = 72 + width / 2 + i * (width + gap);
     row.push(photoY);
@@ -112,8 +114,8 @@ for (const panel of panels) {
       ctx.drawImage(companyLogo, center - logoWidth / 2, photoY + (photoSize - logoHeight) / 2, logoWidth, logoHeight);
       bounds.push([center - logoWidth / 2, photoY + (photoSize - logoHeight) / 2, logoWidth, logoHeight, person.logo]);
     }
-    person.name.forEach((line, j) => text(line, 42, 700, center, 1030 + j * 48, width, ink, true));
-    const role = wrap(person.role, width);
+    person.name.forEach((line, j) => text(line, 42, 700, center, (largeHeadshots ? 1130 : 1030) + j * 48, width, ink, true));
+    const role = largeHeadshots ? [] : wrap(person.role, width);
     assert.ok(role.length <= 6, `${person.name.join(" ")}: title needs more space`);
     role.forEach((line, j) => text(line, 32, 400, center, 1130 + j * 38, width, secondary, true));
     const company = wrap(person.company, width, 32, 700);
@@ -133,7 +135,11 @@ for (const panel of panels) {
   }
   const output = await canvas.encode("png");
   assert.ok(output.length < 3_000_000, "Fit the platform upload limit");
-  const filename = `panel-${panel.number}-photos-titles-row-v${panel.number === 3 ? 2 : 1}.png`;
+  if (largeHeadshots) {
+    assert.equal(photoSize, 280, "Panel 3 uses enlarged panelist headshots");
+    for (const person of [panel.moderator, ...panel.people]) assert.ok(!bounds.some(b => b[4] === person.role), "Panel 3 omits professional titles");
+  }
+  const filename = largeHeadshots ? "panel-3-large-headshots-v4.png" : `panel-${panel.number}-photos-titles-row-v1.png`;
   await writeFile(new URL(`graphics/${filename}`, root), output);
   const mobile = createCanvas(360, 450); mobile.getContext("2d").drawImage(canvas, 0, 0, 360, 450);
   await writeFile(new URL(`graphics/${filename.replace(".png", "-360-preview.png")}`, root), await mobile.encode("png"));

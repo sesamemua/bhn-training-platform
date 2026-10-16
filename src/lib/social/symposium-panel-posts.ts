@@ -65,8 +65,8 @@ https://biohubnet.ca/2026-annual-symposium/
     workshopSlug: null,
     suggestedDate: "2026-10-23T13:00:00Z",
     sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmvbgkn1r0008kx08a9l3ubpc/adf92424-007b-4147-bed6-1e17068045ec.png",
-    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium and Panel 3: Building Biomanufacturing Capacity in Canada headings. Original circular headshots, with no retouching or color changes. Moderator Gilbert Walker above the panelists. Geoff Evans, Christopher Procyshyn and Yannick Dupe in one horizontal row, each with their professional title and organization. Christopher is former CEO of Vanrx, not current CEO. Use the official Sanofi company logo in Yannick's headshot position, never initials or an invented portrait. Keep the top-right corner clear with no bioreactor illustration. Spacious 4:5 layout, subtle glass edge, October 29 | Toronto | Register now.",
+    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmvbgkn1r0008kx08a9l3ubpc/5538bb92-546d-4ad3-a878-e8bcdd3e0b7d.png",
+    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium and Panel 3: Building Biomanufacturing Capacity in Canada headings. Larger original circular headshots, with no retouching or color changes. Moderator Gilbert Walker above the panelists. Geoff Evans, Christopher Procyshyn and Yannick Dupe in one horizontal row, with names and organizations only; no job titles, including the moderator's. Keep professional titles in the post text only. Use the official Sanofi company logo in Yannick's headshot position, never initials or an invented portrait. Keep the top-right corner clear with no bioreactor illustration. Spacious 4:5 layout, subtle glass edge, October 29 | Toronto | Register now.",
     body: `Canada has bold life sciences ideas. What does it take to turn them into biomanufacturing capacity?
 
 Join BioHubNet's 2026 Annual Symposium for Panel 3: Building Biomanufacturing Capacity in Canada.

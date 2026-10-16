@@ -1,6 +1,6 @@
 # Panel 3 Corner Art
 
-The current Panel 3 graphic is `panel-3-photos-titles-row-v2.png`: the bioreactor has been removed at the user's request, with all other pixels unchanged. The following generation notes are historical; this illustration is no longer rendered.
+The current Panel 3 graphic is `panel-3-large-headshots-v4.png`: larger original headshots, names and organizations, with no professional titles or bioreactor. Job titles remain in the post text. The following generation notes are historical; this illustration is no longer rendered.
 
 Generated with the built-in imagegen tool on October 16, 2026, with a transparent background. Speaker portraits are composited from their unchanged original files.
 
