@@ -6,8 +6,8 @@ export const SYMPOSIUM_PANEL_POSTS = [
     workshopSlug: null,
     suggestedDate: "2026-10-21T13:00:00Z",
     sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmv7j0i0w0006kx07kcnnrrz5/03246608-57ee-4b5f-b91e-4a0fad2971b1.png",
-    graphicBrief: "Reuse the existing BioHubNet logo graphic and original headshots unchanged. Full heading: AI in the Workplace: Emerging Skills and Workforce Transformation. Titles are in the post, not crowded onto the graphic.",
+    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmvbgkn1r0006kx08kiyzcbyu/1badb31e-a168-4409-b32f-286ecd9d8030.png",
+    graphicBrief: "BioHubNet logo and original circular headshots, with no retouching or color changes. Full heading: AI in the Workplace: Emerging Skills and Workforce Transformation. Moderator Molly Shoichet above the panelists. Morgan Cramm, Dimitrije Jankovic, Mona Abu Nameh and Alice Feng in one horizontal row, each with their professional title and organization. Preserve Alice's HQP Representative designation. Spacious 4:5 layout, subtle glass edge, October 29 | Toronto | Register now.",
     body: `AI is changing how we work. What skills will help life sciences talent keep pace?
 
 Join BioHubNet's 2026 Annual Symposium for Panel 1: AI in the Workplace - Emerging Skills and Workforce Transformation.
@@ -36,8 +36,8 @@ https://biohubnet.ca/2026-annual-symposium/
     workshopSlug: null,
     suggestedDate: "2026-10-22T13:00:00Z",
     sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmv7j0i0w0007kx079cgrrqc0/ec08d478-59ea-4ae4-adc4-73bd2b36ddea.png",
-    graphicBrief: "Reuse the existing BioHubNet logo graphic and original headshots unchanged. Panel 2: Expanding Career Horizons. Full titles and organizations belong in the post, not crowded onto the graphic.",
+    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmvbgkn1r0007kx08iluqy85y/b73fe79b-6b4c-4cee-92f1-9be38713ce0e.png",
+    graphicBrief: "BioHubNet logo and original circular headshots, with no retouching or color changes. Full heading: Expanding Career Horizons: Discovering Hidden Career Opportunities. Moderator Darius Rackus above the panelists. Angela Davoud, Jasmine Hamilton and Sven Ansorge in one horizontal row, each with their professional title and organization. Spacious 4:5 layout, subtle glass edge, October 29 | Toronto | Register now.",
     body: `Where could your life sciences career take you next?
 
 Join BioHubNet's 2026 Annual Symposium for Panel 2: Expanding Career Horizons - Discovering Hidden Career Opportunities.
@@ -65,7 +65,8 @@ https://biohubnet.ca/2026-annual-symposium/
     workshopSlug: null,
     suggestedDate: "2026-10-23T13:00:00Z",
     sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium and Panel 3: Building Biomanufacturing Capacity in Canada headings. Include Gilbert Walker as moderator, Geoff Evans, Christopher Procyshyn and Yannick Dupe. Text-led design with no portraits or missing-photo placeholders. Spacious white background, restrained soft twisting glass at one edge. October 29 | Toronto | Register now. Full professional titles stay in the post.",
+    assetUrl: "https://pub-53e04deae8a14a14b1ca2a2fcfee91f9.r2.dev/social/events/cmvbgkn1r0008kx08a9l3ubpc/4468a17d-08fe-4cde-937d-ee7421ceae9d.png",
+    graphicBrief: "BioHubNet logo, large 2026 Annual Symposium and Panel 3: Building Biomanufacturing Capacity in Canada headings. Original circular headshots, with no retouching or color changes. Moderator Gilbert Walker above the panelists. Geoff Evans, Christopher Procyshyn and Yannick Dupe in one horizontal row, each with their professional title and organization. Christopher is former CEO of Vanrx, not current CEO. Yannick has no headshot: use typographic initials, never an invented portrait. Spacious 4:5 layout, subtle glass edge, October 29 | Toronto | Register now.",
     body: `Canada has bold life sciences ideas. What does it take to turn them into biomanufacturing capacity?
 
 Join BioHubNet's 2026 Annual Symposium for Panel 3: Building Biomanufacturing Capacity in Canada.

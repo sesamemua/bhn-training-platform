@@ -155,7 +155,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   await assert.rejects(render({ series: "symposium_2026", post: "chris" }), /not found/);
 });
 
-test("fresh panel drafts include professional titles, reuse original graphics and include Yannick without inventing a photo", () => {
+test("fresh panel drafts include titles and original photos in one row without inventing Yannick's photo", () => {
   assert.equal(SYMPOSIUM_PANEL_POSTS.length, 3);
   const [ai, careers, manufacturing] = SYMPOSIUM_PANEL_POSTS;
   for (const line of ["@Morgan Cramm, Senior Director Operations, OmniaBio", "@Dimitrije Jankovic, Global Head of Digital Strategy and Operations, Sanofi", "@Mona Abu Nameh, CMC Regulatory Affairs Manager", "@Alice Feng, Computational Scientist and HQP Representative, BoutIQ Solutions"]) assert.ok(ai.body.includes(line));
@@ -168,6 +168,13 @@ test("fresh panel drafts include professional titles, reuse original graphics an
   assert.match(manufacturing.body, /@Geoff Evans, President, Eurofins CDMO Alphora Inc\./);
   assert.match(manufacturing.body, /former CEO, Vanrx Pharmasystems/);
   assert.match(manufacturing.body, /@Yannick Dupe, Head of Site Operational Excellence & Smart Factory, Sanofi/);
-  assert.match(manufacturing.graphicBrief, /no portraits or missing-photo placeholders/);
+  for (const panel of SYMPOSIUM_PANEL_POSTS) {
+    assert.match(panel.assetUrl, /^https:\/\/pub-.*\.r2\.dev\/social\/events\//);
+    assert.match(panel.graphicBrief, /one horizontal row/);
+    assert.match(panel.graphicBrief, /professional title and organization/);
+    assert.match(panel.graphicBrief, /no retouching or color changes/);
+    assert.match(panel.graphicBrief, /Moderator .* above the panelists/);
+  }
+  assert.match(manufacturing.graphicBrief, /Yannick has no headshot: use typographic initials, never an invented portrait/);
   assert.match(manufacturing.body, /2:15-3:00 p\.m\. ET/);
 });
