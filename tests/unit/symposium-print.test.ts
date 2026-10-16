@@ -20,6 +20,7 @@ test("known organization spellings converge without inventing unknown company na
   for (const name of ["uoft", "U of T", "U. of T.", "UNIVERSITY OF TORONTO", "University of Toronto, Department of Chemistry", "UofT Scarborough"]) assert.equal(standardOrganization(name), "University of Toronto");
   assert.equal(standardOrganization("tmu"), "Toronto Metropolitan University");
   assert.equal(standardOrganization("BoutIQ Solutions"), "BoutIQ Solutions");
+  for (const name of ["AstraZeneca", "ASTRAZENECA CANADA", "AstraZeneca Canada Inc."]) assert.equal(standardOrganization(name), "AstraZeneca Canada");
   assert.equal(standardOrganization("Uotf"), "University of Toronto");
   assert.equal(standardOrganization("UHN/U of T"), "University Health Network/ University of Toronto");
 });

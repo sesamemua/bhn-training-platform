@@ -60,6 +60,7 @@ export type PrintAction = z.infer<typeof PrintActionSchema>;
 
 const normalized = (v: string) => v.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const organizationAliases: Record<string, string> = {
+  astrazeneca: "AstraZeneca Canada", astrazenecacanada: "AstraZeneca Canada", astrazenecacanadainc: "AstraZeneca Canada",
   uoft: "University of Toronto", uotf: "University of Toronto", utoronto: "University of Toronto", uoftoronto: "University of Toronto", universityoftoronto: "University of Toronto", torontouniversity: "University of Toronto",
   ryerson: "Toronto Metropolitan University", ryersonuniversity: "Toronto Metropolitan University", ccrm: "CCRM", catti: "CATTI", castl: "CASTL",
 };
