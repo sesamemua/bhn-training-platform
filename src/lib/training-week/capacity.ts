@@ -19,6 +19,9 @@ export interface SeatLike {
 }
 
 export interface SessionCapacity {
+  records: number;
+  internal: number;
+  inactive: number;
   /** Live student requests, any status but cancelled. */
   requested: number;
   confirmed: number;
@@ -45,6 +48,9 @@ export function sessionCapacity(capacity: number, seats: SeatLike[]): SessionCap
     : cap > 0 && projectedApproved >= cap * FILLING_AT ? "filling"
     : "open";
   return {
+    records: seats.length,
+    internal: seats.filter((s) => s.internal && s.status !== "cancelled" && !s.withdrawn).length,
+    inactive: seats.filter((s) => s.status === "cancelled" || s.withdrawn).length,
     requested,
     confirmed, suggested, projectedApproved,
     projectedWaitlisted: live.filter((s) => s.suggestion === "waitlist" || s.status === "waitlist" && s.suggestion !== "approve").length,
@@ -53,6 +59,10 @@ export function sessionCapacity(capacity: number, seats: SeatLike[]): SessionCap
     over: Math.max(0, projectedApproved - cap),
     level,
   };
+}
+
+export function registrationSummary(c: SessionCapacity): string {
+  return `${c.records} registration records: ${c.requested} active trainee requests + ${c.internal} staff/guests + ${c.inactive} cancelled/withdrawn`;
 }
 
 export interface MonitorSession {

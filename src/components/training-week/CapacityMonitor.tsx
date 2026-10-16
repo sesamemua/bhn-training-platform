@@ -4,7 +4,7 @@
  * home dashboard. No client code — it renders on the server too.
  */
 import type { ReactNode } from "react";
-import type { MonitorSession } from "@/lib/training-week/capacity";
+import { registrationSummary, type MonitorSession } from "@/lib/training-week/capacity";
 
 export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
@@ -39,13 +39,16 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
             <li key={s.id} className="py-3 first:pt-0 last:pb-0">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12px] leading-tight">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span className="font-semibold text-fg">{s.title}</span>
+                <a href={`/admin/workspace/training-admin?tab=registrants&workshop=${encodeURIComponent(s.id)}`}
+                  aria-label={`View registrants for ${s.title}`}
+                  className="font-semibold text-fg underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2">{s.title}</a>
                 <span className="text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>
                 </div>
                 {controls && controls(s)}
               </div>
+              <p className="mt-1 text-[11.5px] text-muted">{registrationSummary(c)}</p>
               <div className="mt-1.5 space-y-1.5 text-[12px] leading-snug tabular-nums" role="group" aria-label={detail}>
                 <div className="relative overflow-hidden rounded bg-elevated px-2 py-2 pb-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-fg">

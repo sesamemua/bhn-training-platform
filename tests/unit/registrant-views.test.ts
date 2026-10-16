@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  BUILT_IN_VIEWS, ViewSchema, applyView, emptyFilters, parseViews, travellerCells, travellers, type RegistrantRow, type View,
+  BUILT_IN_VIEWS, ViewSchema, applyView, emptyFilters, parseViews, travellerCells, travellers, workshopRegistrantView, type RegistrantRow, type View,
 } from "../../src/lib/allocation/registrant-views";
 import { toCsv } from "../../src/lib/formbuilder/csv";
 
@@ -36,6 +36,15 @@ test("decision and letter views filter", () => {
 test("by workshop / by day group seats", () => {
   assert.deepEqual(count(applyView(rows, view("by-workshop"))), { GMP: 3, "RA 101": 1 });
   assert.deepEqual(count(applyView(rows, view("by-day"))), { "Mon 26 Oct": 3, "Tue 27 Oct": 1 });
+});
+
+test("capacity links open By workshop with only the requested workshop, without mutating built-ins", () => {
+  const selected = workshopRegistrantView("w2", ["w1", "w2"]);
+  assert.equal(selected.id, "by-workshop");
+  assert.equal(selected.perPerson, false);
+  assert.deepEqual(count(applyView(rows, selected)), { "RA 101": 1 });
+  assert.deepEqual(view("by-workshop").filters.workshopIds, []);
+  for (const id of [null, "", "unknown"]) assert.equal(workshopRegistrantView(id, ["w1", "w2"]).id, "all");
 });
 
 test("dietary view counts people, and a person with two needs sits in both", () => {

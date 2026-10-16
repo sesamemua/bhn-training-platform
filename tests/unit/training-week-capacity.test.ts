@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CapacityMonitor } from "../../src/components/training-week/CapacityMonitor";
-import { sessionCapacity } from "../../src/lib/training-week/capacity";
+import { registrationSummary, sessionCapacity } from "../../src/lib/training-week/capacity";
 import { RegistrationCounts } from "../../src/components/dashboards/RegistrationCounts";
 import { WorkshopRegistrationControl } from "../../src/components/training-week/WorkshopRegistrationControl";
 import { TrainingWeekCapacity } from "../../src/components/training-week/TrainingWeekCapacity";
@@ -136,4 +136,26 @@ test("levels: open, filling at 80%, full at capacity", () => {
   assert.equal(sessionCapacity(20, seats(20, "confirmed")).level, "full");
   assert.equal(sessionCapacity(0, []).level, "open");
   assert.equal(sessionCapacity(0, seats(1, "confirmed")).level, "over");
+});
+
+test("Ignited reconciles all registration records with student demand without changing approvals", () => {
+  const cap = sessionCapacity(100, [
+    ...seats(48, "confirmed"), ...seats(4), ...seats(6, "confirmed", true),
+    ...seats(1, "cancelled"), ...seats(3, "cancelled").map((s) => ({ ...s, withdrawn: true })),
+  ]);
+  assert.equal(cap.records, 62);
+  assert.equal(cap.requested, 52);
+  assert.equal(cap.confirmed, 48);
+  assert.equal(cap.internal, 6);
+  assert.equal(cap.inactive, 4);
+  assert.equal(cap.records, cap.requested + cap.internal + cap.inactive);
+  assert.equal(registrationSummary(cap), "62 registration records: 52 active trainee requests + 6 staff/guests + 4 cancelled/withdrawn");
+  const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
+    { id: "ignited & workshop", slug: "ignited", title: "Innovation Ignited", start: "2026-10-27T10:00:00Z", cap },
+  ] }));
+  assert.ok(html.includes(registrationSummary(cap)));
+  assert.match(html, /href="\/admin\/workspace\/training-admin\?tab=registrants&amp;workshop=ignited%20%26%20workshop"/);
+  assert.match(html, /aria-label="View registrants for Innovation Ignited"/);
+  assert.equal(sessionCapacity(10, [{ status: "cancelled", internal: true, withdrawn: true }]).inactive, 1);
+  assert.equal(sessionCapacity(10, [{ status: "cancelled", internal: true }]).internal, 0);
 });

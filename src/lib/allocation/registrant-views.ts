@@ -119,6 +119,12 @@ export const BUILT_IN_VIEWS: View[] = [
 ];
 export const isBuiltIn = (id: string) => BUILT_IN_VIEWS.some((b) => b.id === id);
 
+export function workshopRegistrantView(workshopId: string | null, workshopIds: string[]): View {
+  if (!workshopId || !workshopIds.includes(workshopId)) return BUILT_IN_VIEWS[0];
+  const view = BUILT_IN_VIEWS.find((v) => v.id === "by-workshop")!;
+  return { ...view, filters: { ...view.filters, workshopIds: [workshopId] } };
+}
+
 /** Saved views, read back safely: anything unreadable is dropped, never fatal. */
 export function parseViews(raw: string | null | undefined): View[] {
   if (!raw) return [];

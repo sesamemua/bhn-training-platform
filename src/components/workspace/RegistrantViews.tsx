@@ -9,7 +9,7 @@
  */
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendLettersForBookings } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
@@ -21,9 +21,10 @@ import { travelWords } from "@/lib/travel/from-postcode";
 import { HIGHLIGHT_REASON_MAX, reusableReasons, type Highlight } from "@/lib/allocation/highlights";
 import { workshopTone } from "@/lib/allocation/workshop-colour";
 import type { AdminWorkshop, SubmissionRow } from "@/lib/allocation/admin-types";
+import { registrationSummary, sessionCapacity } from "@/lib/training-week/capacity";
 import {
   BUILT_IN_VIEWS, GROUP_BY, GROUP_LABEL, LETTERS, LETTER_LABEL, STATUSES, TRAVELS, TRAVEL_LABEL,
-  applyView, isBuiltIn, type Filters, type RegistrantRow, type ShownRow, type View,
+  applyView, isBuiltIn, workshopRegistrantView, type Filters, type RegistrantRow, type ShownRow, type View,
 } from "@/lib/allocation/registrant-views";
 
 const STATUS_LABEL: Record<string, string> = { pending: "Not decided", confirmed: "Approved", waitlist: "Waitlisted", cancelled: "Declined" };
@@ -201,11 +202,13 @@ const toggle = <T,>(list: T[], x: T) => (list.includes(x) ? list.filter((y) => y
 const same = (a: View, b: View) => JSON.stringify({ ...a, name: "" }) === JSON.stringify({ ...b, name: "" });
 
 export function RegistrantViews({ workshops, initialViews }: { workshops: AdminWorkshop[]; initialViews: View[] }) {
+  const searchParams = useSearchParams();
+  const initial = workshopRegistrantView(searchParams.get("workshop"), workshops.map((w) => w.id));
   const [saved, setSaved] = useState<View[]>(initialViews);
   const all = [...BUILT_IN_VIEWS, ...saved];
-  const [activeId, setActiveId] = useState("all");
+  const [activeId, setActiveId] = useState(initial.id);
   const active = all.find((v) => v.id === activeId) ?? BUILT_IN_VIEWS[0];
-  const [draft, setDraft] = useState<View>(active);
+  const [draft, setDraft] = useState<View>(initial);
   const [pending, start] = useTransition();
   const [said, setSaid] = useState<string | null>(null);
 
@@ -590,8 +593,11 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
             {draft.groupBy !== "none" && (
               <h4 className="mb-1.5 flex items-center gap-2 text-[13px] font-bold text-fg">
                 {draft.groupBy === "workshop" && <span className={`h-2.5 w-2.5 rounded-full ${toneOf(g.key).dot}`} aria-hidden />}
-                {g.label} <span className="text-[11.5px] font-normal text-muted">{g.rows.length}</span>
+                {g.label} <span className="text-[11.5px] font-normal text-muted">{g.rows.length} {draft.perPerson ? "people" : "records"}</span>
               </h4>
+            )}
+            {draft.groupBy === "workshop" && !draft.perPerson && (
+              <p className="mb-1.5 text-[11.5px] text-muted">{registrationSummary(sessionCapacity(0, g.rows))}</p>
             )}
             <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full min-w-[720px] border-collapse text-[12px]">
