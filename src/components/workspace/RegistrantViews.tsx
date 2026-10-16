@@ -325,6 +325,10 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   }, [subs]);
   const subOf = (r: ShownRow) => [r.bookingId, ...(r.bookingIds ?? [])].map((id) => subByBooking.get(id)).find(Boolean) ?? null;
   const infoOf = useCallback((r: ShownRow) => [r.bookingId, ...r.bookingIds].map((id) => subByBooking.get(id)?.coordinatorInfo).find(Boolean), [subByBooking]);
+  const manuallyAdded = useMemo(() => new Set([
+    ...workshops.flatMap((w) => w.bookings.filter((b) => b.internalMade).map((b) => b.id)),
+    ...(subs ?? []).flatMap((s) => s.coordinatorInfo?.manuallyAddedBookingId ? [s.coordinatorInfo.manuallyAddedBookingId] : []),
+  ]), [workshops, subs]);
   const afterDecision = () => { reloadSubs(); router.refresh(); };
 
   // Seats each person still has to have decided — across all of theirs, whatever the view shows.
@@ -608,8 +612,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               </h4>
             )}
             {workshop && <WorkshopRegistrationSummary cap={sessionCapacity(workshop.capacity, workshop.bookings)} />}
-            {workshop && g.rows.length < workshop.bookings.length && <p className="mb-2 text-[12px] text-muted">Showing {g.rows.length} matching {draft.perPerson ? "people" : "registrations"}</p>}
-            {hasCoordinatorInfo && <p className="mb-2 text-[13px] font-semibold text-fg">Institution, current role, company and participation from Roshni&apos;s email</p>}
+            {workshop && g.rows.length < workshop.bookings.length && <p className="mb-2 text-[12px] text-muted">Matching results: {g.rows.length}</p>}
+            {hasCoordinatorInfo && <p className="mb-2 text-[13px] font-semibold text-fg">Roshni&apos;s Innovation Ignited attendee list</p>}
             <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full min-w-[720px] border-collapse text-[12px]">
                 <thead>
@@ -650,7 +654,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           onChange={() => tick(keyOf(r))}
                         />
                       </td>
-                      <td className="px-2 py-1">
+                      <td className="min-w-[12rem] px-2 py-1">
                         {/* Name, address and when they registered on one
                             line each at most: the column used to be three
                             deep for every seat, and the page was a scroll
@@ -676,6 +680,8 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                           >
                             {r.name}
                           </button>
+                          {r.bookingIds.some((id) => manuallyAdded.has(id)) && <span className="rounded-full border border-brand-500/40 bg-brand-500/15 px-2 py-0.5 text-[10.5px] font-semibold text-fg">Manually added</span>}
+                          {coordinatorInfo?.participation && <span className="rounded-full border border-teal-500/40 bg-teal-500/12 px-2 py-0.5 text-[10.5px] font-semibold text-fg" title="Participation on Roshni's Innovation Ignited list">{coordinatorInfo.participation}</span>}
                           <DecidedBadge left={toDecide.get(r.personKey) ?? 0} />
                           {r.internal ? <InternalBadge /> : <ProgrammeBadge programmes={r.programmes} />}
                           <SourceBadge formSlug={r.formSlug} />

@@ -4,6 +4,8 @@ import { emailKey } from "@/lib/eligibility/email-key";
 const ImportDetail = z.object({
   email: z.string().email().nullable(),
   submissionId: z.string().min(1).nullish(),
+  bookingId: z.string().min(1).nullish(),
+  outcome: z.string().optional(),
   workshopId: z.string().min(1),
   sourceName: z.string(),
   institute: z.string(),
@@ -22,6 +24,7 @@ export interface CoordinatorInfo {
   emailSource: string;
   recordedAt: string;
   recordedBy: string;
+  manuallyAddedBookingId?: string;
 }
 
 /** The email supplied context, not new answers from the registrant. */
@@ -44,6 +47,7 @@ export function coordinatorInfoFor(
       name: d.sourceName, institution: d.institute, position: d.position,
       company: d.company, participation: d.participation, emailSource: d.emailSource,
       recordedAt: audit.createdAt.toISOString(), recordedBy: audit.actor.name ?? "Admin",
+      manuallyAddedBookingId: ["added_confirmed", "added_confirmed_email_missing"].includes(d.outcome ?? "") ? d.bookingId ?? undefined : undefined,
     };
   }
 }

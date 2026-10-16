@@ -34,3 +34,14 @@ test("no-email registrations match only their exact submission and workshop, nev
   assert.equal(coordinatorInfoFor([noEmail], "", ["other"], "named-guest"), undefined);
   assert.equal(coordinatorInfoFor([noEmail], "", ["ignited"]), undefined);
 });
+
+test("manual tags identify only newly added seats, not existing attendees on the same list", () => {
+  for (const outcome of ["added_confirmed", "added_confirmed_email_missing"]) {
+    const added = { ...audit, detail: JSON.stringify({ ...JSON.parse(audit.detail), outcome, bookingId: "new-seat" }) };
+    assert.equal(coordinatorInfoFor([added], "person@utoronto.ca", ["ignited"])?.manuallyAddedBookingId, "new-seat");
+  }
+  for (const outcome of ["already_registered", "existing_confirmed", "unresolved_email"]) {
+    const existing = { ...audit, detail: JSON.stringify({ ...JSON.parse(audit.detail), outcome, bookingId: "existing-seat" }) };
+    assert.equal(coordinatorInfoFor([existing], "person@utoronto.ca", ["ignited"])?.manuallyAddedBookingId, undefined);
+  }
+});
