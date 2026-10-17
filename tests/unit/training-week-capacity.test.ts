@@ -26,10 +26,8 @@ test("separate request and seat-plan tracks use the same capacity scale, includi
     assert.ok(html.includes(`style="left:${pct(Math.min(1, capacity))};width:${pct(Math.min(4, Math.max(0, capacity - 1)))};background-image:repeating-linear-gradient`));
     assert.ok(html.includes(`style="width:${pct(Math.min(1, capacity))}" title="1 actual approved"`));
     assert.ok(html.includes(`style="left:${pct(capacity)}" title="${capacity} capacity"`));
-    assert.match(html, />10<\/strong> requested/);
     assert.match(html, />4<\/strong> recommended approval/);
     assert.match(html, />1<\/strong> actual approved/);
-    assert.ok(html.includes(`>5/${capacity}</strong> planned / capacity`));
     assert.match(html, /aria-label="5 projected approvals: 1 actual approved \+ 4 recommended approval/);
     assert.ok(html.indexOf("Requests:") < html.indexOf("Seat plan:"));
     assert.doesNotMatch(html, /grid-cols-4|bg-card\/95/);
@@ -57,7 +55,7 @@ test("Microbix seat plan ends at 12 capacity with no grey track behind the 15 ex
   assert.ok(plan.includes(`class="absolute inset-y-0 left-0 bg-line" style="width:${12 / 27 * 100}%"`));
   assert.doesNotMatch(plan, /inset-x-0 bottom-0 h-2 bg-line/);
   assert.ok(plan.includes(`left:${1 / 27 * 100}%;width:${11 / 27 * 100}%`));
-  assert.match(plan, />12\/12<\/strong> planned \/ capacity/);
+  assert.match(plan, />1<\/strong> actual approved \+ <strong>11<\/strong> recommended approval/);
   assert.match(html, /15 over capacity/);
 });
 
@@ -74,6 +72,26 @@ test("legacy Full highlights Pause without changing saved state or submitting a 
     if (initial === "full") assert.match(html, /Capacity reached/);
     assert.equal(calls, 0);
   }
+});
+
+test("dashboard workshops share half-width bars and compact statistics with borderless alternating shades", () => {
+  const cap = sessionCapacity(12, [...seats(2, "confirmed"), ...seats(13)]);
+  const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
+    { id: "one", slug: "one", title: "Workshop one", start: "2026-10-26T10:00:00Z", cap },
+    { id: "two", slug: "two", title: "Workshop two", start: "2026-10-27T10:00:00Z", cap },
+  ] }));
+  assert.match(html, /md:grid-cols-2 md:items-center/);
+  const rows = html.match(/<li[^>]+>/g) ?? [];
+  assert.equal(rows.length, 2);
+  for (const row of rows) {
+    assert.match(row, /odd:bg-elevated\/40 even:bg-elevated\/10/);
+    assert.doesNotMatch(row, /border|rounded|py-3/);
+  }
+  assert.doesNotMatch(html, /divide-y|planned \/ capacity|text-\[26px\]|min-h-\[56px\]/);
+  assert.equal((html.match(/requested \/ capacity/g) ?? []).length, 2);
+  assert.match(html, /text-\[22px\]/);
+  assert.match(html, /3 over capacity/);
+  assert.match(html, /Remaining seats/);
 });
 
 test("empty and over-approved workshops keep finite track dimensions and explicit warnings", () => {

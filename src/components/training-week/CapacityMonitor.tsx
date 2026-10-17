@@ -21,13 +21,15 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
         <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">Training Week capacity</p>
         {action}
       </div>
-      {registered !== undefined && <p className="mt-2 text-[14px] text-fg"><strong className="text-[24px] tabular-nums">{registered === null ? "—" : registered.toLocaleString()}</strong> people registered</p>}
-      <p className="mt-1 text-[12.5px] text-fg">
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      {registered !== undefined && <p className="text-[13px] text-fg"><strong className="text-[20px] tabular-nums">{registered === null ? "—" : registered.toLocaleString()}</strong> people registered</p>}
+      <p className="text-[12px] text-muted">
         <strong className="tabular-nums">{projected}</strong> projected approvals for <strong className="tabular-nums">{seats}</strong> student seats · {requested} requests
         {over > 0 && <span className="font-semibold text-rose-600"> · {over} over capacity</span>}
         {full > 0 && <span className="font-semibold text-muted"> · {full} planned at capacity</span>}
       </p>
-      <ul className="mt-3 divide-y divide-line">
+      </div>
+      <ul className="-mx-2 mt-2 space-y-1">
         {sessions.map((s) => {
           const c = s.cap;
           const scale = Math.max(c.capacity, c.requested, c.projectedApproved, 1);
@@ -37,7 +39,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
           const suggestedWidth = Math.min(c.suggested, c.capacity - approvedWidth);
           const detail = `${c.projectedApproved} projected approvals: ${c.confirmed} actual approved + ${c.suggested} recommended approval; ${c.projectedWaitlisted} projected waitlist; ${c.requested} requests; ${c.capacity} seats; ${excess} requests over capacity`;
           return (
-            <li key={s.id} className="py-3 first:pt-0 last:pb-0">
+            <li key={s.id} className="px-3 py-2 odd:bg-elevated/40 even:bg-elevated/10">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12px] leading-tight">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                 <a href={`/admin/workspace/training-admin?tab=registrants&workshop=${encodeURIComponent(s.id)}`}
@@ -49,12 +51,12 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 </div>
                 {controls && controls(s)}
               </div>
-              <WorkshopRegistrationSummary cap={c} />
-              <div className="mt-1.5 space-y-1.5 text-[12px] leading-snug tabular-nums" role="group" aria-label={detail}>
-                <div className="relative overflow-hidden rounded bg-elevated px-2 py-2 pb-4">
+              <div className="mt-2 grid min-w-0 gap-x-6 gap-y-2 md:grid-cols-2 md:items-center">
+              <div className="min-w-0 space-y-2 text-[11px] leading-snug tabular-nums" role="group" aria-label={detail}>
+                <div className="relative overflow-hidden pb-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-fg">
-                    <span>Requests: <strong>{c.requested}</strong> requested{excess > 0 && <span className="ml-2 font-semibold">({excess} over capacity)</span>}</span>
-                    <span><strong>{c.requested}/{c.capacity}</strong> requested / capacity</span>
+                    <span>Requests: <strong>{c.requested}/{c.capacity}</strong> requested / capacity</span>
+                    {excess > 0 && <span className="font-semibold text-rose-600">{excess} over capacity</span>}
                   </div>
                   <div className="absolute inset-x-0 bottom-0 h-2 bg-line" aria-hidden>
                     <div className="absolute inset-y-0 left-0 bg-sky-500" style={{ width: pct(c.requested) }} title={`${c.requested} requested`} />
@@ -62,10 +64,10 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                     <div className="absolute inset-y-0 -translate-x-full border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} />
                   </div>
                 </div>
-                <div className="relative overflow-hidden rounded px-2 py-2 pb-4">
+                <div className="relative overflow-hidden pb-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-fg">
-                    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1"><span>Seat plan: <strong>{c.confirmed}</strong> actual approved</span><span>+ <strong>{c.suggested}</strong> recommended approval</span></span>
-                    <span><strong>{c.projectedApproved}/{c.capacity}</strong> planned / capacity{c.over > 0 && <span className="ml-2 font-semibold">({c.over} over capacity)</span>}</span>
+                    <span>Seat plan: <strong>{c.confirmed}</strong> actual approved + <strong>{c.suggested}</strong> recommended approval</span>
+                    {c.over > 0 && <span className="font-semibold text-rose-600">{c.over} over capacity</span>}
                   </div>
                   <div className="absolute inset-x-0 bottom-0 h-2" aria-hidden>
                     <div className="absolute inset-y-0 left-0 bg-line" style={{ width: pct(c.capacity) }} />
@@ -74,6 +76,8 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                     <div className="absolute inset-y-0 -translate-x-full border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} />
                   </div>
                 </div>
+              </div>
+              <WorkshopRegistrationSummary cap={c} compact />
               </div>
             </li>
           );

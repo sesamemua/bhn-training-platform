@@ -56,3 +56,19 @@ test("decision counts colour only the numbers, with muted labels and no boxes", 
   assert.match(html, /repeat\(auto-fit,minmax\(min\(100%,136px\),1fr\)\)/);
   assert.equal(cap.records, 27);
 });
+
+test("compact dashboard summaries keep every count inline without changing the registrant summary", () => {
+  const cap = sessionCapacity(20, [
+    { status: "confirmed" }, { status: "pending" }, { status: "cancelled" },
+    { status: "waitlist" }, { status: "cancelled", withdrawn: true },
+  ]);
+  const html = renderToStaticMarkup(createElement(WorkshopRegistrationSummary, { cap, compact: true }));
+  assert.equal((html.match(/<dt /g) ?? []).length, 7);
+  assert.match(html, /items-baseline justify-between/);
+  assert.match(html, /text-\[22px\]/);
+  assert.doesNotMatch(html, /<svg|border|rounded|bg-|min-h-\[56px\]|text-\[26px\]/);
+  for (const label of ["Approved", "To be decided", "Declined", "Waitlisted", "Can&#x27;t attend", "Total", "Remaining seats"]) assert.ok(html.includes(label));
+  const original = renderToStaticMarkup(createElement(WorkshopRegistrationSummary, { cap }));
+  assert.match(original, /text-\[26px\]/);
+  assert.match(original, /min-h-\[56px\]/);
+});
