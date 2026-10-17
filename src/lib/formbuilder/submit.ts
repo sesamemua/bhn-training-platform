@@ -12,6 +12,7 @@
  */
 import { missing, optionsFor, visibleFields, type Answers } from "./logic";
 import type { BuiltForm, FieldStage, FormField } from "./types";
+import { nameReviewKey, registrationName, workshopNameField } from "./registration-name";
 
 export interface Verdict {
   ok: boolean;
@@ -49,6 +50,16 @@ export function checkSubmission(
     if (f.type === "note") continue;
     const raw = answers[f.key];
     if (raw === undefined) continue;
+
+    if (workshopNameField(form, f)) {
+      const name = registrationName(raw, f.key);
+      if (name.error) problems.push(`“${f.label}”: ${name.error}`);
+      else if (name.warnings.length && answers[nameReviewKey(f.key)] !== name.value) {
+        problems.push(`“${f.label}”: Review your name and confirm the spelling for your badge, or correct it.`);
+      }
+      if (name.value) clean[f.key] = name.value;
+      continue;
+    }
 
     if (f.type === "multi") {
       const offered = new Set(optionsFor(form, f));

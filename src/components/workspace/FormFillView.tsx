@@ -28,7 +28,9 @@ import { AlertTriangle, Check, Eye, RotateCcw } from "lucide-react";
 import { chosenConflicts, sessionParts } from "@/lib/formbuilder/calendar";
 import { hasLink, linkify } from "@/lib/formbuilder/linkify";
 import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
-import { rankedSessions, sessionField } from "@/lib/formbuilder/submit";
+import { checkSubmission, rankedSessions, sessionField } from "@/lib/formbuilder/submit";
+import { workshopNameField } from "@/lib/formbuilder/registration-name";
+import { RegistrationNameInput } from "@/components/forms/RegistrationNameInput";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "@/lib/eligibility/messages";
 import { columnFor } from "@/lib/formbuilder/layout";
@@ -572,6 +574,8 @@ export function FormFillView({
               setTried(true);
               setRefused([]);
               if (gaps.length > 0) { setDone(false); return; }
+              const checked = checkSubmission(doc, answers, stage);
+              if (!checked.ok) { setRefused(checked.problems); setDone(false); return; }
               if (!submit) { setDone(true); return; }
               setSending(true);
               // The server checks the same rules again — this is a
@@ -860,6 +864,8 @@ export function Question({
             );
           })}
         </div>
+      ) : workshopNameField(doc, f) ? (
+        <RegistrationNameInput field={f} answers={answers} set={set} className={FIELD} />
       ) : f.type === "long_text" ? (
         <>
           <textarea
