@@ -74,7 +74,7 @@ test("legacy Full highlights Pause without changing saved state or submitting a 
   }
 });
 
-test("dashboard workshops share half-width bars and compact statistics with borderless alternating shades", () => {
+test("dashboard workshops share half-width bars and phosphor statistics with separated borderless shades", () => {
   const cap = sessionCapacity(12, [...seats(2, "confirmed"), ...seats(13)]);
   const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
     { id: "one", slug: "one", title: "Workshop one", start: "2026-10-26T10:00:00Z", cap },
@@ -84,12 +84,14 @@ test("dashboard workshops share half-width bars and compact statistics with bord
   const rows = html.match(/<li[^>]+>/g) ?? [];
   assert.equal(rows.length, 2);
   for (const row of rows) {
-    assert.match(row, /odd:bg-elevated\/40 even:bg-elevated\/10/);
+    assert.match(row, /training-capacity-row/);
+    assert.match(row, /odd:bg-elevated\/70 even:bg-elevated\/20/);
     assert.doesNotMatch(row, /border|rounded|py-3/);
   }
   assert.doesNotMatch(html, /divide-y|planned \/ capacity|text-\[26px\]|min-h-\[56px\]/);
   assert.equal((html.match(/requested \/ capacity/g) ?? []).length, 2);
-  assert.match(html, /text-\[22px\]/);
+  assert.equal((html.match(/training-phosphor-panel/g) ?? []).length, 2);
+  assert.match(html, /space-y-3/);
   assert.match(html, /3 over capacity/);
   assert.match(html, /Remaining seats/);
 });

@@ -1,6 +1,66 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+.training-capacity-row {
+  box-shadow: 0 3px 0 rgb(0 0 0 / 7%);
+}
+
+.training-phosphor-panel {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: #111617;
+  background-image:
+    repeating-linear-gradient(45deg, transparent 0 3px, #242a2a 3px 4px, transparent 4px 8px),
+    repeating-linear-gradient(-45deg, transparent 0 3px, #080c0d 3px 4px, transparent 4px 8px);
+  box-shadow: inset 0 1px 0 #41494a, 0 3px 0 rgb(0 0 0 / 12%);
+}
+
+.training-phosphor-grid {
+  display: grid;
+  grid-template-columns: minmax(52px, .85fr) repeat(3, minmax(0, 1fr));
+  gap: 7px 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: #081a13;
+  color: #a9efb7;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.training-phosphor-grid > div { min-width: 0; }
+.training-phosphor-grid dt {
+  color: #b5d4be;
+  font-size: 10.5px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.training-phosphor-grid dd {
+  margin: 2px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.training-phosphor-primary {
+  grid-row: span 2;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6px;
+}
+.training-phosphor-primary dt { font-weight: 700; }
+
+@media (forced-colors: active) {
+  .training-phosphor-panel { background: Canvas; }
+  .training-phosphor-grid { background: Canvas; color: CanvasText; outline: 1px solid CanvasText; }
+  .training-phosphor-grid dt { color: CanvasText; }
+  .training-phosphor-primary svg { display: none; }
+  .training-phosphor-primary .sr-only { position: static; width: auto; height: auto; clip-path: none; }
+}
+
 /* ============================================================
  *  BHN Theme System — three faces, one design language
  *  ──────────────────────────────────────────────────────────

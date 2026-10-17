@@ -57,18 +57,36 @@ test("decision counts colour only the numbers, with muted labels and no boxes", 
   assert.equal(cap.records, 27);
 });
 
-test("compact dashboard summaries keep every count inline without changing the registrant summary", () => {
+test("compact dashboard summaries use the phosphor bank without changing the registrant summary", () => {
   const cap = sessionCapacity(20, [
     { status: "confirmed" }, { status: "pending" }, { status: "cancelled" },
     { status: "waitlist" }, { status: "cancelled", withdrawn: true },
   ]);
   const html = renderToStaticMarkup(createElement(WorkshopRegistrationSummary, { cap, compact: true }));
-  assert.equal((html.match(/<dt /g) ?? []).length, 7);
-  assert.match(html, /items-baseline justify-between/);
-  assert.match(html, /text-\[22px\]/);
-  assert.doesNotMatch(html, /<svg|border|rounded|bg-|min-h-\[56px\]|text-\[26px\]/);
+  assert.equal((html.match(/<dt>/g) ?? []).length, 7);
+  assert.match(html, /training-phosphor-panel/);
+  assert.match(html, /training-phosphor-grid/);
+  assert.match(html, /training-phosphor-primary/);
+  assert.match(html, /<svg aria-hidden="true" data-dot-matrix="1"/);
+  assert.match(html, /<span class="sr-only">1<\/span>/);
+  assert.doesNotMatch(html, /min-h-\[56px\]|text-\[26px\]/);
   for (const label of ["Approved", "To be decided", "Declined", "Waitlisted", "Can&#x27;t attend", "Total", "Remaining seats"]) assert.ok(html.includes(label));
   const original = renderToStaticMarkup(createElement(WorkshopRegistrationSummary, { cap }));
   assert.match(original, /text-\[26px\]/);
   assert.match(original, /min-h-\[56px\]/);
+  assert.doesNotMatch(original, /training-phosphor|data-dot-matrix/);
+});
+
+test("phosphor bank keeps all seven labels, including zero values, with large counts readable to assistive technology", () => {
+  for (const count of [0, 1, 19, 100, 1234]) {
+    const cap = sessionCapacity(2000, Array.from({ length: count }, () => ({ status: "confirmed" })));
+    const html = renderToStaticMarkup(createElement(WorkshopRegistrationSummary, { cap, compact: true }));
+    assert.equal((html.match(/<dt>/g) ?? []).length, 7);
+    assert.match(html, /<dt>Waitlisted<\/dt><dd>0<\/dd>/);
+    assert.match(html, /<dt>Can&#x27;t attend<\/dt><dd>0<\/dd>/);
+    assert.ok(html.includes(`data-dot-matrix="${count}"`));
+    assert.ok(html.includes(`<span class="sr-only">${count}</span>`));
+    assert.equal((html.match(/<circle /g) ?? []).length, Math.max(2, String(count).length) * 35);
+    assert.doesNotMatch(html, /NaN|Infinity|undefined/);
+  }
 });
