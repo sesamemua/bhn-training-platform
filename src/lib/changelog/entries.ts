@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Shortcuts are now tiles that fill your screen",
+    body: "**Your shortcuts** on the dashboard are now icon tiles rather than pills, and they fill the whole row: a wide screen shows more shortcuts, a laptop fewer, and a phone gets two rows. The last tile is always **Add shortcut**; **See more** and **Edit** work as before.",
+    kind: "improvement",
+    visibleTo: ALL,
+    daysAgo: 0,
+  },
+  {
     title: "Your shortcuts now fill in for everyone signed in",
     body: "**Your shortcuts** and **Your most-used pages** on the dashboard now work whether or not you accepted analytics cookies. While you’re signed in, the platform notes which of its pages you open and how long each stays on screen — stored with your account only, with no IP address, device or referrer, and used only for your own shortcuts. The [privacy policy](/privacy) explains it under **Your shortcuts**.",
     kind: "improvement",

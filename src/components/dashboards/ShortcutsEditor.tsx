@@ -1,7 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useId, useState, useTransition } from "react";
-import { ArrowRight, Check, ChevronDown, Pencil, Pin, PinOff, Plus, X, Zap } from "lucide-react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
+import {
+  BookOpen, Bookmark, Briefcase, Calendar, Check, ChevronDown, ClipboardList, Coins, FileText, Gift, GraduationCap,
+  Images, Mail, Megaphone, MessageSquareText, Mic, Palette, Pencil, Pin, PinOff, Plus, Printer, Settings, Speaker,
+  Users, Video, X, Zap, type LucideIcon,
+} from "lucide-react";
 import { saveShortcuts } from "@/app/(dashboard)/dashboard/shortcut-actions";
 import {
   ShortcutPrefsSchema, buildShortcuts, pageLabel, toShortcutPath,
@@ -10,10 +14,28 @@ import {
 
 type Draft = { from: string | null; label: string; path: string };
 
+const TILE_MIN = 168; // px — narrowest a tile gets before the row drops one
+const TILE_GAP = 8;
+// Fixed radii: the theme's rounded-* scale turns these into pills.
+const TILE = "group flex min-w-0 items-center gap-2.5 rounded-[10px] border border-line bg-card px-2.5 py-2 text-left shadow-[0_1px_0_rgba(15,23,42,0.04)] transition-colors";
+
+// First match wins; anything else gets a bookmark.
+const ICONS: [RegExp, LucideIcon][] = [
+  [/social/, Megaphone], [/video/, Video], [/design-review|logo|brand/, Palette],
+  [/website-review/, MessageSquareText], [/speakers/, Mic], [/print/, Printer], [/\/av\b/, Speaker],
+  [/newsletter|mail|templates/, Mail], [/merch|rewards/, Gift], [/registration|forms|registrants|applications?\b/, ClipboardList],
+  [/training|courses|my-courses|pathways|gradebook/, GraduationCap], [/events|calendar|interviews/, Calendar],
+  [/users|team|buddy|talent/, Users], [/credits|equip|funding/, Coins], [/internships|postings|jobs?\b/, Briefcase],
+  [/images|gallery|photos/, Images], [/catalog|library|stories/, BookOpen], [/settings|preferences|profile/, Settings],
+  [/docs|changelog|resume|bullet/, FileText], [/marketing|ads/, Megaphone],
+];
+const iconFor = (path: string) => ICONS.find(([re]) => re.test(path))?.[1] ?? Bookmark;
+
 /**
- * Personal shortcut row under the dashboard hero. Pinned shortcuts always
- * show; the user's most-used pages fill the row to five. Edit mode lets them
- * keep, rename / retarget, remove or add shortcuts — saved per user.
+ * Personal shortcut tiles under the dashboard hero. Pinned shortcuts always
+ * show; the user's most-used pages fill one row — as many tiles as fit the
+ * screen. Edit mode lets them keep, rename / retarget, remove or add
+ * shortcuts — saved per user.
  */
 export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: ShortcutCandidate[]; initialPrefs: ShortcutPrefs }) {
   const [prefs, setPrefs] = useState(initialPrefs);
@@ -23,7 +45,20 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const listId = useId();
-  const { shown, more } = buildShortcuts(candidates, prefs);
+  const grid = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(6);
+  useEffect(() => {
+    const el = grid.current;
+    if (!el) return;
+    const measure = () => setCols(Math.max(2, Math.floor((el.clientWidth + TILE_GAP) / (TILE_MIN + TILE_GAP))));
+    measure();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
+  // Narrow screens get two rows; the last slot is always the Add tile.
+  const { shown, more } = buildShortcuts(candidates, prefs, cols * (cols < 4 ? 2 : 1) - 1);
 
   function save(next: ShortcutPrefs) {
     const parsed = ShortcutPrefsSchema.safeParse(next);
@@ -52,52 +87,75 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
     setDraft(null);
   }
 
-  const chip = (s: Shortcut) =>
-    draft?.from === s.path ? null : editing ? (
-      <span key={s.path} className="inline-flex items-center gap-1 rounded-full border border-line bg-card pl-3 pr-1 py-1 text-xs font-semibold text-fg">
-        {s.label}
-        <IconButton label={s.pinned ? `Stop keeping ${s.label}` : `Keep ${s.label} on the list`} onClick={() => (s.pinned ? unkeep(s) : keep(s))}>
-          {s.pinned ? <PinOff size={12} /> : <Pin size={12} />}
-        </IconButton>
-        <IconButton label={`Rename or change ${s.label}`} onClick={() => setDraft({ from: s.path, label: s.label, path: s.path })}>
-          <Pencil size={12} />
-        </IconButton>
-        <IconButton label={`Remove ${s.label}`} onClick={() => remove(s)}><X size={12} /></IconButton>
+  const tile = (s: Shortcut) => {
+    if (draft?.from === s.path) return null;
+    const Icon = iconFor(s.path);
+    const badge = (
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-600 group-hover:text-white" aria-hidden>
+        <Icon size={18} strokeWidth={1.75} />
       </span>
+    );
+    return editing ? (
+      <div key={s.path} className={TILE}>
+        {badge}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-fg">{s.label}</span>
+          <span className="mt-0.5 flex items-center gap-0.5">
+            <IconButton label={s.pinned ? `Stop keeping ${s.label}` : `Keep ${s.label} on the list`} onClick={() => (s.pinned ? unkeep(s) : keep(s))}>
+              {s.pinned ? <PinOff size={12} /> : <Pin size={12} />}
+            </IconButton>
+            <IconButton label={`Rename or change ${s.label}`} onClick={() => setDraft({ from: s.path, label: s.label, path: s.path })}>
+              <Pencil size={12} />
+            </IconButton>
+            <IconButton label={`Remove ${s.label}`} onClick={() => remove(s)}><X size={12} /></IconButton>
+          </span>
+        </span>
+      </div>
     ) : (
-      <Link key={s.path} href={s.path} title={s.visits ? `${s.visits} visits in the last 30 days` : s.path}
-        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1.5 text-xs font-semibold text-fg hover:border-brand-400 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
-        {s.pinned && <Pin size={11} className="text-brand-600" aria-label="Kept" />}
-        {s.label} <ArrowRight size={11} className="text-fg-subtle" />
+      <Link key={s.path} href={s.path} title={`${s.label} — ${s.path}`}
+        className={`${TILE} hover:border-brand-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500`}>
+        {badge}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-fg group-hover:text-brand-700">{s.label}</span>
+          <span className="flex items-center gap-1 text-[11px] text-fg-subtle">
+            {s.pinned && <Pin size={10} className="text-brand-600" aria-hidden />}
+            {s.pinned ? "Kept" : `${s.visits} visits`}
+          </span>
+        </span>
       </Link>
     );
+  };
 
   return (
     <nav aria-label="Your shortcuts" className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] font-black text-brand-700">
           <Zap size={12} className="text-brand-600" /> Your shortcuts
         </span>
-        {shown.map(chip)}
-        {shown.length === 0 && !draft && <span className="text-xs text-fg-muted">Pages you open often show up here. Add your own any time.</span>}
-        {showMore && more.map(chip)}
-        {more.length > 0 && (
-          <button type="button" onClick={() => setShowMore((v) => !v)} aria-expanded={showMore}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">
-            {showMore ? "See less" : `See ${more.length} more`} <ChevronDown size={12} className={showMore ? "rotate-180" : ""} />
-          </button>
-        )}
+        {shown.length === 0 && !draft && <span className="text-xs text-fg-muted">Pages you open often show up here.</span>}
         <span className="ml-auto inline-flex items-center gap-3">
           {pending && <span className="text-[11px] text-fg-subtle">Saving…</span>}
-          <button type="button" onClick={() => setDraft({ from: null, label: "", path: "" })}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">
-            <Plus size={12} /> Add
-          </button>
+          {more.length > 0 && (
+            <button type="button" onClick={() => setShowMore((v) => !v)} aria-expanded={showMore}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">
+              {showMore ? "See less" : `See ${more.length} more`} <ChevronDown size={12} className={showMore ? "rotate-180" : ""} />
+            </button>
+          )}
           <button type="button" onClick={() => { setEditing((v) => !v); setDraft(null); setError(null); }} aria-pressed={editing}
             className="inline-flex items-center gap-1 text-xs font-semibold text-fg-muted hover:text-fg">
             {editing ? <><Check size={12} /> Done</> : <><Pencil size={12} /> Edit</>}
           </button>
         </span>
+      </div>
+
+      <div ref={grid} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {shown.map(tile)}
+        {showMore && more.map(tile)}
+        <button type="button" onClick={() => setDraft({ from: null, label: "", path: "" })}
+          className={`${TILE} border-dashed text-fg-muted hover:border-brand-400 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500`}>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] border border-dashed border-line" aria-hidden><Plus size={16} /></span>
+          <span className="truncate text-sm font-semibold">Add shortcut</span>
+        </button>
       </div>
 
       {draft && (

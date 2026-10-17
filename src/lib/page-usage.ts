@@ -51,10 +51,10 @@ export function formatDuration(ms: number): string {
 
 // ── Personal dashboard shortcuts ─────────────────────────────────────────
 // Pinned shortcuts always show, in the user's order; the most-used pages
-// (2+ visits) fill the row up to SHORTCUT_LIMIT, and the next ones sit
-// behind "See more". Removing an automatic one hides it for good.
-export const SHORTCUT_LIMIT = 5;
-export const SHORTCUT_MORE = 10;
+// (2+ visits) fill the row up to `limit` (as many tiles as fit the screen),
+// and the next ones sit behind "See more". Removing an automatic one hides
+// it for good.
+export const SHORTCUT_MORE = 24;
 const ShortcutPathSchema = z.string().trim().max(300).regex(/^\/(?!\/)[^\s\\]*$/, "Use a page on this platform, starting with /");
 export const ShortcutPrefsSchema = z.object({
   pinned: z.array(z.object({ path: ShortcutPathSchema, label: z.string().trim().min(1).max(40) })).max(20)
@@ -66,7 +66,7 @@ export type ShortcutCandidate = { path: string; label: string; visits: number };
 export type Shortcut = ShortcutCandidate & { pinned: boolean };
 export const EMPTY_SHORTCUTS: ShortcutPrefs = { pinned: [], hidden: [] };
 
-export function buildShortcuts(candidates: ShortcutCandidate[], prefs: ShortcutPrefs) {
+export function buildShortcuts(candidates: ShortcutCandidate[], prefs: ShortcutPrefs, limit = 5) {
   const pinnedPaths = new Set(prefs.pinned.map((p) => p.path));
   const hidden = new Set(prefs.hidden);
   const visits = new Map(candidates.map((c) => [c.path, c.visits]));
@@ -74,7 +74,7 @@ export function buildShortcuts(candidates: ShortcutCandidate[], prefs: ShortcutP
   const auto: Shortcut[] = candidates
     .filter((c) => c.visits >= 2 && !pinnedPaths.has(c.path) && !hidden.has(c.path))
     .map((c) => ({ ...c, pinned: false }));
-  const fill = Math.max(0, SHORTCUT_LIMIT - pinned.length);
+  const fill = Math.max(0, limit - pinned.length);
   return { shown: [...pinned, ...auto.slice(0, fill)], more: auto.slice(fill, fill + SHORTCUT_MORE) };
 }
 

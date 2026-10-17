@@ -32,6 +32,8 @@ test("shortcuts: kept ones always show, most-used fill to five, removed stay hid
   assert.deepEqual(shown.map((s) => s.path), ["/kept", "/a", "/c", "/d", "/e"]);
   assert.equal(shown[0].pinned, true);
   assert.deepEqual(more.map((s) => s.path), ["/f", "/g"]);
+  // A wider screen fits more tiles: the row fills further before See more.
+  assert.deepEqual(buildShortcuts(candidates, { pinned: [], hidden: [] }, 7).shown.map((s) => s.path), ["/a", "/b", "/c", "/d", "/e", "/f", "/g"]);
 });
 
 test("shortcut paths stay on this site", () => {
