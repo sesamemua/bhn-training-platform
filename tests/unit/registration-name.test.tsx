@@ -38,6 +38,15 @@ test("organization names, incomplete names, initials, repetitions and titles ask
   for (const name of ["HI³", "HI3", "University of Toronto", "AstraZeneca Canada", "Amara", "Yasmine N", "Amara Amara", "Dr Amara Okonkwo", "Amara 123"]) {
     assert.ok(registrationName(name, "full_name").warnings.length, name);
   }
+  assert.equal(registrationName("HI³", "full_name").suggestion, undefined);
+  assert.equal(registrationName("UNIVERSITY OF TORONTO", "full_name").suggestion, undefined);
+});
+
+test("Continue and submission use the same current-name review verdict", () => {
+  assert.ok(registrationName("Amara", "full_name").problem);
+  assert.equal(registrationName("Amara", "full_name", "Amara").problem, undefined);
+  assert.ok(registrationName("Yasmine N", "full_name", "Amara").problem);
+  assert.ok(registrationName("bad@example.org", "full_name", "bad@example.org").problem);
 });
 
 test("email addresses, URLs, markup, controls, numbers-only, non-string and overlong names are refused", () => {

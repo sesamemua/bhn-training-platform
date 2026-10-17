@@ -29,7 +29,7 @@ import { chosenConflicts, sessionParts } from "@/lib/formbuilder/calendar";
 import { hasLink, linkify } from "@/lib/formbuilder/linkify";
 import { receiptLine, type Receipt } from "@/lib/formbuilder/receipt";
 import { checkSubmission, rankedSessions, sessionField } from "@/lib/formbuilder/submit";
-import { workshopNameField } from "@/lib/formbuilder/registration-name";
+import { nameReviewKey, registrationName, workshopNameField } from "@/lib/formbuilder/registration-name";
 import { RegistrationNameInput } from "@/components/forms/RegistrationNameInput";
 import { ELIGIBILITY_EMAIL_KEY } from "@/lib/eligibility/field";
 import { listUpdatedSentence, NOT_ON_LIST_MESSAGE } from "@/lib/eligibility/messages";
@@ -495,6 +495,11 @@ export function FormFillView({
             disabled={waiting || gateChecking}
             aria-describedby={hint === null ? undefined : "continue-hint"}
             onClick={async () => {
+              setRefused([]);
+              for (const f of visible.filter(f => workshopNameField(doc, f))) {
+                const name = registrationName(answers[f.key], f.key, answers[nameReviewKey(f.key)]);
+                if (name.problem) { setRefused([`“${f.label}”: ${name.problem}`]); return; }
+              }
               /*
                * The roster check happens HERE, at the address, rather
                * than at Submit — being told you are not on the list is

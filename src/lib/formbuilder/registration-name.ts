@@ -8,7 +8,7 @@ export function workshopNameField(form: BuiltForm, field: FormField): boolean {
     && Boolean(form.presentation?.session || form.fields.some(f => f.type === "multi" && f.slots.length));
 }
 
-export function registrationName(raw: unknown, key: string) {
+export function registrationName(raw: unknown, key: string, reviewed?: unknown) {
   const value = typeof raw === "string" ? raw.normalize("NFC").trim().replace(/\s+/gu, " ") : "";
   const warnings: string[] = [];
   let error: string | undefined;
@@ -18,7 +18,8 @@ export function registrationName(raw: unknown, key: string) {
     error = "Enter a person's name, not an email address, website or markup.";
   }
   const words = value.split(" ");
-  if (/\b(university|institute|laboratory|labs?|company|corporation|network|biohubnet|inc|llc|ltd|solutions|biosciences|biotech|pharma|centre|center|college|foundation|astrazeneca|sanofi|ccrm|catti|castl)\b|\bhi[³3](?=\W|$)/iu.test(value)) {
+  const organization = /\b(university|institute|laboratory|labs?|company|corporation|network|biohubnet|inc|llc|ltd|solutions|biosciences|biotech|pharma|centre|center|college|foundation|astrazeneca|sanofi|ccrm|catti|castl)\b|\bhi[³3](?=\W|$)/iu.test(value);
+  if (organization) {
     warnings.push("This may be an organization. Enter your own name; your institution or company belongs in its separate field.");
   }
   if (key === "full_name" && words.length === 1 && /^[\p{Script=Latin}\p{M}'’.-]+$/u.test(value)) {
@@ -32,7 +33,8 @@ export function registrationName(raw: unknown, key: string) {
   // Suggest casing only; particles, initials and preferred spelling belong to the registrant.
   const uniformCase = value.toLocaleUpperCase() !== value.toLocaleLowerCase()
     && (value === value.toLocaleUpperCase() || value === value.toLocaleLowerCase());
-  const suggestion = !error && uniformCase && capitalizeName(value) !== value ? capitalizeName(value) : undefined;
+  const suggestion = !error && !organization && uniformCase && capitalizeName(value) !== value ? capitalizeName(value) : undefined;
   if (suggestion) warnings.push("Check the capitalization, or keep your preferred spelling below.");
-  return { value, error, warnings, suggestion };
+  const problem = error ?? (warnings.length && reviewed !== value ? "Review your name and confirm the spelling for your badge, or correct it." : undefined);
+  return { value, error, warnings, suggestion, problem };
 }

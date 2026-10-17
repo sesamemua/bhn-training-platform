@@ -52,11 +52,8 @@ export function checkSubmission(
     if (raw === undefined) continue;
 
     if (workshopNameField(form, f)) {
-      const name = registrationName(raw, f.key);
-      if (name.error) problems.push(`“${f.label}”: ${name.error}`);
-      else if (name.warnings.length && answers[nameReviewKey(f.key)] !== name.value) {
-        problems.push(`“${f.label}”: Review your name and confirm the spelling for your badge, or correct it.`);
-      }
+      const name = registrationName(raw, f.key, answers[nameReviewKey(f.key)]);
+      if (name.problem) problems.push(`“${f.label}”: ${name.problem}`);
       if (name.value) clean[f.key] = name.value;
       continue;
     }
