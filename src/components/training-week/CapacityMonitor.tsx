@@ -42,7 +42,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                 <a href={`/admin/workspace/training-admin?tab=registrants&workshop=${encodeURIComponent(s.id)}`}
                   aria-label={`View registrants for ${s.title}`}
-                  className="font-semibold text-fg underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2">{s.title}</a>
+                  className="text-[18px] font-bold leading-snug text-fg underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2">{s.title}</a>
                 <span className="text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>

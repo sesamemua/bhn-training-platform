@@ -622,7 +622,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
           return (
           <div key={g.key}>
             {draft.groupBy !== "none" && (
-              <h4 className="mb-1.5 flex items-center gap-2 text-[13px] font-bold text-fg">
+              <h4 className={`mb-1.5 flex items-center gap-2 font-bold leading-snug text-fg ${draft.groupBy === "workshop" ? "text-[18px]" : "text-[13px]"}`}>
                 {draft.groupBy === "workshop" && <span className={`h-2.5 w-2.5 rounded-full ${toneOf(g.key).dot}`} aria-hidden />}
                 {g.label} {draft.groupBy !== "workshop" && <span className="text-[11.5px] font-normal text-muted">Total: {g.rows.length}</span>}
               </h4>
