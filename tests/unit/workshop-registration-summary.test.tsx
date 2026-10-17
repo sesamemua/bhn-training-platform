@@ -45,6 +45,8 @@ test("decision counts have distinct backgrounds, icons and labels without changi
   ] as const) {
     assert.ok(metrics[index].includes(label));
     assert.ok(metrics[index].includes(`bg-${color}-`));
+    assert.ok(metrics[index].includes("text-fg"));
+    assert.doesNotMatch(metrics[index], /(?:dark:)?text-(?:emerald|amber|rose|violet|zinc|blue|cyan)-\d+/);
     assert.match(metrics[index], /<svg[^>]*aria-hidden="true"/);
     assert.match(metrics[index], new RegExp(`<dd[^>]*>${value}(?:<|$)`));
   }
