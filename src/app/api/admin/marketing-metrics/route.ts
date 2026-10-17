@@ -11,10 +11,16 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { linkedinSnapshot } from "@/lib/metrics/linkedin";
 import { siteMetrics } from "@/lib/metrics/ga4";
+import { loadSocialDashboard } from "@/lib/social/dashboard-server";
+import { buildSocialBrief } from "@/lib/social/dashboard";
 
 export async function GET() {
   const session = await requireRole("admin").catch(() => null);
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const [linkedin, site] = await Promise.all([linkedinSnapshot(), siteMetrics()]);
-  return NextResponse.json({ at: new Date().toISOString(), linkedin, site });
+  const now = new Date();
+  const [linkedin, site, queue] = await Promise.all([linkedinSnapshot(), siteMetrics(), loadSocialDashboard(now).catch(() => {
+    console.warn("[metrics] Social queue could not be read.");
+    return null;
+  })]);
+  return NextResponse.json({ at: now.toISOString(), linkedin, site, social: buildSocialBrief(queue, linkedin, now) });
 }

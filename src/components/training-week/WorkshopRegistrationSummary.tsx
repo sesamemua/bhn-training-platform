@@ -19,7 +19,7 @@ function DotMatrixNumber({ value }: { value: number }) {
   return <>
     <svg aria-hidden="true" data-dot-matrix={value} viewBox={`0 0 ${digits.length * 18 - 3} 21`} width={digits.length * 18 - 3} height={21} className="h-9 w-auto max-w-full">
       {[...digits].map((digit, index) => digitRows[Number(digit)].map((row, y) => [...row].map((lit, x) => (
-        <circle key={`${index}:${y}:${x}`} cx={index * 18 + x * 3 + 1.5} cy={y * 3 + 1.5} r={0.95} fill={lit === "1" ? "currentColor" : "#383b3d"} />
+        <circle key={`${index}:${y}:${x}`} cx={index * 18 + x * 3 + 1.5} cy={y * 3 + 1.5} r={0.95} fill={lit === "1" ? "currentColor" : "#203a2a"} />
       ))))}
     </svg>
     <span className="sr-only">{value}</span>
@@ -38,7 +38,7 @@ export function WorkshopRegistrationSummary({ cap, compact = false }: { cap: Ses
             { label: "Total capacity", value: cap.capacity },
             { label: "To be decided", value: d.undecided },
           ].map(({ label, value }, index) => (
-            <div key={label} title={label === "Remaining seats" ? "Trainee capacity minus actual approved trainee seats. Staff, guests and recommendations do not use these seats." : undefined}>
+            <div key={label} className={index === 0 ? "training-seat-approved" : undefined} title={label === "Remaining seats" ? "Trainee capacity minus actual approved trainee seats. Staff, guests and recommendations do not use these seats." : undefined}>
               <dt>{label}</dt>
               <dd>{index === 0 ? <DotMatrixNumber value={value} /> : value}</dd>
             </div>

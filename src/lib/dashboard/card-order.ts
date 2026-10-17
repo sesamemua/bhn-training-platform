@@ -6,7 +6,7 @@ export const DASHBOARD_CARD_LABELS = {
   released: "Seats released",
   capacity: "Training Week capacity",
   registration: "Training Week registration",
-  marketing: "LinkedIn and biohubnet.ca",
+  marketing: "Social pulse",
 } as const;
 export type DashboardCard = keyof typeof DASHBOARD_CARD_LABELS;
 export const DEFAULT_CARD_ORDER = Object.keys(DASHBOARD_CARD_LABELS) as DashboardCard[];
