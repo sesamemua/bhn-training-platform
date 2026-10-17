@@ -30,7 +30,7 @@ test("every workshop gets the same large, labelled summary including remaining s
   }
 });
 
-test("decision counts have distinct backgrounds, icons and labels without changing their values", () => {
+test("decision counts colour only the numbers, with muted labels and no boxes", () => {
   const cap = sessionCapacity(12, [
     ...Array.from({ length: 12 }, () => ({ status: "confirmed" })),
     { status: "pending" },
@@ -46,9 +46,10 @@ test("decision counts have distinct backgrounds, icons and labels without changi
     [3, "Waitlisted", "violet", 8], [4, "Can&#x27;t attend", "zinc", 2], [5, "Total", "blue", 27], [6, "Remaining seats", "cyan", 0],
   ] as const) {
     assert.ok(metrics[index].includes(label));
-    assert.ok(metrics[index].includes(`bg-${color}-`));
-    assert.ok(metrics[index].includes("text-fg"));
-    assert.doesNotMatch(metrics[index], /(?:dark:)?text-(?:emerald|amber|rose|violet|zinc|blue|cyan)-\d+/);
+    assert.match(metrics[index], new RegExp(`<dd[^>]*text-${color}-`));
+    assert.match(metrics[index], /<dt[^>]*text-muted/);
+    assert.doesNotMatch(metrics[index], /\b(?:bg-|border|rounded|opacity-)/);
+    assert.doesNotMatch(metrics[index], /dark:text-\w+-100/);
     assert.match(metrics[index], /<svg[^>]*aria-hidden="true"/);
     assert.match(metrics[index], new RegExp(`<dd[^>]*>${value}(?:<|$)`));
   }
