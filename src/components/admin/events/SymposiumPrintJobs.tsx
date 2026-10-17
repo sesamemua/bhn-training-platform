@@ -329,8 +329,9 @@ function BadgeNameHistory({ person, changes, local }: { person: PrintPerson; cha
  * badges changed since printing, badges for people no longer registered,
  * and extra tickets without names — grouped, with the action for each.
  */
-function BadgeAttention({ people, busy, onOpen, onReprint }: { people: PrintPerson[]; busy: boolean; onOpen: (id: string) => void; onReprint: (id: string) => void }) {
+export function BadgeAttention({ people, busy, onOpen, onReprint }: { people: PrintPerson[]; busy: boolean; onOpen: (id: string) => void; onReprint: (id: string) => void }) {
   const items = attentionItems(people);
+  const byId = new Map(people.map(p => [p.id, p]));
   if (!items.length) {
     return <p className="mb-4 border-l-2 border-emerald-600 pl-3 text-sm">Nothing needs attention: every approved badge is ready to print.</p>;
   }
@@ -341,12 +342,30 @@ function BadgeAttention({ people, busy, onOpen, onReprint }: { people: PrintPers
       {groups.map(({ kind, rows }) => <details key={kind} open={rows.length <= 8} className="min-w-0">
         <summary className="cursor-pointer text-[13px] font-semibold">{ATTENTION_LABELS[kind].title} ({rows.length})</summary>
         <ul className="mt-1.5 divide-y divide-line border-y border-line">
-          {rows.map((r) => <li key={kind + r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-[13px]">
-            <span className="min-w-0 flex-1"><strong>{r.name || "Name required"}</strong><span className="block text-xs text-amber-800 dark:text-amber-200">{r.detail}</span></span>
-            <button type="button" className={BUTTON} disabled={busy} onClick={() => (kind === "reprint" ? onReprint(r.id) : onOpen(r.id))}>
-              {kind === "reprint" ? <Printer size={13} /> : <Pencil size={13} />} {ATTENTION_LABELS[kind].action}
-            </button>
-          </li>)}
+          {rows.map((r) => {
+            const person = byId.get(r.id)!;
+            const fields = [
+              ["Email", person.email || "Not supplied"],
+              ["Organization", person.organization || "Not supplied"],
+              ["Current role", person.position || "Not supplied"],
+              ["Print status", printLabels[person.printStatus]],
+              ["Registration status", person.status.replace(/_/g, " ")],
+              ...(person.name !== person.sourceName ? [["Original registration name", person.sourceName || "Not supplied"]] : []),
+              ...(person.extra ? [["Badge line", person.extra]] : []),
+              ...(kind === "guests" ? [["Tickets", String(person.tickets)], ["Unnamed guests", String(Math.max(0, person.tickets - 1))]] : []),
+            ];
+            return <li key={kind + r.id} className="min-w-0 py-3 text-[13px]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 [overflow-wrap:anywhere]"><strong>{r.name || "Name required"}</strong><p className="mt-0.5 text-xs text-amber-800 dark:text-amber-200">{r.detail}</p></div>
+                <button type="button" className={BUTTON + " shrink-0"} disabled={busy} aria-label={`${ATTENTION_LABELS[kind].action} for ${r.name || "unnamed guest"}`} onClick={() => (kind === "reprint" ? onReprint(r.id) : onOpen(r.id))}>
+                  {kind === "reprint" ? <Printer size={13} /> : <Pencil size={13} />} {ATTENTION_LABELS[kind].action}
+                </button>
+              </div>
+              <dl className="mt-2 grid min-w-0 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+                {fields.map(([label, value]) => <div key={label} className="min-w-0 [overflow-wrap:anywhere]"><dt className="inline text-muted">{label}: </dt><dd className="inline whitespace-pre-line text-fg">{value}</dd></div>)}
+              </dl>
+            </li>;
+          })}
         </ul>
       </details>)}
     </div>
