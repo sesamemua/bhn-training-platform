@@ -13,13 +13,12 @@ export function WorkshopRegistrationSummary({ cap }: { cap: SessionCapacity }) {
     { label: "Remaining seats", value: cap.remaining, icon: Armchair, tone: "border-cyan-300 bg-cyan-50 dark:border-cyan-500/40 dark:bg-cyan-500/15" },
   ];
   return (
-    <dl aria-label={registrationSummary(cap)} className="my-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,136px),1fr))] gap-2">
+    <dl aria-label={registrationSummary(cap)} className="my-2 grid grid-cols-[repeat(auto-fit,minmax(min(100%,136px),1fr))] gap-1.5">
       {metrics.map(({ label, value, icon: Icon, tone }) => (
-        <div key={label} className={`min-h-[88px] min-w-0 rounded-md border border-l-[3px] px-3 py-2.5 text-fg ${tone}`} title={label === "Remaining seats" ? "Trainee capacity minus actual approved trainee seats. Staff, guests and recommendations do not use these seats." : undefined}>
-          <dt className="flex items-start gap-1.5 text-[12px] font-semibold leading-snug"><Icon size={15} className="mt-px shrink-0" aria-hidden="true" /><span>{label}</span></dt>
-          <dd className="mt-1 text-[26px] font-bold leading-tight tabular-nums">
+        <div key={label} className={`min-h-[56px] min-w-0 rounded-md border border-l-[3px] px-2 py-1 text-fg ${tone}`} title={label === "Remaining seats" ? "Trainee capacity minus actual approved trainee seats. Staff, guests and recommendations do not use these seats." : undefined}>
+          <dt className="flex items-start gap-1 text-[11px] font-semibold leading-tight"><Icon size={13} className="shrink-0" aria-hidden="true" /><span>{label}</span></dt>
+          <dd className="mt-0.5 text-[26px] font-bold leading-none tabular-nums">
             {value}
-            {label === "Remaining seats" && <span className="block text-[11px] font-normal">Trainee seats</span>}
           </dd>
         </div>
       ))}
