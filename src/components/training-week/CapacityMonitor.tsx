@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import type { MonitorSession } from "@/lib/training-week/capacity";
 import { WorkshopRegistrationSummary } from "./WorkshopRegistrationSummary";
+import { ArrowRight } from "lucide-react";
 
 export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
@@ -20,6 +21,9 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">Training Week capacity</p>
         {action}
+        <a href="/admin/workspace/training-admin?tab=registrants" className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2">
+          Open registrants <ArrowRight size={13} aria-hidden="true" />
+        </a>
       </div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
       {registered !== undefined && <p className="text-[13px] text-fg"><strong className="text-[20px] tabular-nums">{registered === null ? "—" : registered.toLocaleString()}</strong> people registered</p>}
@@ -30,7 +34,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
       </p>
       </div>
       <ul className="-mx-2 mt-2 space-y-3">
-        {sessions.map((s) => {
+        {sessions.map((s, index) => {
           const c = s.cap;
           const scale = Math.max(c.capacity, c.requested, c.projectedApproved, 1);
           const pct = (n: number) => `${(n / scale) * 100}%`;
@@ -44,7 +48,8 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                 <a href={`/admin/workspace/training-admin?tab=registrants&workshop=${encodeURIComponent(s.id)}`}
                   aria-label={`View registrants for ${s.title}`}
-                  className="text-[18px] font-bold leading-snug text-fg underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2">{s.title}</a>
+                  data-tone={index % 6}
+                  className="training-workshop-title underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2">{s.title}</a>
                 <span className="text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>

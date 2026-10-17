@@ -74,7 +74,7 @@ test("legacy Full highlights Pause without changing saved state or submitting a 
   }
 });
 
-test("dashboard workshops share half-width bars and phosphor statistics with separated borderless shades", () => {
+test("dashboard workshops share half-width bars and inset statistics with separated borderless shades", () => {
   const cap = sessionCapacity(12, [...seats(2, "confirmed"), ...seats(13)]);
   const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
     { id: "one", slug: "one", title: "Workshop one", start: "2026-10-26T10:00:00Z", cap },
@@ -90,7 +90,10 @@ test("dashboard workshops share half-width bars and phosphor statistics with sep
   }
   assert.doesNotMatch(html, /divide-y|planned \/ capacity|text-\[26px\]|min-h-\[56px\]/);
   assert.equal((html.match(/requested \/ capacity/g) ?? []).length, 2);
-  assert.equal((html.match(/training-phosphor-panel/g) ?? []).length, 2);
+  assert.equal((html.match(/training-seat-well/g) ?? []).length, 2);
+  assert.match(html, /class="training-workshop-title/);
+  assert.match(html, /data-tone="0"/);
+  assert.match(html, /data-tone="1"/);
   assert.match(html, /space-y-3/);
   assert.match(html, /3 over capacity/);
   assert.match(html, /Remaining seats/);
@@ -122,6 +125,9 @@ test("symposium precedes capacity; total people and per-session controls stay se
   assert.match(shared, /people registered/);
   const identicalPanel = renderToStaticMarkup(createElement(TrainingWeekCapacity, { sessions: [session], registered: null, saveWorkshopState: save, saveCapacity: save }));
   assert.ok(html.includes(identicalPanel), "Home embeds the identical shared panel without custom controls");
+  assert.equal((html.match(/Open registrants/g) ?? []).length, 1);
+  assert.ok(html.indexOf("Open registrants") < html.indexOf("people registered"));
+  assert.ok(html.indexOf("Open registrants") < html.indexOf("View registrants for Workshop"));
   for (const label of ["Open", "Pause", "Close"]) assert.ok(html.includes(`${label}</button>`));
   const paused = renderToStaticMarkup(createElement(WorkshopRegistrationControl, { slug: "one", title: "Workshop", initial: "paused", save }));
   assert.match(paused, /<strong class="text-fg">Paused<\/strong>/);
