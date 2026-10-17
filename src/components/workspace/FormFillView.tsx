@@ -423,7 +423,7 @@ export function FormFillView({
       {refused.length > 0 && (
         <div role="alert" className="mt-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3">
           <p className="flex items-center gap-2 text-[13px] font-semibold text-red-500">
-            <AlertTriangle size={14} /> The server did not accept it
+            <AlertTriangle size={14} /> Please review your answers
           </p>
           <ul className="mt-1.5 space-y-0.5">
             {refused.map((p) => <li key={p} className="text-[12.5px] text-red-500">{p}</li>)}
