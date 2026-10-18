@@ -39,6 +39,26 @@
 .sectionHeading > div { flex:1; min-width:0; }
 .workspace button.sectionAction { margin-left:auto; align-self:center; flex:0 0 auto; white-space:nowrap; background:#e7edf3; font-size:13px; padding:7px 12px; }
 @media (max-width:640px) { .sectionHeading { flex-wrap:wrap; } .workspace button.sectionAction { flex-basis:100%; margin-left:0; } }
+.diffCards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.recordedCard { border-top:4px solid #607180; background:#f5f7f8; }
+.proposedCard { border-top:4px solid var(--blue); }
+.diffLabel { margin:0 0 8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.diffCards h3 { margin:0 0 10px; color:var(--navy); font-size:20px; }
+.diffCards p { margin:0; font-size:14px; }
+.diffMeta { color:var(--muted); margin-top:15px !important; }
+.diffStats { display:flex; gap:24px; margin:20px 0 0; }
+.diffStats div { border-left:2px solid #b9c7d1; padding-left:10px; }
+.diffStats dt { color:var(--muted); font-size:12px; }
+.diffStats dd { margin:1px 0 0; color:var(--navy); font-size:22px; font-weight:700; }
+.diffCallout { margin:18px 0; padding:13px 16px; background:#fff4dc; border-left:3px solid #b67b17; color:#62450f; font-size:14px; }
+.diffLists { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; align-items:start; }
+.diffDetails { border:1px solid var(--line); background:#f8fafc; padding:14px; min-width:0; }
+.diffDetails summary { cursor:pointer; display:flex; justify-content:space-between; gap:10px; color:var(--navy); font-size:14px; }
+.diffDetails summary span { color:var(--muted); font-size:12px; font-weight:400; white-space:nowrap; }
+.diffDetails p { margin:13px 0; color:var(--muted); font-size:12px; }
+.diffDetails h4 { margin:16px 0 8px; color:var(--ink); font-size:13px; }
+.diffTerms { display:flex; flex-wrap:wrap; gap:6px; }
+.diffTerms span { max-width:100%; padding:4px 7px; background:#e7edf2; border-radius:3px; color:#31475d; font-size:12px; overflow-wrap:anywhere; }
 .programTabs { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; }
 .programTabs button[aria-pressed=true] { background:var(--navy); color:white; border-color:var(--navy); }
 .termToolbar { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
@@ -113,6 +133,6 @@
 .empty { padding:18px; color:var(--muted); font-size:14px; }
 .loading { min-height:50vh; padding:48px; }
 .loading button { display:block; margin-top:20px; }
-@media (max-width:1100px) { .negativeList { grid-template-columns:repeat(2,minmax(0,1fr)); } .hero { flex-direction:column; align-items:flex-start; gap:24px; } .toolbar { flex-wrap:wrap; } .termList { grid-template-columns:1fr; } }
-@media (max-width:700px) { .topbar { padding:12px 16px; font-size:11px; } .hero { padding:28px 20px; } .hero h1 { font-size:38px; } .heroFacts { gap:16px; } .heroFacts strong { font-size:18px; } .toolbar { padding:10px 14px; position:relative; } .content { padding:16px 12px 40px; } .section { padding:20px 15px; scroll-margin-top:16px; } .sectionHeading h2 { font-size:23px; } .cards,.settingsGrid,.feedbackLayout,.negativeList { grid-template-columns:1fr; } .termRow { grid-template-columns:minmax(0,1fr) auto; } .termRow > input { grid-column:1/-1; } .card { padding:18px; } .adPreview { margin:-18px -18px 18px; padding:18px; } .nav { gap:10px 16px; } }
+@media (max-width:1100px) { .negativeList,.diffLists { grid-template-columns:repeat(2,minmax(0,1fr)); } .hero { flex-direction:column; align-items:flex-start; gap:24px; } .toolbar { flex-wrap:wrap; } .termList { grid-template-columns:1fr; } }
+@media (max-width:700px) { .topbar { padding:12px 16px; font-size:11px; } .hero { padding:28px 20px; } .hero h1 { font-size:38px; } .heroFacts { gap:16px; } .heroFacts strong { font-size:18px; } .toolbar { padding:10px 14px; position:relative; } .content { padding:16px 12px 40px; } .section { padding:20px 15px; scroll-margin-top:16px; } .sectionHeading h2 { font-size:23px; } .cards,.settingsGrid,.feedbackLayout,.negativeList,.diffCards,.diffLists { grid-template-columns:1fr; } .termRow { grid-template-columns:minmax(0,1fr) auto; } .termRow > input { grid-column:1/-1; } .card { padding:18px; } .adPreview { margin:-18px -18px 18px; padding:18px; } .nav { gap:10px 16px; } }
 @media print { .toolbar,.nav,.programTabs,.addTerms,.actions,.remove { display:none; } .workspace { background:white; } .section { break-inside:auto; border:0; padding:12px 0; } .content { padding:0; } .card,.termRow,.negativeRow { break-inside:avoid; } .negativeRow { print-color-adjust:exact; } }
