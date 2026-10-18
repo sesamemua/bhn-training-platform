@@ -37,7 +37,7 @@ jobs:
     # secret IS a property of the commit.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -68,7 +68,7 @@ jobs:
     # runs (base != head) were passing and doing the real work.
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Full history needed so TruffleHog can scan diffs for any
           # commit pushed in this PR, not just the tip.
