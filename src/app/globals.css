@@ -39,14 +39,10 @@
   font-weight: 650;
   line-height: 1.3;
   color: color-mix(in srgb, var(--fg) 35%, var(--workshop-accent) 65%);
-  text-shadow: 0 0 1px currentColor,
-    0 0 6px color-mix(in srgb, var(--workshop-accent) 75%, transparent),
-    0 0 16px color-mix(in srgb, var(--workshop-accent) 40%, transparent);
+  text-shadow: 0 0 2px color-mix(in srgb, var(--workshop-accent) 30%, transparent);
 }
 .training-workshop-title:is(:hover, :focus-visible) {
-  text-shadow: 0 0 1px currentColor,
-    0 0 8px color-mix(in srgb, var(--workshop-accent) 90%, transparent),
-    0 0 22px color-mix(in srgb, var(--workshop-accent) 55%, transparent);
+  text-shadow: 0 0 3px color-mix(in srgb, var(--workshop-accent) 40%, transparent);
 }
 .training-workshop-title[data-tone="0"] { --workshop-accent: #208975; }
 .training-workshop-title[data-tone="1"] { --workshop-accent: #317bbe; }
