@@ -602,26 +602,31 @@ const AERO_CSS = `
 .adash-aero {
   display: flex; flex-direction: column; gap: 14px;
   color: var(--fg);
+  --porcelain-glaze:
+    linear-gradient(112deg, transparent 0% 62%, color-mix(in srgb, var(--card-solid) 82%, #b9edf1) 62.3%, transparent 69%),
+    linear-gradient(180deg, color-mix(in srgb, var(--card-solid) 82%, #dbe6eb) 0%, var(--card-solid) 20px, var(--card-solid) 48%, color-mix(in srgb, var(--card-solid) 91%, #bfd9df) 100%);
+  --porcelain-shadow:
+    inset 0 2px 1px color-mix(in srgb, var(--card-solid) 35%, white),
+    inset 0 -2px 3px color-mix(in srgb, var(--card-solid) 88%, var(--fg)),
+    0 2px 3px rgb(25 51 60 / 7%),
+    0 10px 26px rgb(25 51 60 / 10%);
 }
 
 /* ── Outer frame ─────────────────────────────────────────────────── */
 .adash-aero .aero-frame {
-  background:
-    linear-gradient(135deg, var(--brand-50) 0%, var(--card-solid) 50%, var(--brand-50) 100%);
+  background-color: var(--card-solid);
+  background-image: var(--porcelain-glaze);
   border-radius: 22px;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   overflow: hidden;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.5) inset,
-    0 -1px 0 var(--line) inset,
-    0 12px 36px rgba(0,0,0,0.06);
+  box-shadow: var(--porcelain-shadow);
   position: relative;
   isolation: isolate;
   min-width: 0;
 }
 .adash-aero .aero-frame::before {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(800px 500px at 25% 10%, rgba(255,255,255,0.5), transparent 60%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 20%), transparent 12px);
   pointer-events: none; z-index: 0;
 }
 .adash-aero .aero-frame > * { position: relative; z-index: 1; }
@@ -746,16 +751,28 @@ const AERO_CSS = `
 @media (max-width: 900px) { .adash-aero .sr-body { grid-template-columns: 1fr; } }
 
 .adash-aero .aero-card {
-  background: var(--card-solid);
-  border: 1px solid var(--line);
+  background-color: var(--card-solid);
+  background-image: var(--porcelain-glaze);
+  border: 1px solid transparent;
   border-radius: 14px;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.5) inset,
-    0 -1px 0 var(--line) inset,
-    0 6px 18px rgba(0,0,0,0.05);
+  box-shadow: var(--porcelain-shadow);
   padding: 18px 22px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+}
+/* A framed panel is one glazed surface, not two stacked cards. */
+.adash-aero .aero-frame > .aero-card {
+  background: transparent;
+  border-color: transparent;
+  border-radius: inherit;
+  box-shadow: none;
+}
+@media (forced-colors: active) {
+  .adash-aero .aero-frame, .adash-aero .aero-card {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+    box-shadow: none;
+  }
+  .adash-aero .aero-frame::before { display: none; }
 }
 .adash-aero .aero-h {
   font-size: 14px; font-weight: 700; margin: 0 0 4px;
