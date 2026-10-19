@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import type { MonitorSession } from "@/lib/training-week/capacity";
 import { WorkshopRegistrationSummary } from "./WorkshopRegistrationSummary";
 import { ArrowRight } from "lucide-react";
+import { CapacityBarMarkers } from "./CapacityBarMarkers";
 
 export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
@@ -57,7 +58,8 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 {controls && controls(s)}
               </div>
               <div className="mt-2 grid min-w-0 gap-x-6 gap-y-2 md:grid-cols-2 md:items-center">
-              <div className="min-w-0 space-y-2 text-[11px] leading-snug tabular-nums" role="group" aria-label={detail}>
+              <div className="capacity-bar-column min-w-0 space-y-2 text-[11px] leading-snug tabular-nums" role="group" aria-label={detail}>
+                <div>
                 <div className="relative overflow-hidden pb-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-fg">
                     <span>Requests: <strong>{c.requested}/{c.capacity}</strong> requested / capacity</span>
@@ -69,6 +71,12 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                     <div className="absolute inset-y-0 -translate-x-full border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} />
                   </div>
                 </div>
+                <CapacityBarMarkers scale={scale} markers={[
+                  { value: c.capacity, label: `${c.capacity} capacity` },
+                  { value: c.requested, label: `${c.requested} requested` },
+                ]} />
+                </div>
+                <div>
                 <div className="relative overflow-hidden pb-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-fg">
                     <span>Seat plan: <strong>{c.confirmed}</strong> actual approved + <strong>{c.suggested}</strong> recommended approval</span>
@@ -80,6 +88,11 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                     <div className="absolute inset-y-0 left-0 bg-teal-700" style={{ width: pct(approvedWidth) }} title={`${c.confirmed} actual approved`} />
                     <div className="absolute inset-y-0 -translate-x-full border-l-2 border-dashed border-fg" style={{ left: pct(c.capacity) }} title={`${c.capacity} capacity`} />
                   </div>
+                </div>
+                <CapacityBarMarkers scale={scale} markers={[
+                  { value: approvedWidth, label: c.confirmed > c.capacity ? `${approvedWidth} shown (${c.confirmed} approved)` : `${c.confirmed} approved` },
+                  ...(suggestedWidth > 0 ? [{ value: approvedWidth + suggestedWidth, label: `${approvedWidth + suggestedWidth} plan (+${suggestedWidth} recommended)` }] : []),
+                ]} />
                 </div>
               </div>
               <WorkshopRegistrationSummary cap={c} compact />

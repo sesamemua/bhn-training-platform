@@ -8,6 +8,44 @@
   box-shadow: 0 3px 0 rgb(0 0 0 / 7%);
 }
 .training-capacity-row > div { position: relative; z-index: 1; }
+.capacity-bar-column { container-type: inline-size; }
+.capacity-bar-markers {
+  position: relative;
+  height: 18px;
+  container-type: inline-size;
+  color: var(--fg-muted);
+  font-size: 10px;
+  line-height: 12px;
+}
+.capacity-bar-markers-staggered { height: 34px; }
+.capacity-bar-marker { position: absolute; top: 0; width: 0; }
+.capacity-bar-tick {
+  position: absolute;
+  top: -10px;
+  left: -1px;
+  width: 1px;
+  height: 12px;
+  background: var(--fg);
+}
+.capacity-bar-label {
+  position: absolute;
+  top: 3px;
+  width: max-content;
+  max-width: min(190px, 60cqw);
+  overflow-wrap: anywhere;
+}
+.capacity-bar-label[data-align="start"] { left: 0; text-align: left; }
+.capacity-bar-label[data-align="center"] { left: 0; transform: translateX(-50%); text-align: center; }
+.capacity-bar-label[data-align="end"] { right: 0; text-align: right; }
+.capacity-bar-label[data-lane="1"] { top: 19px; }
+@container (max-width: 320px) {
+  .capacity-bar-markers { height: 28px; }
+  .capacity-bar-markers-staggered { height: 44px; }
+}
+@media (forced-colors: active) {
+  .capacity-bar-markers { color: CanvasText; }
+  .capacity-bar-tick { background: CanvasText; }
+}
 .training-workshop-circuit {
   position: absolute;
   inset: 0;
