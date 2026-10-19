@@ -7,7 +7,6 @@ import type { ReactNode } from "react";
 import type { MonitorSession } from "@/lib/training-week/capacity";
 import { WorkshopRegistrationSummary } from "./WorkshopRegistrationSummary";
 import { ArrowRight } from "lucide-react";
-import { WorkshopCircuit } from "./WorkshopCircuit";
 
 export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
@@ -45,7 +44,6 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
           const detail = `${c.projectedApproved} projected approvals: ${c.confirmed} actual approved + ${c.suggested} recommended approval; ${c.projectedWaitlisted} projected waitlist; ${c.requested} requests; ${c.capacity} seats; ${excess} requests over capacity`;
           return (
             <li key={s.id} className="training-capacity-row px-3 py-2 odd:bg-elevated/70 even:bg-elevated/20">
-              <WorkshopCircuit seed={s.id} />
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12px] leading-tight">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                 <a href={`/admin/workspace/training-admin?tab=registrants&workshop=${encodeURIComponent(s.id)}`}

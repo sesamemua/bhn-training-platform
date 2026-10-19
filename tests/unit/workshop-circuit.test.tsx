@@ -6,6 +6,18 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { WorkshopCircuit } from "../../src/components/training-week/WorkshopCircuit";
 import { WorkshopRegistrationSummary } from "../../src/components/training-week/WorkshopRegistrationSummary";
 import { sessionCapacity } from "../../src/lib/training-week/capacity";
+import { CapacityMonitor } from "../../src/components/training-week/CapacityMonitor";
+
+test("shared workshop dashboard omits circuit decoration while retaining neon titles and seat statistics", () => {
+  const cap = sessionCapacity(30, [{ status: "confirmed" }, { status: "pending" }]);
+  const html = renderToStaticMarkup(createElement(CapacityMonitor, {
+    sessions: [{ id: "workshop-1", slug: "workshop", title: "Workshop", start: "2026-10-26T13:00:00Z", cap }],
+  }));
+  assert.doesNotMatch(html, /training-workshop-circuit|training-circuit-power/);
+  assert.match(html, /training-workshop-title/);
+  assert.match(html, /training-seat-approved/);
+  assert.match(html, /requested \/ capacity/);
+});
 
 test("the approved LED retains large-text contrast at its dimmest point over a white surface", () => {
   const css = readFileSync(new URL("../../src/app/globals.css", import.meta.url), "utf8");
