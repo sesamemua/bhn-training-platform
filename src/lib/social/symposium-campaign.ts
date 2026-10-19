@@ -1,5 +1,6 @@
 import { OCTOBER_PROMOTIONS } from "./october-promotions";
 import { SYMPOSIUM_PANEL_POSTS } from "./symposium-panel-posts";
+import { SYMPOSIUM_NETWORKING_POSTS } from "./symposium-networking-posts";
 
 interface CampaignPost {
   slug: string;
@@ -16,6 +17,7 @@ interface CampaignPost {
 export const SYMPOSIUM_CAMPAIGN_PLAN: readonly CampaignPost[] = [
   ...OCTOBER_PROMOTIONS,
   ...SYMPOSIUM_PANEL_POSTS,
+  ...SYMPOSIUM_NETWORKING_POSTS,
   {
     slug: "symposium-2026-ai-panel-oct21",
     title: "2026 Symposium | AI and the future workforce",

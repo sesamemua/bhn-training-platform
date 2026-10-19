@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DEFAULT_SOCIAL_ORDER, SocialOrderSchema, moveSocialPost, readSocialOrder, sortSocialPosts } from "../../src/lib/social/order";
 import { SYMPOSIUM_PANEL_POSTS } from "../../src/lib/social/symposium-panel-posts";
+import { SYMPOSIUM_NETWORKING_POSTS } from "../../src/lib/social/symposium-networking-posts";
 import { SYMPOSIUM_CAMPAIGN_PLAN } from "../../src/lib/social/symposium-campaign";
 import { SocialQueue, type QueuePost } from "../../src/components/workspace/SocialQueue";
 
@@ -22,8 +23,8 @@ test("default order follows the symposium agenda first, then Training Week days,
   assert.match(sorted[2].cycleLabel, /Panel 1/);
   assert.match(sorted[3].cycleLabel, /Panel 2/);
   assert.match(sorted[5].cycleLabel, /Panel 3/);
-  assert.ok(sorted.slice(0, 7).every((post) => post.cycleLabel.startsWith("2026 Symposium")));
-  assert.ok(sorted.slice(7).every((post) => post.cycleLabel.startsWith("Training Week")));
+  assert.ok(sorted.slice(0, 11).every((post) => post.cycleLabel.startsWith("2026 Symposium")));
+  assert.ok(sorted.slice(11).every((post) => post.cycleLabel.startsWith("Training Week")));
   assert.deepEqual(posts.map((post) => post.scheduledFor), SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.suggestedDate));
 });
 
@@ -59,7 +60,7 @@ test("table, full cards and series review use the same shared order with accessi
 });
 
 test("new panel drafts are inserted without discarding colleagues' saved order", () => {
-  const added = new Set(SYMPOSIUM_PANEL_POSTS.map(p => p.slug));
+  const added = new Set([...SYMPOSIUM_PANEL_POSTS, ...SYMPOSIUM_NETWORKING_POSTS].map(p => p.slug));
   const legacy = DEFAULT_SOCIAL_ORDER.filter(slug => !added.has(slug)).reverse();
   const migrated = readSocialOrder(legacy);
   assert.deepEqual(migrated.filter(slug => !added.has(slug)), legacy);

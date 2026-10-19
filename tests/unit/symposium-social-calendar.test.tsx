@@ -15,7 +15,7 @@ import { SYMPOSIUM_PANEL_POSTS } from "../../src/lib/social/symposium-panel-post
 test("campaign covers every weekday through the symposium, without individual speaker spotlights except Chris", () => {
   const dates = [...new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.suggestedDate.slice(0, 10)))].sort();
   assert.deepEqual(dates, ["2026-10-14", "2026-10-15", "2026-10-16", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"]);
-  assert.equal(new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.slug)).size, 15);
+  assert.equal(new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.slug)).size, 19);
   for (const post of SYMPOSIUM_CAMPAIGN_PLAN) {
     const body = withSocialTags(post.body);
     assert.ok(body.length < 2000);
@@ -139,9 +139,9 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   assert.match(html, /A colleague&#x27;s edited keynote post/);
   assert.match(html, /src="https:\/\/images.example\/chris.png"/);
   assert.match(html, /Awaiting event photos/);
-  assert.equal(creations, 15);
+  assert.equal(creations, 19);
   await render();
-  assert.equal(creations, 15, "revisiting must not duplicate or overwrite drafts");
+  assert.equal(creations, 19, "revisiting must not duplicate or overwrite drafts");
   assert.equal(saved.get(existingKey), existing);
   for (const post of SYMPOSIUM_CAMPAIGN_PLAN.slice(1, 8)) {
     saved.get(`events:event:${post.slug}:0`)!.assetUrl = "https://images.example/campaign.png";
