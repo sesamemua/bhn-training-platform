@@ -14,7 +14,8 @@ import { getNewsletterConfig, isApprover } from "@/lib/newsletter/config";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
-import { NewsletterReviewClient } from "@/components/workspace/NewsletterReviewClient";
+import { NewsletterReviewClient, SignOff } from "@/components/workspace/NewsletterReviewClient";
+import { NewsletterPageReview } from "@/components/workspace/NewsletterPageReview";
 import { PastedNewsletterReview } from "@/components/workspace/PastedNewsletterReview";
 import { renderIssue } from "@/lib/newsletter/render";
 import {
@@ -71,7 +72,7 @@ export default async function NewsletterReviewPage() {
         </>
       }
       title="Newsletter review"
-      description="Click any part of the issue to pin a note to it. Notes stay attached to their piece even after the layout is regenerated."
+      description="One shared review per issue, with revision rounds and threaded feedback."
     />
   );
 
@@ -123,31 +124,48 @@ export default async function NewsletterReviewPage() {
     orderBy: { createdAt: "asc" },
   });
 
+  const review = await prisma.pageReview.findUnique({
+    where: { id: `newsletter-${issue.id}` },
+    select: { id: true, round: true, status: true, _count: { select: { comments: { where: { status: "open", parentId: null } } } } },
+  });
+  const role = (session.user as { role?: string }).role;
+  const signOff = {
+    cycleId: resolved.cycleId,
+    sendDate: resolved.sendDate,
+    approvedAt: resolved.approvedAt ? resolved.approvedAt.toISOString() : null,
+    approvedByName: resolved.approvedByName,
+    viewerIsApprover: isApprover(config, (session.user as { email?: string }).email),
+    approverName: config.approver.name,
+  };
+
   return (
     <div className="space-y-6">
       {hero}
       <NewsletterNav />
+      {unrendered > 0 && <p className="text-sm text-muted">{unrendered} contributions still need layout in Compose.</p>}
+      <NewsletterPageReview
+        issueId={issue.id}
+        html={html}
+        initialReview={review ? { id: review.id, round: review.round, status: review.status } : null}
+        canEdit={role === "admin" || role === "superadmin"}
+      />
+      <SignOff signOff={signOff} openCount={(review?._count.comments ?? 0) + comments.filter((comment) => comment.status === "open").length} />
+      {comments.length > 0 && <details>
+        <summary className="cursor-pointer text-sm font-semibold text-muted">Earlier newsletter notes ({comments.length})</summary>
       <NewsletterReviewClient
         issueId={issue.id}
         issueTitle={issue.title}
         initialHtml={html}
         initialComments={JSON.parse(JSON.stringify(comments))}
         unrendered={unrendered}
-        signOff={{
-          cycleId: resolved.cycleId,
-          sendDate: resolved.sendDate,
-          approvedAt: resolved.approvedAt ? resolved.approvedAt.toISOString() : null,
-          approvedByName: resolved.approvedByName,
-          viewerIsApprover: isApprover(config, (session.user as { email?: string }).email),
-          approverName: config.approver.name,
-        }}
+        signOff={signOff}
+        hideSignOff
       />
-      {/* The second review surface: the HTML that comes back OUT of
-          Mailchimp, rendered and commentable in its own right. It
-          replaced a read-only preview that could not be commented on —
-          allow-same-origin without allow-scripts turned out to give a
-          click layer without letting the paste execute. */}
-      <PastedNewsletterReview initial={pastedReview} />
+      </details>}
+      {pastedReview && <details>
+        <summary className="cursor-pointer text-sm font-semibold text-muted">Earlier pasted review</summary>
+        <PastedNewsletterReview initial={pastedReview} />
+      </details>}
     </div>
   );
 }

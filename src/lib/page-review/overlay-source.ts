@@ -6,13 +6,20 @@ export function overlaySource(endpoint: string, title: string): string {
 
   var script = document.currentScript;
   var credential = script && script.dataset ? (script.dataset.viewer || "") : "";
+  var endpoint = ${JSON.stringify(endpoint)};
+  // Pasted documents load this overlay directly, without the website loader.
+  if (!credential) {
+    var fragment = new URLSearchParams(window.location.hash.slice(1));
+    if (fragment.get("bhn-review") === endpoint.split("/").pop()) {
+      credential = fragment.get("bhn-reviewer") || "";
+    }
+  }
   // Somebody who arrived on a share link has no credential in the tag.
   // They can earn one by giving a name — see joinAsGuest below. Kept in
   // sessionStorage so a reload does not ask again in the same sitting.
   try {
     if (!credential) credential = sessionStorage.getItem("bhn-review-viewer:" + endpointKey()) || "";
   } catch (e) { /* storage can be blocked; joining still works. */ }
-  var endpoint = ${JSON.stringify(endpoint)};
   var initialTitle = ${JSON.stringify(title)};
   var state = {
     review: { title: initialTitle, round: 1, status: "open" },

@@ -55,12 +55,14 @@ export function NewsletterReviewClient({
   initialComments,
   unrendered,
   signOff,
+  hideSignOff = false,
 }: {
   issueId: string;
   issueTitle: string;
   initialHtml: string;
   initialComments: Comment[];
   unrendered: number;
+  hideSignOff?: boolean;
   /**
    * The sign-off, shown here because this is where the approval email
    * sends people — it said "read it through and press Approve" while the
@@ -375,7 +377,7 @@ export function NewsletterReviewClient({
           </ul>
         )}
 
-        <SignOff signOff={signOff} openCount={open.length} />
+        {!hideSignOff && <SignOff signOff={signOff} openCount={open.length} />}
       </aside>
     </div>
   );
@@ -385,7 +387,7 @@ export function NewsletterReviewClient({
  * The approver's whole job, in one place: how much is still unresolved,
  * when it sends, and one button.
  */
-function SignOff({
+export function SignOff({
   signOff,
   openCount,
 }: {
