@@ -9,6 +9,18 @@ import { isValidThemeId } from "../../src/lib/themes/constants";
 const ids = ["cubist", "infinitydots"] as const;
 const css = readFileSync("src/app/artist-themes.css", "utf8");
 
+test("both themes use local, inert artwork while retaining opaque reading surfaces", () => {
+  for (const name of ["cubist-planes", "infinity-dots"]) {
+    const art = readFileSync(`public/themes/${name}.svg`, "utf8");
+    assert.match(css, new RegExp(`/themes/${name}\\.svg`));
+    assert.match(art, /viewBox="0 0 256/);
+    assert.doesNotMatch(art, /<script|<foreignObject|<image|href=|onload=|<animate/i);
+  }
+  assert.match(css, /Opaque islands/);
+  assert.match(css, /@media \(max-width: 900px\)/);
+  assert.match(css, /clip-path: none/);
+});
+
 test("both original themes are permanent selectable flavours and accepted by server validation", () => {
   for (const id of ids) {
     const entry = THEMES.find((theme) => theme.id === id)!;

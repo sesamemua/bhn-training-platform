@@ -26,6 +26,7 @@
   --popover-shadow: 0 12px 30px rgb(16 28 53 / 18%);
 }
 [data-theme="cubist"] {
+  --theme-art: url("/themes/cubist-planes.svg");
   --brand-50: #e8effc;
   --brand-100: #d0def7;
   --brand-200: #a5c1ef;
@@ -47,6 +48,7 @@
   --hero-mesh-4: #815900;
 }
 [data-theme="infinitydots"] {
+  --theme-art: url("/themes/infinity-dots.svg");
   --bg: #f4f4f4;
   --elevated: #ededed;
   --raised: #dedede;
@@ -78,10 +80,8 @@
 
 [data-theme="cubist"] nav[aria-label="Main navigation"] {
   background-color: #ffffff;
-  background-image: conic-gradient(from 45deg at 100% 100%, #1453ab 0deg 45deg, #e3a719 45deg 90deg, #b83117 90deg 135deg, transparent 135deg);
-  background-size: 100% 180px;
-  background-repeat: no-repeat;
-  background-position: bottom;
+  background-image: var(--theme-art);
+  background-size: 256px 600px;
   backdrop-filter: none;
 }
 [data-theme="cubist"] [data-sidebar-nav-href] { border-radius: 3px; background-color: #ffffff; }
@@ -92,15 +92,14 @@
 }
 [data-theme="infinitydots"] nav[aria-label="Main navigation"] {
   background-color: #ffffff;
-  background-image: radial-gradient(circle, #151515 0 2.5px, transparent 3px), radial-gradient(circle, #151515 0 1.5px, transparent 2px);
-  background-size: 22px 22px, 22px 22px;
-  background-position: 0 0, 11px 11px;
+  background-image: var(--theme-art);
+  background-size: 256px 400px;
   backdrop-filter: none;
 }
-/* Solid islands keep dots away from navigation names, section labels and search. */
-[data-theme="infinitydots"] nav[aria-label="Main navigation"] > div,
-[data-theme="infinitydots"] [data-sidebar-nav] button,
-[data-theme="infinitydots"] [data-sidebar-nav-href] { background-color: #ffffff; }
+/* Opaque islands keep both art patterns away from navigation text. */
+:is([data-theme="cubist"], [data-theme="infinitydots"]) nav[aria-label="Main navigation"] > div,
+:is([data-theme="cubist"], [data-theme="infinitydots"]) [data-sidebar-nav] button,
+:is([data-theme="cubist"], [data-theme="infinitydots"]) [data-sidebar-nav-href] { background-color: #ffffff; }
 [data-theme="infinitydots"] [data-sidebar-nav-href] { border-radius: 18px; }
 [data-theme="infinitydots"] [data-sidebar-nav-href][aria-current="page"] {
   background-color: #bd1733;
@@ -108,6 +107,56 @@
   box-shadow: 0 2px 5px rgb(21 21 21 / 16%);
 }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) [data-sidebar-nav-href][aria-current="page"] svg { color: #ffffff; }
+
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .dashboard-layout {
+  background-image: linear-gradient(rgb(255 255 255 / 94%), rgb(255 255 255 / 94%)), var(--theme-art);
+  background-size: auto, 512px auto;
+}
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover-wrap {
+  background-image: var(--theme-art);
+  background-size: 256px auto;
+  gap: 10px;
+}
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover {
+  background: #ffffff;
+  margin: 12px 0 12px 12px;
+}
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .toc {
+  background: #ffffff;
+  margin: 12px 12px 12px 0;
+  border: 0;
+}
+[data-theme="cubist"] .adash-aero .cover { clip-path: polygon(0 0, 96% 0, 100% 36%, 97% 100%, 0 100%); }
+[data-theme="cubist"] .adash-aero .toc { clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%, 0 38%); }
+[data-theme="infinitydots"] .adash-aero :is(.cover, .toc) { border-radius: 18px; }
+/* A narrow art edge repeats the visual language without sitting under data. */
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .aero-frame::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 6px;
+  background-image: var(--theme-art);
+  background-size: 256px auto;
+  pointer-events: none;
+}
+[data-theme="cubist"] .adash-aero .aero-frame:nth-child(2n)::after { background-position: 80px 190px; }
+[data-theme="infinitydots"] .adash-aero .aero-frame:nth-child(2n)::after { background-position: 45px 90px; }
+[data-theme="cubist"] .training-capacity-row {
+  box-shadow: inset 4px 0 #1453ab;
+  background-image: linear-gradient(116deg, transparent 97%, #d5dfeb 97%);
+}
+[data-theme="cubist"] .training-capacity-row:nth-child(3n + 2) { box-shadow: inset 4px 0 #b83117; }
+[data-theme="cubist"] .training-capacity-row:nth-child(3n) { box-shadow: inset 4px 0 #e3a719; }
+[data-theme="infinitydots"] .training-capacity-row {
+  background-image: radial-gradient(circle at 4px 12px, #151515 2px, transparent 2.5px);
+  background-size: 8px 18px;
+  background-repeat: repeat-y;
+  box-shadow: inset 1px 0 #d6d6d6;
+}
+@media (max-width: 900px) {
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover { margin: 10px 10px 0; clip-path: none; }
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .toc { margin: 0 10px 10px; clip-path: none; }
+}
 
 [data-theme="cubist"] .adash-aero {
   --porcelain-glaze: linear-gradient(135deg, transparent 0% 94%, #e8effc 94% 97%, #fff5d9 97% 98.5%, #fce9e5 98.5%), linear-gradient(180deg, #f0f3f8, #ffffff 18px, #ffffff 90%, #edf0f3);
@@ -140,6 +189,10 @@
 [data-theme="cubist"] .bg-sky-500 { background-color: #1453ab; }
 
 @media (forced-colors: active) {
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .dashboard-layout,
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover-wrap,
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-capacity-row { background-image: none; box-shadow: none; }
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .aero-frame::after { display: none; }
   :is([data-theme="cubist"], [data-theme="infinitydots"]) nav[aria-label="Main navigation"],
   :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well { background: Canvas; color: CanvasText; }
   :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well :is(dt, dd) { color: CanvasText; }
