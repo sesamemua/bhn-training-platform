@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Code2, Copy, ExternalLink, Loader2, MessageSquareText, Save } from "lucide-react";
+import { NewsletterReviewInvite } from "./NewsletterReviewInvite";
 
 interface Review { id: string; round: number; status: string }
 
@@ -35,7 +36,7 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
   async function copy(kind: "link" | "code") {
     if (kind === "link" && !launch) return;
     try {
-      await navigator.clipboard.writeText(kind === "code" ? code : new URL(launch!, window.location.origin).href);
+      await navigator.clipboard.writeText(kind === "code" ? code : new URL(`/admin/workspace/marketing/newsletter/review?issue=${encodeURIComponent(issueId)}`, window.location.origin).href);
       setCopied(kind); window.setTimeout(() => setCopied(null), 2000);
     } catch { setError(kind === "code" ? "Could not copy the code. Open View code to select it." : "Could not copy the link. Use Open full-page review instead."); }
   }
@@ -49,6 +50,7 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
         <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
       </>}
     </div>
+    {review && review.status !== "closed" && <NewsletterReviewInvite issueId={issueId} />}
     {canEdit && review?.status !== "closed" && <div className="flex flex-wrap items-start gap-2">
       <label className="flex items-center gap-2 text-xs text-muted">Revision source
         <select value={source} onChange={(event) => setSource(event.target.value as "issue" | "paste")} className="rounded-md border border-line bg-card p-2 text-fg">

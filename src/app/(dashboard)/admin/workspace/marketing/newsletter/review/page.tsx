@@ -4,7 +4,7 @@
  * Launches the saved issue in the shared full-page reviewer. Live pieces
  * remain available as a revision source; earlier feedback stays accessible.
  */
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Mail } from "lucide-react";
 import { requireRole, deniedRedirect } from "@/lib/auth";
 import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
@@ -26,9 +26,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function NewsletterReviewPage() {
+export default async function NewsletterReviewPage({ searchParams }: { searchParams: Promise<{ issue?: string | string[] }> }) {
+  const query = await searchParams;
+  const requestedIssue = typeof query.issue === "string" && query.issue.trim() ? query.issue : null;
   const session = await requireRole("instructor").catch(() => null);
-  if (!session) redirect(await deniedRedirect("/admin/workspace/marketing/newsletter/review"));
+  if (!session) redirect(await deniedRedirect(`/admin/workspace/marketing/newsletter/review${requestedIssue ? `?issue=${encodeURIComponent(requestedIssue)}` : ""}`));
 
   // The most recently touched paste, so the section reopens on what
   // somebody was last reviewing rather than an empty box.
@@ -54,13 +56,15 @@ export default async function NewsletterReviewPage() {
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
   const [resolved, config] = await Promise.all([
-    resolveCurrentIssue(today),
+    requestedIssue ? Promise.resolve(null) : resolveCurrentIssue(today),
     getNewsletterConfig(),
   ]);
   const issue = await prisma.newsletterIssue.findUnique({
-    where: { id: resolved.issueId },
+    where: { id: requestedIssue ?? resolved!.issueId },
     include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
   });
+  if (requestedIssue && !issue) notFound();
+  const selectedCycle = requestedIssue ? await prisma.newsletterCycle.findFirst({ where: { issueId: requestedIssue } }) : null;
 
   const hero = (
     <PageHero
@@ -70,7 +74,7 @@ export default async function NewsletterReviewPage() {
         </>
       }
       title="Newsletter review"
-      description="One shared review per issue, with revision rounds and threaded feedback."
+      description={issue?.title ?? "One shared review per issue, with revision rounds and threaded feedback."}
     />
   );
 
@@ -110,7 +114,7 @@ export default async function NewsletterReviewPage() {
     idsBySection[p.section].push(p.id);
   }
 
-  const html = renderIssue({
+  const html = (issue.status === "sent" ? issue.renderedHtml : null) ?? renderIssue({
     dateline: issue.dateline,
     preheader: issue.preheader,
     bySection,
@@ -128,10 +132,10 @@ export default async function NewsletterReviewPage() {
   });
   const role = (session.user as { role?: string }).role;
   const signOff = {
-    cycleId: resolved.cycleId,
-    sendDate: resolved.sendDate,
-    approvedAt: resolved.approvedAt ? resolved.approvedAt.toISOString() : null,
-    approvedByName: resolved.approvedByName,
+    cycleId: selectedCycle?.id ?? resolved?.cycleId ?? null,
+    sendDate: selectedCycle?.sendDate ?? resolved?.sendDate ?? null,
+    approvedAt: (selectedCycle?.approvedAt ?? resolved?.approvedAt)?.toISOString() ?? null,
+    approvedByName: selectedCycle?.approvedByName ?? resolved?.approvedByName ?? null,
     viewerIsApprover: isApprover(config, (session.user as { email?: string }).email),
     approverName: config.approver.name,
   };
@@ -142,6 +146,7 @@ export default async function NewsletterReviewPage() {
       <NewsletterNav />
       {unrendered > 0 && <p className="text-sm text-muted">{unrendered} contributions still need layout in Compose.</p>}
       <NewsletterPageReview
+        key={issue.id}
         issueId={issue.id}
         html={html}
         initialReview={review ? { id: review.id, round: review.round, status: review.status } : null}

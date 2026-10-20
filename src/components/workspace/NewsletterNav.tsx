@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, MessageSquareText, PenLine } from "lucide-react";
+import { Archive, CalendarDays, MessageSquareText, PenLine } from "lucide-react";
 
 const BASE = "/admin/workspace/marketing/newsletter";
 
@@ -15,12 +15,13 @@ const TABS = [
   { key: "compose", label: "Compose", href: BASE, icon: PenLine },
   { key: "calendar", label: "Calendar", href: `${BASE}/calendar`, icon: CalendarDays },
   { key: "review", label: "Review", href: `${BASE}/review`, icon: MessageSquareText },
+  { key: "past", label: "Past issues", href: `${BASE}/past`, icon: Archive },
 ] as const;
 
 export function NewsletterNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex w-fit items-center gap-6 border-b border-line">
+    <nav aria-label="Newsletter" className="flex w-fit max-w-full flex-wrap items-center gap-x-5 gap-y-3 border-b border-line">
       {TABS.map((t) => {
         // Compose owns the bare base path only — otherwise it would light
         // up on every child route.
@@ -30,6 +31,7 @@ export function NewsletterNav() {
           <Link
             key={t.key}
             href={t.href}
+            aria-current={active ? "page" : undefined}
             className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-0.5 pb-2 text-[13px] font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500/50 ${
               active
                 ? "border-brand-400 text-fg"
