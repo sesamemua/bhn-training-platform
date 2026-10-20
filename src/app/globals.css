@@ -4734,15 +4734,14 @@ h1, h2, h3 {
 /* Daydream alone gets a glossy porcelain finish; dark themes keep their satin. */
 [data-theme="light"] {
   --daydream-glaze:
-    linear-gradient(112deg, transparent 0% 47%, rgb(255 255 255 / 90%) 48%, rgb(255 255 255 / 30%) 54%, transparent 61%),
-    linear-gradient(180deg, #ffffff 0%, #ffffff 12px, #f9fbfc 42%, #edf2f5 100%);
+    linear-gradient(112deg, transparent 0% 42%, rgb(255 255 255 / 98%) 43%, rgb(255 255 255 / 70%) 46%, rgb(255 255 255 / 8%) 53%, transparent 59%),
+    linear-gradient(180deg, #ffffff 0%, #ffffff 18%, #f2f7fa 48%, #dfeaf2 84%, #f2f7fa 100%);
   --surface-shadow:
-    inset 0 2px 1px #ffffff,
-    inset 1px 0 1px rgb(255 255 255 / 90%),
-    inset 0 -2px 3px rgb(138 157 171 / 22%),
-    0 2px 3px rgb(44 64 77 / 9%),
-    0 12px 24px rgb(44 64 77 / 11%);
-  --surface-border: 1px solid rgb(255 255 255 / 85%);
+    inset 0 1px 0 #ffffff,
+    inset 0 10px 14px rgb(255 255 255 / 65%),
+    0 8px 16px rgb(44 64 77 / 10%),
+    0 20px 38px rgb(44 64 77 / 9%);
+  --surface-border: 1px solid transparent;
 }
 [data-theme="light"] .adash-aero {
   --porcelain-glaze: var(--daydream-glaze);
@@ -4754,7 +4753,7 @@ h1, h2, h3 {
   border: var(--surface-border);
   box-shadow: var(--surface-shadow);
 }
-[data-theme="light"] .adash-aero .aero-frame::before { background: none; }
+[data-theme="light"] .adash-aero .aero-frame::before { background: none; border-radius: inherit; }
 @media (forced-colors: active) {
   [data-theme="light"] :is(.surface, section.bg-card, article.bg-card) {
     background: Canvas;

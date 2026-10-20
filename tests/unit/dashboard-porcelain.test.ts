@@ -53,6 +53,10 @@ test("Daydream alone adds a high-gloss glaze to shared cards and the dashboard",
   assert.ok(glossyRules.some((selector) => selector.includes(".surface")));
   const glaze = global.nodes.filter((node) => node.type === "rule" && node.selector === '[data-theme="light"]').at(-1)!;
   assert.match(glaze.toString(), /linear-gradient\(112deg/);
-  assert.match(glaze.toString(), /inset 0 2px 1px #ffffff/);
+  assert.match(glaze.toString(), /inset 0 1px 0 #ffffff/);
+  assert.match(glaze.toString(), /--surface-border: 1px solid transparent/);
+  assert.doesNotMatch(glaze.toString(), /inset 0 -|0 2px 3px/);
+  assert.match(glaze.toString(), /255 255 255 \/ 98%/);
+  assert.match(readFileSync("src/app/globals.css", "utf8"), /\[data-theme="light"\] \.adash-aero \.aero-frame::before \{ background: none; border-radius: inherit; \}/);
   assert.doesNotMatch(glaze.toString(), /animation|filter:|url\(/);
 });
