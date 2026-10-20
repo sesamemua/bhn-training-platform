@@ -38,6 +38,18 @@ export const THEMES = [
 
   // Flavours — sensory / atmospheric themes.
   {
+    id: "cubist",
+    name: "Cubist Porcelain",
+    description: "Glazed white planes, cobalt geometry and vermilion accents with crisp architectural edges.",
+    category: "flavour",
+  },
+  {
+    id: "infinitydots",
+    name: "Infinity Dots",
+    description: "Glossy white, black dot rhythms and vivid red accents, with clear, quiet working surfaces.",
+    category: "flavour",
+  },
+  {
     id: "icecream",
     name: "Summer Ice Cream",
     description: "Pastel scoops on vanilla — the parlor counter on a hot afternoon. Work shouldn't always look like work.",

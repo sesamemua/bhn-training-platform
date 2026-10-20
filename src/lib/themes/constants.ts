@@ -16,6 +16,8 @@ export const VALID_THEME_IDS = [
   "mist",
   "hitech",
   // Flavours
+  "cubist",
+  "infinitydots",
   "coldbrew",
   "icecream",
   "dryice",

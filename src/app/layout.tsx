@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import "./seasonal-themes.css";
+import "./artist-themes.css";
 import { Providers } from "./providers";
 import { ThemeScript } from "@/components/ui/ThemeProvider";
 import { I18nScript } from "@/lib/i18n/I18nProvider";

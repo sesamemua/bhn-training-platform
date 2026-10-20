@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 // extracted because the picker's Swatch is private to that file.
 // If a third surface needs swatches, hoist to a shared module.
 const SWATCH: Record<ThemeId, [string, string, string]> = {
+  cubist:     ["#ffffff", "#1453ab", "#b83117"],
+  infinitydots: ["#ffffff", "#bd1733", "#151515"],
   light:      ["#ffffff", "#3b6cef", "#0b1b3b"],
   rosalind:   ["#fbf6ec", "#485940", "#a8625a"],
   hitech:     ["#06121f", "#00d4ff", "#e3f7ff"],

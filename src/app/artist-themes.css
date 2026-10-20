@@ -1,0 +1,147 @@
+/* Original geometric and optical themes. Patterns stay outside working content. */
+[data-theme="cubist"], [data-theme="infinitydots"] {
+  color-scheme: light;
+  --bg: #f0f1f3;
+  --bg-mesh: none;
+  --card: #ffffff;
+  --card-solid: #ffffff;
+  --popover-bg: #ffffff;
+  --elevated: #e9edf1;
+  --raised: #dce2e8;
+  --fg: #101c35;
+  --fg-muted: #485363;
+  --fg-subtle: #505b68;
+  --line: #d2d9e0;
+  --line-strong: #8a97a5;
+  --backdrop: rgb(16 28 53 / 45%);
+  --font-sans-theme: var(--font-geist-sans), Arial, sans-serif;
+  --font-display-theme: var(--font-sans-theme);
+  --heading-tracking: 0;
+  --heading-weight: 750;
+  --heading-transform: none;
+  --heading-style: normal;
+  --body-features: "ss01", "cv11";
+  --surface-shadow: inset 0 1px 0 white, 0 3px 8px rgb(16 28 53 / 8%);
+  --surface-border: 1px solid var(--line);
+  --popover-shadow: 0 12px 30px rgb(16 28 53 / 18%);
+}
+[data-theme="cubist"] {
+  --brand-50: #e8effc;
+  --brand-100: #d0def7;
+  --brand-200: #a5c1ef;
+  --brand-300: #76a0e1;
+  --brand-400: #467ccc;
+  --brand-500: #2866be;
+  --brand-600: #1453ab;
+  --brand-700: #104187;
+  --brand-800: #10346a;
+  --brand-900: #0b254d;
+  --radius-sm: 3px;
+  --radius: 4px;
+  --radius-lg: 5px;
+  --radius-xl: 8px;
+  --hero-bg: #12386d;
+  --hero-mesh-1: #1453ab;
+  --hero-mesh-2: #18457d;
+  --hero-mesh-3: #b83117;
+  --hero-mesh-4: #815900;
+}
+[data-theme="infinitydots"] {
+  --bg: #f4f4f4;
+  --elevated: #ededed;
+  --raised: #dedede;
+  --fg: #151515;
+  --fg-muted: #484848;
+  --fg-subtle: #555555;
+  --line: #d6d6d6;
+  --line-strong: #909090;
+  --brand-50: #fff0f2;
+  --brand-100: #ffe0e6;
+  --brand-200: #ffbecb;
+  --brand-300: #f98ba0;
+  --brand-400: #ee5574;
+  --brand-500: #d82c4b;
+  --brand-600: #bd1733;
+  --brand-700: #98152b;
+  --brand-800: #7c1526;
+  --brand-900: #611322;
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --hero-bg: #29131a;
+  --hero-mesh-1: #641225;
+  --hero-mesh-2: #29131a;
+  --hero-mesh-3: #611322;
+  --hero-mesh-4: #151515;
+}
+
+[data-theme="cubist"] nav[aria-label="Main navigation"] {
+  background-color: #ffffff;
+  background-image: conic-gradient(from 45deg at 100% 100%, #1453ab 0deg 45deg, #e3a719 45deg 90deg, #b83117 90deg 135deg, transparent 135deg);
+  background-size: 100% 180px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  backdrop-filter: none;
+}
+[data-theme="cubist"] [data-sidebar-nav-href] { border-radius: 3px; background-color: #ffffff; }
+[data-theme="cubist"] [data-sidebar-nav-href][aria-current="page"] {
+  background: #1453ab;
+  color: #ffffff;
+  box-shadow: inset 3px 0 #e3a719;
+}
+[data-theme="infinitydots"] nav[aria-label="Main navigation"] {
+  background-color: #ffffff;
+  background-image: radial-gradient(circle, #151515 0 2.5px, transparent 3px), radial-gradient(circle, #151515 0 1.5px, transparent 2px);
+  background-size: 22px 22px, 22px 22px;
+  background-position: 0 0, 11px 11px;
+  backdrop-filter: none;
+}
+/* Solid islands keep dots away from navigation names, section labels and search. */
+[data-theme="infinitydots"] nav[aria-label="Main navigation"] > div,
+[data-theme="infinitydots"] [data-sidebar-nav] button,
+[data-theme="infinitydots"] [data-sidebar-nav-href] { background-color: #ffffff; }
+[data-theme="infinitydots"] [data-sidebar-nav-href] { border-radius: 18px; }
+[data-theme="infinitydots"] [data-sidebar-nav-href][aria-current="page"] {
+  background-color: #bd1733;
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgb(21 21 21 / 16%);
+}
+:is([data-theme="cubist"], [data-theme="infinitydots"]) [data-sidebar-nav-href][aria-current="page"] svg { color: #ffffff; }
+
+[data-theme="cubist"] .adash-aero {
+  --porcelain-glaze: linear-gradient(135deg, transparent 0% 94%, #e8effc 94% 97%, #fff5d9 97% 98.5%, #fce9e5 98.5%), linear-gradient(180deg, #f0f3f8, #ffffff 18px, #ffffff 90%, #edf0f3);
+  --porcelain-shadow: inset 0 2px 0 #ffffff, inset 0 -1px 0 #b7c3d0, 0 4px 12px rgb(16 28 53 / 9%);
+}
+[data-theme="infinitydots"] .adash-aero {
+  --porcelain-glaze: linear-gradient(112deg, transparent 70%, rgb(255 255 255 / 80%) 70.2%, transparent 77%), linear-gradient(180deg, #f0f0f0, #ffffff 20px, #ffffff 82%, #eeeeee);
+  --porcelain-shadow: inset 0 2px 0 #ffffff, inset 0 -2px 2px #d9d9d9, 0 4px 14px rgb(21 21 21 / 9%);
+}
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero :is(.aero-frame, .aero-card) { border-radius: var(--radius-lg); }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well {
+  background: linear-gradient(180deg, #ffffff, #f1f3f4);
+  color: var(--fg);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 3px rgb(21 21 21 / 12%);
+  backdrop-filter: none;
+}
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well dt { color: var(--fg-muted); }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well dd { color: var(--fg); }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-approved dd { color: #006b3c; }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-approved svg { animation: none; filter: none; }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-priority > div:last-child dd { color: #923318; }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-workshop-title {
+  color: var(--fg);
+  text-shadow: none;
+  font-weight: 750;
+}
+[data-theme="cubist"] .training-workshop-title { color: #104187; }
+[data-theme="infinitydots"] .bg-sky-500 { background-color: #45494c; }
+[data-theme="cubist"] .bg-sky-500 { background-color: #1453ab; }
+
+@media (forced-colors: active) {
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) nav[aria-label="Main navigation"],
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well { background: Canvas; color: CanvasText; }
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well :is(dt, dd) { color: CanvasText; }
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-workshop-title { color: LinkText; text-shadow: none; }
+}
