@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Code2, Copy, ExternalLink, Loader2, MessageSquareText, Save } from "lucide-react";
 import { NewsletterReviewInvite } from "./NewsletterReviewInvite";
+import { getNewsletterReviewComments } from "@/lib/newsletter/review-comments";
 
 interface Review { id: string; round: number; status: string }
 
@@ -14,7 +15,9 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
   const [paste, setPaste] = useState(initialPaste);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"link" | "code" | null>(null);
+  const [copied, setCopied] = useState<"link" | "code" | "comments" | null>(null);
+  const [copyingComments, setCopyingComments] = useState(false);
+  const [commentBrief, setCommentBrief] = useState<string | null>(null);
   const [showCode, setShowCode] = useState(false);
   const code = source === "paste" ? paste : html;
   const launch = review ? `/api/workspace/page-review/${encodeURIComponent(review.id)}/launch` : null;
@@ -41,11 +44,28 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
     } catch { setError(kind === "code" ? "Could not copy the code. Open View code to select it." : "Could not copy the link. Use Open full-page review instead."); }
   }
 
+  async function copyComments() {
+    setCopyingComments(true); setError(null); setCommentBrief(null);
+    try {
+      const result = await getNewsletterReviewComments(issueId);
+      if (!result.ok) { setError(result.error); return; }
+      setCommentBrief(result.brief);
+      try {
+        await navigator.clipboard.writeText(result.brief);
+        setCopied("comments"); window.setTimeout(() => setCopied(null), 2000);
+      } catch { setError("Could not copy automatically. Open Review comments below to select and copy the text."); }
+    } catch { setError("Could not load review comments. Please try again."); }
+    finally { setCopyingComments(false); }
+  }
+
   return <section className="min-w-0 space-y-3" aria-label="Newsletter review">
     <div className="flex flex-wrap items-center gap-3">
       <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Saved newsletter HTML version"><MessageSquareText size={16} />{review ? `Version ${review.round}` : "Newsletter review"}</h2>
+      {launch && <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>}
+      <button type="button" onClick={copyComments} disabled={copyingComments} title="Copy open review comments and replies" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50">
+        {copyingComments ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}{copied === "comments" ? "Comments copied" : "Copy review comments"}
+      </button>
       {launch && <>
-        <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>
         <button onClick={() => copy("link")} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Copy size={14} />{copied === "link" ? "Link copied" : "Copy review link"}</button>
         <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
       </>}
@@ -66,6 +86,7 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
       <button onClick={() => copy("code")} disabled={!code.trim()} className="inline-flex items-center gap-1.5 text-xs font-semibold disabled:opacity-50"><Copy size={14} />{copied === "code" ? "Code copied" : "Copy Mailchimp code"}</button>
     </div>
     {showCode && <textarea id={`newsletter-code-${issueId}`} aria-label="Mailchimp HTML" value={code} readOnly={!canEdit || source !== "paste"} onChange={(event) => setPaste(event.target.value)} rows={6} maxLength={1_000_000} spellCheck={false} className="w-full rounded-md border border-line bg-card p-3 font-mono text-xs" />}
+    {commentBrief && <details className="space-y-2"><summary className="cursor-pointer text-xs font-semibold">Review comments</summary><textarea aria-label="Review comments to copy" value={commentBrief} readOnly rows={8} spellCheck={false} className="w-full rounded-md border border-line bg-card p-3 font-mono text-xs" /></details>}
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
     {!launch && <p className="py-4 text-sm text-muted">{canEdit ? "Ready for review." : "An editor has not opened this issue for review yet."}</p>}
   </section>;
