@@ -38,6 +38,15 @@ async function main() {
     const seek = async (time: number) => chameleon.evaluate((node,time) => node.getAnimations({ subtree: true }).forEach(animation => { animation.pause(); animation.currentTime=time; }),time);
     await seek(9000);
     assert.notEqual(await chameleon.locator(".workshop-chameleon-gaze").evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)");
+    await seek(3500);
+    const nearGaze = await chameleon.locator(".workshop-chameleon-gaze").evaluate(node => getComputedStyle(node).transform);
+    const farGaze = await chameleon.locator(".workshop-chameleon-gaze-far").evaluate(node => getComputedStyle(node).transform);
+    assert.notEqual(nearGaze, farGaze, "the two eyes scan independently");
+    for (const part of ["head", "turret-near", "breathe", "tail"]) {
+      assert.notEqual(await chameleon.locator(`.workshop-chameleon-${part}`).evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)", `${part} has a subtle micro-movement`);
+    }
+    await seek(2600);
+    assert.notEqual(await chameleon.locator(".workshop-chameleon-lid-near").evaluate(node => getComputedStyle(node).transform), await chameleon.locator(".workshop-chameleon-lid-far").evaluate(node => getComputedStyle(node).transform), "lids blink separately");
     await seek(9700);
     assert.equal(await chameleon.locator(".workshop-chameleon-tongue").evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)");
     assert.equal(await chameleon.locator(".workshop-chameleon-bug").evaluate(node => getComputedStyle(node).opacity), "1");

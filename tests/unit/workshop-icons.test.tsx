@@ -43,6 +43,9 @@ test("large dashboard illustrations animate without replacing the existing small
   }
   const chameleon = renderToStaticMarkup(createElement(WorkshopIcon, { slug: "communication-chameleon-2026", size: 124, animated: true }));
   for (const part of ["skin", "eyes", "gaze", "tongue", "bug"]) assert.match(chameleon, new RegExp(`class="workshop-chameleon-${part}"`));
+  for (const part of ["head", "casque", "turret-near", "turret-far", "lid-near", "lid-far", "gaze-far", "breathe", "tail"]) {
+    assert.match(chameleon, new RegExp(`class="workshop-chameleon-${part}"`));
+  }
 });
 
 test("the rounded chameleon exports its filled silhouette in teal with a transparent eye cutout", async () => {
