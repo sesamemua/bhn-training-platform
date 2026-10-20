@@ -38,3 +38,21 @@ test("porcelain finish stays dashboard-scoped, theme-aware and free of moving or
   assert.match(css, /@media \(forced-colors: active\)/);
   assert.match(css, /background: Canvas;/);
 });
+
+test("Daydream alone adds a high-gloss glaze to shared cards and the dashboard", () => {
+  const global = postcss.parse(readFileSync("src/app/globals.css", "utf8"));
+  const glossyRules: string[] = [];
+  global.walkRules((rule) => {
+    rule.walkDecls((decl) => {
+      if (decl.prop === "--daydream-glaze" || decl.value.includes("var(--daydream-glaze)")) glossyRules.push(rule.selector);
+    });
+  });
+  assert.ok(glossyRules.length >= 3);
+  assert.ok(glossyRules.every((selector) => selector.startsWith('[data-theme="light"]')));
+  assert.ok(glossyRules.some((selector) => selector.includes(".adash-aero")));
+  assert.ok(glossyRules.some((selector) => selector.includes(".surface")));
+  const glaze = global.nodes.filter((node) => node.type === "rule" && node.selector === '[data-theme="light"]').at(-1)!;
+  assert.match(glaze.toString(), /linear-gradient\(112deg/);
+  assert.match(glaze.toString(), /inset 0 2px 1px #ffffff/);
+  assert.doesNotMatch(glaze.toString(), /animation|filter:|url\(/);
+});
