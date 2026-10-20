@@ -215,11 +215,11 @@ export async function AdminDashboard({
             <h1 className="headline">{cover.headline}</h1>
             <p className="dek">{cover.dek}</p>
             <div className="stamps">
-              <span className="pill">{totalUsers.toLocaleString()} users</span>
-              <span className="pill">{totalCourses} courses</span>
-              <span className="pill">{activePostings} postings</span>
+              <span className="pill"><span className="theme-stat-value">{totalUsers.toLocaleString()}</span> <span className="theme-stat-label">users</span></span>
+              <span className="pill"><span className="theme-stat-value">{totalCourses}</span> <span className="theme-stat-label">courses</span></span>
+              <span className="pill"><span className="theme-stat-value">{activePostings}</span> <span className="theme-stat-label">postings</span></span>
               <span className={totalPending > 0 ? "pill warn" : "pill"}>
-                {totalPending} pending
+                <span className="theme-stat-value">{totalPending}</span> <span className="theme-stat-label">pending</span>
               </span>
             </div>
             <p className="signoff">

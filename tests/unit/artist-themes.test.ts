@@ -9,21 +9,33 @@ import { isValidThemeId } from "../../src/lib/themes/constants";
 const ids = ["cubist", "infinitydots"] as const;
 const css = readFileSync("src/app/artist-themes.css", "utf8");
 
-test("inactive matrix pixels become pale on the new white panels", () => {
-  assert.match(readFileSync("src/components/training-week/WorkshopRegistrationSummary.tsx", "utf8"), /fill=\{lit === "1" \? "currentColor" : "#203a2a"\}/);
-  assert.match(css, /:is\(\[data-theme="cubist"\], \[data-theme="infinitydots"\]\) \.training-seat-approved circle\[fill="#203a2a"\] \{ fill: #dce6e0; \}/);
+test("art themes show the real approved count as text instead of industrial LED pixels", () => {
+  assert.match(readFileSync("src/components/training-week/WorkshopRegistrationSummary.tsx", "utf8"), /<span className="sr-only">\{value\}<\/span>/);
+  assert.match(css, /\.training-seat-approved svg \{ display: none;/);
+  assert.match(css, /\.training-seat-approved \.sr-only \{\s*position: static;/);
 });
 
-test("both themes use local, inert artwork while retaining opaque reading surfaces", () => {
+test("previous artwork stays inert but is no longer repeated behind the interface", () => {
   for (const name of ["cubist-planes", "infinity-dots"]) {
     const art = readFileSync(`public/themes/${name}.svg`, "utf8");
-    assert.match(css, new RegExp(`/themes/${name}\\.svg`));
     assert.match(art, /viewBox="0 0 256/);
     assert.doesNotMatch(art, /<script|<foreignObject|<image|href=|onload=|<animate/i);
   }
-  assert.match(css, /Opaque islands/);
+  assert.doesNotMatch(css, /url\(|--theme-art/);
   assert.match(css, /@media \(max-width: 900px\)/);
   assert.match(css, /clip-path: none/);
+});
+
+test("the component languages cover surfaces, commands, typography, navigation and live statistics", () => {
+  const dashboard = readFileSync("src/components/dashboards/AdminDashboard.tsx", "utf8");
+  assert.equal((dashboard.match(/className="theme-stat-value"/g) ?? []).length, 4);
+  assert.equal((dashboard.match(/className="theme-stat-label"/g) ?? []).length, 4);
+  for (const selector of [".surface", "section.bg-card", "button, a", ".toc-cta", ".training-seat-well", ".training-workshop-title", ".theme-stat-value", "[data-sidebar-nav-href]", "header.full-bleed"]) assert.ok(css.includes(selector), selector);
+  assert.match(css, /\.pill \{ border-radius: 0; box-shadow:/);
+  assert.match(css, /\.pill \{ width: 68px; min-height: 68px; border-radius: 50%;/);
+  assert.match(css, /\.aero-frame > \.aero-card \{\s*background: transparent;\s*border: 0;\s*box-shadow: none;/);
+  assert.match(css, /:focus-visible/);
+  assert.match(css, /:active/);
 });
 
 test("both original themes are permanent selectable flavours and accepted by server validation", () => {
