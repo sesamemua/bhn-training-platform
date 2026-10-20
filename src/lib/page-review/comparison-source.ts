@@ -5,11 +5,12 @@ import { createHash } from "node:crypto";
 const jsdiff = readFileSync(path.join(process.cwd(), "node_modules/diff/dist/diff.min.js"), "utf8");
 const jsdiffLicense = readFileSync(path.join(process.cwd(), "node_modules/diff/LICENSE"), "utf8");
 const sizingBridge = `(function(){
-  var key = document.currentScript.dataset.bhnKey, lastHeight = 0, pending = false;
+  var key = document.currentScript.dataset.bhnKey, lastHeight = 0, lastWidth = 0, pending = false;
   function report() {
     pending = false;
     var height = Math.ceil(Math.max(document.documentElement.scrollHeight, document.body.scrollHeight));
-    if (height !== lastHeight) { lastHeight = height; parent.postMessage({ type: "bhn-review-height", key: key, height: height }, "*"); }
+    var width = Math.ceil(Math.max(document.documentElement.scrollWidth, document.body.scrollWidth));
+    if (height !== lastHeight || width !== lastWidth) { lastHeight = height; lastWidth = width; parent.postMessage({ type: "bhn-review-height", key: key, height: height, width: width }, "*"); }
   }
   function resize() { if (!pending) { pending = true; requestAnimationFrame(report); } }
   new ResizeObserver(resize).observe(document.body);
@@ -97,6 +98,9 @@ export function comparisonSource(): string {
       var policy = doc.createElement("meta"); policy.httpEquiv = "Content-Security-Policy";
       policy.content = "default-src 'none'; script-src 'sha256-${bridgeHash}'; script-src-attr 'none'; style-src 'unsafe-inline' https:; img-src https: data:; font-src https: data:; base-uri 'none'; form-action 'none'";
       doc.head.prepend(charset, policy);
+      var layout = doc.createElement("style");
+      layout.textContent = "html,body{overflow:hidden!important;height:auto!important;min-height:0!important;max-height:none!important}body{display:flow-root!important}";
+      doc.head.appendChild(layout);
       var script = doc.createElement("script"); script.dataset.bhnKey = key;
       // Only this hash-authorized sizing bridge runs; pasted scripts and event handlers never do.
       script.textContent = ${JSON.stringify(sizingBridge)};

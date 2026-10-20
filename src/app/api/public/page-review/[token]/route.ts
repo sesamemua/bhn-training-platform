@@ -130,16 +130,32 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   }
 
   if (req.nextUrl.searchParams.get("comparison") === "1") {
+    const requested = req.nextUrl.searchParams.get("rounds");
+    const parsedRounds = requested === null ? null : z.array(z.coerce.number().int().positive().max(review.round)).min(2).max(4).safeParse(requested.split(","));
+    if (parsedRounds && (!parsedRounds.success || new Set(parsedRounds.data).size !== parsedRounds.data.length)) {
+      return json({ error: "Choose two, three or four different saved rounds." }, 400);
+    }
     const content = await prisma.pageReview.findUnique({
       where: { id: review.id, round: review.round, status: review.status },
       select: { kind: true, snapshotHtml: true, pastedHtml: true },
     });
+    if (!content || content.kind !== "paste" || !content.pastedHtml?.trim() || review.round < 2) {
+      return json({ ok: true, review: { title: review.title, round: review.round, status: review.status }, comparison: null });
+    }
+    const archived = await prisma.pageReviewVersion.findMany({ where: { reviewId: review.id }, select: { round: true }, orderBy: { round: "asc" } });
+    const availableRounds = [...new Set([...archived.map((version) => version.round), ...(content.snapshotHtml?.trim() ? [review.round - 1] : []), review.round])].filter((round) => round <= review.round).sort((a, b) => a - b);
+    const rounds = parsedRounds?.success ? parsedRounds.data.sort((a, b) => a - b) : availableRounds.slice(-2);
+    if (rounds.some((round) => !availableRounds.includes(round))) return json({ error: "One of these rounds was not saved. Choose from the available rounds." }, 400);
+    if (rounds.length < 2) return json({ ok: true, review: { title: review.title, round: review.round, status: review.status }, comparison: null });
+    const saved = await prisma.pageReviewVersion.findMany({ where: { reviewId: review.id, round: { in: rounds } }, select: { round: true, html: true } });
+    const htmlByRound = new Map(saved.map((version) => [version.round, version.html]));
+    if (content.snapshotHtml?.trim() && !htmlByRound.has(review.round - 1)) htmlByRound.set(review.round - 1, content.snapshotHtml);
+    htmlByRound.set(review.round, content.pastedHtml);
+    const versions = rounds.map((round) => ({ round, html: htmlByRound.get(round)! }));
     return json({
       ok: true,
       review: { title: review.title, round: review.round, status: review.status },
-      comparison: content?.kind === "paste" && review.round > 1 && content.snapshotHtml?.trim() && content.pastedHtml?.trim()
-        ? { beforeHtml: content.snapshotHtml, afterHtml: content.pastedHtml }
-        : null,
+      comparison: { beforeHtml: versions[0].html, afterHtml: versions[versions.length - 1].html, versions, availableRounds },
     });
   }
 

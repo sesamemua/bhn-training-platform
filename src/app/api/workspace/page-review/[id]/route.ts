@@ -255,19 +255,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       );
     }
 
-    await prisma.$transaction([
+    const advanced = await prisma.$transaction(async (tx) => {
+      const content = await tx.pageReview.findUnique({ where: { id, round: review.round }, select: { kind: true, pastedHtml: true } });
+      if (!content) return false;
+      const updated = await tx.pageReview.updateMany({
+        where: { id, round: review.round }, data: { round: { increment: 1 }, status: "open" },
+      });
+      if (!updated.count) return false;
+      if (content.kind === "paste" && content.pastedHtml) {
+        await tx.pageReviewVersion.upsert({
+          where: { reviewId_round: { reviewId: id, round: review.round } },
+          create: { reviewId: id, round: review.round, html: content.pastedHtml }, update: {},
+        });
+      }
       // Every open item, not just ones raised in this round: a comment
       // carried back from an earlier round is outstanding work too, and
       // leaving it open would carry it forward for ever.
-      prisma.pageComment.updateMany({
+      await tx.pageComment.updateMany({
         where: { reviewId: id, status: "open" },
         data: { status: "resolved" },
-      }),
-      prisma.pageReview.update({
-        where: { id },
-        data: { round: { increment: 1 }, status: "open" },
-      }),
-    ]);
+      });
+      return true;
+    });
+    if (!advanced) return NextResponse.json({ error: "The review changed. Reload before starting another round." }, { status: 409 });
     return NextResponse.json({ ok: true, ...(await load(id)) });
   }
 

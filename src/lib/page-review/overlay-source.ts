@@ -100,6 +100,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     "#" + ID + "-compare{box-sizing:border-box;width:calc(100vw - 24px);max-width:1600px;height:calc(100vh - 24px);max-height:none;margin:auto;padding:0;border:1px solid #b9c5cc;border-radius:8px;background:#f0f4f6;color:#17212b;font:14px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;}#" + ID + "-compare[open]{display:flex;flex-direction:column;}#" + ID + "-compare::backdrop{background:rgba(7,27,39,.55);}#" + ID + "-compare .bhn-rv-compare-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;}#" + ID + "-compare h2{font:inherit;font-size:16px;font-weight:700;color:#17212b;margin:0;}#" + ID + "-compare button{font:inherit;cursor:pointer;padding:6px 12px;border:1px solid #b9c5cc;border-radius:5px;background:#fff;color:#17212b;}#" + ID + "-compare .bhn-rv-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 12px;flex:1;min-height:0;overflow:auto;}#" + ID + "-compare section{display:flex;flex-direction:column;min-width:0;min-height:0;}#" + ID + "-compare h3{font-size:13px;margin:0 0 8px;}#" + ID + "-compare iframe{width:100%;flex:1;min-height:0;border:1px solid #d8e0e5;background:#fff;}@media(max-width:600px){#" + ID + "-compare .bhn-rv-compare-grid{grid-template-columns:repeat(2,minmax(280px,1fr));}}";
 
   style.textContent += "#" + ID + "-compare .bhn-rv-compare-legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 16px 10px;font-size:12px;font-weight:700;}#" + ID + "-compare .bhn-rv-diff-removed{background:#ffe4e6;color:#881337;padding:2px 6px;}#" + ID + "-compare .bhn-rv-diff-added{background:#dcfce7;color:#14532d;padding:2px 6px;}#" + ID + "-compare .bhn-rv-compare-grid{grid-template-rows:max-content;align-items:start;align-content:start;}#" + ID + "-compare section{display:block;}#" + ID + "-compare h3{position:sticky;top:0;z-index:1;background:#f0f4f6;padding:5px 0;}#" + ID + "-compare iframe{display:block;flex:none;height:150px;border:0;outline:1px solid #d8e0e5;}";
+  style.textContent += "#" + ID + "-compare{overflow:hidden;}#" + ID + "-compare .bhn-rv-compare-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:0 16px 12px;}#" + ID + "-compare fieldset{border:0;margin:0;padding:0;display:flex;gap:10px;flex-wrap:wrap;}#" + ID + "-compare legend{font-weight:700;margin-bottom:6px;}#" + ID + "-compare label{display:flex;align-items:center;gap:5px;min-height:32px;}#" + ID + "-compare button:disabled{opacity:.45;cursor:default;}#" + ID + "-compare .bhn-rv-compare-notice{margin:0;font-size:12px;}#" + ID + "-compare .bhn-rv-version-canvas{overflow:hidden;position:relative;width:100%;}#" + ID + "-compare iframe{transform-origin:top left;}@media(max-width:700px){#" + ID + "-compare .bhn-rv-compare-grid{grid-template-columns:1fr!important;}}";
 
   var highlight = document.createElement("div");
   highlight.setAttribute("class", "bhn-review-highlight");
@@ -422,20 +423,66 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     head.appendChild(title);
     head.appendChild(addButton("Close comparison", "", function(){ dialog.close(); }));
     dialog.appendChild(head);
+    var controls = make("form", "bhn-rv-compare-controls");
+    var picker = make("fieldset");
+    picker.appendChild(make("legend", "", "Select 2–4 saved rounds"));
+    var selectedVersions = state.comparison.versions || [
+      { round: state.review.round - 1, html: state.comparison.beforeHtml },
+      { round: state.review.round, html: state.comparison.afterHtml }
+    ];
+    var availableRounds = state.comparison.availableRounds || selectedVersions.map(function(version){ return version.round; });
+    var inputs = [];
+    availableRounds.forEach(function(round){
+      var label = make("label");
+      var input = make("input"); input.type = "checkbox"; input.value = String(round);
+      input.checked = selectedVersions.some(function(version){ return version.round === round; });
+      label.appendChild(input); label.appendChild(document.createTextNode("Round " + round));
+      picker.appendChild(label); inputs.push(input);
+    });
+    controls.appendChild(picker);
+    var compare = make("button", "", "Compare selected rounds"); compare.type = "submit";
+    controls.appendChild(compare);
+    var notice = make("p", "bhn-rv-compare-notice"); notice.setAttribute("role", "status");
+    controls.appendChild(notice);
+    function updatePicker() {
+      var count = inputs.filter(function(input){ return input.checked; }).length;
+      compare.disabled = count < 2 || count > 4;
+      inputs.forEach(function(input){ input.disabled = !input.checked && count >= 4; });
+    }
+    picker.addEventListener("change", updatePicker); updatePicker();
+    controls.addEventListener("submit", async function(event){
+      event.preventDefault();
+      var rounds = inputs.filter(function(input){ return input.checked; }).map(function(input){ return Number(input.value); });
+      if (rounds.length < 2 || rounds.length > 4) return;
+      picker.disabled = true; compare.disabled = true; notice.textContent = "Loading selected rounds…";
+      try {
+        var response = await fetch(endpoint + "?comparison=1&rounds=" + rounds.join(","), { headers: { "Authorization": "Bearer " + credential } });
+        var data = await response.json().catch(function(){ return {}; });
+        if (!response.ok || !data.ok || !data.comparison) throw new Error(data.error || "Could not load these rounds.");
+        if (state.review.round !== data.review.round || comparisonDialog !== dialog) throw new Error("The review changed. Close and reopen comparison.");
+        state.comparison = data.comparison;
+        if (comparisonCleanup) comparisonCleanup();
+        dialog.remove(); comparisonDialog = null; comparisonCleanup = null;
+        openComparison();
+      } catch (error) { notice.textContent = error.message; picker.disabled = false; updatePicker(); }
+    });
+    dialog.appendChild(controls);
     var legend = make("div", "bhn-rv-compare-legend");
-    legend.appendChild(make("span", "bhn-rv-diff-removed", "− Removed / before"));
-    legend.appendChild(make("span", "bhn-rv-diff-added", "+ Added / after"));
+    legend.appendChild(make("span", "bhn-rv-diff-removed", "− Removed between first and last selected round"));
+    legend.appendChild(make("span", "bhn-rv-diff-added", "+ Added since first selected round"));
     dialog.appendChild(legend);
     var grid = make("div", "bhn-rv-compare-grid");
     grid.setAttribute("tabindex", "0");
     grid.setAttribute("role", "region");
-    grid.setAttribute("aria-label", "Before and after versions; scroll sideways on small screens");
-    var versions = comparisonDocuments(state.comparison.beforeHtml, state.comparison.afterHtml);
+    grid.setAttribute("aria-label", "Selected rounds; one shared scroll area");
+    grid.style.gridTemplateColumns = "repeat(" + selectedVersions.length + ",minmax(0,1fr))";
+    var versions = selectedVersions.map(function(version, index){
+      return index === 0 ? comparisonDocuments(version.html, selectedVersions[selectedVersions.length - 1].html)[0] : comparisonDocuments(selectedVersions[0].html, version.html)[1];
+    });
     var frames = [];
-    [
-      "Before · Round " + (state.review.round - 1),
-      "After · Round " + state.review.round
-    ].forEach(function(label, index){
+    var canvases = [], sizes = [];
+    selectedVersions.forEach(function(version, index){
+      var label = (index === 0 ? "Before" : "After") + " · Round " + version.round;
       var pane = make("section");
       pane.appendChild(make("h3", "", label));
       var frame = make("iframe");
@@ -443,21 +490,41 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       // Opaque origin; CSP permits only our sizing bridge, never newsletter scripts.
       frame.setAttribute("sandbox", "allow-scripts");
       frame.setAttribute("referrerpolicy", "no-referrer");
+      frame.setAttribute("scrolling", "no");
+      frame.style.width = "640px";
       frame.srcdoc = versions[index].html;
       frames.push(frame);
-      pane.appendChild(frame);
+      var canvas = make("div", "bhn-rv-version-canvas");
+      sizes.push({ width: 640, height: 150 }); canvases.push(canvas);
+      canvas.appendChild(frame); pane.appendChild(canvas);
       grid.appendChild(pane);
     });
+    function fitComparison() {
+      frames.forEach(function(frame, index){
+        var scale = Math.min(1, canvases[index].clientWidth / sizes[index].width);
+        frame.style.transform = "scale(" + scale + ")";
+        frame.style.height = sizes[index].height + "px";
+        canvases[index].style.height = (sizes[index].height * scale) + "px";
+      });
+    }
     function resizeComparison(event) {
       var data = event.data;
       frames.forEach(function(frame, index){
         if (event.source !== frame.contentWindow || !data || data.type !== "bhn-review-height" || data.key !== versions[index].key) return;
-        if (Number.isFinite(data.height) && data.height > 0 && data.height <= 200000) frame.style.height = data.height + "px";
+        if (Number.isFinite(data.height) && data.height > 0 && data.height <= 200000) {
+          sizes[index].height = data.height;
+          if (Number.isFinite(data.width) && data.width >= 640 && data.width <= 4000) {
+            sizes[index].width = data.width; frame.style.width = data.width + "px";
+          }
+          fitComparison();
+        }
       });
     }
     // Both full-height snapshots share this one scroll container, so they cannot drift apart.
     window.addEventListener("message", resizeComparison);
-    comparisonCleanup = function(){ window.removeEventListener("message", resizeComparison); };
+    var comparisonObserver = new ResizeObserver(fitComparison);
+    canvases.forEach(function(canvas){ comparisonObserver.observe(canvas); });
+    comparisonCleanup = function(){ window.removeEventListener("message", resizeComparison); comparisonObserver.disconnect(); };
     dialog.appendChild(grid);
     var key = comparisonKey();
     dialog.addEventListener("close", function(){

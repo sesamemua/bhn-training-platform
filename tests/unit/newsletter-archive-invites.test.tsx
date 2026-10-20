@@ -41,7 +41,7 @@ test("review invitations are authenticated, staff-only, deduplicated and report 
   assert.equal((await api.newsletterReviewTeam()).error, "Forbidden");
   assert.equal((await api.sendNewsletterReviewInvites({ issueId: "october", userIds: ["one"] })).error, "Forbidden");
   authorized = true;
-  assert.equal((await api.newsletterReviewTeam()).colleagues.length, 2);
+  assert.equal((await api.newsletterReviewTeam()).groups.length, 3);
   for (const userIds of [[], Array(21).fill("one"), [""], "one"]) {
     assert.match((await api.sendNewsletterReviewInvites({ issueId: "october", userIds })).error, /Choose up to/);
   }
@@ -101,11 +101,36 @@ test("past issues exclude current and future drafts but keep sent issues, withou
   await assert.rejects(Page(), /login/);
 });
 
+test("review recipient groups contain exactly the requested four, five and two active colleagues", async () => {
+  let missing = false;
+  const team = ["yes.lee", "epshita.islam", "roshni.christo", "ruilin.yuan", "yoojin.park"].map((local, index) => ({ id: `person-${index}`, email: `${local}@utoronto.ca` }));
+  const api = loadModule("src/lib/newsletter/review-invites.ts", {
+    "@/lib/auth": { requireRole: async () => ({ user: { id: "editor" } }) },
+    "@/lib/mail": {},
+    "@/lib/prisma": { prisma: { user: { findMany: async ({ where }: any) => {
+      assert.deepEqual(where.email.in, team.map((who) => who.email));
+      assert.equal(where.email.mode, "insensitive");
+      return missing ? team.slice(1) : team;
+    } } } },
+  });
+  const result = await api.newsletterReviewTeam();
+  assert.deepEqual(result.groups.map((group: any) => group.userIds), [
+    ["person-0", "person-1", "person-2", "person-3"],
+    ["person-0", "person-1", "person-2", "person-3", "person-4"],
+    ["person-4", "person-3"],
+  ]);
+  assert.ok(result.groups.every((group: any) => group.available));
+  missing = true;
+  const unavailable = await api.newsletterReviewTeam();
+  assert.deepEqual(unavailable.groups.map((group: any) => group.available), [false, false, true]);
+});
+
 test("newsletter has an issue-specific sharing control and chameleon is no longer generic bubbles", () => {
   const html = renderToStaticMarkup(createElement(NewsletterPageReview, {
     issueId: "october", html: "", initialReview: { id: "newsletter-october", status: "open", round: 1 }, canEdit: false,
   }));
-  assert.match(html, /Send review link/);
+  assert.match(html, /Send review request/);
+  assert.match(html, /min-h-12/);
   const icon = renderToStaticMarkup(createElement(WorkshopIcon, { slug: "communication-chameleon-2026" }));
   assert.match(icon, /lucide-talking-chameleon/);
   assert.doesNotMatch(icon, /lucide-messages-square/);

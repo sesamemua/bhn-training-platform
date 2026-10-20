@@ -44,13 +44,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (current.pastedHtml === parsed.data.html) {
     return NextResponse.json({ ok: true, unchanged: true, review: { id: current.id, round: current.round, status: current.status } });
   }
-  const updated = await prisma.pageReview.updateMany({
-    where: { id: reviewId, round: parsed.data.round ?? -1, status: { not: "closed" } },
-    data: {
-      title: issue.title, pastedHtml: parsed.data.html,
-      snapshotHtml: current.pastedHtml, snapshotAt: new Date(),
-      round: { increment: 1 }, status: "open",
-    },
+  if (parsed.data.round !== current.round) return NextResponse.json({ error: "Another editor updated this review. Reload before saving." }, { status: 409 });
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.pageReview.updateMany({
+      where: { id: reviewId, round: current.round, status: { not: "closed" } },
+      data: {
+        title: issue.title, pastedHtml: parsed.data.html,
+        snapshotHtml: current.pastedHtml, snapshotAt: new Date(),
+        round: { increment: 1 }, status: "open",
+      },
+    });
+    if (result.count && current.pastedHtml) {
+      await tx.pageReviewVersion.upsert({
+        where: { reviewId_round: { reviewId, round: current.round } },
+        create: { reviewId, round: current.round, html: current.pastedHtml }, update: {},
+      });
+    }
+    return result;
   });
   if (!updated.count) return NextResponse.json({ error: "Another editor updated this review. Reload before saving." }, { status: 409 });
   // Open threads carry forward; a new version does not mean the feedback was addressed.

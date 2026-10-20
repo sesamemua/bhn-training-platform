@@ -6454,8 +6454,19 @@ model PageReview {
   updatedAt    DateTime  @updatedAt
 
   comments PageComment[]
+  versions PageReviewVersion[]
 
   @@index([status, updatedAt])
+}
+
+model PageReviewVersion {
+  reviewId  String
+  round     Int
+  html      String
+  createdAt DateTime @default(now())
+  review    PageReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, round])
 }
 
 /// One comment. Threading via parentId; anchors are stored at four

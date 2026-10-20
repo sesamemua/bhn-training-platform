@@ -14,6 +14,8 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
   let exists = true;
   let writes = 0;
   let row: Record<string, any> | null = null;
+  const versions = new Map<number, string>();
+  let failArchive = false;
   const require = createRequire(import.meta.url);
   const compiled = ts.transpileModule(readFileSync("src/app/api/workspace/newsletter/[id]/review/route.ts", "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
@@ -21,6 +23,16 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
   const mocks: Record<string, unknown> = {
     "@/lib/auth": { requireRole: async (role: string) => { assert.equal(role, "admin"); return authorized ? { user: { id: "editor" } } : null; } },
     "@/lib/prisma": { prisma: {
+      $transaction: async (operation: any) => {
+        const previous = row && { ...row }, previousWrites = writes;
+        try { return await operation((mocks["@/lib/prisma"] as any).prisma); }
+        catch (error) { row = previous; writes = previousWrites; throw error; }
+      },
+      pageReviewVersion: { upsert: async ({ create, update }: any) => {
+        if (failArchive) throw new Error("Archive unavailable");
+        assert.deepEqual(update, {});
+        if (!versions.has(create.round)) versions.set(create.round, create.html);
+      } },
       newsletterIssue: { findUnique: async () => exists ? { title: "October Newsletter" } : null },
       pageReview: {
         upsert: async ({ where, create, update }: any) => {
@@ -69,8 +81,16 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
   assert.equal((await call({ action: "revise", html: "missing round" })).status, 409);
   await call({ action: "revise", html: "second", round: 2 });
   assert.equal(writes, 2, "unchanged content does not add a round");
+  assert.deepEqual([...versions], [[1, "first"]]);
+  failArchive = true;
+  await assert.rejects(call({ action: "revise", html: "third", round: 2 }), /Archive unavailable/);
+  assert.equal(row!.round, 2, "archiving and revision advancement are atomic");
+  assert.equal(row!.pastedHtml, "second");
+  failArchive = false;
+  await call({ action: "revise", html: "third", round: 2 });
+  assert.deepEqual([...versions], [[1, "first"], [2, "second"]]);
   row!.status = "closed";
-  assert.equal((await call({ action: "revise", html: "third", round: 2 })).status, 409);
+  assert.equal((await call({ action: "revise", html: "fourth", round: 3 })).status, 409);
 });
 
 test("pasted overlays use the signed-in launch identity only for the matching review", () => {
@@ -80,6 +100,44 @@ test("pasted overlays use the signed-in launch identity only for the matching re
     vm.runInNewContext(prefix + "globalThis.captured = credential;})();", context);
     assert.equal(context.captured, expected);
   }
+});
+
+test("starting a round without replacing HTML archives pasted content and refuses concurrent advancement", async () => {
+  let kind = "paste", canAdvance = true, role = "admin", resolved = 0;
+  const archived: any[] = [];
+  const require = createRequire(import.meta.url);
+  const compiled = ts.transpileModule(readFileSync("src/app/api/workspace/page-review/[id]/route.ts", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+  }).outputText;
+  const db = {
+    $transaction: async (operation: any) => operation(db),
+    pageReview: {
+      findUnique: async ({ where }: any) => where.round !== undefined ? { kind, pastedHtml: "Saved second round" } : { id: "newsletter-test", round: 2, status: "exported", title: "Newsletter", comments: [] },
+      updateMany: async ({ where }: any) => { assert.equal(where.round, 2); return { count: canAdvance ? 1 : 0 }; },
+    },
+    pageReviewVersion: { upsert: async ({ create }: any) => { archived.push(create); } },
+    pageComment: { count: async () => 1, updateMany: async () => { resolved++; } },
+  };
+  const mocks: Record<string, unknown> = {
+    "@/lib/auth": { requireRole: async () => ({ user: { id: "editor", role } }) },
+    "@/lib/prisma": { prisma: db }, "@/lib/page-review/brief": {},
+  };
+  const exports: any = {};
+  new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), exports);
+  const call = () => exports.POST(new Request("https://review.test/api/workspace/page-review/newsletter-test", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "startNextRound" }),
+  }), { params: Promise.resolve({ id: "newsletter-test" }) });
+  assert.equal((await call()).status, 200);
+  assert.deepEqual(archived, [{ reviewId: "newsletter-test", round: 2, html: "Saved second round" }]);
+  assert.equal(resolved, 1);
+  kind = "url";
+  assert.equal((await call()).status, 200);
+  assert.equal(archived.length, 1, "live website reviews do not create pasted snapshots");
+  canAdvance = false;
+  assert.equal((await call()).status, 409);
+  assert.equal(resolved, 2, "a concurrent revision cannot resolve feedback");
+  role = "instructor";
+  assert.equal((await call()).status, 403);
 });
 
 test("newsletter uses the existing overlay and revision endpoint while retaining earlier notes and sign-off", () => {

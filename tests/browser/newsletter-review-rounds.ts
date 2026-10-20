@@ -27,9 +27,13 @@ async function main() {
       const review = { title: "October Newsletter", round, status: "open" };
       if (route.request().url().includes("comparison=1")) {
         comparisonReads++;
+        const selected = new URL(route.request().url()).searchParams.get("rounds")?.split(",").map(Number) ?? [round - 1, round];
+        const versions = selected.map((version) => ({ round: version, html:
+          (version === 1 ? '<meta http-equiv="Content-Security-Policy" content="script-src * unsafe-inline"><h1>Original newsletter</h1><script>window.untrustedScriptRan = true;</script><img src="data:,broken" onerror="window.untrustedScriptRan=true"><a href="https://old.test">Registration</a>' : '<h1>Revised newsletter</h1><a href="https://new.test">Registration</a><p>New deadline: October 23</p>') + '<div style="width:900px;height:2px;background:navy"></div>' + Array.from({ length: 40 }, (_, index) => `<p style="margin:40px 0">Shared paragraph ${index}</p>`).join("")
+        }));
         return route.fulfill({ headers, body: JSON.stringify({ ok: true, review, comparison: {
-          beforeHtml: '<meta http-equiv="Content-Security-Policy" content="script-src * unsafe-inline"><h1>Original newsletter</h1><script>window.untrustedScriptRan = true;</script><img src="data:,broken" onerror="window.untrustedScriptRan=true"><a href="https://old.test">Registration</a>' + Array.from({ length: 40 }, (_, index) => `<p style="margin:40px 0">Shared paragraph ${index}</p>`).join(""),
-          afterHtml: '<h1>Revised newsletter</h1><a href="https://new.test">Registration</a><p>New deadline: October 23</p>' + Array.from({ length: 40 }, (_, index) => `<p style="margin:40px 0">Shared paragraph ${index}</p>`).join(""),
+          beforeHtml: versions[0].html, afterHtml: versions.at(-1)!.html, versions,
+          availableRounds: Array.from({ length: round }, (_, index) => index + 1),
         } }) });
       }
       return route.fulfill({ headers, body: JSON.stringify({ ok: true, review,
@@ -118,11 +122,37 @@ async function main() {
     await page.getByRole("button", { name: "Close comparison", exact: true }).click();
     assert.equal(await history.getAttribute("open"), null, "next round collapses all previous feedback again");
     await page.getByRole("button", { name: "Reload current version", exact: true }).waitFor();
+    round = 5;
+    await page.clock.runFor(31_000);
+    await page.getByRole("heading", { name: "Round 5 · Before / after", exact: true }).waitFor();
+    await page.getByRole("checkbox", { name: "Round 4", exact: true }).uncheck();
+    await page.getByRole("checkbox", { name: "Round 1", exact: true }).check();
+    await page.getByRole("button", { name: "Compare selected rounds" }).click();
+    await page.locator('iframe[title="Before · Round 1"]').waitFor();
+    assert.equal(await page.locator(".bhn-rv-compare-grid iframe").count(), 2);
+    await page.getByRole("checkbox", { name: "Round 3", exact: true }).check();
+    await page.getByRole("button", { name: "Compare selected rounds" }).click();
+    await expect(page.locator(".bhn-rv-compare-grid iframe")).toHaveCount(3);
+    await page.getByRole("checkbox", { name: "Round 2", exact: true }).check();
+    await page.getByRole("button", { name: "Compare selected rounds" }).click();
+    await expect(page.locator(".bhn-rv-compare-grid iframe")).toHaveCount(4);
+    await expect(page.getByRole("checkbox", { name: "Round 4", exact: true })).toBeDisabled();
+    await page.clock.runFor(1000);
+    assert.equal(await page.locator(".bhn-rv-compare-grid").evaluate(node => node.scrollWidth > node.clientWidth), false, "all columns fit without a horizontal scrollbar");
+    for (const frame of page.frames().slice(1)) {
+      assert.equal(await frame.locator("html").evaluate(node => getComputedStyle(node).overflow), "hidden");
+      assert.equal(await frame.locator("html").evaluate(node => node.scrollTop), 0);
+    }
+    await page.locator(".bhn-rv-compare-grid").evaluate(node => { node.scrollTop = 250; });
+    const fourTops = await page.locator(".bhn-rv-compare-grid iframe").evaluateAll(frames => frames.map(frame => frame.getBoundingClientRect().top));
+    assert.ok(fourTops.every(top => top === fourTops[0]), "all four rounds share one scroll position");
+    await page.screenshot({ path: "/tmp/bhn-newsletter-comparison-four-rounds.png" });
+    await page.getByRole("button", { name: "Close comparison", exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("button", { name: "Before / after comparison", exact: true }).click();
     const box = await dialog.boundingBox();
     assert.ok(box && box.x >= 0 && box.x + box.width <= 390);
-    assert.equal(await page.locator(".bhn-rv-compare-grid").evaluate((node) => node.scrollWidth > node.clientWidth), true);
+    assert.equal(await page.locator(".bhn-rv-compare-grid").evaluate((node) => node.scrollWidth > node.clientWidth), false);
     await page.screenshot({ path: "/tmp/bhn-newsletter-comparison-mobile.png" });
     console.log("PASS: round history, default comparison, close/reopen, polling, round transition, sandbox and mobile layout");
   } finally {

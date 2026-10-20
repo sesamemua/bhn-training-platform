@@ -18,7 +18,7 @@ const compiled = ts.transpileModule(readFileSync(new URL("../../src/app/api/publ
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
 }).outputText;
 
-function harness(options: { review?: Review | null; content?: Content | null } = {}) {
+function harness(options: { review?: Review | null; content?: Content | null; versions?: { round: number; html: string }[] } = {}) {
   const selectedReview = options.review === undefined ? review : options.review;
   const selectedContent = options.content === undefined ? content : options.content;
   const reads = { metadata: 0, content: 0, comments: 0, credentials: 0 };
@@ -41,6 +41,10 @@ function harness(options: { review?: Review | null; content?: Content | null } =
       },
     },
     "@/lib/prisma": { prisma: {
+      pageReviewVersion: { findMany: async ({ where, select }: any) => {
+        assert.equal(where.reviewId, selectedReview!.id);
+        return (options.versions ?? []).filter((version) => !where.round || where.round.in.includes(version.round)).map((version) => select.html ? version : { round: version.round });
+      } },
       pageReview: { findUnique: async (query: FindReview) => {
         if (query.where.shareToken) {
           reads.metadata++;
@@ -119,11 +123,31 @@ test("comparison returns only the two HTML snapshots and public review metadata"
     assert.deepEqual(result, {
       ok: true,
       review: { title: review.title, round: review.round, status },
-      comparison: { beforeHtml: content.snapshotHtml, afterHtml: content.pastedHtml },
+      comparison: { beforeHtml: content.snapshotHtml, afterHtml: content.pastedHtml,
+        versions: [{ round: 2, html: content.snapshotHtml }, { round: 3, html: content.pastedHtml }], availableRounds: [2, 3] },
     });
     assert.equal(fixture.reads.content, 1);
     assert.equal(fixture.reads.comments, 0);
     assert.doesNotMatch(JSON.stringify(result), /viewer-private-id|shared-token|valid-review-credential|authorUserId|shareToken/);
+  }
+});
+
+test("any two, three or four saved rounds can be compared without disclosing unselected HTML", async () => {
+  for (const chosen of [[1, 5], [1, 3, 5], [1, 2, 3, 5]]) {
+    const fixture = harness({ review: { ...review, round: 5 }, versions: [1, 2, 3, 4].map((round) => ({ round, html: `Saved round ${round}` })) });
+    const response = await fixture.get(`?comparison=1&rounds=${chosen.join(",")}`);
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.deepEqual(result.comparison.availableRounds, [1, 2, 3, 4, 5]);
+    assert.deepEqual(result.comparison.versions.map((version: any) => version.round), chosen);
+    assert.doesNotMatch(JSON.stringify(result), /Saved round 4/);
+  }
+});
+
+test("comparison rejects invalid, duplicate, future, unavailable or excessive round selections", async () => {
+  for (const selected of ["1", "1,1", "0,2", "2,4", "1,2,3,4,5", "2,no", "2,2.5", "1,3"]) {
+    const fixture = harness();
+    assert.equal((await fixture.get(`?comparison=1&rounds=${selected}`)).status, 400, selected);
   }
 });
 

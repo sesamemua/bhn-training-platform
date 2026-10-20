@@ -6,15 +6,24 @@ import { prisma } from "@/lib/prisma";
 import { mailConfigured, sendMail } from "@/lib/mail";
 
 const TEAM_ROLES = ["instructor", "admin", "superadmin"];
+const EDITORIAL = ["yes.lee@utoronto.ca", "epshita.islam@utoronto.ca", "roshni.christo@utoronto.ca", "ruilin.yuan@utoronto.ca"];
+const REVIEW_GROUPS = [
+  { id: "editorial", label: "Yeseul, Epshita, Roshni and Ruilin", emails: EDITORIAL },
+  { id: "all", label: "Yeseul, Epshita, Roshni, Ruilin and Yoo Jin", emails: [...EDITORIAL, "yoojin.park@utoronto.ca"] },
+  { id: "signoff", label: "Yoo Jin and Ruilin", emails: ["yoojin.park@utoronto.ca", "ruilin.yuan@utoronto.ca"] },
+];
 const Input = z.object({ issueId: z.string().min(1).max(150), userIds: z.array(z.string().min(1).max(150)).min(1).max(20) });
 
 export async function newsletterReviewTeam() {
-  if (!await requireRole("instructor").catch(() => null)) return { error: "Forbidden", colleagues: [] };
+  if (!await requireRole("instructor").catch(() => null)) return { error: "Forbidden", groups: [] };
   const colleagues = await prisma.user.findMany({
-    where: { role: { in: TEAM_ROLES }, isActive: true },
+    where: { role: { in: TEAM_ROLES }, isActive: true, email: { in: REVIEW_GROUPS[1].emails, mode: "insensitive" } },
     orderBy: [{ name: "asc" }, { email: "asc" }], select: { id: true, name: true, email: true },
   });
-  return { colleagues };
+  return { groups: REVIEW_GROUPS.map(({ id, label, emails }) => {
+    const userIds = emails.map((email) => colleagues.find((who) => who.email.toLowerCase() === email)?.id);
+    return { id, label, userIds: userIds.filter((value): value is string => !!value), available: userIds.every(Boolean) };
+  }) };
 }
 
 export async function sendNewsletterReviewInvites(input: unknown) {
