@@ -135,7 +135,7 @@ test("the offset is read, not assumed — November is EST, an hour further back"
 
 test("the week's bounds span the first start to the last end", () => {
   assert.equal(WEEK_START.toISOString(), "2026-10-26T13:00:00.000Z"); // Monday, 09:00 EDT
-  assert.equal(WEEK_END.toISOString(), "2026-10-28T17:30:00.000Z");   // Innovation Ignited, 13:30 EDT
+  assert.equal(WEEK_END.toISOString(), "2026-10-28T18:00:00.000Z");   // Innovation Ignited, 14:00 EDT
 });
 
 /* ── what the consumers get ──────────────────────────────────────── */
@@ -149,6 +149,16 @@ test("an option string names the day, the hours and the session", () => {
 
 test("an option string round-trips back to its session", () => {
   for (const s of SESSIONS) assert.equal(sessionForOption(optionLabel(s))?.slug, s.slug);
+});
+
+test("Innovation Ignited runs 09:30–14:00 and existing registrations still resolve to it", () => {
+  const session = bySlug("innovation-showcase-2026");
+  assert.equal(optionLabel(session), "Wed 28 Oct · 09:30–14:00 · Innovation Ignited");
+  assert.equal(sessionForOption("Wed 28 Oct · 10:00–13:30 · Innovation Ignited"), session);
+  assert.equal(sessionForOption("Wed 28 Oct · 9:30–14:00 · Innovation Ignited"), session);
+  const row = workshopRows().find((workshop) => workshop.slug === session.slug)!;
+  assert.equal(row.startDateTime.toISOString(), "2026-10-28T13:30:00.000Z");
+  assert.equal(row.endDateTime.toISOString(), "2026-10-28T18:00:00.000Z");
 });
 
 test("Microbix reserves travel time and still matches existing registrations", () => {

@@ -307,7 +307,7 @@ export const SESSIONS: Session[] = [
     slug: "innovation-showcase-2026",
     title: "Innovation Ignited",
     kind: "workshop",
-    day: "2026-10-28", start: "10:00", end: "13:30", track: 1,
+    day: "2026-10-28", start: "09:30", end: "14:00", track: 1,
     capacity: 100,
     venue: { name: "Rm B250 (basement level 2), Leslie L. Dan Pharmacy Building, 144 College St, Toronto, ON M5S 3M2", status: "booked", note: null },
     partner: null,
@@ -318,6 +318,8 @@ export const SESSIONS: Session[] = [
     tentative: false,
     previousTitles: ["BioHubNet innovation showcase", "Innovation showcase"],
     previousOptions: [
+      "Wed 28 Oct · 10:00–13:30 · Innovation Ignited",
+      "Wed 28 Oct · 9:30–14:00 · Innovation Ignited",
       "Wed 28 Oct · 10:00–14:00 · BioHubNet innovation showcase",
       "Wed 28 Oct · 10:00–14:00 · Innovation Ignited",
     ],
