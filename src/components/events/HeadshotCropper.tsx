@@ -55,12 +55,11 @@ export interface CropState {
   toBlob: () => Promise<Blob | null>;
 }
 
-export function HeadshotCropper({ onChange, initialFile, initialFraming, minZoom = 1, adjustmentOnly = false }: {
+export function HeadshotCropper({ onChange, initialFile, initialFraming, minZoom = 1 }: {
   onChange: (s: CropState) => void;
   initialFile?: File;
   initialFraming?: HeadshotFraming;
   minZoom?: number;
-  adjustmentOnly?: boolean;
 }) {
   const [file, setFile] = useState<File | null>(initialFile ?? null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
@@ -84,18 +83,19 @@ export function HeadshotCropper({ onChange, initialFile, initialFraming, minZoom
     i.onload = () => {
       if (!active) return;
       setImg(i);
-      setZoom(initialFraming?.zoom ?? 1);
+      const framing = file === initialFile ? initialFraming : undefined;
+      setZoom(framing?.zoom ?? 1);
       // Framed on where the eye goes from the start.
       focus.current = focusOf(i);
       const b = Math.max(BOX / i.width, BOX / i.height);
-      setPos(initialFraming ? { x: initialFraming.x, y: initialFraming.y } : offsetFor(focus.current, { w: i.width * b, h: i.height * b }, BOX));
+      setPos(framing ? { x: framing.x, y: framing.y } : offsetFor(focus.current, { w: i.width * b, h: i.height * b }, BOX));
     };
     i.src = url;
     return () => {
       active = false;
       URL.revokeObjectURL(url);
     };
-  }, [file, initialFraming]);
+  }, [file, initialFile, initialFraming]);
 
   /** Scale at zoom=1: the image just covers the circle. */
   const baseScale = img ? Math.max(BOX / img.width, BOX / img.height) : 1;
@@ -188,7 +188,7 @@ export function HeadshotCropper({ onChange, initialFile, initialFraming, minZoom
 
   return (
     <div className="space-y-3">
-      {!adjustmentOnly && <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-3 py-3 transition hover:border-[var(--brand-400)]">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--speaker-disabled-bg)] text-[var(--speaker-subtle)]">
             {file ? <RefreshCw size={16} /> : <Upload size={16} />}
@@ -222,7 +222,7 @@ export function HeadshotCropper({ onChange, initialFile, initialFraming, minZoom
             Remove photo
           </button>
         )}
-      </div>}
+      </div>
 
       {img && (
         <div className="flex flex-col items-center gap-3 rounded-lg bg-[var(--speaker-control-bg)] p-4">

@@ -81,8 +81,8 @@ export async function POST(req: NextRequest, ctx: Context) {
   const actorId = (session?.user as { id?: string } | undefined)?.id;
   if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (req.headers.get("origin") !== req.nextUrl.origin) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-  if (Number(req.headers.get("content-length") ?? 0) > 3_100_000) return NextResponse.json({ error: "Headshot must be under 3 MB." }, { status: 413 });
-  let uploaded: string | null = null;
+  if (Number(req.headers.get("content-length") ?? 0) > 4_200_000) return NextResponse.json({ error: "Photo upload is too large." }, { status: 413 });
+  const uploaded: string[] = [];
   try {
     const source = await resolveHeadshot(req, ctx);
     if (!source) return NextResponse.json({ error: "Headshot not found." }, { status: 404 });
@@ -101,15 +101,38 @@ export async function POST(req: NextRequest, ctx: Context) {
     if (metadata?.format !== "png" || metadata.width !== 600 || metadata.height !== 600) {
       return NextResponse.json({ error: "The headshot must be a 600-pixel square PNG." }, { status: 400 });
     }
+    const replacement = form.get("original");
+    let originalImage: { bytes: Buffer; mime: string; ext: string } | null = null;
+    if (replacement !== null) {
+      if (!(replacement instanceof File) || !replacement.size || replacement.size > 2_000_000 || replacement.size + file.size > 4_000_000) {
+        return NextResponse.json({ error: "Choose a replacement photo under 2 MB." }, { status: 400 });
+      }
+      const bytes = Buffer.from(await replacement.arrayBuffer());
+      let type: ReturnType<typeof publicationImageType>;
+      try { type = publicationImageType(bytes); }
+      catch { return NextResponse.json({ error: "Choose a JPEG, PNG or WebP photo." }, { status: 400 }); }
+      const meta = await sharp(bytes, { limitInputPixels: 40_000_000 }).metadata().catch(() => null);
+      if (!meta?.width || !meta.height || meta.format !== type.mime.slice("image/".length)) {
+        return NextResponse.json({ error: "That replacement photo could not be read." }, { status: 400 });
+      }
+      originalImage = { bytes, ...type };
+    }
     const publication = source.board ? await loadPublication() : null;
+    let originalUrl = source.originalUrl;
+    if (originalImage) {
+      const key = `people-publication/headshot-originals/${randomUUID()}.${originalImage.ext}`;
+      originalUrl = r2PublicUrl(key);
+      await putR2Object(key, originalImage.bytes, originalImage.mime);
+      uploaded.push(originalUrl);
+    }
     const key = `people-publication/headshots/${randomUUID()}.png`;
     const url = r2PublicUrl(key);
     await putR2Object(key, bytes, "image/png");
-    uploaded = url;
+    uploaded.push(url);
     const now = new Date(Math.max(Date.now(), Date.parse(publication?.version ?? "") + 1 || 0, Date.parse(source.board?.snapshot.version ?? "") + 1 || 0));
     await prisma.$transaction(async (tx) => {
       const conflict = () => { throw new PublicationConflict("A colleague changed this profile. Reopen the editor before saving."); };
-      const data = { value: JSON.stringify({ originalUrl: source.originalUrl, currentUrl: url, framing }), updatedAt: now };
+      const data = { value: JSON.stringify({ originalUrl, currentUrl: url, framing }), updatedAt: now };
       if (source.saved) {
         if (!(await tx.platformSetting.updateMany({ where: { key: source.key, value: source.saved.value, updatedAt: source.saved.updatedAt }, data })).count) conflict();
       } else await tx.platformSetting.create({ data: { key: source.key, ...data } });
@@ -137,13 +160,13 @@ export async function POST(req: NextRequest, ctx: Context) {
       }
       await tx.auditLog.create({ data: {
         actorId, action: "speaker.headshot.adjust", targetType: source.speaker ? "speaker" : "person", targetId: source.speaker?.id ?? source.person!.id,
-        detail: JSON.stringify({ before: source.photoUrl, after: url, original: source.originalUrl, framing, websiteUpdated }),
+        detail: JSON.stringify({ before: source.photoUrl, after: url, original: originalUrl, previousOriginal: source.originalUrl, framing, websiteUpdated }),
       } });
     });
     return NextResponse.json({ photoUrl: url });
   } catch (error) {
-    // Only this unsuccessful upload is disposable. Source photos and prior crops are retained.
-    if (uploaded) await deleteR2ObjectByUrl(uploaded).catch(() => {});
+    // Only unsuccessful uploads are disposable. Source photos and prior crops are retained.
+    for (const url of uploaded) await deleteR2ObjectByUrl(url).catch(() => {});
     if (error instanceof PublicationConflict || (error as { code?: string }).code === "P2002") return NextResponse.json({ error: "This profile changed. Reopen the editor before saving." }, { status: 409 });
     if (error instanceof z.ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "Invalid headshot adjustment." }, { status: 400 });
     console.error("Headshot adjustment failed", error);

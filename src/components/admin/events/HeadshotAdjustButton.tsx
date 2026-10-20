@@ -9,6 +9,9 @@ import { HeadshotCropper, type CropState, type HeadshotFraming } from "@/compone
 const COLOURS = {
   "--speaker-control-line": "var(--line)", "--speaker-control-bg": "var(--card-solid)",
   "--speaker-subtle": "var(--muted)", "--speaker-control-ink": "var(--fg)",
+  "--speaker-copy": "var(--fg)", "--speaker-disabled-bg": "var(--elevated)",
+  "--speaker-danger-line": "var(--line)", "--speaker-danger-bg": "var(--card-solid)",
+  "--speaker-danger-strong": "var(--fg)", "--speaker-danger": "var(--brand-600)",
 } as CSSProperties;
 
 export function HeadshotAdjustButton({ slug, personId, speakerId, name, onSaved }: {
@@ -44,8 +47,11 @@ export function HeadshotAdjustButton({ slug, personId, speakerId, name, onSaved 
     try {
       const blob = await crop.toBlob();
       if (!blob) throw new Error("The photo is still loading. Please retry.");
+      const replacement = crop.file !== source.file ? crop.file : null;
+      if (replacement && (replacement.size > 2_000_000 || replacement.size + blob.size > 4_000_000)) throw new Error("Choose a replacement photo under 2 MB.");
       const form = new FormData();
       form.set("headshot", blob, "headshot.png"); form.set("version", source.version); form.set("framing", JSON.stringify(crop.framing));
+      if (replacement) form.set("original", replacement);
       const response = await fetch(api, { method: "POST", body: form });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Couldn't save the photo.");
@@ -60,7 +66,7 @@ export function HeadshotAdjustButton({ slug, personId, speakerId, name, onSaved 
       <div className="flex items-center justify-between gap-3"><Dialog.Title className="text-base font-bold">Adjust headshot</Dialog.Title><Dialog.Close disabled={busy} aria-label="Close headshot editor" className="rounded-md p-2 hover:bg-elevated"><X size={18} /></Dialog.Close></div>
       <p className="mt-1 text-sm font-semibold">{name}</p>
       <Dialog.Description className="mb-3 mt-1 text-[12px] text-muted">The original stays unchanged. Existing social graphics need a separate refresh.</Dialog.Description>
-      {source ? <HeadshotCropper initialFile={source.file} initialFraming={source.framing} minZoom={0.5} adjustmentOnly onChange={onCrop} /> : !error && <div className="flex h-72 items-center justify-center" role="status"><Loader2 size={24} className="animate-spin" /><span className="sr-only">Loading original headshot</span></div>}
+      {source ? <HeadshotCropper initialFile={source.file} initialFraming={source.framing} minZoom={0.5} onChange={onCrop} /> : !error && <div className="flex h-72 items-center justify-center" role="status"><Loader2 size={24} className="animate-spin" /><span className="sr-only">Loading original headshot</span></div>}
       {error && <p role="alert" className="mt-3 text-sm text-fg">{error}</p>}
       <div className="mt-4 flex justify-end gap-2"><Dialog.Close disabled={busy} className="rounded-md border border-line px-3 py-2 text-sm">Cancel</Dialog.Close><button type="button" disabled={busy || !crop?.file} onClick={() => void save()} className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save headshot</button></div>
     </Dialog.Content></Dialog.Portal>

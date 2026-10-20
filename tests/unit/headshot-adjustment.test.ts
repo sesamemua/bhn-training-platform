@@ -55,10 +55,11 @@ const route = import("../../src/app/api/admin/events/[slug]/headshot/route").fin
 const ctx = { params: Promise.resolve({ slug: "2026-annual-symposium" }) };
 const endpoint = `${origin}/api/admin/events/2026-annual-symposium/headshot`;
 const png = sharp({ create: { width: 600, height: 600, channels: 3, background: "white" } }).png().toBuffer();
-async function request({ version = speaker.photoUrl, image, source = origin, target = "speakerId=speaker", framing = { zoom: 0.9, x: 30, y: 0 } }: { version?: string; image?: Uint8Array; source?: string | null; target?: string; framing?: unknown } = {}) {
+async function request({ version = speaker.photoUrl, image, source = origin, target = "speakerId=speaker", framing = { zoom: 0.9, x: 30, y: 0 }, originalFile }: { version?: string; image?: Uint8Array; source?: string | null; target?: string; framing?: unknown; originalFile?: Blob } = {}) {
   const form = new FormData();
   form.set("headshot", new Blob([new Uint8Array(image ?? await png)], { type: "image/png" }), "headshot.png");
   form.set("version", version); form.set("framing", JSON.stringify(framing));
+  if (originalFile) form.set("original", originalFile, "original.jpg");
   return new NextRequest(`${endpoint}?${target}`, { method: "POST", headers: source ? { origin: source } : {}, body: form });
 }
 function reset() {
@@ -166,4 +167,38 @@ test("speaker IDs cannot escape their event", async () => {
   const { POST } = await route; reset();
   assert.equal((await POST(await request(), { params: Promise.resolve({ slug: "another-event" }) })).status, 404);
   assert.equal(uploads.length, 0);
+});
+
+test("replacing a photo retains the complete new original byte-for-byte and never deletes old originals", async () => {
+  const { POST } = await route; reset();
+  const jpeg = await sharp({ create: { width: 800, height: 1200, channels: 3, background: "silver" } }).jpeg().toBuffer();
+  const response = await POST(await request({ originalFile: new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }) }), ctx);
+  assert.equal(response.status, 200);
+  const saved = JSON.parse(settings.get("headshot.crop.speaker.speaker")!.value);
+  assert.match(saved.originalUrl, /headshot-originals\/.+\.jpg$/);
+  assert.deepEqual(uploads[0].bytes, jpeg);
+  assert.deepEqual(uploads[1].bytes, await png);
+  assert.deepEqual(deletes, []);
+  assert.equal(JSON.parse(audits[0].data.detail).previousOriginal, original);
+  assert.equal((await POST(await request(), ctx)).status, 200);
+  assert.equal(JSON.parse(settings.get("headshot.crop.speaker.speaker")!.value).originalUrl, saved.originalUrl);
+});
+
+test("replacement validation blocks oversized photos, SVG and invalid image bytes before storage", async () => {
+  const { POST } = await route; reset();
+  for (const file of [new Blob([new Uint8Array(2_000_001)]), new Blob(['<svg xmlns="http://www.w3.org/2000/svg"></svg>'], { type: "image/jpeg" }), new Blob([new Uint8Array([255,216,255,0,0,0,0,0,0,0,0,0])], { type: "image/jpeg" })]) {
+    assert.equal((await POST(await request({ originalFile: file }), ctx)).status, 400);
+  }
+  assert.equal(uploads.length, 0);
+  assert.equal(speaker.photoUrl, original);
+});
+
+test("failed replacement transaction cleans up only its two new uploads", async () => {
+  const { POST } = await route; reset(); failAudit = true;
+  const jpeg = await sharp({ create: { width: 800, height: 1200, channels: 3, background: "silver" } }).jpeg().toBuffer();
+  assert.equal((await POST(await request({ originalFile: new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }) }), ctx)).status, 500);
+  assert.equal(speaker.photoUrl, original);
+  assert.equal(deletes.length, 2);
+  assert.ok(deletes.every((url) => url.startsWith("https://images.example.org/people-publication/")));
+  assert.ok(!settings.has("headshot.crop.speaker.speaker"));
 });
