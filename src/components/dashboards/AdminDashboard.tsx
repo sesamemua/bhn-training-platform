@@ -2,11 +2,7 @@ import Link from "next/link";
 import { saveWorkshopRegistration } from "@/lib/training-week/workshop-registration";
 import { loadCapacityMonitor } from "@/lib/training-week/capacity-server";
 import { updateWorkshop } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
-import {
-  ArrowRight, ClipboardList,
-  Building2, Briefcase, BookOpen, Inbox, Rocket,
-  Layers, Sparkles, Activity, Clock, Coins,
-} from "lucide-react";
+import { ArrowRight, Building2, Briefcase, BookOpen, Inbox, Rocket } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 import { AdminDashboardCards } from "@/components/dashboards/AdminDashboardCards";
@@ -32,23 +28,7 @@ import { ReleasedSeats } from "@/components/training-week/ReleasedSeats";
  *     queue, bench, postings, audit, setup checklist (if open),
  *     credit-expiry watch (if any), AI calls (superadmin only).
  *
- *   • Bottom section — L7 sidebar-RIGHT. The 3-column content body
- *     occupies the LEFT (Triage · Pulse · Audit), the dark rail
- *     sits on the RIGHT and holds quick-action shortcuts instead
- *     of plain KPI tiles. Content reordered for "what does an
- *     admin actually want?":
- *
- *       Triage — pending breakdown + stale items + credit expiry.
- *       Pulse — what's happening on the platform today / this week
- *               (new users, enrollments, talent apps, AI calls).
- *       Audit — last 5 entries with timestamps and actor display
- *               names; "see full audit log" link.
- *
- *       Quick actions rail — Review credit queue, Invite employer,
- *       Create posting, Spawn demo workspace, View as trainee,
- *       Open audit log, Design archive, AI assist (superadmin).
- *
- * Same data-fetching shape as v1 / v2 so nothing downstream changes.
+ * Shared event cards and personal page usage follow the cover.
  * Theme-aware tokens are scoped under `.adash-aero` in the AERO_CSS
  * constant at the bottom of this file — no leakage to other surfaces.
  */
@@ -65,17 +45,14 @@ export async function AdminDashboard({
 }) {
   const firstName = user.name?.split(" ")[0] ?? "there";
   const isSuperAdmin = role === "superadmin";
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since7d  = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
-    totalUsers, totalCourses, totalEnrollments, totalCertificates,
-    new7dUsers, new24hEnrollments,
+    totalUsers, totalCourses, totalEnrollments, new7dUsers,
     pendingCreditApps, pendingRoleRequests, pendingPathwayApps,
     employerCount, employerInvitesPending,
     activePostings, totalApplications,
-    demoWorkspaceCount, phantomCount,
-    recentAudit,
+    demoWorkspaceCount,
     aiCalls7d,
     capacity,
     dashboardLayout,
@@ -83,9 +60,7 @@ export async function AdminDashboard({
     prisma.user.count({ where: { isActive: true, accountKind: "real" } }),
     prisma.course.count({ where: { status: "published" } }),
     prisma.enrollment.count(),
-    prisma.certificate.count({ where: { revokedAt: null } }),
     prisma.user.count({ where: { createdAt: { gt: since7d }, accountKind: "real" } }),
-    prisma.enrollment.count({ where: { enrolledAt: { gt: since24h } } }),
     prisma.creditApplication.count({ where: { status: "pending" } }).catch(() => 0),
     prisma.roleChangeRequest.count({ where: { status: "pending" } }).catch(() => 0),
     prisma.pathwayEnrollment.count({ where: { status: "pending" } }).catch(() => 0),
@@ -94,12 +69,6 @@ export async function AdminDashboard({
     prisma.internshipPosting.count({ where: { status: "active" } }).catch(() => 0),
     prisma.applicationStatus.count().catch(() => 0),
     prisma.user.count({ where: { accountKind: "demo" } }).catch(() => 0),
-    prisma.user.count({ where: { accountKind: "phantom" } }).catch(() => 0),
-    prisma.auditLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: { actor: { select: { name: true, email: true } } },
-    }).catch(() => []),
     isSuperAdmin
       ? prisma.aIInteraction.count({ where: { createdAt: { gt: since7d } } }).catch(() => 0)
       : Promise.resolve(0),
@@ -319,274 +288,6 @@ export async function AdminDashboard({
         initialLayout={dashboardLayout} releasedSeats={<ReleasedSeats framed showEmpty />} />
 
       {pageUsage}
-
-      {/* ════ SIDEBAR RIGHT — content LEFT, quick-action rail RIGHT ═ */}
-      <article className="aero-frame">
-        <div className="sr-layout">
-          <div className="sr-body">
-            {/* TRIAGE — what needs me NOW */}
-            <div className="aero-card">
-              <h3 className="aero-h"><ClipboardList size={14} /> Triage queue</h3>
-              <p className="aero-gloss">What needs you right now.</p>
-              <ul className="aero-list">
-                {!creditQueuePaused && (
-                <li>
-                  <Link href="/admin/credit-applications" className="row">
-                    <span>Credit applications</span>
-                    <span className={pendingCreditApps > 0 ? "v warn" : "v"}>{pendingCreditApps}</span>
-                  </Link>
-                </li>
-                )}
-                <li>
-                  <Link href="/admin/role-requests" className="row">
-                    <span>Role-change requests</span>
-                    <span className={pendingRoleRequests > 0 ? "v warn" : "v"}>{pendingRoleRequests}</span>
-                  </Link>
-                </li>
-                {!pathwayQueuePaused && (
-                <li>
-                  <Link href="/admin/pathway-enrollments" className="row">
-                    <span>Pathway enrolments</span>
-                    <span className={pendingPathwayApps > 0 ? "v warn" : "v"}>{pendingPathwayApps}</span>
-                  </Link>
-                </li>
-                )}
-                {anyExpiry && !creditQueuePaused && (
-                  <li>
-                    <Link href="/admin/credit-applications" className="row">
-                      <span>Credit expiry · 30d</span>
-                      <span className={expiring30.users > 0 ? "v warn" : "v"}>{expiring30.users} users</span>
-                    </Link>
-                  </li>
-                )}
-                {expiring7.users > 0 && !creditQueuePaused && (
-                  <li>
-                    <Link href="/admin/credit-applications" className="row">
-                      <span>Expiring &lt; 7d <span className="urgent">URGENT</span></span>
-                      <span className="v warn">{expiring7.credits.toLocaleString()} cr</span>
-                    </Link>
-                  </li>
-                )}
-              </ul>
-              {totalPending === 0 && (!anyExpiry || creditQueuePaused) && (
-                <p className="aero-empty">All clear. Nothing on the desk.</p>
-              )}
-            </div>
-
-            {/* PULSE — what's happening on the platform */}
-            <div className="aero-card">
-              <h3 className="aero-h"><Activity size={14} /> Today&apos;s pulse</h3>
-              <p className="aero-gloss">Activity in the last day / week.</p>
-              <ul className="aero-list">
-                <li><span>New users this week</span><span className="v">{new7dUsers}</span></li>
-                <li><span>New enrolments · 24h</span><span className="v">{new24hEnrollments}</span></li>
-                <li><span>Talent applications</span><span className="v">{totalApplications}</span></li>
-                <li><span>Active postings</span><span className="v">{activePostings}</span></li>
-                {(demoWorkspaceCount + phantomCount) > 0 && (
-                  <li><span>Demo · phantom accounts</span><span className="v">{demoWorkspaceCount + phantomCount}</span></li>
-                )}
-                {isSuperAdmin && (
-                  <li><span>AI calls · 7d</span><span className="v">{aiCalls7d.toLocaleString()}</span></li>
-                )}
-              </ul>
-            </div>
-
-            {/* PIPELINE — bench → in-flight → pending → outcome, the
-                cross-pillar funnel a pillar lead reads to see whether
-                the platform is converting work into outcomes. */}
-            <div className="aero-card">
-              <h3 className="aero-h"><Activity size={14} /> Pipeline at a glance</h3>
-              <p className="aero-gloss">Bench → in-flight → pending → outcome, across all pillars.</p>
-              <ul className="aero-list pipeline">
-                <li>
-                  <div className="step">
-                    <span className="step-lbl">Bench</span>
-                    <span className="step-sub">approved roster</span>
-                  </div>
-                  <span className="v">{(totalUsers + employerCount).toLocaleString()}</span>
-                </li>
-                <li>
-                  <div className="step">
-                    <span className="step-lbl">In-flight</span>
-                    <span className="step-sub">postings · talent apps</span>
-                  </div>
-                  <span className="v">{(activePostings + totalApplications).toLocaleString()}</span>
-                </li>
-                <li>
-                  <div className="step">
-                    <span className="step-lbl">Pending review</span>
-                    <span className="step-sub">credit · role · pathway</span>
-                  </div>
-                  <span className={totalPending > 0 ? "v warn" : "v"}>{totalPending}</span>
-                </li>
-                <li>
-                  <div className="step">
-                    <span className="step-lbl">Outcome</span>
-                    <span className="step-sub">certificates issued</span>
-                  </div>
-                  <span className="v">{totalCertificates.toLocaleString()}</span>
-                </li>
-                {employerInvitesPending > 0 && (
-                  <li>
-                    <div className="step">
-                      <span className="step-lbl">Employer invites</span>
-                      <span className="step-sub">awaiting acceptance</span>
-                    </div>
-                    <span className="v">{employerInvitesPending}</span>
-                  </li>
-                )}
-              </ul>
-              <Link href="/admin/analytics" className="see-all">
-                Open analytics &amp; reports <ArrowRight size={11} />
-              </Link>
-            </div>
-          </div>
-
-          {/* RIGHT RAIL — pillar-lead shortcuts, grouped by pillar.
-              Top: smart "Next up" item driven by what's actually
-              pending. Then three pillar sections (Engage · Experience
-              · Equip) with the 2-3 most-clicked admin routes each.
-              Bottom: cross-pillar tools (analytics, design archive,
-              AI health for superadmins). */}
-          <aside className="sr-rail">
-
-            {/* Smart "Next up" — surfaces the most-pending pillar so
-                the lead's first click is the highest-leverage one. */}
-            {totalPending > 0 && (
-              <>
-                <p className="rail-h">Next up</p>
-                <Link
-                  href={
-                    pendingCreditQueue > 0 && pendingCreditQueue >= pendingPathwayQueue && pendingCreditQueue >= pendingRoleRequests
-                      ? "/admin/credit-applications"
-                      : pendingPathwayQueue > 0 && pendingPathwayQueue >= pendingRoleRequests
-                        ? "/admin/pathway-enrollments"
-                        : "/admin/role-requests"
-                  }
-                  className="qa qa-primary"
-                >
-                  <ClipboardList size={15} />
-                  <div>
-                    <p className="qa-t">Review the queue</p>
-                    <p className="qa-s">{totalPending} pending across all pillars</p>
-                  </div>
-                </Link>
-              </>
-            )}
-
-            {/* ENGAGE — training pillar. */}
-            <p className="rail-h">Engage</p>
-            {!trainingPaused && (
-            <Link href="/admin/courses" className="qa">
-              <BookOpen size={15} />
-              <div>
-                <p className="qa-t">Manage courses</p>
-                <p className="qa-s">{totalCourses} published · {totalEnrollments.toLocaleString()} enrolments</p>
-              </div>
-            </Link>
-            )}
-            {!pathwayQueuePaused && (
-            <Link href="/admin/pathway-enrollments" className="qa">
-              <Layers size={15} />
-              <div>
-                <p className="qa-t">Pathway enrolments</p>
-                <p className="qa-s">{pendingPathwayApps > 0 ? `${pendingPathwayApps} awaiting review` : "All approved"}</p>
-              </div>
-            </Link>
-            )}
-            <Link href="/admin/announcements" className="qa">
-              <Activity size={15} />
-              <div>
-                <p className="qa-t">Publish an announcement</p>
-                <p className="qa-s">Trainee-wide broadcast</p>
-              </div>
-            </Link>
-
-            {/* EXPERIENCE — placements pillar. Every link here is
-                EXPERIENCE, so the group goes when the pillar is paused. */}
-            {!employerPortalPaused && (
-            <>
-            <p className="rail-h">Experience</p>
-            <Link href="/employer/applicants" className="qa">
-              <Inbox size={15} />
-              <div>
-                <p className="qa-t">Talent applicants</p>
-                <p className="qa-s">{totalApplications} in flight</p>
-              </div>
-            </Link>
-            <Link href="/admin/internships" className="qa">
-              <Briefcase size={15} />
-              <div>
-                <p className="qa-t">Manage postings</p>
-                <p className="qa-s">{activePostings} active</p>
-              </div>
-            </Link>
-            <Link href="/admin/employer-invites" className="qa">
-              <Building2 size={15} />
-              <div>
-                <p className="qa-t">Invite an employer</p>
-                <p className="qa-s">{employerCount} active · {employerInvitesPending} pending</p>
-              </div>
-            </Link>
-            </>
-            )}
-
-            {/* EQUIP — commercialization pillar. */}
-            <p className="rail-h">Equip</p>
-            <Link href="/admin/equip" className="qa">
-              <Coins size={15} />
-              <div>
-                <p className="qa-t">Commercialization queue</p>
-                <p className="qa-s">{creditQueuePaused ? "Review VentureConnect and VentureLift" : pendingCreditApps > 0 ? `${pendingCreditApps} apps awaiting review` : "No pending review"}</p>
-              </div>
-            </Link>
-            {!creditQueuePaused && (
-            <Link href="/admin/credit-applications" className="qa">
-              <ClipboardList size={15} />
-              <div>
-                <p className="qa-t">Credit grants</p>
-                <p className="qa-s">{anyExpiry ? `${expiring30.users} users expiring 30d` : "No expiry watch"}</p>
-              </div>
-            </Link>
-            )}
-
-            {/* CROSS-PILLAR — tools, not pillar-specific. */}
-            <p className="rail-h">Tools</p>
-            <Link href="/admin/analytics" className="qa">
-              <Activity size={15} />
-              <div>
-                <p className="qa-t">Reports &amp; analytics</p>
-                <p className="qa-s">Cross-pillar metrics</p>
-              </div>
-            </Link>
-            {!isPausedPath("/admin/demo-workspaces") && (
-            <Link href="/admin/demo-workspaces" className="qa">
-              <Rocket size={15} />
-              <div>
-                <p className="qa-t">Demo workspace</p>
-                <p className="qa-s">{demoWorkspaceCount > 0 ? `${demoWorkspaceCount} spun up` : "Walk a partner through"}</p>
-              </div>
-            </Link>
-            )}
-            <Link href="/admin/design-archive" className="qa">
-              <Layers size={15} />
-              <div>
-                <p className="qa-t">Design archive</p>
-                <p className="qa-s">Working sketches</p>
-              </div>
-            </Link>
-            {isSuperAdmin && (
-              <Link href="/admin/assist" className="qa">
-                <Sparkles size={15} />
-                <div>
-                  <p className="qa-t">AI assist health</p>
-                  <p className="qa-s">{aiCalls7d.toLocaleString()} calls · 7d</p>
-                </div>
-              </Link>
-            )}
-          </aside>
-        </div>
-      </article>
     </div>
   );
 }
@@ -603,11 +304,10 @@ const AERO_CSS = `
   display: flex; flex-direction: column; gap: 14px;
   color: var(--fg);
   --porcelain-glaze:
-    linear-gradient(112deg, transparent 0% 62%, color-mix(in srgb, var(--card-solid) 82%, #b9edf1) 62.3%, transparent 69%),
-    linear-gradient(180deg, color-mix(in srgb, var(--card-solid) 82%, #dbe6eb) 0%, var(--card-solid) 20px, var(--card-solid) 48%, color-mix(in srgb, var(--card-solid) 91%, #bfd9df) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--card-solid) 97%, var(--fg)) 0%, var(--card-solid) 20px, var(--card-solid) 80%, color-mix(in srgb, var(--card-solid) 98%, var(--fg)) 100%);
   --porcelain-shadow:
-    inset 0 2px 1px color-mix(in srgb, var(--card-solid) 35%, white),
-    inset 0 -2px 3px color-mix(in srgb, var(--card-solid) 88%, var(--fg)),
+    inset 0 1px 0 color-mix(in srgb, var(--card-solid) 92%, var(--fg)),
+    inset 0 -1px 2px color-mix(in srgb, var(--card-solid) 96%, var(--fg)),
     0 2px 3px rgb(25 51 60 / 7%),
     0 10px 26px rgb(25 51 60 / 10%);
 }
@@ -626,7 +326,7 @@ const AERO_CSS = `
 }
 .adash-aero .aero-frame::before {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgb(255 255 255 / 20%), transparent 12px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card-solid) 98%, var(--fg)), transparent 12px);
   pointer-events: none; z-index: 0;
 }
 .adash-aero .aero-frame > * { position: relative; z-index: 1; }
@@ -738,18 +438,6 @@ const AERO_CSS = `
 }
 .adash-aero .toc-cta:hover { background: var(--brand-50); }
 
-/* ── Sidebar RIGHT layout (content LEFT, rail RIGHT) ─────────── */
-.adash-aero .sr-layout { display: grid; grid-template-columns: 1fr 260px; gap: 0; min-height: 460px; }
-@media (max-width: 1100px) { .adash-aero .sr-layout { grid-template-columns: 1fr; } }
-
-.adash-aero .sr-body {
-  padding: 20px 22px;
-  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;
-  align-content: start;
-}
-@media (max-width: 1280px) { .adash-aero .sr-body { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 900px) { .adash-aero .sr-body { grid-template-columns: 1fr; } }
-
 .adash-aero .aero-card {
   background-color: var(--card-solid);
   background-image: var(--porcelain-glaze);
@@ -782,130 +470,4 @@ const AERO_CSS = `
 }
 .adash-aero .aero-h svg { color: var(--brand-600); flex-shrink: 0; }
 .adash-aero .aero-gloss { color: var(--fg-muted); font-size: 12px; margin: 0 0 12px; }
-.adash-aero .aero-list { list-style: none; padding: 0; margin: 0; }
-.adash-aero .aero-list li {
-  display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
-  font-size: 13.5px; border-bottom: 1px solid var(--line);
-}
-.adash-aero .aero-list li:last-child { border-bottom: none; }
-.adash-aero .aero-list li .row {
-  display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
-  padding: 9px 0; width: 100%; color: var(--fg);
-  text-decoration: none; transition: color 120ms;
-}
-.adash-aero .aero-list li .row:hover { color: var(--brand-700); }
-.adash-aero .aero-list li > span { padding: 9px 0; }
-.adash-aero .aero-list li:has(.row) > span { padding: 0; }
-.adash-aero .aero-list li .v {
-  font-family: ui-monospace, 'IBM Plex Mono', monospace;
-  font-weight: 700; color: var(--brand-700);
-}
-.adash-aero .aero-list li .v.warn { color: rgb(180, 83, 9); }
-/* Pipeline rows — two-line label/sub pair on the left, big value
-   on the right. Used by the "Pipeline at a glance" card. */
-.adash-aero .aero-list.pipeline li {
-  padding: 12px 0; align-items: center;
-}
-.adash-aero .aero-list.pipeline .step {
-  display: flex; flex-direction: column;
-}
-.adash-aero .aero-list.pipeline .step-lbl {
-  font-size: 13.5px; font-weight: 600; color: var(--fg);
-}
-.adash-aero .aero-list.pipeline .step-sub {
-  font-size: 11px; color: var(--fg-subtle); font-style: italic; margin-top: 2px;
-}
-.adash-aero .aero-list.pipeline .v {
-  font-size: 22px; font-weight: 800; letter-spacing: -0.02em;
-  color: var(--brand-700); padding: 0;
-  font-variant-numeric: tabular-nums;
-}
-.adash-aero .aero-list .urgent {
-  display: inline-block; font-family: ui-monospace, monospace;
-  font-size: 8.5px; letter-spacing: 0.16em;
-  padding: 1px 5px; border-radius: 3px;
-  background: rgb(220, 38, 38); color: #fff;
-  margin-left: 6px; vertical-align: middle;
-}
-.adash-aero .aero-list.audit code {
-  font-family: ui-monospace, 'IBM Plex Mono', monospace;
-  font-size: 11.5px; color: var(--fg-subtle); margin-right: 6px;
-}
-.adash-aero .aero-list .empty {
-  color: var(--fg-subtle); font-style: italic; font-size: 13px;
-  padding: 9px 0; justify-content: center;
-}
-.adash-aero .aero-empty {
-  color: var(--fg-subtle); font-style: italic; font-size: 13px;
-  margin: 6px 0 0; padding: 8px 0; text-align: center;
-  border-top: 1px solid var(--line);
-}
-.adash-aero .see-all {
-  display: inline-flex; align-items: center; gap: 5px; margin-top: 10px;
-  font-family: ui-monospace, 'IBM Plex Mono', monospace;
-  font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
-  font-weight: 700; color: var(--brand-700); text-decoration: none;
-  transition: color 120ms;
-}
-.adash-aero .see-all:hover { color: var(--brand-900); }
-
-/* ── Right rail — quick actions ──────────────────────────────── */
-.adash-aero .sr-rail {
-  background: var(--elevated);
-  border-left: 1px solid var(--line);
-  padding: 20px 16px;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.adash-aero .rail-h {
-  font-family: ui-monospace, 'IBM Plex Mono', monospace;
-  font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
-  color: var(--fg-muted); font-weight: 700;
-  margin: 14px 6px 6px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--line);
-  display: flex; align-items: center; gap: 8px;
-}
-.adash-aero .rail-h:first-child { margin-top: 0; }
-.adash-aero .qa {
-  display: grid; grid-template-columns: 28px 1fr;
-  gap: 12px; align-items: center;
-  padding: 11px 12px;
-  background: var(--card-solid);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  color: var(--fg); text-decoration: none;
-  transition: all 120ms;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset;
-}
-.adash-aero .qa:hover {
-  background: var(--card);
-  border-color: var(--line-strong);
-  transform: translateY(-1px);
-}
-.adash-aero .qa svg { color: var(--brand-600); }
-.adash-aero .qa-t {
-  margin: 0; font-size: 12.5px; font-weight: 600;
-  color: var(--fg); letter-spacing: -0.005em;
-  line-height: 1.2;
-}
-.adash-aero .qa-s {
-  margin: 2px 0 0; font-size: 11px; color: var(--fg-muted);
-  line-height: 1.3; font-family: ui-monospace, 'IBM Plex Mono', monospace;
-  letter-spacing: 0.02em;
-}
-.adash-aero .qa-primary {
-  background: var(--brand-600); color: #fff;
-  border-color: var(--brand-700);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 4px 12px rgba(0,0,0,0.10);
-}
-.adash-aero .qa-primary svg { color: #fff; }
-.adash-aero .qa-primary .qa-t, .adash-aero .qa-primary .qa-s { color: #fff; }
-.adash-aero .qa-primary .qa-s { opacity: 0.85; }
-.adash-aero .qa-primary:hover { background: var(--brand-700); }
-.adash-aero .qa-aside {
-  margin-top: 6px; opacity: 0.85;
-  background: transparent; border-color: transparent;
-  box-shadow: none;
-}
-.adash-aero .qa-aside:hover { background: var(--card-solid); border-color: var(--line); opacity: 1; }
 `;

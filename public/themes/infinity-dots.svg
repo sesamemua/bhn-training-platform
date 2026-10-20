@@ -1,4 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 400">
+  <defs>
+    <pattern id="dark-dots" width="13" height="13" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="3.5" fill="#151515"/></pattern>
+    <pattern id="light-dots" width="15" height="15" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="4" fill="#fff"/></pattern>
+  </defs>
   <path fill="#fff" d="M0 0h256v400H0z"/>
   <g fill="#151515">
     <circle cx="4" cy="8" r="18"/><circle cx="47" cy="12" r="13"/><circle cx="83" cy="18" r="9"/><circle cx="113" cy="24" r="6"/><circle cx="138" cy="29" r="4"/>
@@ -15,5 +19,15 @@
   </g>
   <g fill="none" stroke="#bd1733" stroke-width="3">
     <circle cx="218" cy="51" r="38"/><circle cx="133" cy="271" r="22"/><circle cx="150" cy="366" r="29"/>
+  </g>
+  <g stroke="#151515" stroke-width="2.5">
+    <path fill="#fff" d="M134 73C96-5 200-14 183 55c70-47 98 45 32 54 70 43-4 102-38 45-8 75-96 35-62-16-77 20-88-70-24-66-45-52 20-78 43 1z"/>
+    <path fill="url(#dark-dots)" d="M134 73C96-5 200-14 183 55c70-47 98 45 32 54 70 43-4 102-38 45-8 75-96 35-62-16-77 20-88-70-24-66-45-52 20-78 43 1z"/>
+    <circle cx="153" cy="103" r="30" fill="#bd1733"/>
+    <circle cx="153" cy="103" r="22" fill="url(#light-dots)" stroke="none"/>
+    <path fill="#bd1733" d="M55 233c35-65 106-16 80 21 49-31 86 12 64 49-21 34-54 41-79 29-51 40-104 1-86-35-25-17-8-49 21-64z"/>
+    <path fill="url(#dark-dots)" d="M55 233c35-65 106-16 80 21 49-31 86 12 64 49-21 34-54 41-79 29-51 40-104 1-86-35-25-17-8-49 21-64z"/>
+    <path fill="none" stroke="#fff" stroke-width="3" d="M77 248c-36 66 56 64 27 0M159 278c-33 58 39 43 19 9"/>
+    <path fill="none" d="M153 134c-24 64 63 45 49 78M120 331c-30 27-21 55 7 69"/>
   </g>
 </svg>

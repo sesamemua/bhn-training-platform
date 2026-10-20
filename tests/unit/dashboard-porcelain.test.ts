@@ -6,6 +6,21 @@ import postcss from "postcss";
 const source = readFileSync("src/components/dashboards/AdminDashboard.tsx", "utf8");
 const css = source.match(/const AERO_CSS = `([\s\S]+)`;/)![1];
 
+test("the obsolete bottom overview and its private queries are removed, not just hidden", () => {
+  assert.doesNotMatch(source, /Triage queue|Today&apos;s pulse|Pipeline at a glance|sr-layout|sr-rail/);
+  assert.doesNotMatch(source, /prisma\.certificate\.count|prisma\.auditLog\.findMany|new24hEnrollments|phantomCount/);
+  assert.match(source, /<AdminDashboardCards/);
+  assert.match(source, /\{pageUsage\}/);
+});
+
+test("the shared glaze has no diagonal white beam or hard white highlight", () => {
+  const parsed = postcss.parse(css);
+  const material = parsed.nodes.find((node) => node.type === "rule" && node.selector === ".adash-aero")!;
+  assert.match(material.toString(), /linear-gradient\(180deg/);
+  assert.doesNotMatch(material.toString(), /112deg|\bwhite\b|#[a-f0-9]{3,8}/i);
+  assert.doesNotMatch(css, /rgb\(255 255 255 \/ 20%\)/);
+});
+
 test("porcelain finish stays dashboard-scoped, theme-aware and free of moving or blurred overlays", () => {
   const parsed = postcss.parse(css);
   const material = parsed.nodes.find((node) => node.type === "rule" && node.selector === ".adash-aero")!;

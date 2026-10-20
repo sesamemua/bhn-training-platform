@@ -114,7 +114,9 @@
 }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover-wrap {
   background-image: var(--theme-art);
-  background-size: 256px auto;
+  background-size: 180px auto;
+  background-position: right top;
+  padding-right: 180px;
   gap: 10px;
 }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover {
@@ -128,7 +130,16 @@
 }
 [data-theme="cubist"] .adash-aero .cover { clip-path: polygon(0 0, 96% 0, 100% 36%, 97% 100%, 0 100%); }
 [data-theme="cubist"] .adash-aero .toc { clip-path: polygon(0 0, 100% 0, 100% 100%, 4% 100%, 0 38%); }
+[data-theme="cubist"] .adash-aero .cover .headline,
+[data-theme="cubist"] .training-workshop-title { font-family: Georgia, "Times New Roman", serif; }
+[data-theme="cubist"] .adash-aero .aero-h { box-shadow: 0 3px 0 #e3a719; }
 [data-theme="infinitydots"] .adash-aero :is(.cover, .toc) { border-radius: 18px; }
+[data-theme="infinitydots"] .adash-aero .aero-h::after {
+  content: "";
+  width: 35px;
+  height: 7px;
+  background: radial-gradient(circle at 3px 50%, #bd1733 3px, transparent 3.5px) 0 0 / 10px 7px repeat-x;
+}
 /* A narrow art edge repeats the visual language without sitting under data. */
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .aero-frame::after {
   content: "";
@@ -152,6 +163,9 @@
   background-size: 8px 18px;
   background-repeat: repeat-y;
   box-shadow: inset 1px 0 #d6d6d6;
+}
+@media (max-width: 1279px) {
+  :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover-wrap { padding-right: 0; padding-top: 36px; }
 }
 @media (max-width: 900px) {
   :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .cover { margin: 10px 10px 0; clip-path: none; }
