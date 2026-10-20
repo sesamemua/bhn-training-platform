@@ -16,11 +16,12 @@ export function WorkshopRegistrationControl({ slug, title, initial, save }: {
   const [busy, start] = useTransition();
   // Legacy Full blocks registration just like Pause; keep its capacity reason.
   const selected = state === "full" ? "paused" : state;
-  return <div className="text-[11px]">
+  return <div className="training-registration-control text-[11px]">
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted">Registration: <strong className="text-fg">{STATE_LABEL[selected]}</strong>{state === "full" && <span> · Capacity reached</span>}</span>
-      <div role="group" aria-label={`Registration for ${title}`} className="inline-flex rounded-md border border-line p-0.5">
-        {choices.map(({ state: next, label, Icon }) => <button key={next} type="button" aria-pressed={selected === next} disabled={busy} onClick={() => { setProblem(null); setArmed(next === selected ? null : next); }} className={`inline-flex items-center gap-1 rounded px-2 py-1.5 font-semibold disabled:opacity-50 ${selected === next ? "bg-teal-700 text-white" : "text-muted hover:bg-elevated"}`}><Icon size={12} />{label}</button>)}
+      <span className="sr-only">Registration: <strong className="text-fg">{STATE_LABEL[selected]}</strong></span>
+      {state === "full" && <span className="text-muted">Capacity reached</span>}
+      <div role="group" aria-label={`Registration for ${title}`} className="training-registration-segments">
+        {choices.map(({ state: next, label, Icon }) => <button key={next} type="button" data-state={next} aria-pressed={selected === next} disabled={busy} onClick={() => { setProblem(null); setArmed(next === selected ? null : next); }}><Icon size={13} aria-hidden="true" />{label}</button>)}
       </div>
     </div>
     {armed && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-line bg-elevated p-2" role="group" aria-label={`Confirm registration change for ${title}`}>

@@ -8,7 +8,6 @@ import type { MonitorSession } from "@/lib/training-week/capacity";
 import { WorkshopRegistrationSummary } from "./WorkshopRegistrationSummary";
 import { ArrowRight } from "lucide-react";
 import { CapacityBarMarkers } from "./CapacityBarMarkers";
-import { WorkshopIcon } from "./WorkshopIcon";
 
 export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
@@ -22,10 +21,12 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
     <section>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <p className="text-[10.5px] font-bold uppercase tracking-wide text-subtle">Training Week capacity</p>
+        <div className="training-capacity-actions ml-auto flex items-center gap-2">
         {action}
-        <a href="/admin/workspace/training-admin?tab=registrants" className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2">
-          Open registrants <ArrowRight size={13} aria-hidden="true" />
+        <a href="/admin/workspace/training-admin?tab=registrants" className="inline-flex min-h-9 items-center gap-2 rounded-md bg-brand-600 px-3 text-[12px] font-semibold text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2">
+          Open registrants <ArrowRight size={14} aria-hidden="true" />
         </a>
+        </div>
       </div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
       {registered !== undefined && <p className="text-[13px] text-fg"><strong className="text-[20px] tabular-nums">{registered === null ? "—" : registered.toLocaleString()}</strong> people registered</p>}
@@ -51,7 +52,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 <a href={`/admin/workspace/training-admin?tab=registrants&workshop=${encodeURIComponent(s.id)}`}
                   aria-label={`View registrants for ${s.title}`}
                   data-tone={index % 6}
-                  className="training-workshop-title underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2"><span className="mr-1.5"><WorkshopIcon slug={s.slug} /></span>{s.title}</a>
+                  className="training-workshop-title underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2">{s.title}</a>
                 <span className="text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>
@@ -99,7 +100,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 ]} />
                 </div>
               </div>
-              <WorkshopRegistrationSummary cap={c} compact />
+              <WorkshopRegistrationSummary cap={c} compact workshopSlug={s.slug} />
               </div>
             </li>
           );

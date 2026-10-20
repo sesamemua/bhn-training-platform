@@ -26,8 +26,23 @@ test("the shared dashboard keeps named workshop links and capacity data alongsid
     id: s.slug, slug: s.slug, title: s.title, start: "2026-10-26T10:00:00Z", cap: sessionCapacity(20, []),
   })) }));
   for (const s of SESSIONS) assert.ok(html.includes(`aria-label="View registrants for ${s.title.replaceAll("&", "&amp;")}"`));
-  assert.equal((html.match(/class="lucide lucide-/g) ?? []).length, SESSIONS.length + 1);
+  assert.equal((html.match(/data-workshop-icon=/g) ?? []).length, SESSIONS.length);
+  assert.equal((html.match(/data-has-icon="true"/g) ?? []).length, SESSIONS.length);
+  assert.doesNotMatch(html, /training-workshop-title[^>]*><span/);
   assert.match(html, /0\/20<\/strong> requested/);
+});
+
+test("large dashboard illustrations animate without replacing the existing small icons or artwork", () => {
+  for (const session of SESSIONS) {
+    const animated = renderToStaticMarkup(createElement(WorkshopIcon, { slug: session.slug, size: 124, animated: true }));
+    assert.match(animated, /class="workshop-animation"/);
+    assert.match(animated, /width:124px;height:124px/);
+    assert.match(animated, /aria-hidden="true"/);
+    assert.doesNotMatch(animated, /<img|<button|<a\b/);
+    assert.doesNotMatch(renderToStaticMarkup(createElement(WorkshopIcon, { slug: session.slug })), /workshop-animation/);
+  }
+  const chameleon = renderToStaticMarkup(createElement(WorkshopIcon, { slug: "communication-chameleon-2026", size: 124, animated: true }));
+  for (const part of ["skin", "eyes", "gaze", "tongue", "bug"]) assert.match(chameleon, new RegExp(`class="workshop-chameleon-${part}"`));
 });
 
 test("the rounded chameleon exports its filled silhouette in teal with a transparent eye cutout", async () => {

@@ -191,6 +191,141 @@
 .training-seat-secondary > div { display: flex; align-items: baseline; gap: 6px; }
 .training-seat-secondary dd { min-width: 2ch; color: #bdc1c4; font-size: 12px; }
 
+.training-seat-well[data-has-icon] {
+  display: grid;
+  grid-template-columns: minmax(72px, 22%) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.training-seat-icon { display: flex; align-items: center; justify-content: center; height: 112px; min-width: 0; }
+.training-seat-well[data-has-icon] .training-seat-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.training-seat-well[data-has-icon] .training-seat-priority { gap: 8px; }
+.training-seat-well[data-has-icon] dd { white-space: nowrap; }
+.training-seat-well[data-has-icon] .training-seat-secondary { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.training-seat-well[data-has-icon] .training-seat-secondary > div { gap: 4px; }
+.training-seat-well[data-has-icon] .training-seat-secondary dt { font-size: 10px; }
+.training-seat-well[data-has-icon] .training-seat-secondary dd { color: #d2d7d5; }
+.training-capacity-actions { flex-wrap: wrap; }
+.training-registration-segments {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--elevated) 80%, transparent);
+}
+.training-registration-segments button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: var(--fg-muted);
+  font-weight: 650;
+  transition: background-color 160ms cubic-bezier(.2,.7,.3,1), color 160ms cubic-bezier(.2,.7,.3,1);
+}
+.training-registration-segments button:hover { background: var(--card-solid); color: var(--fg); }
+.training-registration-segments button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.training-registration-segments button:disabled { opacity: .5; }
+.training-registration-segments button[aria-pressed="true"] { box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+.training-registration-segments button[data-state="open"][aria-pressed="true"] { background: #daf0e6; color: #145c42; }
+.training-registration-segments button[data-state="paused"][aria-pressed="true"] { background: #f6e7be; color: #785012; }
+.training-registration-segments button[data-state="closed"][aria-pressed="true"] { background: #f3dfe1; color: #8a3440; }
+
+.workshop-animation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  max-width: 100%;
+  max-height: 100%;
+  pointer-events: none;
+}
+.workshop-animation-symbol { max-width: 90%; max-height: 90%; transform-origin: center; transform-box: fill-box; }
+.workshop-animation[data-workshop-icon="microbix-tour"] { color: #9fd8f0; }
+.workshop-animation[data-workshop-icon="microbix-tour"] svg { animation: workshop-focus 19s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-animation[data-workshop-icon="pandemic-preparedness"] { color: #c7b7f0; }
+.workshop-animation[data-workshop-icon="pandemic-preparedness"] svg { animation: workshop-shield 23s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-animation[data-workshop-icon="negotiation-navigator"] { color: #edb7d6; }
+.workshop-animation[data-workshop-icon="negotiation-navigator"] svg path { transform-box: fill-box; transform-origin: center; animation: workshop-bearing 21s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-animation[data-workshop-icon="discovery-to-delivery-ccrm"] { color: #b1c5ef; }
+.workshop-animation[data-workshop-icon="discovery-to-delivery-ccrm"] svg { animation: workshop-factory 25s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-animation[data-workshop-icon="innovation-ignited"] { color: #efd18a; }
+.workshop-animation[data-workshop-icon="innovation-ignited"] svg { animation: workshop-idea 18s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-chameleon { display: block; width: 100%; height: auto; overflow: visible; }
+.workshop-chameleon-skin { color: #8ad69b; animation: workshop-camouflage 20s linear infinite; }
+.workshop-chameleon-gaze { animation: workshop-peek 20s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-chameleon-eyes { transform-box: fill-box; transform-origin: center; animation: workshop-blink 20s linear infinite; }
+.workshop-chameleon-tongue { transform: scale(0); transform-origin: 103px 60px; animation: workshop-catch 20s cubic-bezier(.2,.7,.3,1) infinite; }
+.workshop-chameleon-bug { opacity: 0; transform-origin: 131px 36px; animation: workshop-bug 20s linear infinite; }
+@keyframes workshop-focus {
+  0%, 24%, 52%, 100% { transform: rotate(0); }
+  30%, 38% { transform: rotate(-7deg); }
+  44% { transform: rotate(3deg); }
+}
+@keyframes workshop-shield {
+  0%, 36%, 62%, 100% { transform: translateY(0) rotate(0); }
+  42%, 50% { transform: translateY(-3px) rotate(-3deg); }
+  56% { transform: translateY(-1px) rotate(2deg); }
+}
+@keyframes workshop-bearing {
+  0%, 22%, 64%, 100% { transform: rotate(0); }
+  30%, 38% { transform: rotate(-24deg); }
+  48%, 54% { transform: rotate(18deg); }
+}
+@keyframes workshop-factory {
+  0%, 44%, 66%, 100% { transform: translateY(0); }
+  48%, 56% { transform: translateY(-3px); }
+  52%, 60% { transform: translateY(1px); }
+}
+@keyframes workshop-idea {
+  0%, 16%, 44%, 100% { transform: rotate(0); filter: brightness(1); }
+  24% { transform: rotate(-7deg); filter: brightness(1); }
+  30%, 36% { transform: rotate(5deg); filter: brightness(1.15); }
+}
+/* The whole sequence shares one clock: look, catch, retract, then camouflage and rest. */
+@keyframes workshop-camouflage {
+  0%, 54%, 100% { filter: hue-rotate(0deg); }
+  62%, 92% { filter: hue-rotate(140deg); }
+}
+@keyframes workshop-peek {
+  0%, 10%, 65%, 100% { transform: translate(0,0); }
+  16%, 26% { transform: translate(-2px,1px); }
+  34%, 53% { transform: translate(2px,-1px); }
+}
+@keyframes workshop-blink {
+  0%, 12%, 14%, 82%, 84%, 100% { transform: scaleY(1); }
+  13%, 83% { transform: scaleY(.12); }
+}
+@keyframes workshop-catch {
+  0%, 46%, 53%, 100% { transform: scale(0); }
+  48%, 49% { transform: scale(1); }
+}
+@keyframes workshop-bug {
+  0%, 26%, 53%, 100% { opacity: 0; transform: translate(0,0) scale(1); }
+  28% { opacity: 1; transform: translate(-7px,-6px) scale(1); }
+  35% { opacity: 1; transform: translate(3px,-3px) scale(1); }
+  44%, 49% { opacity: 1; transform: translate(0,0) scale(1); }
+  52% { opacity: 0; transform: translate(-28px,24px) scale(.15); }
+}
+[data-workshop-motion="paused"] :is(.workshop-animation, .workshop-animation *, .training-seat-approved svg) { animation-play-state: paused !important; }
+@container (max-width: 440px) {
+  .training-seat-well[data-has-icon] .training-seat-priority { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
+  .training-seat-well[data-has-icon] .training-seat-priority dd { min-height: 28px; font-size: 24px; }
+  .training-seat-well[data-has-icon] .training-seat-priority svg { height: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workshop-animation, .workshop-animation * { animation: none !important; filter: none !important; }
+  .workshop-chameleon-tongue, .workshop-chameleon-bug { display: none; }
+  .training-registration-segments button { transition: none; }
+}
+@media (forced-colors: active) {
+  .training-registration-segments button[aria-pressed="true"] { outline: 2px solid Highlight; }
+  .workshop-animation { color: CanvasText !important; }
+}
+
 @container (max-width: 400px) {
   .training-seat-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .training-seat-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 12px; }

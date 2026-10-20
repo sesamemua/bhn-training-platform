@@ -149,7 +149,8 @@ test("symposium precedes capacity; total people and per-session controls stay se
   const paused = renderToStaticMarkup(createElement(WorkshopRegistrationControl, { slug: "one", title: "Workshop", initial: "paused", save }));
   assert.match(paused, /<strong class="text-fg">Paused<\/strong>/);
   assert.match(paused, /aria-pressed="true"/);
-  assert.match(paused, /bg-teal-700 text-white/);
+  assert.match(paused, /data-state="paused" aria-pressed="true"/);
+  assert.match(paused, /training-registration-segments/);
   assert.doesNotMatch(paused, /text-bg/);
   const counted = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [session], registered: 49 }));
   assert.match(counted, />49<\/strong> people registered/);

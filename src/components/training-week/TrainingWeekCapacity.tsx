@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ComponentProps } from "react";
-import { Check, Pencil } from "lucide-react";
+import { Check, Pause, Pencil, Play } from "lucide-react";
 import { CapacityMonitor } from "./CapacityMonitor";
 import { WorkshopRegistrationControl, type SaveWorkshopRegistration } from "./WorkshopRegistrationControl";
 
@@ -14,16 +14,22 @@ export function TrainingWeekCapacity({ sessions, registered, saveCapacity, saveW
   const [busy, start] = useTransition();
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  return <>
-    <CapacityMonitor sessions={sessions} registered={registered} action={
+  const [motionPaused, setMotionPaused] = useState(false);
+  return <div data-workshop-motion={motionPaused ? "paused" : "playing"}>
+    <CapacityMonitor sessions={sessions} registered={registered} action={<>
+      <button type="button" onClick={() => setMotionPaused((paused) => !paused)} aria-pressed={motionPaused}
+        aria-label={motionPaused ? "Resume dashboard animations" : "Pause dashboard animations"} title={motionPaused ? "Resume dashboard animations" : "Pause dashboard animations"}
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2">
+        {motionPaused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}
+      </button>
       <button type="button" aria-label={editing ? "Done editing capacity" : "Edit capacity"} aria-expanded={editing}
         onClick={() => setEditing((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[12px] font-semibold text-fg hover:bg-elevated">
-        {editing ? <Check size={12} aria-hidden="true" /> : <Pencil size={12} aria-hidden="true" />}
-        {editing ? "Done" : "Edit"}
+        className="inline-flex min-h-9 items-center gap-2 rounded-md bg-elevated/70 px-3 text-[12px] font-semibold text-fg hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2">
+        {editing ? <Check size={14} aria-hidden="true" /> : <Pencil size={14} aria-hidden="true" />}
+        {editing ? "Done" : "Capacity"}
       </button>
-    } controls={(s) => (
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-1.5">
+    </>} controls={(s) => (
+      <div className="training-workshop-controls flex flex-wrap items-center gap-x-3 gap-y-1.5">
         {editing && <NumberField key={`${s.id}:${s.cap.capacity}`} label="Seats" ariaLabel={`Seat capacity for ${s.title}`} value={s.cap.capacity} disabled={busy}
           onCommit={(capacity, revert) => start(async () => {
             setProblem(null);
@@ -38,7 +44,7 @@ export function TrainingWeekCapacity({ sessions, registered, saveCapacity, saveW
     )} />
     {busy && <p role="status" className="mt-2 text-[12px] text-muted">Saving capacity...</p>}
     {problem && <p role="alert" className="mt-2 text-[12px] text-fg">{problem}</p>}
-  </>;
+  </div>;
 }
 
 /** Save on blur; revert a refused write. */

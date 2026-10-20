@@ -1,5 +1,6 @@
 import { registrationSummary, type SessionCapacity } from "@/lib/training-week/capacity";
 import { Armchair, CheckCircle2, CircleHelp, Clock3, UserMinus, Users, XCircle, type LucideIcon } from "lucide-react";
+import { WorkshopIcon } from "./WorkshopIcon";
 
 const digitRows = [
   ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
@@ -26,10 +27,11 @@ function DotMatrixNumber({ value }: { value: number }) {
   </>;
 }
 
-export function WorkshopRegistrationSummary({ cap, compact = false }: { cap: SessionCapacity; compact?: boolean }) {
+export function WorkshopRegistrationSummary({ cap, compact = false, workshopSlug }: { cap: SessionCapacity; compact?: boolean; workshopSlug?: string }) {
   const d = cap.decisions;
   if (compact) return (
-    <div className="training-seat-well" role="group" aria-label={`${registrationSummary(cap)} · Total capacity: ${cap.capacity}`}>
+    <div className="training-seat-well" data-has-icon={workshopSlug ? true : undefined} role="group" aria-label={`${registrationSummary(cap)} · Total capacity: ${cap.capacity}`}>
+      {workshopSlug && <div className="training-seat-icon"><WorkshopIcon slug={workshopSlug} size={124} animated /></div>}
       <div className="training-seat-layout">
         <dl className="training-seat-priority" aria-label="Seat availability and pending decisions">
           {[

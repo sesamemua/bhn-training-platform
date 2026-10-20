@@ -1,0 +1,71 @@
+import assert from "node:assert/strict";
+import { readFile, mkdir } from "node:fs/promises";
+import { build } from "esbuild";
+import postcss from "postcss";
+import tailwind from "@tailwindcss/postcss";
+import { chromium, expect } from "@playwright/test";
+
+async function main() {
+  const css = await postcss([tailwind()]).process(await readFile("src/app/globals.css", "utf8"), { from: "src/app/globals.css" });
+  const bundle = await build({
+    stdin: { resolveDir: process.cwd(), loader: "tsx", contents: `
+      import React from "react"; import {createRoot} from "react-dom/client";
+      import {TrainingWeekCapacity} from "./src/components/training-week/TrainingWeekCapacity";
+      import {SESSIONS} from "./src/lib/training-week/schedule-2026";
+      import {sessionCapacity} from "./src/lib/training-week/capacity";
+      window.saves=[];
+      const sessions=SESSIONS.map((s,i)=>({id:s.slug,slug:s.slug,title:s.title,start:s.day+"T13:00:00Z",cap:sessionCapacity(s.capacity,[...Array.from({length:i===2?18:8},()=>({status:"confirmed"})),...Array.from({length:7},()=>({status:"pending",suggestion:"approve"}))]),registration:{state:i===0?"paused":i===1?"closed":"open",message:""}}));
+      createRoot(document.getElementById("root")).render(<TrainingWeekCapacity sessions={sessions} registered={103} saveCapacity={async(...args)=>{window.saves.push(args);return{ok:true}}} saveWorkshopState={async(...args)=>{window.saves.push(args);return{ok:true}}}/>);
+    ` }, bundle: true, write: false, jsx: "automatic", format: "iife",
+  });
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+    await page.route("https://workshops.test/", route => route.fulfill({ contentType: "text/html", body: `<html lang="en"><head><title>Training Week capacity</title><style>${css.css}</style></head><body><main style="max-width:1400px;margin:auto;padding:24px"><div id="root"></div></main><script src="/app.js"></script></body></html>` }));
+    await page.route("https://workshops.test/app.js", route => route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text }));
+    await page.goto("https://workshops.test/");
+    await expect(page.locator(".workshop-animation")).toHaveCount(6);
+    const chameleon = page.locator('[data-workshop-icon="communication-chameleon"]');
+    const well = page.locator(".training-seat-well").nth(2);
+    const iconBox = await chameleon.boundingBox(), wellBox = await well.boundingBox();
+    assert.ok(iconBox && wellBox && iconBox.width > 90 && iconBox.x >= wellBox.x && iconBox.x + iconBox.width <= wellBox.x + wellBox.width);
+    assert.equal(await page.locator(".training-workshop-title svg").count(), 0);
+    const before = await chameleon.locator(".workshop-chameleon-skin").evaluate(node => getComputedStyle(node).filter);
+    await page.getByRole("button", { name: "Pause dashboard animations" }).click();
+    const animations = await page.locator(".workshop-animation").evaluateAll(nodes => nodes.flatMap(node => node.getAnimations({ subtree: true }).map(animation => animation.playState)));
+    assert.ok(animations.length >= 10 && animations.every(state => state === "paused"));
+    await page.getByRole("button", { name: "Resume dashboard animations" }).click();
+    const seek = async (time: number) => chameleon.evaluate((node,time) => node.getAnimations({ subtree: true }).forEach(animation => { animation.pause(); animation.currentTime=time; }),time);
+    await seek(9000);
+    assert.notEqual(await chameleon.locator(".workshop-chameleon-gaze").evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)");
+    await seek(9700);
+    assert.equal(await chameleon.locator(".workshop-chameleon-tongue").evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)");
+    assert.equal(await chameleon.locator(".workshop-chameleon-bug").evaluate(node => getComputedStyle(node).opacity), "1");
+    await mkdir("output", { recursive: true });
+    await page.screenshot({ path: "output/workshop-icons-catch-desktop.png", fullPage: true });
+    await seek(15000);
+    assert.notEqual(await chameleon.locator(".workshop-chameleon-skin").evaluate(node => getComputedStyle(node).filter),before);
+    assert.equal(await chameleon.locator(".workshop-chameleon-bug").evaluate(node => getComputedStyle(node).opacity), "0");
+    const firstControl = page.getByRole("group", { name: "Registration for Microbix tour + Lunch & Learn", exact: true });
+    await firstControl.getByRole("button", { name: "Open", exact: true }).click();
+    assert.equal(await page.evaluate(()=>(window as any).saves.length),0,"opening the confirmation cannot change registration");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.getByRole("button", { name: "Edit capacity", exact: true }).click();
+    await expect(page.getByRole("spinbutton")).toHaveCount(6);
+    await page.getByRole("button", { name: "Done editing capacity", exact: true }).click();
+    for (const width of [1000,768,390,320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      assert.equal(await page.locator("body").evaluate(node=>node.scrollWidth>window.innerWidth),false,`no overflow at ${width}px`);
+      const boxes = await page.locator(".training-seat-well").evaluateAll(nodes=>nodes.map(node=>({width:node.clientWidth,scrollWidth:node.scrollWidth})));
+      assert.ok(boxes.every(box=>box.scrollWidth<=box.width),`statistics fit at ${width}px`);
+    }
+    await page.screenshot({ path: "output/workshop-icons-mobile.png", fullPage: true });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(await chameleon.locator(".workshop-chameleon-tongue").evaluate(node=>getComputedStyle(node).display),"none");
+    assert.equal(await chameleon.locator(".workshop-chameleon-bug").evaluate(node=>getComputedStyle(node).display),"none");
+    assert.ok((await page.locator(".workshop-animation").evaluateAll(nodes=>nodes.flatMap(node=>node.getAnimations({subtree:true})))).length===0);
+    console.log("PASS: six large animated icons, eye movement, tongue catch, camouflage, pause/resume, reduced motion, preserved controls and responsive layout");
+  } finally { await browser.close(); }
+}
+
+void main();
