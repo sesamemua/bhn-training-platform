@@ -133,3 +133,23 @@ test("newsletter reviews never offer name entry or mint guest credentials", asyn
   assert.equal(response.status, 403);
   assert.equal(minted, false);
 });
+
+test("the review launch CTA is prominent, has finite motion, and maintains text contrast", () => {
+  const html = renderToStaticMarkup(createElement(NewsletterPageReview, {
+    issueId: "october", html: "", initialReview: { id: "newsletter-october", round: 1, status: "open" }, canEdit: true,
+  }));
+  assert.match(html, /class="newsletter-review-launch"/);
+  const css = readFileSync("src/app/globals.css", "utf8");
+  const rule = css.match(/\.newsletter-review-launch \{([^}]+)\}/)![1];
+  assert.match(rule, /min-height: 52px/);
+  assert.match(rule, /font-size: 15px/);
+  assert.match(rule, /background: #b8364c/);
+  assert.match(css, /animation: newsletter-review-sheen 1\.8s ease-in-out 2;/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.newsletter-review-launch \{ transition: none; transform: none; \}\s*\.newsletter-review-launch::before \{ animation: none; display: none; \}/);
+  const base = [184, 54, 76];
+  for (const rgb of [base, [163, 46, 67], base.map((c) => c * .9 + 255 * .1)]) {
+    const linear = rgb.map((value) => value / 255).map((value) => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+    const luminance = linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
+    assert.ok(1.05 / (luminance + .05) >= 4.5, "white text passes AA even at the peak highlight");
+  }
+});

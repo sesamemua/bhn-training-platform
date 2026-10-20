@@ -45,7 +45,7 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
     <div className="flex flex-wrap items-center gap-3">
       <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Saved newsletter HTML version"><MessageSquareText size={16} />{review ? `Version ${review.round}` : "Newsletter review"}</h2>
       {launch && <>
-        <a href={launch} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white"><ExternalLink size={14} />Open full-page review</a>
+        <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>
         <button onClick={() => copy("link")} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Copy size={14} />{copied === "link" ? "Link copied" : "Copy review link"}</button>
         <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
       </>}

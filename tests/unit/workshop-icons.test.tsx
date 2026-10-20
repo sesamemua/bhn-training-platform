@@ -34,6 +34,13 @@ test("the rounded chameleon exports its filled silhouette in teal with a transpa
   const png = "public/workshop-icons/communication-chameleon.png";
   const body = await sharp(png).extract({ left: 192, top: 235, width: 1, height: 1 }).raw().toBuffer();
   assert.deepEqual([...body], [15, 118, 110, 255]);
-  const eye = await sharp(png).extract({ left: 300, top: 192, width: 1, height: 1 }).raw().toBuffer();
+  const eye = await sharp(png).extract({ left: 328, top: 213, width: 1, height: 1 }).raw().toBuffer();
   assert.equal(eye[3], 0, "eye remains transparent on light and dark backgrounds");
+});
+
+test("the friendly chameleon has no speech bubble", () => {
+  const icon = renderToStaticMarkup(createElement(WorkshopIcon, { slug: "communication-chameleon-2026" }));
+  assert.equal(WORKSHOP_ICONS["communication-chameleon-2026"].symbol, "Chameleon");
+  assert.equal((icon.match(/<path /g) ?? []).length, 3, "silhouette, spiral tail and curved feet only");
+  assert.match(icon, /fill-rule="evenodd"/);
 });
