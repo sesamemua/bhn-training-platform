@@ -19,7 +19,7 @@ const distinct = new Set<string>();
 const download = renderToStaticMarkup(createElement(Download, { size: 16, "aria-hidden": true }));
 for (const session of SESSIONS) {
   const { Icon, colour, symbol, asset } = WORKSHOP_ICONS[session.slug as keyof typeof WORKSHOP_ICONS];
-  const svg = renderToStaticMarkup(createElement(Icon, { size: 512, strokeWidth: 2, color: colour }));
+  const svg = renderToStaticMarkup(createElement(Icon, { size: 512, strokeWidth: 2, color: colour, style: asset === "communication-chameleon" ? { color: colour } : undefined }));
   assert.match(svg, /viewBox="0 0 24 24"/);
   assert.ok(!svg.includes("<text"));
   distinct.add(svg);

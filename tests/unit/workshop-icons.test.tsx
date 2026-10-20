@@ -6,6 +6,7 @@ import { WORKSHOP_ICONS, WorkshopIcon } from "../../src/components/training-week
 import { SESSIONS } from "../../src/lib/training-week/schedule-2026";
 import { CapacityMonitor } from "../../src/components/training-week/CapacityMonitor";
 import { sessionCapacity } from "../../src/lib/training-week/capacity";
+import sharp from "sharp";
 
 test("every current session has its own icon, keyed by stable slug rather than title or order", () => {
   assert.deepEqual(Object.keys(WORKSHOP_ICONS).sort(), SESSIONS.map((s) => s.slug).sort());
@@ -27,4 +28,12 @@ test("the shared dashboard keeps named workshop links and capacity data alongsid
   for (const s of SESSIONS) assert.ok(html.includes(`aria-label="View registrants for ${s.title.replaceAll("&", "&amp;")}"`));
   assert.equal((html.match(/class="lucide lucide-/g) ?? []).length, SESSIONS.length + 1);
   assert.match(html, /0\/20<\/strong> requested/);
+});
+
+test("the rounded chameleon exports its filled silhouette in teal with a transparent eye cutout", async () => {
+  const png = "public/workshop-icons/communication-chameleon.png";
+  const body = await sharp(png).extract({ left: 192, top: 235, width: 1, height: 1 }).raw().toBuffer();
+  assert.deepEqual([...body], [15, 118, 110, 255]);
+  const eye = await sharp(png).extract({ left: 300, top: 192, width: 1, height: 1 }).raw().toBuffer();
+  assert.equal(eye[3], 0, "eye remains transparent on light and dark backgrounds");
 });

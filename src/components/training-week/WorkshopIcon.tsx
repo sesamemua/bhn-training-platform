@@ -1,10 +1,11 @@
 import { Compass, createLucideIcon, Factory, Lightbulb, Microscope, Presentation, ShieldPlus } from "lucide-react";
 
 const TalkingChameleon = createLucideIcon("TalkingChameleon", [
-  ["path", { d: "M15 2h6a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2l-3 2V7h-1a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z", key: "speech" }],
-  ["path", { d: "M5 15c0-4 3-6 7-5l2-2 1 4 4 2v2h-5c-2 3-6 3-9 1-2-1-4 0-4 2a3 3 0 0 0 6 0c0-1-2-1-2 0", key: "chameleon" }],
-  ["circle", { cx: "14", cy: "13", r: ".6", fill: "currentColor", stroke: "none", key: "eye" }],
-  ["path", { d: "m8 17-1 4h2m4-4 1 4h2M6 22h15", key: "perch" }],
+  ["path", { d: "M3 1.5h5.5a1 1 0 0 1 1 1V4a1 1 0 0 1-1 1H8l2 1.5L9.5 5H3a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1Z", strokeWidth: "1.25", key: "speech" }],
+  ["path", { d: "M6 15.8C3.1 14 3.2 10.3 6.2 8.5c2-1.2 4.6-1.2 6.6.1l.6-4.6c4 1 6.2 3.4 6.8 7.3l-2.8.2 2.4 1c-1.5 1.2-3.3 1.4-5.2.7-1.4 3.4-5 4.4-8.6 2.6ZM17 9a1.8 1.8 0 1 0-3.6 0A1.8 1.8 0 1 0 17 9Z", fill: "currentColor", fillRule: "evenodd", stroke: "none", key: "chameleon" }],
+  ["circle", { cx: "15.6", cy: "9", r: ".65", fill: "currentColor", stroke: "none", key: "eye" }],
+  ["path", { d: "M6 14.8c-4.1-.1-5.5 3-3.6 5.6 1.6 2.3 5.4 2 6.4-.3 1-2.2-1.1-4.1-2.8-3.1-1.4.8-.7 2.5.6 1.8", strokeWidth: "1.7", key: "spiral-tail" }],
+  ["path", { d: "m10 15.5 1.5 3H13m2-5 1.2 3H18", strokeWidth: "1.7", key: "feet" }],
 ]);
 
 export const WORKSHOP_ICONS = {
