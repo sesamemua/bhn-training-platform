@@ -148,6 +148,7 @@ export default async function NewsletterReviewPage() {
         html={html}
         initialReview={review ? { id: review.id, round: review.round, status: review.status } : null}
         canEdit={role === "admin" || role === "superadmin"}
+        initialPaste={pastedReview?.title.toLowerCase().includes(issue.dateline.toLowerCase()) ? pastedReview.code : ""}
       />
       <SignOff signOff={signOff} openCount={(review?._count.comments ?? 0) + comments.filter((comment) => comment.status === "open").length} />
       {comments.length > 0 && <details>

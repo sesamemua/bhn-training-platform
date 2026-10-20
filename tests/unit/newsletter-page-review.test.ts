@@ -88,6 +88,8 @@ test("newsletter uses the existing overlay and revision endpoint while retaining
   assert.match(page, /<SignOff /);
   assert.match(page, /Earlier newsletter notes/);
   assert.match(page, /<PastedNewsletterReview/);
+  assert.match(page, /pastedReview\?\.title.toLowerCase\(\).includes\(issue.dateline.toLowerCase\(\)\)/);
+  assert.match(client, /useState\(initialPaste\)/);
 });
 
 test("newsletter reviews never offer name entry or mint guest credentials", async () => {

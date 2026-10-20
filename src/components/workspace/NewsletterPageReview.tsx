@@ -5,12 +5,12 @@ import { Copy, ExternalLink, Loader2, MessageSquareText, Save } from "lucide-rea
 
 interface Review { id: string; round: number; status: string }
 
-export function NewsletterPageReview({ issueId, html, initialReview, canEdit }: {
-  issueId: string; html: string; initialReview: Review | null; canEdit: boolean;
+export function NewsletterPageReview({ issueId, html, initialReview, canEdit, initialPaste = "" }: {
+  issueId: string; html: string; initialReview: Review | null; canEdit: boolean; initialPaste?: string;
 }) {
   const [review, setReview] = useState(initialReview);
-  const [source, setSource] = useState<"issue" | "paste">("issue");
-  const [paste, setPaste] = useState("");
+  const [source, setSource] = useState<"issue" | "paste">(initialPaste ? "paste" : "issue");
+  const [paste, setPaste] = useState(initialPaste);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
