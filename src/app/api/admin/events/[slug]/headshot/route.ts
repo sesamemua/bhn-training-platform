@@ -94,6 +94,9 @@ export async function POST(req: NextRequest, ctx: Context) {
       return NextResponse.json({ error: "Choose a PNG headshot under 3 MB." }, { status: 400 });
     }
     const bytes = Buffer.from(await file.arrayBuffer());
+    // Reject SVG and other decoders before sharp inspects an admin-supplied file.
+    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    if (!bytes.subarray(0, 8).equals(pngSignature)) return NextResponse.json({ error: "The headshot must be a PNG image." }, { status: 400 });
     const metadata = await sharp(bytes, { limitInputPixels: 4_000_000 }).metadata().catch(() => null);
     if (metadata?.format !== "png" || metadata.width !== 600 || metadata.height !== 600) {
       return NextResponse.json({ error: "The headshot must be a 600-pixel square PNG." }, { status: 400 });
