@@ -103,7 +103,7 @@ test("newsletter code is hidden by default and review opens as a full page, not 
       issueId: "october", html: "<p>Generated version</p>", initialPaste: "<p>Latest saved newsletter</p>",
       initialReview: { id: "newsletter-october", round: 9, status: "open" }, canEdit,
     }));
-    assert.match(markup, /Version 9/);
+    assert.match(markup, /Round 9/);
     assert.match(markup, /Open full-page review/);
     assert.match(markup, /href="\/api\/workspace\/page-review\/newsletter-october\/launch" target="_blank" rel="noopener noreferrer"/);
     assert.match(markup, /View code/);
@@ -112,6 +112,52 @@ test("newsletter code is hidden by default and review opens as a full page, not 
     assert.doesNotMatch(markup, /<iframe|<textarea|Latest saved newsletter|Generated version|Your name/);
     assert.equal(markup.includes("Save revision"), canEdit);
   }
+});
+
+test("comparison loads once per round, respects dismissal, and opens again for the next round", async () => {
+  const source = overlaySource("https://review.test/api/public/page-review/token", "Issue");
+  const parsed = ts.createSourceFile("overlay.js", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const functions: string[] = [];
+  function collect(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) && ["loadComparison", "comparisonKey", "endpointKey"].includes(node.name?.text ?? "")) functions.push(node.getText(parsed));
+    ts.forEachChild(node, collect);
+  }
+  collect(parsed);
+  let reads = 0, opens = 0;
+  const dismissed = new Set<string>();
+  const state = { review: { round: 1 }, comparisonRound: null as number | null, comparison: null, comparisonError: "" };
+  const context = vm.createContext({
+    state, endpoint: "https://review.test/api/public/page-review/token", credential: "viewer", comparisonDialog: null,
+    sessionStorage: { getItem: (key: string) => dismissed.has(key) ? "1" : null },
+    render() {}, openComparison() { opens++; },
+    fetch: async (url: string, options: { headers: Record<string, string> }) => {
+      reads++;
+      assert.equal(url, "https://review.test/api/public/page-review/token?comparison=1");
+      assert.equal(options.headers.Authorization, "Bearer viewer");
+      return { ok: true, json: async () => ({ ok: true, review: { round: state.review.round }, comparison: { beforeHtml: "before", afterHtml: "after" } }) };
+    },
+  });
+  vm.runInContext(functions.join("\n"), context);
+  const load = () => vm.runInContext("loadComparison()", context);
+  await load();
+  assert.equal(reads, 0, "first round has no previous version");
+  state.review.round = 2;
+  await load();
+  assert.equal(opens, 1);
+  await load();
+  assert.equal(reads, 1, "polling never refetches snapshots or reopens a closed dialog");
+  dismissed.add("bhn-review-comparison-dismissed:token:2");
+  state.comparisonRound = null;
+  await load();
+  assert.equal(opens, 1, "saved dismissal is respected when storage is available");
+  state.review.round = 3;
+  await load();
+  assert.equal(opens, 2, "new round opens its own comparison");
+  assert.match(source, /frame\.setAttribute\("sandbox", ""\)/);
+  assert.match(source, /frame\.setAttribute\("referrerpolicy", "no-referrer"\)/);
+  assert.match(source, /Previous rounds · /);
+  assert.match(source, /history\.open = state\.historyExpanded/);
+  assert.match(source, /comment\.round < state\.review\.round && !state\.historyExpanded/);
 });
 
 test("newsletter reviews never offer name entry or mint guest credentials", async () => {

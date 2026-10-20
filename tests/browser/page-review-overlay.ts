@@ -391,7 +391,8 @@ async function main() {
     await jordan.getByRole("button", { name: "Collapse comments" }).click();
     await jordan.waitForTimeout(250);
     const collapsedPanel = await jordan.locator("#bhn-review-overlay").boundingBox();
-    assert.ok(collapsedPanel && collapsedPanel.width <= 76);
+    assert.ok(collapsedPanel && collapsedPanel.width <= 106);
+    await jordan.getByText("R1 · ☰ 2", { exact: true }).waitFor();
     assert.equal(await jordan.locator(".bhn-rv-body").isVisible(), false);
     await jordan.getByRole("button", { name: "Expand 2 comments" }).click();
     await jordan.waitForTimeout(250);

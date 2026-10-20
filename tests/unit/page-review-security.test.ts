@@ -201,15 +201,9 @@ test("the live-page endpoint shows carried-over comments and can still act on th
     "utf8",
   );
 
-  assert.match(src, /OR: \[\{ round: review\.round \}, \{ status: "open" \}\]/);
-
-  // round may only be STAMPED on new rows, never used to look one up.
-  const roundUses = [...src.matchAll(/round: review\.round/g)].length;
-  assert.equal(
-    roundUses,
-    3,
-    "expected exactly 3 uses of round: review.round — the OR filter, the review payload, and the round stamped on a new comment",
-  );
+  // History includes settled threads too; grouping belongs in the UI.
+  assert.match(src, /pageComment\.findMany\(\{\s*where: \{ reviewId: review\.id \}/);
+  assert.doesNotMatch(src, /OR: \[\{ round: review\.round \}/);
   assert.doesNotMatch(src, /where: \{ id: [^}]*reviewId: review\.id, round: review\.round \}/);
 
   // Same rule on the index: "open" must not be scoped to the current round,

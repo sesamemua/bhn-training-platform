@@ -129,16 +129,23 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     return json({ error: "Open this review from the training platform to join as yourself." }, 401);
   }
 
-  // Everything filed this round, plus anything still open from an earlier
-  // one. Reopening a comment after a page revision is rolled back leaves it
-  // in the round it was raised in, so a plain round filter made carried-over
-  // items invisible on the very page they are about — the workspace list and
-  // the brief already work this way.
+  if (req.nextUrl.searchParams.get("comparison") === "1") {
+    const content = await prisma.pageReview.findUnique({
+      where: { id: review.id, round: review.round, status: review.status },
+      select: { kind: true, snapshotHtml: true, pastedHtml: true },
+    });
+    return json({
+      ok: true,
+      review: { title: review.title, round: review.round, status: review.status },
+      comparison: content?.kind === "paste" && review.round > 1 && content.snapshotHtml?.trim() && content.pastedHtml?.trim()
+        ? { beforeHtml: content.snapshotHtml, afterHtml: content.pastedHtml }
+        : null,
+    });
+  }
+
+  // Earlier rounds remain available in the overlay's collapsed history.
   const comments = await prisma.pageComment.findMany({
-    where: {
-      reviewId: review.id,
-      OR: [{ round: review.round }, { status: "open" }],
-    },
+    where: { reviewId: review.id },
     orderBy: { createdAt: "asc" },
     take: PAGE_REVIEW_COMMENT_LIMIT,
     select: COMMENT_SELECT,

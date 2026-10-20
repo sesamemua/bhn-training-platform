@@ -60,7 +60,7 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
 
   return <section className="min-w-0 space-y-3" aria-label="Newsletter review">
     <div className="flex flex-wrap items-center gap-3">
-      <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Saved newsletter HTML version"><MessageSquareText size={16} />{review ? `Version ${review.round}` : "Newsletter review"}</h2>
+      <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Current review round"><MessageSquareText size={16} />{review ? `Round ${review.round}` : "Newsletter review"}</h2>
       {launch && <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>}
       <button type="button" onClick={copyComments} disabled={copyingComments} title="Copy open review comments and replies" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50">
         {copyingComments ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}{copied === "comments" ? "Comments copied" : "Copy review comments"}

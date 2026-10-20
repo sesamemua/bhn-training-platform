@@ -40,6 +40,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     saving: false,
     pendingRender: false,
     panelCollapsed: false,
+    historyExpanded: false,
+    comparison: null,
+    comparisonRound: null,
+    comparisonError: "",
+    pageRound: null,
     expandedThreads: {}
   };
   var markers = [];
@@ -50,6 +55,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var panelPosition = null;
   var panelDrag = null;
   var panelResize = null;
+  var comparisonDialog = null;
   // Width is the reviewer's choice and sticks per browser. The default
   // matches the CSS; MIN keeps the two-line meta readable, MAX stops the
   // panel swallowing the page it is meant to be reviewing.
@@ -62,7 +68,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   style.id = ID + "-styles";
   style.textContent = [
     "#" + ID + "{position:fixed;right:10px;bottom:10px;z-index:2147483647;width:min(304px,calc(100vw - 20px));max-height:calc(100vh - 20px);font:12px/1.35 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;color:#17212b;transition:width .16s ease;}",
-    "#" + ID + ".bhn-rv-root-collapsed{width:76px;}",
+    "#" + ID + ".bhn-rv-root-collapsed{width:106px;}",
     "#" + ID + " *{box-sizing:border-box;letter-spacing:0;}",
     "#" + ID + " button,#" + ID + " textarea{font:inherit;}",
     "#" + ID + " button{cursor:pointer;}",
@@ -86,6 +92,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   root.id = ID;
   root.setAttribute("aria-label", "BioHubNet website review");
   document.body.appendChild(root);
+
+  style.textContent += "#" + ID + " .bhn-rv-history{margin-top:8px;border-top:1px solid #c6d0d6;padding-top:8px;}#" + ID + " .bhn-rv-history>summary{cursor:pointer;font-weight:750;padding:5px 0;}#" + ID + " .bhn-rv-history .bhn-rv-list{margin-top:5px;}#" + ID + " .bhn-rv-compare-open{width:100%;margin-bottom:8px;}" +
+    "#" + ID + "-compare{box-sizing:border-box;width:calc(100vw - 24px);max-width:1600px;height:calc(100vh - 24px);max-height:none;margin:auto;padding:0;border:1px solid #b9c5cc;border-radius:8px;background:#f0f4f6;color:#17212b;font:14px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;}#" + ID + "-compare[open]{display:flex;flex-direction:column;}#" + ID + "-compare::backdrop{background:rgba(7,27,39,.55);}#" + ID + "-compare .bhn-rv-compare-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;}#" + ID + "-compare h2{font:inherit;font-size:16px;font-weight:700;color:#17212b;margin:0;}#" + ID + "-compare button{font:inherit;cursor:pointer;padding:6px 12px;border:1px solid #b9c5cc;border-radius:5px;background:#fff;color:#17212b;}#" + ID + "-compare .bhn-rv-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 12px;flex:1;min-height:0;overflow:auto;}#" + ID + "-compare section{display:flex;flex-direction:column;min-width:0;min-height:0;}#" + ID + "-compare h3{font-size:13px;margin:0 0 8px;}#" + ID + "-compare iframe{width:100%;flex:1;min-height:0;border:1px solid #d8e0e5;background:#fff;}@media(max-width:600px){#" + ID + "-compare .bhn-rv-compare-grid{grid-template-columns:repeat(2,minmax(280px,1fr));}}";
 
   var highlight = document.createElement("div");
   highlight.setAttribute("class", "bhn-review-highlight");
@@ -112,7 +121,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   /** Width the panel should occupy right now, collapsed state included. */
   function effectivePanelWidth() {
-    if (state.panelCollapsed) return Math.min(76, window.innerWidth - 20);
+    if (state.panelCollapsed) return Math.min(106, window.innerWidth - 20);
     var w = panelWidth === null ? PANEL_WIDTH_DEFAULT : panelWidth;
     return Math.min(Math.max(PANEL_WIDTH_MIN, w), maxPanelWidth());
   }
@@ -274,7 +283,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function inOverlay(node) {
-    return !node || root.contains(node) || node === highlight || (node.closest && node.closest(".bhn-review-marker"));
+    return !node || root.contains(node) || (comparisonDialog && comparisonDialog.contains(node)) || node === highlight || (node.closest && node.closest(".bhn-review-marker"));
   }
 
   function anchorsFor(node) {
@@ -388,6 +397,82 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     return state.comments.filter(function(comment){ return !comment.parentId; });
   }
 
+  function comparisonKey() {
+    return "bhn-review-comparison-dismissed:" + endpointKey() + ":" + state.review.round;
+  }
+
+  function openComparison() {
+    if (!state.comparison) return;
+    try { sessionStorage.removeItem(comparisonKey()); } catch (_) {}
+    if (comparisonDialog) { comparisonDialog.showModal(); return; }
+    var dialog = make("dialog");
+    comparisonDialog = dialog;
+    dialog.id = ID + "-compare";
+    dialog.setAttribute("aria-labelledby", ID + "-compare-title");
+    var head = make("div", "bhn-rv-compare-head");
+    var title = make("h2", "", "Round " + state.review.round + " · Before / after");
+    title.id = ID + "-compare-title";
+    head.appendChild(title);
+    head.appendChild(addButton("Close comparison", "", function(){ dialog.close(); }));
+    dialog.appendChild(head);
+    var grid = make("div", "bhn-rv-compare-grid");
+    grid.setAttribute("tabindex", "0");
+    grid.setAttribute("role", "region");
+    grid.setAttribute("aria-label", "Before and after versions; scroll sideways on small screens");
+    [
+      { label: "Before · Round " + (state.review.round - 1), html: state.comparison.beforeHtml },
+      { label: "After · Round " + state.review.round, html: state.comparison.afterHtml }
+    ].forEach(function(version){
+      var pane = make("section");
+      pane.appendChild(make("h3", "", version.label));
+      var frame = make("iframe");
+      frame.title = version.label;
+      // Snapshots are untrusted HTML: no scripts, forms, popups or parent access.
+      frame.setAttribute("sandbox", "");
+      frame.setAttribute("referrerpolicy", "no-referrer");
+      frame.srcdoc = version.html;
+      pane.appendChild(frame);
+      grid.appendChild(pane);
+    });
+    dialog.appendChild(grid);
+    var key = comparisonKey();
+    dialog.addEventListener("close", function(){
+      try { sessionStorage.setItem(key, "1"); } catch (_) {}
+      var reopen = root.querySelector(".bhn-rv-compare-open");
+      if (reopen) reopen.focus();
+    });
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  }
+
+  async function loadComparison() {
+    var round = state.review.round;
+    if (state.comparisonRound === round) return;
+    state.comparisonRound = round;
+    state.comparison = null;
+    state.comparisonError = "";
+    if (comparisonDialog) { comparisonDialog.remove(); comparisonDialog = null; }
+    if (round < 2) return;
+    try {
+      var response = await fetch(endpoint + "?comparison=1", { headers: { "Authorization": "Bearer " + credential } });
+      var data = await response.json().catch(function(){ return {}; });
+      if (!response.ok || !data.ok) throw new Error("Could not load comparison.");
+      if (state.review.round !== round || data.review.round !== round) {
+        if (state.comparisonRound === round) state.comparisonRound = null;
+        return;
+      }
+      state.comparison = data.comparison;
+      render();
+      var dismissed = false;
+      try { dismissed = sessionStorage.getItem(comparisonKey()) === "1"; } catch (_) {}
+      if (!dismissed) openComparison();
+    } catch (_) {
+      if (state.review.round !== round) return;
+      state.comparisonError = "Could not load comparison. Retry";
+      render();
+    }
+  }
+
   function repliesFor(id) {
     return state.comments.filter(function(comment){ return comment.parentId === id; });
   }
@@ -433,6 +518,12 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function renderComposer(container) {
+    if (state.pageRound !== state.review.round) {
+      var update = make("div", "bhn-rv-notice", "A new round was saved. Reload to comment on the current version.");
+      update.appendChild(addButton("Reload current version", "bhn-rv-btn", function(){ window.location.reload(); }));
+      container.appendChild(update);
+      return;
+    }
     if (isLocked()) {
       container.appendChild(make("div", "bhn-rv-notice bhn-rv-locked",
         "Round " + state.review.round + " was exported and is locked. It reopens when the next round starts."));
@@ -566,7 +657,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     var main = make("span", "bhn-rv-thread-main");
     var line = make("span", "bhn-rv-thread-line");
     line.appendChild(make("span", "bhn-rv-author", comment.authorName));
-    line.appendChild(make("span", "bhn-rv-time", formatTime(comment.createdAt) + editedSuffix(comment)));
+    line.appendChild(make("span", "bhn-rv-time", "R" + comment.round + " · " + formatTime(comment.createdAt) + editedSuffix(comment)));
     line.appendChild(make("span", "bhn-rv-status" + (comment.status === "open" ? "" : " bhn-rv-status-resolved"), comment.status));
     main.appendChild(line);
     if (!expanded) main.appendChild(make("span", "bhn-rv-thread-preview", cleanText(comment.body).slice(0, 100)));
@@ -698,9 +789,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     var identity = state.viewer ? state.viewer.name : "Training Platform account required";
     copy.appendChild(make("div", "bhn-rv-meta", "Round " + state.review.round + " · " + identity));
     head.appendChild(copy);
-    var commentCount = topComments().length;
+    var commentCount = topComments().filter(function(comment){ return comment.round === state.review.round; }).length;
     var collapseLabel = state.panelCollapsed ? "Expand " + commentCount + " comments" : "Collapse comments";
-    var collapse = addButton(state.panelCollapsed ? "☰ " + commentCount : "−", "bhn-rv-icon-btn bhn-rv-collapse", function(){
+    var collapse = addButton(state.panelCollapsed ? "R" + state.review.round + " · ☰ " + commentCount : "−", "bhn-rv-icon-btn bhn-rv-collapse", function(){
       state.panelCollapsed = !state.panelCollapsed;
       threadHighlight = null;
       showHighlight(null);
@@ -753,12 +844,30 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       body.appendChild(join);
       setTimeout(function(){ try { nameInput.focus(); } catch (e) {} }, 0);
     } else {
+      if (state.comparison || state.comparisonError) {
+        body.appendChild(addButton(state.comparisonError || "Before / after comparison", "bhn-rv-btn bhn-rv-compare-open", function(){
+          if (state.comparisonError) { state.comparisonRound = null; loadComparison(); }
+          else openComparison();
+        }));
+      }
       renderComposer(body);
       var list = make("div", "bhn-rv-list");
       var threads = topComments();
-      if (!threads.length) list.appendChild(make("div", "bhn-rv-empty", "No comments yet. Click any page element to start a thread."));
-      threads.forEach(function(comment, index){ list.appendChild(renderThread(comment, index)); });
+      var current = threads.filter(function(comment){ return comment.round === state.review.round; });
+      var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
+      if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round ? " Click any page element to start a thread." : "")));
+      current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
       body.appendChild(list);
+      if (previous.length) {
+        var history = make("details", "bhn-rv-history");
+        history.open = state.historyExpanded;
+        history.appendChild(make("summary", "", "Previous rounds · " + previous.length + " threads"));
+        var historyList = make("div", "bhn-rv-list");
+        previous.forEach(function(comment){ historyList.appendChild(renderThread(comment, threads.indexOf(comment))); });
+        history.appendChild(historyList);
+        history.addEventListener("toggle", function(){ if (history.isConnected) { state.historyExpanded = history.open; syncMarkers(); } });
+        body.appendChild(history);
+      }
     }
     shell.appendChild(body);
     root.appendChild(shell);
@@ -820,12 +929,16 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var response = await fetch(endpoint, { headers: { "Authorization": "Bearer " + credential } });
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not load team comments.");
-      var changed = commentsSignature(state.comments) !== commentsSignature(data.comments || []);
+      var roundChanged = state.review.round !== data.review.round;
+      var changed = roundChanged || state.review.status !== data.review.status || commentsSignature(state.comments) !== commentsSignature(data.comments || []);
+      if (roundChanged) { state.historyExpanded = false; state.expandedThreads = {}; }
       state.review = data.review;
+      if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;
       state.comments = data.comments || [];
       state.error = "";
       state.loading = false;
+      loadComparison();
       var active = document.activeElement;
       if (silent && changed && active && root.contains(active) && active.tagName === "TEXTAREA") {
         state.pendingRender = true;
@@ -845,6 +958,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   async function submitComment(value, parentId, anchors) {
+    if (!parentId && state.pageRound !== state.review.round) {
+      state.error = "Reload the current version before adding a new comment.";
+      render();
+      return;
+    }
     var body = String(value || "").trim();
     if (body.length < 2 || state.saving) return;
     state.saving = true;
@@ -954,6 +1072,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       removeMarkers();
       var placedAnchors = [];
       topComments().forEach(function(comment, index){
+        if (comment.round < state.review.round && !state.historyExpanded) return;
         var anchor = findAnchor(comment);
         if (!anchor) return;
         var rect = anchor.getBoundingClientRect();
@@ -1009,6 +1128,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     if (pollTimer) window.clearInterval(pollTimer);
     if (positionFrame) window.cancelAnimationFrame(positionFrame);
     removeMarkers();
+    if (comparisonDialog) comparisonDialog.remove();
     highlight.remove();
     root.remove();
     style.remove();
