@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, ExternalLink, Loader2, MessageSquareText, Save } from "lucide-react";
+import { Code2, Copy, ExternalLink, Loader2, MessageSquareText, Save } from "lucide-react";
 
 interface Review { id: string; round: number; status: string }
 
@@ -13,8 +13,9 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
   const [paste, setPaste] = useState(initialPaste);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [version, setVersion] = useState(0);
+  const [copied, setCopied] = useState<"link" | "code" | null>(null);
+  const [showCode, setShowCode] = useState(false);
+  const code = source === "paste" ? paste : html;
   const launch = review ? `/api/workspace/page-review/${encodeURIComponent(review.id)}/launch` : null;
 
   async function save() {
@@ -26,25 +27,25 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
       });
       const result = await response.json();
       if (!response.ok || !result.review) throw new Error(result.error ?? "Could not save the review.");
-      setReview(result.review); setVersion((value) => value + 1);
+      setReview(result.review);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not save the review."); }
     finally { setBusy(false); }
   }
 
-  async function copy() {
-    if (!launch) return;
+  async function copy(kind: "link" | "code") {
+    if (kind === "link" && !launch) return;
     try {
-      await navigator.clipboard.writeText(new URL(launch, window.location.origin).href);
-      setCopied(true); window.setTimeout(() => setCopied(false), 2000);
-    } catch { setError("Could not copy the link. Use Open review instead."); }
+      await navigator.clipboard.writeText(kind === "code" ? code : new URL(launch!, window.location.origin).href);
+      setCopied(kind); window.setTimeout(() => setCopied(null), 2000);
+    } catch { setError(kind === "code" ? "Could not copy the code. Open View code to select it." : "Could not copy the link. Use Open full-page review instead."); }
   }
 
   return <section className="min-w-0 space-y-3" aria-label="Newsletter review">
     <div className="flex flex-wrap items-center gap-3">
-      <h2 className="mr-auto flex items-center gap-2 text-sm font-bold"><MessageSquareText size={16} />{review ? `Revision ${review.round}` : "Newsletter review"}</h2>
+      <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Saved newsletter HTML version"><MessageSquareText size={16} />{review ? `Version ${review.round}` : "Newsletter review"}</h2>
       {launch && <>
-        <button onClick={copy} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Copy size={14} />{copied ? "Copied" : "Copy review link"}</button>
-        <a href={launch} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold"><ExternalLink size={14} />Open review</a>
+        <a href={launch} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white"><ExternalLink size={14} />Open full-page review</a>
+        <button onClick={() => copy("link")} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Copy size={14} />{copied === "link" ? "Link copied" : "Copy review link"}</button>
         <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
       </>}
     </div>
@@ -57,9 +58,13 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
       <button onClick={save} disabled={busy || (source === "paste" && !paste.trim())} className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{review ? "Save revision" : "Start review"}
       </button>
-      {source === "paste" && <textarea aria-label="Mailchimp HTML" value={paste} onChange={(event) => setPaste(event.target.value)} rows={6} maxLength={1_000_000} spellCheck={false} className="w-full rounded-md border border-line bg-card p-3 font-mono text-xs" />}
     </div>}
+    <div className="flex flex-wrap items-center gap-3">
+      <button onClick={() => setShowCode(!showCode)} aria-expanded={showCode} aria-controls={`newsletter-code-${issueId}`} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Code2 size={14} />{showCode ? "Hide code" : "View code"}</button>
+      <button onClick={() => copy("code")} disabled={!code.trim()} className="inline-flex items-center gap-1.5 text-xs font-semibold disabled:opacity-50"><Copy size={14} />{copied === "code" ? "Code copied" : "Copy Mailchimp code"}</button>
+    </div>
+    {showCode && <textarea id={`newsletter-code-${issueId}`} aria-label="Mailchimp HTML" value={code} readOnly={!canEdit || source !== "paste"} onChange={(event) => setPaste(event.target.value)} rows={6} maxLength={1_000_000} spellCheck={false} className="w-full rounded-md border border-line bg-card p-3 font-mono text-xs" />}
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-    {launch ? <iframe key={`${review!.id}-${version}`} src={launch} title="Newsletter element review" className="h-[78vh] min-h-[480px] w-full border-0 bg-white" /> : <p className="py-4 text-sm text-muted">{canEdit ? "Ready for review." : "An editor has not opened this issue for review yet."}</p>}
+    {!launch && <p className="py-4 text-sm text-muted">{canEdit ? "Ready for review." : "An editor has not opened this issue for review yet."}</p>}
   </section>;
 }

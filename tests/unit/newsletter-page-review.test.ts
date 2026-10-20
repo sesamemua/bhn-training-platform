@@ -4,6 +4,9 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import vm from "node:vm";
 import ts from "typescript";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { NewsletterPageReview } from "../../src/components/workspace/NewsletterPageReview";
 import { overlaySource } from "../../src/lib/page-review/overlay-source";
 
 test("newsletter revisions reuse one review and preserve comments, identity and share link", async () => {
@@ -89,7 +92,26 @@ test("newsletter uses the existing overlay and revision endpoint while retaining
   assert.match(page, /Earlier newsletter notes/);
   assert.match(page, /<PastedNewsletterReview/);
   assert.match(page, /pastedReview\?\.title.toLowerCase\(\).includes\(issue.dateline.toLowerCase\(\)\)/);
+  assert.match(page, /initialPaste=\{review\?\.pastedHtml \?\?/);
+  assert.match(page, /pastedReview && pastedReview.notes.length > 0/);
   assert.match(client, /useState\(initialPaste\)/);
+});
+
+test("newsletter code is hidden by default and review opens as a full page, not an embed", () => {
+  for (const canEdit of [true, false]) {
+    const markup = renderToStaticMarkup(createElement(NewsletterPageReview, {
+      issueId: "october", html: "<p>Generated version</p>", initialPaste: "<p>Latest saved newsletter</p>",
+      initialReview: { id: "newsletter-october", round: 9, status: "open" }, canEdit,
+    }));
+    assert.match(markup, /Version 9/);
+    assert.match(markup, /Open full-page review/);
+    assert.match(markup, /href="\/api\/workspace\/page-review\/newsletter-october\/launch" target="_blank" rel="noopener noreferrer"/);
+    assert.match(markup, /View code/);
+    assert.match(markup, /Copy Mailchimp code/);
+    assert.match(markup, /aria-expanded="false" aria-controls="newsletter-code-october"/);
+    assert.doesNotMatch(markup, /<iframe|<textarea|Latest saved newsletter|Generated version|Your name/);
+    assert.equal(markup.includes("Save revision"), canEdit);
+  }
 });
 
 test("newsletter reviews never offer name entry or mint guest credentials", async () => {

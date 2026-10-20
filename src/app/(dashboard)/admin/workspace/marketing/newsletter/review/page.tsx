@@ -1,10 +1,8 @@
 /**
  * Workspace → Marketing → Newsletter → Review.
  *
- * The current issue rendered exactly as it will send, with a click layer
- * for pinning notes to individual elements. Renders from the live pieces
- * rather than the stored `renderedHtml`, so a reviewer is never reading a
- * stale generate.
+ * Launches the saved issue in the shared full-page reviewer. Live pieces
+ * remain available as a revision source; earlier feedback stays accessible.
  */
 import { redirect } from "next/navigation";
 import { Mail } from "lucide-react";
@@ -126,7 +124,7 @@ export default async function NewsletterReviewPage() {
 
   const review = await prisma.pageReview.findUnique({
     where: { id: `newsletter-${issue.id}` },
-    select: { id: true, round: true, status: true, _count: { select: { comments: { where: { status: "open", parentId: null } } } } },
+    select: { id: true, round: true, status: true, pastedHtml: true, _count: { select: { comments: { where: { status: "open", parentId: null } } } } },
   });
   const role = (session.user as { role?: string }).role;
   const signOff = {
@@ -148,7 +146,7 @@ export default async function NewsletterReviewPage() {
         html={html}
         initialReview={review ? { id: review.id, round: review.round, status: review.status } : null}
         canEdit={role === "admin" || role === "superadmin"}
-        initialPaste={pastedReview?.title.toLowerCase().includes(issue.dateline.toLowerCase()) ? pastedReview.code : ""}
+        initialPaste={review?.pastedHtml ?? (pastedReview?.title.toLowerCase().includes(issue.dateline.toLowerCase()) ? pastedReview.code : "")}
       />
       <SignOff signOff={signOff} openCount={(review?._count.comments ?? 0) + comments.filter((comment) => comment.status === "open").length} />
       {comments.length > 0 && <details>
@@ -163,7 +161,7 @@ export default async function NewsletterReviewPage() {
         hideSignOff
       />
       </details>}
-      {pastedReview && <details>
+      {pastedReview && pastedReview.notes.length > 0 && <details>
         <summary className="cursor-pointer text-sm font-semibold text-muted">Earlier pasted review</summary>
         <PastedNewsletterReview initial={pastedReview} />
       </details>}
