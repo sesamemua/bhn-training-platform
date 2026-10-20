@@ -8,6 +8,7 @@ import type { MonitorSession } from "@/lib/training-week/capacity";
 import { WorkshopRegistrationSummary } from "./WorkshopRegistrationSummary";
 import { ArrowRight } from "lucide-react";
 import { CapacityBarMarkers } from "./CapacityBarMarkers";
+import { WorkshopIcon } from "./WorkshopIcon";
 
 export function CapacityMonitor({ sessions, action, registered, controls }: { sessions: MonitorSession[]; action?: ReactNode; registered?: number | null; controls?: (session: MonitorSession) => ReactNode }) {
   if (sessions.length === 0) return null;
@@ -50,7 +51,7 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 <a href={`/admin/workspace/training-admin?tab=registrants&workshop=${encodeURIComponent(s.id)}`}
                   aria-label={`View registrants for ${s.title}`}
                   data-tone={index % 6}
-                  className="training-workshop-title underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2">{s.title}</a>
+                  className="training-workshop-title underline decoration-line underline-offset-2 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2"><span className="mr-1.5"><WorkshopIcon slug={s.slug} /></span>{s.title}</a>
                 <span className="text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>
