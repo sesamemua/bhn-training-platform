@@ -127,6 +127,14 @@
 }
 [data-theme="infinitydots"] .dashboard-layout main button.h-8.w-8,
 [data-theme="infinitydots"] button[aria-label="Change theme"] { border-radius: 50%; }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) nav[aria-label="Your shortcuts"] > .grid > :is(a, div, button) {
+  border: var(--surface-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--surface-shadow);
+  background: #ffffff;
+}
+:is([data-theme="cubist"], [data-theme="infinitydots"]) nav[aria-label="Your shortcuts"] .grid > :is(a, div, button) > span[aria-hidden] { border-radius: var(--radius-sm); }
+[data-theme="infinitydots"] nav[aria-label="Your shortcuts"] .grid > :is(a, div, button) > span[aria-hidden] { border-radius: 50%; }
 
 /* Replace the shared graphite illustration, without changing the header component. */
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .dashboard-container header.full-bleed {
@@ -248,6 +256,11 @@
   font-weight: 800;
   text-shadow: none;
 }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero :is(.issue, .signoff, .toc h3, .toc .px) {
+  font-family: var(--font-sans-theme);
+  letter-spacing: 0;
+  font-weight: 700;
+}
 [data-theme="cubist"] .adash-aero .cover {
   background: #104187;
   border-right: 2px solid #15233c;
@@ -290,6 +303,7 @@
   background: transparent;
 }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .toc .pillar:hover { transform: none; background: rgb(255 255 255 / 30%); }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .toc .pillar[class*="pillar-"] { border-left: 0; }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .adash-aero .toc-cta {
   white-space: normal;
   border: 1.5px solid var(--fg);
