@@ -39,7 +39,7 @@ test("porcelain finish stays dashboard-scoped, theme-aware and free of moving or
   assert.match(css, /background: Canvas;/);
 });
 
-test("Daydream alone adds a high-gloss glaze to shared cards and the dashboard", () => {
+test("Daydream keeps shared cards and dashboard porcelain free of heavy shading", () => {
   const global = postcss.parse(readFileSync("src/app/globals.css", "utf8"));
   const glossyRules: string[] = [];
   global.walkRules((rule) => {
@@ -52,11 +52,11 @@ test("Daydream alone adds a high-gloss glaze to shared cards and the dashboard",
   assert.ok(glossyRules.some((selector) => selector.includes(".adash-aero")));
   assert.ok(glossyRules.some((selector) => selector.includes(".surface")));
   const glaze = global.nodes.filter((node) => node.type === "rule" && node.selector === '[data-theme="light"]').at(-1)!;
-  assert.match(glaze.toString(), /linear-gradient\(112deg/);
+  assert.match(glaze.toString(), /--daydream-glaze: linear-gradient\(180deg, #ffffff, #fcfdfd\)/);
   assert.match(glaze.toString(), /inset 0 1px 0 #ffffff/);
   assert.match(glaze.toString(), /--surface-border: 1px solid transparent/);
-  assert.doesNotMatch(glaze.toString(), /inset 0 -|0 2px 3px/);
-  assert.match(glaze.toString(), /255 255 255 \/ 98%/);
+  assert.doesNotMatch(glaze.toString(), /112deg|inset 0 -|inset 0 10px|0 20px 38px|#dfeaf2/);
+  assert.match(glaze.toString(), /0 3px 10px rgb\(44 64 77 \/ 5%\)/);
   assert.match(readFileSync("src/app/globals.css", "utf8"), /\[data-theme="light"\] \.adash-aero \.aero-frame::before \{ background: none; border-radius: inherit; \}/);
   assert.doesNotMatch(glaze.toString(), /animation|filter:|url\(/);
 });
