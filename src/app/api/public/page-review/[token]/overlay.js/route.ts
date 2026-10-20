@@ -17,7 +17,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const { token } = await ctx.params;
   const review = await prisma.pageReview.findUnique({
     where: { shareToken: token },
-    select: { title: true, status: true },
+    select: { id: true, title: true, status: true },
   });
 
   if (!review || review.status === "closed") {
@@ -28,7 +28,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
 
   const origin = new URL(req.url).origin;
   const endpoint = `${origin}/api/public/page-review/${encodeURIComponent(token)}`;
-  return new NextResponse(overlaySource(endpoint, review.title), { headers: HEADERS });
+  return new NextResponse(overlaySource(endpoint, review.title, review.id.startsWith("newsletter-")), { headers: HEADERS });
 }
 
 function inactiveOverlaySource(message: string) {

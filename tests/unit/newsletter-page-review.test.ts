@@ -89,3 +89,23 @@ test("newsletter uses the existing overlay and revision endpoint while retaining
   assert.match(page, /Earlier newsletter notes/);
   assert.match(page, /<PastedNewsletterReview/);
 });
+
+test("newsletter reviews never offer name entry or mint guest credentials", async () => {
+  const source = overlaySource("https://bhn.example/api/public/page-review/token", "Issue", true);
+  assert.match(source, /var accountRequired = true/);
+  assert.ok(source.indexOf("&& accountRequired") < source.indexOf('nameInput.placeholder = "Your name"'));
+  const require = createRequire(import.meta.url);
+  let minted = false;
+  const compiled = ts.transpileModule(readFileSync("src/app/api/public/page-review/[token]/join/route.ts", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+  }).outputText;
+  const mocks: Record<string, unknown> = {
+    "@/lib/prisma": { prisma: { pageReview: { findUnique: async () => ({ id: "newsletter-issue-1", status: "open", title: "October" }) } } },
+    "@/lib/page-review/viewer": { createAnonViewerToken: async () => { minted = true; return "guest"; } },
+  };
+  const exports: { POST?: (req: Request, ctx: unknown) => Promise<Response> } = {};
+  new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), exports);
+  const response = await exports.POST!(new Request("https://bhn.example/join", { method: "POST", body: JSON.stringify({ name: "Guest" }) }), { params: Promise.resolve({ token: "token" }) });
+  assert.equal(response.status, 403);
+  assert.equal(minted, false);
+});

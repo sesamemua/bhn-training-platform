@@ -1,5 +1,5 @@
 /** JavaScript source for the live-page review overlay. */
-export function overlaySource(endpoint: string, title: string): string {
+export function overlaySource(endpoint: string, title: string, accountRequired = false): string {
   return `(function(){
   var ID = "bhn-review-overlay";
   if (window.__bhnReviewCleanup) window.__bhnReviewCleanup();
@@ -21,6 +21,7 @@ export function overlaySource(endpoint: string, title: string): string {
     if (!credential) credential = sessionStorage.getItem("bhn-review-viewer:" + endpointKey()) || "";
   } catch (e) { /* storage can be blocked; joining still works. */ }
   var initialTitle = ${JSON.stringify(title)};
+  var accountRequired = ${JSON.stringify(accountRequired)};
   var state = {
     review: { title: initialTitle, round: 1, status: "open" },
     viewer: null,
@@ -714,6 +715,14 @@ export function overlaySource(endpoint: string, title: string): string {
     if (state.error) body.appendChild(make("div", "bhn-rv-notice bhn-rv-error", state.error));
     if (state.loading) {
       body.appendChild(make("div", "bhn-rv-notice", "Loading team comments..."));
+    } else if ((!credential || !state.viewer) && accountRequired) {
+      var accountNotice = make("div", "bhn-rv-notice", "Open Newsletter Review to use your signed-in platform account.");
+      var accountLink = make("a", "bhn-rv-btn", "Open Newsletter Review");
+      accountLink.href = new URL(endpoint).origin + "/admin/workspace/marketing/newsletter/review";
+      accountLink.target = "_blank";
+      accountLink.rel = "noopener noreferrer";
+      accountNotice.appendChild(accountLink);
+      body.appendChild(accountNotice);
     } else if (!credential || !state.viewer) {
       /*
        * This used to be a dead end — "open this from the training
