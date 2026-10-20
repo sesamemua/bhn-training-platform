@@ -9,6 +9,7 @@ import type { PlanAction } from "@/lib/events/people-plan-store";
 import PeoplePublicationPanel from "./PeoplePublicationPanel";
 import PlannerPublicationDialog from "./PlannerPublicationDialog";
 import SpeakerSessionActions from "./SpeakerSessionActions";
+import { HeadshotAdjustButton } from "./HeadshotAdjustButton";
 
 const API = "/api/admin/symposium-people";
 const INPUT = "w-full min-w-0 rounded-md border border-line bg-card-solid px-2.5 py-2 text-[13px] text-fg focus-visible:outline-2 focus-visible:outline-brand";
@@ -217,12 +218,14 @@ function PersonCard({ person: p, match, speakers, disabled, onChange, onEdit, on
   const s = match.speaker;
   const [linkOpen, setLinkOpen] = useState(false);
   const [candidate, setCandidate] = useState("");
+  const [adjustedPhoto, setAdjustedPhoto] = useState<string | null>(null);
   const photo = s?.photoUrl || p.photoUrl;
+  useEffect(() => { setAdjustedPhoto(null); }, [photo]);
   return <article className="min-w-0 rounded-lg border border-line bg-card-solid p-3 [overflow-wrap:anywhere]" draggable={!disabled} onDragStart={(e) => { e.dataTransfer.setData("text/plain", p.id); e.dataTransfer.effectAllowed = "move"; onDrag(p.id); }} onDragEnd={() => onDrag(null)}>
     <div className="flex items-start gap-2">
       {/* Historical source photos and uploaded headshots use their original hosts. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {photo ? <img src={photo} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-12 w-12 shrink-0 rounded-md object-cover" /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-elevated text-sm font-bold text-fg" aria-hidden>{p.fullName.split(/\s+/).map((n) => n[0]).slice(0, 2).join("")}</div>}
+      {photo ? <img src={adjustedPhoto ?? photo} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-12 w-12 shrink-0 rounded-md object-cover" /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-elevated text-sm font-bold text-fg" aria-hidden>{p.fullName.split(/\s+/).map((n) => n[0]).slice(0, 2).join("")}</div>}
       <div className="min-w-0 flex-1"><h4 className="break-words text-[14px] font-semibold text-fg">{s?.fullName || p.fullName}</h4><p className="break-words text-[12px] text-muted">{s?.title || p.title}</p><p className="break-words text-[12px] text-fg">{s?.organization || p.organization}</p></div>
       <GripVertical size={15} className="shrink-0 cursor-grab text-muted" aria-label="Drag profile" />
     </div>
@@ -230,6 +233,7 @@ function PersonCard({ person: p, match, speakers, disabled, onChange, onEdit, on
     <p className="mt-2 flex items-center gap-1 text-[11px] text-muted">{s ? <><Check size={12} />{s.submittedAt ? "Submission matched" : "Event profile linked"}{match.kind === "manual" ? " manually" : ""}</> : match.kind === "review" ? "Possible submission match: review needed" : "Awaiting submission"}</p>
     {p.source === "2025" && <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="text-[11px] text-muted underline">2025 profile · verify current details</a>}
     {p.source !== "2025" && p.sourceUrl && <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="text-[11px] text-muted underline">Official event source</a>}
+    {photo && <div className="mt-2"><HeadshotAdjustButton slug="2026-annual-symposium" personId={p.id} name={s?.fullName || p.fullName} onSaved={setAdjustedPhoto} /></div>}
     <label className="mt-2 block text-[11px] text-muted">Symposium session<select className={INPUT} aria-label={`Session for ${p.fullName}`} value={p.session ?? ""} disabled={disabled} onChange={(e) => void onChange({ action: "assign", id: p.id, session: e.target.value as PlanSession || null })}><option value="">{p.participation2026 === "training-week" ? "No symposium assignment" : "Unassigned"}</option>{Object.entries(PLAN_SESSIONS).map(([id, title]) => <option key={id} value={id}>{title}</option>)}</select></label>
     <details className="mt-2 text-[12px] text-muted"><summary className="cursor-pointer font-medium text-fg">Profile details</summary><p className="mt-2 whitespace-pre-wrap break-words">{s?.bio || p.bio || "No biography yet."}</p>{s?.sessionTitle && <p className="mt-2">Session title: {s.sessionTitle}</p>}{s?.submittedAt && <p className="mt-2">Submitted {new Date(s.submittedAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}</p>}{p.email && <p className="mt-2 break-all">{p.email}</p>}{s && p.bio && <details className="mt-2"><summary>Original planning notes</summary><p className="whitespace-pre-wrap break-words">{p.bio}</p></details>}</details>
     <div className="mt-3 flex flex-wrap items-center gap-2"><button className={BUTTON} type="button" disabled={disabled} title="Edit planning details" aria-label={`Edit ${p.fullName}`} onClick={onEdit}><Pencil size={13} /></button><button className={BUTTON} type="button" disabled={disabled} title="Archive profile" aria-label={`Archive ${p.fullName}`} onClick={() => void onChange({ action: "archive", id: p.id, archived: true })}><Archive size={13} /></button>{s ? <button className={BUTTON} type="button" disabled={disabled} onClick={() => void onChange({ action: "link", id: p.id, speakerId: null })}><Unlink size={13} />Unlink</button> : <button className={BUTTON} type="button" onClick={() => setLinkOpen(!linkOpen)}>Match submission</button>}</div>

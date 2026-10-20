@@ -33,8 +33,8 @@ import { focalPoint, offsetFor, type Focus } from "@/lib/images/focal-point";
  */
 const BOX = 340;   // on-screen crop circle
 const OUT = 600;   // uploaded square, big enough for print-ish use
-const MIN_ZOOM = 1, MAX_ZOOM = 4;
-const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+const MAX_ZOOM = 4;
+export type HeadshotFraming = { zoom: number; x: number; y: number };
 
 /** Where the eye goes in this image, from a small copy of it. */
 function focusOf(img: HTMLImageElement): Focus {
@@ -50,12 +50,19 @@ function focusOf(img: HTMLImageElement): Focus {
 
 export interface CropState {
   file: File | null;
+  framing?: HeadshotFraming;
   /** Renders the current crop to a square PNG for upload. */
   toBlob: () => Promise<Blob | null>;
 }
 
-export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void }) {
-  const [file, setFile] = useState<File | null>(null);
+export function HeadshotCropper({ onChange, initialFile, initialFraming, minZoom = 1, adjustmentOnly = false }: {
+  onChange: (s: CropState) => void;
+  initialFile?: File;
+  initialFraming?: HeadshotFraming;
+  minZoom?: number;
+  adjustmentOnly?: boolean;
+}) {
+  const [file, setFile] = useState<File | null>(initialFile ?? null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -77,18 +84,18 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
     i.onload = () => {
       if (!active) return;
       setImg(i);
-      setZoom(1);
+      setZoom(initialFraming?.zoom ?? 1);
       // Framed on where the eye goes from the start.
       focus.current = focusOf(i);
       const b = Math.max(BOX / i.width, BOX / i.height);
-      setPos(offsetFor(focus.current, { w: i.width * b, h: i.height * b }, BOX));
+      setPos(initialFraming ? { x: initialFraming.x, y: initialFraming.y } : offsetFor(focus.current, { w: i.width * b, h: i.height * b }, BOX));
     };
     i.src = url;
     return () => {
       active = false;
       URL.revokeObjectURL(url);
     };
-  }, [file]);
+  }, [file, initialFraming]);
 
   /** Scale at zoom=1: the image just covers the circle. */
   const baseScale = img ? Math.max(BOX / img.width, BOX / img.height) : 1;
@@ -103,6 +110,8 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
     ctx.beginPath();
     ctx.arc(BOX / 2, BOX / 2, BOX / 2, 0, Math.PI * 2);
     ctx.clip();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, BOX, BOX);
     const s = baseScale * zoom;
     const w = img.width * s;
     const h = img.height * s;
@@ -124,12 +133,12 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
   const zoomRef = useRef(zoom);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   const zoomAt = useCallback((next: number, cx: number, cy: number) => {
-    const nz = clampZoom(next);
+    const nz = Math.min(MAX_ZOOM, Math.max(minZoom, next));
     const r = nz / zoomRef.current;
     zoomRef.current = nz;
     setZoom(nz);
     setPos((p) => ({ x: cx - (cx - p.x) * r, y: cy - (cy - p.y) * r }));
-  }, []);
+  }, [minZoom]);
 
   // Wheel and trackpad pinch (which arrives as a ctrl+wheel). Not passive,
   // so the page does not scroll while the photo zooms.
@@ -165,7 +174,7 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
     return new Promise((res) => c.toBlob((b) => res(b), "image/png"));
   }, [img, zoom, pos, baseScale]);
 
-  useEffect(() => { onChange({ file, toBlob }); }, [file, toBlob, onChange]);
+  useEffect(() => { onChange({ file, toBlob, framing: { zoom, x: pos.x, y: pos.y } }); }, [file, toBlob, zoom, pos, onChange]);
 
   const removePhoto = useCallback(() => {
     setFile(null);
@@ -179,7 +188,7 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row">
+      {!adjustmentOnly && <div className="flex flex-col gap-2 sm:flex-row">
         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--speaker-control-line)] bg-[var(--speaker-control-bg)] px-3 py-3 transition hover:border-[var(--brand-400)]">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--speaker-disabled-bg)] text-[var(--speaker-subtle)]">
             {file ? <RefreshCw size={16} /> : <Upload size={16} />}
@@ -213,7 +222,7 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
             Remove photo
           </button>
         )}
-      </div>
+      </div>}
 
       {img && (
         <div className="flex flex-col items-center gap-3 rounded-lg bg-[var(--speaker-control-bg)] p-4">
@@ -221,6 +230,15 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
             ref={canvasRef}
             width={BOX}
             height={BOX}
+            aria-label="Headshot framing. Use arrow keys to move the photo."
+            tabIndex={0}
+            onKeyDown={(e) => {
+              const step = e.shiftKey ? 10 : 2;
+              const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+              if (!delta) return;
+              e.preventDefault();
+              setPos((p) => ({ x: p.x + delta[0], y: p.y + delta[1] }));
+            }}
             className="h-auto w-full max-w-[340px] cursor-move touch-none rounded-full ring-2 ring-white shadow-md"
             onPointerDown={(e) => {
               (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -276,7 +294,7 @@ export function HeadshotCropper({ onChange }: { onChange: (s: CropState) => void
               <span className="sr-only">Zoom</span>
               <input
                 type="range"
-                min={MIN_ZOOM}
+                min={minZoom}
                 max={MAX_ZOOM}
                 step={0.01}
                 value={zoom}

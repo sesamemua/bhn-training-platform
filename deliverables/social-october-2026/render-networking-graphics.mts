@@ -56,7 +56,8 @@ for (const group of NETWORKING_GROUPS) {
     const response = await fetch(row.photoUrl);
     assert.ok(response.ok);
     const original = Buffer.from(await response.arrayBuffer());
-    await writeFile(`deliverables/social-october-2026/networking-originals/${person.name.toLowerCase().replace(/[^a-z]+/g, "-")}.png`, original);
+    await writeFile(`deliverables/social-october-2026/networking-originals/${person.name.toLowerCase().replace(/[^a-z]+/g, "-")}.png`, original, { flag: "wx" })
+      .catch((error: NodeJS.ErrnoException) => { if (error.code !== "EEXIST") throw error; });
     const image = await loadImage(original);
     const x = 72 + i * (width + gap), center = x + width / 2, y = 660;
     const side = Math.min(image.width, image.height);

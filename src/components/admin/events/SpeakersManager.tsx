@@ -17,6 +17,7 @@ import {
 } from "@/lib/events/limits";
 import { SPEAKER_FIELD_LABELS, type SpeakerFields } from "@/lib/events/fields";
 import { NotifyPanel } from "@/components/notify/NotifyPanel";
+import { HeadshotAdjustButton } from "./HeadshotAdjustButton";
 
 export interface SpeakerRow {
   id: string;
@@ -484,7 +485,8 @@ export function SpeakersManager({
                     )}
                     {s.contactEmail && <p className="mt-1 text-[11px] text-subtle">{s.contactEmail}</p>}
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 max-sm:max-w-32">
+                    {s.photoUrl && <HeadshotAdjustButton slug={slug} speakerId={s.id} name={s.fullName} onSaved={(photoUrl) => setSpeakers((current) => current.map((row) => row.id === s.id ? { ...row, photoUrl } : row))} />}
                     <button onClick={() => setEditing(s)} title="Edit" className="rounded-md border border-line p-1.5 text-fg-muted hover:text-fg">
                       <Pencil size={13} />
                     </button>
