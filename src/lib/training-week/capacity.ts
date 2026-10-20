@@ -86,6 +86,8 @@ export interface MonitorSession {
   slug: string;
   title: string;
   start: string;
+  /** Source breakdown, already included in cap.records; not extra seats. */
+  directLinkRegistrations?: number;
   cap: SessionCapacity;
   registration?: import("./workshop-status").StatusEntry;
 }

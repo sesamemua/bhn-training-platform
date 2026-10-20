@@ -4731,12 +4731,18 @@ h1, h2, h3 {
   .fc-flow { animation: none; }
 }
 
-/* Daydream keeps a quiet porcelain face and a single rounded edge highlight. */
+/* Porcelain catches light at its rounded rim; the reading surface stays quiet. */
 [data-theme="light"] {
-  --daydream-glaze: linear-gradient(180deg, #ffffff, #fcfdfd);
+  --daydream-glaze:
+    radial-gradient(ellipse 150px 32px at 12% 0%, #ffffff 25%, transparent 100%),
+    radial-gradient(ellipse 100px 24px at 94% 0%, #ffffff 20%, transparent 100%),
+    linear-gradient(180deg, #edf2f5 0, #ffffff 7px, #f7f9fa 24px, #ffffff 64px, #fbfcfc 100%);
   --surface-shadow:
     inset 0 1px 0 #ffffff,
-    0 3px 10px rgb(44 64 77 / 5%);
+    inset 1px 0 1px rgb(255 255 255 / 90%),
+    inset -1px 0 1px rgb(255 255 255 / 75%),
+    0 1px 2px rgb(44 64 77 / 10%),
+    0 4px 12px rgb(44 64 77 / 5%);
   --surface-border: 1px solid transparent;
 }
 [data-theme="light"] .adash-aero {

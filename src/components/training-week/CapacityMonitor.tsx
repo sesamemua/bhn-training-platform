@@ -54,6 +54,9 @@ export function CapacityMonitor({ sessions, action, registered, controls }: { se
                 <span className="text-[11px] text-subtle">
                   {new Date(s.start).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short", day: "numeric", month: "short" })}
                 </span>
+                {s.directLinkRegistrations !== undefined && <span className="text-[12px] font-semibold text-fg" title="Registrations through the Innovation Ignited direct form, across all statuses. Already included in total registrations below.">
+                  {s.directLinkRegistrations} via direct link <span className="font-normal text-subtle">(included in total)</span>
+                </span>}
                 </div>
                 {controls && controls(s)}
               </div>

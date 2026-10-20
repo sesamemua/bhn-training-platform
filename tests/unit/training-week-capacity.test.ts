@@ -59,6 +59,23 @@ test("Microbix seat plan ends at 12 capacity with no grey track behind the 15 ex
   assert.match(html, /15 over capacity/);
 });
 
+test("direct-link counts are a source breakdown, not additional requests or approvals", () => {
+  const cap = sessionCapacity(20, [...seats(3, "confirmed"), ...seats(2)]);
+  for (const directLinkRegistrations of [0, 2, undefined]) {
+    const html = renderToStaticMarkup(createElement(CapacityMonitor, { sessions: [
+      { id: "ignited", slug: "innovation-showcase-2026", title: "Innovation Ignited", start: "2026-10-28T14:00:00Z", cap, directLinkRegistrations },
+    ] }));
+    if (directLinkRegistrations === undefined) assert.doesNotMatch(html, /via direct link/);
+    else {
+      assert.ok(html.includes(`${directLinkRegistrations} via direct link`));
+      assert.match(html, /\(included in total\)/);
+    }
+    assert.match(html, />5\/20<\/strong> requested/);
+    assert.match(html, /Seat plan: <strong>3<\/strong> actual approved/);
+    assert.match(html, /Total registrations<\/dt><dd>5<\/dd>/);
+  }
+});
+
 test("legacy Full highlights Pause without changing saved state or submitting a mutation", () => {
   for (const initial of ["open", "paused", "full", "closed"] as const) {
     let calls = 0;

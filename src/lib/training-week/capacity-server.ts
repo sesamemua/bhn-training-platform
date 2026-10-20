@@ -11,6 +11,7 @@ import { loadInternalSet } from "./internal-server";
 import { sessionCapacity, type MonitorSession } from "./capacity";
 import { currentSeatSuggestions } from "@/lib/allocation/seat-suggestions-server";
 import { WORKSHOP_STATUS_KEY, parseStatusMap, statusOf } from "./workshop-status";
+import { INNOVATION_IGNITED_SLUG, INNOVATION_SESSION } from "@/lib/formbuilder/innovation-ignited";
 
 export async function loadCapacityMonitor(): Promise<MonitorSession[]> {
   // The Training Week event is the one carrying the most workshops — the
@@ -28,7 +29,7 @@ export async function loadCapacityMonitor(): Promise<MonitorSession[]> {
           select: {
             id: true, status: true, withdrawnAt: true,
             user: { select: { email: true } },
-            submission: { select: { email: true, data: true } },
+            submission: { select: { email: true, data: true, form: { select: { slug: true } } } },
           },
         },
       },
@@ -43,6 +44,9 @@ export async function loadCapacityMonitor(): Promise<MonitorSession[]> {
     slug: w.slug,
     title: w.title,
     start: w.startDateTime.toISOString(),
+    directLinkRegistrations: w.slug === INNOVATION_SESSION.slug
+      ? w.bookings.filter((b) => b.submission?.form.slug === INNOVATION_IGNITED_SLUG).length
+      : undefined,
     registration: statusOf(registration, w.slug),
     cap: sessionCapacity(
       w.capacity,
