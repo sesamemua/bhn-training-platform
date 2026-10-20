@@ -5,6 +5,11 @@ import { NETWORKING_GROUPS } from "../../src/lib/social/symposium-networking-pos
 
 const feed = await (await fetch("https://bhn-training-platform.vercel.app/api/public/events/2026-annual-symposium/people")).json();
 const eligible = feed.people.filter((p: { placements: { sessionId: string }[] }) => p.placements.some((s) => s.sessionId === "networking"));
+assert.deepEqual(
+  NETWORKING_GROUPS.flatMap((g) => g.people.map((p) => p.name)).sort(),
+  eligible.map((p: { fullName: string }) => p.fullName).sort(),
+  "Networking drafts must cover the current published roster exactly once",
+);
 const output = "public/social/symposium-2026";
 await mkdir(output, { recursive: true });
 await mkdir("deliverables/social-october-2026/networking-originals", { recursive: true });
