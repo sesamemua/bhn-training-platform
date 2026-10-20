@@ -9,6 +9,11 @@ import { isValidThemeId } from "../../src/lib/themes/constants";
 const ids = ["cubist", "infinitydots"] as const;
 const css = readFileSync("src/app/artist-themes.css", "utf8");
 
+test("inactive matrix pixels become pale on the new white panels", () => {
+  assert.match(readFileSync("src/components/training-week/WorkshopRegistrationSummary.tsx", "utf8"), /fill=\{lit === "1" \? "currentColor" : "#203a2a"\}/);
+  assert.match(css, /:is\(\[data-theme="cubist"\], \[data-theme="infinitydots"\]\) \.training-seat-approved circle\[fill="#203a2a"\] \{ fill: #dce6e0; \}/);
+});
+
 test("both themes use local, inert artwork while retaining opaque reading surfaces", () => {
   for (const name of ["cubist-planes", "infinity-dots"]) {
     const art = readFileSync(`public/themes/${name}.svg`, "utf8");

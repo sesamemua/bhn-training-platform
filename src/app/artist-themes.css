@@ -177,6 +177,7 @@
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well dt { color: var(--fg-muted); }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-well dd { color: var(--fg); }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-approved dd { color: #006b3c; }
+:is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-approved circle[fill="#203a2a"] { fill: #dce6e0; }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-approved svg { animation: none; filter: none; }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-seat-priority > div:last-child dd { color: #923318; }
 :is([data-theme="cubist"], [data-theme="infinitydots"]) .training-workshop-title {
