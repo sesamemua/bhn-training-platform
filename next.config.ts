@@ -221,6 +221,7 @@ const nextConfig: NextConfig = {
     ],
   },
   outputFileTracingIncludes: {
+    "/api/public/page-review/*/overlay.js": ["./node_modules/diff/dist/diff.min.js", "./node_modules/diff/LICENSE"],
     "/api/admin/symposium-print": ["./public/print/*.ttf", "./public/biohubnet-logo.png"],
     "/admin/security": ["./docs/security/**/*"],
     // Same reason: the AV clip route reads PNGs from private/av-clips/ at

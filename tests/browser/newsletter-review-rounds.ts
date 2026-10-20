@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chromium } from "@playwright/test";
+import { chromium, expect } from "@playwright/test";
 import { overlaySource } from "../../src/lib/page-review/overlay-source";
 
 const endpoint = "https://review.test/api/public/page-review/newsletter-token";
@@ -28,8 +28,8 @@ async function main() {
       if (route.request().url().includes("comparison=1")) {
         comparisonReads++;
         return route.fulfill({ headers, body: JSON.stringify({ ok: true, review, comparison: {
-          beforeHtml: "<h1>Original newsletter</h1><script>window.untrustedScriptRan = true;</script>",
-          afterHtml: "<h1>Revised newsletter</h1>",
+          beforeHtml: '<meta http-equiv="Content-Security-Policy" content="script-src * unsafe-inline"><h1>Original newsletter</h1><script>window.untrustedScriptRan = true;</script><img src="data:,broken" onerror="window.untrustedScriptRan=true"><a href="https://old.test">Registration</a>' + Array.from({ length: 40 }, (_, index) => `<p style="margin:40px 0">Shared paragraph ${index}</p>`).join(""),
+          afterHtml: '<h1>Revised newsletter</h1><a href="https://new.test">Registration</a><p>New deadline: October 23</p>' + Array.from({ length: 40 }, (_, index) => `<p style="margin:40px 0">Shared paragraph ${index}</p>`).join(""),
         } }) });
       }
       return route.fulfill({ headers, body: JSON.stringify({ ok: true, review,
@@ -48,7 +48,51 @@ async function main() {
     await page.frameLocator('iframe[title="Before · Round 1"]').getByRole("heading", { name: "Original newsletter" }).waitFor();
     await page.frameLocator('iframe[title="After · Round 2"]').getByRole("heading", { name: "Revised newsletter" }).waitFor();
     assert.equal(await page.frameLocator('iframe[title="Before · Round 1"]').locator("body").evaluate(() => "untrustedScriptRan" in window), false);
-    assert.equal(await page.locator("iframe[sandbox='']").count(), 2);
+    assert.equal(await page.locator("iframe[sandbox='allow-scripts']").count(), 2);
+    const before = page.frameLocator('iframe[title="Before · Round 1"]');
+    const after = page.frameLocator('iframe[title="After · Round 2"]');
+    assert.equal(await before.locator('mark[data-bhn-diff="removed"]').first().textContent(), "Original");
+    assert.equal(await after.locator('mark[data-bhn-diff="added"]').first().textContent(), "Revised");
+    assert.equal(await before.locator('a[data-bhn-diff="removed"]').count(), 1);
+    assert.equal(await after.locator('a[data-bhn-diff="added"]').count(), 1);
+    assert.equal(await before.locator('[onerror]').count(), 0);
+    assert.equal(await before.locator('script').count(), 1, "only the trusted sizing script survives");
+    await before.locator("body").evaluate(node => {
+      const script = node.ownerDocument.createElement("script");
+      script.textContent = "window.untrustedScriptRan = true";
+      node.appendChild(script);
+      node.setAttribute("onclick", "window.untrustedScriptRan = true");
+      (node as HTMLElement).click();
+      node.removeAttribute("onclick");
+      script.remove();
+    });
+    assert.equal(await before.locator("body").evaluate(() => "untrustedScriptRan" in window), false, "CSP blocks scripts and handlers even if injected after sanitization");
+    await page.clock.runFor(1000);
+    const initialFrames = await page.locator(".bhn-rv-compare-grid iframe").evaluateAll((frames) => frames.map((frame) => ({ height: frame.getBoundingClientRect().height, top: frame.getBoundingClientRect().top })));
+    assert.ok(initialFrames.every((frame) => frame.height > 1500), "snapshots expand to full height inside one scroll container");
+    await page.locator("iframe").first().evaluate(node => {
+      const frame = node as HTMLIFrameElement;
+      const key = new DOMParser().parseFromString(frame.srcdoc, "text/html").querySelector("script")!.dataset.bhnKey;
+      window.postMessage({ type: "bhn-review-height", key, height: 100000 }, "*");
+    });
+    await page.clock.runFor(100);
+    assert.equal(await page.locator("iframe").first().evaluate(node => node.getBoundingClientRect().height), initialFrames[0].height, "height messages from any window other than the matching frame are ignored");
+    await page.mouse.move(350, 400);
+    await page.mouse.wheel(0, 450);
+    await page.clock.runFor(500);
+    await expect.poll(() => page.locator(".bhn-rv-compare-grid").evaluate(node => node.scrollTop)).toBeGreaterThan(100);
+    const movedFrames = await page.locator(".bhn-rv-compare-grid iframe").evaluateAll((frames) => frames.map((frame) => frame.getBoundingClientRect().top));
+    assert.ok(movedFrames[0] < initialFrames[0].top - 100, "scrolling over the left snapshot moves the shared viewport");
+    assert.equal(movedFrames[0], movedFrames[1], "both snapshots move by exactly the same amount");
+    await page.mouse.move(1000, 400);
+    await page.mouse.wheel(0, 350);
+    await page.clock.runFor(500);
+    await expect.poll(() => page.locator(".bhn-rv-compare-grid").evaluate(node => node.scrollTop)).toBeGreaterThan(initialFrames[0].top - movedFrames[0] + 100);
+    const rightScrolled = await page.locator(".bhn-rv-compare-grid iframe").evaluateAll((frames) => frames.map((frame) => frame.getBoundingClientRect().top));
+    assert.ok(rightScrolled[0] < movedFrames[0] - 100, "scrolling over the right snapshot also moves both versions");
+    assert.equal(rightScrolled[0], rightScrolled[1]);
+    assert.equal(await before.locator("html").evaluate((node) => node.scrollTop), 0);
+    assert.equal(await after.locator("html").evaluate((node) => node.scrollTop), 0);
     await page.clock.runFor(31_000);
     assert.equal(await dialog.isVisible(), true, "polling must not dismiss comparison");
     assert.equal(comparisonReads, 1);

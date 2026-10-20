@@ -1,3 +1,5 @@
+import { comparisonSource } from "./comparison-source";
+
 /** JavaScript source for the live-page review overlay. */
 export function overlaySource(endpoint: string, title: string, accountRequired = false): string {
   return `(function(){
@@ -56,6 +58,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var panelDrag = null;
   var panelResize = null;
   var comparisonDialog = null;
+  var comparisonCleanup = null;
   // Width is the reviewer's choice and sticks per browser. The default
   // matches the CSS; MIN keeps the two-line meta readable, MAX stops the
   // panel swallowing the page it is meant to be reviewing.
@@ -95,6 +98,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   style.textContent += "#" + ID + " .bhn-rv-history{margin-top:8px;border-top:1px solid #c6d0d6;padding-top:8px;}#" + ID + " .bhn-rv-history>summary{cursor:pointer;font-weight:750;padding:5px 0;}#" + ID + " .bhn-rv-history .bhn-rv-list{margin-top:5px;}#" + ID + " .bhn-rv-compare-open{width:100%;margin-bottom:8px;}" +
     "#" + ID + "-compare{box-sizing:border-box;width:calc(100vw - 24px);max-width:1600px;height:calc(100vh - 24px);max-height:none;margin:auto;padding:0;border:1px solid #b9c5cc;border-radius:8px;background:#f0f4f6;color:#17212b;font:14px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;}#" + ID + "-compare[open]{display:flex;flex-direction:column;}#" + ID + "-compare::backdrop{background:rgba(7,27,39,.55);}#" + ID + "-compare .bhn-rv-compare-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;}#" + ID + "-compare h2{font:inherit;font-size:16px;font-weight:700;color:#17212b;margin:0;}#" + ID + "-compare button{font:inherit;cursor:pointer;padding:6px 12px;border:1px solid #b9c5cc;border-radius:5px;background:#fff;color:#17212b;}#" + ID + "-compare .bhn-rv-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 12px;flex:1;min-height:0;overflow:auto;}#" + ID + "-compare section{display:flex;flex-direction:column;min-width:0;min-height:0;}#" + ID + "-compare h3{font-size:13px;margin:0 0 8px;}#" + ID + "-compare iframe{width:100%;flex:1;min-height:0;border:1px solid #d8e0e5;background:#fff;}@media(max-width:600px){#" + ID + "-compare .bhn-rv-compare-grid{grid-template-columns:repeat(2,minmax(280px,1fr));}}";
+
+  style.textContent += "#" + ID + "-compare .bhn-rv-compare-legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 16px 10px;font-size:12px;font-weight:700;}#" + ID + "-compare .bhn-rv-diff-removed{background:#ffe4e6;color:#881337;padding:2px 6px;}#" + ID + "-compare .bhn-rv-diff-added{background:#dcfce7;color:#14532d;padding:2px 6px;}#" + ID + "-compare .bhn-rv-compare-grid{grid-template-rows:max-content;align-items:start;align-content:start;}#" + ID + "-compare section{display:block;}#" + ID + "-compare h3{position:sticky;top:0;z-index:1;background:#f0f4f6;padding:5px 0;}#" + ID + "-compare iframe{display:block;flex:none;height:150px;border:0;outline:1px solid #d8e0e5;}";
 
   var highlight = document.createElement("div");
   highlight.setAttribute("class", "bhn-review-highlight");
@@ -397,6 +402,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     return state.comments.filter(function(comment){ return !comment.parentId; });
   }
 
+  ${comparisonSource()}
+
   function comparisonKey() {
     return "bhn-review-comparison-dismissed:" + endpointKey() + ":" + state.review.round;
   }
@@ -415,25 +422,42 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     head.appendChild(title);
     head.appendChild(addButton("Close comparison", "", function(){ dialog.close(); }));
     dialog.appendChild(head);
+    var legend = make("div", "bhn-rv-compare-legend");
+    legend.appendChild(make("span", "bhn-rv-diff-removed", "− Removed / before"));
+    legend.appendChild(make("span", "bhn-rv-diff-added", "+ Added / after"));
+    dialog.appendChild(legend);
     var grid = make("div", "bhn-rv-compare-grid");
     grid.setAttribute("tabindex", "0");
     grid.setAttribute("role", "region");
     grid.setAttribute("aria-label", "Before and after versions; scroll sideways on small screens");
+    var versions = comparisonDocuments(state.comparison.beforeHtml, state.comparison.afterHtml);
+    var frames = [];
     [
-      { label: "Before · Round " + (state.review.round - 1), html: state.comparison.beforeHtml },
-      { label: "After · Round " + state.review.round, html: state.comparison.afterHtml }
-    ].forEach(function(version){
+      "Before · Round " + (state.review.round - 1),
+      "After · Round " + state.review.round
+    ].forEach(function(label, index){
       var pane = make("section");
-      pane.appendChild(make("h3", "", version.label));
+      pane.appendChild(make("h3", "", label));
       var frame = make("iframe");
-      frame.title = version.label;
-      // Snapshots are untrusted HTML: no scripts, forms, popups or parent access.
-      frame.setAttribute("sandbox", "");
+      frame.title = label;
+      // Opaque origin; CSP permits only our sizing bridge, never newsletter scripts.
+      frame.setAttribute("sandbox", "allow-scripts");
       frame.setAttribute("referrerpolicy", "no-referrer");
-      frame.srcdoc = version.html;
+      frame.srcdoc = versions[index].html;
+      frames.push(frame);
       pane.appendChild(frame);
       grid.appendChild(pane);
     });
+    function resizeComparison(event) {
+      var data = event.data;
+      frames.forEach(function(frame, index){
+        if (event.source !== frame.contentWindow || !data || data.type !== "bhn-review-height" || data.key !== versions[index].key) return;
+        if (Number.isFinite(data.height) && data.height > 0 && data.height <= 200000) frame.style.height = data.height + "px";
+      });
+    }
+    // Both full-height snapshots share this one scroll container, so they cannot drift apart.
+    window.addEventListener("message", resizeComparison);
+    comparisonCleanup = function(){ window.removeEventListener("message", resizeComparison); };
     dialog.appendChild(grid);
     var key = comparisonKey();
     dialog.addEventListener("close", function(){
@@ -451,6 +475,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     state.comparisonRound = round;
     state.comparison = null;
     state.comparisonError = "";
+    if (comparisonCleanup) { comparisonCleanup(); comparisonCleanup = null; }
     if (comparisonDialog) { comparisonDialog.remove(); comparisonDialog = null; }
     if (round < 2) return;
     try {
@@ -1128,6 +1153,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     if (pollTimer) window.clearInterval(pollTimer);
     if (positionFrame) window.cancelAnimationFrame(positionFrame);
     removeMarkers();
+    if (comparisonCleanup) comparisonCleanup();
     if (comparisonDialog) comparisonDialog.remove();
     highlight.remove();
     root.remove();
