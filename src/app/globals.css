@@ -254,6 +254,17 @@
   pointer-events: none;
 }
 .workshop-animation-symbol { max-width: 90%; max-height: 90%; transform-origin: center; transform-box: fill-box; }
+/* Keep the LED grid stationary while the drawings move underneath. */
+.workshop-animation {
+  -webkit-mask-image: radial-gradient(circle at center, #000 1.3px, transparent 1.4px);
+  mask-image: radial-gradient(circle at center, #000 1.3px, transparent 1.4px);
+  -webkit-mask-size: 4px 4px;
+  mask-size: 4px 4px;
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+}
+.workshop-animation > svg { stroke-width: 2; }
+.workshop-animation > .workshop-chameleon, .workshop-chameleon [stroke-width] { stroke-width: 4.5; }
 .workshop-animation[data-workshop-icon="microbix-tour"] { color: #9fd8f0; }
 .workshop-animation[data-workshop-icon="microbix-tour"] svg { animation: workshop-focus 19s cubic-bezier(.4,0,.2,1) infinite; }
 .workshop-animation[data-workshop-icon="pandemic-preparedness"] { color: #c7b7f0; }
@@ -377,7 +388,7 @@
 }
 @media (forced-colors: active) {
   .training-registration-segments button[aria-pressed="true"] { outline: 2px solid Highlight; }
-  .workshop-animation { color: CanvasText !important; }
+  .workshop-animation { color: CanvasText !important; -webkit-mask-image: none; mask-image: none; }
 }
 
 @container (max-width: 400px) {

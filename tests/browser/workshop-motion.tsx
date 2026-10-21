@@ -25,6 +25,8 @@ async function main() {
     await page.route("https://workshops.test/app.js", route => route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text }));
     await page.goto("https://workshops.test/");
     await expect(page.locator(".workshop-animation")).toHaveCount(6);
+    const matrices = await page.locator(".workshop-animation").evaluateAll(nodes=>nodes.map(node=>({mask:getComputedStyle(node).maskImage,size:getComputedStyle(node).maskSize})));
+    assert.ok(matrices.length===6 && matrices.every(matrix=>matrix.mask.includes("radial-gradient") && matrix.size==="4px 4px"), "all six workshop graphics use the same fixed dot matrix");
     const chameleon = page.locator('[data-workshop-icon="communication-chameleon"]');
     const well = page.locator(".training-seat-well").nth(2);
     const iconBox = await chameleon.boundingBox(), wellBox = await well.boundingBox();
@@ -86,6 +88,8 @@ async function main() {
     assert.equal(await chameleon.locator(".workshop-chameleon-tongue").evaluate(node=>getComputedStyle(node).display),"none");
     assert.equal(await chameleon.locator(".workshop-chameleon-bug").evaluate(node=>getComputedStyle(node).display),"none");
     assert.ok((await page.locator(".workshop-animation").evaluateAll(nodes=>nodes.flatMap(node=>node.getAnimations({subtree:true})))).length===0);
+    await page.emulateMedia({ forcedColors: "active" });
+    assert.ok(await page.locator(".workshop-animation").evaluateAll(nodes=>nodes.every(node=>getComputedStyle(node).maskImage==="none")), "high-contrast mode keeps full readable shapes");
     console.log("PASS: six large animated icons, eye movement, tongue catch, camouflage, pause/resume, reduced motion, preserved controls and responsive layout");
   } finally { await browser.close(); }
 }
