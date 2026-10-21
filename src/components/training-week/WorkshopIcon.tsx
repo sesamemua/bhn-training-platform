@@ -32,17 +32,17 @@ function SneakyChameleon() {
     <g className="workshop-chameleon-skin">
       <path className="workshop-chameleon-tail" d="M38 70c-15-11-29-5-27 7 2 13 23 13 24 1 1-9-12-13-16-6-3 5 4 9 7 5" />
       <g className="workshop-chameleon-breathe">
-        <path d="M34 76Q23 64 34 53L42 42 49 46 55 38 63 44 70 39 77 48M80 62Q80 77 62 80L34 76" />
+        <path d="M34 76C24 67 27 52 39 47Q39 40 47 44Q50 36 57 42Q65 36 70 43Q75 43 78 49M80 62C82 77 65 84 49 81Q40 81 34 76" />
         <path d="M43 59q9-5 18 0" strokeWidth="2" />
       </g>
-      <path className="workshop-chameleon-feet" d="m48 76-3 12 10 1m21-16 5 14 11 1" />
+      <path className="workshop-chameleon-feet" d="M48 76q-5 6-2 11 4 3 10 1M77 74q1 11 7 14 5 1 9-1" />
     </g>
     <g className="workshop-chameleon-head">
-      <path className="workshop-chameleon-casque" d="M74 56 76 26Q83 28 88 38M105 54Q109 55 111 58L108 63Q96 68 80 61" />
+      <path className="workshop-chameleon-casque" d="M74 56Q72 45 76 36Q78 30 82 35Q85 39 88 39M105 54Q114 55 110 61Q104 68 94 65Q86 65 80 61" />
       <g className="workshop-chameleon-eyes">
         <g className="workshop-chameleon-turret-near" data-chameleon-eye="true">
           <g className="workshop-chameleon-lid-near">
-            <circle cx="95" cy="49" r="10" strokeWidth="2.5" />
+            <circle cx="95" cy="49" r="11" strokeWidth="2.5" />
             <g className="workshop-chameleon-gaze">
               <circle cx="96" cy="49" r="3.5" fill="currentColor" stroke="none" />
             </g>
@@ -50,7 +50,7 @@ function SneakyChameleon() {
         </g>
       </g>
       <path className="workshop-chameleon-brow" d="M85 36q7-5 14 0" strokeWidth="2.5" />
-      <path d="M94 61q7 2 13-2" strokeWidth="2" />
+      <path d="M94 61q8 5 14-2" strokeWidth="2" />
     </g>
     <g className="workshop-chameleon-tongue">
       <path d="M103 60q17-12 28-24" stroke="#f295a2" strokeWidth="2.5" />

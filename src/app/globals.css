@@ -214,7 +214,7 @@
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-priority dd { min-height: 28px; font-size: 24px; }
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-priority svg { height: 28px; }
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-secondary { gap: 4px 8px; }
-.workshop-animation[data-workshop-icon="communication-chameleon"] { width: 144px !important; height: 112px !important; }
+.workshop-animation[data-workshop-icon="communication-chameleon"] { width: 112px !important; height: 112px !important; }
 .workshop-animation[data-workshop-icon="communication-chameleon"] > svg { max-height: 112px; }
 .training-capacity-actions { flex-wrap: wrap; }
 .training-registration-segments {
