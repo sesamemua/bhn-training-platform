@@ -84,7 +84,7 @@ export function capitalizeName(value: string): string {
 }
 
 const organizationName = /\b(hub|university|institute|laboratory|labs?|company|corporation|network|biohubnet|inc|llc|ltd|solutions|biosciences|biotech|pharma|centre|center|college|foundation)\b|\bhi[³3]\b/i;
-const incompleteName = (name: string) => name.trim().split(/\s+/).length < 2 || /(?:^|\s)\p{L}\.?$/u.test(name.trim());
+export const incompleteName = (name: string) => name.trim().split(/\s+/).length < 2 || /(?:^|\s)\p{L}\.?$/u.test(name.trim());
 const completeName = (name: string) => !incompleteName(name) && !organizationName.test(name) && new Set(name.trim().split(/\s+/).map(normalized)).size > 1;
 const approved = (status: string) => ["approved", "going", "checked_in"].includes(status.toLowerCase());
 // The position joins the fingerprint only when there is one, so a badge printed before positions existed still matches while it has none.
