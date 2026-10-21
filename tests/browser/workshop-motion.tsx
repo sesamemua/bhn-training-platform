@@ -62,11 +62,26 @@ async function main() {
     await page.getByRole("button", { name: "Edit capacity", exact: true }).click();
     await expect(page.getByRole("spinbutton")).toHaveCount(6);
     await page.getByRole("button", { name: "Done editing capacity", exact: true }).click();
-    for (const width of [1000,768,390,320]) {
+    for (const width of [1440,1000,768,390,320]) {
       await page.setViewportSize({ width, height: 1000 });
       assert.equal(await page.locator("body").evaluate(node=>node.scrollWidth>window.innerWidth),false,`no overflow at ${width}px`);
       const boxes = await page.locator(".training-seat-well").evaluateAll(nodes=>nodes.map(node=>({width:node.clientWidth,scrollWidth:node.scrollWidth})));
       assert.ok(boxes.every(box=>box.scrollWidth<=box.width),`statistics fit at ${width}px`);
+      const sizing = await chameleon.evaluate(node => {
+        const panel = node.closest(".training-seat-well")!, row = node.closest(".training-capacity-row")!;
+        const svg = node.querySelector("svg")!, viewBox = svg.getAttribute("viewBox")!;
+        const eye = node.querySelector(".workshop-chameleon-turret-near")!;
+        const enlarged = { panel: panel.getBoundingClientRect().height, row: row.getBoundingClientRect().height, eye: eye.getBoundingClientRect().width };
+        node.setAttribute("data-workshop-icon", "baseline");
+        svg.setAttribute("viewBox", "0 0 144 112");
+        const baseline = { panel: panel.getBoundingClientRect().height, row: row.getBoundingClientRect().height, eye: eye.getBoundingClientRect().width };
+        node.setAttribute("data-workshop-icon", "communication-chameleon");
+        svg.setAttribute("viewBox", viewBox);
+        return { enlarged, baseline };
+      });
+      assert.ok(sizing.enlarged.panel <= sizing.baseline.panel + 1, `black panel is no taller at ${width}px`);
+      assert.ok(sizing.enlarged.row <= sizing.baseline.row + 1, `workshop row is no taller at ${width}px`);
+      if (width === 1440) assert.ok(sizing.enlarged.eye >= sizing.baseline.eye * 1.5, "eyes are at least 50% larger on desktop");
     }
     await page.screenshot({ path: "output/workshop-icons-mobile.png", fullPage: true });
     await page.emulateMedia({ reducedMotion: "reduce" });

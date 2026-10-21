@@ -26,7 +26,7 @@ export function WorkshopIcon({ slug, size = 22, animated = false }: { slug: stri
 }
 
 function SneakyChameleon() {
-  return <svg viewBox="0 0 144 112" width="144" height="112" fill="none" focusable="false" className="workshop-chameleon">
+  return <svg viewBox="3 19 138 76" width="144" height="112" fill="none" focusable="false" className="workshop-chameleon">
     <path d="M11 91c31-4 68 2 119-4" stroke="#7e9b85" strokeWidth="4" strokeLinecap="round" />
     <g className="workshop-chameleon-skin">
       <path className="workshop-chameleon-tail" d="M38 70c-15-11-29-5-27 7 2 13 23 13 24 1 1-9-12-13-16-6-3 5 4 9 7 5" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />

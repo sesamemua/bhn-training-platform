@@ -206,6 +206,17 @@
 .training-seat-well[data-has-icon] .training-seat-secondary > div { gap: 4px; }
 .training-seat-well[data-has-icon] .training-seat-secondary dt { font-size: 10px; }
 .training-seat-well[data-has-icon] .training-seat-secondary dd { color: #d2d7d5; }
+.training-seat-well:has([data-workshop-icon="communication-chameleon"]) {
+  grid-template-columns: minmax(72px, 30%) minmax(0, 1fr);
+  gap: 8px;
+}
+.training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-layout { gap: 6px; }
+.training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-priority { gap: 6px; }
+.training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-priority dd { min-height: 28px; font-size: 24px; }
+.training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-priority svg { height: 28px; }
+.training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-secondary { gap: 4px 8px; }
+.workshop-animation[data-workshop-icon="communication-chameleon"] { width: 100% !important; height: 112px !important; }
+.workshop-animation[data-workshop-icon="communication-chameleon"] > svg { max-height: 112px; }
 .training-capacity-actions { flex-wrap: wrap; }
 .training-registration-segments {
   display: inline-flex;
