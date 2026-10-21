@@ -9,7 +9,7 @@ import { matchPlanPeople } from "@/lib/events/people-plan";
 import { loadPeoplePlan, PEOPLE_PLAN_KEY } from "@/lib/events/people-plan-store";
 import { PUBLICATION_EVENT, PublicationStateSchema } from "@/lib/events/people-publication";
 import { loadPublication, PUBLICATION_KEY, PublicationConflict } from "@/lib/events/people-publication-store";
-import { publicationPhotoSource, publicationImageType } from "@/lib/events/publication-photo";
+import { freezePublicationPhoto, publicationPhotoSource, publicationImageType } from "@/lib/events/publication-photo";
 
 export const runtime = "nodejs";
 const Framing = z.object({ zoom: z.number().min(0.5).max(4), x: z.number().min(-10000).max(10000), y: z.number().min(-10000).max(10000) }).strict();
@@ -129,6 +129,8 @@ export async function POST(req: NextRequest, ctx: Context) {
     const url = r2PublicUrl(key);
     await putR2Object(key, bytes, "image/png");
     uploaded.push(url);
+    const publishedUrl = publication?.state.approved.some((p) => source.personIds.includes(p.id))
+      ? await freezePublicationPhoto(url) : null;
     const now = new Date(Math.max(Date.now(), Date.parse(publication?.version ?? "") + 1 || 0, Date.parse(source.board?.snapshot.version ?? "") + 1 || 0));
     await prisma.$transaction(async (tx) => {
       const conflict = () => { throw new PublicationConflict("A colleague changed this profile. Reopen the editor before saving."); };
@@ -146,26 +148,26 @@ export async function POST(req: NextRequest, ctx: Context) {
         else if (!(await tx.platformSetting.updateMany({ where: { key: PEOPLE_PLAN_KEY, value: board.raw, updatedAt: new Date(board.snapshot.version!) }, data })).count) conflict();
       }
       let websiteUpdated = false;
-      if (publication?.state.approved.some((p) => source.personIds.includes(p.id))) {
+      if (publication && publishedUrl) {
         const next = structuredClone(publication.state);
         next.revision++; next.updatedAt = now.toISOString();
         for (const entry of next.approved.filter((p) => source.personIds.includes(p.id))) {
-          entry.profile.photoUrl = url; entry.approvedRevision = next.revision;
+          entry.profile.photoUrl = publishedUrl; entry.approvedRevision = next.revision;
           if (source.speaker?.submittedAt) entry.sourceSubmissionId = source.speaker.id;
         }
-        for (const draft of next.drafts.filter((p) => source.personIds.includes(p.id))) draft.profile.photoUrl = url;
+        for (const draft of next.drafts.filter((p) => source.personIds.includes(p.id))) draft.profile.photoUrl = publishedUrl;
         const value = JSON.stringify(PublicationStateSchema.parse(next));
         if (!(await tx.platformSetting.updateMany({ where: { key: PUBLICATION_KEY, value: publication.raw!, updatedAt: new Date(publication.version!) }, data: { value, updatedAt: now } })).count) conflict();
         websiteUpdated = true;
       }
       await tx.auditLog.create({ data: {
         actorId, action: "speaker.headshot.adjust", targetType: source.speaker ? "speaker" : "person", targetId: source.speaker?.id ?? source.person!.id,
-        detail: JSON.stringify({ before: source.photoUrl, after: url, original: originalUrl, previousOriginal: source.originalUrl, framing, websiteUpdated }),
+        detail: JSON.stringify({ before: source.photoUrl, after: url, original: originalUrl, previousOriginal: source.originalUrl, framing, websiteUpdated, publishedUrl }),
       } });
     });
     return NextResponse.json({ photoUrl: url });
   } catch (error) {
-    // Only unsuccessful uploads are disposable. Source photos and prior crops are retained.
+    // Keep shared content-addressed images, source photos and prior crops; discard only this editor's uploads.
     for (const url of uploaded) await deleteR2ObjectByUrl(url).catch(() => {});
     if (error instanceof PublicationConflict || (error as { code?: string }).code === "P2002") return NextResponse.json({ error: "This profile changed. Reopen the editor before saving." }, { status: 409 });
     if (error instanceof z.ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "Invalid headshot adjustment." }, { status: 400 });

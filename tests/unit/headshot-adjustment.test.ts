@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { NextRequest } from "next/server";
 import sharp from "sharp";
 // @ts-expect-error Runtime supports loader hooks ahead of the repo's Node typings.
@@ -55,6 +56,16 @@ const route = import("../../src/app/api/admin/events/[slug]/headshot/route").fin
 const ctx = { params: Promise.resolve({ slug: "2026-annual-symposium" }) };
 const endpoint = `${origin}/api/admin/events/2026-annual-symposium/headshot`;
 const png = sharp({ create: { width: 600, height: 600, channels: 3, background: "white" } }).png().toBuffer();
+test.beforeEach((t) => {
+  assert.ok("mock" in t);
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    assert.equal(init?.redirect, "error");
+    assert.equal(init?.cache, "no-store");
+    const upload = uploads.find((entry) => `https://images.example.org/${entry.key}` === String(input));
+    assert.ok(upload, "Only fetch this test's uploaded crop");
+    return new Response(new Uint8Array(upload.bytes));
+  });
+});
 async function request({ version = speaker.photoUrl, image, source = origin, target = "speakerId=speaker", framing = { zoom: 0.9, x: 30, y: 0 }, originalFile }: { version?: string; image?: Uint8Array; source?: string | null; target?: string; framing?: unknown; originalFile?: Blob } = {}) {
   const form = new FormData();
   form.set("headshot", new Blob([new Uint8Array(image ?? await png)], { type: "image/png" }), "headshot.png");
@@ -95,11 +106,42 @@ test("saving through the planner preserves original bytes, bio and placements an
   assert.deepEqual(uploads[0].bytes, await png);
   assert.deepEqual(deletes, []);
   const pub = JSON.parse(settings.get(PUBLICATION_KEY)!.value);
-  assert.equal(pub.revision, 4); assert.equal(pub.approved[0].profile.photoUrl, photoUrl);
+  const frozenUrl = `https://images.example.org/people-publication/2026-annual-symposium/${createHash("sha256").update(await png).digest("hex")}.png`;
+  assert.equal(pub.revision, 4); assert.equal(pub.approved[0].profile.photoUrl, frozenUrl);
+  assert.notEqual(frozenUrl, photoUrl);
+  assert.deepEqual(uploads[1].bytes, await png);
   assert.equal(pub.approved[0].profile.bio, "Public biography");
   assert.deepEqual(pub.approved[0].profile.placements, [{ sessionId: "networking", order: 4 }]);
   assert.equal(JSON.parse(audits[0].data.detail).original, original);
   assert.equal(JSON.parse(settings.get(PEOPLE_PLAN_KEY)!.value).people[0].bio, "Private planning note");
+});
+
+test("approved crops freeze matching drafts without changing other profiles or publication metadata", async () => {
+  const { POST } = await route; reset();
+  const row = settings.get(PUBLICATION_KEY)!;
+  const state = JSON.parse(row.value);
+  const other = { ...structuredClone(state.approved[0]), id: "other", sourceSubmissionId: "other-speaker" };
+  state.approved.push(other);
+  state.drafts = state.approved.map(({ id, profile }: { id: string; profile: unknown }) => ({ id, profile: structuredClone(profile) }));
+  row.value = JSON.stringify(state);
+  assert.equal((await POST(await request(), ctx)).status, 200);
+  const next = JSON.parse(settings.get(PUBLICATION_KEY)!.value);
+  assert.match(next.approved[0].profile.photoUrl, /\/2026-annual-symposium\/[a-f0-9]{64}\.png$/);
+  assert.deepEqual(next.approved[0], { ...state.approved[0], approvedRevision: 4, profile: { ...state.approved[0].profile, photoUrl: next.approved[0].profile.photoUrl } });
+  assert.deepEqual(next.drafts[0], { ...state.drafts[0], profile: { ...state.drafts[0].profile, photoUrl: next.approved[0].profile.photoUrl } });
+  assert.deepEqual(next.approved[1], other);
+  assert.deepEqual(next.drafts[1], state.drafts[1]);
+});
+
+test("a failed publication freeze leaves the database unchanged and cleans up only the new crop", async (t) => {
+  const { POST } = await route; reset();
+  const before = JSON.stringify([...settings]);
+  t.mock.method(globalThis, "fetch", async () => new Response(null, { status: 503 }));
+  assert.equal((await POST(await request(), ctx)).status, 500);
+  assert.equal(JSON.stringify([...settings]), before);
+  assert.equal(speaker.photoUrl, original);
+  assert.equal(audits.length, 0);
+  assert.deepEqual(deletes, [`https://images.example.org/${uploads[0].key}`]);
 });
 
 test("repeated adjustments use the first original and new submissions start a fresh original", async () => {
@@ -161,6 +203,7 @@ test("historical profiles can be framed without a submission; unpublished people
   assert.equal(JSON.parse(settings.get("headshot.crop.person.melissa")!.value).originalUrl, original);
   assert.equal(settings.get(PUBLICATION_KEY)!.value, publication.value);
   assert.equal(speaker.photoUrl, original);
+  assert.equal(uploads.length, 1);
 });
 
 test("speaker IDs cannot escape their event", async () => {
@@ -199,6 +242,7 @@ test("failed replacement transaction cleans up only its two new uploads", async 
   assert.equal((await POST(await request({ originalFile: new Blob([new Uint8Array(jpeg)], { type: "image/jpeg" }) }), ctx)).status, 500);
   assert.equal(speaker.photoUrl, original);
   assert.equal(deletes.length, 2);
+  assert.ok(deletes.every((url) => !url.includes("/2026-annual-symposium/")));
   assert.ok(deletes.every((url) => url.startsWith("https://images.example.org/people-publication/")));
   assert.ok(!settings.has("headshot.crop.speaker.speaker"));
 });
