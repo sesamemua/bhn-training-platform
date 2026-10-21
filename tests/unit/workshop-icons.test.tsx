@@ -50,6 +50,17 @@ test("large dashboard illustrations animate without replacing the existing small
   assert.doesNotMatch(chameleon, /turret-far|lid-far|gaze-far|<path[^>]*fill="currentColor"/);
 });
 
+test("other dashboard icons use smaller fine strokes without changing regular icons", () => {
+  for (const session of SESSIONS.filter(session => session.slug !== "communication-chameleon-2026")) {
+    const animated = renderToStaticMarkup(createElement(WorkshopIcon, { slug: session.slug, size: 124, animated: true }));
+    assert.match(animated, /width="62" height="62"/);
+    assert.match(animated, /stroke-width="1.25"/);
+    const regular = renderToStaticMarkup(createElement(WorkshopIcon, { slug: session.slug }));
+    assert.match(regular, /width="22" height="22"/);
+    assert.match(regular, /stroke-width="2"/);
+  }
+});
+
 test("the rounded chameleon exports its filled silhouette in teal with a transparent eye cutout", async () => {
   const png = "public/workshop-icons/communication-chameleon.png";
   const body = await sharp(png).extract({ left: 192, top: 235, width: 1, height: 1 }).raw().toBuffer();

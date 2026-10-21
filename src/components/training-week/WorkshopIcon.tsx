@@ -21,7 +21,7 @@ export function WorkshopIcon({ slug, size = 22, animated = false }: { slug: stri
   const workshop = WORKSHOP_ICONS[slug as keyof typeof WORKSHOP_ICONS];
   const Icon = workshop?.Icon ?? Presentation;
   if (animated) return <span className="workshop-animation" data-workshop-icon={workshop?.asset ?? "workshop"} aria-hidden="true" style={{ width: size, height: size }}>
-    {slug === "communication-chameleon-2026" ? <SneakyChameleon /> : <Icon size={size * 0.7} strokeWidth={1.5} focusable="false" className="workshop-animation-symbol" />}
+    {slug === "communication-chameleon-2026" ? <SneakyChameleon /> : <Icon size={size * 0.5} strokeWidth={1.25} focusable="false" className="workshop-animation-symbol" />}
   </span>;
   return <Icon size={size} strokeWidth={2} aria-hidden="true" focusable="false" className="inline-block shrink-0 align-[-0.2em]" />;
 }
