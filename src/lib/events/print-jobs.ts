@@ -10,7 +10,7 @@ export const GuestSchema = z.object({
   position: text(200).optional(),
 });
 export type PrintGuest = z.infer<typeof GuestSchema>;
-export const BadgeEditSchema = z.object({ name: text(160).min(2), position: text(200).optional(), organization: text(250), extra: text(200), reviewed: z.boolean() });
+export const BadgeEditSchema = z.object({ name: text(160).min(2), position: text(200).optional(), organization: text(250), extra: text(200), reviewed: z.boolean(), singleName: z.boolean().optional() });
 export type BadgeEdit = z.infer<typeof BadgeEditSchema>;
 export const BadgeSchema = z.object({ id: text(150), name: text(160), position: text(200).optional(), organization: text(250), extra: text(200) });
 export type PrintBadge = z.infer<typeof BadgeSchema>;
@@ -39,7 +39,7 @@ export const PrintBoardSchema = z.object({
   tentTemplate: TemplateSchema.nullable(), agendaTemplate: TemplateSchema.nullable(),
 });
 export type PrintBoard = z.infer<typeof PrintBoardSchema>;
-export type PrintPerson = PrintBadge & { email: string; sourceName: string; sourceOrganization: string; status: string; source: PrintGuest["source"]; tickets: number; issues: string[]; suggestion: string | null; nameCorrection?: { reason: string; evidence: string }; printStatus: "unprinted" | "queued" | "printed" | "changed" };
+export type PrintPerson = PrintBadge & { email: string; sourceName: string; sourceOrganization: string; status: string; source: PrintGuest["source"]; tickets: number; issues: string[]; suggestion: string | null; singleName?: boolean; nameCorrection?: { reason: string; evidence: string }; printStatus: "unprinted" | "queued" | "printed" | "changed" };
 export type PrintWorkspace = { board: PrintBoard; people: PrintPerson[]; version: string | null; autoSyncAvailable: boolean };
 export type PrintIdentity = { fullName: string; email: string; organization: string; title: string; tags?: string[]; source?: string };
 
@@ -106,7 +106,7 @@ export function printPeople(board: PrintBoard, identities: PrintIdentity[] = [])
     const suggestion = emailParts.length === 2 ? capitalizeName(emailParts.join(" ")) : null;
     if (!edit?.reviewed) {
       if (!badge.name || organizationName.test(badge.name) || (badge.organization && normalized(badge.name) === normalized(badge.organization))) issues.push("Name appears to be an organization");
-      else if (incompleteName(badge.name)) issues.push("Check incomplete name / surname");
+      else if (incompleteName(badge.name) && !edit?.singleName) issues.push("Check incomplete name / surname");
       if (suggestion && !verified && !identity && emailParts.every(p => !normalized(badge.name).includes(normalized(p)))) issues.push("Name and email appear inconsistent");
       if (/[`<>@\d]/.test(badge.name)) issues.push("Check unusual characters in name");
       if (!badge.organization) issues.push("Organization missing");
@@ -124,7 +124,7 @@ export function printPeople(board: PrintBoard, identities: PrintIdentity[] = [])
       reason: "Completed a missing surname using a verified name; no surname inferred from an email address.",
       evidence: verified ? "Organizer explicitly confirmed Andrea Leung for an.leung@utoronto.ca." : `Exact email match: ${identity!.source ?? "People roster"}.`,
     } : undefined;
-    return { ...badge, email: g.email, sourceName: g.name, sourceOrganization: g.organization, status: g.status, source: g.source, tickets: g.tickets, issues, suggestion, printStatus, nameCorrection };
+    return { ...badge, email: g.email, sourceName: g.name, sourceOrganization: g.organization, status: g.status, source: g.source, tickets: g.tickets, issues, suggestion, printStatus, nameCorrection, singleName: edit?.singleName };
   }).sort((a, b) => a.name.localeCompare(b.name));
 }
 

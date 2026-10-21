@@ -98,8 +98,8 @@ export function SymposiumPrintJobs() {
 
   const { board, people } = snapshot;
   const approved = people.filter(eligible);
-  const missingNames = people.filter(p => (allStatuses || eligible(p)) && incompleteName(p.name));
-  const filtered = people.filter(p => (allStatuses || eligible(p)) && (view !== "missing-names" || incompleteName(p.name)) && (!query || [p.name, p.email, p.organization, p.extra, p.sourceName].join(" ").toLowerCase().includes(query.toLowerCase())) && (filter === "all" || (filter === "review" ? p.issues.length > 0 : p.printStatus === filter)));
+  const missingNames = people.filter(p => (allStatuses || eligible(p)) && incompleteName(p.name) && !p.singleName);
+  const filtered = people.filter(p => (allStatuses || eligible(p)) && (view !== "missing-names" || (incompleteName(p.name) && !p.singleName)) && (!query || [p.name, p.email, p.organization, p.extra, p.sourceName].join(" ").toLowerCase().includes(query.toLowerCase())) && (filter === "all" || (filter === "review" ? p.issues.length > 0 : p.printStatus === filter)));
   const job = board.jobs.find(j => j.id === activeJob);
   const documentDraft = documents ?? { tentText: board.tentText, agendaText: board.agendaText, version: snapshot.version };
   const template = view === "tents" ? board.tentTemplate : board.agendaTemplate;
@@ -107,7 +107,7 @@ export function SymposiumPrintJobs() {
   const draftPerson = editing ? people.find(p => p.id === editing.id) : null;
   const nameChanged = !!(editing?.id && draftPerson && editing.badge.name !== (board.edits[editing.id]?.name ?? draftPerson.sourceName));
   function openPerson(p?: PrintPerson) {
-    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", position: p?.position ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)) }, email: p?.email ?? "", version: snapshot!.version, reason: p?.nameCorrection?.reason ?? "", evidence: p?.nameCorrection?.evidence ?? "" });
+    setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", position: p?.position ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)), singleName: p?.singleName }, email: p?.email ?? "", version: snapshot!.version, reason: p?.nameCorrection?.reason ?? "", evidence: p?.nameCorrection?.evidence ?? "" });
   }
   const makeJob = () => mutate({ action: "create", kind, signageSlug: kind === "signage" ? signageSlug : undefined, label: label.trim() || (kind === "signage" ? PRINT_SIGNS.find(s => s.slug === signageSlug)!.title + " - Letter signage" : (kind === "badges" ? "Badge" : kind === "tents" ? "Table tent" : "Agenda") + " batch " + (board.jobs.length + 1)), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
   async function copyLink(id: string) {
@@ -222,6 +222,7 @@ export function SymposiumPrintJobs() {
             {draftPerson && <BadgeNameHistory person={draftPerson} changes={board.nameHistory?.filter(c => c.guestId === draftPerson.id) ?? []} local={!!board.edits[draftPerson.id]} />}
             {draftPerson?.suggestion && blocked(draftPerson) && <button type="button" className={BUTTON} onClick={() => setEditing({ ...editing, badge: { ...editing.badge, name: draftPerson.suggestion! } })}>Use email suggestion: {draftPerson.suggestion}</button>}
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={editing.badge.extra.split("\n").includes("HQP Representative")} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, extra: e.target.checked ? [editing.badge.extra, "HQP Representative"].filter(Boolean).join("\n") : editing.badge.extra.split("\n").filter(line => line !== "HQP Representative").join("\n") } })} /> HQP Representative</label>
+            <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!editing.badge.singleName} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, singleName: e.target.checked } })} /> Confirmed single-name attendee</label>
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={editing.badge.reviewed} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, reviewed: e.target.checked } })} /> Name and organization checked</label>
             <button type="submit" className={PRIMARY} disabled={busy}><Save size={14} /> Save badge</button>
             <div className="aspect-[4/3] overflow-hidden border border-line bg-white p-4 text-center text-black">

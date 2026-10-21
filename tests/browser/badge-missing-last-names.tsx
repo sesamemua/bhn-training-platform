@@ -26,9 +26,9 @@ async function main() {
     await page.route("https://print.test/api/admin/symposium-print", async route => {
       if (route.request().method() === "POST") {
         const input = route.request().postDataJSON();
-        assert.equal(input.version, version); assert.equal(input.change.action, "edit"); assert.equal(input.change.id, "echo");
+        assert.equal(input.version, version); assert.equal(input.change.action, "edit"); assert.ok(["echo", "reviewed"].includes(input.change.id));
         board = applyPrintAction(board, printPeople(board, identities), input.change, "Admin", "00000000-0000-4000-8000-000000000001", "2026-10-21T15:01:00Z").board;
-        version = "2026-10-21T15:01:00.000Z"; saves++;
+        saves++; version = `2026-10-21T15:0${saves}:00.000Z`;
       }
       await route.fulfill({ json: route.request().method() === "POST" ? { snapshot: snapshot() } : snapshot() });
     });
@@ -61,6 +61,13 @@ async function main() {
     assert.equal(saves, 1); assert.equal(board.guests[0].name, "Echo"); assert.equal(board.edits.echo.name, "Echo Jing");
     assert.equal(board.nameHistory?.[0].reason, "Attendee confirmed their surname");
     await page.getByLabel("Search badge guests").fill("");
+    await page.getByRole("button", { name: "Edit print name for Li", exact: true }).click();
+    await page.getByLabel("Confirmed single-name attendee", { exact: true }).check();
+    await page.getByRole("button", { name: "Save badge", exact: true }).click();
+    await expect(rows).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Missing last names (1)", exact: true })).toBeVisible();
+    assert.equal(board.edits.reviewed.singleName, true);
+    assert.equal(board.guests.find(g => g.id === "reviewed")!.name, "Li");
     await mkdir("output", { recursive: true });
     await page.screenshot({ path: "output/badge-missing-last-names-desktop.png", fullPage: true });
     for (const width of [390, 320]) {
@@ -71,7 +78,9 @@ async function main() {
     await page.getByRole("button", { name: "Name badges", exact: true }).click();
     await expect(rows).toHaveCount(5);
     await expect(page.getByRole("button", { name: "Echo Jing", exact: true })).toBeVisible();
-    console.log("PASS: missing-surname tab, counts, reviewed names, resolved names, status/search filters, visible selection, audited name edit, original preservation and responsive layouts");
+    await page.getByRole("button", { name: "Edit print name for Li", exact: true }).click();
+    await expect(page.getByLabel("Confirmed single-name attendee", { exact: true })).toBeChecked();
+    console.log("PASS: missing-surname tab, confirmed single-name exclusion and persistence, counts, reviewed names, resolved names, status/search filters, visible selection, audited name edit, original preservation and responsive layouts");
   } finally { await browser.close(); }
 }
 
