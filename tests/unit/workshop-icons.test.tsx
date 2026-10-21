@@ -43,9 +43,11 @@ test("large dashboard illustrations animate without replacing the existing small
   }
   const chameleon = renderToStaticMarkup(createElement(WorkshopIcon, { slug: "communication-chameleon-2026", size: 124, animated: true }));
   for (const part of ["skin", "eyes", "gaze", "tongue", "bug"]) assert.match(chameleon, new RegExp(`class="workshop-chameleon-${part}"`));
-  for (const part of ["head", "casque", "turret-near", "turret-far", "lid-near", "lid-far", "gaze-far", "breathe", "tail"]) {
+  for (const part of ["head", "casque", "turret-near", "lid-near", "breathe", "tail", "brow", "feet"]) {
     assert.match(chameleon, new RegExp(`class="workshop-chameleon-${part}"`));
   }
+  assert.equal((chameleon.match(/data-chameleon-eye="true"/g) ?? []).length, 1);
+  assert.doesNotMatch(chameleon, /turret-far|lid-far|gaze-far|<path[^>]*fill="currentColor"/);
 });
 
 test("the rounded chameleon exports its filled silhouette in teal with a transparent eye cutout", async () => {
@@ -60,5 +62,6 @@ test("the friendly chameleon has no speech bubble", () => {
   const icon = renderToStaticMarkup(createElement(WorkshopIcon, { slug: "communication-chameleon-2026" }));
   assert.equal(WORKSHOP_ICONS["communication-chameleon-2026"].symbol, "Chameleon");
   assert.equal((icon.match(/<path /g) ?? []).length, 3, "silhouette, spiral tail and curved feet only");
-  assert.match(icon, /fill-rule="evenodd"/);
+  assert.match(icon, /fill="none"/);
+  assert.doesNotMatch(icon, /fill-rule|<path[^>]*fill="currentColor"/);
 });

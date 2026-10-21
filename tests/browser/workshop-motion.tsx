@@ -39,14 +39,13 @@ async function main() {
     await seek(9000);
     assert.notEqual(await chameleon.locator(".workshop-chameleon-gaze").evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)");
     await seek(3500);
-    const nearGaze = await chameleon.locator(".workshop-chameleon-gaze").evaluate(node => getComputedStyle(node).transform);
-    const farGaze = await chameleon.locator(".workshop-chameleon-gaze-far").evaluate(node => getComputedStyle(node).transform);
-    assert.notEqual(nearGaze, farGaze, "the two eyes scan independently");
-    for (const part of ["head", "turret-near", "breathe", "tail"]) {
+    await expect(chameleon.locator("[data-chameleon-eye]")).toHaveCount(1);
+    assert.ok(await page.locator(".workshop-animation svg").evaluateAll(nodes=>nodes.every(node=>getComputedStyle(node).fill==="none")), "all dashboard illustrations use line art");
+    for (const part of ["head", "turret-near", "breathe", "tail", "brow"]) {
       assert.notEqual(await chameleon.locator(`.workshop-chameleon-${part}`).evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)", `${part} has a subtle micro-movement`);
     }
     await seek(2600);
-    assert.notEqual(await chameleon.locator(".workshop-chameleon-lid-near").evaluate(node => getComputedStyle(node).transform), await chameleon.locator(".workshop-chameleon-lid-far").evaluate(node => getComputedStyle(node).transform), "lids blink separately");
+    assert.notEqual(await chameleon.locator(".workshop-chameleon-lid-near").evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)", "the single eye winks");
     await seek(9700);
     assert.equal(await chameleon.locator(".workshop-chameleon-tongue").evaluate(node => getComputedStyle(node).transform), "matrix(1, 0, 0, 1, 0, 0)");
     assert.equal(await chameleon.locator(".workshop-chameleon-bug").evaluate(node => getComputedStyle(node).opacity), "1");
@@ -69,19 +68,18 @@ async function main() {
       assert.ok(boxes.every(box=>box.scrollWidth<=box.width),`statistics fit at ${width}px`);
       const sizing = await chameleon.evaluate(node => {
         const panel = node.closest(".training-seat-well")!, row = node.closest(".training-capacity-row")!;
-        const svg = node.querySelector("svg")!, viewBox = svg.getAttribute("viewBox")!;
         const eye = node.querySelector(".workshop-chameleon-turret-near")!;
-        const enlarged = { panel: panel.getBoundingClientRect().height, row: row.getBoundingClientRect().height, eye: eye.getBoundingClientRect().width };
-        node.setAttribute("data-workshop-icon", "baseline");
-        svg.setAttribute("viewBox", "0 0 144 112");
+        const compact = { panel: panel.getBoundingClientRect().height, row: row.getBoundingClientRect().height, eye: eye.getBoundingClientRect().width };
+        const style = document.createElement("style");
+        style.textContent = '.training-seat-well:has([data-workshop-icon="communication-chameleon"]) {grid-template-columns:minmax(72px,30%) minmax(0,1fr)} .workshop-animation[data-workshop-icon="communication-chameleon"] {width:100%!important}';
+        document.head.append(style);
         const baseline = { panel: panel.getBoundingClientRect().height, row: row.getBoundingClientRect().height, eye: eye.getBoundingClientRect().width };
-        node.setAttribute("data-workshop-icon", "communication-chameleon");
-        svg.setAttribute("viewBox", viewBox);
-        return { enlarged, baseline };
+        style.remove();
+        return { compact, baseline };
       });
-      assert.ok(sizing.enlarged.panel <= sizing.baseline.panel + 1, `black panel is no taller at ${width}px`);
-      assert.ok(sizing.enlarged.row <= sizing.baseline.row + 1, `workshop row is no taller at ${width}px`);
-      if (width === 1440) assert.ok(sizing.enlarged.eye >= sizing.baseline.eye * 1.5, "eyes are at least 50% larger on desktop");
+      assert.ok(sizing.compact.panel <= sizing.baseline.panel + 1, `black panel is no taller at ${width}px`);
+      assert.ok(sizing.compact.row <= sizing.baseline.row + 1, `workshop row is no taller at ${width}px`);
+      if (width === 1440) assert.ok(sizing.compact.eye < sizing.baseline.eye * .85, "the line-art chameleon is smaller than the previous enlarged version");
     }
     await page.screenshot({ path: "output/workshop-icons-mobile.png", fullPage: true });
     await page.emulateMedia({ reducedMotion: "reduce" });

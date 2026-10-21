@@ -1,8 +1,9 @@
 import { Compass, createLucideIcon, Factory, Lightbulb, Microscope, Presentation, ShieldPlus } from "lucide-react";
 
 const TalkingChameleon = createLucideIcon("TalkingChameleon", [
-  ["path", { d: "M6 16.6C2.8 14.4 3.3 10.2 6.5 8.5c2-1.1 4.5-.9 6.3 0 .1-2.1.7-3.4 1.4-3.9 3.7.5 6.4 3.4 6.8 7.3.1 1.8-1.2 2.9-3.2 2.9-1.3 0-2.3-.4-3.1-1-1.3 3.7-5.4 4.8-8.7 2.8ZM18.8 10a2.2 2.2 0 1 0-4.4 0 2.2 2.2 0 1 0 4.4 0ZM17 12.8q1.2.6 2.4-.1.3-.2.5.1.2.3-.1.5-1.5.9-3.1.1-.3-.2-.1-.5.1-.3.4-.1Z", fill: "currentColor", fillRule: "evenodd", stroke: "none", key: "chameleon" }],
-  ["circle", { cx: "17", cy: "9.7", r: ".85", fill: "currentColor", stroke: "none", key: "eye" }],
+  ["path", { d: "M6 16.6C2.8 14.4 3.3 10.2 6.5 8.5c2-1.1 4.5-.9 6.3 0 .1-2.1.7-3.4 1.4-3.9 3.7.5 6.4 3.4 6.8 7.3.1 1.8-1.2 2.9-3.2 2.9-1.3 0-2.3-.4-3.1-1-1.3 3.7-5.4 4.8-8.7 2.8ZM17 12.8q1.2.6 2.4-.1", key: "chameleon" }],
+  ["circle", { cx: "16.7", cy: "9.7", r: "2.2", strokeWidth: "1.5", key: "eye" }],
+  ["circle", { cx: "17", cy: "9.7", r: ".7", fill: "currentColor", stroke: "none", key: "pupil" }],
   ["path", { d: "M6 14.8c-4.1-.1-5.5 3-3.6 5.6 1.6 2.3 5.4 2 6.4-.3 1-2.2-1.1-4.1-2.8-3.1-1.4.8-.7 2.5.6 1.8", strokeWidth: "1.7", key: "spiral-tail" }],
   ["path", { d: "M10 16.5q.2 3 2.8 3m2.3-5.3q.5 2.6 3 2.6", strokeWidth: "1.7", key: "feet" }],
 ]);
@@ -26,60 +27,42 @@ export function WorkshopIcon({ slug, size = 22, animated = false }: { slug: stri
 }
 
 function SneakyChameleon() {
-  return <svg viewBox="3 19 138 76" width="144" height="112" fill="none" focusable="false" className="workshop-chameleon">
-    <path d="M11 91c31-4 68 2 119-4" stroke="#7e9b85" strokeWidth="4" strokeLinecap="round" />
+  return <svg viewBox="3 19 138 76" width="144" height="112" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" focusable="false" className="workshop-chameleon">
+    <path d="M11 91c31-4 68 2 119-4" stroke="#7e9b85" strokeWidth="2" />
     <g className="workshop-chameleon-skin">
-      <path className="workshop-chameleon-tail" d="M38 70c-15-11-29-5-27 7 2 13 23 13 24 1 1-9-12-13-16-6-3 5 4 9 7 5" stroke="currentColor" strokeWidth="9" strokeLinecap="round" />
+      <path className="workshop-chameleon-tail" d="M38 70c-15-11-29-5-27 7 2 13 23 13 24 1 1-9-12-13-16-6-3 5 4 9 7 5" />
       <g className="workshop-chameleon-breathe">
-        <ellipse cx="57" cy="62" rx="31" ry="21" fill="currentColor" />
-        <path d="m37 46 5-8 8 5 7-9 8 9 8-6 4 12" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
-        <path d="M43 57c8-5 17-5 24 0" stroke="#183f39" strokeOpacity=".2" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="43" cy="64" r="2" fill="#183f39" fillOpacity=".2" />
-        <circle cx="53" cy="69" r="2.5" fill="#183f39" fillOpacity=".2" />
-        <circle cx="65" cy="65" r="2" fill="#183f39" fillOpacity=".2" />
+        <path d="M34 76Q23 64 34 53L42 42 49 46 55 38 63 44 70 39 77 48M80 62Q80 77 62 80L34 76" />
+        <path d="M43 59q9-5 18 0" strokeWidth="2" />
       </g>
-      <path d="m48 76-3 12 10 1m21-16 5 14 11 1" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+      <path className="workshop-chameleon-feet" d="m48 76-3 12 10 1m21-16 5 14 11 1" />
     </g>
     <g className="workshop-chameleon-head">
-      <path className="workshop-chameleon-casque" d="M74 56 76 26Q83 28 90 40L103 47Q108 51 111 58L108 63Q96 68 80 61Z" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="m78 31 3 11" stroke="#244e3b" strokeOpacity=".25" strokeWidth="1.5" strokeLinecap="round" />
+      <path className="workshop-chameleon-casque" d="M74 56 76 26Q83 28 88 38M105 54Q109 55 111 58L108 63Q96 68 80 61" />
       <g className="workshop-chameleon-eyes">
-        <g className="workshop-chameleon-turret-far">
-          <circle cx="81" cy="41" r="7" fill="#67ae7a" />
-          <g className="workshop-chameleon-lid-far">
-            <circle cx="81" cy="41" r="4.8" fill="#f4f5d8" />
-            <g className="workshop-chameleon-gaze-far">
-              <circle cx="81" cy="41" r="2.4" fill="#173e38" />
-              <circle cx="81.6" cy="40.2" r=".8" fill="white" />
-            </g>
-          </g>
-        </g>
-        <g className="workshop-chameleon-turret-near">
-          <circle cx="95" cy="49" r="12" fill="#78bf88" stroke="#315e42" strokeOpacity=".3" strokeWidth="1.2" />
-          <path d="M86 45q5-6 12-4" stroke="#b8e2ac" strokeWidth="1.5" strokeLinecap="round" />
+        <g className="workshop-chameleon-turret-near" data-chameleon-eye="true">
           <g className="workshop-chameleon-lid-near">
-            <circle cx="95" cy="49" r="8" fill="#f4f5d8" />
+            <circle cx="95" cy="49" r="10" strokeWidth="2.5" />
             <g className="workshop-chameleon-gaze">
-              <circle cx="96" cy="49" r="3.8" fill="#173e38" />
-              <circle cx="97" cy="47.7" r="1.2" fill="white" />
+              <circle cx="96" cy="49" r="3.5" fill="currentColor" stroke="none" />
             </g>
           </g>
         </g>
       </g>
-      <path d="M94 61q7 2 13-2" stroke="#244e3b" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="107" cy="54" r="1" fill="#315e42" />
+      <path className="workshop-chameleon-brow" d="M85 36q7-5 14 0" strokeWidth="2.5" />
+      <path d="M94 61q7 2 13-2" strokeWidth="2" />
     </g>
     <g className="workshop-chameleon-tongue">
-      <path d="M103 60q17-12 28-24" stroke="#f295a2" strokeWidth="3.5" strokeLinecap="round" />
-      <ellipse cx="131" cy="36" rx="3.8" ry="2.8" fill="#f295a2" />
+      <path d="M103 60q17-12 28-24" stroke="#f295a2" strokeWidth="2.5" />
+      <ellipse cx="131" cy="36" rx="3.8" ry="2.8" stroke="#f295a2" strokeWidth="2" />
     </g>
-    <g className="workshop-chameleon-bug">
-      <ellipse cx="127" cy="31" rx="3" ry="5" fill="#dcecf6" fillOpacity=".85" transform="rotate(-32 127 31)" />
-      <ellipse cx="135" cy="31" rx="3" ry="5" fill="#dcecf6" fillOpacity=".85" transform="rotate(32 135 31)" />
+    <g className="workshop-chameleon-bug" strokeWidth="1.5">
+      <ellipse cx="127" cy="31" rx="3" ry="5" stroke="#dcecf6" transform="rotate(-32 127 31)" />
+      <ellipse cx="135" cy="31" rx="3" ry="5" stroke="#dcecf6" transform="rotate(32 135 31)" />
       <path d="m126 37-3 2m13-2 3 2" stroke="#e3c28c" strokeWidth="1.5" strokeLinecap="round" />
-      <ellipse cx="131" cy="36" rx="4" ry="3" fill="#eac17d" />
+      <ellipse cx="131" cy="36" rx="4" ry="3" stroke="#eac17d" />
       <path d="M130 34v4" stroke="#6e5636" strokeWidth="1.5" />
-      <circle cx="135" cy="35" r="2" fill="#f3deab" />
+      <circle cx="135" cy="35" r="2" stroke="#f3deab" />
     </g>
   </svg>;
 }

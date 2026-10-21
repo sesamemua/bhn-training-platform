@@ -207,7 +207,6 @@
 .training-seat-well[data-has-icon] .training-seat-secondary dt { font-size: 10px; }
 .training-seat-well[data-has-icon] .training-seat-secondary dd { color: #d2d7d5; }
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) {
-  grid-template-columns: minmax(72px, 30%) minmax(0, 1fr);
   gap: 8px;
 }
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-layout { gap: 6px; }
@@ -215,7 +214,7 @@
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-priority dd { min-height: 28px; font-size: 24px; }
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-priority svg { height: 28px; }
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) .training-seat-secondary { gap: 4px 8px; }
-.workshop-animation[data-workshop-icon="communication-chameleon"] { width: 100% !important; height: 112px !important; }
+.workshop-animation[data-workshop-icon="communication-chameleon"] { width: 144px !important; height: 112px !important; }
 .workshop-animation[data-workshop-icon="communication-chameleon"] > svg { max-height: 112px; }
 .training-capacity-actions { flex-wrap: wrap; }
 .training-registration-segments {
@@ -265,17 +264,16 @@
 .workshop-animation[data-workshop-icon="discovery-to-delivery-ccrm"] svg { animation: workshop-factory 25s cubic-bezier(.4,0,.2,1) infinite; }
 .workshop-animation[data-workshop-icon="innovation-ignited"] { color: #efd18a; }
 .workshop-animation[data-workshop-icon="innovation-ignited"] svg { animation: workshop-idea 18s cubic-bezier(.4,0,.2,1) infinite; }
-.workshop-chameleon { display: block; width: 100%; height: auto; overflow: visible; }
+.workshop-chameleon { display: block; width: 100%; height: auto; overflow: visible; color: #8ad69b; }
 .workshop-chameleon-skin, .workshop-chameleon-casque { color: #8ad69b; animation: workshop-camouflage 20s linear infinite; }
-.workshop-chameleon-breathe { transform-origin: 57px 81px; animation: workshop-breathe 6.8s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-chameleon-breathe { transform-origin: 57px 81px; animation: workshop-breathe 4.6s cubic-bezier(.4,0,.2,1) infinite; }
 .workshop-chameleon-tail { transform-origin: 38px 70px; animation: workshop-tail 20s cubic-bezier(.4,0,.2,1) infinite; }
 .workshop-chameleon-head { transform-origin: 78px 59px; animation: workshop-head 20s cubic-bezier(.4,0,.2,1) infinite; }
 .workshop-chameleon-turret-near { transform-origin: 95px 49px; animation: workshop-eye-swivel 20s cubic-bezier(.4,0,.2,1) infinite; }
-.workshop-chameleon-turret-far { transform-origin: 81px 41px; animation: workshop-eye-swivel 20s cubic-bezier(.4,0,.2,1) -3s infinite reverse; }
 .workshop-chameleon-gaze { animation: workshop-peek 20s cubic-bezier(.4,0,.2,1) infinite; }
-.workshop-chameleon-gaze-far { animation: workshop-peek-far 20s cubic-bezier(.4,0,.2,1) infinite; }
-.workshop-chameleon-lid-near, .workshop-chameleon-lid-far { transform-box: fill-box; transform-origin: center; animation: workshop-blink 20s linear infinite; }
-.workshop-chameleon-lid-far { animation-delay: -5s; }
+.workshop-chameleon-lid-near { transform-box: fill-box; transform-origin: center; animation: workshop-blink 20s linear infinite; }
+.workshop-chameleon-brow { transform-origin: 95px 36px; animation: workshop-brow 20s cubic-bezier(.4,0,.2,1) infinite; }
+.workshop-chameleon-feet { transform-origin: 77px 75px; animation: workshop-toes 20s cubic-bezier(.4,0,.2,1) infinite; }
 .workshop-chameleon-tongue { transform: scale(0); transform-origin: 103px 60px; animation: workshop-catch 20s cubic-bezier(.2,.7,.3,1) infinite; }
 .workshop-chameleon-bug { opacity: 0; transform-origin: 131px 36px; animation: workshop-bug 20s linear infinite; }
 @keyframes workshop-focus {
@@ -310,46 +308,50 @@
 }
 @keyframes workshop-peek {
   0%, 10%, 65%, 100% { transform: translate(0,0); }
-  16%, 21% { transform: translate(-2px,1px); }
-  23%, 26% { transform: translate(-1px,-1px); }
-  34%, 40% { transform: translate(2px,-1px); }
-  44%, 53% { transform: translate(2px,-2px); }
-  75%, 79% { transform: translate(-1px,.5px); }
-}
-@keyframes workshop-peek-far {
-  0%, 7%, 63%, 100% { transform: translate(0,0); }
-  12%, 20% { transform: translate(1px,-1px); }
-  24%, 31% { transform: translate(-1px,.5px); }
-  39%, 53% { transform: translate(1px,-1px); }
-  72%, 77% { transform: translate(0,1px); }
+  16%, 21% { transform: translate(-3px,1px); }
+  23%, 26% { transform: translate(-1px,-2px); }
+  34%, 40% { transform: translate(3px,-1px); }
+  44%, 53% { transform: translate(3px,-2px); }
+  75%, 79% { transform: translate(-2px,1px); }
 }
 @keyframes workshop-eye-swivel {
   0%, 8%, 44%, 54%, 100% { transform: translate(0,0) rotate(0); }
-  15%, 21% { transform: translate(-.6px,-.5px) rotate(-6deg); }
-  28%, 35% { transform: translate(.5px,.3px) rotate(5deg); }
-  67%, 72% { transform: translate(.5px,-.5px) rotate(-4deg); }
-  84%, 89% { transform: translate(0,.4px) rotate(3deg); }
+  15%, 21% { transform: translate(-1px,-1px) rotate(-12deg); }
+  28%, 35% { transform: translate(1px,.5px) rotate(9deg); }
+  67%, 72% { transform: translate(1px,-1px) rotate(-8deg); }
+  84%, 89% { transform: translate(0,1px) rotate(6deg); }
 }
 @keyframes workshop-head {
   0%, 9%, 44%, 54%, 100% { transform: rotate(0); }
-  17%, 25% { transform: rotate(-2deg); }
-  33%, 38% { transform: rotate(1.5deg); }
-  66%, 73% { transform: rotate(-1deg); }
-  83%, 88% { transform: rotate(.8deg); }
+  17%, 25% { transform: rotate(-5deg); }
+  33%, 38% { transform: rotate(4deg); }
+  66%, 73% { transform: rotate(-3deg); }
+  83%, 88% { transform: rotate(2deg); }
 }
 @keyframes workshop-breathe {
   0%, 18%, 100% { transform: scale(1); }
-  48%, 60% { transform: scale(1.012,1.025); }
+  48%, 60% { transform: scale(1.02,1.04); }
 }
 @keyframes workshop-tail {
   0%, 17%, 47%, 100% { transform: rotate(0); }
-  24%, 30% { transform: rotate(3deg); }
-  36%, 40% { transform: rotate(-2deg); }
-  74%, 80% { transform: rotate(1.5deg); }
+  24%, 30% { transform: rotate(8deg); }
+  36%, 40% { transform: rotate(-5deg); }
+  74%, 80% { transform: rotate(4deg); }
+}
+@keyframes workshop-brow {
+  0%, 10%, 42%, 60%, 100% { transform: translateY(0) rotate(0); }
+  17%, 25% { transform: translateY(-2px) rotate(-12deg); }
+  33%, 38% { transform: translateY(1px) rotate(7deg); }
+  76%, 83% { transform: translateY(-1px) rotate(-8deg); }
+}
+@keyframes workshop-toes {
+  0%, 20%, 42%, 100% { transform: rotate(0); }
+  26%, 30% { transform: rotate(-5deg); }
+  34%, 38% { transform: rotate(3deg); }
 }
 @keyframes workshop-blink {
-  0%, 12%, 14%, 82%, 84%, 100% { transform: scaleY(1); }
-  13%, 83% { transform: scaleY(.12); }
+  0%, 12%, 14%, 15.5%, 17.5%, 82%, 84%, 100% { transform: scaleY(1); }
+  13%, 16.5%, 83% { transform: scaleY(.12); }
 }
 @keyframes workshop-catch {
   0%, 46%, 53%, 100% { transform: scale(0); }
