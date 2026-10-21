@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@font-face {
+  font-family: "BHN Dot Matrix";
+  src: url("/fonts/doto/doto-latin-round.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 .training-capacity-row {
   position: relative;
   isolation: isolate;
@@ -146,6 +154,9 @@
   box-shadow: inset 0 3px 7px rgb(0 0 0 / 48%), inset 0 -1px 3px rgb(255 255 255 / 9%);
   color: #edf0f1;
   font-variant-numeric: tabular-nums;
+  font-family: "BHN Dot Matrix", ui-monospace, monospace;
+  font-weight: 800;
+  font-synthesis: none;
 }
 .training-seat-layout {
   display: grid;
@@ -160,16 +171,17 @@
 }
 .training-seat-priority > div { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .training-seat-well dt {
-  color: #bdc1c4;
-  font-size: 10.5px;
-  line-height: 1.2;
+  color: #cbd8d0;
+  font-size: 12px;
+  line-height: 1;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
   order: 1;
 }
 .training-seat-well dd {
   margin: 0;
-  font-family: ui-monospace, monospace;
-  font-weight: 700;
+  font-family: inherit;
+  font-weight: 900;
   line-height: 1;
   overflow-wrap: anywhere;
   order: 0;
@@ -189,7 +201,7 @@
 .training-seat-priority > div:last-child dd { color: #f3d39d; }
 .training-seat-secondary { display: grid; gap: 5px; }
 .training-seat-secondary > div { display: flex; align-items: baseline; gap: 6px; }
-.training-seat-secondary dd { min-width: 2ch; color: #bdc1c4; font-size: 12px; }
+.training-seat-secondary dd { min-width: 2ch; color: #bdc1c4; font-size: 14px; }
 
 .training-seat-well[data-has-icon] {
   display: grid;
@@ -204,7 +216,7 @@
 .training-seat-well[data-has-icon] dd { white-space: nowrap; }
 .training-seat-well[data-has-icon] .training-seat-secondary { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .training-seat-well[data-has-icon] .training-seat-secondary > div { gap: 4px; }
-.training-seat-well[data-has-icon] .training-seat-secondary dt { font-size: 10px; }
+.training-seat-well[data-has-icon] .training-seat-secondary dt { font-size: 12px; }
 .training-seat-well[data-has-icon] .training-seat-secondary dd { color: #d2d7d5; }
 .training-seat-well:has([data-workshop-icon="communication-chameleon"]) {
   gap: 8px;
@@ -402,7 +414,7 @@
 @media (forced-colors: active) {
   .training-workshop-title, .training-workshop-title:is(:hover, :focus-visible) { color: LinkText; text-shadow: none; }
   .training-workshop-circuit { display: none; }
-  .training-seat-well { background: Canvas; color: CanvasText; outline: 1px solid CanvasText; }
+  .training-seat-well { background: Canvas; color: CanvasText; outline: 1px solid CanvasText; font-family: ui-monospace, monospace; }
   .training-seat-well dt, .training-seat-well dd { color: CanvasText; }
   .training-seat-priority svg { display: none; }
   .training-seat-priority .sr-only { position: static; width: auto; height: auto; clip-path: none; }

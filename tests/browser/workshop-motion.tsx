@@ -23,7 +23,12 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
     await page.route("https://workshops.test/", route => route.fulfill({ contentType: "text/html", body: `<html lang="en"><head><title>Training Week capacity</title><style>${css.css}</style></head><body><main style="max-width:1400px;margin:auto;padding:24px"><div id="root"></div></main><script src="/app.js"></script></body></html>` }));
     await page.route("https://workshops.test/app.js", route => route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text }));
+    await page.route("https://workshops.test/fonts/doto/doto-latin-round.woff2", async route => route.fulfill({ contentType: "font/woff2", body: await readFile("public/fonts/doto/doto-latin-round.woff2") }));
     await page.goto("https://workshops.test/");
+    await page.evaluate(()=>document.fonts.ready);
+    assert.ok(await page.evaluate(()=>document.fonts.check('800 12px "BHN Dot Matrix"')), "locally hosted matrix typeface loads");
+    assert.ok(await page.locator(".training-seat-well :is(dt,dd)").evaluateAll(nodes=>nodes.every(node=>getComputedStyle(node).fontFamily.includes("BHN Dot Matrix"))), "all panel labels and counts use matrix lettering");
+    assert.ok(await page.locator(".training-seat-well").evaluateAll(nodes=>nodes.every(node=>node.getBoundingClientRect().height<=132)), "desktop panels retain their existing height");
     await expect(page.locator(".workshop-animation")).toHaveCount(6);
     const matrices = await page.locator(".workshop-animation").evaluateAll(nodes=>nodes.map(node=>({mask:getComputedStyle(node).maskImage,size:getComputedStyle(node).maskSize})));
     assert.ok(matrices.length===6 && matrices.every(matrix=>matrix.mask.includes("radial-gradient") && matrix.size==="4px 4px"), "all six workshop graphics use the same fixed dot matrix");
@@ -90,6 +95,7 @@ async function main() {
     assert.ok((await page.locator(".workshop-animation").evaluateAll(nodes=>nodes.flatMap(node=>node.getAnimations({subtree:true})))).length===0);
     await page.emulateMedia({ forcedColors: "active" });
     assert.ok(await page.locator(".workshop-animation").evaluateAll(nodes=>nodes.every(node=>getComputedStyle(node).maskImage==="none")), "high-contrast mode keeps full readable shapes");
+    assert.ok(await page.locator(".training-seat-well :is(dt,dd)").evaluateAll(nodes=>nodes.every(node=>!getComputedStyle(node).fontFamily.includes("BHN Dot Matrix"))), "high-contrast mode uses a plain readable typeface");
     console.log("PASS: six large animated icons, eye movement, tongue catch, camouflage, pause/resume, reduced motion, preserved controls and responsive layout");
   } finally { await browser.close(); }
 }
