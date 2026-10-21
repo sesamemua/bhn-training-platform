@@ -22,6 +22,7 @@ import { ordinal } from "./SessionCalendar";
 import { travelFromPostcode, travelWords } from "@/lib/travel/from-postcode";
 import { institutionOf } from "@/lib/travel/far-email";
 import { CoordinatorInfoSummary } from "./CoordinatorInfoSummary";
+import { RegistrantEmailEditor } from "./RegistrantEmailEditor";
 
 const BAND_TONE: Record<string, string> = {
   local: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700",
@@ -80,6 +81,7 @@ export function RegistrationDetail({ sub, onChanged, where }: {
     <div className="grid gap-4 bg-elevated/30 px-3 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="min-w-0">
         <CoordinatorInfoSummary info={sub.coordinatorInfo} />
+        {!sub.email && <div className="mb-2 text-xs"><RegistrantEmailEditor id={sub.id} name={who} onSaved={onChanged} /></div>}
         {where && <GettingHere {...where} />}
         <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px]">
           <span className="font-semibold text-subtle">Registered from</span>

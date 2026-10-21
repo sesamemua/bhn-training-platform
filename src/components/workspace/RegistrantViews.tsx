@@ -14,6 +14,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ClipboardCopy, Dow
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendLettersForBookings } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
+import { RegistrantEmailEditor } from "./RegistrantEmailEditor";
 import { CoordinatorInfoCells } from "./CoordinatorInfoSummary";
 import { WorkshopRegistrationSummary } from "@/components/training-week/WorkshopRegistrationSummary";
 import { lettersChanged, queueLetterFx } from "./LetterMailbox";
@@ -715,6 +716,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                         <div className="flex flex-wrap items-baseline gap-x-1.5 text-[10.5px] leading-tight text-subtle">
                           {r.email && r.email !== r.name && <span className="font-mono">{r.email}</span>}
                           {!r.email && <span className="rounded border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 font-semibold text-fg">Email missing</span>}
+                          {!r.email && sub && <RegistrantEmailEditor id={sub.id} name={r.name} onSaved={afterDecision} />}
                           <span>{shortStamp(r.appliedAt)}</span>
                         </div>
                         {coordinatorInfo && coordinatorInfo.name !== r.name && <p className="mt-1 text-[11px] text-muted">Name on Roshni&apos;s list: {coordinatorInfo.name}</p>}

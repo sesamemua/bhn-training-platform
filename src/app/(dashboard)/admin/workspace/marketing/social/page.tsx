@@ -20,6 +20,8 @@ import { CRS_EVENT_POST } from "@/lib/social/events";
 import { SYMPOSIUM_CAMPAIGN_PLAN } from "@/lib/social/symposium-campaign";
 import { withSocialTags } from "@/lib/social/tags";
 import { loadSocialOrder } from "@/lib/social/order-store";
+import { SYMPOSIUM_DAY_POSTS, SYMPOSIUM_DAY_PREFIX, SYMPOSIUM_DAY_NOTE } from "@/lib/social/symposium-day";
+import { loadSymposiumDayOrder } from "@/lib/social/symposium-day-store";
 import { SOCIAL_SOURCE_PREFIX, socialSource } from "@/lib/social/graphic-source";
 import { isApproval, isReviewer, pagesOf, reviewerStates } from "@/lib/design-review/types";
 import type { ArtworkViewData } from "@/components/workspace/DesignArtworkView";
@@ -37,7 +39,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   const socialOrder = await loadSocialOrder().catch(() => null);
   // Create once; revisiting the page must never overwrite someone's draft or graphic.
   const campaignByKey = new Map(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => [`events:event:${post.slug}:0`, post]));
-  await prisma.socialPost.createMany({ data: [CRS_EVENT_POST, ...SYMPOSIUM_CAMPAIGN_PLAN.map((post) => ({
+  await prisma.socialPost.createMany({ data: [CRS_EVENT_POST, ...SYMPOSIUM_DAY_POSTS, ...SYMPOSIUM_CAMPAIGN_PLAN.map((post) => ({
     stream: "events", kind: "event", deadlineId: post.slug,
     key: `events:event:${post.slug}:0`, body: withSocialTags(post.body),
     scheduledFor: new Date(post.suggestedDate),
@@ -45,6 +47,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     assetSpec: { title: post.title, campaign: "2026-symposium-training-week", sourceUrl: post.sourceUrl,
       graphicBrief: post.graphicBrief, ...(post.photoBrief ? { photoBrief: post.photoBrief } : {}) },
   }))], skipDuplicates: true });
+  const dayOrder = await loadSymposiumDayOrder().catch(() => null);
 
   const now = new Date();
   const cycles = await openCycles(prisma, now);
@@ -118,6 +121,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       publishError: r.publishError,
       approvedAt: r.approvedAt?.toISOString() ?? null,
       approvedByName: r.approvedBy?.name ?? null,
+      symposiumDay: r.key.startsWith(SYMPOSIUM_DAY_PREFIX),
       cycleLabel: r.stream === "events"
         ? campaign?.title ?? (r.assetSpec as { title?: string } | null)?.title ?? "Event"
         : speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
@@ -130,10 +134,10 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       companyLogoUrl: logoOverride(r.assetSpec) ?? (speaker?.organization ? companyLogos.get(speaker.organization) ?? null : null),
       assetSpec: r.assetSpec,
       campaign: !!campaign,
-      campaignSlug: campaign?.slug,
+      campaignSlug: r.key.startsWith(SYMPOSIUM_DAY_PREFIX) ? r.id : campaign?.slug,
       requiresPhoto: !!campaign?.photoBrief,
       visualBrief: campaign?.photoBrief ?? campaign?.graphicBrief,
-      publicationNote: campaign ? campaign.photoBrief
+      publicationNote: r.key.startsWith(SYMPOSIUM_DAY_PREFIX) ? SYMPOSIUM_DAY_NOTE : campaign ? campaign.photoBrief
         ? "Hold until real photos are uploaded and the pictured activity is confirmed. Check participant consent and host permission before approval."
         : campaign.workshopSlug
         ? "Recheck registration status and the recommended seat plan before sharing. Do not promise a seat."
@@ -172,7 +176,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} me={me} />
+        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} initialDayOrder={dayOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "symposium_day" ? "symposium_day" : tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} me={me} />
       </div>
     </>
   );

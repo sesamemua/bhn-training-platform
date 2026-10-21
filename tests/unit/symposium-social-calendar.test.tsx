@@ -11,6 +11,7 @@ import { CRS_EVENT_POST } from "../../src/lib/social/events";
 import { SocialQueue, type QueuePost } from "../../src/components/workspace/SocialQueue";
 import { DEFAULT_SOCIAL_ORDER } from "../../src/lib/social/order";
 import { SYMPOSIUM_PANEL_POSTS } from "../../src/lib/social/symposium-panel-posts";
+import { SYMPOSIUM_DAY_POSTS } from "../../src/lib/social/symposium-day";
 
 test("campaign covers every weekday through the symposium, without individual speaker spotlights except Chris", () => {
   const dates = [...new Set(SYMPOSIUM_CAMPAIGN_PLAN.map((post) => post.suggestedDate.slice(0, 10)))].sort();
@@ -126,6 +127,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
     "@/lib/social/symposium-campaign": { SYMPOSIUM_CAMPAIGN_PLAN },
     "@/lib/social/tags": { withSocialTags },
     "@/lib/social/order-store": { loadSocialOrder: async () => ({ order: DEFAULT_SOCIAL_ORDER, version: null }) },
+    "@/lib/social/symposium-day-store": { loadSymposiumDayOrder: async () => ({ order: SYMPOSIUM_DAY_POSTS.map(p => p.key), version: null }) },
   };
   const exports: { default?: (props: unknown) => Promise<React.ReactNode> } = {};
   new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), exports);
@@ -139,9 +141,9 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   assert.match(html, /A colleague&#x27;s edited keynote post/);
   assert.match(html, /src="https:\/\/images.example\/chris.png"/);
   assert.match(html, /Awaiting event photos/);
-  assert.equal(creations, 19);
+  assert.equal(creations, 19 + SYMPOSIUM_DAY_POSTS.length);
   await render();
-  assert.equal(creations, 19, "revisiting must not duplicate or overwrite drafts");
+  assert.equal(creations, 19 + SYMPOSIUM_DAY_POSTS.length, "revisiting must not duplicate or overwrite drafts");
   assert.equal(saved.get(existingKey), existing);
   for (const post of SYMPOSIUM_CAMPAIGN_PLAN.slice(1, 8)) {
     saved.get(`events:event:${post.slug}:0`)!.assetUrl = "https://images.example/campaign.png";
