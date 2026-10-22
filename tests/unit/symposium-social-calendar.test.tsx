@@ -65,24 +65,32 @@ const example: QueuePost = {
   publicationNote: "Hold until real photos are uploaded and the pictured activity is confirmed.",
 };
 
-test("calendar groups campaign posts separately from other events and keeps posted history", () => {
+test("masonry board combines full published, upcoming and scheduled posts without the list view", () => {
   const other = { ...example, id: "other", campaign: false, cycleLabel: "Other event", body: "Unrelated sponsor post." };
   const published = { ...example, id: "published", status: "published", cycleLabel: "Already posted", body: "Published caption", assetUrl: "https://images.example/live.png" };
   const skipped = { ...example, id: "skipped", status: "skipped", cycleLabel: "Declined post", body: "Declined caption" };
-  const html = renderToStaticMarkup(createElement(SocialQueue, { initial: [example, other, published, skipped] }));
-  assert.match(html, /Weekday campaign plan through the symposium/);
-  assert.doesNotMatch(html, /4:30 p\.m\.|Oct 26/, "planned dates are left blank");
-  assert.match(html, /aria-label="No scheduled date"/);
+  const scheduledPost = { ...example, id: "scheduled", status: "scheduled", bufferPostId: "buffer-confirmed", cycleLabel: "Scheduled post", body: "Scheduled caption" };
+  const html = renderToStaticMarkup(createElement(SocialQueue, { initial: [example, other, published, skipped, scheduledPost] }));
+  assert.doesNotMatch(html, /<table|Weekday campaign plan/);
+  assert.match(html, /columns-1.*@min-\[800px\]:columns-2.*@min-\[1240px\]:columns-3/);
+  assert.match(html, /break-inside-avoid/);
+  assert.match(html, /Published caption/);
+  assert.match(html, /Scheduled caption/);
+  assert.match(html, /src="https:\/\/images.example\/live.png"/);
+  assert.match(html, /Post text for Day 1 in pictures/);
+  assert.doesNotMatch(html, /Declined caption|Unrelated sponsor post/);
+  const unscheduled = renderToStaticMarkup(createElement(SocialQueue, { initial: [example] }));
+  assert.doesNotMatch(unscheduled, /<time/, "planned dates are not presented as confirmed schedules");
   assert.match(html, /Awaiting event photos/);
   assert.match(html, /Already posted/);
   assert.match(html, /href="\/admin\/workspace\/marketing\/social\?post=campaign-1"/);
   assert.match(html, /Post text for Day 1 in pictures/);
   assert.match(html, /Upload graphic for Day 1 in pictures/);
   assert.match(html, /Image &amp; publication brief/);
-  assert.doesNotMatch(html, /Published caption|Declined caption|Unrelated sponsor post/);
   const review = renderToStaticMarkup(createElement(SocialQueue, { initial: [example], reviewMode: true }));
   assert.match(review, /tab=symposium_2026/);
   assert.match(review, /Capture a consent-cleared workshop photo/);
+  assert.doesNotMatch(review, /columns-2|columns-3/);
   const events = renderToStaticMarkup(createElement(SocialQueue, { initial: [example, other], initialGroup: "events" }));
   assert.match(events, /Unrelated sponsor post/);
   assert.doesNotMatch(events, /Photo caption draft/);
@@ -137,6 +145,10 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   assert.equal(creations, 0);
   authorized = true;
   const html = renderToStaticMarkup(await render());
+  assert.deepEqual(lastWhere, { OR: [
+    { status: { in: ["draft", "approved", "scheduled", "publishing", "published"] } },
+    { key: { in: SYMPOSIUM_CAMPAIGN_PLAN.map((post) => `events:event:${post.slug}:0`) } },
+  ] });
   assert.ok(html.includes(SYMPOSIUM_CAMPAIGN_PLAN[0].title), "known campaign titles must update without overwriting saved drafts");
   assert.match(html, /A colleague&#x27;s edited keynote post/);
   assert.match(html, /src="https:\/\/images.example\/chris.png"/);

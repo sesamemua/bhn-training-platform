@@ -75,7 +75,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
 
   const rows = await prisma.socialPost.findMany({
     where: seriesReview ? { key: { in: [...campaignByKey.keys()] } } : postId ? { id: postId } : { OR: [
-      { status: { in: ["draft", "approved", "scheduled", "publishing"] } },
+      { status: { in: ["draft", "approved", "scheduled", "publishing", "published"] } },
       { key: { in: [...campaignByKey.keys()] } },
     ] },
     include: { approvedBy: { select: { name: true } } },

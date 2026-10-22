@@ -44,7 +44,7 @@ test("manual moves persist a complete permutation, skip hidden posts and cannot 
   }
 });
 
-test("table, full cards and series review use the same shared order with accessible arrow controls", () => {
+test("masonry cards and series review use the same shared order with accessible arrow controls", () => {
   const order = moveSocialPost(DEFAULT_SOCIAL_ORDER, DEFAULT_SOCIAL_ORDER[3], -1, [DEFAULT_SOCIAL_ORDER[0], DEFAULT_SOCIAL_ORDER[1], DEFAULT_SOCIAL_ORDER[3]]);
   for (const seriesReview of [false, true]) {
     const html = renderToStaticMarkup(createElement(SocialQueue, { initial: posts, initialOrder: { order, version: null }, seriesReview }));

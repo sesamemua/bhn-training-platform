@@ -231,8 +231,8 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   }
 
   const active = posts.filter((post) => !["published", "skipped"].includes(post.status));
-  const visible = sortSocialPosts(seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : active.filter((post) => postGroup(post) === group), group === "symposium_day" ? dayLayout.order : layout.order);
-  const campaignPosts = sortSocialPosts(posts.filter((post) => post.campaign), layout.order);
+  const boardPosts = posts.filter((post) => post.status !== "skipped");
+  const visible = sortSocialPosts(seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : boardPosts.filter((post) => postGroup(post) === group), group === "symposium_day" ? dayLayout.order : layout.order);
   const ready = visible.filter(canApproveInSeries);
   const chosen = ready.filter((post) => selected.includes(post.id));
   const downloadable = visible.filter((post) => !!post.assetUrl);
@@ -350,14 +350,14 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
               group === key ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-fg",
             )}
           >
-            {label} <span className="ml-1 text-subtle">{active.filter((post) => postGroup(post) === key).length}</span>
+            {label} <span className="ml-1 text-subtle">{boardPosts.filter((post) => postGroup(post) === key).length}</span>
           </button>
         ))}
       </div>
       <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
         {group === "symposium_day" ? "Symposium Day · October 29" : group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
       </h2>
-      {group === "symposium_2026" && campaignPosts.length > 0 && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review & approve series</Link>}
+      {group === "symposium_2026" && visible.length > 0 && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review & approve series</Link>}
       {group !== "symposium_2026" && group !== "symposium_day" && <p className="text-[14px] text-muted">
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
@@ -372,27 +372,6 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
           <div className="flex gap-2"><button type="submit" disabled={!!busy} className="rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Save draft</button><button type="button" disabled={!!busy} onClick={() => setNewDayPost(null)} className="rounded-md px-3 py-2 text-sm text-muted">Cancel</button></div>
         </form>}
       </div>}
-      {group === "symposium_2026" && campaignPosts.length > 0 && (
-        <div className="overflow-x-auto border-y border-line">
-          <table className="w-full text-left text-[13px]">
-            <caption className="sr-only">Weekday campaign plan through the symposium</caption>
-            <thead className="bg-elevated text-muted">
-              <tr><th scope="col" className="px-3 py-2">Order</th><th scope="col" className="px-3 py-2">Scheduled</th><th scope="col" className="px-3 py-2">Post</th><th scope="col" className="px-3 py-2">Image</th><th scope="col" className="px-3 py-2">Status</th></tr>
-            </thead>
-            <tbody>
-              {campaignPosts.map((post) => (
-                <tr key={post.id} className="border-t border-line align-top">
-                  <td className="px-3 py-2">{orderControls(post, campaignPosts)}</td>
-                  <td className="px-3 py-2" aria-label={post.status === "scheduled" && post.bufferPostId ? undefined : "No scheduled date"}>{post.status === "scheduled" && post.bufferPostId && <time dateTime={post.scheduledFor}>{new Date(post.scheduledFor).toLocaleString("en-CA", { timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "long" })}</time>}</td>
-                  <td className="min-w-40 px-3 py-2"><Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(post.id)}`} className="font-semibold text-brand-700 underline underline-offset-2">{post.cycleLabel}</Link></td>
-                  <td className="px-3 py-2 text-muted">{post.assetUrl ? "Image ready" : post.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}</td>
-                  <td className="px-3 py-2 capitalize text-fg">{post.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
       </>)}
       {seriesReview && <div className="sticky top-0 z-20 mx-auto flex w-full max-w-[555px] flex-wrap items-center justify-between gap-3 border-y border-line bg-card-solid px-3 py-3">
         <div className="space-y-2">
@@ -415,18 +394,19 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
           {group === "events"
-            ? "No event drafts are waiting for review."
+            ? "No event posts yet."
             : group === "symposium_day"
             ? "No symposium-day drafts. Create a new post when you're ready."
             : group === "symposium_2026"
-            ? "No campaign drafts are waiting for review."
+            ? "No campaign posts yet."
             : "No VentureConnect drafts yet. They appear when a cycle opens."}
         </p>
       )}
-      <fieldset disabled={seriesBusy || orderBusy} className="min-w-0 space-y-4 border-0 p-0">
+      <fieldset disabled={seriesBusy || orderBusy} className="@container min-w-0 border-0 p-0">
       <legend className="sr-only">{seriesReview ? "Series posts" : "Social posts"}</legend>
+      <div className={reviewMode || seriesReview ? "space-y-4" : "columns-1 gap-6 @min-[800px]:columns-2 @min-[1240px]:columns-3"}>
       {visible.map((p) => (
-        <section key={p.id} className="mx-auto w-full max-w-[555px] space-y-2">
+        <section key={p.id} aria-label={p.cycleLabel} className={cn("mx-auto w-full max-w-[555px] space-y-2", !reviewMode && !seriesReview && "mb-6 inline-block break-inside-avoid align-top")}>
           {seriesReview && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-1 pt-4">
             <label className="flex items-center gap-2 text-sm font-semibold text-fg">
               <input type="checkbox" aria-label={`Select ${p.cycleLabel} for approval`} checked={canApproveInSeries(p) && selected.includes(p.id)} disabled={!canApproveInSeries(p) || !!busy || hasUnsavedChanges} onChange={(event) => setSelected((all) => event.target.checked ? [...all, p.id] : all.filter((id) => id !== p.id))} className="size-4 accent-emerald-700" />
@@ -453,6 +433,9 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             >
               {p.status}
             </span>
+            {p.status === "scheduled" && p.bufferPostId && (
+              <time dateTime={p.scheduledFor} className="text-[12px] font-semibold text-fg">{new Date(p.scheduledFor).toLocaleString("en-CA", { timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "long" })}</time>
+            )}
             {p.status === "approved" && p.approvedAt && (
               <span className="text-[12px] text-muted">Approved{p.approvedByName ? ` by ${p.approvedByName}` : ""} on {new Date(p.approvedAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}</span>
             )}
@@ -494,6 +477,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             )}
           </article>
 
+          {!p.assetUrl && <p className="px-1 text-[12px] text-muted">{p.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}</p>}
           {p.assetUrl && <SocialGraphicReview postId={p.id} assetUrl={p.assetUrl} label={p.cycleLabel} artwork={graphicReviewOf.get(p.id) ?? null} me={me} />}
 
           {(p.campaign || p.symposiumDay) && (
@@ -629,6 +613,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
           </footer>
         </section>
       ))}
+      </div>
       </fieldset>
     </div>
   );
