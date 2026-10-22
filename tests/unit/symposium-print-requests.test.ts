@@ -98,3 +98,25 @@ test("print requests restrict recipients, preserve batches, include notes and de
   assert.match(uncertain.warning, /Do not resend/);
   assert.equal(mail.length, 2);
 });
+
+test("a colleague's selected print batch survives sign-in without accepting arbitrary redirect targets", async () => {
+  const require = createRequire(import.meta.url);
+  const api: Record<string, any> = {};
+  let callback = "";
+  const mocks: Record<string, unknown> = {
+    "@/lib/auth": { requireRole: async () => null, deniedRedirect: async (path: string) => { callback = path; return "/login"; } },
+    "next/navigation": { redirect: () => { throw new Error("redirect"); } },
+    "@/components/ui/PageHero": {}, "@/components/workspace/FullWidthWhenCollapsed": {}, "@/components/admin/events/SymposiumPrintJobs": {},
+  };
+  const compiled = ts.transpileModule(readFileSync("src/app/(dashboard)/admin/workspace/symposium-2026/print/page.tsx", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText;
+  new Function("require", "exports", compiled)((name: string) => mocks[name] ?? require(name), api);
+  const id = "00000000-0000-4000-8000-000000000001";
+  await assert.rejects(api.default({ searchParams: Promise.resolve({ job: id }) }), /redirect/);
+  assert.equal(callback, `/admin/workspace/symposium-2026/print?job=${id}`);
+  for (const job of [undefined, "https://evil.example", [id], "../secret"]) {
+    await assert.rejects(api.default({ searchParams: Promise.resolve({ job }) }), /redirect/);
+    assert.equal(callback, "/admin/workspace/symposium-2026/print");
+  }
+});
