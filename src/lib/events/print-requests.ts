@@ -16,7 +16,7 @@ export async function printRequestDetails(jobId: string) {
   if (!await requireRole("admin").catch(() => null)) return { error: "Forbidden", colleagues: [], requests: [] };
   if (!z.string().uuid().safeParse(jobId).success) return { error: "Invalid print batch.", colleagues: [], requests: [] };
   const colleagues = await prisma.user.findMany({
-    where: { role: { in: ROLES }, isActive: true },
+    where: { role: { in: ROLES }, isActive: true, accountKind: "real" },
     select: { id: true, name: true, email: true }, orderBy: [{ name: "asc" }, { email: "asc" }],
   });
   const rows = await prisma.auditLog.findMany({
@@ -41,7 +41,7 @@ export async function requestPrint(input: unknown) {
   if (!parsed.success) return { error: "Choose a colleague and keep the note within 1,000 characters." };
   const { jobId, recipientId, note, requestId } = parsed.data;
   if (!mailConfigured()) return { error: "Email is not configured. Copy the colleague link instead." };
-  const who = await prisma.user.findFirst({ where: { id: recipientId, role: { in: ROLES }, isActive: true }, select: { name: true, email: true } });
+  const who = await prisma.user.findFirst({ where: { id: recipientId, role: { in: ROLES }, isActive: true, accountKind: "real" }, select: { name: true, email: true } });
   if (!who || !z.string().email().safeParse(who.email).success) return { error: "Choose an active admin colleague with a valid email address." };
   const saved = await printJobPdf(jobId);
   if (!saved || saved.job.status !== "ready") return { error: "This batch is no longer ready to print. Refresh Print Jobs." };

@@ -20,9 +20,10 @@ test("print requests restrict recipients, preserve batches, include notes and de
     } },
     "@/lib/prisma": { prisma: {
       user: {
-        findMany: async ({ where }: any) => { assert.deepEqual(where, { role: { in: ["admin", "superadmin"] }, isActive: true }); return [who]; },
+        findMany: async ({ where }: any) => { assert.deepEqual(where, { role: { in: ["admin", "superadmin"] }, isActive: true, accountKind: "real" }); return [who]; },
         findFirst: async ({ where }: any) => {
           assert.equal(where.isActive, true); assert.deepEqual(where.role.in, ["admin", "superadmin"]);
+          assert.equal(where.accountKind, "real", "demo accounts cannot receive print requests");
           return activeRecipient && where.id === who.id ? who : null;
         },
       },
