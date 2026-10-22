@@ -30,6 +30,8 @@ export function SymposiumPrintJobs() {
   const [query, setQuery] = useState(""), [filter, setFilter] = useState("all"), [allStatuses, setAllStatuses] = useState(false);
   const [selected, setSelected] = useState<string[]>([]), [editing, setEditing] = useState<Edit | null>(null);
   const [activeJob, setActiveJob] = useState<string | null>(null), [printIds, setPrintIds] = useState<string[]>([]);
+  const pdfFrame = useRef<HTMLIFrameElement>(null);
+  const [pdfReady, setPdfReady] = useState<string | null>(null);
   const [label, setLabel] = useState(""), [assignedTo, setAssignedTo] = useState(""), [notes, setNotes] = useState("");
   const [copies, setCopies] = useState(22), [allowReprint, setAllowReprint] = useState(false);
   const [skip, setSkip] = useState(0), [offsetX, setOffsetX] = useState(0), [offsetY, setOffsetY] = useState(0);
@@ -38,7 +40,18 @@ export function SymposiumPrintJobs() {
 
   function accept(next: PrintWorkspace) { current.current = next; setSnapshot(next); }
   function chooseJob(job: PrintJob) {
+    if (job.id !== activeJob) setPdfReady(null);
     setActiveJob(job.id); setPrintIds(job.badges.filter(b => !job.printedIds.includes(b.id)).map(b => b.id));
+  }
+  function printPdf() {
+    setError("");
+    try {
+      if (!pdfFrame.current?.contentWindow) throw new Error("PDF preview is not ready.");
+      pdfFrame.current.contentWindow.focus();
+      pdfFrame.current.contentWindow.print();
+    } catch {
+      setError("Your browser could not open the PDF print dialog. Use Open full screen, then the PDF viewer's Print button.");
+    }
   }
   async function mutate(change: PrintAction, version = current.current?.version ?? null) {
     if (working.current) return false;
@@ -138,7 +151,7 @@ export function SymposiumPrintJobs() {
 
   return <div className="mx-auto w-full max-w-[1600px] pb-12 text-fg">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <nav aria-label="Print materials" className="flex flex-wrap gap-1 border-b border-line">{([["badges", "Name badges"], ["missing-names", "Missing last names (" + missingNames.length + ")"], ["tents", "Table tents"], ["agenda", "Agenda"], ["signage", "Signage"], ["queue", "Print queue (" + board.jobs.filter(j => j.status === "ready").length + ")"]] as [View, string][]).map(([key, title]) => <button type="button" key={key} aria-current={view === key ? "page" : undefined} className={"border-b-2 px-3 py-2 text-sm font-semibold " + (view === key ? "border-brand" : "border-transparent text-muted")} onClick={() => { if (key === "missing-names" || view === "missing-names") setSelected([]); setView(key); setLabel(""); if (key === "tents") setCopies(22); if (key === "agenda" || key === "signage") setCopies(1); }}>{title}</button>)}</nav>
+      <nav aria-label="Print materials" className="flex flex-wrap gap-1 border-b border-line">{([["badges", "Name badges"], ["missing-names", "Missing last names (" + missingNames.length + ")"], ["tents", "Table tents"], ["agenda", "Agenda"], ["signage", "Signage"], ["queue", "Print queue (" + board.jobs.filter(j => j.status === "ready").length + ")"]] as [View, string][]).map(([key, title]) => <button type="button" key={key} aria-current={view === key ? "page" : undefined} className={"border-b-2 px-3 py-2 text-sm font-semibold " + (view === key ? "border-brand" : "border-transparent text-muted")} onClick={() => { if (key === "missing-names" || view === "missing-names") setSelected([]); if (key !== view) setPdfReady(null); setView(key); setLabel(""); if (key === "tents") setCopies(22); if (key === "agenda" || key === "signage") setCopies(1); }}>{title}</button>)}</nav>
       <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-muted">{board.syncedAt ? (board.syncSource === "csv" || !snapshot.autoSyncAvailable ? "CSV imported " : "Luma synced ") + date(board.syncedAt) : "No guest list imported"}</span><button type="button" className={BUTTON} disabled={busy} onClick={() => snapshot.autoSyncAvailable ? void mutate({ action: "sync" }) : csvInput.current?.click()}>{snapshot.autoSyncAvailable ? <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> : <FileUp size={14} />} {snapshot.autoSyncAvailable ? "Sync Luma" : "Import Luma CSV"}</button></div>
     </div>
     {!snapshot.autoSyncAvailable && <p className="mb-4 border-l-2 border-amber-500 pl-3 text-sm">Automatic Luma sync is not connected. <a className="font-semibold underline underline-offset-2" href="https://luma.com/event/manage/evt-az4yQOZR33DBiid/guests" target="_blank" rel="noreferrer">Export the current guest list from Luma</a>, then import the CSV.</p>}
@@ -246,7 +259,7 @@ export function SymposiumPrintJobs() {
         <fieldset className="mt-4"><legend className="text-xs font-semibold">Event</legend>
           {PRINT_SIGNS.map(sign => <label key={sign.slug} className="flex cursor-pointer items-start gap-3 border-b border-line py-4">
             <input type="radio" name="signage-event" checked={signageSlug === sign.slug} onChange={() => { setSignageSlug(sign.slug); setLabel(""); }} className="mt-1" />
-            <span className="min-w-0">{sign.sessions ? sign.sessions.map(session => <span key={session.title} className="mb-3 block"><strong className="block text-sm">{session.title}</strong><span className="mt-1 block text-xs text-muted">Host: {session.facilitator}</span></span>) : <strong className="block text-sm">{sign.title}</strong>}<span className="mt-1 block text-xs">{sign.date} · {sign.time}</span><span className="mt-1 block text-xs text-muted">{sign.venue}</span>{!sign.sessions && sign.facilitator && <span className="mt-1 block text-xs text-muted">{sign.facilitator}</span>}</span>
+            <span className="min-w-0">{sign.sessions ? <><strong className="mb-2 block text-xs text-muted">Concurrent sessions</strong>{sign.sessions.map(session => <span key={session.title} className="mb-2 block rounded-md bg-elevated/60 px-3 py-3"><strong className="block text-sm">{session.title}</strong><span className="mt-1 block text-xs text-muted">Host: {session.facilitator}</span></span>)}</> : <strong className="block text-sm">{sign.title}</strong>}<span className="mt-1 block text-xs">{sign.date} · {sign.time}</span><span className="mt-1 block text-xs text-muted">{sign.venue}</span>{!sign.sessions && sign.facilitator && <span className="mt-1 block text-xs text-muted">{sign.facilitator}</span>}</span>
           </label>)}
         </fieldset>
       </section>
@@ -287,7 +300,8 @@ export function SymposiumPrintJobs() {
       <section>{job ? <div className="space-y-4">
         <div><h2 className="text-base font-semibold">{job.label}</h2><p className="mt-1 text-xs text-muted">Prepared by {job.createdBy} · {date(job.createdAt)}</p></div>
         <div className="flex flex-wrap gap-2">
-          <a className={PRIMARY} href={API + "/" + job.id + "/pdf"}><Download size={14} /> Download PDF</a>
+          <button type="button" className={PRIMARY} disabled={pdfReady !== job.id} onClick={printPdf}><Printer size={14} /> Print</button>
+          <a className={BUTTON} href={API + "/" + job.id + "/pdf"}><Download size={14} /> Download PDF</a>
           <button type="button" className={BUTTON} onClick={() => void copyLink(job.id)}><Copy size={14} /> Copy colleague link</button>
           {job.status === "ready" && <button type="button" className={BUTTON} disabled={busy} onClick={() => void mutate({ action: "cancel", jobId: job.id })}><X size={14} /> Cancel remaining print</button>}
           <ConfirmPopover message={`Delete “${job.label}”?`} detail={job.kind === "badges" && job.printedIds.length ? `Its PDF and its print record go too: ${job.printedIds.length} badge${job.printedIds.length === 1 ? "" : "s"} will show as not printed.` : "Its PDF goes too. This can't be undone."} confirmLabel="Delete batch" tone="danger" align="start"
@@ -306,7 +320,7 @@ export function SymposiumPrintJobs() {
             <strong>Preview</strong>
             <a className="font-semibold underline underline-offset-2" href={API + "/" + job.id + "/pdf?view=1"} target="_blank" rel="noopener noreferrer">Open full screen</a>
           </div>
-          <iframe key={job.id} title={"PDF preview of " + job.label} src={API + "/" + job.id + "/pdf?view=1#view=FitH"} className="block h-[70vh] w-full bg-white" />
+          <iframe key={job.id} ref={pdfFrame} onLoad={() => setPdfReady(job.id)} onError={() => setError("The PDF preview could not load. Retry this batch or use Open full screen.")} title={"PDF preview of " + job.label} src={API + "/" + job.id + "/pdf?view=1#view=FitH"} className="block h-[70vh] w-full bg-white" />
         </div>
         {job.notes && <p className="whitespace-pre-wrap text-sm">{job.notes}</p>}
         {job.printedAt && <p className="text-xs text-muted">Last print confirmation: {job.printedBy} · {date(job.printedAt)}</p>}

@@ -59,3 +59,17 @@ test("PDF download is private, does not confirm printing and rejects unknown art
   assert.match(response.headers.get("Content-Disposition")!, /attachment/);
   assert.equal(globals.printCalls.length, 0);
 });
+
+test("every print-job kind can be opened inline without downloading or confirming printing", async () => {
+  const [, route] = await routes;
+  globals.printCalls = [];
+  for (const kind of ["badges", "tents", "agenda", "signage"]) {
+    globals.printPdf = { job: { label: `${kind} batch`, kind }, bytes: Buffer.from("%PDF-1.7\n") };
+    const response = await route.GET(new NextRequest("https://platform.example.org/api/admin/symposium-print/" + id + "/pdf?view=1"), { params: Promise.resolve({ id }) });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("Content-Disposition")!, /^inline; filename=/);
+    assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+    assert.equal(await response.text(), "%PDF-1.7\n");
+  }
+  assert.equal(globals.printCalls.length, 0);
+});

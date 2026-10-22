@@ -279,13 +279,15 @@ test("all signage PDFs are Letter, one page per copy, with frozen event details 
     const expected = sign.sessions ? sign.sessions.flatMap(session => [session.title, `Host: ${session.facilitator}`]) : [sign.title, sign.facilitator];
     for (const value of [...expected, sign.date, sign.time, sign.venue]) assert.ok(text.includes(value));
     if (sign.sessions) {
+      assert.equal(text.match(/CONCURRENT SESSIONS/g)?.length, 2);
+      assert.ok(text.indexOf("CONCURRENT SESSIONS") < text.indexOf("Communication Chameleon"));
       assert.ok(text.indexOf("Communication Chameleon") < text.indexOf("Host: Claudia Ferryman"));
       assert.ok(text.indexOf("Host: Claudia Ferryman") < text.indexOf("Negotiation Navigator"));
       assert.ok(text.indexOf("Negotiation Navigator") < text.indexOf("Host: Glen Whyte"));
       for (const removed of ["Leslie L. Dan", "Pharmacy Building", "144 College St", "M5S 3M2"]) assert.ok(!text.includes(removed));
       assert.deepEqual(job.signage?.sessions, sign.sessions);
       assert.notEqual(job.signage?.sessions, sign.sessions);
-    } else assert.ok(text.includes("144 College St"));
+    } else { assert.ok(text.includes("144 College St")); assert.ok(!text.includes("CONCURRENT SESSIONS")); }
     assert.ok(!text.includes("Jane Smith"));
     assert.ok(!text.includes("jane.smith@example.org"));
     const printed = change(result.board, { action: "printed", jobId: id, ids: [] }).board;

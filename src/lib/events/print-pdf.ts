@@ -100,12 +100,16 @@ export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?:
       fitted(doc, "TRAINING WEEK 2026", 48, 145, 516, 28, 17, 17);
       doc.setTextColor(25, 34, 40);
       if (sign.sessions) {
+        doc.setTextColor(60, 74, 80);
+        fitted(doc, "CONCURRENT SESSIONS", 48, 184, 516, 22, 13, 13);
         sign.sessions.forEach((session, index) => {
-          fitted(doc, session.title, 48, 205 + index * 152, 516, 80, 34, 30);
-          if (session.facilitator) fitted(doc, `Host: ${session.facilitator}`, 48, 295 + index * 152, 516, 28, 20, 18);
+          doc.setFillColor(243, 246, 246);
+          doc.roundedRect(40, 221 + index * 145, 532, 126, 5, 5, "F");
+          doc.setTextColor(25, 34, 40);
+          fitted(doc, session.title, 48, 239 + index * 145, 516, 55, 32, 28);
+          if (session.facilitator) fitted(doc, `Host: ${session.facilitator}`, 48, 305 + index * 145, 516, 28, 20, 18);
         });
-        doc.setDrawColor(180); doc.setLineWidth(0.5); doc.line(132, 337, 480, 337);
-        doc.setDrawColor(36, 100, 108); doc.setLineWidth(1); doc.line(240, 493, 372, 493);
+        doc.setTextColor(25, 34, 40);
         fitted(doc, sign.date, 48, 517, 516, 35, 22, 18);
         fitted(doc, sign.time, 48, 563, 516, 40, 26, 22);
         doc.setTextColor(60, 74, 80);
