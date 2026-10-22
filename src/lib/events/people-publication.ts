@@ -22,7 +22,7 @@ export const PublicProfileInput = z.object({
   photoUrl: HttpsUrl.nullable(),
   linkedinUrl: HttpsUrl.refine((value) => /(^|\.)linkedin\.com$/.test(new URL(value).hostname), "Use a LinkedIn URL.").nullable(),
   links: z.array(z.object({ label: z.string().trim().min(1).max(120), url: HttpsUrl }).strict()).max(12),
-  placements: z.array(z.object({ sessionId: WebsiteSession, order: z.number().int().min(0).max(999), theme: z.string().trim().max(160).nullable().optional() }).strict()).min(1).max(6)
+  placements: z.array(z.object({ sessionId: WebsiteSession, order: z.number().int().min(0).max(999), theme: z.string().trim().max(160).regex(/^[^\u0000-\u001f\u007f]*$/, "Use a single-line theme without control characters.").nullable().optional() }).strict()).min(1).max(6)
     .refine((items) => new Set(items.map((p) => p.sessionId)).size === items.length, "Choose each session once."),
 }).strict();
 export type PublicProfileInput = z.infer<typeof PublicProfileInput>;
