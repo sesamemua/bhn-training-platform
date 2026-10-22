@@ -240,14 +240,24 @@ test("table tents default to 22 copies of one design; agenda and uploaded artwor
   assert.equal(custom.getPageCount(), 22);
 });
 
-test("signage uses the three requested schedule entries and rejects missing or unknown events", () => {
-  assert.deepEqual(PRINT_SIGNS.map(s => s.title), ["Communication Chameleon", "Negotiation Navigator", "Innovation Ignited"]);
-  for (const sign of PRINT_SIGNS) assert.equal(sign.venue, SESSIONS.find(s => s.slug === sign.slug)!.venue.name);
+test("Tuesday workshops share one sign while Innovation Ignited stays separate", () => {
+  assert.deepEqual(PRINT_SIGNS.map(s => s.title), ["Communication Chameleon & Negotiation Navigator", "Innovation Ignited"]);
+  const comms = SESSIONS.find(s => s.slug === "communication-chameleon-2026")!;
+  const negotiation = SESSIONS.find(s => s.slug === "negotiation-skills-2026")!;
+  for (const key of ["day", "start", "end"] as const) assert.equal(comms[key], negotiation[key], "Combined signage requires a shared schedule");
+  assert.equal(comms.venue.name, negotiation.venue.name);
+  assert.equal(PRINT_SIGNS[0].venue, comms.venue.name);
+  assert.equal(PRINT_SIGNS[0].facilitator, "Claudia Ferryman & Glen Whyte");
+  assert.equal(PRINT_SIGNS[0].time.replace(/\./g, ""), "12:00 PM - 4:30 PM ET");
+  assert.equal(PRINT_SIGNS[1].venue, SESSIONS.find(s => s.slug === "innovation-showcase-2026")!.venue.name);
   assert.match(PRINT_SIGNS[0].date, /Tuesday, October 27, 2026/);
-  assert.match(PRINT_SIGNS[2].date, /Wednesday, October 28, 2026/);
+  assert.match(PRINT_SIGNS[1].date, /Wednesday, October 28, 2026/);
   assert.throws(() => change(board(), create({ kind: "signage", ids: [] })), /Choose a signage/);
   assert.equal(PrintActionSchema.safeParse({ ...create({ kind: "signage" }), signageSlug: "unknown" }).success, false);
   assert.doesNotThrow(() => PrintBoardSchema.parse(change(board(), create()).board));
+  const legacy = change(board(), create({ kind: "signage", signageSlug: "tuesday-workshops-2026" })).job!;
+  legacy.signage = { ...legacy.signage!, title: "Communication Chameleon", facilitator: "Claudia Ferryman" };
+  assert.doesNotThrow(() => PrintBoardSchema.parse({ ...board(), jobs: [legacy] }), "Earlier individual signage snapshots remain readable");
 });
 
 test("all signage PDFs are Letter, one page per copy, with frozen event details and no guest data", async () => {
