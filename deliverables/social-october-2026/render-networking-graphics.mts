@@ -15,7 +15,10 @@ await mkdir(output, { recursive: true });
 await mkdir("deliverables/social-october-2026/networking-originals", { recursive: true });
 const logo = await loadImage(await readFile("public/biohubnet-logo.png"));
 const glass = await loadImage(await readFile("deliverables/social-october-2026/graphics/ai-calm-v1.jpg"));
+const selectedGroup = process.argv.find((arg) => arg.startsWith("--group="))?.slice(8);
+assert.ok(!selectedGroup || NETWORKING_GROUPS.some((group) => String(group.number) === selectedGroup), "Choose an existing networking group");
 for (const group of NETWORKING_GROUPS) {
+  if (selectedGroup && String(group.number) !== selectedGroup) continue;
   const canvas = createCanvas(1200, 1500), ctx = canvas.getContext("2d");
   const bounds: [number, number, number, number, string][] = [];
   ctx.fillStyle = "#ffffff";

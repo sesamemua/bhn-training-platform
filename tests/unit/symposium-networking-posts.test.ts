@@ -5,10 +5,11 @@ import { NETWORKING_GROUPS, SYMPOSIUM_NETWORKING_POSTS } from "../../src/lib/soc
 import { withSocialTags } from "../../src/lib/social/tags";
 import { DEFAULT_SOCIAL_ORDER, readSocialOrder } from "../../src/lib/social/order";
 
-test("all 14 current networking professionals appear once, in groups of at most four", () => {
-  assert.deepEqual(NETWORKING_GROUPS.map((g) => g.people.length), [4, 3, 3, 4]);
+test("all 15 current networking professionals appear once, in groups of at most four", () => {
+  assert.deepEqual(NETWORKING_GROUPS.map((g) => g.people.length), [4, 3, 4, 4]);
   const names = NETWORKING_GROUPS.flatMap((g) => g.people.map((p) => p.name));
-  assert.equal(new Set(names).size, 14);
+  assert.equal(new Set(names).size, 15);
+  assert.ok(NETWORKING_GROUPS[2].people.some((p) => p.name === "Anu Vajjala"));
   assert.ok(names.includes("Melissa E Anders"));
   assert.ok(!names.some((name) => /Czaniecki|Shivali/.test(name)));
   for (const post of SYMPOSIUM_NETWORKING_POSTS) {

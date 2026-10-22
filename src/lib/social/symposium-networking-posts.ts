@@ -1,4 +1,4 @@
-// Published networking roster checked on October 20, 2026. No public posting is triggered here.
+// Published networking roster checked on October 21, 2026. No public posting is triggered here.
 export const NETWORKING_GROUPS = [
   {
     number: 1,
@@ -25,14 +25,15 @@ export const NETWORKING_GROUPS = [
   },
   {
     number: 3,
-    hook: "An idea, a startup, a funding strategy: where do you start?",
-    invitation: "Talk with founders and innovation professionals at Structured Networking with Industry Professionals during BioHubNet's 2026 Annual Symposium.",
+    hook: "Research, entrepreneurship and your next industry connection: where do you start?",
+    invitation: "Meet founders and talent-development professionals at Structured Networking with Industry Professionals during BioHubNet's 2026 Annual Symposium.",
     people: [
       { name: "Yosuke Niibori", title: "Chief Scientific Officer", company: "Re:Pair Genomics", graphicCompany: "Re:Pair Genomics" },
       { name: "Angela Davoud", title: "Co-founder & Chief Growth Officer", company: "PeakR&D", graphicCompany: "PeakR&D" },
       { name: "Donghoon Lee", title: "CEO", company: "Omphalos Lifesciences", graphicCompany: "Omphalos Lifesciences" },
+      { name: "Anu Vajjala", title: "Employer Liaison", company: "ACCES Employment", graphicCompany: "ACCES Employment" },
     ],
-    closing: "Explore the move from research into biotechnology entrepreneurship, how funding fits into an innovation strategy and what it takes to work across disciplines. Bring your questions, not a polished pitch.",
+    closing: "Explore biotechnology entrepreneurship, funding strategy and the connections that support industry careers. Bring your questions, not a polished pitch.",
   },
   {
     number: 4,
@@ -54,7 +55,7 @@ export const SYMPOSIUM_NETWORKING_POSTS = NETWORKING_GROUPS.map((group) => ({
   workshopSlug: null,
   suggestedDate: `2026-10-${19 + group.number}T13:00:00Z`,
   sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/networking-${group.number}.png?v=20261020-roster14`,
+  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/networking-${group.number}.png?v=${group.number === 3 ? "20261021-roster15" : "20261020-roster14"}`,
   graphicBrief: `BioHubNet logo, 2026 Annual Symposium, full Structured Networking with Industry Professionals heading. Original circular headshots with no retouching or color changes: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only on the graphic; professional titles in the caption. Spacious layout, subtle glass edge, October 29 | Toronto | Register now. Recheck the current networking lineup before approving.`,
   body: `${group.hook}
 
