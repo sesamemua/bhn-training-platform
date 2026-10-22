@@ -95,6 +95,7 @@ export default function PeoplePublicationPanel({ initialPersonId, initialSession
   function confirm(value: Confirmation) { setConsent(false); setConfirmation(value); }
   const update = (values: Partial<PublicProfileInput>) => setEditor((p) => p ? { ...p, ...values } : p);
   const reviewIssues = editor && data ? profileReviewIssues(editor, { person: data.roster.people.find((p) => p.id === selected), roster: data.roster }) : [];
+  const trackerIssues = data?.roster.people.flatMap((person) => (person.tags ?? []).filter((tag) => tag.startsWith("Review:")).map((tag) => `${person.fullName}: ${tag.slice(7).trim()}`)) ?? [];
 
   return <section className="space-y-5 [overflow-wrap:anywhere]" aria-label="Website publishing">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -104,6 +105,7 @@ export default function PeoplePublicationPanel({ initialPersonId, initialSession
     </div>
     {error && <p role="alert" className="border-l-2 border-rose-600 pl-3 text-sm text-fg">{error}</p>}
     <p role="status" className="min-h-5 text-sm text-muted">{busy ? "Working..." : notice}</p>
+    {trackerIssues.length > 0 && <details className="border-l-2 border-amber-500 bg-amber-500/10 px-3 py-2 text-sm text-fg" aria-label="Tracker items awaiting review"><summary className="cursor-pointer font-semibold">Tracker review ({trackerIssues.length})</summary><ul className="mt-2 list-disc space-y-1 pl-5">{trackerIssues.map((issue) => <li key={issue}>{issue}</li>)}</ul></details>}
     {!data ? <p className="flex items-center gap-2 text-muted"><Loader2 size={16} className="animate-spin" />Loading website drafts...</p> :
       <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="min-w-0 space-y-3">
