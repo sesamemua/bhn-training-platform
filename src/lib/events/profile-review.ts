@@ -12,6 +12,11 @@ export function profileReviewIssues(profile: ReviewProfile, context: { person?: 
   for (const [label, value] of [["Name", profile.fullName], ["Title / role", profile.title], ["Organization", profile.organization], ["Biography", profile.bio], ["Headshot", profile.photoUrl]]) {
     if (!value?.trim()) issues.push(`${label} is missing.`);
   }
+  const organization = identityText(profile.organization ?? "");
+  if (organization && !(profile.links ?? []).some(({ label, url }) => {
+    const name = identityText(label);
+    return name && ` ${organization} `.includes(` ${name} `) && HttpsUrl.safeParse(url).success;
+  })) issues.push("Organization has no matching public link. Add a verified organization link when reviewing this profile.");
   const text = [profile.fullName, profile.title, profile.organization, profile.bio].filter(Boolean).join("\n");
   if (/\bofficert\b/i.test(text)) issues.push('Possible typo: "Officert". Verify whether "Officer" was intended.');
   if (/\b([a-z]{2,})\s+\1\b/i.test(text)) issues.push("Repeated word found; review the wording.");

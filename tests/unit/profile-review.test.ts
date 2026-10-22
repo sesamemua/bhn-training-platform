@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { profileReviewIssues } from "../../src/lib/events/profile-review";
 import { PlanPersonSchema } from "../../src/lib/events/people-plan";
 
-const profile = { fullName: "Example Person", title: "Director", organization: "Example", bio: "A public biography.", photoUrl: "https://biohubnet.ca/wp-content/uploads/photo.jpg", placements: [{ sessionId: "networking" as const, order: 0 }] };
+const profile = { fullName: "Example Person", title: "Director", organization: "Example", bio: "A public biography.", photoUrl: "https://biohubnet.ca/wp-content/uploads/photo.jpg", links: [{ label: "Example", url: "https://example.org/" }], placements: [{ sessionId: "networking" as const, order: 0 }] };
 test("clean public details pass and incomplete or suspicious wording is flagged, never rewritten", () => {
   assert.deepEqual(profileReviewIssues(profile), []);
   const bad = { ...profile, title: "Knowledge Mobilization Officert", organization: "", bio: "The the biography is TBD.", photoUrl: null };
@@ -11,6 +11,19 @@ test("clean public details pass and incomplete or suspicious wording is flagged,
   const issues = profileReviewIssues(bad);
   for (const expected of ["Organization is missing", "Headshot is missing", "Officert", "Repeated word", "placeholder"]) assert.ok(issues.some((i) => i.includes(expected)));
   assert.deepEqual(bad, before);
+});
+test("organization links are advisory, match normalized whole labels, and never guess or mutate URLs", () => {
+  const warning = "Organization has no matching public link";
+  for (const links of [undefined, [], [{ label: "Other", url: "https://example.org/" }], [{ label: "Example", url: "http://example.org/" }], [{ label: "amp", url: "https://example.org/" }]]) {
+    const input = { ...profile, links };
+    const before = structuredClone(input);
+    assert.ok(profileReviewIssues(input).some((issue) => issue.startsWith(warning)));
+    assert.deepEqual(input, before);
+  }
+  for (const [organization, label] of [["Polytechnique Montréal", "Polytechnique Montreal"], ["CCRM/DTBL", "CCRM"], ["Sanofi (Consultant)", "sanofi"]]) {
+    assert.ok(!profileReviewIssues({ ...profile, organization, links: [{ label, url: "https://example.org/" }] }).some((issue) => issue.startsWith(warning)));
+  }
+  assert.ok(!profileReviewIssues({ ...profile, organization: "", links: [] }).some((issue) => issue.startsWith(warning)));
 });
 test("invalid links, concurrent placements, duplicates and wording conflicts require review", () => {
   const person = PlanPersonSchema.parse({ id: "one", fullName: profile.fullName, organization: profile.organization, source: "paste", session: "discussion", linkedSpeakerId: "s" });
