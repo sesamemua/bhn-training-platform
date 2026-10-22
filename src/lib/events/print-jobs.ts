@@ -15,16 +15,18 @@ export type BadgeEdit = z.infer<typeof BadgeEditSchema>;
 export const BadgeSchema = z.object({ id: text(150), name: text(160), position: text(200).optional(), organization: text(250), extra: text(200) });
 export type PrintBadge = z.infer<typeof BadgeSchema>;
 const TemplateSchema = z.object({ key: text(150), name: text(200) });
-const SignageSchema = z.object({ title: text(160).min(1), date: text(100).min(1), time: text(100).min(1), venue: text(300).min(1), facilitator: text(160) });
+const SignageSchema = z.object({ title: text(160).min(1), date: text(100).min(1), time: text(100).min(1), venue: text(300).min(1), facilitator: text(160), sessions: z.array(z.object({ title: text(160).min(1), facilitator: text(160) })).length(2).optional() });
+const TentStyleSchema = z.enum(["table-reserved", "seat-reserved"]);
 export const PrintJobSchema = z.object({
   id: z.string().uuid(), label: text(120).min(1), kind: z.enum(["badges", "tents", "agenda", "signage"]),
   signage: SignageSchema.optional(),
+  tentStyle: TentStyleSchema.optional(),
   createdAt: z.string().datetime(), createdBy: text(200), assignedTo: text(200), notes: text(1000),
   copies: z.number().int().min(1).max(500), status: z.enum(["ready", "printed", "cancelled"]),
   badges: z.array(BadgeSchema).max(2000), printedIds: z.array(text(150)).max(2000),
   printedAt: z.string().datetime().nullable(), printedBy: text(200).nullable(),
   skip: z.number().int().min(0).max(5), offsetX: z.number().min(-5).max(5), offsetY: z.number().min(-5).max(5),
-}).refine(job => job.kind !== "signage" || !!job.signage, "Choose a signage event.");
+}).refine(job => job.kind !== "signage" || !!job.signage, "Choose a signage event.").refine(job => !job.tentStyle || job.kind === "tents", "Reservation designs are only for table tents.");
 export type PrintJob = z.infer<typeof PrintJobSchema>;
 const NameChangeSchema = z.object({
   guestId: text(150), from: text(160), to: text(160), reason: text(500).min(1),
@@ -50,7 +52,7 @@ export const PrintActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("edit"), id: text(150), badge: BadgeEditSchema, reason: text(500).optional(), evidence: text(500).optional() }),
   z.object({ action: z.literal("add"), badge: BadgeEditSchema, email: text(254).refine(v => !v || z.email().safeParse(v).success) }),
   z.object({ action: z.literal("documents"), tentText: text(2000), agendaText: text(30000), clearTemplate: z.enum(["tents", "agenda"]).optional() }),
-  z.object({ action: z.literal("create"), kind: z.enum(["badges", "tents", "agenda", "signage"]), signageSlug: z.enum(SIGNAGE_SLUGS).optional(), label: text(120).min(1), ids: z.array(text(150)).max(2000), copies: z.number().int().min(1).max(500), assignedTo: text(200), notes: text(1000), allowReprint: z.boolean(), skip: z.number().int().min(0).max(5), offsetX: z.number().min(-5).max(5), offsetY: z.number().min(-5).max(5) }),
+  z.object({ action: z.literal("create"), kind: z.enum(["badges", "tents", "agenda", "signage"]), signageSlug: z.enum(SIGNAGE_SLUGS).optional(), tentStyle: TentStyleSchema.optional(), label: text(120).min(1), ids: z.array(text(150)).max(2000), copies: z.number().int().min(1).max(500), assignedTo: text(200), notes: text(1000), allowReprint: z.boolean(), skip: z.number().int().min(0).max(5), offsetX: z.number().min(-5).max(5), offsetY: z.number().min(-5).max(5) }),
   z.object({ action: z.literal("printed"), jobId: z.string().uuid(), ids: z.array(text(150)).max(2000) }),
   z.object({ action: z.literal("cancel"), jobId: z.string().uuid() }),
   /** Remove a batch and its PDF entirely — including its print record. */
@@ -159,6 +161,7 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
     if (action.clearTemplate === "agenda") next.agendaTemplate = null;
   } else if (action.action === "create") {
     if (next.jobs.length >= 150) throw new Error("This event has reached its print-batch limit.");
+    if (action.tentStyle && action.kind !== "tents") throw new Error("Reservation designs are only for table tents.");
     const ids = [...new Set(action.ids)];
     const selected = ids.map(key => people.find(p => p.id === key));
     if (action.kind === "badges") {
@@ -172,7 +175,7 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
     const signage = action.kind === "signage" ? PRINT_SIGNS.find(s => s.slug === action.signageSlug) : undefined;
     if (action.kind === "signage" && !signage) throw new Error("Choose a signage event.");
     const badges = action.kind === "badges" ? selected.map(p => ({ id: p!.id, name: p!.name, ...(p!.position ? { position: p!.position } : {}), organization: p!.organization, extra: p!.extra })) : [];
-    const job: PrintJob = { id, label: action.label, kind: action.kind, ...(signage ? { signage: SignageSchema.parse(signage) } : {}), createdAt: at, createdBy: actor, assignedTo: action.assignedTo, notes: action.notes, copies: action.kind === "badges" ? 1 : action.copies, status: "ready", badges, printedIds: [], printedAt: null, printedBy: null, skip: action.skip, offsetX: action.offsetX, offsetY: action.offsetY };
+    const job: PrintJob = { id, label: action.label, kind: action.kind, ...(signage ? { signage: SignageSchema.parse(signage) } : {}), ...(action.tentStyle ? { tentStyle: action.tentStyle } : {}), createdAt: at, createdBy: actor, assignedTo: action.assignedTo, notes: action.notes, copies: action.kind === "badges" ? 1 : action.copies, status: "ready", badges, printedIds: [], printedAt: null, printedBy: null, skip: action.skip, offsetX: action.offsetX, offsetY: action.offsetY };
     next.jobs.unshift(job);
     return { board: PrintBoardSchema.parse(next), job };
   } else if (action.action === "delete") {

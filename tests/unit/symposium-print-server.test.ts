@@ -112,6 +112,22 @@ test("a compare-and-swap race rolls the PDF insert back together with the queue 
   assert.equal(JSON.parse(rows.get(key)!.value).jobs.length, 0);
 });
 
+test("reservation batches bypass the saved Wi-Fi template without replacing it", async () => {
+  reset();
+  const b = board(); b.tentTemplate = { key: "wifi-template", name: "Wi-Fi and agenda.pdf" };
+  rows.set(key, { key, value: JSON.stringify(b), updatedAt: new Date(version) });
+  const { changePrintStore, printJobPdf } = await server;
+  const result = await changePrintStore(version, { ...create, kind: "tents", ids: [], tentStyle: "seat-reserved", copies: 1 }, "Admin");
+  assert.equal(result.conflict, false);
+  assert.deepEqual(result.snapshot.board.tentTemplate, b.tentTemplate);
+  assert.equal(result.snapshot.board.jobs[0].tentStyle, "seat-reserved");
+  const saved = await printJobPdf(result.jobId!);
+  assert.ok(saved?.bytes.subarray(0, 5).toString() === "%PDF-");
+  const { extractText } = await import("unpdf");
+  const text = (await extractText(new Uint8Array(saved!.bytes), { mergePages: true })).text;
+  assert.ok(text.includes("SEAT")); assert.ok(text.includes("RESERVED"));
+});
+
 test("corrupt stored data is not reset or overwritten", async () => {
   reset(); rows.get(key)!.value = "bad JSON";
   const { loadPrintStore } = await server;

@@ -26,6 +26,7 @@ export function SymposiumPrintJobs() {
   const [error, setError] = useState(""), [notice, setNotice] = useState("");
   const [view, setView] = useState<View>("badges");
   const [signageSlug, setSignageSlug] = useState(PRINT_SIGNS[0].slug);
+  const [tentStyle, setTentStyle] = useState<NonNullable<PrintJob["tentStyle"]> | "">("");
   const [query, setQuery] = useState(""), [filter, setFilter] = useState("all"), [allStatuses, setAllStatuses] = useState(false);
   const [selected, setSelected] = useState<string[]>([]), [editing, setEditing] = useState<Edit | null>(null);
   const [activeJob, setActiveJob] = useState<string | null>(null), [printIds, setPrintIds] = useState<string[]>([]);
@@ -110,7 +111,7 @@ export function SymposiumPrintJobs() {
   function openPerson(p?: PrintPerson) {
     setEditing({ id: p?.id ?? null, badge: { name: p?.name ?? "", position: p?.position ?? "", organization: p?.organization ?? "", extra: p?.extra ?? "", reviewed: !!(p && !blocked(p)), singleName: p?.singleName }, email: p?.email ?? "", version: snapshot!.version, reason: p?.nameCorrection?.reason ?? "", evidence: p?.nameCorrection?.evidence ?? "" });
   }
-  const makeJob = () => mutate({ action: "create", kind, signageSlug: kind === "signage" ? signageSlug : undefined, label: label.trim() || (kind === "signage" ? PRINT_SIGNS.find(s => s.slug === signageSlug)!.title + " - Letter signage" : (kind === "badges" ? "Badge" : kind === "tents" ? "Table tent" : "Agenda") + " batch " + (board.jobs.length + 1)), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
+  const makeJob = () => mutate({ action: "create", kind, signageSlug: kind === "signage" ? signageSlug : undefined, tentStyle: kind === "tents" && tentStyle ? tentStyle : undefined, label: label.trim() || (kind === "signage" ? PRINT_SIGNS.find(s => s.slug === signageSlug)!.title + " - Letter signage" : (kind === "badges" ? "Badge" : kind === "tents" ? (tentStyle === "table-reserved" ? "Table reserved tent" : tentStyle === "seat-reserved" ? "Seat reserved tent" : "Table tent") : "Agenda") + " batch " + (board.jobs.length + 1)), ids: selected, copies, assignedTo, notes, allowReprint, skip, offsetX, offsetY });
   async function copyLink(id: string) {
     try { await navigator.clipboard.writeText(location.origin + HERE + "?job=" + id); setNotice("Admin print-job link copied."); }
     catch { setError("Could not copy the link."); }
@@ -245,7 +246,7 @@ export function SymposiumPrintJobs() {
         <fieldset className="mt-4"><legend className="text-xs font-semibold">Event</legend>
           {PRINT_SIGNS.map(sign => <label key={sign.slug} className="flex cursor-pointer items-start gap-3 border-b border-line py-4">
             <input type="radio" name="signage-event" checked={signageSlug === sign.slug} onChange={() => { setSignageSlug(sign.slug); setLabel(""); }} className="mt-1" />
-            <span className="min-w-0"><strong className="block text-sm">{sign.title}</strong><span className="mt-1 block text-xs">{sign.date} · {sign.time}</span><span className="mt-1 block text-xs text-muted">{sign.venue}</span>{sign.facilitator && <span className="mt-1 block text-xs text-muted">{sign.facilitator}</span>}</span>
+            <span className="min-w-0">{sign.sessions ? sign.sessions.map(session => <span key={session.title} className="mb-3 block"><strong className="block text-sm">{session.title}</strong><span className="mt-1 block text-xs text-muted">Host: {session.facilitator}</span></span>) : <strong className="block text-sm">{sign.title}</strong>}<span className="mt-1 block text-xs">{sign.date} · {sign.time}</span><span className="mt-1 block text-xs text-muted">{sign.venue}</span>{!sign.sessions && sign.facilitator && <span className="mt-1 block text-xs text-muted">{sign.facilitator}</span>}</span>
           </label>)}
         </fieldset>
       </section>
@@ -253,6 +254,15 @@ export function SymposiumPrintJobs() {
     </div>}
     {(view === "tents" || view === "agenda") && <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="space-y-4">
+        {view === "tents" && <div>
+          <label htmlFor="print-tent-design" className="block text-xs">Design</label>
+          <select id="print-tent-design" className={INPUT + " mt-1"} disabled={busy} value={tentStyle} onChange={event => { setTentStyle(event.target.value as typeof tentStyle); setLabel(""); }}>
+            <option value="">Current uploaded design / custom wording</option>
+            <option value="table-reserved">Table Reserved</option>
+            <option value="seat-reserved">Seat Reserved</option>
+          </select>
+        </div>}
+        {view === "tents" && tentStyle ? <h2 className="text-base font-semibold">{tentStyle === "table-reserved" ? "Table Reserved" : "Seat Reserved"}</h2> : <>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div><h2 className="text-base font-semibold">{view === "tents" ? "Table tent design" : "Symposium agenda"}</h2><p className="mt-1 text-xs text-muted">{template ? template.name : "Draft layout · final artwork pending"}</p></div>
           <button type="button" className={BUTTON} disabled={busy} onClick={() => designInput.current?.click()}><FileUp size={14} /> {template ? "Replace PDF design" : "Upload PDF design"}</button>
@@ -264,6 +274,7 @@ export function SymposiumPrintJobs() {
           <textarea className={INPUT + " mt-2 font-mono leading-relaxed"} rows={view === "agenda" ? 22 : 8} value={view === "tents" ? documentDraft.tentText : documentDraft.agendaText} maxLength={view === "tents" ? 2000 : 30000} onChange={e => setDocuments({ ...documentDraft, [view === "tents" ? "tentText" : "agendaText"]: e.target.value })} />
         </label>}
         <div className="flex gap-2"><button className={PRIMARY} type="button" disabled={busy || !documents} onClick={async () => { if (await mutate({ action: "documents", tentText: documentDraft.tentText, agendaText: documentDraft.agendaText }, documentDraft.version)) setDocuments(null); }}><Save size={14} /> Save wording</button><button type="button" className={BUTTON} disabled={!documents} onClick={() => setDocuments(null)} title="Reset text draft" aria-label="Reset text draft"><X size={14} /></button></div>
+        </>}
       </section>
       <aside>{batchControls}</aside>
     </div>}

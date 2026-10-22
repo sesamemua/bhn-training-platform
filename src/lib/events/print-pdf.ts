@@ -37,7 +37,7 @@ function fitted(doc: jsPDF, value: string, x: number, y: number, width: number, 
 }
 
 export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?: Uint8Array): Promise<Uint8Array> {
-  if (template && (job.kind === "tents" || job.kind === "agenda")) {
+  if (template && ((job.kind === "tents" && !job.tentStyle) || job.kind === "agenda")) {
     const source = await PDFDocument.load(template), output = await PDFDocument.create();
     // Valid blank separator pages also need a content stream before embedding.
     for (const page of source.getPages()) page.drawRectangle({ x: 0, y: 0, width: 0, height: 0, opacity: 0 });
@@ -75,11 +75,12 @@ export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?:
       doc.text(`Avery 5393 | Letter | Actual size 100% | ${job.label} | ${page}/${doc.getNumberOfPages()}`, 18, 772);
     }
   } else if (job.kind === "tents") {
-    const title = board.tentText || "BioHubNet\n2026 Annual Symposium";
+    const title = job.tentStyle ? (job.tentStyle === "table-reserved" ? "TABLE\nRESERVED" : "SEAT\nRESERVED") : board.tentText || "BioHubNet\n2026 Annual Symposium";
     const properties = doc.getImageProperties(logo);
     doc.addImage(logo, "PNG", 216, 440, 180, 180 * properties.height / properties.width);
     doc.setTextColor(25, 34, 40);
-    fitted(doc, title, 54, 535, 504, 180, 38, 18);
+    fitted(doc, title, 54, 535, 504, 180, job.tentStyle ? 48 : 38, job.tentStyle ? 32 : 18);
+    if (job.tentStyle) { doc.setFontSize(11); doc.setTextColor(60, 74, 80); doc.text("2026 Annual Symposium", 306, 750, { align: "center" }); }
     doc.setDrawColor(180); doc.setLineDashPattern([3, 4], 0); doc.line(18, 396, 594, 396);
     const output = await PDFDocument.create();
     const [face] = await output.embedPdf(doc.output("arraybuffer"));
@@ -98,6 +99,19 @@ export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?:
       doc.setTextColor(36, 100, 108);
       fitted(doc, "TRAINING WEEK 2026", 48, 145, 516, 28, 17, 17);
       doc.setTextColor(25, 34, 40);
+      if (sign.sessions) {
+        sign.sessions.forEach((session, index) => {
+          fitted(doc, session.title, 48, 205 + index * 152, 516, 80, 34, 30);
+          if (session.facilitator) fitted(doc, `Host: ${session.facilitator}`, 48, 295 + index * 152, 516, 28, 20, 18);
+        });
+        doc.setDrawColor(180); doc.setLineWidth(0.5); doc.line(132, 337, 480, 337);
+        doc.setDrawColor(36, 100, 108); doc.setLineWidth(1); doc.line(240, 493, 372, 493);
+        fitted(doc, sign.date, 48, 517, 516, 35, 22, 18);
+        fitted(doc, sign.time, 48, 563, 516, 40, 26, 22);
+        doc.setTextColor(60, 74, 80);
+        fitted(doc, sign.venue, 60, 641, 492, 70, 23, 18);
+        continue;
+      }
       fitted(doc, sign.title, 48, 225, 516, 160, 46, 32);
       if (sign.facilitator) fitted(doc, sign.facilitator, 48, 390, 516, 30, 22, 18);
       doc.setDrawColor(36, 100, 108); doc.setLineWidth(2); doc.line(240, 453, 372, 453);

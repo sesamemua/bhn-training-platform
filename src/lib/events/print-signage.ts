@@ -11,6 +11,8 @@ export const PRINT_SIGNS = SIGNAGE_SLUGS.map(slug => {
     slug, title: companion ? `${session.title} & ${companion.title}` : session.title,
     date: day.toLocaleDateString("en-CA", { timeZone: "UTC", weekday: "long", month: "long", day: "numeric", year: "numeric" }),
     time: `${time(session.start)} - ${time(session.end)} ET`,
-    venue: session.venue.name!, facilitator: [session.facilitator, companion?.facilitator].filter(Boolean).join(" & "),
+    venue: companion ? "Top of POD (3rd floor)" : session.venue.name!,
+    facilitator: [session.facilitator, companion?.facilitator].filter(Boolean).join(" & "),
+    sessions: companion ? [session, companion].map(s => ({ title: s.title, facilitator: s.facilitator ?? "" })) : undefined,
   };
 });

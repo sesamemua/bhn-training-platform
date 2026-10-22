@@ -70,7 +70,7 @@ export async function changePrintStore(version: string | null, action: PrintActi
     const result = applyPrintAction(current.snapshot.board, current.snapshot.people, action, actor, id, at);
     next = result.board;
     if (result.job) {
-      const template = result.job.kind === "tents" ? next.tentTemplate : result.job.kind === "agenda" ? next.agendaTemplate : null;
+      const template = result.job.kind === "tents" && !result.job.tentStyle ? next.tentTemplate : result.job.kind === "agenda" ? next.agendaTemplate : null;
       const source = template ? await prisma.platformSetting.findUnique({ where: { key: template.key } }) : null;
       if (template && !source) throw new Error("The saved design could not be loaded. Please upload it again.");
       const bytes = await buildPrintPdf(result.job, next, source ? Buffer.from(source.value, "base64") : undefined);

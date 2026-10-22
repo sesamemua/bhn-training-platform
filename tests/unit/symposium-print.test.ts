@@ -246,7 +246,8 @@ test("Tuesday workshops share one sign while Innovation Ignited stays separate",
   const negotiation = SESSIONS.find(s => s.slug === "negotiation-skills-2026")!;
   for (const key of ["day", "start", "end"] as const) assert.equal(comms[key], negotiation[key], "Combined signage requires a shared schedule");
   assert.equal(comms.venue.name, negotiation.venue.name);
-  assert.equal(PRINT_SIGNS[0].venue, comms.venue.name);
+  assert.equal(PRINT_SIGNS[0].venue, "Top of POD (3rd floor)");
+  assert.deepEqual(PRINT_SIGNS[0].sessions, [{ title: comms.title, facilitator: comms.facilitator }, { title: negotiation.title, facilitator: negotiation.facilitator }]);
   assert.equal(PRINT_SIGNS[0].facilitator, "Claudia Ferryman & Glen Whyte");
   assert.equal(PRINT_SIGNS[0].time.replace(/\./g, ""), "12:00 PM - 4:30 PM ET");
   assert.equal(PRINT_SIGNS[1].venue, SESSIONS.find(s => s.slug === "innovation-showcase-2026")!.venue.name);
@@ -256,7 +257,7 @@ test("Tuesday workshops share one sign while Innovation Ignited stays separate",
   assert.equal(PrintActionSchema.safeParse({ ...create({ kind: "signage" }), signageSlug: "unknown" }).success, false);
   assert.doesNotThrow(() => PrintBoardSchema.parse(change(board(), create()).board));
   const legacy = change(board(), create({ kind: "signage", signageSlug: "tuesday-workshops-2026" })).job!;
-  legacy.signage = { ...legacy.signage!, title: "Communication Chameleon", facilitator: "Claudia Ferryman" };
+  legacy.signage = { title: "Communication Chameleon", date: legacy.signage!.date, time: legacy.signage!.time, venue: comms.venue.name!, facilitator: "Claudia Ferryman" };
   assert.doesNotThrow(() => PrintBoardSchema.parse({ ...board(), jobs: [legacy] }), "Earlier individual signage snapshots remain readable");
 });
 
@@ -275,13 +276,47 @@ test("all signage PDFs are Letter, one page per copy, with frozen event details 
     assert.equal(pdf.getPageCount(), 2);
     for (const page of pdf.getPages()) assert.deepEqual(page.getSize(), { width: 612, height: 792 });
     const text = (await extractText(bytes, { mergePages: true })).text;
-    for (const expected of [sign.title, sign.date, sign.time, sign.facilitator]) assert.ok(text.includes(expected));
-    assert.ok(text.includes("144 College St"));
+    const expected = sign.sessions ? sign.sessions.flatMap(session => [session.title, `Host: ${session.facilitator}`]) : [sign.title, sign.facilitator];
+    for (const value of [...expected, sign.date, sign.time, sign.venue]) assert.ok(text.includes(value));
+    if (sign.sessions) {
+      assert.ok(text.indexOf("Communication Chameleon") < text.indexOf("Host: Claudia Ferryman"));
+      assert.ok(text.indexOf("Host: Claudia Ferryman") < text.indexOf("Negotiation Navigator"));
+      assert.ok(text.indexOf("Negotiation Navigator") < text.indexOf("Host: Glen Whyte"));
+      for (const removed of ["Leslie L. Dan", "Pharmacy Building", "144 College St", "M5S 3M2"]) assert.ok(!text.includes(removed));
+      assert.deepEqual(job.signage?.sessions, sign.sessions);
+      assert.notEqual(job.signage?.sessions, sign.sessions);
+    } else assert.ok(text.includes("144 College St"));
     assert.ok(!text.includes("Jane Smith"));
     assert.ok(!text.includes("jane.smith@example.org"));
     const printed = change(result.board, { action: "printed", jobId: id, ids: [] }).board;
     assert.equal(printed.jobs[0].status, "printed");
   }
+});
+
+test("reserved table and seat tents keep both faces, copies and Wi-Fi artwork independent", async () => {
+  const template = await PDFDocument.create();
+  template.addPage([612, 792]).drawText("WIFI TEMPLATE ONLY");
+  const templateBytes = await template.save();
+  for (const tentStyle of ["table-reserved", "seat-reserved"] as const) {
+    const b = board(); b.tentTemplate = { key: "wifi-template", name: "Wi-Fi.pdf" };
+    const result = change(b, create({ kind: "tents", tentStyle, copies: 2, ids: [] }));
+    assert.equal(result.job!.tentStyle, tentStyle);
+    assert.equal(result.job!.status, "ready");
+    assert.deepEqual(result.board.tentTemplate, b.tentTemplate);
+    assert.equal(result.board.tentText, b.tentText);
+    const bytes = await buildPrintPdf(result.job!, result.board, templateBytes);
+    const pdf = await PDFDocument.load(bytes);
+    assert.equal(pdf.getPageCount(), 2);
+    for (const page of pdf.getPages()) assert.deepEqual(page.getSize(), { width: 612, height: 792 });
+    const text = (await extractText(bytes, { mergePages: true })).text;
+    assert.equal(text.match(/RESERVED/g)?.length, 4);
+    assert.ok(text.includes(tentStyle === "table-reserved" ? "TABLE" : "SEAT"));
+    assert.ok(text.includes("2026 Annual Symposium"));
+    assert.ok(!text.includes("WIFI TEMPLATE ONLY"));
+    assert.equal(PrintBoardSchema.safeParse({ ...result.board, jobs: [{ ...result.job!, kind: "agenda" }] }).success, false);
+  }
+  assert.throws(() => change(board(), create({ kind: "agenda", tentStyle: "table-reserved" })), /only for table tents/);
+  assert.equal(PrintActionSchema.safeParse({ ...create({ kind: "tents" }), tentStyle: "unknown" }).success, false);
 });
 
 test("needs attention: checks before printing, reprints, badges for people who left, unnamed guests", () => {
