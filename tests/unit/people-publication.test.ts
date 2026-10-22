@@ -62,3 +62,16 @@ test("public schema refuses injected private fields, unsafe URLs and duplicate s
   assert.ok(!PublicProfileInput.safeParse({ ...profile, placements: [profile.placements[0], profile.placements[0]] }).success);
   assert.ok(!PublicProfileInput.safeParse({ ...profile, placements: [] }).success);
 });
+
+test("placement themes are optional, bounded public fields and require approval", () => {
+  const live = applyPublication(approve(draft()), { action: "initialize", confirm: true }, now);
+  const withTheme = PublicProfileInput.parse({ ...profile, placements: [{ sessionId: "networking", order: 1, theme: "  Biomanufacturing & R&D  " }] });
+  assert.equal(withTheme.placements[0].theme, "Biomanufacturing & R&D");
+  const pending = applyPublication(live, { action: "save", id: "person", profile: withTheme }, now);
+  assert.deepEqual(publicPeopleFeed(pending), publicPeopleFeed(live));
+  assert.deepEqual(publicPeopleFeed(approve(pending)).people[0].placements, [{ id: "person:networking", sessionId: "networking", order: 1, theme: "Biomanufacturing & R&D" }]);
+  assert.ok(PublicProfileInput.safeParse({ ...profile, placements: [{ sessionId: "discussion", order: 0, theme: null }] }).success);
+  assert.ok(!PublicProfileInput.safeParse({ ...profile, placements: [{ sessionId: "networking", order: 0, theme: "x".repeat(161) }] }).success);
+  assert.ok(!PublicProfileInput.safeParse({ ...profile, placements: [{ sessionId: "networking", order: 0, notes: "private" }] }).success);
+  assert.ok(!("theme" in publicPeopleFeed(live).people[0].placements[0]), "legacy placements remain unchanged");
+});

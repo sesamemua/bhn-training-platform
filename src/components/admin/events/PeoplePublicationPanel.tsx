@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Check, Eye, Globe, Loader2, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { WEBSITE_SESSIONS, type PublicProfileInput, type PublicationState, type PublicationAction } from "@/lib/events/people-publication";
 import { matchPlanPeople, type PlanPerson, type PlanSnapshot, type PlanSession } from "@/lib/events/people-plan";
+import { profileReviewIssues } from "@/lib/events/profile-review";
 
 const API = "/api/admin/symposium-people/publication";
 const INPUT = "w-full min-w-0 rounded-md border border-line bg-card-solid px-3 py-2 text-sm text-fg";
@@ -93,6 +94,7 @@ export default function PeoplePublicationPanel({ initialPersonId, initialSession
   }
   function confirm(value: Confirmation) { setConsent(false); setConfirmation(value); }
   const update = (values: Partial<PublicProfileInput>) => setEditor((p) => p ? { ...p, ...values } : p);
+  const reviewIssues = editor && data ? profileReviewIssues(editor, { person: data.roster.people.find((p) => p.id === selected), roster: data.roster }) : [];
 
   return <section className="space-y-5 [overflow-wrap:anywhere]" aria-label="Website publishing">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -122,6 +124,7 @@ export default function PeoplePublicationPanel({ initialPersonId, initialSession
         {!editor ? <p className="py-6 text-sm text-muted">No profile selected.</p> : <div className="min-w-0 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold text-fg">Public profile draft</h3><button type="button" className={BUTTON} disabled={busy} onClick={() => { setSelected(""); setEditor(null); }}><X size={14} />Close / discard unsaved</button></div>
           <p className="text-xs text-muted">Only the public fields below are eligible for approval. Emails and planning notes are excluded.</p>
+          <ProfileReviewWarnings issues={reviewIssues} />
           <div className="grid gap-4 sm:grid-cols-2">
             {([["fullName", "Name", 120], ["title", "Title / role", 160], ["organization", "Organization", 160]] as const).map(([key, label, max]) => <label key={key} className="block text-xs text-muted">{label}<input className={INPUT} maxLength={max} value={editor[key]} disabled={busy} onChange={(e) => update({ [key]: e.target.value })} /></label>)}
             <label className="block text-xs text-muted">LinkedIn URL<input className={INPUT} value={editor.linkedinUrl ?? ""} disabled={busy} onChange={(e) => update({ linkedinUrl: e.target.value || null })} /></label>
@@ -130,7 +133,7 @@ export default function PeoplePublicationPanel({ initialPersonId, initialSession
           </div>
           <fieldset className="space-y-2"><legend className="mb-2 text-sm font-semibold text-fg">Website sessions</legend>{Object.entries(WEBSITE_SESSIONS).map(([id, label]) => {
             const placement = editor.placements.find((p) => p.sessionId === id);
-            return <div key={id} className="flex flex-wrap items-center justify-between gap-2 border-b border-line py-2"><label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" disabled={busy} checked={!!placement} onChange={(e) => update({ placements: e.target.checked ? [...editor.placements, { sessionId: id as keyof typeof WEBSITE_SESSIONS, order: 0 }] : editor.placements.filter((p) => p.sessionId !== id) })} />{label}</label>{placement && <label className="flex items-center gap-2 text-xs text-muted">Order<input aria-label={`Display order in ${label}`} type="number" min={0} max={999} className={`${INPUT} max-w-20`} value={placement.order} disabled={busy} onChange={(e) => update({ placements: editor.placements.map((p) => p.sessionId === id ? { ...p, order: Number(e.target.value) } : p) })} /></label>}</div>;
+            return <div key={id} className="flex flex-wrap items-center justify-between gap-2 border-b border-line py-2"><label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" disabled={busy} checked={!!placement} onChange={(e) => update({ placements: e.target.checked ? [...editor.placements, { sessionId: id as keyof typeof WEBSITE_SESSIONS, order: 0 }] : editor.placements.filter((p) => p.sessionId !== id) })} />{label}</label>{placement && <><label className="flex items-center gap-2 text-xs text-muted">Order<input aria-label={`Display order in ${label}`} type="number" min={0} max={999} className={`${INPUT} max-w-20`} value={placement.order} disabled={busy} onChange={(e) => update({ placements: editor.placements.map((p) => p.sessionId === id ? { ...p, order: Number(e.target.value) } : p) })} /></label>{(id === "networking" || id === "discussion") && <label className="block w-full text-xs text-muted">Public theme (if applicable)<input aria-label={`Public theme in ${label}`} className={INPUT} maxLength={160} value={placement.theme ?? ""} disabled={busy} onChange={(e) => update({ placements: editor.placements.map((p) => p.sessionId === id ? { ...p, theme: e.target.value || null } : p) })} /></label>}</>}</div>;
           })}</fieldset>
           <fieldset className="space-y-2"><legend className="mb-2 text-sm font-semibold text-fg">Public organization / reference links</legend>
             {editor.links.map((link, index) => <div key={index} className="flex flex-wrap gap-2"><input aria-label={`Link ${index + 1} label`} className={`${INPUT} sm:flex-1`} value={link.label} disabled={busy} onChange={(e) => update({ links: editor.links.map((l, i) => i === index ? { ...l, label: e.target.value } : l) })} /><input aria-label={`Link ${index + 1} URL`} className={`${INPUT} sm:flex-1`} value={link.url} disabled={busy} onChange={(e) => update({ links: editor.links.map((l, i) => i === index ? { ...l, url: e.target.value } : l) })} /><button type="button" className={BUTTON} disabled={busy} title="Remove link" aria-label={`Remove link ${index + 1}`} onClick={() => update({ links: editor.links.filter((_, i) => i !== index) })}><Trash2 size={14} /></button></div>)}
@@ -167,14 +170,20 @@ export default function PeoplePublicationPanel({ initialPersonId, initialSession
 }
 
 export function PublicProfilePreview({ profile }: { profile: PublicProfileInput }) {
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   return <div className="my-4 space-y-3 border-t border-line pt-4 text-fg">
+    <ProfileReviewWarnings issues={[...profileReviewIssues(profile), ...(profile.photoUrl && failedPhoto === profile.photoUrl ? ["Headshot could not be loaded. Check the image before approving."] : [])]} />
     {/* Approved snapshots use content-addressed headshots on the existing R2 host. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    {profile.photoUrl && <img src={profile.photoUrl} alt={profile.fullName} className="h-32 w-32 rounded-md object-cover" />}
+    {profile.photoUrl && <img src={profile.photoUrl} alt={profile.fullName} onError={() => setFailedPhoto(profile.photoUrl)} className="h-32 w-32 rounded-md object-cover" />}
     <h3 className="text-lg font-bold">{profile.fullName}</h3><p className="text-sm">{profile.title} · {profile.organization}</p>
     <p className="whitespace-pre-wrap text-sm">{profile.bio || "No biography."}</p>
     {profile.linkedinUrl && <a className="block text-sm underline" href={profile.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>}
     {profile.links.map((link, i) => <a key={i} className="block text-sm underline" href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}
-    <ul className="text-sm">{profile.placements.map((p) => <li key={p.sessionId}>{WEBSITE_SESSIONS[p.sessionId]} · Order {p.order}</li>)}</ul>
+    <ul className="text-sm">{profile.placements.map((p) => <li key={p.sessionId}>{WEBSITE_SESSIONS[p.sessionId]} · Order {p.order}{p.theme ? ` · ${p.theme}` : ""}</li>)}</ul>
   </div>;
+}
+
+function ProfileReviewWarnings({ issues }: { issues: string[] }) {
+  return issues.length ? <details open className="border-l-2 border-amber-500 bg-amber-500/10 px-3 py-2 text-sm text-fg" aria-label="Submission review checks"><summary className="cursor-pointer font-semibold">Review checks ({issues.length})</summary><ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></details> : null;
 }

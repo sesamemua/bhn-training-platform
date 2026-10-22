@@ -67,6 +67,15 @@ test("unpublished, new, ambiguous, archived and explicitly unlinked people are n
   assert.deepEqual(submittedProfileUpdates(ambiguous, roster([person, { ...person, id: "namesake" }])), []);
 });
 
+test("a matched upload preserves approved per-session themes and moderator/panel placements", async () => {
+  const { submittedProfileUpdates } = await autoPublication;
+  const state = initial();
+  state.approved[0].profile.placements[1].theme = "Venture funding";
+  const change = submittedProfileUpdates(state, roster())[0];
+  assert.deepEqual(change.profile.placements, state.approved[0].profile.placements);
+  assert.equal(change.profile.placements[1].theme, "Venture funding");
+});
+
 test("latest submissions win and synchronized submissions do not replay", async () => {
   const { submittedProfileUpdates } = await autoPublication;
   const older = { ...speaker, id: "old", bio: "Older bio", submittedAt: "2026-10-12T20:00:00Z" };

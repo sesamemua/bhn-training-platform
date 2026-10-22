@@ -107,3 +107,8 @@ test("a bio with line breaks keeps them", () => {
   assert.ok(m.html.includes("white-space:pre-wrap"), "paragraphs would collapse without it");
   assert.ok(m.text.includes("First paragraph.\n\nSecond paragraph."));
 });
+
+test("new submissions include review hints in the existing coordinator email, not silent corrections", () => {
+  const m = speakerSubmissionEmail({ eventTitle: "Symposium", slug: "2026-annual-symposium", fullName: "Example Person", title: "Knowledge Mobilization Officert", organization: "Example", bio: "Biography", linkedinUrl: null, sessionTitle: null, sessionPitch: null, photoUrl: null });
+  for (const text of [m.text, m.html]) { assert.ok(text.includes("Officert")); assert.ok(text.includes("Headshot is missing")); assert.match(text, /[Rr][Ee][Vv][Ii][Ee][Ww] [Cc][Hh][Ee][Cc][Kk][Ss]/); }
+});

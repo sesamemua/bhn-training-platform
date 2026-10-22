@@ -48,3 +48,11 @@ test("unrelated approved panels and their pending drafts survive planner publica
   assert.deepEqual(next.approved.find((p) => p.id === "other"), untouched);
   assert.equal(next.drafts.find((p) => p.id === "other")?.profile.bio, "Pending editorial changes");
 });
+
+test("planner updates preserve the same placement's public theme without carrying it to another session", () => {
+  const current = { ...state, approved: [{ ...state.approved[0], profile: { ...profile, placements: [{ sessionId: "networking" as const, order: 0, theme: "Regulatory affairs" }] } }] };
+  const same = plannerPublicationChanges(current, { ...roster, people: [{ ...person, session: "networking" }] });
+  assert.equal(same[0].profile?.placements[0].theme, "Regulatory affairs");
+  const moved = plannerPublicationChanges(current, roster);
+  assert.deepEqual(moved[0].profile?.placements, [{ sessionId: "discussion", order: 0 }]);
+});

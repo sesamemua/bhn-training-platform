@@ -16,6 +16,7 @@ export function plannerPublicationChanges(state: PublicationState, roster: PlanS
     const draft = state.drafts.find((p) => p.id === person.id)?.profile;
     const submission = matches.get(person.id)?.speaker;
     const base = draft ?? approved;
+    const placement = base?.placements.find((p) => p.sessionId === person.session);
     const profile = PublicProfileInput.parse({
       fullName: person.fullName, title: person.title, organization: person.organization,
       // The planner's freeform biography field can contain private notes.
@@ -24,7 +25,7 @@ export function plannerPublicationChanges(state: PublicationState, roster: PlanS
       linkedinUrl: base?.linkedinUrl ?? null, links: base?.links ?? [],
       placements: [
         ...(approved?.placements ?? []).filter((p) => !isPlannerSession(p.sessionId)),
-        { sessionId: person.session, order: order[person.session]++ },
+        { sessionId: person.session, order: order[person.session]++, ...(placement?.theme !== undefined ? { theme: placement.theme } : {}) },
       ],
     });
     if (!approved || JSON.stringify(profile) !== JSON.stringify(approved)) changes.push({ id: person.id, profile });

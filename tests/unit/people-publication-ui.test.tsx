@@ -21,3 +21,13 @@ test("publication previews escape biography HTML and render approved links separ
   assert.ok(html.includes('href="https://example.org/"'));
   assert.ok(!html.includes("private@example.org"));
 });
+
+test("publication previews display escaped themes and review warnings without changing the profile", () => {
+  const profile = { ...sourcePublicProfile(p, roster), title: "Knowledge Mobilization Officert", placements: [{ sessionId: "networking" as const, order: 0, theme: "Biomanufacturing & R&D" }] };
+  const before = structuredClone(profile);
+  const html = renderToStaticMarkup(<PublicProfilePreview profile={profile} />);
+  assert.ok(html.includes("Biomanufacturing &amp; R&amp;D"));
+  assert.ok(html.includes("Submission review checks"));
+  assert.ok(html.includes("Possible typo"));
+  assert.deepEqual(profile, before);
+});

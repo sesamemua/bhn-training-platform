@@ -10,6 +10,7 @@
  * previewed without sending anything.
  */
 import { absolute } from "./email";
+import { profileReviewIssues } from "../events/profile-review";
 
 /**
  * Who gets the copy.
@@ -54,6 +55,7 @@ const or = (v: string | null | undefined) => (v && v.trim() ? v.trim() : "—");
 
 export function speakerSubmissionEmail(s: SpeakerSubmission): SubmissionMail {
   const adminUrl = absolute(`/admin/events/${encodeURIComponent(s.slug)}/speakers`);
+  const reviewIssues = profileReviewIssues(s);
 
   const rows: [string, string][] = [
     ["Name", or(s.fullName)],
@@ -72,6 +74,7 @@ export function speakerSubmissionEmail(s: SpeakerSubmission): SubmissionMail {
     "",
     ...rows.map(([k, v]) => `${k.toUpperCase()}\n${v}\n`),
     s.photoUrl ? `HEADSHOT\n${s.photoUrl}\n` : "HEADSHOT\n—\n",
+    ...(reviewIssues.length ? ["REVIEW CHECKS", ...reviewIssues.map((issue) => `- ${issue}`), ""] : []),
     "Edit or remove any of this on the admin page:",
     adminUrl,
     "",
@@ -103,6 +106,7 @@ export function speakerSubmissionEmail(s: SpeakerSubmission): SubmissionMail {
             : ""
         }
         <tr><td style="padding:0 30px;">
+          ${reviewIssues.length ? `<p style="font-weight:700;">Review checks</p><ul>${reviewIssues.map((issue) => `<li>${esc(issue)}</li>`).join("")}</ul>` : ""}
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows.map(row).join("")}</table>
         </td></tr>
         <tr><td style="padding:20px 30px 26px 30px;">
