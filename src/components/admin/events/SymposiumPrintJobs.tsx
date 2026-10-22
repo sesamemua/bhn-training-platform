@@ -5,6 +5,7 @@ import Image from "next/image";
 import { PRINT_SIGNS } from "@/lib/events/print-signage";
 import { Check, CheckCheck, Copy, Download, FileUp, History, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
+import { PrintRequest } from "./PrintRequest";
 import { ATTENTION_LABELS, attentionItems, incompleteName, type AttentionKind, type BadgeEdit, type PrintAction, type PrintJob, type PrintNameChange, type PrintPerson, type PrintWorkspace } from "@/lib/events/print-jobs";
 
 const API = "/api/admin/symposium-print";
@@ -287,6 +288,7 @@ export function SymposiumPrintJobs() {
           <div><dt className="text-muted">Stock</dt><dd className="mt-1">{job.kind === "badges" ? "Avery 5393 · Letter · 100% actual size" : "Letter · " + job.copies + " copies"}</dd></div>
           <div><dt className="text-muted">Print colleague</dt><dd className="mt-1">{job.assignedTo || "Unassigned"}</dd></div>
         </dl>
+        <PrintRequest key={job.id} jobId={job.id} ready={job.status === "ready"} initialNote={job.notes} />
         {/* The batch's PDF, as it will print — check it before sending it to the printer. */}
         <div className="border border-line bg-elevated/40">
           <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2 text-xs">
