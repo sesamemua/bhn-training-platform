@@ -87,7 +87,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   me?: { id: string; name: string; admin: boolean } | null;
   initialOrder?: SocialOrder | null;
   initialDayOrder?: SocialOrder | null;
-  initialGroup?: "symposium_2026" | "symposium_day" | "venture_connect" | "events";
+  initialGroup?: "symposium_2026" | "symposium_sessions" | "symposium_day" | "venture_connect" | "events";
   reviewMode?: boolean;
   seriesReview?: boolean;
 }) {
@@ -232,7 +232,8 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
 
   const active = posts.filter((post) => !["published", "skipped"].includes(post.status));
   const boardPosts = posts.filter((post) => post.status !== "skipped");
-  const visible = sortSocialPosts(seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : boardPosts.filter((post) => postGroup(post) === group), group === "symposium_day" ? dayLayout.order : layout.order);
+  const sessionPosts = boardPosts.filter((post) => /Structured Networking with Industry Professionals|Interactive Discussion Session/i.test(post.cycleLabel));
+  const visible = sortSocialPosts(seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : group === "symposium_sessions" ? sessionPosts : boardPosts.filter((post) => postGroup(post) === group), group === "symposium_day" ? dayLayout.order : layout.order);
   const ready = visible.filter(canApproveInSeries);
   const chosen = ready.filter((post) => selected.includes(post.id));
   const downloadable = visible.filter((post) => !!post.assetUrl);
@@ -325,7 +326,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       {inputNode}
       {reviewMode || seriesReview ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/admin/workspace/marketing/social?tab=${encodeURIComponent(seriesReview ? "symposium_2026" : posts[0] ? postGroup(posts[0]) : "events")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+        <Link href={`/admin/workspace/marketing/social?tab=${encodeURIComponent(seriesReview ? "symposium_2026" : initialGroup === "symposium_sessions" ? initialGroup : posts[0] ? postGroup(posts[0]) : "events")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
           <ArrowLeft size={16} /> All social posts
         </Link>
         {!seriesReview && posts[0]?.campaign && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review full series</Link>}
@@ -334,6 +335,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
         {([
           ["symposium_2026", "2026 Symposium & Training Week"],
+          ["symposium_sessions", "Networking & discussion"],
           ["symposium_day", "Symposium Day · Oct 29"],
           ["venture_connect", "VentureConnect"],
           ["events", "Events"],
@@ -350,15 +352,16 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
               group === key ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-fg",
             )}
           >
-            {label} <span className="ml-1 text-subtle">{boardPosts.filter((post) => postGroup(post) === key).length}</span>
+            {label} <span className="ml-1 text-subtle">{key === "symposium_sessions" ? sessionPosts.length : boardPosts.filter((post) => postGroup(post) === key).length}</span>
           </button>
         ))}
       </div>
       <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
-        {group === "symposium_day" ? "Symposium Day · October 29" : group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
+        {group === "symposium_sessions" ? "Networking & discussion" : group === "symposium_day" ? "Symposium Day · October 29" : group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
       </h2>
+      {group === "symposium_sessions" && <p className="text-sm text-muted">{visible.filter(post => post.status === "published").length} posted · {visible.filter(post => post.status !== "published").length} remaining</p>}
       {group === "symposium_2026" && visible.length > 0 && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review & approve series</Link>}
-      {group !== "symposium_2026" && group !== "symposium_day" && <p className="text-[14px] text-muted">
+      {group !== "symposium_2026" && group !== "symposium_sessions" && group !== "symposium_day" && <p className="text-[14px] text-muted">
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
@@ -390,11 +393,13 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       </div>}
       {connection && <p role="status" className="text-[13px] text-fg">{connection.ready ? "LinkedIn: BioHubNet Page connected" : connection.error ?? "LinkedIn connection unavailable"}</p>}
       {note && <p role="status" className="text-[13px] text-fg">{note}</p>}
-      {orderUnavailable && (group === "symposium_2026" || seriesReview) && <p role="status" className="text-[13px] text-amber-700">Shared post order is unavailable. Refresh before moving posts.</p>}
+      {orderUnavailable && (group === "symposium_2026" || group === "symposium_sessions" || seriesReview) && <p role="status" className="text-[13px] text-amber-700">Shared post order is unavailable. Refresh before moving posts.</p>}
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
           {group === "events"
             ? "No event posts yet."
+            : group === "symposium_sessions"
+            ? "No networking or discussion posts yet."
             : group === "symposium_day"
             ? "No symposium-day drafts. Create a new post when you're ready."
             : group === "symposium_2026"
@@ -454,6 +459,11 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
                   : "the deadline moved since this was approved"}
               </span>
             )}
+            {["draft", "approved"].includes(p.status) && <div className="ml-auto">
+              <ConfirmPopover message="Mark this post as already posted?" detail="Records a manual post only. Nothing is sent to LinkedIn. Further edits will be locked." confirmLabel="Mark as posted" onConfirm={() => { void act(p.id, "markPublished"); }}>
+                {open => <button type="button" aria-label={`Mark ${p.cycleLabel} as posted`} onClick={open} disabled={!!busy || drafts[p.id]?.pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40"><Check size={14} /> Mark as posted</button>}
+              </ConfirmPopover>
+            </div>}
           </div>
 
           <article className="overflow-hidden rounded-[8px] border border-line-strong bg-card-solid text-fg shadow-sm">
@@ -537,7 +547,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
 
           <footer className="flex flex-col gap-2 px-1 pb-6 pt-1">
             <div className="flex flex-wrap items-center gap-2">
-            {!reviewMode && !seriesReview && <Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(p.id)}`} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-brand-700"><LinkIcon size={16} /> Review</Link>}
+            {!reviewMode && !seriesReview && <Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(p.id)}${group === "symposium_sessions" ? "&tab=symposium_sessions" : ""}`} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-brand-700"><LinkIcon size={16} /> Review</Link>}
             <button type="button" onClick={() => void copyReviewLink(p.id)} title="Copy review link" aria-label={`Copy review link for ${p.cycleLabel}`} className="inline-flex size-10 items-center justify-center rounded-[6px] border border-line text-brand-700 hover:bg-brand-50"><LinkIcon size={16} /></button>
             <button
               type="button"
@@ -587,14 +597,6 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             )}
             {p.status === "approved" && (
               <>
-                <button
-                  type="button"
-                  disabled={busy === p.id || drafts[p.id]?.pending}
-                  onClick={() => void act(p.id, "markPublished")}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-muted hover:bg-elevated disabled:opacity-40"
-                >
-                  <Check size={12} /> Already posted manually
-                </button>
                 <button
                   type="button"
                   disabled={busy === p.id || drafts[p.id]?.pending}

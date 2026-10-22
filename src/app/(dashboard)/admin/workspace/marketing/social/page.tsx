@@ -176,7 +176,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} initialDayOrder={dayOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "symposium_day" ? "symposium_day" : tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} me={me} />
+        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} initialDayOrder={dayOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "symposium_sessions" ? "symposium_sessions" : tab === "symposium_day" ? "symposium_day" : tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} me={me} />
       </div>
     </>
   );

@@ -100,6 +100,29 @@ test("masonry board combines full published, upcoming and scheduled posts withou
   assert.doesNotMatch(scheduled, /Dates are left blank/);
 });
 
+test("networking and discussion tab includes posted highlights and day-of coverage with manual marking", () => {
+  const highlights: QueuePost[] = SYMPOSIUM_CAMPAIGN_PLAN
+    .filter(post => /Structured Networking with Industry Professionals|Interactive Discussion Session/.test(post.title))
+    .map((post, i) => ({ ...example, id: post.slug, campaignSlug: post.slug, cycleLabel: post.title, body: post.body, status: i < 3 ? "published" : "draft", assetUrl: post.assetUrl ?? null }));
+  const dayPosts: QueuePost[] = ["Structured Networking with Industry Professionals", "Interactive Discussion Session"].map((title, i) => ({ ...example, id: `day-${i}`, campaign: false, symposiumDay: true, cycleLabel: title }));
+  const hidden = { ...example, id: "skipped", cycleLabel: "Interactive Discussion Session (skipped)", status: "skipped" };
+  const html = renderToStaticMarkup(createElement(SocialQueue, { initial: [...highlights, ...dayPosts, example, hidden], initialGroup: "symposium_sessions" }));
+  assert.equal((html.match(/<section /g) ?? []).length, 8);
+  assert.match(html, /3 posted · 5 remaining/);
+  assert.doesNotMatch(html, /Day 1 in pictures|Interactive Discussion Session \(skipped\)/);
+  for (const post of highlights) {
+    assert.ok(html.includes(`aria-label="${post.cycleLabel}"`));
+    assert.equal(html.includes(`aria-label="Mark ${post.cycleLabel} as posted"`), post.status === "draft");
+  }
+  assert.match(html, /tab=symposium_sessions/);
+  const review = renderToStaticMarkup(createElement(SocialQueue, { initial: [highlights[3]], initialGroup: "symposium_sessions", reviewMode: true }));
+  assert.match(review, /href="\/admin\/workspace\/marketing\/social\?tab=symposium_sessions"/);
+  for (const status of ["scheduled", "publishing", "published", "skipped"]) {
+    const locked = renderToStaticMarkup(createElement(SocialQueue, { initial: [{ ...example, status }], reviewMode: true }));
+    assert.doesNotMatch(locked, /aria-label="Mark .* as posted"/);
+  }
+});
+
 test("page creates missing drafts once, preserves edits and graphics, and no longer generates speaker posts", async () => {
   const source = readFileSync("src/app/(dashboard)/admin/workspace/marketing/social/page.tsx", "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
@@ -156,6 +179,9 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   assert.equal(creations, SYMPOSIUM_CAMPAIGN_PLAN.length + SYMPOSIUM_DAY_POSTS.length);
   await render();
   assert.equal(creations, SYMPOSIUM_CAMPAIGN_PLAN.length + SYMPOSIUM_DAY_POSTS.length, "revisiting must not duplicate or overwrite drafts");
+  const sessions = renderToStaticMarkup(await render({ tab: "symposium_sessions" }));
+  assert.match(sessions, /Networking &amp; discussion/);
+  assert.doesNotMatch(sessions, /A colleague&#x27;s edited keynote post/);
   assert.equal(saved.get(existingKey), existing);
   for (const post of SYMPOSIUM_CAMPAIGN_PLAN.slice(1, 8)) {
     saved.get(`events:event:${post.slug}:0`)!.assetUrl = "https://images.example/campaign.png";

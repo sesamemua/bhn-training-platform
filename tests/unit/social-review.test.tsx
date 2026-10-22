@@ -76,4 +76,8 @@ test("approval requires an identified admin and exact revision; asset replacemen
     assert.equal((await send({ action: "setAsset", assetUrl: "https://images.example/new.png" })).status, 409);
   }
   assert.equal(writes.length, 2);
+  current = { ...current, status: "draft" };
+  assert.equal((await send({ action: "markPublished" })).status, 200);
+  assert.equal(writes[2].status, "published");
+  assert.ok(writes[2].publishedAt instanceof Date);
 });
