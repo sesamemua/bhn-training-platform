@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import ts from "typescript";
+import { NextRequest } from "next/server";
 
 test("print requests restrict recipients, preserve batches, include notes and deduplicate delivery", async () => {
   let authorized = true, configured = true, activeRecipient = true, jobStatus = "ready", exists = true, failMail = false, failAudit = false;
@@ -81,7 +82,7 @@ test("print requests restrict recipients, preserve batches, include notes and de
   assert.match(mail[0].text, /Please use white stock/);
   assert.match(mail[0].text, /22 copies already included.*Print the PDF once/);
   assert.match(mail[0].text, /Fold each sheet/);
-  assert.match(mail[0].text, new RegExp(`/symposium-2026/print\\?job=${id}`));
+  assert.match(mail[0].text, new RegExp(`/print-job/${id}`));
   assert.match(mail[0].text, /does not mark anything printed/);
   assert.equal(jobStatus, "ready");
   assert.equal(audits.get(input.requestId).actorId, "actor");
@@ -100,24 +101,33 @@ test("print requests restrict recipients, preserve batches, include notes and de
   assert.equal(mail.length, 2);
 });
 
-test("a colleague's selected print batch survives sign-in without accepting arbitrary redirect targets", async () => {
+test("print email links preserve the batch through login and never expose a PDF or accept arbitrary redirect targets", async () => {
   const require = createRequire(import.meta.url);
   const api: Record<string, any> = {};
-  let callback = "";
+  let session: unknown = null;
   const mocks: Record<string, unknown> = {
-    "@/lib/auth": { requireRole: async () => null, deniedRedirect: async (path: string) => { callback = path; return "/login"; } },
-    "next/navigation": { redirect: () => { throw new Error("redirect"); } },
-    "@/components/ui/PageHero": {}, "@/components/workspace/FullWidthWhenCollapsed": {}, "@/components/admin/events/SymposiumPrintJobs": {},
+    "@/lib/auth": { getSession: async () => session },
   };
-  const compiled = ts.transpileModule(readFileSync("src/app/(dashboard)/admin/workspace/symposium-2026/print/page.tsx", "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX },
+  const compiled = ts.transpileModule(readFileSync("src/app/print-job/[id]/route.ts", "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   new Function("require", "exports", compiled)((name: string) => mocks[name] ?? require(name), api);
   const id = "00000000-0000-4000-8000-000000000001";
-  await assert.rejects(api.default({ searchParams: Promise.resolve({ job: id }) }), /redirect/);
-  assert.equal(callback, `/admin/workspace/symposium-2026/print?job=${id}`);
-  for (const job of [undefined, "https://evil.example", [id], "../secret"]) {
-    await assert.rejects(api.default({ searchParams: Promise.resolve({ job }) }), /redirect/);
-    assert.equal(callback, "/admin/workspace/symposium-2026/print");
+  const req = new NextRequest(`https://platform.example.org/print-job/${id}?callbackUrl=https://evil.example`);
+  let response = await api.GET(req, { params: Promise.resolve({ id }) });
+  assert.equal(response.status, 307);
+  const login = new URL(response.headers.get("location")!);
+  assert.equal(login.origin, "https://platform.example.org");
+  assert.equal(login.pathname, "/login");
+  assert.equal(login.searchParams.get("callbackUrl"), `/admin/workspace/symposium-2026/print?job=${id}`);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.equal(response.headers.get("vary"), "Cookie");
+  assert.equal(await response.text(), "");
+  session = { user: { role: "admin" } };
+  response = await api.GET(req, { params: Promise.resolve({ id }) });
+  assert.equal(new URL(response.headers.get("location")!).pathname, "/admin/workspace/symposium-2026/print");
+  assert.equal(new URL(response.headers.get("location")!).searchParams.get("job"), id);
+  for (const bad of ["bad", "https://evil.example", "../secret"]) {
+    assert.equal((await api.GET(req, { params: Promise.resolve({ id: bad }) })).status, 404);
   }
 });

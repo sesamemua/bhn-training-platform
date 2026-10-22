@@ -4,13 +4,9 @@ import { requireRole, deniedRedirect } from "@/lib/auth";
 import { PageHero } from "@/components/ui/PageHero";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { SymposiumPrintJobs } from "@/components/admin/events/SymposiumPrintJobs";
-import { z } from "zod";
 
 export const dynamic = "force-dynamic";
-export default async function SymposiumPrintPage({ searchParams }: { searchParams: Promise<{ job?: string | string[] }> }) {
-  if (!await requireRole("admin").catch(() => null)) {
-    const job = z.string().uuid().safeParse((await searchParams).job);
-    redirect(await deniedRedirect("/admin/workspace/symposium-2026/print" + (job.success ? `?job=${job.data}` : "")));
-  }
+export default async function SymposiumPrintPage() {
+  if (!await requireRole("admin").catch(() => null)) redirect(await deniedRedirect("/admin/workspace/symposium-2026/print"));
   return <><FullWidthWhenCollapsed /><PageHero eyebrow={<><Printer size={12} /> 2026 Symposium</>} title="Print Jobs" /><SymposiumPrintJobs /></>;
 }

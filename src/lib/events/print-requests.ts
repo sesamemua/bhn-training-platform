@@ -55,7 +55,7 @@ export async function requestPrint(input: unknown) {
     if ((error as { code?: string }).code === "P2002") return { error: "This request was already submitted. Check its history before sending another." };
     throw error;
   }
-  const link = `${(process.env.NEXTAUTH_URL ?? "https://bhn-training-platform.vercel.app").replace(/\/$/, "")}/admin/workspace/symposium-2026/print?job=${jobId}`;
+  const link = `${(process.env.NEXTAUTH_URL ?? "https://bhn-training-platform.vercel.app").replace(/\/$/, "")}/print-job/${jobId}`;
   const stock = job.kind === "badges" ? `Avery 5393, Letter, 100% actual size. ${job.badges.length - job.printedIds.length} badges remain unprinted; check the batch before printing.` : `Letter paper, ${job.copies} copies already included in the PDF. Print the PDF once, single-sided, at 100% actual size.`;
   try {
     await sendMail({
