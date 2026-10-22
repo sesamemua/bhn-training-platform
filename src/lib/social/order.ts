@@ -12,6 +12,8 @@ export const DEFAULT_SOCIAL_ORDER = [
   "symposium-2026-networking-2",
   "symposium-2026-networking-3",
   "symposium-2026-networking-4",
+  "symposium-2026-discussion-1",
+  "symposium-2026-discussion-2",
   "symposium-2026-on-the-day-photo-oct29",
   "symposium-2026-week-ahead-oct23",
   "training-week-2026-pandemic-promotion-oct13",
@@ -37,6 +39,8 @@ export function readSocialOrder(value: unknown): string[] {
     ["symposium-2026-networking-2", "symposium-2026-networking-1"],
     ["symposium-2026-networking-3", "symposium-2026-networking-2"],
     ["symposium-2026-networking-4", "symposium-2026-networking-3"],
+    ["symposium-2026-discussion-1", "symposium-2026-networking-4"],
+    ["symposium-2026-discussion-2", "symposium-2026-discussion-1"],
   ]) if (!order.includes(slug)) order.splice(order.indexOf(after) + 1, 0, slug);
   return SocialOrderSchema.parse(order);
 }

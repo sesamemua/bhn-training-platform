@@ -1,4 +1,4 @@
-// Published networking roster checked on October 21, 2026. No public posting is triggered here.
+// Groups 1-3 preserve published copy. Group 4 covers the remaining people checked October 22.
 export const NETWORKING_GROUPS = [
   {
     number: 1,
@@ -37,15 +37,15 @@ export const NETWORKING_GROUPS = [
   },
   {
     number: 4,
-    hook: "Your next step in STEM may be a path you have not considered yet.",
-    invitation: "Explore career choices, leadership and different ways to put a science background to work at Structured Networking with Industry Professionals during BioHubNet's 2026 Annual Symposium.",
+    hook: "Your science background can lead to more than one kind of career.",
+    invitation: "Explore training, entrepreneurship and different ways to put a science background to work at Structured Networking with Industry Professionals during BioHubNet's 2026 Annual Symposium.",
     people: [
-      { name: "Jasmine Hamilton", title: "Senior Advisor", company: "Health Emergency Readiness Canada, Innovation, Science and Economic Development Canada", graphicCompany: "Health Emergency Readiness Canada" },
       { name: "Alex Kamp", title: "Curriculum Development & Partnerships Lead", company: "CATTI", graphicCompany: "CATTI" },
       { name: "Gena Markous", title: "Life Sciences Insurance Advisor", company: "HUB International", graphicCompany: "HUB International" },
       { name: "Melissa E Anders", title: "Founder, Leadership & Career Coach", company: "Melissa E Anders Coaching", graphicCompany: "Melissa E Anders Coaching" },
+      { name: "Morty Soley", title: "Founder", company: "Pulsera Bio", graphicCompany: "Pulsera Bio" },
     ],
-    closing: "From public service and biomanufacturing training to life sciences insurance and STEM career coaching, explore where your experience could lead. Ask about career pivots, leadership and building a career that fits your goals.",
+    closing: "From biomanufacturing training and life sciences insurance to STEM career coaching and building a startup, explore where your experience could lead. Bring your questions about skills, career choices and turning an idea into a venture.",
   },
 ] as const;
 
@@ -55,7 +55,7 @@ export const SYMPOSIUM_NETWORKING_POSTS = NETWORKING_GROUPS.map((group) => ({
   workshopSlug: null,
   suggestedDate: `2026-10-${19 + group.number}T13:00:00Z`,
   sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/networking-${group.number}.png?v=${group.number === 3 ? "20261021-roster15" : "20261020-roster14"}`,
+  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/networking-${group.number}.png?v=${group.number === 4 ? "20261022-remaining" : group.number === 3 ? "20261021-roster15" : "20261020-roster14"}`,
   graphicBrief: `BioHubNet logo, 2026 Annual Symposium, full Structured Networking with Industry Professionals heading. Original circular headshots with no retouching or color changes: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only on the graphic; professional titles in the caption. Spacious layout, subtle glass edge, October 29 | Toronto | Register now. Recheck the current networking lineup before approving.`,
   body: `${group.hook}
 

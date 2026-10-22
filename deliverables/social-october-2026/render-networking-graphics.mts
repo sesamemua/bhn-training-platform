@@ -2,22 +2,24 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { NETWORKING_GROUPS } from "../../src/lib/social/symposium-networking-posts";
+import { DISCUSSION_GROUPS } from "../../src/lib/social/symposium-discussion-posts";
 
 const feed = await (await fetch("https://bhn-training-platform.vercel.app/api/public/events/2026-annual-symposium/people")).json();
-const eligible = feed.people.filter((p: { placements: { sessionId: string }[] }) => p.placements.some((s) => s.sessionId === "networking"));
-assert.deepEqual(
-  NETWORKING_GROUPS.flatMap((g) => g.people.map((p) => p.name)).sort(),
-  eligible.map((p: { fullName: string }) => p.fullName).sort(),
-  "Networking drafts must cover the current published roster exactly once",
-);
+const discussion = process.argv.includes("--discussion");
+const session = discussion ? "discussion" : "networking";
+const groups = discussion ? DISCUSSION_GROUPS : NETWORKING_GROUPS;
+const eligible = feed.people.filter((p: { placements: { sessionId: string }[] }) => p.placements.some((s) => s.sessionId === session));
+const names = groups.flatMap((g) => g.people.map((p) => p.name));
+assert.equal(new Set(names).size, names.length, "Each person may appear only once in the series");
+assert.ok(names.every((name) => eligible.some((p: { fullName: string }) => p.fullName === name)), "Use only currently published session members");
 const output = "public/social/symposium-2026";
 await mkdir(output, { recursive: true });
 await mkdir("deliverables/social-october-2026/networking-originals", { recursive: true });
 const logo = await loadImage(await readFile("public/biohubnet-logo.png"));
 const glass = await loadImage(await readFile("deliverables/social-october-2026/graphics/ai-calm-v1.jpg"));
 const selectedGroup = process.argv.find((arg) => arg.startsWith("--group="))?.slice(8);
-assert.ok(!selectedGroup || NETWORKING_GROUPS.some((group) => String(group.number) === selectedGroup), "Choose an existing networking group");
-for (const group of NETWORKING_GROUPS) {
+assert.ok(!selectedGroup || groups.some((group) => String(group.number) === selectedGroup), "Choose an existing group");
+for (const group of groups) {
   if (selectedGroup && String(group.number) !== selectedGroup) continue;
   const canvas = createCanvas(1200, 1500), ctx = canvas.getContext("2d");
   const bounds: [number, number, number, number, string][] = [];
@@ -47,10 +49,16 @@ for (const group of NETWORKING_GROUPS) {
     return lines;
   }
   text("2026 Annual Symposium", 68, 700, 72, 239, 1056);
-  text("Structured Networking", 72, 700, 72, 353, 1056, "#005e6b");
-  text("with Industry", 72, 700, 72, 433, 1056, "#005e6b");
-  text("Professionals", 72, 700, 72, 513, 1056, "#005e6b");
-  text(`MEET THE PROFESSIONALS  ${group.number}/4`, 32, 700, 72, 587, 1056, "#455b65");
+  if (discussion) {
+    text("Interactive", 72, 700, 72, 353, 1056, "#005e6b");
+    text("Discussion Session", 72, 700, 72, 433, 1056, "#005e6b");
+    if ("theme" in group && group.theme) wrap(group.theme, 1056, 40).forEach((line, index) => text(line, 40, 700, 72, 508 + index * 48, 1056, "#455b65"));
+  } else {
+    text("Structured Networking", 72, 700, 72, 353, 1056, "#005e6b");
+    text("with Industry", 72, 700, 72, 433, 1056, "#005e6b");
+    text("Professionals", 72, 700, 72, 513, 1056, "#005e6b");
+  }
+  text(`MEET THE PROFESSIONALS  ${group.number}/${groups.length}`, 32, 700, 72, 610, 1056, "#455b65");
   const gap = 24, width = (1056 - gap * (group.people.length - 1)) / group.people.length;
   const size = group.people.length === 4 ? 220 : 264;
   for (const [i, person] of group.people.entries()) {
@@ -88,9 +96,10 @@ for (const group of NETWORKING_GROUPS) {
   }
   const png = await canvas.encode("png");
   assert.ok(png.length < 3_000_000);
-  await writeFile(`${output}/networking-${group.number}.png`, png);
+  const name = `${session}-${group.number}`;
+  await writeFile(`${output}/${name}.png`, png);
   const preview = createCanvas(360, 450);
   preview.getContext("2d").drawImage(canvas, 0, 0, 360, 450);
-  await writeFile(`deliverables/social-october-2026/graphics/networking-${group.number}-preview.png`, await preview.encode("png"));
-  console.log(`Networking ${group.number}: ${group.people.length} original headshots; no overlaps; ${png.length} bytes`);
+  await writeFile(`deliverables/social-october-2026/graphics/${name}-preview.png`, await preview.encode("png"));
+  console.log(`${name}: ${group.people.length} original headshots; no overlaps; ${png.length} bytes`);
 }
