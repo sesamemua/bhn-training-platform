@@ -60,6 +60,7 @@ test("compact columns fit current workshop sizes on one page without dropping pe
     assert.equal((html.match(/Participant name/g) ?? []).length, columns);
     assert.equal((html.match(/<td class="initials"><\/td>/g) ?? []).length, count);
     assert.match(html, /Page 1 of 1/);
+    assert.match(html, /height: auto !important; min-height: 0 !important/);
     assert.ok(html.includes(`repeat(${columns}, minmax(0, 1fr))`));
     assert.match(html, new RegExp(`<td class="number">${count}</td>`));
   }

@@ -61,7 +61,7 @@ export function WorkshopSignInSheet({ workshop, sortBy = "first" }: { workshop: 
       .workshop-sign-in footer { margin-top: 10px; font-size: 10px; color: #4a555a; display: flex; justify-content: space-between; gap: 12px; }
       @page { size: letter portrait; margin: 10mm; }
       @media print {
-        html, body { background: white !important; color: #172126 !important; padding: 0 !important; margin: 0 !important; }
+        html, body { background: white !important; color: #172126 !important; padding: 0 !important; margin: 0 !important; height: auto !important; min-height: 0 !important; }
         body > *:not(:has(.workshop-sign-in)):not(.workshop-sign-in) { display: none !important; }
         .workshop-sign-in { padding: 0; background: white; min-height: 0; }
         .workshop-sign-in .controls { display: none; }
