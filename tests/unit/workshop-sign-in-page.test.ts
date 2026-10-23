@@ -13,7 +13,7 @@ const hooks = registerHooks({ resolve(specifier, context, next) {
   return next(specifier, context);
 } });
 const page = import("../../src/app/training-week/sign-in/[id]/page").finally(() => hooks.deregister());
-const params = (id = "cmtestworkshop123") => ({ params: Promise.resolve({ id }) });
+const params = (id = "cmtestworkshop123", sort?: string | string[]) => ({ params: Promise.resolve({ id }), searchParams: Promise.resolve({ sort }) });
 
 test("sign-in sheet requires admin before reading workshop or attendee data", async () => {
   const { default: render } = await page;
@@ -47,4 +47,12 @@ test("reads only this workshop's approved non-withdrawn bookings, newest first f
   }]);
   assert.equal(dynamic, "force-dynamic");
   assert.equal(metadata.robots.index, false);
+});
+
+test("sort choice reaches the sheet, and unrecognised or repeated query values safely default to first name", async () => {
+  const { default: render } = await page;
+  for (const [input, expected] of [["last", "last"], ["first", "first"], ["invalid", "first"], [["last", "first"], "first"]] as const) {
+    const result = await render(params(undefined, Array.isArray(input) ? [...input] : input as string));
+    assert.equal(result.props.sortBy, expected);
+  }
 });

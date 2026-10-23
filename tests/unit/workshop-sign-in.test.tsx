@@ -13,7 +13,7 @@ const workshop: SignInWorkshop = {
   title: "Communication Chameleon", startDateTime: new Date("2026-10-27T13:00:00Z"),
   endDateTime: new Date("2026-10-27T16:00:00Z"), locationName: "Chelsea Hotel", bookings: [],
 };
-const render = (bookings: SignInWorkshop["bookings"]) => renderToStaticMarkup(<WorkshopSignInSheet workshop={{ ...workshop, bookings }} />);
+const render = (bookings: SignInWorkshop["bookings"], sortBy: "first" | "last" = "first") => renderToStaticMarkup(<WorkshopSignInSheet workshop={{ ...workshop, bookings }} sortBy={sortBy} />);
 
 test("approved active attendees only, alphabetized, with blank initials and no private answers", () => {
   const html = render([booking("Zoe Li"), booking("Alice Feng"), booking("Pending", "pending"), booking("Waitlisted", "waitlist"), booking("Declined", "cancelled"), booking("Withdrawn", "confirmed", new Date())]);
@@ -53,15 +53,40 @@ test("duplicate registrations use existing mailbox matching, but equal names wit
   assert.ok(!html.includes("gmail.com"));
 });
 
-test("paginates with repeated workshop and column headings and continuous numbering", () => {
-  const html = render(Array.from({ length: 37 }, (_, i) => booking(`Person ${String(i + 1).padStart(2, "0")}`)));
-  assert.equal((html.match(/<h1>/g) ?? []).length, 3);
-  assert.equal((html.match(/Participant name/g) ?? []).length, 3);
-  assert.equal((html.match(/<td class="initials"><\/td>/g) ?? []).length, 37);
-  assert.match(html, /Page 3 of 3/);
-  assert.match(html, /<td class="number">37<\/td>/);
+test("compact columns fit current workshop sizes on one page without dropping people", () => {
+  for (const [count, columns] of [[12, 1], [30, 1], [31, 2], [60, 2], [61, 3], [85, 3], [90, 3]]) {
+    const html = render(Array.from({ length: count }, (_, i) => booking(`Person ${i + 1}`)));
+    assert.equal((html.match(/<h1>/g) ?? []).length, 1);
+    assert.equal((html.match(/Participant name/g) ?? []).length, columns);
+    assert.equal((html.match(/<td class="initials"><\/td>/g) ?? []).length, count);
+    assert.match(html, /Page 1 of 1/);
+    assert.ok(html.includes(`repeat(${columns}, minmax(0, 1fr))`));
+    assert.match(html, new RegExp(`<td class="number">${count}</td>`));
+  }
+});
+
+test("rosters beyond a readable single page retain all names, headings and continuous numbering", () => {
+  const html = render(Array.from({ length: 91 }, (_, i) => booking(`Person ${i + 1}`)));
+  assert.equal((html.match(/<h1>/g) ?? []).length, 2);
+  assert.equal((html.match(/Participant name/g) ?? []).length, 4);
+  assert.equal((html.match(/<td class="initials"><\/td>/g) ?? []).length, 91);
+  assert.match(html, /Page 2 of 2/);
+  assert.match(html, /<td class="number">91<\/td>/);
   assert.match(html, /break-inside: avoid/);
   assert.match(html, /size: letter portrait/);
+});
+
+test("first and last name sorting are selectable, stable and do not rewrite names", () => {
+  const bookings = [booking("Zoe Adams"), booking("Alice Young"), booking("Dr. Bea Zane"), booking("Reema"),
+    { ...booking("Gregory de Crescenzo"), submission: { email: "greg@example.org", data: { full_name: "Gregory de Crescenzo", last_name: "de Crescenzo" } } },
+  ];
+  const first = render(bookings, "first"), last = render(bookings, "last");
+  const names = (html: string) => [...html.matchAll(/<td>([^<]+)<\/td>/g)].map((m) => m[1]);
+  assert.deepEqual(names(first), ["Alice Young", "Dr. Bea Zane", "Gregory de Crescenzo", "Reema", "Zoe Adams"]);
+  assert.deepEqual(names(last), ["Zoe Adams", "Gregory de Crescenzo", "Reema", "Alice Young", "Dr. Bea Zane"]);
+  assert.match(first, /href="\?sort=first" aria-current="page"/);
+  assert.match(last, /href="\?sort=last" aria-current="page"/);
+  assert.match(last, /Sorted by last name/);
 });
 
 test("empty workshops still have one printable sheet and a clear empty state", () => {

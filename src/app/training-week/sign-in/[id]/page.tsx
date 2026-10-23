@@ -6,7 +6,7 @@ import { WorkshopSignInSheet } from "@/components/training-week/WorkshopSignInSh
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Workshop sign-in sheet | BioHubNet", robots: { index: false, follow: false } };
 
-export default async function WorkshopSignInPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WorkshopSignInPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sort?: string | string[] }> }) {
   if (!await requireRole("admin").catch(() => null)) redirect("/login");
   const { id } = await params;
   if (!/^[a-z0-9]{10,40}$/i.test(id)) notFound();
@@ -27,5 +27,6 @@ export default async function WorkshopSignInPage({ params }: { params: Promise<{
     },
   });
   if (!workshop) notFound();
-  return <WorkshopSignInSheet workshop={workshop} />;
+  const sortBy = (await searchParams).sort === "last" ? "last" : "first";
+  return <WorkshopSignInSheet workshop={workshop} sortBy={sortBy} />;
 }
