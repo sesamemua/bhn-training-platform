@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { Camera, Check, Laptop, Loader2, RotateCcw, Search, Undo2, X } from "lucide-react";
+import { Camera, Check, Laptop, Loader2, Printer, RotateCcw, Search, Undo2, X } from "lucide-react";
 import { VERDICT_COPY, type DoorVerdict } from "@/lib/training-week/check-in";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -182,6 +182,7 @@ export function CheckInDesk({ sessions, initialId }: { sessions: DeskSession[]; 
         </div>
       </div>
 
+      {session && <a href={`/training-week/sign-in/${encodeURIComponent(session.id)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm font-semibold text-fg hover:bg-elevated"><Printer size={15} />Print sign-in sheet</a>}
       {session && room && <RoomBar session={session} room={room} rows={rows} />}
 
       {problem && (

@@ -10,7 +10,7 @@
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ClipboardCopy, Download, Loader2, Mail, Pencil, Plus, Printer, RotateCcw, Save, Star, Trash2, X } from "lucide-react";
 import { downloadText, fileDate } from "@/lib/download";
 import { addHighlight, decideSeats, loadSubmissions, removeHighlight, saveRegistrantViews, sendLettersForBookings } from "@/app/(dashboard)/admin/workspace/training-admin/actions";
 import { RegistrationDetail } from "./RegistrationDetail";
@@ -430,6 +430,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               {workshops.map((w) => <option key={w.id} value={w.id}>{w.title}</option>)}
             </select>
           </label>
+          {draft.filters.workshopIds.length === 1 && <a href={`/training-week/sign-in/${encodeURIComponent(draft.filters.workshopIds[0])}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700"><Printer size={14} />Print sign-in sheet</a>}
           <label className="inline-flex items-center gap-1.5 text-muted">Day
             <select className={SELECT} value={draft.filters.days[0] ?? ""} onChange={(e) => setF({ days: e.target.value ? [e.target.value] : [] })}>
               <option value="">All</option>
@@ -628,7 +629,10 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
                 {g.label} {draft.groupBy !== "workshop" && <span className="text-[11.5px] font-normal text-muted">Total: {g.rows.length}</span>}
               </h4>
             )}
-            {workshop && <WorkshopRegistrationSummary cap={sessionCapacity(workshop.capacity, workshop.bookings)} />}
+            {workshop && <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <WorkshopRegistrationSummary cap={sessionCapacity(workshop.capacity, workshop.bookings)} />
+              <a href={`/training-week/sign-in/${encodeURIComponent(workshop.id)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-fg hover:bg-elevated"><Printer size={14} />Print sign-in sheet</a>
+            </div>}
             {workshop && g.rows.length < workshop.bookings.length && <p className="mb-2 text-[12px] text-muted">Matching results: {g.rows.length}</p>}
             {hasCoordinatorInfo && <p className="mb-2 text-[13px] font-semibold text-fg">Roshni&apos;s Innovation Ignited attendee list</p>}
             <div className="overflow-x-auto rounded-lg border border-line">
