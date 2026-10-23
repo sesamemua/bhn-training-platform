@@ -69,11 +69,11 @@ export function WorkshopRegistrationSummary({ cap, compact = false, workshopSlug
     { label: "Remaining seats", value: cap.remaining, icon: Armchair, tone: "text-cyan-700 dark:text-cyan-400" },
   ];
   return (
-    <dl aria-label={registrationSummary(cap)} className={compact ? "grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,110px),1fr))] gap-x-4 gap-y-1" : "my-2 grid grid-cols-[repeat(auto-fit,minmax(min(100%,136px),1fr))] gap-1.5"}>
+    <dl aria-label={registrationSummary(cap)} tabIndex={0} className="my-2 flex min-w-0 basis-full flex-nowrap items-center gap-x-5 overflow-x-auto py-1 sm:flex-1">
       {metrics.map(({ label, value, icon: Icon, tone }) => (
-        <div key={label} className={compact ? "flex min-h-7 min-w-0 items-baseline justify-between gap-2" : "min-h-[56px] min-w-0 px-2 py-1"} title={label === "Remaining seats" ? "Trainee capacity minus actual approved trainee seats. Staff, guests and recommendations do not use these seats." : undefined}>
-          <dt className="flex items-start gap-1 text-[11px] font-semibold leading-tight text-muted">{!compact && <Icon size={13} className="shrink-0" aria-hidden="true" />}<span>{label}</span></dt>
-          <dd className={`${compact ? "shrink-0 text-[22px]" : "mt-0.5 text-[26px]"} font-bold leading-none tabular-nums ${tone}`}>
+        <div key={label} className="flex min-h-8 shrink-0 items-center gap-1.5" title={label === "Remaining seats" ? "Trainee capacity minus actual approved trainee seats. Staff, guests and recommendations do not use these seats." : undefined}>
+          <dt className="flex items-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-tight text-muted"><Icon size={13} className="shrink-0" aria-hidden="true" /><span>{label}</span></dt>
+          <dd className={`shrink-0 text-[26px] font-bold leading-none tabular-nums ${tone}`}>
             {value}
           </dd>
         </div>
