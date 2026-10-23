@@ -28,7 +28,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
 
   const origin = new URL(req.url).origin;
   const endpoint = `${origin}/api/public/page-review/${encodeURIComponent(token)}`;
-  return new NextResponse(overlaySource(endpoint, review.title, review.id.startsWith("newsletter-")), { headers: HEADERS });
+  return new NextResponse(overlaySource(endpoint, review.title, review.id.startsWith("newsletter-") || review.id.startsWith("training-week-emails-")), { headers: HEADERS });
 }
 
 function inactiveOverlaySource(message: string) {

@@ -50,6 +50,7 @@ import { CateringTab } from "./CateringTab";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TravelTab } from "./TravelTab";
 import { WorkshopSwitches } from "./WorkshopSwitches";
+import { TrainingEmailReview } from "./TrainingEmailReview";
 import type { View } from "@/lib/allocation/registrant-views";
 import type { SentRecord } from "@/lib/allocation/catering-sent";
 
@@ -992,6 +993,7 @@ function EmailSection({ eventId, workshops }: { eventId: string; workshops: Admi
 
   return (
     <div>
+      <TrainingEmailReview eventId={eventId} />
       <div className="mb-4 inline-flex rounded-lg border border-line bg-elevated p-0.5">
         {([["templates", "Standing letters", FileText], ["compose", "Write one now", Mail]] as const).map(([id, text, Icon]) => (
           <button

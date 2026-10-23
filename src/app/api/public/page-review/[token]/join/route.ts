@@ -45,8 +45,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   if (review.status === "closed") {
     return NextResponse.json({ error: "This review is closed." }, { status: 409, headers: CORS });
   }
-  if (review.id.startsWith("newsletter-")) {
-    return NextResponse.json({ error: "Use your signed-in training platform account to review this newsletter." }, { status: 403, headers: CORS });
+  if (review.id.startsWith("newsletter-") || review.id.startsWith("training-week-emails-")) {
+    return NextResponse.json({ error: "Use your signed-in training platform account to join this review." }, { status: 403, headers: CORS });
   }
 
   const body = (await req.json().catch(() => ({}))) as { name?: unknown };
