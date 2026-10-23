@@ -102,10 +102,10 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
      * fill in and cannot submit wastes somebody's ten minutes and then
      * tells them.
      */
-    <div className="mt-6 rounded-2xl border-2 border-line-strong bg-card p-6">
-      <p className="text-[15px] font-semibold text-fg">{stop.title}</p>
-      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{stop.body}</p>
-    </div>
+    <section aria-labelledby="registration-notice-title" className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-6">
+      <h2 id="registration-notice-title" className="text-[22px] font-bold leading-tight text-fg">{stop.title}</h2>
+      <p className="mt-2 text-[16px] font-semibold leading-relaxed text-fg">{stop.body}</p>
+    </section>
   );
 
   if (site) {

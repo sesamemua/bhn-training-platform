@@ -44,8 +44,11 @@ test("paused promises to come back; closed does not; open says nothing at all", 
   assert.match(paused.body, /reopen/i);
 
   const closed = publicNotice("closed")!;
-  assert.match(closed.title, /closed/i);
+  assert.deepEqual(closed, {
+    title: "Registration is closed",
+    body: "Training Week registration has closed.",
+  });
   assert.doesNotMatch(closed.body, /reopen|come back/i, "a promise nobody meant is worse than a plain closed");
-  // Both leave a way to reach a human.
-  for (const notice of [paused, closed]) assert.match(notice.body, /BioHubNet team/);
+  assert.doesNotMatch(closed.body, /email|think it should|look into it/i);
+  assert.match(paused.body, /BioHubNet team/);
 });

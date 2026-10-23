@@ -82,9 +82,7 @@ export function publicNotice(state: RegistrationState): { title: string; body: s
   }
   return {
     title: "Registration is closed",
-    body:
-      "Training Week registration has closed. " +
-      "If you think it should still be open, email the BioHubNet team and they will look into it.",
+    body: "Training Week registration has closed.",
   };
 }
 
