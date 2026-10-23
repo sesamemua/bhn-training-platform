@@ -4,8 +4,10 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { WorkshopSignInSheet, type SignInWorkshop } from "../../src/components/training-week/WorkshopSignInSheet";
 
+let sequence = 0;
 const booking = (name: string, status = "confirmed", withdrawnAt: Date | null = null) => ({
-  status, withdrawnAt, submission: { data: { full_name: name, trainee_email: "private@example.org", dietary: "PRIVATE DIET" } }, user: null,
+  id: `booking-${++sequence}`, submissionId: null, userId: null,
+  status, withdrawnAt, submission: { email: null, data: { full_name: name, trainee_email: `private-${sequence}@example.org`, dietary: "PRIVATE DIET" } }, user: null,
 });
 const workshop: SignInWorkshop = {
   title: "Communication Chameleon", startDateTime: new Date("2026-10-27T13:00:00Z"),
@@ -27,13 +29,28 @@ test("approved active attendees only, alphabetized, with blank initials and no p
 test("supports manual names without email, accented names, older forms and account fallbacks", () => {
   const html = render([
     booking("Élodie Roy"),
-    { ...booking(""), submission: { data: { first_name: "Andrea", last_name: "Leung" } } },
-    { ...booking(""), submission: null, user: { name: "Account Name" } },
+    { ...booking(""), submission: { email: null, data: { first_name: "Andrea", last_name: "Leung" } } },
+    { ...booking(""), submission: null, user: { name: "Account Name", email: "account@example.org" } },
     { ...booking(""), submission: null, user: null },
     booking("<script>alert('x')</script>"),
   ]);
   for (const name of ["Élodie Roy", "Andrea Leung", "Account Name", "Name not provided"]) assert.ok(html.includes(name));
   assert.ok(!html.includes("<script>"));
+});
+
+test("duplicate registrations use existing mailbox matching, but equal names with different identities stay separate", () => {
+  const latest = { ...booking("Updated Name"), submission: { email: "Jane.Doe+event@gmail.com", data: { full_name: "Updated Name" } } };
+  const older = { ...booking("Old Name"), submission: { email: "janedoe@googlemail.com", data: { full_name: "Old Name" } } };
+  const html = render([latest, older, booking("Same Name"), booking("Same Name"),
+    { ...booking("No Email"), submission: { email: null, data: { full_name: "No Email" } } },
+    { ...booking("No Email"), submission: { email: null, data: { full_name: "No Email" } } },
+  ]);
+  assert.match(html, /Updated Name/);
+  assert.ok(!html.includes("Old Name"));
+  assert.equal((html.match(/>Same Name<\/td>/g) ?? []).length, 2);
+  assert.equal((html.match(/>No Email<\/td>/g) ?? []).length, 2);
+  assert.match(html, /5 approved attendees/);
+  assert.ok(!html.includes("gmail.com"));
 });
 
 test("paginates with repeated workshop and column headings and continuous numbering", () => {

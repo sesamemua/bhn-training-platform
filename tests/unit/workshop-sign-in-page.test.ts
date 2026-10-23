@@ -29,7 +29,7 @@ test("invalid and missing workshops return not found, never a blank unscoped ros
   await assert.rejects(render(params()), /404/);
 });
 
-test("reads only this workshop's approved non-withdrawn bookings, never writes or selects contact details", async () => {
+test("reads only this workshop's approved non-withdrawn bookings, newest first for identity matching, without writes", async () => {
   const { default: render, dynamic, metadata } = await page;
   globals.signInQueries = [];
   globals.signInWorkshop = { title: "Workshop", bookings: [] };
@@ -39,8 +39,9 @@ test("reads only this workshop's approved non-withdrawn bookings, never writes o
     where: { id: "cmtestworkshop123" },
     select: {
       title: true, startDateTime: true, endDateTime: true, locationName: true,
-      bookings: { where: { status: "confirmed", withdrawnAt: null }, select: {
-        status: true, withdrawnAt: true, submission: { select: { data: true } }, user: { select: { name: true } },
+      bookings: { where: { status: "confirmed", withdrawnAt: null }, orderBy: { bookedAt: "desc" }, select: {
+        id: true, submissionId: true, userId: true,
+        status: true, withdrawnAt: true, submission: { select: { data: true, email: true } }, user: { select: { name: true, email: true } },
       } },
     },
   }]);

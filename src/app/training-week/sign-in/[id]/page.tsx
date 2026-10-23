@@ -16,10 +16,12 @@ export default async function WorkshopSignInPage({ params }: { params: Promise<{
       title: true, startDateTime: true, endDateTime: true, locationName: true,
       bookings: {
         where: { status: "confirmed", withdrawnAt: null },
+        orderBy: { bookedAt: "desc" },
         select: {
+          id: true, submissionId: true, userId: true,
           status: true, withdrawnAt: true,
-          submission: { select: { data: true } },
-          user: { select: { name: true } },
+          submission: { select: { data: true, email: true } },
+          user: { select: { name: true, email: true } },
         },
       },
     },
