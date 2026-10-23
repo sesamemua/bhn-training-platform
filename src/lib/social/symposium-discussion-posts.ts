@@ -29,8 +29,8 @@ export const SYMPOSIUM_DISCUSSION_POSTS = DISCUSSION_GROUPS.map((group) => ({
   workshopSlug: null,
   suggestedDate: "2026-10-23T13:00:00Z",
   sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/discussion-${group.number}.png?v=20261022`,
-  graphicBrief: `BioHubNet logo, large 2026 Annual Symposium and Interactive Discussion Session headings. Unretouched original rounded headshots: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only; titles stay in the caption. Spacious white layout with a restrained glass edge. October 29 | Toronto | Register by October 23. ${group.theme ? `Approved topic: ${group.theme}.` : "Do not invent a table topic."} People already featured in published posts are excluded.`,
+  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/discussion-${group.number}.png?v=20261022-no-registration-cta`,
+  graphicBrief: `BioHubNet logo, large 2026 Annual Symposium and Interactive Discussion Session headings. Unretouched original rounded headshots: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only; titles stay in the caption. Spacious white layout with a restrained glass edge. October 29 | Toronto. Registration is closed; no registration CTA. ${group.theme ? `Approved topic: ${group.theme}.` : "Do not invent a table topic."} People already featured in published posts are excluded.`,
   body: `${group.hook}
 
 Join the Interactive Discussion Session at BioHubNet's 2026 Annual Symposium.
@@ -43,9 +43,8 @@ ${group.closing}
 October 29, 2026 | Chelsea Hotel, Toronto
 Interactive discussion: 3:30-4:45 p.m. ET
 This session runs concurrently with Structured Networking with Industry Professionals; plan to attend one, not both.
-Registration closes October 23.
 
-Explore the program and register:
+Symposium program:
 https://biohubnet.ca/2026-annual-symposium/
 
 #BioHubNet #LifeSciences #Biomanufacturing #Networking`,

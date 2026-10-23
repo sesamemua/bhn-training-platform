@@ -19,7 +19,11 @@ test("networking series retains published groups and features remaining people w
     assert.ok(body.length < 2000);
     assert.match(body, /Structured Networking with Industry Professionals/);
     assert.match(body, /3:30-4:45 p\.m\. ET/);
-    assert.match(body, /Registration closes October 23/);
+    if (post.slug.endsWith("-4")) {
+      assert.doesNotMatch(body, /register|registration closes/i);
+      assert.doesNotMatch(post.graphicBrief, /Register now|Register by/);
+      assert.match(body, /Symposium program:/);
+    } else assert.match(body, /Registration closes October 23/);
     assert.match(body, /@BioHubNet/);
     assert.doesNotMatch(body, /luma\.com|guaranteed|full biography/i);
     assert.ok(existsSync(`public/social/symposium-2026/networking-${NETWORKING_GROUPS[SYMPOSIUM_NETWORKING_POSTS.indexOf(post)].number}.png`));

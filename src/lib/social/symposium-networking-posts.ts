@@ -55,8 +55,8 @@ export const SYMPOSIUM_NETWORKING_POSTS = NETWORKING_GROUPS.map((group) => ({
   workshopSlug: null,
   suggestedDate: `2026-10-${19 + group.number}T13:00:00Z`,
   sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/networking-${group.number}.png?v=${group.number === 4 ? "20261022-remaining" : group.number === 3 ? "20261021-roster15" : "20261020-roster14"}`,
-  graphicBrief: `BioHubNet logo, 2026 Annual Symposium, full Structured Networking with Industry Professionals heading. Original circular headshots with no retouching or color changes: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only on the graphic; professional titles in the caption. Spacious layout, subtle glass edge, October 29 | Toronto | Register now. Recheck the current networking lineup before approving.`,
+  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/networking-${group.number}.png?v=${group.number === 4 ? "20261022-no-registration-cta" : group.number === 3 ? "20261021-roster15" : "20261020-roster14"}`,
+  graphicBrief: `BioHubNet logo, 2026 Annual Symposium, full Structured Networking with Industry Professionals heading. Original circular headshots with no retouching or color changes: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only on the graphic; professional titles in the caption. Spacious layout, subtle glass edge, October 29 | Toronto${group.number === 4 ? ". Registration is closed; no registration CTA." : " | Register now."} Recheck the current networking lineup before approving.`,
   body: `${group.hook}
 
 ${group.invitation}
@@ -68,9 +68,8 @@ ${group.closing}
 
 October 29, 2026 | Chelsea Hotel, Toronto
 Structured networking: 3:30-4:45 p.m. ET
-Registration closes October 23.
-
-Explore the program and register:
+${group.number === 4 ? "" : "Registration closes October 23.\n"}
+${group.number === 4 ? "Symposium program:" : "Explore the program and register:"}
 https://biohubnet.ca/2026-annual-symposium/
 
 #BioHubNet #LifeSciences #CareerDevelopment #Networking`,

@@ -17,7 +17,9 @@ test("remaining session drafts cover nine people once and exclude people already
     assert.ok(text.length < 2500);
     assert.match(text, /Interactive Discussion Session/);
     assert.match(text, /concurrently/);
-    assert.match(text, /Registration closes October 23/);
+    assert.doesNotMatch(text, /register|registration closes/i);
+    assert.doesNotMatch(post.graphicBrief, /Register now|Register by/);
+    assert.match(text, /Symposium program:/);
     assert.match(text, /@BioHubNet/);
     assert.doesNotMatch(text, /luma\.com|guaranteed|full biography/i);
   }

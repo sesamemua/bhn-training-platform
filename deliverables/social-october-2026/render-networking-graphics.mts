@@ -88,8 +88,10 @@ for (const group of groups) {
   }
   text("October 29 | Chelsea Hotel, Toronto", 40, 700, 72, 1300, 1056);
   text("3:30-4:45 p.m. ET", 36, 400, 72, 1354, 1056, "#455b65");
-  ctx.fillStyle = "#005e6b"; ctx.fillRect(0, 1412, 1200, 88);
-  text("Register by October 23", 42, 700, 72, 1470, 1056, "#ffffff");
+  if (!discussion && group.number < 4) {
+    ctx.fillStyle = "#005e6b"; ctx.fillRect(0, 1412, 1200, 88);
+    text("Register by October 23", 42, 700, 72, 1470, 1056, "#ffffff");
+  }
   for (let i = 0; i < bounds.length; i++) for (let j = i + 1; j < bounds.length; j++) {
     const [x, y, w, h, label] = bounds[i], [xx, yy, ww, hh, other] = bounds[j];
     assert.ok(!(x < xx + ww && x + w > xx && y < yy + hh && y + h > yy), `${label} overlaps ${other}`);
