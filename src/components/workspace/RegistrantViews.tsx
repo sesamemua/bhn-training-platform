@@ -430,7 +430,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
               {workshops.map((w) => <option key={w.id} value={w.id}>{w.title}</option>)}
             </select>
           </label>
-          {draft.filters.workshopIds.length === 1 && <a href={`/training-week/sign-in/${encodeURIComponent(draft.filters.workshopIds[0])}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700"><Printer size={14} />Print sign-in sheet</a>}
+          {draft.groupBy !== "workshop" && draft.filters.workshopIds.length === 1 && <a href={`/training-week/sign-in/${encodeURIComponent(draft.filters.workshopIds[0])}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700"><Printer size={14} />Print sign-in sheet</a>}
           <label className="inline-flex items-center gap-1.5 text-muted">Day
             <select className={SELECT} value={draft.filters.days[0] ?? ""} onChange={(e) => setF({ days: e.target.value ? [e.target.value] : [] })}>
               <option value="">All</option>

@@ -45,7 +45,7 @@ export function WorkshopSignInSheet({ workshop }: { workshop: SignInWorkshop }) 
       .workshop-sign-in table { width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed; }
       .workshop-sign-in th { text-align: left; font-size: 12px; padding: 8px; border-bottom: 2px solid #263a42; }
       .workshop-sign-in td { padding: 9px 8px; font-size: 16px; line-height: 1.4; border-bottom: 1px solid #bbc3c6; height: 40px; }
-      .workshop-sign-in .number { width: 38px; color: #4a555a; }
+      .workshop-sign-in .number { width: 38px; color: #4a555a; white-space: nowrap; }
       .workshop-sign-in .initials { width: 110px; border-left: 1px solid #bbc3c6; }
       .workshop-sign-in footer { margin-top: 16px; font-size: 11px; color: #4a555a; display: flex; justify-content: space-between; gap: 12px; }
       @page { size: letter portrait; margin: 12mm; }
@@ -62,7 +62,7 @@ export function WorkshopSignInSheet({ workshop }: { workshop: SignInWorkshop }) 
       @media screen and (max-width: 480px) {
         .workshop-sign-in .sheet { padding: 18px 12px; }
         .workshop-sign-in .initials { width: 78px; }
-        .workshop-sign-in .number { width: 30px; }
+        .workshop-sign-in .number { width: 40px; }
       }
     `}</style>
     <nav className="controls" aria-label="Sign-in sheet controls">
