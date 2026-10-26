@@ -540,7 +540,7 @@ const workspaceSymposiumRegistrationPilotItem: NavItem = {
   href: "/admin/workspace/symposium-2026/registration-pilot",
   icon: ClipboardList,
   minRole: "admin",
-  description: "Admin-only preview of symposium registration using the existing Luma checkout.",
+  description: "Native symposium registration pilot with direct Stripe payments; account connection required.",
 };
 
 // WORKSPACE → 2026 Symposium → AV. Three Livecast documents compared:

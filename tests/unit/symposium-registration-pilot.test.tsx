@@ -14,6 +14,9 @@ test("native pilot removes all Luma embeds, checkout links and guest-sync depend
   assert.doesNotMatch(html, /<iframe|<script|luma\.com|lu\.ma|Sync Luma|Guest list &amp; badges/);
   const source = readFileSync(new URL("../../src/components/admin/events/SymposiumRegistrationPilot.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /print-luma|SYMPOSIUM_LUMA_ID|checkoutUrl|searchParams/);
+  const sidebar = readFileSync(new URL("../../src/components/lms/Sidebar.tsx", import.meta.url), "utf8");
+  assert.match(sidebar, /Native symposium registration pilot with direct Stripe payments/);
+  assert.doesNotMatch(sidebar, /symposium registration using the existing Luma checkout/);
 });
 
 test("missing credentials are explicit and no registration or payment can be submitted", () => {
