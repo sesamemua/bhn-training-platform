@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { BadgePreview } from "./BadgePreview";
+import { BADGE_DESIGN } from "@/lib/events/badge-layout";
 import { PRINT_SIGNS } from "@/lib/events/print-signage";
 import { Check, CheckCheck, Copy, Download, FileUp, History, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
@@ -236,14 +237,9 @@ export function SymposiumPrintJobs() {
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!editing.badge.singleName} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, singleName: e.target.checked } })} /> Confirmed single-name attendee</label>
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={editing.badge.reviewed} onChange={e => setEditing({ ...editing, badge: { ...editing.badge, reviewed: e.target.checked } })} /> Name and organization checked</label>
             <button type="submit" className={PRIMARY} disabled={busy}><Save size={14} /> Save badge</button>
-            <div className="aspect-[4/3] overflow-hidden border border-line bg-white p-4 text-center text-black">
-              <Image src="/biohubnet-logo.png" alt="BioHubNet" width={140} height={40} unoptimized className="mx-auto mb-5 h-8 max-w-[140px] object-contain" />
-              <p className="break-words text-xl font-semibold leading-tight">{editing.badge.name || "Full name"}</p>
-              {editing.badge.position && <p className="mt-2 break-words text-[11.5px] text-neutral-600">{editing.badge.position}</p>}
-              <p className={(editing.badge.position ? "mt-1" : "mt-3") + " break-words text-[13px]"}>{editing.badge.organization}</p>
-              <p className="mt-2 whitespace-pre-line break-words text-[12px] text-teal-800">{editing.badge.extra}</p>
-            </div>
-          </form> : <div className="border-b border-line pb-3"><h2 className="text-sm font-semibold">Avery 5393</h2><p className="mt-1 text-xs text-muted">4 × 3 inches · 6 per Letter sheet · Draft layout</p></div>}
+            <BadgePreview badge={editing.badge} />
+            <p className="text-xs text-muted">Avery 5393 · {BADGE_DESIGN}</p>
+          </form> : <div className="border-b border-line pb-3"><h2 className="text-sm font-semibold">Avery 5393</h2><p className="mt-1 text-xs text-muted">4 × 3 inches · 6 per Letter sheet · {BADGE_DESIGN}</p></div>}
           {batchControls}
         </aside>
       </div>

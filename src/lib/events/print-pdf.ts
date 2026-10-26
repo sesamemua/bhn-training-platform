@@ -3,6 +3,7 @@ import path from "node:path";
 import { jsPDF } from "jspdf";
 import { PDFDocument, degrees } from "pdf-lib";
 import type { PrintBoard, PrintJob } from "./print-jobs";
+import { badgeLayout } from "./badge-layout";
 
 // Avery 5393: Letter, two columns of 4 x 3 inches; 1-inch top and 1/4-inch side margins.
 export const AVERY_5393 = { width: 288, height: 216, left: 18, top: 72, perSheet: 6, pageWidth: 612, pageHeight: 792 };
@@ -52,28 +53,41 @@ export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?:
   const { doc, logo } = await document();
   doc.setProperties({ title: job.label, author: "BioHubNet", subject: `2026 Annual Symposium - ${job.kind}` });
   if (job.kind === "badges") {
+    for (const style of ["Regular", "Bold"] as const) {
+      const bytes = await readFile(path.join(process.cwd(), `public/print/InstrumentSans-${style}.ttf`));
+      doc.addFileToVFS(`InstrumentSans-${style}.ttf`, bytes.toString("base64"));
+      doc.addFont(`InstrumentSans-${style}.ttf`, "InstrumentSans", style === "Bold" ? "bold" : "normal");
+    }
     for (const [index, badge] of job.badges.entries()) {
       const pos = badgePosition(index, job);
       while (doc.getNumberOfPages() <= pos.page) doc.addPage();
       doc.setPage(pos.page + 1);
       const { x, y } = pos;
-      const properties = doc.getImageProperties(logo);
-      doc.addImage(logo, "PNG", x + 96, y + 14, 96, 96 * properties.height / properties.width);
-      doc.setTextColor(25, 34, 40);
-      // Name, then the position just above the organization, then the organization.
-      fitted(doc, badge.name, x + 16, y + 58, 256, 62, 28, 16);
-      doc.setTextColor(60, 74, 80);
-      if (badge.position) fitted(doc, badge.position, x + 18, y + 122, 252, 18, 11, 8);
-      fitted(doc, badge.organization, x + 18, y + (badge.position ? 142 : 135), 252, badge.position ? 32 : 37, 13, 9);
-      doc.setTextColor(36, 100, 108);
-      fitted(doc, badge.extra, x + 18, y + 178, 252, 24, 12, 9);
-      doc.setFontSize(7); doc.setTextColor(70, 80, 86);
-      doc.text("2026 Annual Symposium", x + 144, y + 209, { align: "center" });
+      for (const line of badgeLayout(badge)) {
+        doc.setFont(line.font === "fallback" ? "NotoSans" : "InstrumentSans", line.font === "bold" ? "bold" : "normal");
+        doc.setFontSize(line.size); doc.setTextColor(line.color);
+        doc.text(line.text, x + line.x, y + line.y);
+      }
     }
+    doc.setFont("NotoSans", "normal");
     for (let page = 1; page <= doc.getNumberOfPages(); page++) {
       doc.setPage(page); doc.setFontSize(7); doc.setTextColor(90);
       doc.text(`Avery 5393 | Letter | Actual size 100% | ${job.label} | ${page}/${doc.getNumberOfPages()}`, 18, 772);
     }
+    const output = await PDFDocument.create();
+    output.setTitle(job.label); output.setAuthor("BioHubNet"); output.setSubject("2026 Annual Symposium - badges - v18");
+    const [background] = await output.embedPdf(await readFile(path.join(process.cwd(), "public/print/badge-v18-background.pdf")));
+    const textDocument = await PDFDocument.load(doc.output("arraybuffer"));
+    const textPages = await output.embedPdf(textDocument, textDocument.getPageIndices());
+    for (const [pageIndex, textPage] of textPages.entries()) {
+      const page = output.addPage([612, 792]);
+      for (const index of job.badges.keys()) {
+        const pos = badgePosition(index, job);
+        if (pos.page === pageIndex) page.drawPage(background, { x: pos.x, y: 792 - pos.y - 216, width: 288, height: 216 });
+      }
+      page.drawPage(textPage);
+    }
+    return output.save();
   } else if (job.kind === "tents") {
     const title = job.tentStyle ? (job.tentStyle === "table-reserved" ? "TABLE\nRESERVED" : "SEAT\nRESERVED") : board.tentText || "BioHubNet\n2026 Annual Symposium";
     const properties = doc.getImageProperties(logo);

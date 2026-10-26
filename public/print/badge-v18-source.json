@@ -1,0 +1,12 @@
+{
+  "design": "Approved v18, 23 October 2026",
+  "sourceSha256": "c464acf9080490e111974162231ce14e6360ba3e09534b111ba9cc570802e418",
+  "bhnShiftLeftMm": 1,
+  "badgePoints": [
+    288,
+    216
+  ],
+  "originalLogoPixelsPreserved": true,
+  "backgroundHasText": false,
+  "footerRemainsVector": true
+}
