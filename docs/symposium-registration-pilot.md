@@ -1,18 +1,18 @@
-# Symposium registration pilot
+# Native symposium registration pilot
 
-- Admin preview: `/admin/workspace/symposium-2026/registration-pilot`, under **2026 Symposium**.
-- Uses the real official inline Luma registration embed, not sample data or a payment sandbox.
-- Existing event: `evt-az4yQOZR33DBiid` / `https://luma.com/wh30nh1n`.
-- Verified the embed URL and `allow="fullscreen; payment"` on the event's **More > Embed Event Page** screen on October 26, 2026. The host screen showed registration closed; nothing was reopened.
-- All attendee form fields and payment entry are inside Luma's embed on the platform. There is no second local form, Registration row or charge. Luma controls prices, coupons, approval, receipts, capacity and registration windows.
-- Uses the existing campaign sanitizer to forward allowlisted attribution in the iframe URL, with `training-platform-pilot` as the default source. Never forwards arbitrary query parameters, email addresses, tokens or coupon/unlock codes.
-- No page view, redirect or browser message is recorded as a completed registration/payment. Luma is the authoritative record. Existing platform Luma guest/badge sync is unchanged; the existing host session can expire and needs renewing when reported by Print Jobs.
-- No new provider installation, billing account, secret, migration or public registration link. Existing Stripe helpers are deliberately not used: a Luma-connected payment account is not assumed to be a platform-owned Stripe integration.
+User clarified on October 26, 2026: **do not use Luma for registration or checkout; reuse only its underlying payment provider/account.** The earlier Luma embed has been removed.
 
-## Before public launch
+- Admin route: `/admin/workspace/symposium-2026/registration-pilot`.
+- Luma uses Stripe. Direct access to that existing merchant account must be established separately; a Luma event-host session is not a Stripe API credential.
+- The production Vercel environment currently has neither `STRIPE_SECRET_KEY` nor `STRIPE_WEBHOOK_SECRET`. The admin page reports presence only, never claims a verified connection or enables checkout merely because a key exists.
+- The current Luma login manages the symposium, but its calendar is owned by the event creator. Only the current login's separate Personal calendar appeared under My Calendars. The existing Stripe account owner needs to sign in or provide properly scoped access. Do not create a duplicate account, change payouts, unlink Luma or disturb past paid registrations.
+- Pilot is inactive; no registration form, Luma iframe, payment button, charge or guest-list sync runs from it. Existing historical Luma badge/guest functionality is unchanged.
 
-Explicit approval is required to replace public registration links or reopen registration. Decide whether this pilot targets the current symposium or a separate future/test event. A live end-to-end payment, approval and receipt test has not been performed against the closed event. Do not create a real charge merely to test this preview.
+## Required before implementation and activation
 
-The embedded form belongs to Luma; it cannot be restyled or given custom platform validation. Apple Pay requires hosted Luma checkout rather than an embed. If a fully platform-owned form/payment flow is required, that is a separate merchant/API integration, not an assumed reuse of Luma's credentials. Do not build payment calls against the host-session/private API.
+1. Sign into the Stripe account already used for symposium payments and verify the merchant identity/account ID. If Luma-created account restrictions prevent independent API access, resolve with Stripe support; do not assume the account is portable.
+2. Connect that account directly and securely configure test-mode credentials and a signed webhook endpoint. Never paste keys into chat or send them to the client.
+3. Reuse and audit existing native registration, ticketing, Stripe helper and webhook code before enabling the pilot. The current paid checkout code is not launch approval: registration-window enforcement, payment/free-registration bypasses, capacity races, replay/idempotency, required answers, approval/capture behavior and payment verification need focused checks.
+4. Test a separate pilot event in Stripe test mode, including failure/cancellation/retry, signed webhook confirmation and attendee records. No public launch or real charge without approval.
 
-Official reference: https://help.luma.com/p/embed-luma-on-your-website
+Official provider reference: https://help.luma.com/p/how-to-set-up-your-stripe-account

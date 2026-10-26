@@ -4,46 +4,41 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SymposiumRegistrationPilot } from "../../src/components/admin/events/SymposiumRegistrationPilot";
-import { SYMPOSIUM_LUMA_ID } from "../../src/lib/events/print-luma";
 
-const render = (searchParams = {}) => renderToStaticMarkup(createElement(SymposiumRegistrationPilot, { searchParams }));
+const render = (credentialsPresent = false, webhookPresent = false) => renderToStaticMarkup(createElement(SymposiumRegistrationPilot, { credentialsPresent, webhookPresent }));
 
-test("pilot uses the actual symposium Luma embed with payment permission and an accessible title", () => {
+test("native pilot removes all Luma embeds, checkout links and guest-sync dependencies", () => {
   const html = render();
-  assert.ok(html.includes(`https://luma.com/embed/event/${SYMPOSIUM_LUMA_ID}/simple?utm_source=training-platform-pilot`));
-  assert.match(html, /title="BioHubNet Annual Symposium registration and payment"/);
-  assert.match(html, /allow="fullscreen; payment"/);
-  assert.match(html, /width="100%"/);
-  assert.match(html, /not a payment sandbox/);
-  assert.match(html, /does not reopen registration/);
-  assert.match(html, /href="\/admin\/workspace\/symposium-2026\/print"/);
-  assert.doesNotMatch(html, /<form|<input|<script|\/api\/events\/|session-key|sk_live_/);
+  assert.match(html, /Direct Stripe connection required/);
+  assert.match(html, /href="https:\/\/dashboard.stripe.com\/"/);
+  assert.doesNotMatch(html, /<iframe|<script|luma\.com|lu\.ma|Sync Luma|Guest list &amp; badges/);
+  const source = readFileSync(new URL("../../src/components/admin/events/SymposiumRegistrationPilot.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /print-luma|SYMPOSIUM_LUMA_ID|checkoutUrl|searchParams/);
 });
 
-test("campaign values survive the embedded checkout without passing private or checkout-control parameters", () => {
-  const html = render({
-    utm_source: ["newsletter", "ignored"], utm_campaign: "symposium & training", gclid: "click-123",
-    email: "private@example.org", token: "secret", coupon: "unlock", event_id: "evt-other", redirect: "https://example.org",
-  });
-  const url = new URL(html.match(/<iframe[^>]+src="([^"]+)"/)![1].replaceAll("&amp;", "&"));
-  assert.equal(url.origin, "https://luma.com");
-  assert.equal(url.pathname, `/embed/event/${SYMPOSIUM_LUMA_ID}/simple`);
-  assert.deepEqual(Object.fromEntries(url.searchParams), { utm_source: "newsletter", utm_campaign: "symposium & training", gclid: "click-123" });
-  assert.doesNotMatch(html, /private@example.org|secret|evt-other|example.org|unlock/);
-});
-
-test("pilot does not claim a checkout visit is a completed registration or successful payment", () => {
+test("missing credentials are explicit and no registration or payment can be submitted", () => {
   const html = render();
-  assert.match(html, /not proof of payment/);
-  assert.match(html, /does not register anyone/);
-  assert.doesNotMatch(html, /gtag\(|dataLayer|payment_status|registration_complete|checkout\.sessions/);
+  assert.equal((html.match(/Not configured/g) ?? []).length, 2);
+  assert.match(html, /Payments and registration remain disabled/);
+  assert.doesNotMatch(html, /<form|<input|<button|\/api\/events\/|sk_live_|whsec_/);
 });
 
-test("pilot route remains admin protected, non-indexable and independent from public registration", () => {
+test("credential presence is never presented as a verified connection or enabled checkout", () => {
+  for (const flags of [[true, false], [false, true], [true, true]]) {
+    const html = render(...flags);
+    assert.match(html, /Admin-only pilot · Inactive/);
+    assert.match(html, /not yet verified/);
+    assert.doesNotMatch(html, /<form|<button|checkout.session|gtag\(|dataLayer/);
+  }
+});
+
+test("pilot route remains admin protected, non-indexable and only passes credential-presence booleans", () => {
   const route = readFileSync(new URL("../../src/app/(dashboard)/admin/workspace/symposium-2026/registration-pilot/page.tsx", import.meta.url), "utf8");
   assert.match(route, /requireRole\("admin"\)/);
   assert.ok(route.indexOf('requireRole("admin")') < route.indexOf("<SymposiumRegistrationPilot"));
   assert.match(route, /deniedRedirect\(/);
   assert.match(route, /index: false, follow: false/);
-  assert.doesNotMatch(route, /prisma\.|\.create\(|\.update\(/);
+  assert.match(route, /credentialsPresent=\{stripeConfigured\(\)\}/);
+  assert.match(route, /webhookPresent=\{Boolean\(process.env.STRIPE_WEBHOOK_SECRET\)\}/);
+  assert.doesNotMatch(route, /prisma\.|\.create\(|\.update\(|searchParams|LUMA_SESSION_KEY/);
 });
