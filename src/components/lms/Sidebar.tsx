@@ -535,6 +535,14 @@ const workspacePrintItem: NavItem = {
   description: "Name badges, table tents, agendas and shared print batches.",
 };
 
+const workspaceSymposiumRegistrationPilotItem: NavItem = {
+  label: "Registration pilot",
+  href: "/admin/workspace/symposium-2026/registration-pilot",
+  icon: ClipboardList,
+  minRole: "admin",
+  description: "Admin-only preview of symposium registration using the existing Luma checkout.",
+};
+
 // WORKSPACE → 2026 Symposium → AV. Three Livecast documents compared:
 // last year's quote, last year's actual invoice, and this year's quote.
 // The invoice is in there because 2025 was billed 12% above its own
@@ -2173,6 +2181,7 @@ export function Sidebar({
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspacePrintItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceSymposiumRegistrationPilotItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAv2026Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAv2025Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
