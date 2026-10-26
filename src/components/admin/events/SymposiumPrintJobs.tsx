@@ -149,6 +149,15 @@ export function SymposiumPrintJobs() {
     {(view === "badges" || view === "missing-names") && <>
       {view === "badges" && <BadgeAttention people={people} busy={busy}
         onOpen={(id) => { const p = people.find((x) => x.id === id); if (p) openPerson(p); }}
+        onApprove={async (id) => {
+          const p = people.find((x) => x.id === id);
+          if (!p) return;
+          const ok = await mutate({ action: "edit", id, badge: {
+            name: p.name, position: p.position, organization: p.organization, extra: p.extra,
+            singleName: p.singleName, reviewed: true,
+          }, reason: "Approved current displayed badge details without editing." }, snapshot.version);
+          if (ok) setNotice("Badge approved as is. Details unchanged.");
+        }}
         onReprint={(id) => { setAllowReprint(true); setSelected((s) => (s.includes(id) ? s : [...s, id])); }} />}
       {view === "missing-names" && <h2 className="mb-3 text-base font-semibold">Missing last names</h2>}
       <div className="mb-4 flex flex-wrap gap-x-7 gap-y-2 border-b border-line pb-3 text-sm">
@@ -346,7 +355,7 @@ function BadgeNameHistory({ person, changes, local }: { person: PrintPerson; cha
  * badges changed since printing, badges for people no longer registered,
  * and extra tickets without names — grouped, with the action for each.
  */
-export function BadgeAttention({ people, busy, onOpen, onReprint }: { people: PrintPerson[]; busy: boolean; onOpen: (id: string) => void; onReprint: (id: string) => void }) {
+export function BadgeAttention({ people, busy, onOpen, onApprove, onReprint }: { people: PrintPerson[]; busy: boolean; onOpen: (id: string) => void; onApprove: (id: string) => void; onReprint: (id: string) => void }) {
   const items = attentionItems(people);
   const byId = new Map(people.map(p => [p.id, p]));
   if (!items.length) {
@@ -372,11 +381,16 @@ export function BadgeAttention({ people, busy, onOpen, onReprint }: { people: Pr
               ...(kind === "guests" ? [["Tickets", String(person.tickets)], ["Unnamed guests", String(Math.max(0, person.tickets - 1))]] : []),
             ];
             return <li key={kind + r.id} className="min-w-0 py-3 text-[13px]">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1 [overflow-wrap:anywhere]"><strong>{r.name || "Name required"}</strong><p className="mt-0.5 text-xs text-amber-800 dark:text-amber-200">{r.detail}</p></div>
+                <div className="flex flex-wrap items-center gap-2">
+                {kind === "review" && <button type="button" className={BUTTON + " text-emerald-800 dark:text-emerald-200"} disabled={busy || person.name.trim().length < 2 || person.issues.some(issue => issue.includes("font support"))} title="Keep the current badge details and mark them reviewed. Missing names or unsupported characters must be fixed first." aria-label={`Approve badge as is for ${r.name || "unnamed guest"}`} onClick={() => onApprove(r.id)}>
+                  <Check size={13} /> Approve as is
+                </button>}
                 <button type="button" className={BUTTON + " shrink-0"} disabled={busy} aria-label={`${ATTENTION_LABELS[kind].action} for ${r.name || "unnamed guest"}`} onClick={() => (kind === "reprint" ? onReprint(r.id) : onOpen(r.id))}>
                   {kind === "reprint" ? <Printer size={13} /> : <Pencil size={13} />} {ATTENTION_LABELS[kind].action}
                 </button>
+                </div>
               </div>
               <dl className="mt-2 grid min-w-0 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
                 {fields.map(([label, value]) => <div key={label} className="min-w-0 [overflow-wrap:anywhere]"><dt className="inline text-muted">{label}: </dt><dd className="inline whitespace-pre-line text-fg">{value}</dd></div>)}
