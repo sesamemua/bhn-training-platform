@@ -1,4 +1,4 @@
-// Only people not featured in published symposium posts as of October 22, 2026.
+// Discussion groups requested by Ruilin on October 26, 2026.
 export const DISCUSSION_GROUPS = [
   {
     number: 1,
@@ -17,7 +17,9 @@ export const DISCUSSION_GROUPS = [
     theme: null,
     people: [
       { name: "Pierre-Jean Alarco", title: "Knowledge Mobilization Officer", company: "RampUp", graphicCompany: "RampUp" },
+      { name: "Sven Ansorge", title: "Director, Technical Training and Innovation", company: "CASTL", graphicCompany: "CASTL" },
       { name: "Gregory De Crescenzo", title: "Professor", company: "Polytechnique Montreal", graphicCompany: "Polytechnique Montréal" },
+      { name: "Garima Ghale", title: "Associate Director, Programs & Strategic Partnerships", company: "OBIO", graphicCompany: "OBIO" },
     ],
     closing: "Meet people working across knowledge mobilization, research and biomanufacturing training. Bring a question, share your perspective and explore connections across the life sciences community.",
   },
@@ -29,8 +31,8 @@ export const SYMPOSIUM_DISCUSSION_POSTS = DISCUSSION_GROUPS.map((group) => ({
   workshopSlug: null,
   suggestedDate: "2026-10-23T13:00:00Z",
   sourceUrl: "https://biohubnet.ca/2026-annual-symposium/",
-  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/discussion-${group.number}.png?v=20261022-no-registration-cta`,
-  graphicBrief: `BioHubNet logo, large 2026 Annual Symposium and Interactive Discussion Session headings. Unretouched original rounded headshots: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only; titles stay in the caption. Spacious white layout with a restrained glass edge. October 29 | Toronto. Registration is closed; no registration CTA. ${group.theme ? `Approved topic: ${group.theme}.` : "Do not invent a table topic."} People already featured in published posts are excluded.`,
+  assetUrl: `https://bhn-training-platform.vercel.app/social/symposium-2026/discussion-${group.number}.png?v=20261026-discussion-groups`,
+  graphicBrief: `BioHubNet logo, large 2026 Annual Symposium and Interactive Discussion Session headings. Unretouched original rounded headshots: ${group.people.map((p) => p.name).join(", ")}. Names and organizations only; titles stay in the caption. Spacious white layout with a restrained glass edge. October 29 | Toronto. Registration is closed; no registration CTA. ${group.theme ? `Approved topic: ${group.theme}.` : "Do not invent a table topic."} Use the discussion groups requested on October 26, 2026.`,
   body: `${group.hook}
 
 Join the Interactive Discussion Session at BioHubNet's 2026 Annual Symposium.

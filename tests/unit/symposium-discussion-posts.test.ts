@@ -4,14 +4,17 @@ import { DISCUSSION_GROUPS, SYMPOSIUM_DISCUSSION_POSTS } from "../../src/lib/soc
 import { NETWORKING_GROUPS } from "../../src/lib/social/symposium-networking-posts";
 import { withSocialTags } from "../../src/lib/social/tags";
 
-test("remaining session drafts cover nine people once and exclude people already featured", () => {
+test("discussion groups cover the requested seven people once, alongside the remaining networking draft", () => {
   const names = [...NETWORKING_GROUPS[3].people.map((p) => p.name), ...DISCUSSION_GROUPS.flatMap<string>((g) => g.people.map((p) => p.name))];
-  assert.equal(names.length, 9);
-  assert.equal(new Set(names).size, 9);
-  for (const name of ["Mona Abu Nameh", "Jasmine Hamilton", "Sven Ansorge", "Anu Vajjala", "Kathy Lee", "Yosuke Niibori", "Angela Davoud", "Donghoon Lee", "Cynthia Elias", "David Sealey", "Lynne Liu", "Liz Csaszar", "Shadan Ashfaie"]) {
+  assert.equal(names.length, 11);
+  assert.equal(new Set(names).size, 11);
+  for (const name of ["Mona Abu Nameh", "Jasmine Hamilton", "Anu Vajjala", "Kathy Lee", "Yosuke Niibori", "Angela Davoud", "Donghoon Lee", "Cynthia Elias", "David Sealey", "Lynne Liu", "Liz Csaszar", "Shadan Ashfaie"]) {
     assert.ok(!names.includes(name), name);
   }
-  assert.deepEqual(DISCUSSION_GROUPS.map((g) => g.people.length), [3, 2]);
+  assert.deepEqual(DISCUSSION_GROUPS.map((g) => g.people.map((p) => p.name)), [
+    ["Jessica Tate", "Juliana Jy", "Angela Shaoxu Li"],
+    ["Pierre-Jean Alarco", "Sven Ansorge", "Gregory De Crescenzo", "Garima Ghale"],
+  ]);
   for (const post of SYMPOSIUM_DISCUSSION_POSTS) {
     const text = withSocialTags(post.body);
     assert.ok(text.length < 2500);
