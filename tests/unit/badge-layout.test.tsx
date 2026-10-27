@@ -17,11 +17,21 @@ test("badge information is individually centered, single-line and slightly lower
   assert.deepEqual(lines.map(l => l.size), [12, 20, 12.5, 11.5]);
   assert.deepEqual(lines.map(l => l.font), ["bold", "bold", "bold", "regular"]);
   assert.ok(lines.every(l => Math.abs(l.x + l.width / 2 - 144) < 0.001));
-  assert.deepEqual(lines.slice(1).map(l => l.y), [129.365, 143.8, 156.2]);
   assert.ok(lines[1].y > 34.6 * 72 / 25.4);
   assert.ok(lines[2].y > 40.8 * 72 / 25.4);
   assert.ok(lines[3].y > 46.4 * 72 / 25.4);
   assert.equal(lines[2].color, "#00596C");
+});
+
+test("fitted text has four-point gaps and missing fields do not leave empty rows", () => {
+  for (const badge of [sample, { ...sample, position: "" }, { ...sample, position: "", organization: "" }, { ...sample, extra: "HQP Representative" }, { ...sample, position: "Senior Director, Strategic Partnerships and Research" }]) {
+    const lines = badgeLayout(badge).slice(1);
+    for (let i = 1; i < lines.length; i++) assert.ok(lines[i].y - lines[i].size * 0.84 - (lines[i - 1].y + lines[i - 1].size * 0.25) >= 3.999);
+    assert.ok(lines.every(line => line.y - line.size * 0.84 >= 85 && line.y + line.size * 0.25 < 160.33));
+    const firstTop = lines[0].y - lines[0].size * 0.84;
+    const lastBottom = lines.at(-1)!.y + lines.at(-1)!.size * 0.25;
+    assert.ok(Math.abs((firstTop + lastBottom) / 2 - (lines.length === 4 ? 123 : 130)) < 0.001);
+  }
 });
 
 test("long fields shrink independently without wrapping, overlap or truncation", () => {
