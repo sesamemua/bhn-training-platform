@@ -96,6 +96,20 @@ test("automatic sync freezes photos, advances the feed and is idempotent", async
   assert.equal(writes, 1);
 });
 
+test("manual photo approval preserves the consumed submission marker and cannot be reverted by automatic sync", async () => {
+  const { submittedProfileUpdates } = await autoPublication;
+  const { applyPublication, profileHash } = await import("../../src/lib/events/people-publication-store");
+  const state = initial();
+  state.approved[0].sourceSubmissionId = speaker.id;
+  const profile = { ...state.approved[0].profile, photoUrl: "https://images.example.org/people-publication/editorial-original.jpg" };
+  const saved = applyPublication(state, { action: "save", id: person.id, profile }, "2026-10-27T16:00:00.000Z");
+  const approved = applyPublication(saved, { action: "approve", id: person.id, draftHash: profileHash(profile) }, "2026-10-27T16:00:01.000Z");
+  assert.equal(approved.approved[0].sourceSubmissionId, speaker.id);
+  assert.deepEqual(approved.approved[0].profile, profile);
+  assert.deepEqual(submittedProfileUpdates(approved, roster()), []);
+  assert.deepEqual(submittedProfileUpdates(approved, roster([person], [{ ...speaker, id: "new-submission" }]))[0].sourceSubmissionId, "new-submission");
+});
+
 test("a concurrent session move is preserved and an unpublish cannot be resurrected", async () => {
   const { syncPublishedSpeakerSubmissions } = await autoPublication;
   row = { value: JSON.stringify(initial()), updatedAt: new Date("2026-10-12T12:00:00.000Z") }; race = "move";

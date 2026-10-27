@@ -35,8 +35,9 @@ export function applyPublication(state: PublicationState, action: PublicationAct
     } else if (action.action === "approve") {
       const draft = next.drafts.find((p) => p.id === action.id);
       if (!draft || profileHash(draft.profile) !== action.draftHash) throw new PublicationConflict("The preview changed. Review the latest saved draft.");
-      const approved = { ...structuredClone(draft), approvedRevision: next.revision };
       const index = next.approved.findIndex((p) => p.id === action.id);
+      // Keep the consumed submission marker so automatic sync cannot replay it over editorial edits.
+      const approved = { ...(index >= 0 ? next.approved[index] : {}), ...structuredClone(draft), approvedRevision: next.revision };
       if (index < 0) next.approved.push(approved); else next.approved[index] = approved;
     } else if (action.action === "unpublish") {
       if (!next.approved.some((p) => p.id === action.id)) throw new Error("This profile is not published or approved.");
