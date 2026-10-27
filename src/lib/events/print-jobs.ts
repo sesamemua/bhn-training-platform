@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { INSTITUTIONS } from "@/lib/equip/institutions";
 import { PRINT_SIGNS, SIGNAGE_SLUGS } from "./print-signage";
+import { badgeLayout } from "./badge-layout";
 
 const text = (max: number) => z.string().trim().max(max);
 export const GuestSchema = z.object({
@@ -112,11 +113,17 @@ export function printPeople(board: PrintBoard, identities: PrintIdentity[] = [])
       if (suggestion && !verified && !identity && emailParts.every(p => !normalized(badge.name).includes(normalized(p)))) issues.push("Name and email appear inconsistent");
       if (/[`<>@\d]/.test(badge.name)) issues.push("Check unusual characters in name");
       if (!badge.organization) issues.push("Organization missing");
+      if (badge.position && /^(other|others|otherpleasespecify|notapplicable|na|none|unknown|unspecified|notspecified|notprovided|select|selectanoption)$/.test(normalized(badge.position))) issues.push(`Check placeholder title / role: ${badge.position}`);
       if (needsIdentity && names.size > 1) issues.push("Multiple matching people profiles");
       if (g.email && board.guests.filter(p => p.email.toLowerCase() === g.email.toLowerCase() && approved(p.status)).length > 1) issues.push("Multiple approved registrations use this email");
     }
     if (g.tickets > 1) issues.push(`${g.tickets} tickets: additional guests need individual names`);
     if (/[^\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{N}\p{P}\p{Zs}\p{M}\s]/u.test([badge.name, badge.organization, badge.extra].join(" "))) issues.push("Check font support for this badge");
+    try { badgeLayout(badge); }
+    catch (error) {
+      const issue = error instanceof Error ? error.message : "Check badge layout before printing.";
+      if (!issues.includes(issue)) issues.push(issue);
+    }
     const matches = board.jobs.filter(j => j.kind === "badges" && j.badges.some(b => b.id === g.id));
     const same = (j: PrintJob) => j.badges.some(b => b.id === g.id && badgeFingerprint(b) === badgeFingerprint(badge));
     const printed = matches.some(j => j.printedIds.includes(g.id) && same(j));
@@ -167,7 +174,7 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
     if (action.kind === "badges") {
       if (!ids.length || selected.some(p => !p)) throw new Error("Choose at least one current guest.");
       if (selected.some(p => !approved(p!.status))) throw new Error("Only approved guests can enter a badge batch.");
-      if (selected.some(p => p!.issues.some(issue => !issue.includes("additional guests")))) throw new Error("Resolve the selected name and organization flags before creating this batch.");
+      if (selected.some(p => p!.issues.some(issue => !issue.includes("additional guests")))) throw new Error("Resolve the selected badge detail flags before creating this batch.");
       if (!action.allowReprint && selected.some(p => p!.printStatus === "printed" || p!.printStatus === "queued")) throw new Error("Some badges are printed or queued. Enable reprinting to include them deliberately.");
       for (const p of selected) if (p?.nameCorrection && !next.edits[p.id]) saveBadgeEdit(next, p.id, { name: p.name, position: p.position, organization: p.organization, extra: p.extra, reviewed: false }, actor, at, p.nameCorrection.reason, p.nameCorrection.evidence);
     }

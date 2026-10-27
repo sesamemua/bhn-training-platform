@@ -51,10 +51,34 @@ test("reprint and cancelled-registration actions retain their distinct groups an
   assert.match(render([]), /Nothing needs attention/);
 });
 
-test("approval cannot accept a blank name or unsupported font characters", () => {
-  for (const entry of [person({ name: "" }), person({ issues: ["Check font support for this badge"] })]) {
+test("approval cannot accept a blank name, unsupported font characters or an overlong line", () => {
+  for (const entry of [person({ name: "" }), person({ issues: ["Check font support for this badge"] }), person({ issues: ["Title / role is too long for one line. Shorten it before printing."] })]) {
     const html = render([entry]);
     assert.match(html, /<button[^>]*disabled=""[^>]*aria-label="Approve badge as is for/);
+  }
+});
+
+test("placeholder titles are flagged without rewriting registrations and explicit review remains available", () => {
+  const board: PrintBoard = {
+    guests: [{ id: "one", name: "Jane Smith", email: "jane@example.org", organization: "University of Toronto", position: "Other", badgeRole: "", status: "approved", source: "luma", tickets: 1 }],
+    edits: {}, jobs: [], syncedAt: null, tentText: "", agendaText: "", tentTemplate: null, agendaTemplate: null,
+  };
+  for (const title of ["Other", "OTHER (please specify)", "N/A", "Not provided"]) {
+    const candidate = { ...board, guests: [{ ...board.guests[0], position: title }] };
+    const flagged = printPeople(candidate)[0];
+    assert.ok(flagged.issues.some(i => i.includes("placeholder title / role")), title);
+    assert.equal(flagged.position, title);
+    assert.ok(attentionItems([flagged]).some(i => i.kind === "review"));
+    const accepted = applyPrintAction(candidate, [flagged], { action: "edit", id: "one", badge: {
+      name: flagged.name, position: title, organization: flagged.organization, extra: "", reviewed: true,
+    } }, "Admin", "unused", "2026-10-27T12:00:00.000Z").board;
+    assert.deepEqual(accepted.guests, candidate.guests);
+    assert.deepEqual(printPeople(accepted)[0].issues, []);
+  }
+  const tooLong = { ...board, guests: [{ ...board.guests[0], position: "Director ".repeat(25) }] };
+  assert.ok(printPeople(tooLong)[0].issues.some(i => i.includes("too long for one line")));
+  for (const title of ["Research Associate", "Postdoctoral Fellow", "Volunteer"]) {
+    assert.deepEqual(printPeople({ ...board, guests: [{ ...board.guests[0], position: title }] })[0].issues, []);
   }
 });
 

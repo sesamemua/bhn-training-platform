@@ -12,26 +12,39 @@ import { PrintBoardSchema, type PrintJob } from "../../src/lib/events/print-jobs
 
 const sample = { name: "Alexandra Chen", position: "Research Scientist", organization: "University of Toronto", extra: "", reviewed: true };
 
-test("v18 retains its title, guest typography and a centered, left-aligned identity block", () => {
+test("badge information is individually centered, single-line and slightly lower", () => {
   const lines = badgeLayout(sample);
-  assert.deepEqual(lines.map(l => l.size), [12, 16.5, 13, 12.5]);
+  assert.deepEqual(lines.map(l => l.size), [12, 20, 12.5, 11.5]);
   assert.deepEqual(lines.map(l => l.font), ["bold", "bold", "bold", "regular"]);
-  assert.ok(lines.slice(1).every(l => l.x === lines[1].x));
-  assert.ok(Math.abs(lines[1].x + Math.max(...lines.slice(1).map(l => l.width)) / 2 - 144) < 0.001);
-  assert.ok(Math.abs(lines[0].x + lines[0].width / 2 - 144) < 0.001);
+  assert.ok(lines.every(l => Math.abs(l.x + l.width / 2 - 144) < 0.001));
+  assert.deepEqual(lines.slice(1).map(l => l.y), [129.365, 143.8, 156.2]);
+  assert.ok(lines[1].y > 34.6 * 72 / 25.4);
+  assert.ok(lines[2].y > 40.8 * 72 / 25.4);
+  assert.ok(lines[3].y > 46.4 * 72 / 25.4);
   assert.equal(lines[2].color, "#00596C");
 });
 
-test("wrapped roles, organizations and HQP lines stay above the crystal artwork without truncation", () => {
-  const badge = { ...sample, name: "Élodie Lévesque", position: "Senior Director, Strategic Partnerships and Research", organization: "University of Toronto, Department of Chemical Engineering", extra: "HQP Representative" };
+test("long fields shrink independently without wrapping, overlap or truncation", () => {
+  const badge = { ...sample, name: "Élodie Lévesque", position: "Senior Director, Strategic Partnerships and Research", organization: "University of Toronto, Faculty of Chemical Engineering", extra: "HQP Representative" };
   const lines = badgeLayout(badge);
+  assert.equal(lines.length, 5);
+  assert.equal(lines[1].text, badge.name);
+  assert.equal(lines[2].text, badge.position);
+  assert.equal(lines[3].text, badge.organization);
+  assert.equal(lines[4].text, badge.extra);
+  assert.ok(lines[2].size < 12.5);
+  assert.ok(lines[3].size < 11.5);
   for (const line of lines) {
     assert.ok(line.x >= 5.67 && line.x + line.width <= 282.33);
-    assert.ok(line.y + line.size * 0.25 < 144, `${line.text} overlaps artwork`);
+    assert.ok(Math.abs(line.x + line.width / 2 - 144) < 0.001);
+    assert.ok(line.y + line.size * 0.25 < 160.33, `${line.text} overlaps artwork`);
   }
   const words = lines.slice(1).map(l => l.text).join(" ");
   assert.equal(words, [badge.name, badge.position, badge.organization, badge.extra].join(" "));
   assert.throws(() => badgeLayout({ ...sample, name: "X".repeat(160) }), /too long/);
+  assert.throws(() => badgeLayout({ ...sample, position: "Director ".repeat(25) }), /Title \/ role is too long for one line/);
+  assert.throws(() => badgeLayout({ ...sample, organization: "University ".repeat(25) }), /Organization is too long for one line/);
+  assert.equal(badgeLayout({ ...sample, position: "Research\n  Scientist" })[2].text, "Research Scientist");
 });
 
 test("Greek and Cyrillic keep the existing Noto font fallback and unsupported glyphs are rejected", () => {
@@ -43,7 +56,7 @@ test("SVG preview uses the prepared artwork, print coordinates and escaped atten
   const badge = { ...sample, name: "<Alex & Chen>" };
   const html = renderToStaticMarkup(createElement(BadgePreview, { badge }));
   assert.match(html, /viewBox="0 0 288 216"/);
-  assert.match(html, /\/print\/badge-v18-background.png/);
+  assert.match(html, /\/print\/badge-v19-background-1.png/);
   assert.match(html, /&lt;Alex &amp; Chen&gt;/);
   for (const line of badgeLayout(badge)) assert.ok(html.includes(`x="${line.x}" y="${line.y}" font-size="${line.size}"`));
   assert.match(renderToStaticMarkup(createElement(BadgePreview, { badge: { ...sample, name: "X".repeat(160) } })), /role="alert"/);
@@ -57,6 +70,18 @@ test("prepared artwork records the left nudge and has no hidden example attendee
   const source = new Uint8Array(await readFile("public/print/badge-v18-background.pdf"));
   assert.deepEqual((await PDFDocument.load(source)).getPage(0).getSize(), { width: 288, height: 216 });
   assert.equal((await extractText(source, { mergePages: true })).text.trim(), "");
+});
+
+test("paired v19 backgrounds preserve logos, omit attendee text and fit exact badge dimensions", async () => {
+  const metadata = JSON.parse(await readFile("public/print/badge-v19-source.json", "utf8"));
+  assert.equal(metadata.originalLogoPixelsPreserved, true);
+  assert.equal(metadata.rightFooterMirrored, true);
+  assert.deepEqual(metadata.pages, ["left", "right"]);
+  const bytes = new Uint8Array(await readFile("public/print/badge-v19-background.pdf"));
+  const pdf = await PDFDocument.load(bytes);
+  assert.equal(pdf.getPageCount(), 2);
+  for (const page of pdf.getPages()) assert.deepEqual(page.getSize(), { width: 288, height: 216 });
+  assert.equal((await extractText(bytes, { mergePages: true })).text.trim(), "");
 });
 
 test("PDF and preview preserve the same text and partly-used-sheet offsets without example names", async () => {

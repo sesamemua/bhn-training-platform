@@ -1,0 +1,17 @@
+{
+  "design": "Approved teal/navy multi-faceted glass, print-optimized",
+  "headerSha256": "1f6c4ec274d97bcdb646e6024aa03ba9fb8bf74ee125fe6d6ba753ba5541697f",
+  "glassSha256": "165bf6eb4bcbadc7cfc1b97b2e14e935f90ec017f0844199413ca19492814c92",
+  "badgePoints": [
+    288,
+    216
+  ],
+  "pages": [
+    "left",
+    "right"
+  ],
+  "originalLogoPixelsPreserved": true,
+  "backgroundHasText": false,
+  "glassEffectiveDpi": 542,
+  "rightFooterMirrored": true
+}

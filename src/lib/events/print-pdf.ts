@@ -3,7 +3,7 @@ import path from "node:path";
 import { jsPDF } from "jspdf";
 import { PDFDocument, degrees } from "pdf-lib";
 import type { PrintBoard, PrintJob } from "./print-jobs";
-import { badgeLayout } from "./badge-layout";
+import { BADGE_DESIGN, badgeLayout } from "./badge-layout";
 
 // Avery 5393: Letter, two columns of 4 x 3 inches; 1-inch top and 1/4-inch side margins.
 export const AVERY_5393 = { width: 288, height: 216, left: 18, top: 72, perSheet: 6, pageWidth: 612, pageHeight: 792 };
@@ -75,15 +75,15 @@ export async function buildPrintPdf(job: PrintJob, board: PrintBoard, template?:
       doc.text(`Avery 5393 | Letter | Actual size 100% | ${job.label} | ${page}/${doc.getNumberOfPages()}`, 18, 772);
     }
     const output = await PDFDocument.create();
-    output.setTitle(job.label); output.setAuthor("BioHubNet"); output.setSubject("2026 Annual Symposium - badges - v18");
-    const [background] = await output.embedPdf(await readFile(path.join(process.cwd(), "public/print/badge-v18-background.pdf")));
+    output.setTitle(job.label); output.setAuthor("BioHubNet"); output.setSubject(`2026 Annual Symposium - badges - ${BADGE_DESIGN}`);
+    const backgrounds = await output.embedPdf(await readFile(path.join(process.cwd(), "public/print/badge-v19-background.pdf")), [0, 1]);
     const textDocument = await PDFDocument.load(doc.output("arraybuffer"));
     const textPages = await output.embedPdf(textDocument, textDocument.getPageIndices());
     for (const [pageIndex, textPage] of textPages.entries()) {
       const page = output.addPage([612, 792]);
       for (const index of job.badges.keys()) {
         const pos = badgePosition(index, job);
-        if (pos.page === pageIndex) page.drawPage(background, { x: pos.x, y: 792 - pos.y - 216, width: 288, height: 216 });
+        if (pos.page === pageIndex) page.drawPage(backgrounds[(index + job.skip) % 2], { x: pos.x, y: 792 - pos.y - 216, width: 288, height: 216 });
       }
       page.drawPage(textPage);
     }

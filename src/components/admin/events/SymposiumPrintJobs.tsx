@@ -380,7 +380,7 @@ export function BadgeAttention({ people, busy, onOpen, onApprove, onReprint }: {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-[160px] flex-1 [overflow-wrap:anywhere]"><strong>{r.name || "Name required"}</strong><p className="mt-0.5 text-xs text-amber-800 dark:text-amber-200">{r.detail}</p></div>
                 <div className="flex flex-wrap items-center gap-2">
-                {kind === "review" && <button type="button" className={BUTTON + " text-emerald-800 dark:text-emerald-200"} disabled={busy || person.name.trim().length < 2 || person.issues.some(issue => issue.includes("font support"))} title="Keep the current badge details and mark them reviewed. Missing names or unsupported characters must be fixed first." aria-label={`Approve badge as is for ${r.name || "unnamed guest"}`} onClick={() => onApprove(r.id)}>
+                {kind === "review" && <button type="button" className={BUTTON + " text-emerald-800 dark:text-emerald-200"} disabled={busy || person.name.trim().length < 2 || person.issues.some(issue => issue.includes("font support") || issue.includes("too long"))} title="Keep the current badge details and mark them reviewed. Missing names, unsupported characters and overlong lines must be fixed first." aria-label={`Approve badge as is for ${r.name || "unnamed guest"}`} onClick={() => onApprove(r.id)}>
                   <Check size={13} /> Approve as is
                 </button>}
                 <button type="button" className={BUTTON + " shrink-0"} disabled={busy} aria-label={`${ATTENTION_LABELS[kind].action} for ${r.name || "unnamed guest"}`} onClick={() => (kind === "reprint" ? onReprint(r.id) : onOpen(r.id))}>
