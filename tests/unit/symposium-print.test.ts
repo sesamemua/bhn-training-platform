@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { extractText } from "unpdf";
-import { PrintActionSchema, PrintBoardSchema, applyPrintAction, attentionItems, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
+import { PrintActionSchema, PrintBoardSchema, applyPrintAction, attentionItems, badgeFingerprint, capitalizeName, mergePrintGuests, printPeople, standardOrganization, type PrintAction, type PrintBoard, type PrintGuest } from "../../src/lib/events/print-jobs";
 import { fetchLumaPrintGuests, lumaPrintPage, parseLumaPrintCsv } from "../../src/lib/events/print-luma";
 import { badgePosition, buildPrintPdf } from "../../src/lib/events/print-pdf";
 import { DEFAULT_PRINT_AGENDA } from "../../src/lib/events/print-agenda";
@@ -15,6 +15,23 @@ const guest = (values: Partial<PrintGuest> = {}): PrintGuest => ({ id: "luma:gst
 const board = (): PrintBoard => ({ guests: [guest()], edits: {}, jobs: [], syncedAt: at, tentText: "BioHubNet\n2026 Annual Symposium", agendaText: DEFAULT_PRINT_AGENDA, tentTemplate: null, agendaTemplate: null });
 const create = (overrides: Partial<Extract<PrintAction, { action: "create" }>> = {}): Extract<PrintAction, { action: "create" }> => ({ action: "create", kind: "badges", label: "First badge batch", ids: ["luma:gst-1"], copies: 1, assignedTo: "Colleague", notes: "Actual size 100%", allowReprint: false, skip: 0, offsetX: 0, offsetY: 0, ...overrides });
 const change = (b: PrintBoard, a: Parameters<typeof applyPrintAction>[2]) => applyPrintAction(b, printPeople(b), a, "Admin", id, at);
+
+test("print-only badge wording tracks the original version while later source edits still require reprinting", () => {
+  let b = board();
+  const source = printPeople(b)[0];
+  b = change(b, create()).board;
+  b.jobs[0].badges[0].sourceFingerprint = badgeFingerprint(source);
+  b.jobs[0].badges[0].position = "Director";
+  b.jobs[0].badges[0].organization = "U of T";
+  b = PrintBoardSchema.parse(b);
+  assert.equal(printPeople(b)[0].printStatus, "queued");
+  b = change(b, { action: "printed", jobId: id, ids: [source.id] }).board;
+  assert.equal(printPeople(b)[0].printStatus, "printed");
+  assert.equal(b.guests[0].organization, "U of T");
+  assert.deepEqual(b.edits, {});
+  b.edits[source.id] = { name: "Jane Smith", position: "New confirmed role", organization: "University of Toronto", extra: "", reviewed: true };
+  assert.equal(printPeople(b)[0].printStatus, "changed");
+});
 
 test("known organization spellings converge without inventing unknown company names", () => {
   for (const name of ["uoft", "U of T", "U. of T.", "UNIVERSITY OF TORONTO", "University of Toronto, Department of Chemistry", "UofT Scarborough"]) assert.equal(standardOrganization(name), "University of Toronto");

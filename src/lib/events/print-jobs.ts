@@ -13,7 +13,7 @@ export const GuestSchema = z.object({
 export type PrintGuest = z.infer<typeof GuestSchema>;
 export const BadgeEditSchema = z.object({ name: text(160).min(2), position: text(200).optional(), organization: text(250), extra: text(200), reviewed: z.boolean(), singleName: z.boolean().optional() });
 export type BadgeEdit = z.infer<typeof BadgeEditSchema>;
-export const BadgeSchema = z.object({ id: text(150), name: text(160), position: text(200).optional(), organization: text(250), extra: text(200) });
+export const BadgeSchema = z.object({ id: text(150), name: text(160), position: text(200).optional(), organization: text(250), extra: text(200), sourceFingerprint: text(2000).optional() });
 export type PrintBadge = z.infer<typeof BadgeSchema>;
 const TemplateSchema = z.object({ key: text(150), name: text(200) });
 const SignageSchema = z.object({ title: text(160).min(1), date: text(100).min(1), time: text(100).min(1), venue: text(300).min(1), facilitator: text(160), sessions: z.array(z.object({ title: text(160).min(1), facilitator: text(160) })).length(2).optional() });
@@ -125,7 +125,8 @@ export function printPeople(board: PrintBoard, identities: PrintIdentity[] = [])
       if (!issues.includes(issue)) issues.push(issue);
     }
     const matches = board.jobs.filter(j => j.kind === "badges" && j.badges.some(b => b.id === g.id));
-    const same = (j: PrintJob) => j.badges.some(b => b.id === g.id && badgeFingerprint(b) === badgeFingerprint(badge));
+    // Print-only abbreviations retain the source version without overwriting registration details.
+    const same = (j: PrintJob) => j.badges.some(b => b.id === g.id && (b.sourceFingerprint ?? badgeFingerprint(b)) === badgeFingerprint(badge));
     const printed = matches.some(j => j.printedIds.includes(g.id) && same(j));
     const queued = matches.some(j => j.status === "ready" && same(j) && !j.printedIds.includes(g.id));
     const printStatus: PrintPerson["printStatus"] = printed ? "printed" : queued ? "queued" : matches.some(j => j.printedIds.includes(g.id)) ? "changed" : "unprinted";
