@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BadgePreview } from "./BadgePreview";
+import { AdditionalBadges } from "./AdditionalBadges";
 import { BADGE_DESIGN } from "@/lib/events/badge-layout";
 import { PRINT_SIGNS } from "@/lib/events/print-signage";
 import { Check, CheckCheck, Copy, Download, FileUp, History, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Search, ShieldCheck, Trash2, X } from "lucide-react";
@@ -18,7 +19,7 @@ const eligible = (p: PrintPerson) => ["approved", "going", "checked_in"].include
 const blocked = (p: PrintPerson) => p.issues.some(issue => !issue.includes("additional guests"));
 const date = (v: string) => new Date(v).toLocaleString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const printLabels = { unprinted: "Not printed", queued: "Queued", printed: "Printed", changed: "Changed since print" };
-type View = "badges" | "missing-names" | "tents" | "agenda" | "signage" | "queue";
+type View = "badges" | "additional" | "missing-names" | "tents" | "agenda" | "signage" | "queue";
 type Edit = { id: string | null; badge: BadgeEdit; email: string; version: string | null; reason: string; evidence: string };
 
 export function SymposiumPrintJobs() {
@@ -54,7 +55,7 @@ export function SymposiumPrintJobs() {
         chooseJob(body.snapshot.board.jobs.find((j: PrintJob) => j.id === body.jobId));
         setView("queue"); setSelected([]); setLabel("");
       }
-      setNotice(change.action === "verify_names" ? "Verified missing surnames saved with history. Unresolved names remain flagged." : change.action === "sync" ? "Luma guest list updated. Local name corrections and history preserved." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "delete" ? "Batch deleted." : change.action === "create" ? "PDF saved to the shared print queue." : "Saved.");
+      setNotice(change.action === "verify_names" ? "Verified missing surnames saved with history. Unresolved names remain flagged." : change.action === "sync" ? "Luma guest list updated. Local name corrections and history preserved." : change.action === "import" ? "Luma CSV imported. Badge edits and print history are preserved." : change.action === "printed" ? "Print confirmation saved." : change.action === "delete" ? "Batch deleted." : change.action === "create" || change.action === "additional_badges" ? "PDF saved to the shared print queue." : "Saved.");
       return true;
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); return false; }
     finally { working.current = false; setBusy(false); }
@@ -70,6 +71,7 @@ export function SymposiumPrintJobs() {
       const id = new URLSearchParams(window.location.search).get("job");
       const job = body.board.jobs.find((j: PrintJob) => j.id === id);
       if (job) { chooseJob(job); setView("queue"); }
+      else if (new URLSearchParams(window.location.search).get("tab") === "additional") setView("additional");
       working.current = false;
       if (!body.board.syncedAt && body.autoSyncAvailable) await mutate({ action: "sync" }, body.version);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load Print Jobs."); }
@@ -106,7 +108,7 @@ export function SymposiumPrintJobs() {
   const job = board.jobs.find(j => j.id === activeJob);
   const documentDraft = documents ?? { tentText: board.tentText, agendaText: board.agendaText, version: snapshot.version };
   const template = view === "tents" ? board.tentTemplate : board.agendaTemplate;
-  const kind = view === "queue" || view === "missing-names" ? "badges" : view;
+  const kind = view === "queue" || view === "missing-names" || view === "additional" ? "badges" : view;
   const draftPerson = editing ? people.find(p => p.id === editing.id) : null;
   const nameChanged = !!(editing?.id && draftPerson && editing.badge.name !== (board.edits[editing.id]?.name ?? draftPerson.sourceName));
   function openPerson(p?: PrintPerson) {
@@ -139,7 +141,7 @@ export function SymposiumPrintJobs() {
 
   return <div className="mx-auto w-full max-w-[1600px] pb-12 text-fg">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <nav aria-label="Print materials" className="flex flex-wrap gap-1 border-b border-line">{([["badges", "Name badges"], ["missing-names", "Missing last names (" + missingNames.length + ")"], ["tents", "Table tents"], ["agenda", "Agenda"], ["signage", "Signage"], ["queue", "Print queue (" + board.jobs.filter(j => j.status === "ready").length + ")"]] as [View, string][]).map(([key, title]) => <button type="button" key={key} aria-current={view === key ? "page" : undefined} className={"border-b-2 px-3 py-2 text-sm font-semibold " + (view === key ? "border-brand" : "border-transparent text-muted")} onClick={() => { if (key === "missing-names" || view === "missing-names") setSelected([]); setView(key); setLabel(""); if (key === "tents") setCopies(22); if (key === "agenda" || key === "signage") setCopies(1); }}>{title}</button>)}</nav>
+      <nav aria-label="Print materials" className="flex flex-wrap gap-1 border-b border-line">{([["badges", "Name badges"], ["additional", "Additional badges"], ["missing-names", "Missing last names (" + missingNames.length + ")"], ["tents", "Table tents"], ["agenda", "Agenda"], ["signage", "Signage"], ["queue", "Print queue (" + board.jobs.filter(j => j.status === "ready").length + ")"]] as [View, string][]).map(([key, title]) => <button type="button" key={key} aria-current={view === key ? "page" : undefined} className={"border-b-2 px-3 py-2 text-sm font-semibold " + (view === key ? "border-brand" : "border-transparent text-muted")} onClick={() => { if (key === "missing-names" || view === "missing-names") setSelected([]); setView(key); setLabel(""); if (key === "tents") setCopies(22); if (key === "agenda" || key === "signage") setCopies(1); }}>{title}</button>)}</nav>
       <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-muted">{board.syncedAt ? (board.syncSource === "csv" || !snapshot.autoSyncAvailable ? "CSV imported " : "Luma synced ") + date(board.syncedAt) : "No guest list imported"}</span><button type="button" className={BUTTON} disabled={busy} onClick={() => snapshot.autoSyncAvailable ? void mutate({ action: "sync" }) : csvInput.current?.click()}>{snapshot.autoSyncAvailable ? <RefreshCw size={14} className={busy ? "animate-spin" : ""} /> : <FileUp size={14} />} {snapshot.autoSyncAvailable ? "Sync Luma" : "Import Luma CSV"}</button></div>
     </div>
     {!snapshot.autoSyncAvailable && <p className="mb-4 border-l-2 border-amber-500 pl-3 text-sm">Automatic Luma sync is not connected. <a className="font-semibold underline underline-offset-2" href="https://luma.com/event/manage/evt-az4yQOZR33DBiid/guests" target="_blank" rel="noreferrer">Export the current guest list from Luma</a>, then import the CSV.</p>}
@@ -147,6 +149,7 @@ export function SymposiumPrintJobs() {
     {notice && <p role="status" className="mb-4 text-sm">{notice}</p>}
     <input ref={csvInput} type="file" accept=".csv,text/csv" className="hidden" aria-label="Import Luma CSV" onChange={async e => { const file = e.target.files?.[0]; if (file) { if (file.size > 1000000) setError("Choose a CSV smaller than 1 MB."); else await mutate({ action: "import", csv: await file.text() }); } e.target.value = ""; }} />
     <input ref={designInput} type="file" accept=".pdf,application/pdf" className="hidden" aria-label="Upload print design PDF" onChange={async e => { const file = e.target.files?.[0]; if (file) await upload(file); e.target.value = ""; }} />
+    <div hidden={view !== "additional"}><AdditionalBadges busy={busy} onCreate={mutate} /></div>
     {(view === "badges" || view === "missing-names") && <>
       {view === "badges" && <BadgeAttention people={people} busy={busy}
         onOpen={(id) => { const p = people.find((x) => x.id === id); if (p) openPerson(p); }}

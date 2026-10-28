@@ -134,3 +134,22 @@ test("corrupt stored data is not reset or overwritten", async () => {
   await assert.rejects(loadPrintStore());
   assert.equal(rows.get(key)!.value, "bad JSON");
 });
+
+test("additional badges persist custom sizes and their PDF without adding or editing guests", async () => {
+  reset(); const { changePrintStore, printJobPdf } = await server;
+  const original = board();
+  const action = { action: "additional_badges" as const, badges: [{ name: "Walk-in Guest", position: "Scientist", organization: "UofT", extra: "", fontSizes: { name: 18, position: 10, organization: 10 } }], label: "Additional badges", assignedTo: "Colleague", notes: "", skip: 2, offsetX: 0, offsetY: 0 };
+  assert.equal((await changePrintStore(null, action, "Admin")).conflict, true);
+  assert.equal(rows.size, 1);
+  const result = await changePrintStore(version, action, "Admin");
+  assert.equal(result.conflict, false);
+  assert.deepEqual(result.snapshot.board.guests, original.guests);
+  assert.deepEqual(result.snapshot.board.edits, original.edits);
+  const saved = await printJobPdf(result.jobId!);
+  assert.deepEqual(saved?.job.badges[0].fontSizes, action.badges[0].fontSizes);
+  assert.equal(saved?.job.skip, 2);
+  assert.equal(saved?.job.badges[0].organization, "University of Toronto");
+  assert.equal(saved?.job.printedIds.length, 0);
+  assert.ok(saved?.bytes.subarray(0, 5).toString() === "%PDF-");
+  assert.equal(rows.size, 2);
+});

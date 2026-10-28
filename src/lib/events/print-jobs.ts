@@ -4,6 +4,7 @@ import { PRINT_SIGNS, SIGNAGE_SLUGS } from "./print-signage";
 import { badgeLayout } from "./badge-layout";
 
 const text = (max: number) => z.string().trim().max(max);
+export const BadgeFontSizesSchema = z.object({ name: z.number().min(10).max(32).optional(), position: z.number().min(8).max(22).optional(), organization: z.number().min(8).max(22).optional(), extra: z.number().min(8).max(18).optional() });
 export const GuestSchema = z.object({
   id: text(150).min(1), name: text(160), email: text(254), organization: text(250),
   status: text(50), tickets: z.number().int().min(0).max(500), source: z.enum(["luma", "manual"]), badgeRole: text(120).default(""),
@@ -13,8 +14,10 @@ export const GuestSchema = z.object({
 export type PrintGuest = z.infer<typeof GuestSchema>;
 export const BadgeEditSchema = z.object({ name: text(160).min(2), position: text(200).optional(), organization: text(250), extra: text(200), reviewed: z.boolean(), singleName: z.boolean().optional() });
 export type BadgeEdit = z.infer<typeof BadgeEditSchema>;
-export const BadgeSchema = z.object({ id: text(150), name: text(160), position: text(200).optional(), organization: text(250), extra: text(200), sourceFingerprint: text(2000).optional() });
+export const BadgeSchema = z.object({ id: text(150), name: text(160), position: text(200).optional(), organization: text(250), extra: text(200), sourceFingerprint: text(2000).optional(), fontSizes: BadgeFontSizesSchema.optional() });
 export type PrintBadge = z.infer<typeof BadgeSchema>;
+export const AdditionalBadgeSchema = BadgeSchema.omit({ id: true, sourceFingerprint: true }).extend({ name: text(160).min(2) });
+export type AdditionalBadge = z.infer<typeof AdditionalBadgeSchema>;
 const TemplateSchema = z.object({ key: text(150), name: text(200) });
 const SignageSchema = z.object({ title: text(160).min(1), date: text(100).min(1), time: text(100).min(1), venue: text(300).min(1), facilitator: text(160), sessions: z.array(z.object({ title: text(160).min(1), facilitator: text(160) })).length(2).optional() });
 const TentStyleSchema = z.enum(["table-reserved", "seat-reserved"]);
@@ -47,6 +50,7 @@ export type PrintWorkspace = { board: PrintBoard; people: PrintPerson[]; version
 export type PrintIdentity = { fullName: string; email: string; organization: string; title: string; tags?: string[]; source?: string };
 
 export const PrintActionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("additional_badges"), badges: z.array(AdditionalBadgeSchema).min(1).max(60), label: text(120).min(1), assignedTo: text(200), notes: text(1000), skip: z.number().int().min(0).max(5), offsetX: z.number().min(-5).max(5), offsetY: z.number().min(-5).max(5) }),
   z.object({ action: z.literal("sync") }),
   z.object({ action: z.literal("import"), csv: z.string().min(1).max(1000000) }),
   z.object({ action: z.literal("verify_names") }),
@@ -167,6 +171,13 @@ export function applyPrintAction(board: PrintBoard, people: PrintPerson[], actio
     next.tentText = action.tentText; next.agendaText = action.agendaText;
     if (action.clearTemplate === "tents") next.tentTemplate = null;
     if (action.clearTemplate === "agenda") next.agendaTemplate = null;
+  } else if (action.action === "additional_badges") {
+    if (next.jobs.length >= 150) throw new Error("This event has reached its print-batch limit.");
+    const badges = action.badges.map((badge, index) => ({ ...badge, id: `additional:${id}:${index + 1}`, organization: standardOrganization(badge.organization) }));
+    for (const badge of badges) badgeLayout(badge);
+    const job: PrintJob = { id, label: action.label, kind: "badges", createdAt: at, createdBy: actor, assignedTo: action.assignedTo, notes: action.notes, copies: 1, status: "ready", badges, printedIds: [], printedAt: null, printedBy: null, skip: action.skip, offsetX: action.offsetX, offsetY: action.offsetY };
+    next.jobs.unshift(job);
+    return { board: PrintBoardSchema.parse(next), job };
   } else if (action.action === "create") {
     if (next.jobs.length >= 150) throw new Error("This event has reached its print-batch limit.");
     if (action.tentStyle && action.kind !== "tents") throw new Error("Reservation designs are only for table tents.");
