@@ -32,6 +32,8 @@ async function main() {
     await expect(editor.getByRole("textbox", { name: "Draft reply as BioHubNet" })).toHaveValue("Thank you for joining us!");
     const frame = page.locator('iframe[title="Original LinkedIn post"]');
     await expect(frame).toHaveAttribute("src", "https://www.linkedin.com/embed/feed/update/urn:li:activity:1");
+    await expect(frame).toHaveAttribute("loading", "eager");
+    await expect(page.frameLocator('iframe[title="Original LinkedIn post"]').getByRole("heading", { name: "Example Attendee" })).toBeVisible();
     assert.ok(await frame.evaluate(el => el.getBoundingClientRect().right) <= await editor.evaluate(el => el.getBoundingClientRect().left), "Original post sits beside its reply on desktop");
     await editor.getByRole("textbox", { name: "Draft reply as BioHubNet" }).fill("Draft retained across preview changes");
     await page.getByRole("button", { name: "Saved text", exact: true }).click();
