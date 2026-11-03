@@ -74,7 +74,7 @@ export function SymposiumLinkedin() {
       <label className="flex items-center gap-2 text-sm text-muted">Event<select className={inputClass} value={topic} onChange={e => setTopic(e.target.value)}><option value="all">Both events</option><option value="symposium">Symposium</option><option value="training_week">Training Week</option></select></label>
     </div>
     {busy && !snapshot ? <p role="status">Loading interactions...</p> : !entries.length ? <p className="py-8 text-muted">No interactions recorded yet.</p> : <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <nav aria-label="Interactions" className="max-h-[64vh] overflow-y-auto overscroll-contain lg:sticky lg:top-4">
+      <nav aria-label="Interactions" className="min-w-0">
         {!visible.length && <p className="py-4 text-sm text-muted">No matches.</p>}
         {visible.map(e => <button type="button" key={e.id} aria-current={active?.id === e.id ? "true" : undefined} onClick={() => choose(e.id)} className={`block w-full border-b border-line px-3 py-3 text-left ${active?.id === e.id ? "bg-brand-500/10" : "hover:bg-elevated"}`}>
           <span className="block break-words text-sm font-bold">{e.author}</span><span className="mt-1 block text-xs text-muted">{kinds[e.kind]} · {statuses[e.status]}</span><span className="mt-1 line-clamp-2 break-words text-xs text-muted">{e.sourceText}</span>

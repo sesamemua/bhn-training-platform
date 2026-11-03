@@ -29,6 +29,8 @@ async function main() {
     });
     await page.goto("https://linkedin.test/");
     const editor = page.getByRole("form", { name: "Reply draft" });
+    const list = page.getByRole("navigation", { name: "Interactions" });
+    assert.deepEqual(await list.evaluate(el => ({ maxHeight: getComputedStyle(el).maxHeight, overflowY: getComputedStyle(el).overflowY, position: getComputedStyle(el).position })), { maxHeight: "none", overflowY: "visible", position: "static" }, "The post list scrolls with the page, not an inner scrollbar");
     await expect(editor.getByRole("textbox", { name: "Draft reply as BioHubNet" })).toHaveValue("Thank you for joining us!");
     const frame = page.locator('iframe[title="Original LinkedIn post"]');
     await expect(frame).toHaveAttribute("src", "https://www.linkedin.com/embed/feed/update/urn:li:activity:1");
@@ -59,6 +61,7 @@ async function main() {
     await page.screenshot({ path: "output/linkedin-20261103/desktop.png", fullPage: true });
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 1000 });
+      assert.equal(await list.evaluate(el => getComputedStyle(el).overflowY), "visible");
       assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
       assert.ok(await page.getByRole("navigation", { name: "Interactions" }).getByRole("button").first().evaluate(el => el.getBoundingClientRect().height < 140));
       assert.ok(await frame.evaluate(el => el.getBoundingClientRect().bottom) <= await editor.evaluate(el => el.getBoundingClientRect().top), "Post and reply stack on mobile");
