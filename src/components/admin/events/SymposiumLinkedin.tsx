@@ -77,7 +77,7 @@ export function SymposiumLinkedin() {
       <nav aria-label="Interactions" className="max-h-[64vh] overflow-y-auto overscroll-contain lg:sticky lg:top-4">
         {!visible.length && <p className="py-4 text-sm text-muted">No matches.</p>}
         {visible.map(e => <button type="button" key={e.id} aria-current={active?.id === e.id ? "true" : undefined} onClick={() => choose(e.id)} className={`block w-full border-b border-line px-3 py-3 text-left ${active?.id === e.id ? "bg-brand-500/10" : "hover:bg-elevated"}`}>
-          <span className="block break-words text-sm font-bold">{e.author}</span><span className="mt-1 block text-xs text-muted">{kinds[e.kind]} · {statuses[e.status]}</span><span className="mt-1 line-clamp-2 block break-words text-xs text-muted">{e.sourceText}</span>
+          <span className="block break-words text-sm font-bold">{e.author}</span><span className="mt-1 block text-xs text-muted">{kinds[e.kind]} · {statuses[e.status]}</span><span className="mt-1 line-clamp-2 break-words text-xs text-muted">{e.sourceText}</span>
         </button>)}
       </nav>
       {active && <ReplyEditor key={active.id} entry={active} busy={busy} save={save} onDirty={setDirty} />}
