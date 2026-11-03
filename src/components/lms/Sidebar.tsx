@@ -543,6 +543,14 @@ const workspaceSymposiumRegistrationPilotItem: NavItem = {
   description: "Native symposium registration pilot with direct Stripe payments; account connection required.",
 };
 
+const workspaceSymposiumLinkedinItem: NavItem = {
+  label: "LinkedIn",
+  href: "/admin/workspace/symposium-2026/linkedin",
+  icon: MessageSquareText,
+  minRole: "admin",
+  description: "Symposium and Training Week interactions, reply drafts and follow-up status.",
+};
+
 // WORKSPACE → 2026 Symposium → AV. Three Livecast documents compared:
 // last year's quote, last year's actual invoice, and this year's quote.
 // The invoice is in there because 2025 was billed 12% above its own
@@ -2180,6 +2188,7 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceSymposiumLinkedinItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspacePrintItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSymposiumRegistrationPilotItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAv2026Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

@@ -1,0 +1,124 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Check, Copy, ExternalLink, MessageSquareText, Plus, RefreshCw, Save, Search, X } from "lucide-react";
+import { LINKEDIN_ACTIVITY_URL, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
+
+const API = "/api/admin/symposium-linkedin";
+const statuses = { pending: "Needs reply", replied: "Replied", no_reply: "No reply needed" };
+const kinds = { mention: "Mention", comment: "Comment", repost: "Repost", reaction: "Reactions", message: "Message" };
+const topics = { symposium: "Symposium", training_week: "Training Week", both: "Symposium + Training Week" };
+const inputClass = "w-full min-w-0 rounded-md border border-line bg-card px-3 py-2 text-sm text-fg";
+const buttonClass = "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-elevated disabled:opacity-50";
+const stamp = (value: string) => new Date(value).toLocaleString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+export function SymposiumLinkedin() {
+  const [snapshot, setSnapshot] = useState<LinkedinSnapshot | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [status, setStatus] = useState("all"), [topic, setTopic] = useState("all"), [search, setSearch] = useState("");
+  const [error, setError] = useState(""), [busy, setBusy] = useState(true), [dirty, setDirty] = useState(false), [adding, setAdding] = useState(false);
+  async function load() {
+    try {
+      const response = await fetch(API, { cache: "no-store" }), result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not load interactions.");
+      setSnapshot(result);
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not load interactions."); }
+    finally { setBusy(false); }
+  }
+  useEffect(() => {
+    let cancelled = false;
+    fetch(API, { cache: "no-store" }).then(async response => {
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not load interactions.");
+      if (!cancelled) setSnapshot(result);
+    }).catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : "Could not load interactions."); })
+      .finally(() => { if (!cancelled) setBusy(false); });
+    return () => { cancelled = true; };
+  }, []);
+  async function save(change: LinkedinAction) {
+    if (!snapshot) return false;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: snapshot.version, change }) });
+      const result = await response.json();
+      if (result.snapshot) setSnapshot(result.snapshot);
+      if (!response.ok) throw new Error(result.conflict ? "A colleague changed the queue. Your draft is retained. Review the latest saved reply before saving again." : result.error || "Could not save.");
+      setDirty(false); return true;
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); return false; }
+    finally { setBusy(false); }
+  }
+  function choose(id: string) {
+    if (dirty) { setError("Save or discard your current changes before switching interactions."); return; }
+    setSelected(id); setError("");
+  }
+  const entries = snapshot?.board.entries ?? [];
+  const visible = entries.filter(e => (status === "all" || e.status === status) && (topic === "all" || e.topic === topic || e.topic === "both") && `${e.author} ${e.sourceText} ${e.reply}`.toLowerCase().includes(search.toLowerCase()));
+  const active = entries.find(e => e.id === selected) ?? visible[0];
+  return <section className="min-w-0 space-y-5 pb-8" aria-label="Symposium LinkedIn interactions">
+    <header className="flex flex-wrap items-start justify-between gap-3">
+      <div><p className="text-xs font-semibold uppercase text-muted">2026 Symposium + Training Week</p><h1 className="mt-1 flex items-center gap-2 text-2xl font-bold"><MessageSquareText size={24} />LinkedIn</h1>
+        <p className="mt-2 text-xs text-muted">{snapshot?.board.checkedAt ? `Browser checked ${stamp(snapshot.board.checkedAt)} ET` : "Not yet checked"} · No background sync · Replies not sent from here</p></div>
+      <div className="flex flex-wrap gap-1">
+        <a href={LINKEDIN_ACTIVITY_URL} target="_blank" rel="noopener noreferrer" className={buttonClass}><ExternalLink size={16} />BioHubNet activity</a>
+        <button type="button" className={buttonClass} disabled={busy || dirty} onClick={() => { setBusy(true); setError(""); void load(); }} title="Reload saved platform records"><RefreshCw size={16} />Reload queue</button>
+        <button type="button" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={dirty || busy} onClick={() => setAdding(!adding)}><Plus size={16} />Add interaction</button>
+      </div>
+    </header>
+    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm"><span><strong className="text-xl">{entries.length}</strong> tracked</span><span className="text-amber-700 dark:text-amber-300"><strong className="text-xl">{entries.filter(e => e.status === "pending").length}</strong> needs reply</span><span className="text-emerald-700 dark:text-emerald-300"><strong className="text-xl">{entries.filter(e => e.status === "replied").length}</strong> replied</span><span className="text-muted"><strong className="text-xl">{entries.filter(e => e.status === "no_reply").length}</strong> no reply needed</span></div>
+    {snapshot && <details className="text-xs text-muted"><summary className="cursor-pointer">Coverage</summary><p className="mt-2 max-w-3xl whitespace-pre-wrap">{snapshot.board.coverage}</p></details>}
+    {error && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
+    {adding && <NewInteraction busy={busy} close={() => setAdding(false)} save={async entry => { if (await save({ action: "add", entry })) setAdding(false); }} />}
+    <div className="flex flex-wrap items-center gap-3 border-y border-line py-3">
+      <label className="relative min-w-48 flex-1"><span className="sr-only">Search interactions</span><Search className="absolute left-3 top-3 text-muted" size={16} /><input className={`${inputClass} pl-9`} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search people or posts" /></label>
+      <label className="flex items-center gap-2 text-sm text-muted">Status<select className={inputClass} value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label className="flex items-center gap-2 text-sm text-muted">Event<select className={inputClass} value={topic} onChange={e => setTopic(e.target.value)}><option value="all">Both events</option><option value="symposium">Symposium</option><option value="training_week">Training Week</option></select></label>
+    </div>
+    {busy && !snapshot ? <p role="status">Loading interactions...</p> : !entries.length ? <p className="py-8 text-muted">No interactions recorded yet.</p> : <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)]">
+      <nav aria-label="Interactions" className="max-h-[64vh] overflow-y-auto overscroll-contain lg:sticky lg:top-4">
+        {!visible.length && <p className="py-4 text-sm text-muted">No matches.</p>}
+        {visible.map(e => <button type="button" key={e.id} aria-current={active?.id === e.id ? "true" : undefined} onClick={() => choose(e.id)} className={`block w-full border-b border-line px-3 py-3 text-left ${active?.id === e.id ? "bg-brand-500/10" : "hover:bg-elevated"}`}>
+          <span className="block break-words text-sm font-bold">{e.author}</span><span className="mt-1 block text-xs text-muted">{kinds[e.kind]} · {statuses[e.status]}</span><span className="mt-1 line-clamp-2 block break-words text-xs text-muted">{e.sourceText}</span>
+        </button>)}
+      </nav>
+      {active && <ReplyEditor key={active.id} entry={active} busy={busy} save={save} onDirty={setDirty} />}
+    </div>}
+  </section>;
+}
+
+function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; busy: boolean; save: (action: LinkedinAction) => Promise<boolean>; onDirty: (dirty: boolean) => void }) {
+  const [reply, setReply] = useState(entry.reply), [status, setStatus] = useState(entry.status), [notes, setNotes] = useState(entry.notes), [copied, setCopied] = useState(false), [copyError, setCopyError] = useState("");
+  const dirty = reply !== entry.reply || status !== entry.status || notes !== entry.notes;
+  useEffect(() => { onDirty(dirty); }, [dirty, onDirty]);
+  async function copy() {
+    try { await navigator.clipboard.writeText(reply); setCopied(true); setCopyError(""); }
+    catch { setCopyError("Could not copy. Select the reply text to copy it."); }
+  }
+  return <article className="min-w-0 space-y-4" aria-label={`Interaction with ${entry.author}`}>
+    <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="break-words text-xl font-bold">{entry.author}</h2><p className="mt-1 text-xs text-muted">{kinds[entry.kind]} · {topics[entry.topic]} · Observed {stamp(entry.observedAt)} ET{entry.occurredLabel ? ` · LinkedIn showed ${entry.occurredLabel}` : ""}</p></div>
+      <a className={`${buttonClass} text-brand-700 dark:text-brand-300`} href={entry.sourceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} />Open on LinkedIn</a></div>
+    <div className="max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-elevated/50 p-4 text-sm leading-relaxed">{entry.sourceText}</div>
+    <form className="space-y-3" aria-label="Reply draft" onSubmit={async e => { e.preventDefault(); await save({ action: "edit", id: entry.id, reply, status, notes }); }}>
+      <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="linkedin-reply" className="text-sm font-bold">Draft reply as BioHubNet</label><button type="button" className={buttonClass} disabled={!reply.trim()} onClick={() => void copy()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? "Copied" : "Copy reply"}</button></div>
+      <textarea id="linkedin-reply" className={`${inputClass} min-h-36 resize-y leading-relaxed`} maxLength={3000} value={reply} onChange={e => { setReply(e.target.value); setCopied(false); }} />
+      {copyError && <p role="alert" className="text-sm text-rose-700">{copyError}</p>}
+      <label className="block text-sm font-semibold">Status<select className={`${inputClass} mt-1 max-w-xs`} value={status} onChange={e => setStatus(e.target.value as LinkedinEntry["status"])}>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label className="block text-sm font-semibold">Internal note<textarea className={`${inputClass} mt-1 resize-y`} rows={2} maxLength={2000} value={notes} onChange={e => setNotes(e.target.value)} /></label>
+      {dirty && entry.updatedAt && <details className="text-xs text-muted"><summary className="cursor-pointer">Latest saved reply · {entry.updatedBy} · {stamp(entry.updatedAt)} ET</summary><p className="mt-2 whitespace-pre-wrap">{entry.reply || "No reply drafted."}</p></details>}
+      <div className="flex flex-wrap items-center gap-2"><button type="submit" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={busy || !dirty}><Save size={16} />{busy ? "Saving..." : "Save changes"}</button>
+        {dirty && <button type="button" className={buttonClass} disabled={busy} onClick={() => { setReply(entry.reply); setStatus(entry.status); setNotes(entry.notes); }}>Discard changes</button>}
+        <span role="status" className="text-xs text-muted">{dirty ? "Unsaved changes" : `Saved · ${entry.updatedBy} · ${stamp(entry.updatedAt)} ET`}</span></div>
+    </form>
+  </article>;
+}
+
+function NewInteraction({ busy, save, close }: { busy: boolean; save: (entry: Extract<LinkedinAction, { action: "add" }>["entry"]) => Promise<void>; close: () => void }) {
+  const [author, setAuthor] = useState(""), [url, setUrl] = useState(""), [sourceText, setSourceText] = useState("");
+  const [kind, setKind] = useState<LinkedinEntry["kind"]>("mention"), [topic, setTopic] = useState<LinkedinEntry["topic"]>("symposium");
+  return <form aria-label="Add LinkedIn interaction" className="space-y-3 border-y border-line py-4" onSubmit={e => { e.preventDefault(); void save({ sourceUrl: url, author, kind, topic, sourceText, reply: "", status: "pending", occurredLabel: "" }); }}>
+    <div className="flex items-center justify-between"><h2 className="font-bold">Add interaction</h2><button type="button" onClick={close} disabled={busy} className={buttonClass} aria-label="Close new interaction"><X size={18} /></button></div>
+    <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Person or organization<input className={`${inputClass} mt-1`} required maxLength={240} value={author} onChange={e => setAuthor(e.target.value)} /></label><label className="text-sm">LinkedIn source link<input className={`${inputClass} mt-1`} type="url" required maxLength={2000} value={url} onChange={e => setUrl(e.target.value)} /></label>
+      <label className="text-sm">Interaction<select className={`${inputClass} mt-1`} value={kind} onChange={e => setKind(e.target.value as LinkedinEntry["kind"])}>{Object.entries(kinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label className="text-sm">Event<select className={`${inputClass} mt-1`} value={topic} onChange={e => setTopic(e.target.value as LinkedinEntry["topic"])}>{Object.entries(topics).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>
+    <label className="block text-sm">Post, comment or message<textarea required className={`${inputClass} mt-1`} rows={4} maxLength={16000} value={sourceText} onChange={e => setSourceText(e.target.value)} /></label>
+    <button type="submit" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={busy}><Plus size={16} />Add to queue</button>
+  </form>;
+}

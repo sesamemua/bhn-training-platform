@@ -1,0 +1,66 @@
+import { z } from "zod";
+
+export const LINKEDIN_ACTIVITY_URL = "https://www.linkedin.com/company/102677155/admin/notifications/all/";
+export const LINKEDIN_BOARD_KEY = "symposium2026.linkedin.v1";
+export const LinkedinKind = z.enum(["mention", "comment", "repost", "reaction", "message"]);
+export const LinkedinTopic = z.enum(["symposium", "training_week", "both"]);
+export const LinkedinStatus = z.enum(["pending", "replied", "no_reply"]);
+
+export function linkedinSourceUrl(value: string): string {
+  const url = new URL(value);
+  if (url.protocol !== "https:" || !["www.linkedin.com", "linkedin.com"].includes(url.hostname) || url.username || url.password || !/^\/(feed\/update\/|company\/102677155\/admin\/inbox)/.test(url.pathname)) throw new Error("Use a LinkedIn post, comment or BioHubNet inbox link.");
+  url.hostname = "www.linkedin.com";
+  const comment = url.searchParams.get("dashCommentUrn") ?? url.searchParams.get("commentUrn");
+  url.search = "";
+  url.hash = "";
+  if (comment) url.searchParams.set("dashCommentUrn", comment);
+  return url.href;
+}
+
+const SourceUrl = z.string().trim().max(2000).transform((value, ctx) => {
+  try { return linkedinSourceUrl(value); }
+  catch { ctx.addIssue({ code: "custom", message: "Use a LinkedIn post, comment or BioHubNet inbox link." }); return z.NEVER; }
+});
+export const LinkedinInput = z.object({
+  sourceUrl: SourceUrl, author: z.string().trim().min(1).max(240),
+  kind: LinkedinKind, topic: LinkedinTopic,
+  sourceText: z.string().trim().min(1).max(16000),
+  reply: z.string().trim().max(3000),
+  status: LinkedinStatus.default("pending"),
+  occurredLabel: z.string().max(100).default(""),
+});
+export const LinkedinEntry = LinkedinInput.extend({
+  id: z.string().min(1).max(2100), observedAt: z.string().datetime(),
+  updatedAt: z.string().datetime(), updatedBy: z.string().max(240), notes: z.string().max(2000).default(""),
+});
+export const LinkedinBoard = z.object({ entries: z.array(LinkedinEntry).max(2000), checkedAt: z.string().datetime().nullable(), coverage: z.string().max(800) });
+export type LinkedinEntry = z.infer<typeof LinkedinEntry>;
+export type LinkedinBoard = z.infer<typeof LinkedinBoard>;
+export interface LinkedinSnapshot { board: LinkedinBoard; version: string | null }
+export const LinkedinAction = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("add"), entry: LinkedinInput }),
+  z.object({ action: z.literal("import"), entries: z.array(LinkedinInput).min(1).max(300), coverage: z.string().trim().min(1).max(800) }),
+  z.object({ action: z.literal("edit"), id: z.string().max(2100), reply: z.string().trim().max(3000), status: LinkedinStatus, notes: z.string().max(2000) }),
+]);
+export type LinkedinAction = z.infer<typeof LinkedinAction>;
+
+export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction, actor: string, at: string): LinkedinBoard {
+  const next = structuredClone(board);
+  if (action.action === "edit") {
+    const entry = next.entries.find(e => e.id === action.id);
+    if (!entry) throw new Error("This interaction no longer exists. Reload the queue.");
+    Object.assign(entry, { reply: action.reply, status: action.status, notes: action.notes, updatedBy: actor, updatedAt: at });
+  } else {
+    for (const input of action.action === "add" ? [action.entry] : action.entries) {
+      const sourceUrl = linkedinSourceUrl(input.sourceUrl), id = `${input.kind}:${sourceUrl}`;
+      const existing = next.entries.find(e => e.id === id);
+      if (existing) {
+        if (action.action === "add") throw new Error("This interaction is already in the queue.");
+        // New scans update the evidence, never a colleague's reply or completion status.
+        Object.assign(existing, { sourceText: input.sourceText, occurredLabel: input.occurredLabel, observedAt: at });
+      } else next.entries.push({ ...input, sourceUrl, id, observedAt: at, updatedAt: at, updatedBy: actor, notes: "" });
+    }
+    if (action.action === "import") { next.checkedAt = at; next.coverage = action.coverage; }
+  }
+  return LinkedinBoard.parse(next);
+}
