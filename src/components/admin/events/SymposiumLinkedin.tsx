@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, MessageSquareText, Plus, RefreshCw, Save, Search, X } from "lucide-react";
-import { LINKEDIN_ACTIVITY_URL, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
+import { LINKEDIN_ACTIVITY_URL, linkedinEmbedUrl, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
 
 const API = "/api/admin/symposium-linkedin";
 const statuses = { pending: "Needs reply", replied: "Replied", no_reply: "No reply needed" };
@@ -73,7 +73,7 @@ export function SymposiumLinkedin() {
       <label className="flex items-center gap-2 text-sm text-muted">Status<select className={inputClass} value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <label className="flex items-center gap-2 text-sm text-muted">Event<select className={inputClass} value={topic} onChange={e => setTopic(e.target.value)}><option value="all">Both events</option><option value="symposium">Symposium</option><option value="training_week">Training Week</option></select></label>
     </div>
-    {busy && !snapshot ? <p role="status">Loading interactions...</p> : !entries.length ? <p className="py-8 text-muted">No interactions recorded yet.</p> : <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)]">
+    {busy && !snapshot ? <p role="status">Loading interactions...</p> : !entries.length ? <p className="py-8 text-muted">No interactions recorded yet.</p> : <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
       <nav aria-label="Interactions" className="max-h-[64vh] overflow-y-auto overscroll-contain lg:sticky lg:top-4">
         {!visible.length && <p className="py-4 text-sm text-muted">No matches.</p>}
         {visible.map(e => <button type="button" key={e.id} aria-current={active?.id === e.id ? "true" : undefined} onClick={() => choose(e.id)} className={`block w-full border-b border-line px-3 py-3 text-left ${active?.id === e.id ? "bg-brand-500/10" : "hover:bg-elevated"}`}>
@@ -93,11 +93,13 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
     try { await navigator.clipboard.writeText(reply); setCopied(true); setCopyError(""); }
     catch { setCopyError("Could not copy. Select the reply text to copy it."); }
   }
-  return <article className="min-w-0 space-y-4" aria-label={`Interaction with ${entry.author}`}>
+  return <article className="@container min-w-0 space-y-4" aria-label={`Interaction with ${entry.author}`}>
     <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="break-words text-xl font-bold">{entry.author}</h2><p className="mt-1 text-xs text-muted">{kinds[entry.kind]} · {topics[entry.topic]} · Observed {stamp(entry.observedAt)} ET{entry.occurredLabel ? ` · LinkedIn showed ${entry.occurredLabel}` : ""}</p></div>
       <a className={`${buttonClass} text-brand-700 dark:text-brand-300`} href={entry.sourceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} />Open on LinkedIn</a></div>
-    <div role="region" aria-label="LinkedIn source text" tabIndex={0} className="max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-elevated/50 p-4 text-sm leading-relaxed focus-visible:outline-2 focus-visible:outline-brand-500">{entry.sourceText}</div>
-    <form className="space-y-3" aria-label="Reply draft" onSubmit={async e => { e.preventDefault(); await save({ action: "edit", id: entry.id, reply, status, notes }); }}>
+    <div className="grid min-w-0 items-start gap-5 @[680px]:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.88fr)]">
+    <OriginalLinkedinPost entry={entry} />
+    <form className="min-w-0 space-y-3" aria-label="Reply draft" onSubmit={async e => { e.preventDefault(); await save({ action: "edit", id: entry.id, reply, status, notes }); }}>
+      {entry.kind === "comment" && <details open className="text-sm"><summary className="cursor-pointer font-semibold">Comment by {entry.author}</summary><div role="region" aria-label="Captured comment context" tabIndex={0} className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-elevated/50 p-3 text-sm leading-relaxed">{entry.sourceText}</div></details>}
       <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="linkedin-reply" className="text-sm font-bold">Draft reply as BioHubNet</label><button type="button" className={buttonClass} disabled={!reply.trim()} onClick={() => void copy()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? "Copied" : "Copy reply"}</button></div>
       <textarea id="linkedin-reply" className={`${inputClass} min-h-36 resize-y leading-relaxed`} maxLength={3000} value={reply} onChange={e => { setReply(e.target.value); setCopied(false); }} />
       {copyError && <p role="alert" className="text-sm text-rose-700">{copyError}</p>}
@@ -108,7 +110,26 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
         {dirty && <button type="button" className={buttonClass} disabled={busy} onClick={() => { setReply(entry.reply); setStatus(entry.status); setNotes(entry.notes); }}>Discard changes</button>}
         <span role="status" className="text-xs text-muted">{dirty ? "Unsaved changes" : `Saved · ${entry.updatedBy} · ${stamp(entry.updatedAt)} ET`}</span></div>
     </form>
+    </div>
   </article>;
+}
+
+function OriginalLinkedinPost({ entry }: { entry: LinkedinEntry }) {
+  const embed = entry.kind === "message" ? null : linkedinEmbedUrl(entry.sourceUrl);
+  const [saved, setSaved] = useState(false);
+  return <section className="min-w-0 space-y-3" aria-label="Original LinkedIn post">
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-bold">{entry.kind === "message" ? "Original message" : "Original post"}</h3>
+      {embed && <div role="group" aria-label="Post view" className="flex gap-1 rounded-md bg-elevated/60 p-1">
+        <button type="button" aria-pressed={!saved} onClick={() => setSaved(false)} className={`rounded px-3 py-1.5 text-xs font-semibold ${!saved ? "bg-brand-600 text-white" : "text-fg"}`}>LinkedIn</button>
+        <button type="button" aria-pressed={saved} onClick={() => setSaved(true)} className={`rounded px-3 py-1.5 text-xs font-semibold ${saved ? "bg-brand-600 text-white" : "text-fg"}`}>Saved text</button>
+      </div>}
+    </div>
+    {embed && !saved ? <iframe title="Original LinkedIn post" src={embed} loading="lazy" referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" onError={() => setSaved(true)} className="block h-[78vh] min-h-[480px] w-full rounded-lg border-0 bg-white" />
+      : <div data-theme="light" className="overflow-hidden rounded-lg border border-line bg-card-solid font-sans text-fg [color-scheme:light]">
+        <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3"><div className="min-w-0"><p className="break-words text-sm font-semibold">{entry.kind === "reaction" ? "BioHubNet" : entry.author}</p><p className="mt-0.5 text-xs text-muted">{entry.kind === "message" ? "Private message · Saved capture" : "Saved interaction capture"}</p></div><a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="Open original on LinkedIn" className="shrink-0 text-brand-700"><ExternalLink size={18} /></a></header>
+        <div role="region" aria-label="LinkedIn source text" tabIndex={0} className="max-h-[78vh] overflow-y-auto whitespace-pre-wrap break-words p-4 text-sm leading-relaxed focus-visible:outline-2 focus-visible:outline-brand-500">{entry.sourceText}</div>
+      </div>}
+  </section>;
 }
 
 function NewInteraction({ busy, save, close }: { busy: boolean; save: (entry: Extract<LinkedinAction, { action: "add" }>["entry"]) => Promise<void>; close: () => void }) {

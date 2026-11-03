@@ -2,11 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error Runtime supports loader hooks ahead of the repo's Node typings.
 import { registerHooks } from "node:module";
-import { changeLinkedinBoard, LinkedinAction, LinkedinBoard, LinkedinInput, linkedinSourceUrl } from "../../src/lib/events/linkedin";
+import { changeLinkedinBoard, LinkedinAction, LinkedinBoard, LinkedinInput, linkedinSourceUrl, linkedinEmbedUrl } from "../../src/lib/events/linkedin";
 
 const at = "2026-11-03T15:00:00.000Z";
 const input = () => LinkedinInput.parse({ author: "Example Attendee", sourceUrl: "https://www.linkedin.com/feed/update/urn:li:activity:123?actorCompanyId=102677155", kind: "mention", topic: "symposium", sourceText: "Thank you for the symposium!", reply: "Thank you for joining us!" });
 const empty = () => LinkedinBoard.parse({ entries: [], checkedAt: null, coverage: "Not checked" });
+
+test("native embeds use only public LinkedIn post URNs, not comment tracking or private inbox links", () => {
+  for (const kind of ["activity", "share", "ugcPost"]) {
+    assert.equal(linkedinEmbedUrl(`https://www.linkedin.com/feed/update/urn:li:${kind}:123/?dashCommentUrn=comment-5`), `https://www.linkedin.com/embed/feed/update/urn:li:${kind}:123`);
+  }
+  for (const source of ["https://www.linkedin.com/company/102677155/admin/inbox/thread/private", "https://www.linkedin.com:8443/feed/update/urn:li:activity:1", "https://www.linkedin.com.evil.test/feed/update/urn:li:activity:1", "https://www.linkedin.com/feed/update/urn:li:activity:1/extra", "javascript:alert(1)", "not a url"]) assert.equal(linkedinEmbedUrl(source), null);
+});
 
 test("source links reject lookalike hosts and unsafe schemes and preserve comment identity", () => {
   for (const url of ["javascript:alert(1)", "https://www.linkedin.com.evil.test/feed/update/123", "http://www.linkedin.com/feed/update/123", "https://user:pass@www.linkedin.com/feed/update/123", "https://www.linkedin.com/jobs/"]) assert.throws(() => linkedinSourceUrl(url));

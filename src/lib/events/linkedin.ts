@@ -17,6 +17,15 @@ export function linkedinSourceUrl(value: string): string {
   return url.href;
 }
 
+export function linkedinEmbedUrl(value: string): string | null {
+  try {
+    const url = new URL(linkedinSourceUrl(value));
+    if (url.origin !== "https://www.linkedin.com") return null;
+    const urn = url.pathname.match(/^\/feed\/update\/(urn:li:(?:activity|share|ugcPost):\d+)\/?$/)?.[1];
+    return urn ? `https://www.linkedin.com/embed/feed/update/${urn}` : null;
+  } catch { return null; }
+}
+
 const SourceUrl = z.string().trim().max(2000).transform((value, ctx) => {
   try { return linkedinSourceUrl(value); }
   catch { ctx.addIssue({ code: "custom", message: "Use a LinkedIn post, comment or BioHubNet inbox link." }); return z.NEVER; }

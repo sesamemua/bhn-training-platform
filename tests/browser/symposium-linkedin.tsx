@@ -19,6 +19,7 @@ async function main() {
     let conflict = true, saves = 0;
     await page.route("https://linkedin.test/", route => route.fulfill({ contentType: "text/html", body: `<html lang="en"><head><title>Symposium LinkedIn</title><style>${css.css}body{margin:0;background:#fafbfc;color:#172022}main{padding:24px}</style></head><body><main><div id="root"></div></main><script src="/app.js"></script></body></html>` }));
     await page.route("https://linkedin.test/app.js", route => route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text }));
+    await page.route("https://www.linkedin.com/embed/feed/update/**", route => route.fulfill({ contentType: "text/html", body: '<html lang="en"><head><title>LinkedIn post fixture</title></head><body style="margin:0;padding:16px;font:14px Arial;background:white;color:#191919"><main><h1 style="font-size:16px">Example Attendee</h1><p>A public LinkedIn post fixture.</p></main></body></html>' }));
     await page.route("https://linkedin.test/api/admin/symposium-linkedin", async route => {
       if (route.request().method() !== "POST") return route.fulfill({ json: snapshot });
       const input = route.request().postDataJSON(); assert.equal(input.version, snapshot.version);
@@ -29,6 +30,15 @@ async function main() {
     await page.goto("https://linkedin.test/");
     const editor = page.getByRole("form", { name: "Reply draft" });
     await expect(editor.getByRole("textbox", { name: "Draft reply as BioHubNet" })).toHaveValue("Thank you for joining us!");
+    const frame = page.locator('iframe[title="Original LinkedIn post"]');
+    await expect(frame).toHaveAttribute("src", "https://www.linkedin.com/embed/feed/update/urn:li:activity:1");
+    assert.ok(await frame.evaluate(el => el.getBoundingClientRect().right) <= await editor.evaluate(el => el.getBoundingClientRect().left), "Original post sits beside its reply on desktop");
+    await editor.getByRole("textbox", { name: "Draft reply as BioHubNet" }).fill("Draft retained across preview changes");
+    await page.getByRole("button", { name: "Saved text", exact: true }).click();
+    await expect(page.getByRole("region", { name: "LinkedIn source text", exact: true })).toContainText("A useful conversation");
+    await expect(frame).toHaveCount(0);
+    await page.getByRole("button", { name: "LinkedIn", exact: true }).click();
+    await expect(editor.getByRole("textbox", { name: "Draft reply as BioHubNet" })).toHaveValue("Draft retained across preview changes");
     assert.ok(await page.getByRole("navigation", { name: "Interactions" }).getByRole("button").first().evaluate(el => el.getBoundingClientRect().height < 140), "Long posts must stay compact in the queue");
     await editor.getByRole("textbox", { name: "Draft reply as BioHubNet" }).fill("Thank you for sharing your perspective.");
     await page.getByRole("button", { name: /Second Attendee/ }).click();
@@ -49,11 +59,15 @@ async function main() {
       await page.setViewportSize({ width, height: 1000 });
       assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
       assert.ok(await page.getByRole("navigation", { name: "Interactions" }).getByRole("button").first().evaluate(el => el.getBoundingClientRect().height < 140));
+      assert.ok(await frame.evaluate(el => el.getBoundingClientRect().bottom) <= await editor.evaluate(el => el.getBoundingClientRect().top), "Post and reply stack on mobile");
     }
     await page.screenshot({ path: "output/linkedin-20261103/mobile.png", fullPage: true });
     const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
-    console.log("PASS: editable drafts, save conflict preservation, status persistence, event filter, unsaved-change guard, desktop/mobile and accessibility.");
+    await page.getByRole("button", { name: "Saved text", exact: true }).click();
+    const fallbackAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    assert.deepEqual(fallbackAxe.violations.map(v => v.id), []);
+    console.log("PASS: native original post beside reply, saved-text fallback without losing drafts, mobile stacking, save conflicts, status, filters and accessibility.");
   } finally { await browser.close(); }
 }
 void main();
