@@ -27,6 +27,7 @@ test("reaction identities validate, refresh safely, and stay out of public quote
   assert.ok(!JSON.stringify(publicLinkedinTestimonials(visible)).includes("Named Reactor"));
   for (const invalid of [{ ...reactions, total: 0 }, { ...reactions, people: [...reactions.people, ...reactions.people] }, { ...reactions, people: [{ ...reactions.people[0], profileUrl: "https://www.linkedin.com.evil.test/in/person/" }] }]) assert.equal(LinkedinInput.safeParse({ ...entry, reactions: invalid }).success, false);
   for (const profileUrl of ["not a url", "javascript:alert(1)", "http://linkedin.com/in/person/", "https://linkedin.com:8443/in/person/", "https://user:pass@linkedin.com/in/person/"]) assert.equal(LinkedinInput.safeParse({ ...entry, reactions: { ...reactions, people: [{ ...reactions.people[0], profileUrl }] } }).success, false);
+  assert.equal(LinkedinInput.safeParse({ ...entry, reactions: { ...reactions, people: [{ ...reactions.people[0], profileUrl: "https://www.linkedin.com/in/person/en/" }] } }).success, true);
 });
 
 test("quote ratings validate, are editable, and survive repeat imports without publishing", () => {

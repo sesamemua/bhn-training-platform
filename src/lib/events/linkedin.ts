@@ -13,7 +13,7 @@ export const LinkedinReactions = z.object({
   total: z.number().int().min(0).max(1_000_000), capturedAt: z.string().datetime(),
   people: z.array(z.object({
     name: z.string().trim().min(1).max(240), headline: z.string().trim().max(1000), reaction: z.string().trim().min(1).max(60),
-    profileUrl: z.string().url().refine(value => { try { const url = new URL(value); return url.protocol === "https:" && ["www.linkedin.com", "linkedin.com"].includes(url.hostname) && !url.port && !url.username && !url.password && /^\/(in|company|school|showcase)\/[^/]+\/?$/.test(url.pathname); } catch { return false; } }, "Use a public LinkedIn profile link."),
+    profileUrl: z.string().url().refine(value => { try { const url = new URL(value); return url.protocol === "https:" && ["www.linkedin.com", "linkedin.com"].includes(url.hostname) && !url.port && !url.username && !url.password && /^\/(in|company|school|showcase)\/[^/]+(?:\/[a-z]{2})?\/?$/.test(url.pathname); } catch { return false; } }, "Use a public LinkedIn profile link."),
   }).strict()).max(1000),
 }).strict().refine(value => value.people.length <= value.total && new Set(value.people.map(person => person.profileUrl)).size === value.people.length, "Check the reaction total and duplicate profiles.");
 export const LinkedinFeedbackProfile = z.object({
