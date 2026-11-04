@@ -39,6 +39,14 @@ test("private sources, reactions and rewritten or overlong quotes cannot be publ
   assert.throws(() => changeLinkedinBoard(board, { action: "testimonial", id: "missing", quote: "Thank you!", publish: true }, "Admin", at), /no longer/);
 });
 
+test("separate public posts and comments by the same author are not hidden as duplicates", () => {
+  let board = fixture();
+  board = changeLinkedinBoard(board, { action: "add", entry: LinkedinInput.parse({ author: "Attendee", kind: "comment", topic: "symposium", sourceUrl: "https://www.linkedin.com/feed/update/urn:li:activity:456?dashCommentUrn=comment", sourceText: "A second great conversation.", reply: "" }) }, "Admin", at);
+  for (const entry of board.entries) board = changeLinkedinBoard(board, { action: "testimonial", id: entry.id, quote: entry.sourceText, publish: true }, "Curator", at);
+  assert.equal(publicLinkedinTestimonials(board).length, 2);
+  assert.equal(new Set(publicLinkedinTestimonials(board).map(q => q.sourceUrl)).size, 2);
+});
+
 test("rescans preserve curation and reply drafts, but removed source excerpts disappear publicly", () => {
   const board = fixture(), entry = board.entries[0];
   const published = changeLinkedinBoard(board, { action: "testimonial", id: entry.id, quote: "Thank you! A useful conversation", publish: true }, "Curator", at);
@@ -61,6 +69,8 @@ test("Word clipboard has readable plain text, escaped rich text, attribution and
   assert.ok(content.html.includes("Researcher &amp; mentor<br>A &lt;University&gt;"));
   assert.ok(content.text.includes("Researcher & mentor\nA <University>"));
   assert.ok(content.html.includes("Original LinkedIn comment"));
+  assert.ok(content.text.includes("https://bhn-training-platform.vercel.app/events/2026-annual-symposium/feedback"));
+  assert.ok(content.html.includes('href="https://bhn-training-platform.vercel.app/events/2026-annual-symposium/feedback"'));
   assert.equal((content.html.match(/<blockquote>/g) ?? []).length, 2);
   assert.deepEqual(linkedinFeedbackClipboard([]), { text: "", html: "" });
 });
