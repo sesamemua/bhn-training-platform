@@ -102,7 +102,7 @@ export default async function EventsLayout({ children }: { children: React.React
           <Link href="/" className="flex items-center gap-2.5">
             <LogoMark size={28} />
             <span className="font-bold text-fg text-sm">
-              BHN <span className="text-[var(--brand-600)] font-semibold">Events</span>
+              BHN <span className="text-brand-700 font-semibold">Events</span>
             </span>
           </Link>
           <Link
