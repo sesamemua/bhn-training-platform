@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, Globe, MessageSquareText, Plus, RefreshCw, Save, Search, X } from "lucide-react";
-import { LINKEDIN_ACTIVITY_URL, LINKEDIN_FEEDBACK_PATH, LinkedinFeedbackProfile, LinkedinFeedbackImages, canPublishLinkedinQuote, publicLinkedinTestimonials, linkedinEmbedUrl, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
+import { LINKEDIN_ACTIVITY_URL, LINKEDIN_FEEDBACK_PATH, LinkedinAction, LinkedinFeedbackProfile, LinkedinFeedbackImages, canPublishLinkedinQuote, publicLinkedinTestimonials, linkedinEmbedUrl, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
 import { CopyFeedback } from "@/components/events/CopyFeedback";
 
 const API = "/api/admin/symposium-linkedin";
 const statuses = { pending: "Needs reply", replied: "Replied", no_reply: "No reply needed" };
 const kinds = { mention: "Mention", comment: "Comment", repost: "Repost", reaction: "Reactions", message: "Message" };
 const topics = { symposium: "Symposium", training_week: "Training Week", both: "Symposium + Training Week" };
+const ratings = { great: "Great to quote", useful: "Useful", routine: "Routine", unrated: "Not rated" };
 const emptyProfile = { title: "", affiliation: "", photoUrl: "", profileUrl: "" };
 const inputClass = "w-full min-w-0 rounded-md border border-line bg-card px-3 py-2 text-sm text-fg";
 const buttonClass = "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-elevated disabled:opacity-50";
@@ -18,6 +19,7 @@ export function SymposiumLinkedin() {
   const [snapshot, setSnapshot] = useState<LinkedinSnapshot | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [status, setStatus] = useState("all"), [topic, setTopic] = useState("all"), [search, setSearch] = useState("");
+  const [rating, setRating] = useState("all"), [kind, setKind] = useState("all"), [importing, setImporting] = useState(false);
   const [error, setError] = useState(""), [busy, setBusy] = useState(true), [dirty, setDirty] = useState(false), [adding, setAdding] = useState(false);
   async function load() {
     try {
@@ -54,8 +56,8 @@ export function SymposiumLinkedin() {
     setSelected(id); setError("");
   }
   const entries = snapshot?.board.entries ?? [];
-  const visible = entries.filter(e => (status === "all" || e.status === status) && (topic === "all" || e.topic === topic || e.topic === "both") && `${e.author} ${e.sourceText} ${e.reply}`.toLowerCase().includes(search.toLowerCase()));
-  const active = entries.find(e => e.id === selected) ?? visible[0];
+  const visible = entries.filter(e => (status === "all" || e.status === status) && (topic === "all" || e.topic === topic || e.topic === "both") && (rating === "all" || (e.assessment?.rating ?? "unrated") === rating) && (kind === "all" || (kind === "posts" ? ["mention", "repost"].includes(e.kind) : e.kind === kind)) && `${e.author} ${e.sourceText} ${e.reply}`.toLowerCase().includes(search.toLowerCase()));
+  const active = (dirty ? entries : visible).find(e => e.id === selected) ?? visible[0];
   return <section className="min-w-0 space-y-5 pb-8" aria-label="Symposium LinkedIn interactions">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><p className="text-xs font-semibold uppercase text-muted">2026 Symposium + Training Week</p><h1 className="mt-1 flex items-center gap-2 text-2xl font-bold"><MessageSquareText size={24} />LinkedIn</h1>
@@ -63,6 +65,7 @@ export function SymposiumLinkedin() {
       <div className="flex flex-wrap gap-1">
         <a href={LINKEDIN_ACTIVITY_URL} target="_blank" rel="noopener noreferrer" className={buttonClass}><ExternalLink size={16} />BioHubNet activity</a>
         <button type="button" className={buttonClass} disabled={busy || dirty} onClick={() => { setBusy(true); setError(""); void load(); }} title="Reload saved platform records"><RefreshCw size={16} />Reload queue</button>
+        <button type="button" className={buttonClass} disabled={dirty || busy} onClick={() => setImporting(!importing)}><Plus size={16} />Import captured activity</button>
         <button type="button" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={dirty || busy} onClick={() => setAdding(!adding)}><Plus size={16} />Add interaction</button>
       </div>
     </header>
@@ -71,16 +74,21 @@ export function SymposiumLinkedin() {
     {snapshot && <div className="flex flex-wrap items-center gap-3 border-y border-line py-3 text-sm"><a href={LINKEDIN_FEEDBACK_PATH} target="_blank" rel="noopener noreferrer" className={buttonClass}><Globe size={16} />Public feedback page<ExternalLink size={14} /></a><span className="text-muted">{publicLinkedinTestimonials(snapshot.board).length} published quotes</span><CopyFeedback quotes={publicLinkedinTestimonials(snapshot.board)} all /></div>}
     {error && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
     {adding && <NewInteraction busy={busy} close={() => setAdding(false)} save={async entry => { if (await save({ action: "add", entry })) setAdding(false); }} />}
+    {importing && <ImportInteractions busy={busy} save={async change => { if (await save(change)) setImporting(false); }} close={() => setImporting(false)} />}
     <div className="flex flex-wrap items-center gap-3 border-y border-line py-3">
       <label className="relative min-w-48 flex-1"><span className="sr-only">Search interactions</span><Search className="absolute left-3 top-3 text-muted" size={16} /><input className={`${inputClass} pl-9`} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search people or posts" /></label>
-      <label className="flex items-center gap-2 text-sm text-muted">Status<select className={inputClass} value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <label className="flex items-center gap-2 text-sm text-muted">Event<select className={inputClass} value={topic} onChange={e => setTopic(e.target.value)}><option value="all">Both events</option><option value="symposium">Symposium</option><option value="training_week">Training Week</option></select></label>
+      <label className="flex items-center gap-2 text-sm text-muted">Rating<select className={inputClass} disabled={dirty} value={rating} onChange={e => setRating(e.target.value)}><option value="all">All ratings</option>{Object.entries(ratings).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label className="flex items-center gap-2 text-sm text-muted">Type<select className={inputClass} disabled={dirty} value={kind} onChange={e => setKind(e.target.value)}><option value="all">All activity</option><option value="posts">Posts &amp; reposts</option><option value="comment">Comments</option><option value="message">Messages</option><option value="reaction">Reactions</option></select></label>
+      <label className="flex items-center gap-2 text-sm text-muted">Status<select className={inputClass} disabled={dirty} value={status} onChange={e => setStatus(e.target.value)}><option value="all">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label className="flex items-center gap-2 text-sm text-muted">Event<select className={inputClass} disabled={dirty} value={topic} onChange={e => setTopic(e.target.value)}><option value="all">Both events</option><option value="symposium">Symposium</option><option value="training_week">Training Week</option></select></label>
+      <span role="status" className="text-xs text-muted">{visible.length} matching / {entries.length} tracked</span>
     </div>
     {busy && !snapshot ? <p role="status">Loading interactions...</p> : !entries.length ? <p className="py-8 text-muted">No interactions recorded yet.</p> : <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
       <nav aria-label="Interactions" className="min-w-0">
         {!visible.length && <p className="py-4 text-sm text-muted">No matches.</p>}
         {visible.map(e => <button type="button" key={e.id} aria-current={active?.id === e.id ? "true" : undefined} onClick={() => choose(e.id)} className={`block w-full border-b border-line px-3 py-3 text-left ${active?.id === e.id ? "bg-brand-500/10" : "hover:bg-elevated"}`}>
           <span className="block break-words text-sm font-bold">{e.author}</span><span className="mt-1 block text-xs text-muted">{kinds[e.kind]} · {statuses[e.status]}</span><span className="mt-1 line-clamp-2 break-words text-xs text-muted">{e.sourceText}</span>
+          <span className={`mt-1 block text-xs font-semibold ${e.assessment?.rating === "great" ? "text-emerald-700 dark:text-emerald-300" : "text-muted"}`}>{ratings[e.assessment?.rating ?? "unrated"]}</span>
         </button>)}
       </nav>
       {active && <ReplyEditor key={active.id} entry={active} busy={busy} save={save} onDirty={setDirty} />}
@@ -93,11 +101,13 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
   const [quote, setQuote] = useState(entry.testimonial?.quote ?? "");
   const [profile, setProfile] = useState(entry.testimonial?.profile ?? emptyProfile);
   const [images, setImages] = useState(entry.testimonial?.images ?? []);
+  const [assessment, setAssessment] = useState(entry.assessment ?? { rating: "unrated" as const, reason: "" });
   const profileInput = LinkedinFeedbackProfile.safeParse(profile);
   const imageInput = LinkedinFeedbackImages.safeParse(images);
   const dirty = reply !== entry.reply || status !== entry.status || notes !== entry.notes;
   const quoteDirty = quote !== (entry.testimonial?.quote ?? "") || (["title", "affiliation", "photoUrl", "profileUrl"] as const).some(key => profile[key] !== (entry.testimonial?.profile ?? emptyProfile)[key]) || JSON.stringify(images) !== JSON.stringify(entry.testimonial?.images ?? []);
-  useEffect(() => { onDirty(dirty || quoteDirty); }, [dirty, quoteDirty, onDirty]);
+  const ratingDirty = assessment.rating !== (entry.assessment?.rating ?? "unrated") || assessment.reason !== (entry.assessment?.reason ?? "");
+  useEffect(() => { onDirty(dirty || quoteDirty || ratingDirty); }, [dirty, quoteDirty, ratingDirty, onDirty]);
   async function copy() {
     try { await navigator.clipboard.writeText(reply); setCopied(true); setCopyError(""); }
     catch { setCopyError("Could not copy. Select the reply text to copy it."); }
@@ -108,6 +118,11 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
     <div className="grid min-w-0 items-start gap-5 @[680px]:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.88fr)]">
     <OriginalLinkedinPost entry={entry} />
     <div className="min-w-0 space-y-6">
+    <form aria-label="Quote rating" className="space-y-3 border-b border-line pb-4" onSubmit={async e => { e.preventDefault(); await save({ action: "rate", id: entry.id, assessment }); }}>
+      <label className="block text-sm font-semibold">Quote rating<select className={`${inputClass} mt-1`} value={assessment.rating} onChange={e => setAssessment({ ...assessment, rating: e.target.value as typeof assessment.rating })}>{Object.entries(ratings).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label className="block text-sm">Rating reason<textarea className={`${inputClass} mt-1 resize-y`} rows={2} maxLength={500} value={assessment.reason} onChange={e => setAssessment({ ...assessment, reason: e.target.value })} /></label>
+      <div className="flex gap-2"><button type="submit" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={busy || !ratingDirty}><Save size={16} />Save rating</button>{ratingDirty && <button type="button" className={buttonClass} disabled={busy} onClick={() => setAssessment(entry.assessment ?? { rating: "unrated", reason: "" })}>Discard rating</button>}</div>
+    </form>
     <form className="min-w-0 space-y-3" aria-label="Reply draft" onSubmit={async e => { e.preventDefault(); await save({ action: "edit", id: entry.id, reply, status, notes }); }}>
       {entry.kind === "comment" && <details open className="text-sm"><summary className="cursor-pointer font-semibold">Comment by {entry.author}</summary><div role="region" aria-label="Captured comment context" tabIndex={0} className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-elevated/50 p-3 text-sm leading-relaxed">{entry.sourceText}</div></details>}
       <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="linkedin-reply" className="text-sm font-bold">Draft reply as BioHubNet</label><button type="button" className={buttonClass} disabled={!reply.trim()} onClick={() => void copy()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? "Copied" : "Copy reply"}</button></div>
@@ -144,6 +159,19 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
     </div>
     </div>
   </article>;
+}
+
+function ImportInteractions({ busy, save, close }: { busy: boolean; save: (change: Extract<LinkedinAction, { action: "import" }>) => Promise<void>; close: () => void }) {
+  const [text, setText] = useState("");
+  let change: Extract<LinkedinAction, { action: "import" }> | null = null;
+  try { const parsed = LinkedinAction.safeParse(JSON.parse(text)); if (parsed.success && parsed.data.action === "import") change = parsed.data; } catch { /* Wait for complete JSON. */ }
+  return <form aria-label="Import captured activity" className="space-y-3 border-y border-line py-4" onSubmit={e => { e.preventDefault(); if (change) void save(change); }}>
+    <div className="flex items-center justify-between"><h2 className="font-bold">Import captured activity</h2><button type="button" className={buttonClass} disabled={busy} onClick={close} aria-label="Close import"><X size={18} /></button></div>
+    <label className="block text-sm">Captured activity JSON<textarea className={`${inputClass} mt-1 resize-y`} rows={5} maxLength={950000} value={text} onChange={e => setText(e.target.value)} /></label>
+    {text && !change && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">Use a valid import action with a coverage note and up to 300 LinkedIn entries.</p>}
+    {change && <p role="status" className="text-sm">{change.entries.length} captured records. Existing replies, ratings and published quotes are retained.</p>}
+    <button type="submit" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={busy || !change}><Plus size={16} />Import records</button>
+  </form>;
 }
 
 function OriginalLinkedinPost({ entry }: { entry: LinkedinEntry }) {

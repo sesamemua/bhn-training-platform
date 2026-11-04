@@ -7,6 +7,8 @@ export const LINKEDIN_FEEDBACK_PATH = "/events/2026-annual-symposium/feedback";
 export const LinkedinKind = z.enum(["mention", "comment", "repost", "reaction", "message"]);
 export const LinkedinTopic = z.enum(["symposium", "training_week", "both"]);
 export const LinkedinStatus = z.enum(["pending", "replied", "no_reply"]);
+export const LinkedinRating = z.enum(["great", "useful", "routine", "unrated"]);
+export const LinkedinAssessment = z.object({ rating: LinkedinRating, reason: z.string().trim().max(500) }).strict();
 export const LinkedinFeedbackProfile = z.object({
   title: z.string().trim().max(240), affiliation: z.string().trim().max(240),
   photoUrl: z.union([z.literal(""), z.string().regex(/^\/feedback\/2026\/[a-z0-9-]+\.(?:jpg|png|webp)$/), z.string().url().pipe(HttpsUrl)]),
@@ -49,6 +51,7 @@ export const LinkedinInput = z.object({
   reply: z.string().trim().max(3000),
   status: LinkedinStatus.default("pending"),
   occurredLabel: z.string().max(100).default(""),
+  assessment: LinkedinAssessment.optional(),
 });
 export const LinkedinEntry = LinkedinInput.extend({
   id: z.string().min(1).max(2100), observedAt: z.string().datetime(),
@@ -63,13 +66,18 @@ export const LinkedinAction = z.discriminatedUnion("action", [
   z.object({ action: z.literal("add"), entry: LinkedinInput }),
   z.object({ action: z.literal("import"), entries: z.array(LinkedinInput).min(1).max(300), coverage: z.string().trim().min(1).max(800) }),
   z.object({ action: z.literal("edit"), id: z.string().max(2100), reply: z.string().trim().max(3000), status: LinkedinStatus, notes: z.string().max(2000) }),
+  z.object({ action: z.literal("rate"), id: z.string().max(2100), assessment: LinkedinAssessment }),
   z.object({ action: z.literal("testimonial"), id: z.string().max(2100), quote: z.string().trim().max(1200), publish: z.boolean(), profile: LinkedinFeedbackProfile.optional(), images: LinkedinFeedbackImages.optional() }),
 ]);
 export type LinkedinAction = z.infer<typeof LinkedinAction>;
 
 export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction, actor: string, at: string): LinkedinBoard {
   const next = structuredClone(board);
-  if (action.action === "testimonial") {
+  if (action.action === "rate") {
+    const entry = next.entries.find(e => e.id === action.id);
+    if (!entry) throw new Error("This interaction no longer exists. Reload the queue.");
+    Object.assign(entry, { assessment: action.assessment, updatedBy: actor, updatedAt: at });
+  } else if (action.action === "testimonial") {
     const entry = next.entries.find(e => e.id === action.id);
     if (!entry) throw new Error("This interaction no longer exists. Reload the queue.");
     if (action.publish && !canPublishLinkedinQuote(entry, action.quote)) throw new Error("Public quotes must be verbatim excerpts from a public LinkedIn post or comment.");
@@ -86,6 +94,7 @@ export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction
         if (action.action === "add") throw new Error("This interaction is already in the queue.");
         // New scans update the evidence, never a colleague's reply or completion status.
         Object.assign(existing, { sourceText: input.sourceText, occurredLabel: input.occurredLabel, observedAt: at });
+        if (!existing.assessment && input.assessment) existing.assessment = input.assessment;
       } else next.entries.push({ ...input, sourceUrl, id, observedAt: at, updatedAt: at, updatedBy: actor, notes: "" });
     }
     if (action.action === "import") { next.checkedAt = at; next.coverage = action.coverage; }

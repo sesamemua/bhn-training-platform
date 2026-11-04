@@ -2,11 +2,31 @@ import test from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error Runtime supports loader hooks ahead of the repo's Node typings.
 import { registerHooks } from "node:module";
-import { changeLinkedinBoard, LinkedinAction, LinkedinBoard, LinkedinInput, linkedinSourceUrl, linkedinEmbedUrl } from "../../src/lib/events/linkedin";
+import { changeLinkedinBoard, LinkedinAction, LinkedinBoard, LinkedinInput, linkedinSourceUrl, linkedinEmbedUrl, publicLinkedinTestimonials } from "../../src/lib/events/linkedin";
 
 const at = "2026-11-03T15:00:00.000Z";
 const input = () => LinkedinInput.parse({ author: "Example Attendee", sourceUrl: "https://www.linkedin.com/feed/update/urn:li:activity:123?actorCompanyId=102677155", kind: "mention", topic: "symposium", sourceText: "Thank you for the symposium!", reply: "Thank you for joining us!" });
 const empty = () => LinkedinBoard.parse({ entries: [], checkedAt: null, coverage: "Not checked" });
+
+test("quote ratings validate, are editable, and survive repeat imports without publishing", () => {
+  const assessment = { rating: "great" as const, reason: "Specific industry learning." };
+  const imported = changeLinkedinBoard(empty(), { action: "import", entries: [{ ...input(), assessment }], coverage: "Captured public posts" }, "Admin", at);
+  assert.deepEqual(imported.entries[0].assessment, assessment);
+  assert.equal(imported.entries[0].testimonial, undefined);
+  const rated = changeLinkedinBoard(imported, { action: "rate", id: imported.entries[0].id, assessment: { rating: "useful", reason: "Needs event context." } }, "Colleague", at);
+  const rescanned = changeLinkedinBoard(rated, { action: "import", entries: [{ ...input(), assessment }], coverage: "Rechecked" }, "Scanner", at);
+  assert.equal(rescanned.entries[0].assessment?.rating, "useful");
+  assert.equal(rescanned.entries[0].updatedBy, "Colleague");
+  assert.equal(rated.entries[0].reply, input().reply);
+  assert.equal(imported.entries[0].assessment?.rating, "great");
+  assert.throws(() => changeLinkedinBoard(imported, { action: "rate", id: "missing", assessment }, "Admin", at), /no longer/);
+  for (const invalid of [{ rating: "excellent", reason: "" }, { rating: "great", reason: "x".repeat(501) }]) assert.equal(LinkedinAction.safeParse({ action: "rate", id: "id", assessment: invalid }).success, false);
+  const legacy = changeLinkedinBoard(empty(), { action: "add", entry: input() }, "Admin", at);
+  assert.equal(legacy.entries[0].assessment, undefined);
+  const published = changeLinkedinBoard(imported, { action: "testimonial", id: imported.entries[0].id, quote: "Thank you for the symposium!", publish: true }, "Admin", at);
+  assert.ok(!JSON.stringify(publicLinkedinTestimonials(published)).includes("Specific industry learning"));
+  assert.ok(!JSON.stringify(publicLinkedinTestimonials(published)).includes("assessment"));
+});
 
 test("native embeds use only public LinkedIn post URNs, not comment tracking or private inbox links", () => {
   for (const kind of ["activity", "share", "ugcPost"]) {
