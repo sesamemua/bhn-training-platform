@@ -11,15 +11,16 @@ async function main() {
   const at = "2026-11-04T18:00:00.000Z";
   let snapshot: LinkedinSnapshot = { board: changeLinkedinBoard({ entries: [], checkedAt: null, coverage: "Internal coverage" }, { action: "add", entry: LinkedinInput.parse({ author: "Example Attendee", sourceUrl: "https://www.linkedin.com/feed/update/urn:li:activity:123", kind: "mention", topic: "symposium", sourceText: "A useful conversation about life sciences careers.", reply: "Private draft", status: "pending" }) }, "Admin", at), version: at };
   const css = await postcss([tailwind()]).process(await readFile("src/app/globals.css", "utf8"), { from: "src/app/globals.css" });
-  const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: "import React from 'react';import{createRoot}from'react-dom/client';import{SymposiumLinkedin}from'./src/components/admin/events/SymposiumLinkedin';import{LinkedinFeedback}from'./src/components/events/LinkedinFeedback';createRoot(document.getElementById('root')).render(location.pathname==='/admin'?<SymposiumLinkedin/>:<LinkedinFeedback quotes={window.quotes}/>);" }, bundle: true, write: false, jsx: "automatic", format: "iife", define: { "process.env": "{}" } });
+  const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: "import React from 'react';import{createRoot}from'react-dom/client';import{ThemeProvider}from'./src/components/ui/ThemeProvider';import{SymposiumLinkedin}from'./src/components/admin/events/SymposiumLinkedin';import{LinkedinFeedback}from'./src/components/events/LinkedinFeedback';createRoot(document.getElementById('root')).render(<ThemeProvider>{location.pathname==='/admin'?<SymposiumLinkedin/>:<LinkedinFeedback quotes={window.quotes}/>}</ThemeProvider>);" }, bundle: true, write: false, jsx: "automatic", format: "iife", define: { "process.env": "{}" } });
   const browser = await chromium.launch({ channel: "chrome" });
   try {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, permissions: ["clipboard-read", "clipboard-write"] });
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, colorScheme: "light", permissions: ["clipboard-read", "clipboard-write"] });
     const page = await context.newPage();
     await page.route("https://feedback.test/**", async route => {
       const path = new URL(route.request().url()).pathname;
       if (path === "/app.js") return route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text });
       if (path === "/biohubnet-logo.png") return route.fulfill({ contentType: "image/png", body: await readFile("public/biohubnet-logo.png") });
+      if (path === "/feedback/2026/example.jpg") return route.fulfill({ contentType: "image/png", body: await readFile("public/biohubnet-logo.png") });
       if (path === "/api/admin/symposium-linkedin") {
         if (route.request().method() !== "POST") return route.fulfill({ json: snapshot });
         const input = route.request().postDataJSON(); assert.equal(input.version, snapshot.version);
@@ -34,6 +35,11 @@ async function main() {
     await quote.fill("Rewritten praise");
     await expect(page.getByRole("button", { name: "Show on public page" })).toBeDisabled();
     await quote.fill("A useful conversation about life sciences careers.");
+    await page.getByRole("textbox", { name: "Title / role", exact: true }).fill("Research associate");
+    await page.getByRole("textbox", { name: "Affiliation", exact: true }).fill("Example University");
+    await page.getByRole("textbox", { name: "Headshot or logo URL", exact: true }).fill("javascript:alert(1)");
+    await expect(page.getByRole("button", { name: "Show on public page" })).toBeDisabled();
+    await page.getByRole("textbox", { name: "Headshot or logo URL", exact: true }).fill("/feedback/2026/example.jpg");
     await page.getByRole("textbox", { name: "Draft reply as BioHubNet" }).fill("Unsaved private reply");
     await page.getByRole("button", { name: "Show on public page" }).click();
     await expect(page.getByRole("button", { name: "Reload queue" })).toBeDisabled();
@@ -44,15 +50,29 @@ async function main() {
     await expect(page.getByText("1 published quotes")).toBeVisible();
     await page.goto("https://feedback.test/public");
     await expect(page.getByRole("blockquote")).toContainText("A useful conversation");
+    await expect(page.getByText("Research associate", { exact: true })).toBeVisible();
+    await expect(page.getByText("Example University", { exact: true })).toBeVisible();
+    await expect(page.getByRole("img", { name: "Example Attendee profile image" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Read original post", exact: true })).toHaveAttribute("href", snapshot.board.entries[0].sourceUrl);
     assert.ok(!await page.locator("body").innerText().then(text => /Private draft|Internal coverage|Curator/.test(text)));
     await page.getByRole("button", { name: "Copy all for Word" }).click();
     await expect(page.getByRole("button", { name: "Copied for Word" })).toBeVisible();
     const clipboard = await page.evaluate(async () => { const items = await navigator.clipboard.read(); return { html: await (await items[0].getType("text/html")).text(), text: await (await items[0].getType("text/plain")).text() }; });
     assert.ok(clipboard.html.includes("<blockquote>")); assert.ok(clipboard.html.includes("Original LinkedIn post")); assert.ok(clipboard.text.includes("Example Attendee"));
+    assert.ok(clipboard.text.includes("Research associate\nExample University"));
     const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
     await mkdir("output/linkedin-feedback", { recursive: true });
     await page.screenshot({ path: "output/linkedin-feedback/desktop.png", fullPage: true });
+    await page.getByRole("button", { name: "Switch to dark appearance" }).click();
+    await expect(page.locator("main[data-theme]")).toHaveAttribute("data-theme", "hitech");
+    const darkAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    assert.deepEqual(darkAxe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
+    await page.screenshot({ path: "output/linkedin-feedback/dark.png", fullPage: true });
+    await page.reload();
+    await expect(page.locator("main[data-theme]")).toHaveAttribute("data-theme", "hitech");
+    await page.getByRole("button", { name: "Switch to light appearance" }).click();
+    await expect(page.locator("main[data-theme]")).toHaveAttribute("data-theme", "light");
     for (const width of [390, 320]) { await page.setViewportSize({ width, height: 1000 }); assert.equal(await page.locator("body").evaluate(el => el.scrollWidth > innerWidth), false); }
     await page.screenshot({ path: "output/linkedin-feedback/mobile.png", fullPage: true });
     await page.goto("https://feedback.test/admin");

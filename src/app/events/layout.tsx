@@ -96,7 +96,7 @@ export default async function EventsLayout({ children }: { children: React.React
 
   // Anonymous branch — marketing chrome.
   return (
-    <div data-theme="light" className="min-h-screen bg-page flex flex-col">
+    <div className="min-h-screen bg-page flex flex-col">
       <header className="border-b border-line bg-card">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">

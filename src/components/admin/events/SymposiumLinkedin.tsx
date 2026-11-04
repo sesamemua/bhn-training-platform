@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, Globe, MessageSquareText, Plus, RefreshCw, Save, Search, X } from "lucide-react";
-import { LINKEDIN_ACTIVITY_URL, LINKEDIN_FEEDBACK_PATH, canPublishLinkedinQuote, publicLinkedinTestimonials, linkedinEmbedUrl, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
+import { LINKEDIN_ACTIVITY_URL, LINKEDIN_FEEDBACK_PATH, LinkedinFeedbackProfile, canPublishLinkedinQuote, publicLinkedinTestimonials, linkedinEmbedUrl, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
 import { CopyFeedback } from "@/components/events/CopyFeedback";
 
 const API = "/api/admin/symposium-linkedin";
 const statuses = { pending: "Needs reply", replied: "Replied", no_reply: "No reply needed" };
 const kinds = { mention: "Mention", comment: "Comment", repost: "Repost", reaction: "Reactions", message: "Message" };
 const topics = { symposium: "Symposium", training_week: "Training Week", both: "Symposium + Training Week" };
+const emptyProfile = { title: "", affiliation: "", photoUrl: "", profileUrl: "" };
 const inputClass = "w-full min-w-0 rounded-md border border-line bg-card px-3 py-2 text-sm text-fg";
 const buttonClass = "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-elevated disabled:opacity-50";
 const stamp = (value: string) => new Date(value).toLocaleString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -90,8 +91,10 @@ export function SymposiumLinkedin() {
 function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; busy: boolean; save: (action: LinkedinAction) => Promise<boolean>; onDirty: (dirty: boolean) => void }) {
   const [reply, setReply] = useState(entry.reply), [status, setStatus] = useState(entry.status), [notes, setNotes] = useState(entry.notes), [copied, setCopied] = useState(false), [copyError, setCopyError] = useState("");
   const [quote, setQuote] = useState(entry.testimonial?.quote ?? "");
+  const [profile, setProfile] = useState(entry.testimonial?.profile ?? emptyProfile);
+  const profileInput = LinkedinFeedbackProfile.safeParse(profile);
   const dirty = reply !== entry.reply || status !== entry.status || notes !== entry.notes;
-  const quoteDirty = quote !== (entry.testimonial?.quote ?? "");
+  const quoteDirty = quote !== (entry.testimonial?.quote ?? "") || (["title", "affiliation", "photoUrl", "profileUrl"] as const).some(key => profile[key] !== (entry.testimonial?.profile ?? emptyProfile)[key]);
   useEffect(() => { onDirty(dirty || quoteDirty); }, [dirty, quoteDirty, onDirty]);
   async function copy() {
     try { await navigator.clipboard.writeText(reply); setCopied(true); setCopyError(""); }
@@ -119,11 +122,18 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
       <h3 className="flex items-center gap-2 text-sm font-bold"><Globe size={16} />Showcase this feedback</h3>
       <p className="text-xs leading-relaxed text-muted">Select a positive excerpt from the saved post. Published quotes are visible to everyone, with the author’s name and original link. Reply drafts and internal notes stay private.</p>
       <label className="block text-sm font-semibold">Public quote<textarea className={`${inputClass} mt-1 min-h-28 resize-y font-normal leading-relaxed`} maxLength={1200} value={quote} onChange={e => setQuote(e.target.value)} placeholder="Paste a verbatim excerpt from the original post" /></label>
+      <details open className="space-y-3"><summary className="cursor-pointer text-sm font-semibold">Attribution &amp; headshot</summary>
+        <label className="block text-sm">Title / role<input className={`${inputClass} mt-1`} maxLength={240} value={profile.title} onChange={e => setProfile({ ...profile, title: e.target.value })} /></label>
+        <label className="block text-sm">Affiliation<input className={`${inputClass} mt-1`} maxLength={240} value={profile.affiliation} onChange={e => setProfile({ ...profile, affiliation: e.target.value })} /></label>
+        <label className="block text-sm">Headshot or logo URL<input className={`${inputClass} mt-1`} maxLength={2048} value={profile.photoUrl} onChange={e => setProfile({ ...profile, photoUrl: e.target.value })} /></label>
+        <label className="block text-sm">Public profile link<input className={`${inputClass} mt-1`} type="url" maxLength={2048} value={profile.profileUrl} onChange={e => setProfile({ ...profile, profileUrl: e.target.value })} /></label>
+        {!profileInput.success && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">Use HTTPS links, or a saved /feedback/2026/ image path.</p>}
+      </details>
       {!!quote.trim() && !canPublishLinkedinQuote(entry, quote) && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">Use an exact excerpt from the saved source text, without rewriting it.</p>}
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={busy || !canPublishLinkedinQuote(entry, quote) || (!!entry.testimonial && !quoteDirty)} onClick={() => void save({ action: "testimonial", id: entry.id, quote, publish: true })}><Globe size={16} />{entry.testimonial ? "Update public quote" : "Show on public page"}</button>
-        {entry.testimonial && <button type="button" className={buttonClass} disabled={busy} onClick={async () => { if (await save({ action: "testimonial", id: entry.id, quote: "", publish: false })) setQuote(""); }}>Remove from public page</button>}
-        {quoteDirty && <button type="button" className={buttonClass} disabled={busy} onClick={() => setQuote(entry.testimonial?.quote ?? "")}>Discard quote changes</button>}
+        <button type="button" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={busy || !profileInput.success || !canPublishLinkedinQuote(entry, quote) || (!!entry.testimonial && !quoteDirty)} onClick={async () => { if (profileInput.success && await save({ action: "testimonial", id: entry.id, quote, publish: true, profile: profileInput.data })) { setQuote(quote.trim()); setProfile(profileInput.data); } }}><Globe size={16} />{entry.testimonial ? "Update public quote" : "Show on public page"}</button>
+        {entry.testimonial && <button type="button" className={buttonClass} disabled={busy} onClick={async () => { if (await save({ action: "testimonial", id: entry.id, quote: "", publish: false })) { setQuote(""); setProfile(emptyProfile); } }}>Remove from public page</button>}
+        {quoteDirty && <button type="button" className={buttonClass} disabled={busy} onClick={() => { setQuote(entry.testimonial?.quote ?? ""); setProfile(entry.testimonial?.profile ?? emptyProfile); }}>Discard quote changes</button>}
       </div>
       {entry.testimonial && <p role="status" className="text-xs text-muted">{canPublishLinkedinQuote(entry, entry.testimonial.quote) ? "Published" : "Hidden: source text changed"} · {entry.testimonial.publishedBy} · {stamp(entry.testimonial.publishedAt)} ET</p>}
     </section>}
