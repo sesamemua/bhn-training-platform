@@ -106,6 +106,31 @@ async function main() {
     await expect(page.locator("main[data-theme]")).toHaveAttribute("data-theme", "light");
     for (const width of [390, 320]) { await page.setViewportSize({ width, height: 1000 }); assert.equal(await page.locator("body").evaluate(el => el.scrollWidth > innerWidth), false); }
     await page.screenshot({ path: "output/linkedin-feedback/mobile.png", fullPage: true });
+    const original = snapshot;
+    const second = LinkedinInput.parse({ author: "Second attendee", kind: "comment", topic: "training_week", sourceUrl: "https://www.linkedin.com/feed/update/urn:li:activity:456?dashCommentUrn=second", sourceText: "Another valuable connection.", reply: "Private second draft" });
+    let multi = changeLinkedinBoard(snapshot.board, { action: "add", entry: second }, "Admin", at);
+    multi = changeLinkedinBoard(multi, { action: "testimonial", id: multi.entries.find(entry => entry.sourceUrl === second.sourceUrl)!.id, quote: second.sourceText, publish: true, profile: { title: "Researcher", affiliation: "Second University", photoUrl: "/feedback/2026/example.jpg", profileUrl: "" } }, "Admin", new Date(new Date(at).getTime() + 1).toISOString());
+    snapshot = { ...snapshot, board: multi };
+    await page.goto("https://feedback.test/public");
+    await expect(page.getByRole("article")).toHaveCount(2);
+    await page.getByRole("button", { name: "Copy all cards for Word", exact: true }).click();
+    await expect(page.getByRole("button", { name: "All cards copied", exact: true })).toBeEnabled();
+    const allCards = await page.evaluate(async () => {
+      const [item] = await navigator.clipboard.read();
+      return { html: await (await item.getType("text/html")).text(), text: await (await item.getType("text/plain")).text() };
+    });
+    assert.equal((allCards.html.match(/<img /g) ?? []).length, 2, "Each card remains a separate image, not one enormous image");
+    for (const source of [second.sourceUrl, original.board.entries[0].sourceUrl]) assert.ok(allCards.html.includes(source));
+    assert.ok(allCards.html.includes("https://bhn-training-platform.vercel.app/events/2026-annual-symposium/feedback"));
+    assert.ok(allCards.text.includes("Second attendee") && allCards.text.includes("Example Attendee"));
+    assert.ok(!allCards.text.includes("Private second draft"));
+    assert.ok(allCards.text.indexOf("Second attendee") < allCards.text.indexOf("Example Attendee"), "Copies cards in displayed order");
+    await page.route("https://feedback.test/feedback/2026/example.jpg", route => route.fulfill({ status: 404, body: "Unavailable" }));
+    await page.reload();
+    await page.getByRole("button", { name: "Copy all cards for Word", exact: true }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Card copy failed" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "All cards copied", exact: true })).toHaveCount(0);
+    snapshot = original;
     await page.goto("https://feedback.test/admin");
     await page.getByRole("button", { name: "Remove from public page" }).click();
     await expect(page.getByText("0 published quotes")).toBeVisible();

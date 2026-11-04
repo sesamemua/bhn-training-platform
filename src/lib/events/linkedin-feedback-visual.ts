@@ -48,6 +48,12 @@ export async function feedbackCardHtml(quote: LinkedinTestimonial, capture: Retu
   return new Blob([`<p><img src="${card.dataUrl}" width="${Math.round(card.width)}" height="${Math.round(card.height)}" alt="BioHubNet community reflection"></p><p><a href="${source}">Original LinkedIn ${quote.kind === "comment" ? "comment" : "post"}</a> · <a href="${LINKEDIN_FEEDBACK_URL}">BioHubNet community reflections</a></p>`], { type: "text/html" });
 }
 
+export async function feedbackCardsHtml(quotes: LinkedinTestimonial[]) {
+  const cards: string[] = [];
+  for (const quote of quotes) cards.push(await (await feedbackCardHtml(quote, captureFeedbackCard(quote))).text());
+  return new Blob([cards.join("\n")], { type: "text/html" });
+}
+
 export async function downloadFeedbackWord(quotes: LinkedinTestimonial[]) {
   const { Document, Packer, Paragraph, ImageRun, ExternalHyperlink, TextRun } = await import("docx");
   const children = [new Paragraph({ text: "BioHubNet community reflections", heading: "Heading1" }), new Paragraph({ children: [new ExternalHyperlink({ link: LINKEDIN_FEEDBACK_URL, children: [new TextRun({ text: LINKEDIN_FEEDBACK_URL, style: "Hyperlink" })] })], spacing: { after: 240 } })];
