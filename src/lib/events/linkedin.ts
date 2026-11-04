@@ -9,6 +9,13 @@ export const LinkedinTopic = z.enum(["symposium", "training_week", "both"]);
 export const LinkedinStatus = z.enum(["pending", "replied", "no_reply"]);
 export const LinkedinRating = z.enum(["great", "useful", "routine", "unrated"]);
 export const LinkedinAssessment = z.object({ rating: LinkedinRating, reason: z.string().trim().max(500) }).strict();
+export const LinkedinReactions = z.object({
+  total: z.number().int().min(0).max(1_000_000), capturedAt: z.string().datetime(),
+  people: z.array(z.object({
+    name: z.string().trim().min(1).max(240), headline: z.string().trim().max(1000), reaction: z.string().trim().min(1).max(60),
+    profileUrl: z.string().url().refine(value => { try { const url = new URL(value); return url.protocol === "https:" && ["www.linkedin.com", "linkedin.com"].includes(url.hostname) && !url.port && !url.username && !url.password && /^\/(in|company|school|showcase)\/[^/]+\/?$/.test(url.pathname); } catch { return false; } }, "Use a public LinkedIn profile link."),
+  }).strict()).max(1000),
+}).strict().refine(value => value.people.length <= value.total && new Set(value.people.map(person => person.profileUrl)).size === value.people.length, "Check the reaction total and duplicate profiles.");
 export const LinkedinFeedbackProfile = z.object({
   title: z.string().trim().max(240), affiliation: z.string().trim().max(240),
   photoUrl: z.union([z.literal(""), z.string().regex(/^\/feedback\/2026\/[a-z0-9-]+\.(?:jpg|png|webp)$/), z.string().url().pipe(HttpsUrl)]),
@@ -52,6 +59,7 @@ export const LinkedinInput = z.object({
   status: LinkedinStatus.default("pending"),
   occurredLabel: z.string().max(100).default(""),
   assessment: LinkedinAssessment.optional(),
+  reactions: LinkedinReactions.optional(),
 });
 export const LinkedinEntry = LinkedinInput.extend({
   id: z.string().min(1).max(2100), observedAt: z.string().datetime(),
@@ -95,6 +103,7 @@ export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction
         // New scans update the evidence, never a colleague's reply or completion status.
         Object.assign(existing, { sourceText: input.sourceText, occurredLabel: input.occurredLabel, observedAt: at });
         if (!existing.assessment && input.assessment) existing.assessment = input.assessment;
+        if (input.reactions) existing.reactions = input.reactions;
       } else next.entries.push({ ...input, sourceUrl, id, observedAt: at, updatedAt: at, updatedBy: actor, notes: "" });
     }
     if (action.action === "import") { next.checkedAt = at; next.coverage = action.coverage; }

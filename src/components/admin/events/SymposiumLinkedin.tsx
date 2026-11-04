@@ -56,7 +56,7 @@ export function SymposiumLinkedin() {
     setSelected(id); setError("");
   }
   const entries = snapshot?.board.entries ?? [];
-  const visible = entries.filter(e => (status === "all" || e.status === status) && (topic === "all" || e.topic === topic || e.topic === "both") && (rating === "all" || (e.assessment?.rating ?? "unrated") === rating) && (kind === "all" || (kind === "posts" ? ["mention", "repost"].includes(e.kind) : e.kind === kind)) && `${e.author} ${e.sourceText} ${e.reply}`.toLowerCase().includes(search.toLowerCase()));
+  const visible = entries.filter(e => (status === "all" || e.status === status) && (topic === "all" || e.topic === topic || e.topic === "both") && (rating === "all" || (e.assessment?.rating ?? "unrated") === rating) && (kind === "all" || (kind === "posts" ? ["mention", "repost"].includes(e.kind) : e.kind === kind)) && `${e.author} ${e.sourceText} ${e.reply} ${e.reactions?.people.map(person => `${person.name} ${person.headline}`).join(" ") ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const active = (dirty ? entries : visible).find(e => e.id === selected) ?? visible[0];
   return <section className="min-w-0 space-y-5 pb-8" aria-label="Symposium LinkedIn interactions">
     <header className="flex flex-wrap items-start justify-between gap-3">
@@ -87,7 +87,7 @@ export function SymposiumLinkedin() {
       <nav aria-label="Interactions" className="min-w-0">
         {!visible.length && <p className="py-4 text-sm text-muted">No matches.</p>}
         {visible.map(e => <button type="button" key={e.id} aria-current={active?.id === e.id ? "true" : undefined} onClick={() => choose(e.id)} className={`block w-full border-b border-line px-3 py-3 text-left ${active?.id === e.id ? "bg-brand-500/10" : "hover:bg-elevated"}`}>
-          <span className="block break-words text-sm font-bold">{e.author}</span><span className="mt-1 block text-xs text-muted">{kinds[e.kind]} · {statuses[e.status]}</span><span className="mt-1 line-clamp-2 break-words text-xs text-muted">{e.sourceText}</span>
+          <span className="block break-words text-sm font-bold">{e.kind === "reaction" ? `Reactions${e.reactions ? ` · ${e.reactions.total}` : ""}` : e.author}</span><span className="mt-1 block text-xs text-muted">{kinds[e.kind]} · {statuses[e.status]}</span><span className="mt-1 line-clamp-2 break-words text-xs text-muted">{e.reactions ? e.reactions.people.map(person => person.name).join(", ") : e.sourceText}</span>
           <span className={`mt-1 block text-xs font-semibold ${e.assessment?.rating === "great" ? "text-emerald-700 dark:text-emerald-300" : "text-muted"}`}>{ratings[e.assessment?.rating ?? "unrated"]}</span>
         </button>)}
       </nav>
@@ -113,11 +113,18 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
     catch { setCopyError("Could not copy. Select the reply text to copy it."); }
   }
   return <article className="@container min-w-0 space-y-4 focus-visible:outline-2 focus-visible:outline-brand-500 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-2" tabIndex={0} aria-label={`Interaction with ${entry.author}`}>
-    <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="break-words text-xl font-bold">{entry.author}</h2><p className="mt-1 text-xs text-muted">{kinds[entry.kind]} · {topics[entry.topic]} · Observed {stamp(entry.observedAt)} ET{entry.occurredLabel ? ` · LinkedIn showed ${entry.occurredLabel}` : ""}</p></div>
+    <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="break-words text-xl font-bold">{entry.kind === "reaction" ? "Reactions to BioHubNet’s post" : entry.author}</h2><p className="mt-1 text-xs text-muted">{kinds[entry.kind]} · {topics[entry.topic]} · Observed {stamp(entry.observedAt)} ET{entry.occurredLabel ? ` · LinkedIn showed ${entry.occurredLabel}` : ""}</p></div>
       <a className={`${buttonClass} text-brand-700 dark:text-brand-300`} href={entry.sourceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} />Open on LinkedIn</a></div>
     <div className="grid min-w-0 items-start gap-5 @[680px]:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.88fr)]">
     <OriginalLinkedinPost entry={entry} />
     <div className="min-w-0 space-y-6">
+    {entry.kind === "reaction" && <section aria-label="People who reacted" className="space-y-3 border-b border-line pb-4">
+      <h3 className="text-sm font-bold">Who reacted</h3>
+      {entry.reactions ? <><p className="text-xs text-muted">{entry.reactions.people.length} {entry.reactions.people.length === 1 ? "name" : "names"} captured · {entry.reactions.total} reactions on LinkedIn · {stamp(entry.reactions.capturedAt)} ET{entry.reactions.people.length < entry.reactions.total ? " · Partial list: additional names were not captured." : ""}</p>
+        <ul className="divide-y divide-line">{entry.reactions.people.map(person => <li key={person.profileUrl} className="flex items-start justify-between gap-3 py-2">
+          <div className="min-w-0"><a href={person.profileUrl} target="_blank" rel="noopener noreferrer" className="break-words text-sm font-semibold underline underline-offset-2">{person.name}</a>{person.headline && <p className="mt-1 break-words text-xs text-muted">{person.headline}</p>}</div><span className="shrink-0 text-xs font-semibold text-muted">{person.reaction}</span>
+        </li>)}</ul></> : <p className="text-sm text-muted">Individual reaction names have not been captured yet. Open the post on LinkedIn to see its reaction list.</p>}
+    </section>}
     <form aria-label="Quote rating" className="space-y-3 border-b border-line pb-4" onSubmit={async e => { e.preventDefault(); await save({ action: "rate", id: entry.id, assessment }); }}>
       <label className="block text-sm font-semibold">Quote rating<select className={`${inputClass} mt-1`} value={assessment.rating} onChange={e => setAssessment({ ...assessment, rating: e.target.value as typeof assessment.rating })}>{Object.entries(ratings).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <label className="block text-sm">Rating reason<textarea className={`${inputClass} mt-1 resize-y`} rows={2} maxLength={500} value={assessment.reason} onChange={e => setAssessment({ ...assessment, reason: e.target.value })} /></label>

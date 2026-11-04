@@ -8,6 +8,27 @@ const at = "2026-11-03T15:00:00.000Z";
 const input = () => LinkedinInput.parse({ author: "Example Attendee", sourceUrl: "https://www.linkedin.com/feed/update/urn:li:activity:123?actorCompanyId=102677155", kind: "mention", topic: "symposium", sourceText: "Thank you for the symposium!", reply: "Thank you for joining us!" });
 const empty = () => LinkedinBoard.parse({ entries: [], checkedAt: null, coverage: "Not checked" });
 
+test("reaction identities validate, refresh safely, and stay out of public quotes", () => {
+  const reactions = { total: 2, capturedAt: at, people: [{ name: "Named Reactor", headline: "Researcher", reaction: "Love", profileUrl: "https://www.linkedin.com/in/named-reactor/" }] };
+  const entry = { ...input(), kind: "reaction" as const, reactions };
+  const first = changeLinkedinBoard(empty(), { action: "add", entry }, "Admin", at);
+  const id = first.entries[0].id;
+  const edited = changeLinkedinBoard(first, { action: "edit", id, reply: "Retained draft", notes: "Retained note", status: "no_reply" }, "Colleague", at);
+  const rescanned = changeLinkedinBoard(edited, { action: "import", entries: [{ ...input(), kind: "reaction" }], coverage: "Recheck" }, "Scanner", at);
+  assert.deepEqual(rescanned.entries[0].reactions, reactions);
+  const updated = changeLinkedinBoard(rescanned, { action: "import", entries: [{ ...entry, reactions: { ...reactions, total: 3 } }], coverage: "Recheck" }, "Scanner", at);
+  assert.equal(updated.entries[0].reactions?.total, 3);
+  assert.equal(updated.entries[0].reply, "Retained draft");
+  assert.equal(updated.entries[0].notes, "Retained note");
+  assert.equal(updated.entries[0].status, "no_reply");
+  assert.deepEqual(publicLinkedinTestimonials(updated), []);
+  const published = changeLinkedinBoard(empty(), { action: "add", entry: { ...input(), reactions } }, "Admin", at);
+  const visible = changeLinkedinBoard(published, { action: "testimonial", id: published.entries[0].id, quote: "Thank you for the symposium!", publish: true }, "Admin", at);
+  assert.ok(!JSON.stringify(publicLinkedinTestimonials(visible)).includes("Named Reactor"));
+  for (const invalid of [{ ...reactions, total: 0 }, { ...reactions, people: [...reactions.people, ...reactions.people] }, { ...reactions, people: [{ ...reactions.people[0], profileUrl: "https://www.linkedin.com.evil.test/in/person/" }] }]) assert.equal(LinkedinInput.safeParse({ ...entry, reactions: invalid }).success, false);
+  for (const profileUrl of ["not a url", "javascript:alert(1)", "http://linkedin.com/in/person/", "https://linkedin.com:8443/in/person/", "https://user:pass@linkedin.com/in/person/"]) assert.equal(LinkedinInput.safeParse({ ...entry, reactions: { ...reactions, people: [{ ...reactions.people[0], profileUrl }] } }).success, false);
+});
+
 test("quote ratings validate, are editable, and survive repeat imports without publishing", () => {
   const assessment = { rating: "great" as const, reason: "Specific industry learning." };
   const imported = changeLinkedinBoard(empty(), { action: "import", entries: [{ ...input(), assessment }], coverage: "Captured public posts" }, "Admin", at);

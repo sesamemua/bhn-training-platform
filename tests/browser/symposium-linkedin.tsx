@@ -9,7 +9,7 @@ import { changeLinkedinBoard, LinkedinAction, LinkedinInput, type LinkedinSnapsh
 
 async function main() {
   const at = "2026-11-03T15:00:00.000Z";
-  let snapshot: LinkedinSnapshot = { board: changeLinkedinBoard({ entries: [], checkedAt: null, coverage: "Browser review of activity and inbox; no background sync." }, { action: "import", coverage: "Browser review of activity and inbox", entries: ["Example Attendee", "Second Attendee", ...Array.from({ length: 30 }, (_, i) => `Other Attendee ${i + 1}`)].map((author, i) => LinkedinInput.parse({ author, sourceUrl: `https://www.linkedin.com/feed/update/urn:li:activity:${i + 1}`, kind: "mention", topic: i === 1 ? "training_week" : "symposium", sourceText: "A useful conversation about life sciences careers. ".repeat(50), reply: "Thank you for joining us!" })) }, "Admin", at), version: at };
+  let snapshot: LinkedinSnapshot = { board: changeLinkedinBoard({ entries: [], checkedAt: null, coverage: "Browser review of activity and inbox; no background sync." }, { action: "import", coverage: "Browser review of activity and inbox", entries: ["Example Attendee", "Second Attendee", ...Array.from({ length: 30 }, (_, i) => `Other Attendee ${i + 1}`)].map((author, i) => LinkedinInput.parse({ author, sourceUrl: `https://www.linkedin.com/feed/update/urn:li:activity:${i + 1}`, kind: i === 31 ? "reaction" : "mention", topic: i === 1 ? "training_week" : "symposium", sourceText: "A useful conversation about life sciences careers. ".repeat(50), reply: "Thank you for joining us!", ...(i === 31 ? { reactions: { total: 2, capturedAt: at, people: [{ name: "Zoe Reactor", profileUrl: "https://www.linkedin.com/in/zoe-reactor/", headline: "Researcher at Example University", reaction: "Love" }] } } : {}) })) }, "Admin", at), version: at };
   const css = await postcss([tailwind()]).process(await readFile("src/app/globals.css", "utf8"), { from: "src/app/globals.css" });
   const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: "import React from 'react';import{createRoot}from'react-dom/client';import{SymposiumLinkedin}from'./src/components/admin/events/SymposiumLinkedin';createRoot(document.getElementById('root')).render(<SymposiumLinkedin/>);" }, bundle: true, write: false, jsx: "automatic", format: "iife", define: { "process.env": "{}" } });
   const browser = await chromium.launch({ channel: "chrome" });
@@ -112,6 +112,21 @@ async function main() {
     await page.getByRole("button", { name: "Saved text", exact: true }).click();
     const fallbackAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     assert.deepEqual(fallbackAxe.violations.map(v => v.id), []);
+    await page.getByRole("combobox", { name: "Event", exact: true }).selectOption("all");
+    await page.getByRole("combobox", { name: "Rating", exact: true }).selectOption("all");
+    await page.getByRole("combobox", { name: "Type", exact: true }).selectOption("reaction");
+    await page.getByRole("textbox", { name: "Search interactions" }).fill("Zoe Reactor");
+    await expect(list.getByRole("button")).toHaveCount(1);
+    await list.getByRole("button").click();
+    const reactors = page.getByRole("region", { name: "People who reacted" });
+    await expect(reactors.getByRole("link", { name: "Zoe Reactor" })).toHaveAttribute("href", "https://www.linkedin.com/in/zoe-reactor/");
+    await expect(reactors).toContainText("Researcher at Example University");
+    await expect(reactors).toContainText("Love");
+    await expect(reactors).toContainText("1 name captured");
+    await expect(reactors).toContainText("Partial list");
+    assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
+    const reactionAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    assert.deepEqual(reactionAxe.violations.map(v => v.id), []);
     console.log("PASS: native original post beside reply, saved-text fallback without losing drafts, mobile stacking, save conflicts, status, filters and accessibility.");
   } finally { await browser.close(); }
 }
