@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, ExternalLink, MessageSquareText, Plus, RefreshCw, Save, Search, X } from "lucide-react";
-import { LINKEDIN_ACTIVITY_URL, linkedinEmbedUrl, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
+import { Check, Copy, ExternalLink, Globe, MessageSquareText, Plus, RefreshCw, Save, Search, X } from "lucide-react";
+import { LINKEDIN_ACTIVITY_URL, LINKEDIN_FEEDBACK_PATH, canPublishLinkedinQuote, publicLinkedinTestimonials, linkedinEmbedUrl, type LinkedinAction, type LinkedinEntry, type LinkedinSnapshot } from "@/lib/events/linkedin";
+import { CopyFeedback } from "@/components/events/CopyFeedback";
 
 const API = "/api/admin/symposium-linkedin";
 const statuses = { pending: "Needs reply", replied: "Replied", no_reply: "No reply needed" };
@@ -43,7 +44,7 @@ export function SymposiumLinkedin() {
       const result = await response.json();
       if (result.snapshot) setSnapshot(result.snapshot);
       if (!response.ok) throw new Error(result.conflict ? "A colleague changed the queue. Your draft is retained. Review the latest saved reply before saving again." : result.error || "Could not save.");
-      setDirty(false); return true;
+      return true;
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save."); return false; }
     finally { setBusy(false); }
   }
@@ -66,6 +67,7 @@ export function SymposiumLinkedin() {
     </header>
     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm"><span><strong className="text-xl">{entries.length}</strong> tracked</span><span className="text-amber-700 dark:text-amber-300"><strong className="text-xl">{entries.filter(e => e.status === "pending").length}</strong> needs reply</span><span className="text-emerald-700 dark:text-emerald-300"><strong className="text-xl">{entries.filter(e => e.status === "replied").length}</strong> replied</span><span className="text-muted"><strong className="text-xl">{entries.filter(e => e.status === "no_reply").length}</strong> no reply needed</span></div>
     {snapshot && <details className="text-xs text-muted"><summary className="cursor-pointer">Coverage</summary><p className="mt-2 max-w-3xl whitespace-pre-wrap">{snapshot.board.coverage}</p></details>}
+    {snapshot && <div className="flex flex-wrap items-center gap-3 border-y border-line py-3 text-sm"><a href={LINKEDIN_FEEDBACK_PATH} target="_blank" rel="noopener noreferrer" className={buttonClass}><Globe size={16} />Public feedback page<ExternalLink size={14} /></a><span className="text-muted">{publicLinkedinTestimonials(snapshot.board).length} published quotes</span><CopyFeedback quotes={publicLinkedinTestimonials(snapshot.board)} all /></div>}
     {error && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
     {adding && <NewInteraction busy={busy} close={() => setAdding(false)} save={async entry => { if (await save({ action: "add", entry })) setAdding(false); }} />}
     <div className="flex flex-wrap items-center gap-3 border-y border-line py-3">
@@ -87,8 +89,10 @@ export function SymposiumLinkedin() {
 
 function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; busy: boolean; save: (action: LinkedinAction) => Promise<boolean>; onDirty: (dirty: boolean) => void }) {
   const [reply, setReply] = useState(entry.reply), [status, setStatus] = useState(entry.status), [notes, setNotes] = useState(entry.notes), [copied, setCopied] = useState(false), [copyError, setCopyError] = useState("");
+  const [quote, setQuote] = useState(entry.testimonial?.quote ?? "");
   const dirty = reply !== entry.reply || status !== entry.status || notes !== entry.notes;
-  useEffect(() => { onDirty(dirty); }, [dirty, onDirty]);
+  const quoteDirty = quote !== (entry.testimonial?.quote ?? "");
+  useEffect(() => { onDirty(dirty || quoteDirty); }, [dirty, quoteDirty, onDirty]);
   async function copy() {
     try { await navigator.clipboard.writeText(reply); setCopied(true); setCopyError(""); }
     catch { setCopyError("Could not copy. Select the reply text to copy it."); }
@@ -98,6 +102,7 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
       <a className={`${buttonClass} text-brand-700 dark:text-brand-300`} href={entry.sourceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} />Open on LinkedIn</a></div>
     <div className="grid min-w-0 items-start gap-5 @[680px]:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.88fr)]">
     <OriginalLinkedinPost entry={entry} />
+    <div className="min-w-0 space-y-6">
     <form className="min-w-0 space-y-3" aria-label="Reply draft" onSubmit={async e => { e.preventDefault(); await save({ action: "edit", id: entry.id, reply, status, notes }); }}>
       {entry.kind === "comment" && <details open className="text-sm"><summary className="cursor-pointer font-semibold">Comment by {entry.author}</summary><div role="region" aria-label="Captured comment context" tabIndex={0} className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-elevated/50 p-3 text-sm leading-relaxed">{entry.sourceText}</div></details>}
       <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="linkedin-reply" className="text-sm font-bold">Draft reply as BioHubNet</label><button type="button" className={buttonClass} disabled={!reply.trim()} onClick={() => void copy()}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? "Copied" : "Copy reply"}</button></div>
@@ -110,6 +115,19 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
         {dirty && <button type="button" className={buttonClass} disabled={busy} onClick={() => { setReply(entry.reply); setStatus(entry.status); setNotes(entry.notes); }}>Discard changes</button>}
         <span role="status" className="text-xs text-muted">{dirty ? "Unsaved changes" : `Saved · ${entry.updatedBy} · ${stamp(entry.updatedAt)} ET`}</span></div>
     </form>
+    {!["message", "reaction"].includes(entry.kind) && linkedinEmbedUrl(entry.sourceUrl) && <section aria-label="Public feedback" className="space-y-3 border-t border-line pt-5">
+      <h3 className="flex items-center gap-2 text-sm font-bold"><Globe size={16} />Showcase this feedback</h3>
+      <p className="text-xs leading-relaxed text-muted">Select a positive excerpt from the saved post. Published quotes are visible to everyone, with the author’s name and original link. Reply drafts and internal notes stay private.</p>
+      <label className="block text-sm font-semibold">Public quote<textarea className={`${inputClass} mt-1 min-h-28 resize-y font-normal leading-relaxed`} maxLength={1200} value={quote} onChange={e => setQuote(e.target.value)} placeholder="Paste a verbatim excerpt from the original post" /></label>
+      {!!quote.trim() && !canPublishLinkedinQuote(entry, quote) && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">Use an exact excerpt from the saved source text, without rewriting it.</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className={`${buttonClass} bg-brand-600 text-white hover:bg-brand-700`} disabled={busy || !canPublishLinkedinQuote(entry, quote) || (!!entry.testimonial && !quoteDirty)} onClick={() => void save({ action: "testimonial", id: entry.id, quote, publish: true })}><Globe size={16} />{entry.testimonial ? "Update public quote" : "Show on public page"}</button>
+        {entry.testimonial && <button type="button" className={buttonClass} disabled={busy} onClick={async () => { if (await save({ action: "testimonial", id: entry.id, quote: "", publish: false })) setQuote(""); }}>Remove from public page</button>}
+        {quoteDirty && <button type="button" className={buttonClass} disabled={busy} onClick={() => setQuote(entry.testimonial?.quote ?? "")}>Discard quote changes</button>}
+      </div>
+      {entry.testimonial && <p role="status" className="text-xs text-muted">{canPublishLinkedinQuote(entry, entry.testimonial.quote) ? "Published" : "Hidden: source text changed"} · {entry.testimonial.publishedBy} · {stamp(entry.testimonial.publishedAt)} ET</p>}
+    </section>}
+    </div>
     </div>
   </article>;
 }

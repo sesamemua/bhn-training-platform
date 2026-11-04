@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     const result = await saveLinkedinBoard(input.data.version, input.data.change, actor);
     return NextResponse.json(result, { status: result.conflict ? 409 : 200, headers });
   } catch (error) {
+    if (error instanceof Error && error.message === "Public quotes must be verbatim excerpts from a public LinkedIn post or comment.") return NextResponse.json({ error: error.message }, { status: 400, headers });
     const validation = error instanceof z.ZodError || (error instanceof Error && /already in the queue|no longer exists/.test(error.message));
     return NextResponse.json({ error: validation ? "This interaction already exists or changed. Reload the queue." : "Could not save. Your draft has not been discarded." }, { status: validation ? 400 : 503, headers });
   }
