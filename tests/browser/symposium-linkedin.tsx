@@ -9,7 +9,7 @@ import { changeLinkedinBoard, LinkedinAction, LinkedinInput, type LinkedinSnapsh
 
 async function main() {
   const at = "2026-11-03T15:00:00.000Z";
-  let snapshot: LinkedinSnapshot = { board: changeLinkedinBoard({ entries: [], checkedAt: null, coverage: "Browser review of activity and inbox; no background sync." }, { action: "import", coverage: "Browser review of activity and inbox", entries: ["Example Attendee", "Second Attendee"].map((author, i) => LinkedinInput.parse({ author, sourceUrl: `https://www.linkedin.com/feed/update/urn:li:activity:${i + 1}`, kind: "mention", topic: i ? "training_week" : "symposium", sourceText: "A useful conversation about life sciences careers. ".repeat(50), reply: "Thank you for joining us!" })) }, "Admin", at), version: at };
+  let snapshot: LinkedinSnapshot = { board: changeLinkedinBoard({ entries: [], checkedAt: null, coverage: "Browser review of activity and inbox; no background sync." }, { action: "import", coverage: "Browser review of activity and inbox", entries: ["Example Attendee", "Second Attendee", ...Array.from({ length: 30 }, (_, i) => `Other Attendee ${i + 1}`)].map((author, i) => LinkedinInput.parse({ author, sourceUrl: `https://www.linkedin.com/feed/update/urn:li:activity:${i + 1}`, kind: "mention", topic: i === 1 ? "training_week" : "symposium", sourceText: "A useful conversation about life sciences careers. ".repeat(50), reply: "Thank you for joining us!" })) }, "Admin", at), version: at };
   const css = await postcss([tailwind()]).process(await readFile("src/app/globals.css", "utf8"), { from: "src/app/globals.css" });
   const bundle = await build({ stdin: { resolveDir: process.cwd(), loader: "tsx", contents: "import React from 'react';import{createRoot}from'react-dom/client';import{SymposiumLinkedin}from'./src/components/admin/events/SymposiumLinkedin';createRoot(document.getElementById('root')).render(<SymposiumLinkedin/>);" }, bundle: true, write: false, jsx: "automatic", format: "iife", define: { "process.env": "{}" } });
   const browser = await chromium.launch({ channel: "chrome" });
@@ -17,7 +17,7 @@ async function main() {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     const page = await context.newPage();
     let conflict = true, saves = 0;
-    await page.route("https://linkedin.test/", route => route.fulfill({ contentType: "text/html", body: `<html lang="en"><head><title>Symposium LinkedIn</title><style>${css.css}body{margin:0;background:#fafbfc;color:#172022}main{padding:24px}</style></head><body><main><div id="root"></div></main><script src="/app.js"></script></body></html>` }));
+    await page.route("https://linkedin.test/", route => route.fulfill({ contentType: "text/html", body: `<html lang="en"><head><title>Symposium LinkedIn</title><style>${css.css}body{margin:0;background:#fafbfc;color:#172022;height:100dvh;overflow:hidden}main{height:100dvh;overflow-y:auto}#root{padding:24px}</style></head><body><main><div id="root"></div></main><script src="/app.js"></script></body></html>` }));
     await page.route("https://linkedin.test/app.js", route => route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text }));
     await page.route("https://www.linkedin.com/embed/feed/update/**", route => route.fulfill({ contentType: "text/html", body: '<html lang="en"><head><title>LinkedIn post fixture</title></head><body style="margin:0;padding:16px;font:14px Arial;background:white;color:#191919"><main><h1 style="font-size:16px">Example Attendee</h1><p>A public LinkedIn post fixture.</p></main></body></html>' }));
     await page.route("https://linkedin.test/api/admin/symposium-linkedin", async route => {
@@ -37,6 +37,21 @@ async function main() {
     await expect(frame).toHaveAttribute("loading", "eager");
     await expect(page.frameLocator('iframe[title="Original LinkedIn post"]').getByRole("heading", { name: "Example Attendee" })).toBeVisible();
     assert.ok(await frame.evaluate(el => el.getBoundingClientRect().right) <= await editor.evaluate(el => el.getBoundingClientRect().left), "Original post sits beside its reply on desktop");
+    const panel = page.getByRole("article", { name: "Interaction with Example Attendee", exact: true });
+    const scroller = page.getByRole("main");
+    await scroller.evaluate(el => { el.scrollTop = 1200; });
+    await expect.poll(() => panel.evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(16);
+    assert.ok(await list.getByRole("button").first().evaluate(el => el.getBoundingClientRect().bottom < 0), "The left list keeps scrolling while the selected post and controls stay in view");
+    assert.ok(await panel.evaluate(el => el.clientHeight <= innerHeight - 32));
+    await panel.focus();
+    await panel.press("End");
+    await expect.poll(() => panel.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    await panel.getByRole("button", { name: "Show on public page", exact: true }).scrollIntoViewIfNeeded();
+    await expect(panel.getByRole("button", { name: "Show on public page", exact: true })).toBeInViewport();
+    await panel.evaluate(el => { el.scrollTop = 0; });
+    await mkdir("output/linkedin-20261104", { recursive: true });
+    await page.screenshot({ path: "output/linkedin-20261104/sticky-desktop.png" });
+    await scroller.evaluate(el => { el.scrollTop = 0; });
     await editor.getByRole("textbox", { name: "Draft reply as BioHubNet" }).fill("Draft retained across preview changes");
     await page.getByRole("button", { name: "Saved text", exact: true }).click();
     await expect(page.getByRole("region", { name: "LinkedIn source text", exact: true })).toContainText("A useful conversation");
@@ -79,12 +94,13 @@ async function main() {
     await importForm.getByRole("textbox").fill(JSON.stringify({ action: "import", coverage: "One public comment", entries: [{ ...LinkedinInput.parse({ author: "Comment Author", sourceUrl: "https://www.linkedin.com/feed/update/urn:li:activity:2?dashCommentUrn=comment-3", kind: "comment", topic: "training_week", sourceText: "An industry insight.", reply: "", assessment: { rating: "useful", reason: "Learning insight." } }) }] }));
     await importForm.getByRole("button", { name: "Import records" }).click();
     await expect(importForm).toHaveCount(0);
-    assert.equal(snapshot.board.entries.length, 3);
+    assert.equal(snapshot.board.entries.length, 33);
     assert.equal(snapshot.board.entries.find(e => e.author === "Second Attendee")?.assessment?.rating, "great");
     await mkdir("output/linkedin-20261103", { recursive: true });
     await page.screenshot({ path: "output/linkedin-20261103/desktop.png", fullPage: true });
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 1000 });
+      assert.deepEqual(await page.getByRole("article", { name: "Interaction with Second Attendee", exact: true }).evaluate(el => ({ position: getComputedStyle(el).position, maxHeight: getComputedStyle(el).maxHeight, overflowY: getComputedStyle(el).overflowY })), { position: "static", maxHeight: "none", overflowY: "visible" }, "Mobile uses natural stacked page scrolling");
       assert.equal(await list.evaluate(el => getComputedStyle(el).overflowY), "visible");
       assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
       assert.ok(await page.getByRole("navigation", { name: "Interactions" }).getByRole("button").first().evaluate(el => el.getBoundingClientRect().height < 140));

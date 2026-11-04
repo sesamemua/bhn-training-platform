@@ -112,7 +112,7 @@ function ReplyEditor({ entry, busy, save, onDirty }: { entry: LinkedinEntry; bus
     try { await navigator.clipboard.writeText(reply); setCopied(true); setCopyError(""); }
     catch { setCopyError("Could not copy. Select the reply text to copy it."); }
   }
-  return <article className="@container min-w-0 space-y-4" aria-label={`Interaction with ${entry.author}`}>
+  return <article className="@container min-w-0 space-y-4 focus-visible:outline-2 focus-visible:outline-brand-500 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-2" tabIndex={0} aria-label={`Interaction with ${entry.author}`}>
     <div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="break-words text-xl font-bold">{entry.author}</h2><p className="mt-1 text-xs text-muted">{kinds[entry.kind]} · {topics[entry.topic]} · Observed {stamp(entry.observedAt)} ET{entry.occurredLabel ? ` · LinkedIn showed ${entry.occurredLabel}` : ""}</p></div>
       <a className={`${buttonClass} text-brand-700 dark:text-brand-300`} href={entry.sourceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} />Open on LinkedIn</a></div>
     <div className="grid min-w-0 items-start gap-5 @[680px]:grid-cols-[minmax(0,1.12fr)_minmax(280px,0.88fr)]">
