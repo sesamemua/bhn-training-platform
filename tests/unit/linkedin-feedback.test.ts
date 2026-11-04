@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { LinkedinAction, LinkedinBoard, LinkedinInput, LinkedinFeedbackProfile, changeLinkedinBoard, publicLinkedinTestimonials } from "../../src/lib/events/linkedin";
+import { LinkedinAction, LinkedinBoard, LinkedinInput, LinkedinFeedbackProfile, LinkedinFeedbackImages, changeLinkedinBoard, publicLinkedinTestimonials } from "../../src/lib/events/linkedin";
 import { linkedinFeedbackClipboard } from "../../src/lib/events/linkedin-feedback-copy";
 
 const at = "2026-11-04T18:00:00.000Z";
@@ -85,4 +85,18 @@ test("public profile fields are validated and kept when a quote is updated witho
   const edited = changeLinkedinBoard(published, { action: "testimonial", id, quote: "A useful conversation", publish: true }, "Admin", at);
   assert.deepEqual(publicLinkedinTestimonials(edited)[0].profile, profile);
   assert.equal(edited.entries[0].reply, "Private reply draft");
+});
+
+test("public post pictures are validated, preserved on quote updates and explicitly projected", () => {
+  const images = [{ url: "/feedback/2026/post-123-1.jpg", alt: "Participants at the symposium" }];
+  for (const url of ["javascript:alert(1)", "/api/admin/private", "https://example.com/p.jpg", "/feedback/2026/../../secret.jpg"]) assert.equal(LinkedinFeedbackImages.safeParse([{ ...images[0], url }]).success, false);
+  assert.equal(LinkedinFeedbackImages.safeParse(Array(21).fill(images[0])).success, false);
+  assert.equal(LinkedinFeedbackImages.safeParse([{ ...images[0], alt: "" }]).success, false);
+  const board = fixture(), id = board.entries[0].id;
+  const published = changeLinkedinBoard(board, { action: "testimonial", id, quote: "Thank you!", publish: true, images }, "Admin", at);
+  const edited = changeLinkedinBoard(published, { action: "testimonial", id, quote: "A useful conversation", publish: true }, "Admin", at);
+  assert.deepEqual(publicLinkedinTestimonials(edited)[0].images, images);
+  assert.equal(edited.entries[0].reply, "Private reply draft");
+  const removed = changeLinkedinBoard(edited, { action: "testimonial", id, quote: "Thank you!", publish: true, images: [] }, "Admin", at);
+  assert.equal(publicLinkedinTestimonials(removed)[0].images, undefined);
 });

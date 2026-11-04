@@ -13,6 +13,10 @@ export const LinkedinFeedbackProfile = z.object({
   profileUrl: z.union([z.literal(""), z.string().url().pipe(HttpsUrl)]),
 }).strict();
 export type LinkedinFeedbackProfile = z.infer<typeof LinkedinFeedbackProfile>;
+export const LinkedinFeedbackImages = z.array(z.object({
+  url: z.string().regex(/^\/feedback\/2026\/[a-z0-9-]+\.(?:jpg|png|webp)$/),
+  alt: z.string().trim().min(1).max(500),
+}).strict()).max(20);
 
 export function linkedinSourceUrl(value: string): string {
   const url = new URL(value);
@@ -49,7 +53,7 @@ export const LinkedinInput = z.object({
 export const LinkedinEntry = LinkedinInput.extend({
   id: z.string().min(1).max(2100), observedAt: z.string().datetime(),
   updatedAt: z.string().datetime(), updatedBy: z.string().max(240), notes: z.string().max(2000).default(""),
-  testimonial: z.object({ quote: z.string().trim().min(1).max(1200), publishedAt: z.string().datetime(), publishedBy: z.string().max(240), profile: LinkedinFeedbackProfile.optional() }).nullable().optional(),
+  testimonial: z.object({ quote: z.string().trim().min(1).max(1200), publishedAt: z.string().datetime(), publishedBy: z.string().max(240), profile: LinkedinFeedbackProfile.optional(), images: LinkedinFeedbackImages.optional() }).nullable().optional(),
 });
 export const LinkedinBoard = z.object({ entries: z.array(LinkedinEntry).max(2000), checkedAt: z.string().datetime().nullable(), coverage: z.string().max(800) });
 export type LinkedinEntry = z.infer<typeof LinkedinEntry>;
@@ -59,7 +63,7 @@ export const LinkedinAction = z.discriminatedUnion("action", [
   z.object({ action: z.literal("add"), entry: LinkedinInput }),
   z.object({ action: z.literal("import"), entries: z.array(LinkedinInput).min(1).max(300), coverage: z.string().trim().min(1).max(800) }),
   z.object({ action: z.literal("edit"), id: z.string().max(2100), reply: z.string().trim().max(3000), status: LinkedinStatus, notes: z.string().max(2000) }),
-  z.object({ action: z.literal("testimonial"), id: z.string().max(2100), quote: z.string().trim().max(1200), publish: z.boolean(), profile: LinkedinFeedbackProfile.optional() }),
+  z.object({ action: z.literal("testimonial"), id: z.string().max(2100), quote: z.string().trim().max(1200), publish: z.boolean(), profile: LinkedinFeedbackProfile.optional(), images: LinkedinFeedbackImages.optional() }),
 ]);
 export type LinkedinAction = z.infer<typeof LinkedinAction>;
 
@@ -69,7 +73,7 @@ export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction
     const entry = next.entries.find(e => e.id === action.id);
     if (!entry) throw new Error("This interaction no longer exists. Reload the queue.");
     if (action.publish && !canPublishLinkedinQuote(entry, action.quote)) throw new Error("Public quotes must be verbatim excerpts from a public LinkedIn post or comment.");
-    entry.testimonial = action.publish ? { quote: action.quote.trim(), publishedAt: at, publishedBy: actor, ...((action.profile ?? entry.testimonial?.profile) ? { profile: LinkedinFeedbackProfile.parse(action.profile ?? entry.testimonial?.profile) } : {}) } : null;
+    entry.testimonial = action.publish ? { quote: action.quote.trim(), publishedAt: at, publishedBy: actor, ...((action.profile ?? entry.testimonial?.profile) ? { profile: LinkedinFeedbackProfile.parse(action.profile ?? entry.testimonial?.profile) } : {}), ...((action.images ?? entry.testimonial?.images) ? { images: LinkedinFeedbackImages.parse(action.images ?? entry.testimonial?.images) } : {}) } : null;
   } else if (action.action === "edit") {
     const entry = next.entries.find(e => e.id === action.id);
     if (!entry) throw new Error("This interaction no longer exists. Reload the queue.");
@@ -100,6 +104,7 @@ export function publicLinkedinTestimonials(board: LinkedinBoard) {
   return board.entries.filter(e => e.testimonial && canPublishLinkedinQuote(e, e.testimonial.quote))
     .map(e => ({ author: e.author, quote: e.testimonial!.quote, sourceUrl: e.sourceUrl, kind: e.kind, topic: e.topic, publishedAt: e.testimonial!.publishedAt,
       ...(e.testimonial!.profile ? { profile: { title: e.testimonial!.profile.title, affiliation: e.testimonial!.profile.affiliation, photoUrl: e.testimonial!.profile.photoUrl, profileUrl: e.testimonial!.profile.profileUrl } } : {}),
+      ...(e.testimonial!.images?.length ? { images: e.testimonial!.images.map(image => ({ url: image.url, alt: image.alt })) } : {}),
     }))
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }

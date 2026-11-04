@@ -25,7 +25,7 @@ export function LinkedinFeedback({ quotes }: { quotes: LinkedinTestimonial[] }) 
         <div className="mt-3 flex flex-wrap items-end justify-between gap-5"><h1 id="feedback-title" style={{ letterSpacing: 0 }} className="text-3xl font-bold sm:text-4xl">Community reflections</h1><CopyFeedback quotes={quotes} all visual /></div>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">Conversations, connections and new perspectives, in our community’s own words. {quotes.length} selected reflections from public LinkedIn posts and comments.</p>
       </section>
-      {quotes.length ? <div className="grid items-start gap-5 md:grid-cols-2">{quotes.map(q => <article key={q.sourceUrl} data-feedback-source={q.sourceUrl} className="min-w-0 rounded-lg border border-line bg-card-solid p-5 sm:p-6">
+      {quotes.length ? <div className="grid items-start gap-5 md:grid-cols-2">{quotes.map(q => <article key={q.sourceUrl} data-feedback-source={q.sourceUrl} style={{ fontFamily: "var(--font-geist-sans), Arial, sans-serif" }} className="min-w-0 rounded-lg border border-line bg-card-solid p-5 sm:p-6">
         <div className="flex items-start gap-4">
           <AuthorPhoto key={q.profile?.photoUrl} author={q.author} url={q.profile?.photoUrl} />
           <div className="min-w-0 break-words"><p className="font-bold">{q.profile?.profileUrl ? <a href={q.profile.profileUrl} target="_blank" rel="noopener noreferrer" className="underline decoration-current/30 underline-offset-4 hover:decoration-current">{q.author}</a> : q.author}</p>
@@ -35,6 +35,7 @@ export function LinkedinFeedback({ quotes }: { quotes: LinkedinTestimonial[] }) 
         </div>
         <div className="mt-5 flex items-center justify-between gap-3"><Quote size={23} className="text-brand-500" aria-hidden="true" /><span className="text-xs font-semibold text-muted">{topics[q.topic]}</span></div>
         <blockquote className="mt-4 whitespace-pre-wrap break-words text-lg leading-relaxed [overflow-wrap:anywhere]">{q.quote}</blockquote>
+        {!!q.images?.length && <div className="mt-5 grid grid-cols-2 items-start gap-2">{q.images.map((picture, i) => <a key={picture.url} href={picture.url} target="_blank" rel="noopener noreferrer" aria-label={`Open picture ${i + 1} from ${q.author}'s post`} className={`block aspect-[4/3] overflow-hidden rounded-md bg-elevated ${q.images!.length === 1 ? "col-span-2" : ""}`}><Image src={picture.url} alt={picture.alt} width={800} height={600} unoptimized className="h-full w-full object-contain" /></a>)}</div>}
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4"><a href={q.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold underline underline-offset-4">Read original {q.kind === "comment" ? "comment" : "post"}<ExternalLink size={14} /></a><CopyFeedback quotes={[q]} visual /></div>
       </article>)}</div> : <p className="border-t border-line py-10 text-muted">Community reflections will appear here soon.</p>}
       <footer className="mt-6 border-t border-line py-6 text-sm text-muted">BioHubNet · Building Canada’s biomanufacturing talent network</footer>
