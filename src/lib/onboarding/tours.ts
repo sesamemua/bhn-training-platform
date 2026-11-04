@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.10.24s";
+export const TOUR_VERSION = "2026.11.04a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "equip.suggest-vc-rounds",
+    title: "Suggest the next VentureConnect rounds",
+    body: "Under Next VentureConnect rounds, press Suggest to line up the coming months — first-Tuesday launch, last-week deadline. Edit any date, then Add.",
+    path: "/admin/equip/deadlines",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.04a",
+  },
   {
     id: "dashboard.shortcut-tiles",
     title: "Shortcut tiles",

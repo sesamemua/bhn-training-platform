@@ -25,8 +25,9 @@ test("VentureConnect's October round closes on the 26th, at noon in Toronto", ()
   const october = venturConnectMonthlyDeadlines().find((d) => d.cycleLabel === "October 2026")!;
   assert.ok(october, "October 2026 is not in the published schedule");
   assert.equal(october.deadlineAt.toISOString(), "2026-10-26T16:00:00.000Z"); // 12:00 EDT
-  // It opens on the first of the month, so the moment September closes
-  // it is the next window rather than a gap nobody can apply in.
-  assert.equal(october.opensAt.toISOString(), "2026-10-01T16:00:00.000Z");
+  // The round launches on the first Tuesday of the month. Until then it is
+  // "scheduled", which still takes applications, so the moment September
+  // closes it is the next window rather than a gap nobody can apply in.
+  assert.equal(october.opensAt.toISOString(), "2026-10-06T16:00:00.000Z");
   assert.equal(october.stream, "venture_connect");
 });

@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { requireCommitteeOrAdmin } from "@/lib/committees/membership";
 import { prisma } from "@/lib/prisma";
 import { listDeadlines } from "@/lib/equip/deadlines";
+import { noonEasternOn, vcLaunchDate } from "@/lib/equip/calendar";
 
 export const runtime = "nodejs";
 
@@ -41,12 +42,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid deadline date/time" }, { status: 400 });
   }
 
+  // A VC round that hasn't launched yet (first Tuesday of its month) is
+  // "scheduled" — still the window applications count toward, but not
+  // shown as open early.
+  const launch = stream === "venture_connect"
+    ? noonEasternOn(vcLaunchDate(deadlineAt.toLocaleDateString("en-CA", { timeZone: "America/Toronto" })))
+    : null;
   const created = await prisma.equipDeadline.create({
     data: {
       stream,
       deadlineAt,
       originalDeadlineAt: deadlineAt,
-      status: "open",
+      status: launch && launch > new Date() ? "scheduled" : "open",
       cycleLabel: cycleLabel || null,
       note: note || null,
       createdById: actorId,

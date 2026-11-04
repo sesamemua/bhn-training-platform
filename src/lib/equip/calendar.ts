@@ -201,8 +201,9 @@ export function venturConnectMonthlyDeadlines(): DerivedDeadlineSpec[] {
       month: "long",
       timeZone: "UTC",
     });
-    // Window opens on the 1st of the month, closes on the published deadline.
-    const opensAt = noonEasternOn(`${y}-${String(m).padStart(2, "0")}-01`);
+    // Rounds launch on the first Tuesday of the month and close on the
+    // published deadline.
+    const opensAt = noonEasternOn(vcLaunchDate(date));
     return {
       stream: "venture_connect",
       deadlineAt: noonEasternOn(date),
@@ -212,6 +213,77 @@ export function venturConnectMonthlyDeadlines(): DerivedDeadlineSpec[] {
       stageLabel: `${monthName} ${y} VC deadline`,
     };
   });
+}
+
+const ymd = (d: Date) => d.toISOString().slice(0, 10);
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const LAST_PUBLISHED_ROUND = { date: "2026-12-28", round: 21 };
+
+/** Launch day of the VC round whose deadline is `deadline` (yyyy-mm-dd):
+ *  the first Tuesday of that month. */
+export function vcLaunchDate(deadline: string): string {
+  const [y, m] = deadline.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  return ymd(new Date(Date.UTC(y, m - 1, 1 + ((2 - first.getUTCDay() + 7) % 7))));
+}
+
+/** Published VC round number for a deadline month, counting on monthly
+ *  from the last round in the Key Dates sheet. Null before the numbered rounds. */
+export function vcRoundNumber(deadline: string): number | null {
+  const [y, m] = deadline.split("-").map(Number);
+  const [ly, lm] = LAST_PUBLISHED_ROUND.date.split("-").map(Number);
+  const n = LAST_PUBLISHED_ROUND.round + (y - ly) * 12 + (m - lm);
+  return n >= 16 ? n : null;
+}
+
+/** Suggested VC deadline for a month, from the published pattern: the last
+ *  Monday of the month, or the Monday before when that is the 30th/31st,
+ *  then earlier still past weekends and statutory holidays. Presidential
+ *  days and the December break don't count — published rounds use them. */
+export function suggestVcDeadline(year: number, month: number): string {
+  const last = new Date(Date.UTC(year, month, 0));
+  let d = new Date(Date.UTC(year, month - 1, last.getUTCDate() - ((last.getUTCDay() + 6) % 7)));
+  if (d.getUTCDate() >= 30) d = new Date(d.getTime() - 7 * 864e5);
+  const statutory = (day: string) => { const h = isUofTHoliday(day); return !!h && !h.presidential && !h.endDate; };
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6 || statutory(ymd(d))) d = new Date(d.getTime() - 864e5);
+  return ymd(d);
+}
+
+export interface VcRoundSuggestion {
+  deadline: string;
+  launch: string;
+  launchText: string;
+  cycleLabel: string;
+  round: number | null;
+  note: string;
+}
+
+/** The next `count` monthly VC rounds after the latest existing VC deadline. */
+export function suggestVcRounds(existingDeadlines: string[], count = 6): VcRoundSuggestion[] {
+  const latest = [...existingDeadlines].sort().at(-1) ?? ymd(new Date());
+  let [y, m] = latest.split("-").map(Number);
+  const out: VcRoundSuggestion[] = [];
+  for (let i = 0; i < count; i++) {
+    if (++m > 12) { m = 1; y++; }
+    const deadline = suggestVcDeadline(y, m);
+    out.push({ deadline, ...vcRoundMeta(deadline) });
+  }
+  return out;
+}
+
+/** Label, launch day and note a VC round carries, matching the published rounds. */
+export function vcRoundMeta(deadline: string) {
+  const [y, m] = deadline.split("-").map(Number);
+  const launch = vcLaunchDate(deadline);
+  const round = vcRoundNumber(deadline);
+  const launchText = new Date(`${launch}T12:00:00Z`).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return {
+    launch,
+    cycleLabel: `${MONTHS[m - 1]} ${y}`,
+    round,
+    launchText,
+    note: `${round ? `Round ${round} · ` : ""}${MONTHS[m - 1]} ${y} VC deadline`,
+  };
 }
 
 /** Convert a stage's ISO yyyy-mm-dd date string into a UTC Date

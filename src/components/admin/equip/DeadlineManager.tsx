@@ -17,7 +17,7 @@ import {
   Calendar, List, AlertCircle, ChevronLeft, ChevronRight,
   ExternalLink, Sparkles,
 } from "lucide-react";
-import { holidayDateSet, UOFT_HOLIDAYS } from "@/lib/equip/calendar";
+import { holidayDateSet, isUofTHoliday, suggestVcRounds, UOFT_HOLIDAYS, vcRoundMeta } from "@/lib/equip/calendar";
 
 interface Deadline {
   id: string;
@@ -165,10 +165,128 @@ export function DeadlineManager({ initial, vlRoundStages }: Props) {
       </nav>
 
       <NewDeadlineForm />
+      <VcRoundSuggester deadlines={initial} />
 
       {tab === "list"     ? <ListView     deadlines={initial} vlRoundStages={vlRoundStages} /> : null}
       {tab === "calendar" ? <CalendarView deadlines={initial} holidaysByDate={holidaysByDateRecord()} /> : null}
     </div>
+  );
+}
+
+const torontoYmd = (d: string | Date) => new Date(d).toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+
+/**
+ * Pre-fills the next VentureConnect rounds from the published pattern —
+ * launch on the first Tuesday, deadline in the last week — for review:
+ * every date is editable and only ticked rows are added.
+ */
+function VcRoundSuggester({ deadlines }: { deadlines: Deadline[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [rows, setRows] = useState<{ deadline: string; on: boolean }[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const vcDates = deadlines.filter((d) => d.stream === "venture_connect").map((d) => torontoYmd(d.deadlineAt));
+  const takenMonths = new Set(vcDates.map((d) => d.slice(0, 7)));
+
+  function suggest(count: number) {
+    setError(null);
+    setRows(suggestVcRounds(vcDates, count).map((r) => ({ deadline: r.deadline, on: true })));
+  }
+  function add() {
+    const picked = (rows ?? []).filter((r) => r.on && r.deadline && !takenMonths.has(r.deadline.slice(0, 7)));
+    if (picked.length === 0) return setError("Tick at least one round in a month that has no VentureConnect deadline yet.");
+    startTransition(async () => {
+      try {
+        for (const r of picked) {
+          const meta = vcRoundMeta(r.deadline);
+          const res = await fetch("/api/admin/equip/deadlines", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stream: "venture_connect", deadlineAt: noonEasternIso(r.deadline), cycleLabel: meta.cycleLabel, note: meta.note }),
+          });
+          if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Couldn’t add ${meta.cycleLabel}.`);
+        }
+        setRows(null);
+        router.refresh();
+      } catch (e) {
+        setError((e as Error).message);
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <section className="rounded-2xl border border-line/70 p-5 bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-subtle">Next VentureConnect rounds</p>
+          <p className="mt-1 text-xs text-muted">Rounds launch on the first Tuesday of the month and close in its last week. Suggestions follow that pattern, stepping back from statutory holidays.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {[3, 6, 12].map((n) => (
+            <button key={n} type="button" onClick={() => suggest(n)}
+              className="text-xs font-semibold text-brand-700 border border-line rounded-lg px-3 py-1.5 hover:border-brand-400">
+              Suggest {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {rows && (
+        <div className="mt-4 space-y-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-wider text-subtle">
+                  <th className="py-1.5 pr-3 font-bold">Add</th>
+                  <th className="py-1.5 pr-3 font-bold">Round</th>
+                  <th className="py-1.5 pr-3 font-bold">Launches</th>
+                  <th className="py-1.5 pr-3 font-bold">Deadline (noon ET)</th>
+                  <th className="py-1.5 font-bold">Check</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {rows.map((r, i) => {
+                  const meta = r.deadline ? vcRoundMeta(r.deadline) : null;
+                  const day = r.deadline ? new Date(`${r.deadline}T12:00:00Z`).getUTCDay() : 1;
+                  const holiday = r.deadline ? isUofTHoliday(r.deadline) : null;
+                  const taken = r.deadline && takenMonths.has(r.deadline.slice(0, 7));
+                  const warning = taken ? "This month already has a VC deadline — it won’t be added."
+                    : holiday ? `${holiday.name}` : day === 0 || day === 6 ? "Weekend" : null;
+                  const set = (patch: Partial<typeof r>) => setRows((all) => all!.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+                  return (
+                    <tr key={i}>
+                      <td className="py-2 pr-3">
+                        <input id={`vc-suggest-on-${i}`} type="checkbox" checked={r.on && !taken} disabled={!!taken}
+                          onChange={(e) => set({ on: e.target.checked })} aria-label={`Add ${meta?.cycleLabel ?? "round"}`} />
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        <span className="font-semibold text-fg">{meta?.cycleLabel}</span>
+                        {meta?.round && <span className="ml-1.5 text-xs text-muted">Round {meta.round}</span>}
+                      </td>
+                      <td className="py-2 pr-3 whitespace-nowrap text-muted tabular-nums">{meta?.launchText}</td>
+                      <td className="py-2 pr-3">
+                        <input id={`vc-suggest-date-${i}`} type="date" value={r.deadline} onChange={(e) => set({ deadline: e.target.value })}
+                          className="bg-card-solid border border-line rounded-lg px-2 py-1 text-sm tabular-nums" />
+                      </td>
+                      <td className={"py-2 text-xs " + (warning ? "text-amber-700" : "text-subtle")}>{warning ?? "OK"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={add} disabled={pending}
+              className="bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-bold px-4 py-2 rounded-xl">
+              {pending ? "Adding…" : (() => { const n = (rows ?? []).filter((r) => r.on && r.deadline && !takenMonths.has(r.deadline.slice(0, 7))).length; return `Add ${n} round${n === 1 ? "" : "s"}`; })()}
+            </button>
+            <button type="button" onClick={() => setRows(null)} className="text-sm font-semibold text-muted hover:text-fg">Cancel</button>
+          </div>
+        </div>
+      )}
+      {error && <p role="alert" className="mt-3 text-xs text-rose-700">{error}</p>}
+    </section>
   );
 }
 
@@ -786,6 +904,7 @@ function CombinedMonthRow({ group, today }: { group: MonthGroup; today: string }
                 <p className="text-[10px] text-subtle">Was {formatShort(group.vc.originalDeadlineAt)}</p>
               )}
               {group.vc.cycleLabel && <p className="text-[10px] text-muted">{group.vc.cycleLabel}</p>}
+              <p className="text-[10px] text-muted">Launches {vcRoundMeta(torontoYmd(group.vc.deadlineAt)).launchText}</p>
               <div className="mt-1">{getStatusBadge(group.vc.status)}</div>
               {group.vc.note && <p className="text-[10px] text-muted mt-1 line-clamp-2">{group.vc.note}</p>}
               <div className="flex items-center gap-1 flex-wrap mt-1.5">
