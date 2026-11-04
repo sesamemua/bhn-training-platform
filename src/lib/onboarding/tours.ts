@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.04a";
+export const TOUR_VERSION = "2026.11.04b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "equip.deadlines-in-equip-menu",
+    title: "Deadlines moved to EQUIP",
+    body: "EQUIP deadlines are now in the EQUIP section at the top of the left menu, not under Administration.",
+    path: "/admin/equip/deadlines",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.04b",
+  },
   {
     id: "equip.suggest-vc-rounds",
     title: "Suggest the next VentureConnect rounds",

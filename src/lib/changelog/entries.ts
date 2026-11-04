@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "EQUIP deadlines moved to the EQUIP menu",
+    body: "**Deadlines** now sits in the **EQUIP** section near the top of the left menu, under Funding and the application links, instead of down in **Administration**. Same page, same tools \u2014 one click from where funding rounds are run.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "EQUIP deadlines: suggest the next VentureConnect rounds",
     body: "**EQUIP \u2192 Deadlines** now has **Next VentureConnect rounds**: pick **Suggest 3, 6 or 12** and it lines up the following months on the published pattern \u2014 the round launches on the first Tuesday of the month and closes in its last week, stepping back from statutory holidays. Each round gets its label (\u201cJanuary 2027\u201d) and round number; change any date, untick any month, then **Add**. Every VentureConnect deadline now also shows the day its round launches, and a deadline you add for a round that hasn\u2019t launched yet is saved as **Scheduled** (still open to applications) instead of **Open**.",
     kind: "feature",
