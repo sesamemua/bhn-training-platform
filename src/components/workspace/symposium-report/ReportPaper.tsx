@@ -3,16 +3,9 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Registration, Report, ReportPage } from "@/lib/symposium-report/document";
 import { paginate, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
+import { hasLeadPhoto, MIN_FILL_PHOTO, pagePhoto, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, REPORT_ASSETS } from "@/lib/symposium-report/photos";
+import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
-
-const ASSETS = "/api/workspace/symposium-2026/report/assets";
-const photos = {
-  microbix: "Training Week participants visit the Microbix facility.",
-  keynote: "Christopher Procyshyn delivers the symposium keynote.",
-  venture: "A presenter on stage during the EQUIP VentureLift showcase.",
-  roundtable: "Symposium attendees take part in a table discussion.",
-  network: "Attendees in conversation at the Annual Symposium.",
-};
 
 const sectorColors = [
   "var(--report-sector-academic)", "var(--report-sector-industry)", "var(--report-sector-other)", "var(--report-sector-public)",
@@ -47,18 +40,6 @@ function RegistrationChart({ chart }: { chart: Registration }) {
   );
 }
 
-function Figure({ image, registration }: Pick<ReportPage, "image" | "registration">) {
-  if (!image) return null;
-  if (image === "registration") return registration ? <RegistrationChart chart={registration} /> : null;
-  return (
-    <figure className={styles.photo}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- fixed Letter crop, same source for print */}
-      <img src={`${ASSETS}/${image}.jpg`} alt={photos[image]} />
-      <figcaption>{photos[image]}</figcaption>
-    </figure>
-  );
-}
-
 function Blocks({ blocks }: { blocks: Block[] }) {
   return blocks.map((block, index) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : "p";
@@ -66,7 +47,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
   });
 }
 
-export type LaidOutReport = { page: ReportPage; frames: Block[][] }[];
+export type LaidOutReport = { page: ReportPage; frames: Block[][]; photoHeights: number[] }[];
 
 export function useReportLayout(report: Report) {
   const ruler = useRef<HTMLDivElement>(null);
@@ -80,23 +61,33 @@ export function useReportLayout(report: Report) {
     const label = intro.querySelector("span")!;
     const continuation = pageNode.querySelector<HTMLElement>("[data-measure-continuation]")!;
     const measure = pageNode.querySelector<HTMLElement>("[data-measure-copy]")!;
+    const story = measure.firstElementChild as HTMLElement;
+    const measureText = (blocks: Block[], index: number) => {
+      pageNode.dataset.continued = String(index > 0);
+      story.replaceChildren(...blocks.map((block) => {
+        const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : "p");
+        node.className = styles[block.kind];
+        node.textContent = block.text;
+        return node;
+      }));
+      return measure.clientHeight - Math.ceil(story.getBoundingClientRect().height);
+    };
     const result = report.pages.map((page) => {
       title.textContent = page.title;
       continuation.firstChild!.textContent = page.title;
       label.textContent = page.label;
-      pageNode.dataset.figure = page.image === "registration" ? page.registration ? "chart" : "none" : page.image ? "photo" : "none";
-      const blocks = reportBlocks(page.text);
-      const frames = paginate(blocks, page.frames, (candidate, index) => {
-        pageNode.dataset.continued = String(index > 0);
-        measure.replaceChildren(...candidate.map((block) => {
-          const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : "p");
-          node.className = styles[block.kind];
-          node.textContent = block.text;
-          return node;
-        }));
-        return measure.scrollHeight <= measure.clientHeight;
+      pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
+      const frames = paginate(reportBlocks(page.text), page.frames, (candidate, index) => {
+        const reserve = !hasLeadPhoto(page, index) && page.photos?.[String(index)]
+          ? MIN_FILL_PHOTO + PHOTO_CAPTION_SPACE + PHOTO_GAP : 0;
+        return measureText(candidate, index) >= reserve;
       });
-      return { page, frames };
+      const photoHeights = frames.map((blocks, index) => {
+        if (hasLeadPhoto(page, index)) return 174 + Math.max(0, measureText(blocks, index) - 3);
+        const space = measureText(blocks, index) - PHOTO_CAPTION_SPACE - PHOTO_GAP;
+        return space >= MIN_FILL_PHOTO ? space : 0;
+      });
+      return { page, frames, photoHeights };
     });
     // Pagination uses the browser's actual font and frame measurements.
     setLayout({ report, pages: result });
@@ -111,7 +102,7 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
         <header className={styles.chapterHead} data-measure-intro=""><span /><h2 /></header>
         <div className={styles.continuationHead} data-measure-continuation="">Title <span> / continued</span></div>
         <div className={styles.figureSpacer} />
-        <div className={styles.copy} data-measure-copy="" />
+        <div className={styles.copy} data-measure-copy=""><div className={styles.story} /></div>
         <div className={styles.folio} />
       </div>
     </div>
@@ -120,7 +111,7 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
 
 export type Frame = { id: string; index: number };
 
-export function ReportPaper({ report, layout, active, ready, onSelect, edit, onEdit, onComment }: {
+export function ReportPaper({ report, layout, active, ready, onSelect, edit, onEdit, onComment, onPhoto }: {
   report: Report;
   layout: LaidOutReport;
   active: Frame;
@@ -129,6 +120,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   edit: ReactNode;
   onEdit?: (frame: Frame) => void;
   onComment?: (frame: Frame) => void;
+  onPhoto?: (frame: Frame) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -141,7 +133,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   }, []);
   const num = 2 + layout.reduce((sum, { frames }) => sum + frames.length, 0);
   let folio = 1;
-  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string) => {
+  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false) => {
     const pageNumber = folio++;
     const isActive = active.id === frame.id && active.index === frame.index;
     return (
@@ -158,6 +150,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           </button>
           <div>
             {onEdit && <button type="button" onClick={() => onEdit(frame)}>Edit on page</button>}
+            {onPhoto && frame.id !== "back" && <button type="button" onClick={() => onPhoto(frame)}>{hasPhoto ? "Swap photo" : "Add photo"}</button>}
             {onComment && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onComment(frame)}>Comment</button>}
           </div>
         </div>
@@ -168,30 +161,33 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   return (
     <div className={styles.stage} ref={stage} data-report-paper="">
       {wrap({ id: "cover", index: 0 }, "Cover", <>
+        <CoverArt photo={report.cover.photo ?? photoPreset("cover.jpg")} />
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
-        <img className={styles.logo} src={`${ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
+        <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
         <div className={styles.coverText}>
           <p className={styles.kicker}>2026 Event Report</p>
           <h1>{report.cover.title}</h1>
           <p className={styles.coverTheme}>{report.cover.theme}</p>
           <p className={styles.coverDate}>{report.cover.date}</p>
         </div>
-      </>, styles.cover)}
-      {layout.map(({ page, frames }) => frames.map((blocks, index) =>
+      </>, styles.cover, true)}
+      {layout.map(({ page, frames, photoHeights }) => frames.map((blocks, index) =>
         wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
             ? <header className={styles.chapterHead}><span>{page.label}</span><h2>{page.title}</h2></header>
             : <header className={styles.continuationHead}>{page.title} <span> / continued</span></header>}
-          {index === 0 && <Figure image={page.image} registration={page.registration} />}
+          {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} />}
+          {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index)} height={photoHeights[index]} lead />}
           <div className={styles.copy}>
-            {blocks.length ? <Blocks blocks={blocks} /> : <p className={`${styles.emptyFrame} report-screen-only`}>Linked text will flow here as this section grows.</p>}
+            <div className={styles.story}><Blocks blocks={blocks} /></div>
+            {!hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index)} height={photoHeights[index]} />}
           </div>
           <footer className={styles.folio}><span>BioHubNet · 2026 Event Report</span><span>{String(folio).padStart(2, "0")}</span></footer>
-        </>, styles.chapter),
+        </>, styles.chapter, photoHeights[index] > 0),
       ))}
       {wrap({ id: "back", index: 0 }, "Back cover", <>
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
-        <img className={styles.logo} src={`${ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
+        <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
         <div className={styles.backText}>
           <p className={styles.kicker}>The network</p>
           <h2>{report.back.title}</h2>

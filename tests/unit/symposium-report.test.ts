@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { pagePhoto, photoPreset } from "../../src/lib/symposium-report/photos";
 import { reportSchema } from "../../src/lib/symposium-report/document";
 import { paginate, reportBlocks } from "../../src/lib/symposium-report/paginate";
 
@@ -52,4 +53,18 @@ test("registration counts and source are part of the editable document", () => {
   assert.deepEqual(reportSchema.parse(document).pages[0].registration, document.pages[0].registration);
   document.pages[0].registration.categories[0].count = -1;
   assert.equal(reportSchema.safeParse(document).success, false);
+});
+
+test("photo choices and crops belong to their report page and must use known artwork", () => {
+  const crop = { ...photoPreset("panel-1-3.webp"), x: 75 };
+  const input = {
+    cover: { title: "Annual symposium", theme: "Future workforce", date: "October 26–29", photo: photoPreset("cover.jpg") },
+    pages: [{ id: "panels", label: "Symposium", title: "Panel Sessions", text: "Panel summary.", frames: 2, photos: { "1": crop } }],
+    back: { title: "BioHubNet", text: "Learn more." },
+  };
+  const report = reportSchema.parse(input);
+  assert.deepEqual(pagePhoto(report.pages[0], 0), photoPreset("panel-1-1.webp"));
+  assert.deepEqual(pagePhoto(report.pages[0], 1), crop);
+  assert.equal(reportSchema.safeParse({ ...input, cover: { ...input.cover, photo: { ...crop, file: "../private" } } }).success, false);
+  assert.equal(reportSchema.safeParse({ ...input, cover: { ...input.cover, photo: { ...crop, y: 101 } } }).success, false);
 });

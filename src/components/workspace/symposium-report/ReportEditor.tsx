@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { BookOpen, FilePlus, History, Link2, MessageSquare, Printer, Save, Trash2 } from "lucide-react";
 import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { REPORT_API, reportSchema, type Registration, type Report, type ReportPage } from "@/lib/symposium-report/document";
+import { REPORT_API, reportSchema, type Registration, type Report, type ReportPage, type ReportPhoto } from "@/lib/symposium-report/document";
 import { ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
+import { MIN_FILL_PHOTO, pagePhoto, photoPreset } from "@/lib/symposium-report/photos";
+import { PhotoEditor } from "./ReportPhoto";
 import styles from "./report.module.css";
 import "./report-print.css";
 
@@ -19,7 +21,8 @@ type Props = {
   meId: string;
   isAdmin: boolean;
 };
-type Edit = { kind: "cover"; data: Report["cover"] } | { kind: "back"; data: Report["back"] } | { kind: "story"; data: ReportPage };
+type Edit = { kind: "cover"; data: Report["cover"] } | { kind: "back"; data: Report["back"] } | { kind: "story"; data: ReportPage }
+  | { kind: "photo"; frame: Frame; initial?: ReportPhoto; automatic: ReportPhoto; height: number };
 const cover: Frame = { id: "cover", index: 0 };
 
 function ChartFields({ chart, onChange }: { chart: Registration; onChange: (chart: Registration) => void }) {
@@ -97,7 +100,7 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
 
   function apply(event: FormEvent) {
     event.preventDefault();
-    if (!edit) return;
+    if (!edit || edit.kind === "photo") return;
     const next = edit.kind === "story"
       ? { ...report, pages: report.pages.map((p) => p.id === edit.data.id ? edit.data : p) }
       : { ...report, [edit.kind]: edit.data };
@@ -108,6 +111,39 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
     setEdit(null);
     setError("");
     setMessage("Changes applied. Save the draft to share them.");
+  }
+
+  function startPhoto(frame: Frame) {
+    if (busy || edit || !editable) return;
+    const entry = layout?.find(({ page }) => page.id === frame.id);
+    if (frame.id !== "cover" && !entry) return;
+    select(frame);
+    setEdit({
+      kind: "photo", frame,
+      initial: entry ? entry.page.photos?.[String(frame.index)] : report.cover.photo,
+      automatic: entry ? pagePhoto({ ...entry.page, photos: undefined }, frame.index) : photoPreset("cover.jpg"),
+      height: entry ? Math.max(MIN_FILL_PHOTO, entry.photoHeights[frame.index] ?? 0) : 385,
+    });
+    requestAnimationFrame(() => {
+      window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.scrollIntoView({ block: "start" });
+      window.document.querySelector<HTMLElement>("[data-report-photo-picker]")?.focus({ preventScroll: true });
+    });
+  }
+
+  function applyPhoto(photo: ReportPhoto | undefined) {
+    if (edit?.kind !== "photo") return;
+    const { frame } = edit;
+    if (frame.id === "cover") setReport({ ...report, cover: { ...report.cover, photo } });
+    else setReport({ ...report, pages: report.pages.map((page) => {
+      if (page.id !== frame.id) return page;
+      const photos = { ...page.photos };
+      if (photo) photos[String(frame.index)] = photo;
+      else delete photos[String(frame.index)];
+      return { ...page, photos };
+    }) });
+    setEdit(null);
+    setError("");
+    setMessage("Photo applied. Save the draft to share it.");
   }
 
   function addPage() {
@@ -188,7 +224,10 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
 
   const controlsDisabled = !editable || !!edit || busy;
   const removable = chapter && (active.index === 0 ? report.pages.length > 1 : active.index === chapter.frames.length - 1 && chapter.page.frames === chapter.frames.length && !chapter.frames.at(-1)?.length);
-  const editForm = edit && (
+  const editForm = edit?.kind === "photo" ? (
+    <PhotoEditor initial={edit.initial} automatic={edit.automatic} height={edit.height} cover={edit.frame.id === "cover"}
+      onApply={applyPhoto} onCancel={() => setEdit(null)} />
+  ) : edit && (
     <form className={`${styles.editForm} report-screen-only`} data-report-edit-form="" onSubmit={apply}
       onKeyDown={(event) => { if (event.key === "Escape") setEdit(null); }}>
       <div className={styles.editHeader}>
@@ -275,6 +314,7 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved}
           onSelect={select} edit={editForm} onEdit={controlsDisabled ? undefined : startEdit}
+          onPhoto={controlsDisabled ? undefined : startPhoto}
           onComment={past === null && review.status === "open" && !edit ? commentOn : undefined} />}
         <ReportRuler ruler={ruler} />
       </div>

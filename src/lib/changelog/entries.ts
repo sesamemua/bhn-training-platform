@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Swap and crop photos in the Symposium report",
+    body: "Use **Swap photo** beside a page in **Workspace → 2026 Symposium → Event Report** to pick a photograph, preview a headshot crop, and save it with the draft. The cover combines the crystal banner with the symposium photograph, and shorter pages use their spare space for photos.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Review the 2026 Symposium report in Workspace",
     body: "Open **Workspace → 2026 Symposium → Event Report** to edit the Letter draft, add or remove pages, and leave comments. Each completed round keeps a saved copy. An administrator can approve the report for PDF export.",
     kind: "feature",

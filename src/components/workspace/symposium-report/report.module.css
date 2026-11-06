@@ -113,12 +113,24 @@
   overflow: hidden;
   padding: 56px 65px;
 }
-.cover {
-  background-image:
-    linear-gradient(180deg, color-mix(in srgb, var(--report-deep) 27%, transparent) 20%, color-mix(in srgb, var(--report-deep) 60%, transparent) 51%, var(--report-deep) 93%),
-    url("/api/workspace/symposium-2026/report/assets/cover.jpg");
-  background-size: cover;
-  background-position: 56% center;
+.coverArt {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  overflow: hidden;
+}
+.coverArt img { position: absolute; display: block; width: 100%; object-fit: cover; }
+.coverCrystal { inset: 0 0 auto; height: 49%; object-position: 65% 45%; }
+.coverEvent {
+  inset: 34% 0 auto;
+  height: 43.5%;
+  mask-image: linear-gradient(to bottom, transparent, black 16%, black 67%, transparent);
+}
+.coverArt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--report-deep) 29%, transparent), transparent 24%, transparent 53%, var(--report-deep) 79%);
 }
 .cover::before {
   content: "";
@@ -128,7 +140,7 @@
   border: 1px solid color-mix(in srgb, var(--report-rule) 46%, transparent);
 }
 .logo { width: 170px; height: auto; }
-.coverText { position: absolute; inset: auto 65px 88px; }
+.coverText { position: absolute; inset: auto 65px 63px; }
 .kicker {
   color: var(--report-light);
   font-size: 15px;
@@ -178,7 +190,8 @@
   grid-template-rows: auto var(--figure-height) minmax(0, 1fr) 30px;
   padding: 55px 66px 35px;
 }
-.chapter:has(.photo), .chapter[data-figure="photo"]:not([data-continued="true"]) { --figure-height: 214px; }
+.chapter:has(.photo) { --figure-height: auto; }
+.chapter[data-figure="photo"]:not([data-continued="true"]) { --figure-height: 214px; }
 .chapter:has(.registration), .chapter[data-figure="chart"]:not([data-continued="true"]) { --figure-height: 279px; }
 .chapterHead { grid-row: 1; padding-bottom: 24px; }
 .chapterHead span {
@@ -208,8 +221,21 @@
 .continuationHead span { color: var(--report-slate); font-weight: 400; }
 .chapter[data-continued="true"] .chapterHead, .chapter:not([data-continued="true"]) .chapterHead + .continuationHead { display: none; }
 .figureSpacer, .photo, .registration { grid-row: 2; margin: 0; }
-.photo img { display: block; width: 100%; height: 174px; object-fit: cover; object-position: center 45%; }
-.photo figcaption { color: var(--report-slate); padding-top: 7px; font-size: 11px; }
+.photo { padding-bottom: 17px; }
+.photoMat { position: relative; display: grid; place-items: center; width: 100%; overflow: hidden; isolation: isolate; background: var(--report-deep); }
+.photoMat::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -10%;
+  background: var(--photo-background) var(--photo-focus) / cover no-repeat;
+  filter: blur(28px) brightness(.38);
+}
+.photoMat img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--photo-focus); min-height: 0; }
+.photoMat[data-fit="portrait"] img { left: 50%; right: auto; transform: translateX(-50%); width: auto; max-width: 100%; aspect-ratio: 5 / 4; }
+.photoMat[data-fit="whole"] img { object-fit: contain; }
+.photo figcaption, .fillPhoto figcaption { height: 23px; color: var(--report-slate); padding-top: 6px; font-size: 11px; }
+.fillPhoto { margin: auto 0 0; }
 .registration { margin-bottom: 21px; background: var(--report-panel); border: 1px solid var(--report-rule); padding: 14px 17px; }
 .registration figcaption { display: flex; justify-content: space-between; gap: 8px; color: var(--report-teal); font-weight: 750; font-size: 14px; }
 .registration figcaption span { color: var(--report-slate); font-size: 11px; font-weight: 500; }
@@ -223,7 +249,8 @@
 .chartLegend dd { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
 .registration > p { margin: 0; font: 11px/1.3 var(--sans); color: var(--report-slate); }
 
-.copy { grid-row: 3; min-height: 0; }
+.copy { grid-row: 3; min-height: 0; display: flex; flex-direction: column; }
+.story { display: flow-root; flex: none; }
 .paragraph, .heading, .note {
   margin: 0;
   white-space: pre-wrap;
@@ -239,7 +266,6 @@
   margin-bottom: 11px;
   padding: 8px 11px;
 }
-.emptyFrame { color: var(--report-slate); font: italic 15px var(--serif); }
 .folio {
   grid-row: 4;
   display: flex;
@@ -275,7 +301,10 @@
 .editHeader h2 { font: 400 31px/1.08 var(--serif); }
 .editHeader p, .editForm > p { color: var(--report-slate); font-size: 14px; }
 .editForm label { display: grid; gap: 5px; font: 700 15px var(--sans); }
-.editForm :is(input, textarea) { display: block; width: 100%; padding: 10px 12px; border: 1px solid var(--report-rule); border-radius: 5px; font: 17px/1.4 var(--sans); color: var(--report-ink); background: var(--report-white); }
+.editForm :is(input, textarea, select) { display: block; width: 100%; padding: 10px 12px; border: 1px solid var(--report-rule); border-radius: 5px; font: 17px/1.4 var(--sans); color: var(--report-ink); background: var(--report-white); }
+.photoPreview { width: min(100%, 480px); align-self: center; }
+.cropControls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cropControls input { padding: 0; accent-color: var(--report-blue); }
 .chartFields { display: grid; gap: 9px; min-width: 0; padding: 10px; border: 1px solid var(--report-rule); border-radius: 5px; }
 .chartFields legend { color: var(--report-teal); padding-inline: 5px; font-weight: 750; }
 .chartFields > div { display: grid; grid-template-columns: minmax(0, 1fr) 6rem; gap: 8px; }
