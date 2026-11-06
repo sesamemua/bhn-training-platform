@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Community reflections in the Symposium report",
+    body: "The draft highlights published community feedback and includes a LinkedIn QR code on the back cover.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Photo grid for Training Week",
     body: "The Training Week photo page now uses six equally sized images. Each image can be swapped and cropped in review.",
     kind: "improvement",

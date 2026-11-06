@@ -227,10 +227,16 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
         <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
         <div className={styles.backText}>
-          <p className={styles.kicker}>The network</p>
           <h2>{report.back.title}</h2>
           <p>{report.back.text}</p>
-          <a href="https://biohubnet.ca">biohubnet.ca</a>
+          <div className={styles.backLinks}>
+            <a href="https://biohubnet.ca">biohubnet.ca</a>
+            <a href="https://www.linkedin.com/company/biohubnet/" className={styles.backQr}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- vector QR for print */}
+              <img src="/symposium-report-linkedin.svg" width={116} height={116} alt="" />
+              <span>Follow BioHubNet on LinkedIn</span>
+            </a>
+          </div>
         </div>
       </>, styles.back)}
     </div>
