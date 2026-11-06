@@ -77,7 +77,15 @@ export function hasLeadPhoto(page: ReportPage, index: number) {
   return index === 0 && page.image !== "registration" && (page.id === "panels" || Boolean(page.image) || stripPhotos(page, index).length > 0);
 }
 
+export function hasTrainingPhotoGrid(page: ReportPage, index: number) {
+  return page.id === "training-week" && index === 1
+    && Boolean(page.photos?.[String(index)]) && stripPhotos(page, index).length === 5;
+}
+
 export const MIN_FILL_PHOTO = 112;
 export const PHOTO_CAPTION_SPACE = 23;
 export const PHOTO_GAP = 13;
 export const PORTRAIT_STRIP_SPACE = 144 + 34 + PHOTO_GAP;
+const TRAINING_TILE_HEIGHT = 208;
+export const TRAINING_TILE_PREVIEW_HEIGHT = 684 * TRAINING_TILE_HEIGHT / 337;
+export const TRAINING_PHOTO_GRID_SPACE = 3 * (TRAINING_TILE_HEIGHT + 34) + 20 + PHOTO_GAP;

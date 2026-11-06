@@ -7,7 +7,7 @@ import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { REPORT_API, reportSchema, type Registration, type Report, type ReportPage, type ReportPhoto } from "@/lib/symposium-report/document";
 import { ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
-import { MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos } from "@/lib/symposium-report/photos";
+import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
 import styles from "./report.module.css";
 import "./report-print.css";
@@ -125,10 +125,16 @@ export function ReportEditor({ report: initial, revision, history, review, recom
       : recommendations.cover?.[0] ?? photoPreset("cover.jpg");
     const automatic = slot ? current ?? recommended : recommended;
     const existingHeight = entry?.photoHeights[frame.index] ?? 0;
+    let height = entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 385;
+    if (entry && slot) {
+      height = hasTrainingPhotoGrid(entry.page, frame.index)
+        ? TRAINING_TILE_PREVIEW_HEIGHT
+        : portraitHeight(stripPhotos(entry.page, frame.index).length);
+    }
     setEdit({
       kind: "photo", frame, automatic, slot,
       initial: entry ? current ?? (existingHeight ? undefined : automatic) : report.cover.photo,
-      height: entry && slot ? portraitHeight(stripPhotos(entry.page, frame.index).length) : entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 385,
+      height,
     });
     requestAnimationFrame(() => {
       window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.scrollIntoView({ block: "start" });

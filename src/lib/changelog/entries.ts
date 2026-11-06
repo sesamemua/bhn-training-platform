@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Photo grid for Training Week",
+    body: "The Training Week photo page now uses six equally sized images. Each image can be swapped and cropped in review.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Simpler cover labels in the Symposium report",
     body: "The small labels above the front and back cover titles now sit flush with the titles.",
     kind: "improvement",

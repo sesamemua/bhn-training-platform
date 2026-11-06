@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
-import { hasLeadPhoto, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS, stripPhotos } from "@/lib/symposium-report/photos";
+import { hasLeadPhoto, hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS, stripPhotos, TRAINING_PHOTO_GRID_SPACE, TRAINING_TILE_PREVIEW_HEIGHT } from "@/lib/symposium-report/photos";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
 
@@ -82,16 +82,20 @@ export function useReportLayout(report: Report) {
       continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
       label.textContent = `${folioText(index + 1)} / ${page.label}`;
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
-      const stripSpace = (index: number) => stripPhotos(page, index).length ? PORTRAIT_STRIP_SPACE : 0;
+      const stripSpace = (index: number) => {
+        if (hasTrainingPhotoGrid(page, index)) return TRAINING_PHOTO_GRID_SPACE;
+        return stripPhotos(page, index).length ? PORTRAIT_STRIP_SPACE : 0;
+      };
       const hasPortraits = portraitPhotos(page).length > 0;
       pageNode.dataset.portraits = String(hasPortraits);
       const frames = paginate(reportBlocks(page.text), page.frames, (candidate, index) => {
-        const reserve = !hasLeadPhoto(page, index) && page.photos?.[String(index)]
+        const reserve = !hasLeadPhoto(page, index) && !hasTrainingPhotoGrid(page, index) && page.photos?.[String(index)]
           ? MIN_FILL_PHOTO + PHOTO_CAPTION_SPACE + PHOTO_GAP : 0;
         const strip = stripSpace(index);
         return measureText(candidate, index, strip > 0) >= reserve + strip;
       });
       const photoHeights = frames.map((blocks, index) => {
+        if (hasTrainingPhotoGrid(page, index)) return TRAINING_TILE_PREVIEW_HEIGHT;
         const strip = stripSpace(index);
         const freeSpace = measureText(blocks, index, strip > 0) - strip;
         if (hasLeadPhoto(page, index)) {
@@ -199,6 +203,8 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
       </>, styles.cover, true)}
       {layout.map(({ page, columns, frames, photoHeights }, section) => frames.map((blocks, index) => {
         const strip = stripPhotos(page, index);
+        const photoGrid = hasTrainingPhotoGrid(page, index);
+        const stripHeight = photoGrid ? TRAINING_TILE_PREVIEW_HEIGHT : portraitHeight(strip.length);
         return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
             ? <header className={styles.chapterHead}><span>{folioText(section + 1)} / {page.label}</span><h2>{page.title}</h2></header>
@@ -207,9 +213,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} lead />}
           <div className={styles.copy}>
             <div className={styles.story}><Blocks blocks={blocks} /></div>
-            {!hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} />}
-            {strip.length > 0 && <div className={styles.portraitStrip} role="group" aria-label="Additional photographs">
-              {strip.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={portraitHeight(strip.length)} />)}
+            {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} />}
+            {strip.length > 0 && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
+              role="group" aria-label={photoGrid ? "Training Week photographs" : "Additional photographs"}>
+              {photoGrid && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={stripHeight} />}
+              {strip.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={stripHeight} />)}
             </div>}
           </div>
           <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
