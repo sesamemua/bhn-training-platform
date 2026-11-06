@@ -59,12 +59,13 @@ async function photoForUpload(file: File) {
   } finally { image.close(); }
 }
 
-export function PhotoEditor({ initial, automatic, height, section, cover, portrait, onApply, onCancel }: {
+export function PhotoEditor({ initial, automatic, height, section, cover, secondary, portrait, onApply, onCancel }: {
   initial?: ReportPhoto;
   automatic: ReportPhoto;
   height: number;
   section: string;
   cover: boolean;
+  secondary: boolean;
   portrait: boolean;
   onApply: (photo: ReportPhoto | undefined) => void;
   onCancel: () => void;
@@ -74,7 +75,9 @@ export function PhotoEditor({ initial, automatic, height, section, cover, portra
   const [groupId, setGroupId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const group = groups?.find((item) => item.id === groupId) ?? groups?.[0];
+  const group = groups?.find((item) => item.id === groupId)
+    ?? groups?.find((item) => item.photos.some(({ file }) => file === (initial ?? automatic).file))
+    ?? groups?.[0];
   const photo = selected ?? automatic;
   const fixedCrop = cover || portrait;
 
@@ -154,7 +157,7 @@ export function PhotoEditor({ initial, automatic, height, section, cover, portra
         </div>
         <div className={styles.photoPreview}>
           <PhotoFigure photo={fixedCrop ? { ...photo, fit: "cover" } : photo} height={height} />
-          <button type="button" onClick={() => setSelected(undefined)}>{portrait ? "Use current photo" : "Use recommended photo"}</button>
+          <button type="button" onClick={() => setSelected(undefined)}>{secondary ? "Use current photo" : "Use recommended photo"}</button>
           {!fixedCrop && <label>Crop style
             <select value={photo.fit} onChange={(event) => setSelected({ ...photo, fit: event.target.value as ReportPhoto["fit"] })}>
               <option value="cover">Fill frame</option>

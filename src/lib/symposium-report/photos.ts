@@ -63,12 +63,18 @@ export function portraitPhotos(page: ReportPage) {
   return Object.entries(page.photos ?? {}).filter(([key]) => key.startsWith("portrait-")).sort(([a], [b]) => a.localeCompare(b));
 }
 
+export function stripPhotos(page: ReportPage, index: number) {
+  const portraits = index === 0 ? portraitPhotos(page) : [];
+  if (portraits.length) return portraits;
+  return Object.entries(page.photos ?? {}).filter(([key]) => key.startsWith(`photo-${index}-`)).sort(([a], [b]) => a.localeCompare(b));
+}
+
 export function portraitHeight(count: number) {
   return 684 * 144 * count / (684 - 10 * (count - 1));
 }
 
 export function hasLeadPhoto(page: ReportPage, index: number) {
-  return index === 0 && (page.id === "panels" || portraitPhotos(page).length > 0 || Boolean(page.image && page.image !== "registration"));
+  return index === 0 && page.image !== "registration" && (page.id === "panels" || Boolean(page.image) || stripPhotos(page, index).length > 0);
 }
 
 export const MIN_FILL_PHOTO = 112;

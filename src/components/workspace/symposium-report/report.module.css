@@ -219,6 +219,7 @@
 .sheet:nth-child(even) .chapter { padding-inline: var(--outer-margin) var(--inner-margin); }
 .chapter:has(.photo) { --figure-height: auto; }
 .chapter[data-figure="photo"]:not([data-continued="true"]) { --figure-height: 214px; }
+.chapter[data-figure="photo"][data-photo-strip="true"][data-portraits="false"]:not([data-continued="true"]) { --figure-height: 186px; }
 .chapter:has(.registration), .chapter[data-figure="chart"]:not([data-continued="true"]) { --figure-height: 279px; }
 .chapterHead { grid-row: 1; padding-bottom: 22px; }
 .chapterHead span, .continuationHead {
@@ -348,6 +349,16 @@
 .chapter[data-portraits="true"]:not([data-continued="true"]) .story > .paragraph:first-child {
   font-size: 18px;
   line-height: 1.42;
+}
+.chapter[data-columns="2"][data-photo-strip="true"] .paragraph {
+  font-size: 15.5px;
+  line-height: 1.4;
+  padding-bottom: 10px;
+}
+.chapter[data-columns="2"][data-photo-strip="true"]:not([data-continued="true"]) .story > .paragraph:first-child {
+  font-size: 19px;
+  line-height: 1.32;
+  padding-bottom: 14px;
 }
 .heading {
   font: 700 13px/1.35 var(--sans);

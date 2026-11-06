@@ -7,7 +7,7 @@ import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { REPORT_API, reportSchema, type Registration, type Report, type ReportPage, type ReportPhoto } from "@/lib/symposium-report/document";
 import { ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
-import { MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, portraitPhotos } from "@/lib/symposium-report/photos";
+import { MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
 import styles from "./report.module.css";
 import "./report-print.css";
@@ -23,7 +23,7 @@ type Props = {
   isAdmin: boolean;
 };
 type Edit = { kind: "cover"; data: Report["cover"] } | { kind: "back"; data: Report["back"] } | { kind: "story"; data: ReportPage }
-  | { kind: "photo"; frame: Frame; initial?: ReportPhoto; automatic: ReportPhoto; height: number; portrait?: string };
+  | { kind: "photo"; frame: Frame; initial?: ReportPhoto; automatic: ReportPhoto; height: number; slot?: string };
 const cover: Frame = { id: "cover", index: 0 };
 
 function ChartFields({ chart, onChange }: { chart: Registration; onChange: (chart: Registration) => void }) {
@@ -114,18 +114,21 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     setMessage("Changes applied. Save the draft to share them.");
   }
 
-  function startPhoto(frame: Frame, portrait?: string) {
+  function startPhoto(frame: Frame, slot?: string) {
     if (busy || edit || !editable) return;
     const entry = layout?.find(({ page }) => page.id === frame.id);
-    const current = entry?.page.photos?.[portrait ?? String(frame.index)];
-    if ((frame.id !== "cover" && !entry) || (portrait && !current)) return;
+    const current = entry?.page.photos?.[slot ?? String(frame.index)];
+    if ((frame.id !== "cover" && !entry) || (slot && !current)) return;
     select(frame);
-    const automatic = portrait && current ? current : entry ? pagePhoto({ ...entry.page, photos: undefined }, frame.index, recommendations) : recommendations.cover?.[0] ?? photoPreset("cover.jpg");
+    const recommended = entry
+      ? pagePhoto({ ...entry.page, photos: undefined }, frame.index, recommendations)
+      : recommendations.cover?.[0] ?? photoPreset("cover.jpg");
+    const automatic = slot ? current ?? recommended : recommended;
     const existingHeight = entry?.photoHeights[frame.index] ?? 0;
     setEdit({
-      kind: "photo", frame, automatic, portrait,
+      kind: "photo", frame, automatic, slot,
       initial: entry ? current ?? (existingHeight ? undefined : automatic) : report.cover.photo,
-      height: entry ? portrait ? portraitHeight(portraitPhotos(entry.page).length) : Math.max(MIN_FILL_PHOTO, existingHeight) : 385,
+      height: entry && slot ? portraitHeight(stripPhotos(entry.page, frame.index).length) : entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 385,
     });
     requestAnimationFrame(() => {
       window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.scrollIntoView({ block: "start" });
@@ -140,9 +143,10 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     else setReport({ ...report, pages: report.pages.map((page) => {
       if (page.id !== frame.id) return page;
       const photos = { ...page.photos };
-      if (edit.portrait) photos[edit.portrait] = photo ?? edit.automatic;
-      else if (photo) photos[String(frame.index)] = photo;
-      else delete photos[String(frame.index)];
+      const key = edit.slot ?? String(frame.index);
+      if (photo) photos[key] = photo;
+      else if (edit.slot || (frame.index > 0 && photos[key] && stripPhotos(page, frame.index).length)) photos[key] = edit.automatic;
+      else delete photos[key];
       return { ...page, photos };
     }) });
     setEdit(null);
@@ -229,7 +233,8 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const controlsDisabled = !editable || !!edit || busy;
   const removable = chapter && (active.index === 0 ? report.pages.length > 1 : active.index === chapter.frames.length - 1 && chapter.page.frames === chapter.frames.length && !chapter.frames.at(-1)?.length);
   const editForm = edit?.kind === "photo" ? (
-    <PhotoEditor initial={edit.initial} automatic={edit.automatic} height={edit.height} section={edit.frame.id} cover={edit.frame.id === "cover"} portrait={!!edit.portrait}
+    <PhotoEditor initial={edit.initial} automatic={edit.automatic} height={edit.height} section={edit.frame.id}
+      cover={edit.frame.id === "cover"} secondary={!!edit.slot} portrait={edit.slot?.startsWith("portrait-") ?? false}
       onApply={applyPhoto} onCancel={() => setEdit(null)} />
   ) : edit && (
     <form className={`${styles.editForm} report-screen-only`} data-report-edit-form="" onSubmit={apply}

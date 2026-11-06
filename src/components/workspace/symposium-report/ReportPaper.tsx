@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
-import { hasLeadPhoto, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS } from "@/lib/symposium-report/photos";
+import { hasLeadPhoto, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS, stripPhotos } from "@/lib/symposium-report/photos";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
 
@@ -64,8 +64,9 @@ export function useReportLayout(report: Report) {
     const continuation = pageNode.querySelector<HTMLElement>("[data-measure-continuation]")!;
     const measure = pageNode.querySelector<HTMLElement>("[data-measure-copy]")!;
     const story = measure.firstElementChild as HTMLElement;
-    const measureText = (blocks: Block[], index: number) => {
+    const measureText = (blocks: Block[], index: number, hasStrip: boolean) => {
       pageNode.dataset.continued = String(index > 0);
+      pageNode.dataset.photoStrip = String(hasStrip);
       story.replaceChildren(...blocks.map((block) => {
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : "p");
         node.className = styles[block.kind];
@@ -81,16 +82,24 @@ export function useReportLayout(report: Report) {
       continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
       label.textContent = `${folioText(index + 1)} / ${page.label}`;
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
-      const stripSpace = portraitPhotos(page).length ? PORTRAIT_STRIP_SPACE : 0;
-      pageNode.dataset.portraits = String(stripSpace > 0);
+      const stripSpace = (index: number) => stripPhotos(page, index).length ? PORTRAIT_STRIP_SPACE : 0;
+      const hasPortraits = portraitPhotos(page).length > 0;
+      pageNode.dataset.portraits = String(hasPortraits);
       const frames = paginate(reportBlocks(page.text), page.frames, (candidate, index) => {
         const reserve = !hasLeadPhoto(page, index) && page.photos?.[String(index)]
           ? MIN_FILL_PHOTO + PHOTO_CAPTION_SPACE + PHOTO_GAP : 0;
-        return measureText(candidate, index) >= reserve + (index === 0 ? stripSpace : 0);
+        const strip = stripSpace(index);
+        return measureText(candidate, index, strip > 0) >= reserve + strip;
       });
       const photoHeights = frames.map((blocks, index) => {
-        if (hasLeadPhoto(page, index)) return 174 + Math.max(0, measureText(blocks, index) - stripSpace - 3);
-        const space = measureText(blocks, index) - PHOTO_CAPTION_SPACE - PHOTO_GAP;
+        const strip = stripSpace(index);
+        const freeSpace = measureText(blocks, index, strip > 0) - strip;
+        if (hasLeadPhoto(page, index)) {
+          const minimum = strip && !hasPortraits ? 146 : 174;
+          return minimum + Math.max(0, freeSpace - 3);
+        }
+        if (strip && !page.photos?.[String(index)]) return 0;
+        const space = freeSpace - PHOTO_CAPTION_SPACE - PHOTO_GAP;
         return space >= MIN_FILL_PHOTO ? space : 0;
       });
       return { page, columns, frames, photoHeights };
@@ -127,7 +136,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   edit: ReactNode;
   onEdit?: (frame: Frame) => void;
   onComment?: (frame: Frame) => void;
-  onPhoto?: (frame: Frame, portrait?: string) => void;
+  onPhoto?: (frame: Frame, slot?: string) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -140,9 +149,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   }, []);
   const num = 2 + layout.reduce((sum, { frames }) => sum + frames.length, 0);
   let folio = 1;
-  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false, columns?: 1 | 2, portraits: ReturnType<typeof portraitPhotos> = []) => {
+  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false, columns?: 1 | 2, strip: ReturnType<typeof stripPhotos> = []) => {
     const pageNumber = folio++;
     const isActive = active.id === frame.id && active.index === frame.index;
+    const portraits = strip[0]?.[0].startsWith("portrait-");
+    const swapLabel = portraits ? "Swap portrait" : "Swap additional photo";
     return (
       <div key={`${frame.id}:${frame.index}`} id={`report-frame-${frame.id}-${frame.index}`}
         className={styles.sheet} style={{ width: 816 * scale }}>
@@ -152,11 +163,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           </button>
           <div>
             {onEdit && <button type="button" onClick={() => onEdit(frame)}>Edit on page</button>}
-            {onPhoto && frame.id !== "back" && <button type="button" onClick={() => onPhoto(frame)}>{portraits.length ? "Swap wide photo" : hasPhoto ? "Swap photo" : "Add photo"}</button>}
-            {onPhoto && portraits.length > 0 && (
-              <select aria-label="Swap portrait" value="" onChange={(event) => onPhoto(frame, event.target.value)}>
-                <option value="" disabled>Swap portrait…</option>
-                {portraits.map(([key, photo]) => <option key={key} value={key}>{photoLabel(photo)}</option>)}
+            {onPhoto && frame.id !== "back" && <button type="button" onClick={() => onPhoto(frame)}>{portraits ? "Swap wide photo" : hasPhoto ? "Swap photo" : "Add photo"}</button>}
+            {onPhoto && strip.length > 0 && (
+              <select aria-label={swapLabel} value="" onChange={(event) => onPhoto(frame, event.target.value)}>
+                <option value="" disabled>{swapLabel}…</option>
+                {strip.map(([key, photo]) => <option key={key} value={key}>{photoLabel(photo)}</option>)}
               </select>
             )}
             {onComment && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onComment(frame)}>Comment</button>}
@@ -164,7 +175,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
         </div>
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
           data-print-page="" data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
-          data-portraits={portraits.length ? "true" : undefined}>
+          data-portraits={portraits ? "true" : undefined} data-photo-strip={strip.length ? "true" : undefined}>
           {!ready && <span className={styles.draft}>Review draft</span>}
           {content}
         </article>
@@ -187,7 +198,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
         </div>
       </>, styles.cover, true)}
       {layout.map(({ page, columns, frames, photoHeights }, section) => frames.map((blocks, index) => {
-        const portraits = index === 0 ? portraitPhotos(page) : [];
+        const strip = stripPhotos(page, index);
         return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
             ? <header className={styles.chapterHead}><span>{folioText(section + 1)} / {page.label}</span><h2>{page.title}</h2></header>
@@ -197,12 +208,12 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           <div className={styles.copy}>
             <div className={styles.story}><Blocks blocks={blocks} /></div>
             {!hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} />}
-            {portraits.length > 0 && <div className={styles.portraitStrip} aria-label="Panel speakers">
-              {portraits.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={portraitHeight(portraits.length)} />)}
+            {strip.length > 0 && <div className={styles.portraitStrip} role="group" aria-label="Additional photographs">
+              {strip.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={portraitHeight(strip.length)} />)}
             </div>}
           </div>
           <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
-        </>, styles.chapter, photoHeights[index] > 0, columns, portraits);
+        </>, styles.chapter, photoHeights[index] > 0, columns, strip);
       }))}
       {wrap({ id: "back", index: 0 }, "Back cover", <>
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}

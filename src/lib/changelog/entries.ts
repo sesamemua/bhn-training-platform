@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "More session photos in the Symposium report",
+    body: "Training Week, VentureLift and other sessions now have curated photo sets. Use **Swap additional photo** above a page to replace an individual image from the session gallery or your device.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Panel photo sets in the Symposium report",
     body: "Each panel page pairs a wide view from the audience with individual portraits. Reviewers can swap the room photo or choose a portrait to replace with another image from that session or their device.",
     kind: "improvement",
