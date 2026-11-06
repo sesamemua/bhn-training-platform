@@ -157,16 +157,12 @@
 .logo { width: 170px; height: auto; }
 .coverText { position: absolute; inset: auto 60px 60px; }
 .kicker {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   color: var(--report-light);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: .2em;
   text-transform: uppercase;
 }
-.kicker::before { content: ""; inline-size: 28px; border-top: 1px solid currentColor; }
 .coverText h1, .backText h2 {
   margin: 16px 0 22px;
   max-width: 640px;
