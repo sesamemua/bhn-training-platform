@@ -223,19 +223,19 @@
 .chapter[data-review-draft="true"]:has(.registration),
 .chapter[data-review-draft="true"][data-figure="chart"]:not([data-continued="true"]) { --figure-height: 302px; }
 .chapterHead { grid-row: 1; padding-bottom: 22px; }
-.chapterHead span, .continuationHead {
+.chapterHead > span, .continuationHead {
   color: var(--accent);
   font: 700 11px/1.35 var(--sans);
   font-variant-numeric: tabular-nums;
   letter-spacing: .15em;
   text-transform: uppercase;
 }
-.chapterHead span {
+.chapterHead > span {
   display: flex;
   align-items: center;
   gap: 16px;
 }
-.chapterHead span::after {
+.chapterHead > span::after {
   content: "";
   flex: 1;
   border-top: 1px solid var(--report-rule);
@@ -407,6 +407,13 @@
 .sheet:nth-child(even) .folio { flex-direction: row-reverse; }
 .ruler { position: absolute; left: 0; width: 1px; height: 1px; overflow: hidden; visibility: hidden; pointer-events: none; }
 
+@media screen {
+  .paper [contenteditable] { cursor: text; }
+  .paper [contenteditable]:hover { outline: 1px dashed currentColor; outline-offset: 3px; }
+  .paper [contenteditable]:focus { outline: 2px solid currentColor; outline-offset: 3px; }
+  .paper .emptyStory:empty::before { content: "Click to add text"; color: var(--report-slate); }
+}
+
 .editForm {
   position: absolute;
   z-index: 2;
@@ -432,11 +439,7 @@
 .editForm :is(input, textarea, select) { display: block; width: 100%; padding: 10px 12px; border: 1px solid var(--report-rule); border-radius: 5px; font: 17px/1.4 var(--sans); color: var(--report-ink); background: var(--report-white); }
 .cropControls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .cropControls input { padding: 0; accent-color: var(--report-blue); }
-.chartFields { display: grid; gap: 9px; min-width: 0; padding: 10px; border: 1px solid var(--report-rule); border-radius: 5px; }
-.chartFields legend { color: var(--report-teal); padding-inline: 5px; font-weight: 750; }
-.chartFields > div { display: grid; grid-template-columns: minmax(0, 1fr) 6rem; gap: 8px; }
 .editForm textarea { min-height: 4em; max-height: 460px; resize: vertical; }
-.editForm .storyLabel textarea { height: 420px; font-family: var(--serif); }
 .editForm button { align-self: flex-start; font: 700 15px var(--sans); padding: 8px 13px; }
 .editForm button:not(.primary) { color: var(--report-ink); background: var(--report-panel); }
 
@@ -450,7 +453,6 @@
   .sheetBar button, .sheetBar select, .pageActions button, .tabs button, .editForm button { min-height: 44px; }
   .sheetBar button, .sheetBar select { font-size: 12px; }
   .editForm { inset: .3rem .3rem auto; max-height: calc(100% - 2rem); padding: .7rem; }
-  .editForm .storyLabel textarea { height: 170px; }
 }
 
 @media print {

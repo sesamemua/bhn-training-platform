@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ComponentProps, type FormEvent } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, FilePlus, History, Link2, MessageSquare, Printer, Save, Trash2 } from "lucide-react";
 import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { REPORT_API, reportSchema, type Registration, type Report, type ReportPage, type ReportPhoto } from "@/lib/symposium-report/document";
+import { REPORT_API, reportSchema, type Report, type ReportPhoto } from "@/lib/symposium-report/document";
 import { ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
 import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
@@ -22,30 +22,8 @@ type Props = {
   meId: string;
   isAdmin: boolean;
 };
-type Edit = { kind: "cover"; data: Report["cover"] } | { kind: "back"; data: Report["back"] } | { kind: "story"; data: ReportPage }
-  | { kind: "photo"; frame: Frame; initial?: ReportPhoto; automatic: ReportPhoto; height: number; slot?: string };
+type PhotoEdit = { frame: Frame; initial?: ReportPhoto; automatic: ReportPhoto; height: number; slot?: string };
 const cover: Frame = { id: "cover", index: 0 };
-
-function ChartFields({ chart, onChange }: { chart: Registration; onChange: (chart: Registration) => void }) {
-  return (
-    <fieldset className={styles.chartFields}>
-      <legend>Registration chart</legend>
-      {chart.categories.map((category, index) => {
-        const update = (patch: Partial<typeof category>) => onChange({
-          ...chart, categories: chart.categories.map((item, i) => i === index ? { ...item, ...patch } : item),
-        });
-        return (
-          <div key={index}>
-            <label>Category {index + 1}<input required maxLength={72} value={category.label} onChange={(e) => update({ label: e.target.value })} /></label>
-            <label>Count {index + 1}<input required type="number" min={0} max={100_000} value={category.count} onChange={(e) => update({ count: Number(e.target.value) })} /></label>
-          </div>
-        );
-      })}
-      <label>What was counted?<input required maxLength={36} value={chart.unit} onChange={(e) => onChange({ ...chart, unit: e.target.value })} /></label>
-      <label>Data source<textarea aria-label="Data source" required rows={3} maxLength={210} value={chart.source} onChange={(e) => onChange({ ...chart, source: e.target.value })} /></label>
-    </fieldset>
-  );
-}
 
 export function ReportEditor({ report: initial, revision, history, review, recommendations, meId, isAdmin }: Props) {
   const router = useRouter();
@@ -55,7 +33,8 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const [token, setToken] = useState(revision);
   const [past, setPast] = useState<number | null>(null);
   const [active, setActive] = useState<Frame>(cover);
-  const [edit, setEdit] = useState<Edit | null>(null);
+  const [edit, setEdit] = useState<PhotoEdit | null>(null);
+  const [typing, setTyping] = useState(false);
   const [tab, setTab] = useState<"pages" | "comments">("comments");
   const [quote, setQuote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -67,7 +46,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const editable = past === null && review.status === "open" && !transitioning;
   const approved = review.status === "closed" && (past === null || past === review.round);
   const { layout, ruler } = useReportLayout(document, approved);
-  const dirty = report !== saved;
+  const dirty = report !== saved || typing;
   const chapter = layout?.find(({ page }) => page.id === active.id);
   const count = layout ? 2 + layout.reduce((sum, item) => sum + item.frames.length, 0) : 0;
   const label = chapter?.page.title ?? (active.id === "back" ? "Back cover" : "Cover");
@@ -86,32 +65,12 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     if (scroll) window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.scrollIntoView({ block: "start" });
   }
 
-  function startEdit(frame: Frame) {
-    if (busy || edit || !editable) return;
-    select(frame);
-    const page = report.pages.find((p) => p.id === frame.id);
-    if (frame.id === "cover") setEdit({ kind: "cover", data: report.cover });
-    else if (frame.id === "back") setEdit({ kind: "back", data: report.back });
-    else if (page) setEdit({ kind: "story", data: page });
-    requestAnimationFrame(() => {
-      window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.scrollIntoView({ block: "start" });
-      window.document.querySelector<HTMLElement>("[data-report-edit-form] input")?.focus({ preventScroll: true });
-    });
-  }
-
-  function apply(event: FormEvent) {
-    event.preventDefault();
-    if (!edit || edit.kind === "photo") return;
-    const next = edit.kind === "story"
-      ? { ...report, pages: report.pages.map((p) => p.id === edit.data.id ? edit.data : p) }
-      : { ...report, [edit.kind]: edit.data };
+  function applyText(next: Report) {
     const result = reportSchema.safeParse(next);
     if (!result.success) { setError(result.error.issues[0]?.message ?? "Check the draft text."); return; }
     if (JSON.stringify(report) !== JSON.stringify(result.data)) setReport(result.data);
-    setActive({ ...active, index: 0 });
-    setEdit(null);
     setError("");
-    setMessage("Changes applied. Save the draft to share them.");
+    setMessage("");
   }
 
   function startPhoto(frame: Frame, slot?: string) {
@@ -132,7 +91,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
         : portraitHeight(stripPhotos(entry.page, frame.index).length);
     }
     setEdit({
-      kind: "photo", frame, automatic, slot,
+      frame, automatic, slot,
       initial: entry ? current ?? (existingHeight ? undefined : automatic) : report.cover.photo,
       height,
     });
@@ -143,7 +102,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   }
 
   function applyPhoto(photo: ReportPhoto | undefined) {
-    if (edit?.kind !== "photo") return;
+    if (!edit) return;
     const { frame } = edit;
     if (frame.id === "cover") setReport({ ...report, cover: { ...report.cover, photo } });
     else setReport({ ...report, pages: report.pages.map((page) => {
@@ -193,7 +152,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   }
 
   async function write(action: "save" | "advance" | "approve") {
-    if (busy || edit || transitioning || (action !== "save" && dirty)) return;
+    if (busy || edit || typing || transitioning || (action === "save" ? !dirty : dirty)) return;
     if (action !== "save" && !await confirmDialog({
       title: action === "approve" ? `Approve Round ${review.round}?` : `Start Round ${review.round + 1}?`,
       description: action === "approve"
@@ -238,36 +197,10 @@ export function ReportEditor({ report: initial, revision, history, review, recom
 
   const controlsDisabled = !editable || !!edit || busy;
   const removable = chapter && (active.index === 0 ? report.pages.length > 1 : active.index === chapter.frames.length - 1 && chapter.page.frames === chapter.frames.length && !chapter.frames.at(-1)?.length);
-  const editForm = edit?.kind === "photo" ? (
+  const editForm = edit && (
     <PhotoEditor initial={edit.initial} automatic={edit.automatic} height={edit.height} section={edit.frame.id}
       cover={edit.frame.id === "cover"} secondary={!!edit.slot} portrait={edit.slot?.startsWith("portrait-") ?? false}
       onApply={applyPhoto} onCancel={() => setEdit(null)} />
-  ) : edit && (
-    <form className={`${styles.editForm} report-screen-only`} data-report-edit-form="" onSubmit={apply}
-      onKeyDown={(event) => { if (event.key === "Escape") setEdit(null); }}>
-      <div className={styles.editHeader}>
-        <div><p>{edit.kind === "story" ? "Linked text frames" : "Cover layout"}</p><h2>Edit {edit.kind === "story" ? "this section" : edit.kind === "cover" ? "the cover" : "the back cover"}</h2></div>
-        <button type="button" onClick={() => setEdit(null)}>Cancel</button>
-      </div>
-      {edit.kind === "story" ? <>
-        <label>Section label<input required maxLength={42} value={edit.data.label} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, label: e.target.value } })} /></label>
-        <label>Title<input required maxLength={100} value={edit.data.title} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, title: e.target.value } })} /></label>
-        <label className={styles.storyLabel}>Story text
-          <textarea maxLength={16_000} value={edit.data.text} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, text: e.target.value } })} aria-describedby="report-story-help" />
-        </label>
-        <p id="report-story-help">Leave a blank line between paragraphs. Begin a paragraph with <code>## </code> for a subhead or <code>&gt; </code> for an editorial note. Text flows into linked pages when you apply it.</p>
-        {edit.data.registration && <ChartFields chart={edit.data.registration} onChange={(registration) => setEdit({ ...edit, data: { ...edit.data, registration } })} />}
-      </> : edit.kind === "cover" ? <>
-        <label>Title<input required maxLength={86} value={edit.data.title} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, title: e.target.value } })} /></label>
-        <label>Theme<textarea required rows={3} maxLength={120} value={edit.data.theme} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, theme: e.target.value } })} /></label>
-        <label>Date<input required maxLength={70} value={edit.data.date} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, date: e.target.value } })} /></label>
-      </> : <>
-        <label>Title<input required maxLength={100} value={edit.data.title} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, title: e.target.value } })} /></label>
-        <label>Closing copy<textarea required rows={4} maxLength={260} value={edit.data.text} onChange={(e) => setEdit({ ...edit, data: { ...edit.data, text: e.target.value } })} /></label>
-      </>}
-      {error && <p role="alert">{error}</p>}
-      <button type="submit" className={styles.primary}>Apply to page</button>
-    </form>
   );
 
   return (
@@ -276,6 +209,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · {dirty ? "Unsaved changes" : "Shared draft"}</p>
+          {editable && <p>Click the text to edit it on the page.</p>}
         </div>
         <div className={styles.actions}>
           {history.length > 0 && (
@@ -285,7 +219,9 @@ export function ReportEditor({ report: initial, revision, history, review, recom
               {history.map(({ round }) => <option key={round} value={round}>Round {round} snapshot</option>)}
             </select></label>
           )}
-          {editable && <button type="button" className={styles.primary} disabled={controlsDisabled || !dirty} onClick={() => write("save")}><Save size={15} /> Save draft</button>}
+          {editable && <button type="button" className={styles.primary} disabled={controlsDisabled || !dirty}
+            onPointerDown={() => { if (typing && window.document.activeElement instanceof HTMLElement) window.document.activeElement.blur(); }}
+            onClick={() => write("save")}><Save size={15} /> Save draft</button>}
           {isAdmin && past === null && (
             <button type="button" disabled={!!edit || busy || dirty || transitioning} onClick={() => write("advance")}>Start Round {review.round + 1}</button>
           )}
@@ -339,7 +275,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
           </div>
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
-          onSelect={select} edit={editForm} onEdit={controlsDisabled ? undefined : startEdit}
+          onSelect={select} edit={editForm} onTextChange={controlsDisabled ? undefined : applyText} onTyping={setTyping}
           onPhoto={controlsDisabled ? undefined : startPhoto}
           onComment={past === null && review.status === "open" && !edit ? commentOn : undefined} />}
         <ReportRuler ruler={ruler} />

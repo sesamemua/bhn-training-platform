@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Edit report text directly on the page",
+    body: "Click the copy in the Symposium report to edit it in place. The story reflows across linked pages, and Save draft shares your changes with reviewers.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Refined cover and registration page in the Symposium report",
     body: "The cover gives the keynote photo and crystals more room. The registration source is visible for review and omitted from the approved report.",
     kind: "improvement",

@@ -1,13 +1,25 @@
-export type Block = { kind: "paragraph" | "heading" | "note"; text: string; continued?: boolean };
+export type Block = { kind: "paragraph" | "heading" | "note"; text: string; start: number; continued?: boolean };
+
+const markers = { paragraph: "", heading: "## ", note: "> " };
 
 export function reportBlocks(text: string): Block[] {
+  let cursor = 0;
   return text.split(/\n\s*\n/).flatMap((paragraph): Block[] => {
     const value = paragraph.trim();
     if (!value) return [];
-    if (value.startsWith("## ")) return [{ kind: "heading", text: value.slice(3) }];
-    if (value.startsWith("> ")) return [{ kind: "note", text: value.slice(2) }];
-    return [{ kind: "paragraph", text: value }];
+    const offset = text.indexOf(value, cursor);
+    cursor = offset + value.length;
+    const kind = value.startsWith(markers.heading) ? "heading" : value.startsWith(markers.note) ? "note" : "paragraph";
+    const marker = markers[kind].length;
+    return [{ kind, text: value.slice(marker), start: offset + marker }];
   });
+}
+
+export function replaceReportBlock(source: string, block: Block, text: string) {
+  const end = block.start + block.text.length;
+  if (source.slice(block.start, end) !== block.text) return source;
+  const start = !text.trim() && !block.continued ? block.start - markers[block.kind].length : block.start;
+  return source.slice(0, start) + text + source.slice(end);
 }
 
 export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[], index: number) => boolean) {
@@ -39,9 +51,10 @@ export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[
       for (let i = low - 1; i >= Math.max(0, low - 40); i--) {
         if (/\s/u.test(letters[i])) { cut = i + 1; break; }
       }
-      current().push({ ...block, text: letters.slice(0, cut).join("") });
+      const prefix = letters.slice(0, cut).join("");
+      current().push({ ...block, text: prefix });
       frames.push([]);
-      block = { ...block, text: letters.slice(cut).join(""), continued: true };
+      block = { ...block, text: letters.slice(cut).join(""), start: block.start + prefix.length, continued: true };
     }
     current().push(block);
   }

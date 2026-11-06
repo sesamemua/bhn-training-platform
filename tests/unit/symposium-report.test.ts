@@ -3,7 +3,7 @@ import test from "node:test";
 import { catalogueSchema, isGalleryPhoto } from "../../src/lib/symposium-report/gallery";
 import { pagePhoto, photoPreset } from "../../src/lib/symposium-report/photos";
 import { reportSchema } from "../../src/lib/symposium-report/document";
-import { paginate, reportBlocks } from "../../src/lib/symposium-report/paginate";
+import { paginate, replaceReportBlock, reportBlocks } from "../../src/lib/symposium-report/paginate";
 
 test("report validation protects covers and unique section IDs", () => {
   const report = reportSchema.parse({
@@ -36,6 +36,18 @@ test("requested linked frames remain until removed, and a subhead stays with its
   assert.equal(frames[1][1].kind, "paragraph");
   assert.equal(frames.flat().at(-1)?.kind, "note");
   assert.deepEqual(paginate([], 2, () => true), [[], []]);
+});
+
+test("editing a continued fragment preserves the rest of the story and its formatting", () => {
+  const source = "  ## Subhead\n\n" + "Café 🧬 research. ".repeat(18) + "\n \n> Check the source.";
+  const frames = paginate(reportBlocks(source), 1, (blocks) => blocks.reduce((length, block) => length + block.text.length, 0) <= 95);
+  const chunk = frames[1][0];
+  assert.equal(chunk.continued, true);
+  const needle = chunk.text.replace("research", "training");
+  const updated = replaceReportBlock(source, chunk, needle);
+  assert.equal(updated.slice(0, chunk.start), source.slice(0, chunk.start));
+  assert.equal(updated.slice(chunk.start), needle + source.slice(chunk.start + chunk.text.length));
+  assert.deepEqual(reportBlocks(updated).map(({ kind }) => kind), ["heading", "paragraph", "note"]);
 });
 
 test("registration counts and source are part of the editable document", () => {
