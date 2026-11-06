@@ -11,7 +11,7 @@ const sectorColors = [
   "var(--report-sector-academic)", "var(--report-sector-industry)", "var(--report-sector-other)", "var(--report-sector-public)",
 ];
 
-function RegistrationChart({ chart }: { chart: Registration }) {
+function RegistrationChart({ chart, showSource }: { chart: Registration; showSource: boolean }) {
   const total = chart.categories.reduce((sum, item) => sum + item.count, 0);
   return (
     <figure className={styles.registration}>
@@ -35,7 +35,10 @@ function RegistrationChart({ chart }: { chart: Registration }) {
           ))}
         </dl>
       </div>
-      <p>{chart.source}</p>
+      {showSource && <aside className={styles.registrationSource}>
+        <strong>For review only · Omitted from the final report</strong>
+        <p>{chart.source}</p>
+      </aside>}
     </figure>
   );
 }
@@ -51,13 +54,14 @@ const folioText = (number: number) => String(number).padStart(2, "0");
 
 export type LaidOutReport = { page: ReportPage; columns: 1 | 2; frames: Block[][]; photoHeights: number[] }[];
 
-export function useReportLayout(report: Report) {
+export function useReportLayout(report: Report, approved: boolean) {
   const ruler = useRef<HTMLDivElement>(null);
-  const [layout, setLayout] = useState<{ report: Report; pages: LaidOutReport } | null>(null);
+  const [layout, setLayout] = useState<{ report: Report; approved: boolean; pages: LaidOutReport } | null>(null);
   useLayoutEffect(() => {
     const host = ruler.current;
     if (!host) return;
     const pageNode = host.firstElementChild as HTMLElement;
+    pageNode.dataset.reviewDraft = String(!approved);
     const intro = pageNode.querySelector<HTMLElement>("[data-measure-intro]")!;
     const title = intro.querySelector("h2")!;
     const label = intro.querySelector("span")!;
@@ -109,9 +113,9 @@ export function useReportLayout(report: Report) {
       return { page, columns, frames, photoHeights };
     });
     // Pagination uses the browser's actual font and frame measurements.
-    setLayout({ report, pages: result });
-  }, [report]);
-  return { layout: layout?.report === report ? layout.pages : null, ruler };
+    setLayout({ report, approved, pages: result });
+  }, [report, approved]);
+  return { layout: layout?.report === report && layout.approved === approved ? layout.pages : null, ruler };
 }
 
 export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
@@ -178,7 +182,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           </div>
         </div>
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
-          data-print-page="" data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
+          data-print-page="" data-review-draft={!ready} data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
           data-portraits={portraits ? "true" : undefined} data-photo-strip={strip.length ? "true" : undefined}>
           {!ready && <span className={styles.draft}>Review draft</span>}
           {content}
@@ -209,7 +213,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           {index === 0
             ? <header className={styles.chapterHead}><span>{folioText(section + 1)} / {page.label}</span><h2>{page.title}</h2></header>
             : <header className={styles.continuationHead}>{folioText(section + 1)} / {page.title} <span> / continued</span></header>}
-          {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} />}
+          {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} showSource={!ready} />}
           {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} lead />}
           <div className={styles.copy}>
             <div className={styles.story}><Blocks blocks={blocks} /></div>

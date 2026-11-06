@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Refined cover and registration page in the Symposium report",
+    body: "The cover gives the keynote photo and crystals more room. The registration source is visible for review and omitted from the approved report.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Community reflections in the Symposium report",
     body: "The draft highlights published community feedback and includes a LinkedIn QR code on the back cover.",
     kind: "improvement",

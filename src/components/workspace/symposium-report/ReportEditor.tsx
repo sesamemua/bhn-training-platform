@@ -64,9 +64,9 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const [transitioning, setTransitioning] = useState(false);
 
   const document = history.find((version) => version.round === past)?.report ?? report;
-  const { layout, ruler } = useReportLayout(document);
   const editable = past === null && review.status === "open" && !transitioning;
   const approved = review.status === "closed" && (past === null || past === review.round);
+  const { layout, ruler } = useReportLayout(document, approved);
   const dirty = report !== saved;
   const chapter = layout?.find(({ page }) => page.id === active.id);
   const count = layout ? 2 + layout.reduce((sum, item) => sum + item.frames.length, 0) : 0;
@@ -125,7 +125,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
       : recommendations.cover?.[0] ?? photoPreset("cover.jpg");
     const automatic = slot ? current ?? recommended : recommended;
     const existingHeight = entry?.photoHeights[frame.index] ?? 0;
-    let height = entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 385;
+    let height = entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 438;
     if (entry && slot) {
       height = hasTrainingPhotoGrid(entry.page, frame.index)
         ? TRAINING_TILE_PREVIEW_HEIGHT
