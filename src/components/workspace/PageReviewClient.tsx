@@ -57,8 +57,11 @@ function editedLabel(c: Comment): string {
 }
 
 export function PageReviewClient({
-  initialReview, meId, isAdmin,
-}: { initialReview: Review; meId: string | null; isAdmin: boolean }) {
+  initialReview, meId, isAdmin, reportAnchor,
+}: {
+  initialReview: Review; meId: string | null; isAdmin: boolean;
+  reportAnchor?: { key: string; quote: string; label: string; readOnly: boolean };
+}) {
   const router = useRouter();
   const { confirmDialog, node: confirmNode } = useConfirmDialog();
   const [review, setReview] = useState<Review>(initialReview);
@@ -85,7 +88,7 @@ export function PageReviewClient({
     try {
       const r = await fetch(`/api/workspace/page-review/${review.id}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(reportAnchor ? { ...payload, expectedRound: review.round } : payload),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) { setError(j?.error ?? "That didn't work."); return null; }
@@ -116,13 +119,14 @@ export function PageReviewClient({
   ).length;
   // Exporting hands the round to whoever is making the changes; it stays
   // frozen so the brief they are working from can't move under them.
-  const locked = review.status !== "open";
+  const locked = review.status !== "open" || !!reportAnchor?.readOnly;
 
   async function addThread() {
     if (newC.body.trim().length < 2) { setError("Say a little more."); return; }
     const j = await post({
       action: "addComment", body: newC.body.trim(),
-      anchorQuote: newC.quote.trim() || null,
+      anchorQuote: newC.quote.trim() || reportAnchor?.quote || null,
+      ...(reportAnchor ? { anchorKey: reportAnchor.key, anchorBlock: reportAnchor.label.slice(0, 200) } : {}),
     }, "new");
     if (j) setNewC({ quote: "", body: "" });
   }
@@ -243,7 +247,7 @@ export function PageReviewClient({
     <div className="space-y-5">
       {error && <div className="rounded-lg bg-rose-50 ring-1 ring-rose-200 px-3 py-2 text-sm text-rose-900">{error}</div>}
 
-      {locked && (
+      {locked && !reportAnchor?.readOnly && (
         <div className="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3">
           <p className="text-sm font-bold text-amber-900 inline-flex items-center gap-1.5">
             <Lock size={13} /> Round {review.round} is locked
@@ -256,7 +260,7 @@ export function PageReviewClient({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      <div className={reportAnchor ? "" : "grid grid-cols-1 lg:grid-cols-5 gap-5"}>
         {/* ── Threads ─────────────────────────────── */}
         <div className="lg:col-span-3 space-y-4">
           {!locked && (
@@ -264,16 +268,19 @@ export function PageReviewClient({
             <h3 className="text-sm font-bold text-fg inline-flex items-center gap-2">
               <MessageSquarePlus size={14} className="text-brand-600" /> New comment
             </h3>
+            {reportAnchor && <p className="mt-2 text-xs text-muted">On: {reportAnchor.label}</p>}
             <input
+              aria-label="Text under review (optional)"
               value={newC.quote}
               onChange={(e) => setNewC((c) => ({ ...c, quote: e.target.value }))}
-              placeholder="Paste the text on the page you're commenting on (optional but recommended)"
+              placeholder={reportAnchor ? reportAnchor.quote || "Quote from the report (optional)" : "Paste the text on the page you're commenting on (optional but recommended)"}
               className="mt-3 w-full text-sm bg-card border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
             />
             <AutoTextarea
               value={newC.body}
               onChange={(e) => setNewC((c) => ({ ...c, body: e.target.value }))}
               rows={3}
+              aria-label="Review comment"
               placeholder="What should change, and why?"
               className="mt-2 w-full text-sm bg-card border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 resize-y"
             />
@@ -362,7 +369,9 @@ export function PageReviewClient({
                       <p className="text-[13px] text-fg italic leading-snug">&ldquo;{c.anchorQuote}&rdquo;</p>
                     )}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {c.anchorKey && <code className="text-[10px] text-subtle">{c.anchorKey}</code>}
+                      {c.anchorKey && (reportAnchor && c.anchorKey.startsWith("#report-frame-")
+                        ? <a className="text-xs text-brand-700 underline" href={c.anchorKey}>{c.anchorBlock || "Go to page"}</a>
+                        : <code className="text-[10px] text-subtle">{c.anchorKey}</code>)}
                       {c.anchorState === "orphaned" && (
                         <span className="text-[10px] text-amber-700 inline-flex items-center gap-1">
                           <AlertTriangle size={9} /> anchor not found
@@ -508,7 +517,7 @@ export function PageReviewClient({
         </div>
 
         {/* ── Brief ───────────────────────────────── */}
-        <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
+        {!reportAnchor && <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           <section className="rounded-2xl border border-line bg-card p-5">
             <h3 className="text-base font-bold text-fg">{review.title}</h3>
             <a href={review.url} target="_blank" rel="noopener noreferrer"
@@ -566,7 +575,7 @@ export function PageReviewClient({
               <pre className="p-4 text-[11.5px] leading-relaxed font-mono text-fg whitespace-pre-wrap max-h-[520px] overflow-auto">{brief}</pre>
             </section>
           )}
-        </div>
+        </div>}
       </div>
       {confirmNode}
     </div>

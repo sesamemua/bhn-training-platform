@@ -1,0 +1,306 @@
+.toolbar, .actions, .history, .tabs, .pageActions, .sheetBar, .sheetBar > div {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar {
+  justify-content: space-between;
+  gap: .9rem;
+  padding: .9rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+.reviewState span { font-size: .87rem; font-weight: 750; }
+.reviewState p, .pageActions p, .status, .error { color: var(--muted); font-size: .77rem; margin: .2rem 0 0; }
+.error { padding: .65rem .85rem; border-radius: .55rem; background: var(--report-error-bg); color: var(--report-error-ink); }
+.history { gap: .3rem; }
+.history select { font: inherit; max-width: 13rem; }
+
+.actions button, .history select, .tabs button, .pageActions button, .sheetBar button, .editForm button {
+  display: inline-flex;
+  gap: .35rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  padding: .45rem .65rem;
+  background: var(--card);
+  color: var(--fg);
+  border-radius: .45rem;
+  font-size: .76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.actions button:hover, .tabs button:hover, .pageActions button:hover, .sheetBar button:hover { background: var(--elevated); }
+.actions button:disabled, .pageActions button:disabled, .outline button:disabled { opacity: .48; cursor: default; }
+.actions .primary, .editForm .primary { background: var(--report-blue); color: var(--report-white); border-color: transparent; }
+.actions .primary:hover, .editForm .primary:hover { background: var(--report-blue); }
+
+.workbench {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.rail {
+  position: sticky;
+  top: .75rem;
+  max-height: calc(100dvh - 1.5rem);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: .9rem;
+  padding: .75rem;
+  background: var(--card);
+}
+
+.tabs { margin-bottom: .65rem; }
+.tabs button[aria-pressed="true"] { background: var(--elevated); box-shadow: inset 0 -2px var(--report-blue); }
+.outline { display: grid; gap: .15rem; max-height: 54vh; overflow: auto; }
+.outline button {
+  padding: .45rem .55rem;
+  border-radius: .35rem;
+  color: var(--fg);
+  text-align: left;
+  font-size: .78rem;
+  cursor: pointer;
+}
+.outline button:hover, .outline button[aria-current] { background: var(--elevated); }
+.outline button[aria-current] { box-shadow: inset 3px 0 var(--report-blue); font-weight: 750; }
+.outline button[data-continuation="true"] { padding-left: 1.4rem; color: var(--muted); font-size: .7rem; }
+.pageActions { padding-top: .7rem; margin-top: .65rem; border-top: 1px solid var(--line); }
+
+.stage {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 1.6rem;
+  padding: 1rem;
+  overflow: clip;
+  border-radius: .9rem;
+  background: var(--elevated);
+}
+
+.sheet { scroll-margin-top: 1rem; position: relative; }
+.sheetBar { justify-content: space-between; padding-top: 7px; }
+.sheetBar button { min-height: 34px; font-size: 14px; }
+.sheetBar button[aria-pressed="true"] { box-shadow: inset 0 -2px var(--report-blue); }
+
+.paper {
+  --ink: var(--report-ink);
+  --accent: var(--report-teal);
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: Arial, sans-serif;
+  box-sizing: border-box;
+  position: relative;
+  width: 8.5in;
+  height: 11in;
+  background: var(--report-paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--report-ink) 13%, transparent);
+  isolation: isolate;
+}
+
+.cover, .back {
+  color: var(--report-white);
+  background-color: var(--report-deep);
+  background-repeat: no-repeat;
+  overflow: hidden;
+  padding: 56px 65px;
+}
+.cover {
+  background-image:
+    linear-gradient(180deg, color-mix(in srgb, var(--report-deep) 27%, transparent) 20%, color-mix(in srgb, var(--report-deep) 60%, transparent) 51%, var(--report-deep) 93%),
+    url("/api/workspace/symposium-2026/report/assets/cover.jpg");
+  background-size: cover;
+  background-position: 56% center;
+}
+.cover::before {
+  content: "";
+  position: absolute;
+  inset: 28px;
+  z-index: -1;
+  border: 1px solid color-mix(in srgb, var(--report-rule) 46%, transparent);
+}
+.logo { width: 170px; height: auto; }
+.coverText { position: absolute; inset: auto 65px 88px; }
+.kicker {
+  color: var(--report-light);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.coverText h1, .backText h2 {
+  margin: 16px 0 22px;
+  max-width: 640px;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 66px;
+  line-height: .99;
+  letter-spacing: -.042em;
+  overflow-wrap: anywhere;
+}
+.coverTheme { max-width: 550px; font-size: 23px; line-height: 1.35; margin-bottom: 30px; }
+.coverDate { border-top: 1px solid color-mix(in srgb, var(--report-rule) 42%, transparent); padding-top: 16px; font-size: 15px; letter-spacing: .09em; }
+.back {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--report-deep) 32%, transparent), color-mix(in srgb, var(--report-deep) 65%, transparent) 52%, var(--report-deep) 85%), url("/api/workspace/symposium-2026/report/assets/recap-optical-passage.webp");
+  background-size: cover;
+  background-position: center;
+}
+.backText { position: absolute; inset: auto 65px 85px; }
+.backText p:not(.kicker) { font-size: 21px; max-width: 530px; line-height: 1.43; margin: 0 0 29px; }
+.backText a { color: var(--report-light); font-size: 16px; text-underline-offset: .24em; }
+
+.draft {
+  position: absolute;
+  z-index: 1;
+  top: 18px;
+  right: 25px;
+  border: 1px solid var(--report-edit-rule);
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: var(--report-edit-bg);
+  color: var(--report-edit-ink);
+  font: 700 9px/1.1 var(--sans);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.chapter {
+  --figure-height: 0px;
+  display: grid;
+  grid-template-rows: auto var(--figure-height) minmax(0, 1fr) 30px;
+  padding: 55px 66px 35px;
+}
+.chapter:has(.photo), .chapter[data-figure="photo"]:not([data-continued="true"]) { --figure-height: 214px; }
+.chapter:has(.registration), .chapter[data-figure="chart"]:not([data-continued="true"]) { --figure-height: 279px; }
+.chapterHead { grid-row: 1; padding-bottom: 24px; }
+.chapterHead span {
+  display: block;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.chapterHead h2 {
+  max-width: 690px;
+  margin: 8px 0 0;
+  font: 400 49px/.99 var(--serif);
+  letter-spacing: -.047em;
+  overflow-wrap: anywhere;
+}
+.continuationHead {
+  grid-row: 1;
+  padding: 0 0 26px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.continuationHead span { color: var(--report-slate); font-weight: 400; }
+.chapter[data-continued="true"] .chapterHead, .chapter:not([data-continued="true"]) .chapterHead + .continuationHead { display: none; }
+.figureSpacer, .photo, .registration { grid-row: 2; margin: 0; }
+.photo img { display: block; width: 100%; height: 174px; object-fit: cover; object-position: center 45%; }
+.photo figcaption { color: var(--report-slate); padding-top: 7px; font-size: 11px; }
+.registration { margin-bottom: 21px; background: var(--report-panel); border: 1px solid var(--report-rule); padding: 14px 17px; }
+.registration figcaption { display: flex; justify-content: space-between; gap: 8px; color: var(--report-teal); font-weight: 750; font-size: 14px; }
+.registration figcaption span { color: var(--report-slate); font-size: 11px; font-weight: 500; }
+.chartRow { display: flex; align-items: center; gap: 22px; margin-block: 6px; }
+.chartRow svg { flex-shrink: 0; }
+.chartTotal { fill: var(--report-teal); font-size: 6px; font-weight: 750; }
+.chartLegend { flex: 1; font-size: 11px; line-height: 1.2; overflow-wrap: anywhere; }
+.chartLegend div { display: flex; gap: 10px; justify-content: space-between; padding-block: 6px; border-bottom: 1px solid var(--report-rule); }
+.chartLegend dt { display: flex; align-items: baseline; gap: 6px; }
+.chartLegend i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.chartLegend dd { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+.registration > p { margin: 0; font: 11px/1.3 var(--sans); color: var(--report-slate); }
+
+.copy { grid-row: 3; min-height: 0; }
+.paragraph, .heading, .note {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.paragraph { font: 16.4px/1.49 var(--serif); padding-bottom: 13px; }
+.heading { font: 700 15px/1.26 var(--sans); color: var(--report-teal); padding: 5px 0 6px; }
+.note {
+  font: 13px/1.42 var(--sans);
+  background: var(--report-edit-bg);
+  color: var(--report-edit-ink);
+  border-left: 3px solid var(--report-edit-rule);
+  margin-bottom: 11px;
+  padding: 8px 11px;
+}
+.emptyFrame { color: var(--report-slate); font: italic 15px var(--serif); }
+.folio {
+  grid-row: 4;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  border-top: 1px solid var(--report-rule);
+  color: var(--report-slate);
+  font: 700 10px var(--sans);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.ruler { position: absolute; left: 0; width: 1px; height: 1px; overflow: hidden; visibility: hidden; pointer-events: none; }
+
+.editForm {
+  position: absolute;
+  z-index: 2;
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: Arial, sans-serif;
+  inset: 1rem 1rem auto;
+  max-height: calc(100% - 4rem);
+  color: var(--report-ink);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  background: var(--report-paper);
+  border: 1px solid var(--report-rule);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--report-ink) 44%, transparent), 0 12px 30px color-mix(in srgb, var(--report-ink) 27%, transparent);
+}
+.editHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.editHeader h2 { font: 400 31px/1.08 var(--serif); }
+.editHeader p, .editForm > p { color: var(--report-slate); font-size: 14px; }
+.editForm label { display: grid; gap: 5px; font: 700 15px var(--sans); }
+.editForm :is(input, textarea) { display: block; width: 100%; padding: 10px 12px; border: 1px solid var(--report-rule); border-radius: 5px; font: 17px/1.4 var(--sans); color: var(--report-ink); background: var(--report-white); }
+.chartFields { display: grid; gap: 9px; min-width: 0; padding: 10px; border: 1px solid var(--report-rule); border-radius: 5px; }
+.chartFields legend { color: var(--report-teal); padding-inline: 5px; font-weight: 750; }
+.chartFields > div { display: grid; grid-template-columns: minmax(0, 1fr) 6rem; gap: 8px; }
+.editForm textarea { min-height: 4em; max-height: 460px; resize: vertical; }
+.editForm .storyLabel textarea { height: 420px; font-family: var(--serif); }
+.editForm button { align-self: flex-start; font: 700 15px var(--sans); padding: 8px 13px; }
+.editForm button:not(.primary) { color: var(--report-ink); background: var(--report-panel); }
+
+@media (max-width: 900px) {
+  .workbench { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; max-height: none; }
+  .outline { max-height: 12rem; }
+}
+@media (max-width: 530px) {
+  .stage { padding: .35rem; }
+  .sheetBar button { font-size: 12px; }
+  .editForm { inset: .3rem .3rem auto; max-height: calc(100% - 2rem); padding: .7rem; }
+  .editForm .storyLabel textarea { height: 170px; }
+}
+
+@media print {
+  .stage { overflow: visible; }
+  .workbench, .stage { display: block; padding: 0; margin: 0 !important; background: none; }
+  .sheet { page: symposium-report; width: 8.5in !important; break-after: page; }
+  .sheet:last-child { break-after: auto; }
+  .paper { zoom: 1 !important; box-shadow: none; break-inside: avoid; }
+  .ruler { display: none; }
+}

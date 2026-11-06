@@ -5019,3 +5019,26 @@ h1, h2, h3 {
     box-shadow: none;
   }
 }
+
+/* Fixed ink colors for the US Letter Symposium report and its chart. */
+.symposium-report-screen {
+  --report-ink: #162532;
+  --report-slate: #455e64;
+  --report-blue: #174e6a;
+  --report-teal: #14666f;
+  --report-white: #fff;
+  --report-paper: #f9f8f4;
+  --report-deep: #071622;
+  --report-light: #a0e1e3;
+  --report-panel: #edf2ef;
+  --report-rule: #bed0d0;
+  --report-edit-bg: #fff1dd;
+  --report-edit-ink: #6a401d;
+  --report-edit-rule: #be8047;
+  --report-error-bg: #fff1f1;
+  --report-error-ink: #921f32;
+  --report-sector-academic: #173e70;
+  --report-sector-industry: #23786f;
+  --report-sector-other: #b26938;
+  --report-sector-public: #936384;
+}

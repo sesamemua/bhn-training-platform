@@ -20,7 +20,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { REPORT_ID } from "@/lib/symposium-report/document";
+import { reportTransaction } from "@/lib/symposium-report/store";
 import { buildBrief } from "@/lib/page-review/brief";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
 
@@ -62,11 +65,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const role = (session.user as { role?: string }).role ?? "";
   const isAdmin = role === "admin" || role === "superadmin";
 
-  const review = await prisma.pageReview.findUnique({
+  if (id !== REPORT_ID) return mutate(prisma, id, body, action, meId, meName, isAdmin);
+  return reportTransaction((tx) => mutate(tx, id, body, action, meId, meName, isAdmin));
+}
+
+async function mutate(
+  db: Prisma.TransactionClient, id: string, body: Record<string, unknown> | null,
+  action: string, meId: string | null, meName: string, isAdmin: boolean,
+) {
+  const review = await db.pageReview.findUnique({
     where: { id },
     select: { id: true, url: true, title: true, round: true, status: true },
   });
   if (!review) return NextResponse.json({ error: "No such review." }, { status: 404 });
+
+  if (id === REPORT_ID) {
+    if (action === "export" || action === "startNextRound") {
+      return NextResponse.json({ error: "Manage report rounds in the Event Report tab." }, { status: 409 });
+    }
+    if (body?.expectedRound !== review.round) {
+      return NextResponse.json({ error: "The report has moved to another round. Reload to continue." }, { status: 409 });
+    }
+  }
 
   // Exporting hands the round to whoever is making the changes, so the round
   // freezes there: the brief someone is working from stays exactly what the
@@ -94,7 +114,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!p.success) {
       return NextResponse.json({ error: p.error.issues[0]?.message ?? "Check the comment." }, { status: 400 });
     }
-    const commentCount = await prisma.pageComment.count({ where: { reviewId: id } });
+    const commentCount = await db.pageComment.count({ where: { reviewId: id } });
     if (commentCount >= PAGE_REVIEW_COMMENT_LIMIT) {
       return NextResponse.json(
         { error: "This review has reached its comment limit. Open a new review to continue." },
@@ -109,14 +129,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       anchorBlock: p.data.anchorBlock ?? null,
     };
     if (p.data.parentId) {
-      const parent = await prisma.pageComment.findFirst({
+      const parent = await db.pageComment.findFirst({
         where: { id: p.data.parentId, reviewId: id },
         select: { anchorQuote: true, anchorKey: true, anchorPath: true, anchorBlock: true },
       });
       if (!parent) return NextResponse.json({ error: "That thread is gone." }, { status: 404 });
       anchors = parent;
     }
-    await prisma.pageComment.create({
+    await db.pageComment.create({
       data: {
         reviewId: id,
         parentId: p.data.parentId ?? null,
@@ -128,15 +148,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         body: p.data.body,
       },
     });
-    await touch(id);
-    return NextResponse.json({ ok: true, ...(await load(id)) });
+    await touch(id, db);
+    return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
 
   // ── edit ─────────────────────────────────────────────────────
   if (action === "editComment") {
     const p = EditSchema.safeParse(body);
     if (!p.success) return NextResponse.json({ error: "Check the comment." }, { status: 400 });
-    const c = await prisma.pageComment.findFirst({
+    const c = await db.pageComment.findFirst({
       where: { id: p.data.commentId, reviewId: id },
       select: { id: true, authorUserId: true },
     });
@@ -145,7 +165,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // of as a reply nobody reads. Because that means the author's name no
     // longer accounts for the wording, the editor is recorded and shown
     // wherever the comment is: the thread, the overlay, and the brief.
-    await prisma.pageComment.update({
+    await db.pageComment.update({
       where: { id: c.id },
       data: {
         body: p.data.body,
@@ -155,15 +175,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         editedByName: meName,
       },
     });
-    await touch(id);
-    return NextResponse.json({ ok: true, ...(await load(id)) });
+    await touch(id, db);
+    return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
 
   // ── delete ───────────────────────────────────────────────────
   if (action === "deleteComment") {
     const p = DeleteSchema.safeParse(body);
     if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
-    const c = await prisma.pageComment.findFirst({
+    const c = await db.pageComment.findFirst({
       where: { id: p.data.commentId, reviewId: id },
       select: { id: true, authorUserId: true },
     });
@@ -176,26 +196,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     //
     // Replies have no FK to their parent (parentId is a plain column), so
     // remove them explicitly or they'd be stranded as orphan threads.
-    await prisma.$transaction([
-      prisma.pageComment.deleteMany({ where: { reviewId: id, parentId: c.id } }),
-      prisma.pageComment.delete({ where: { id: c.id } }),
-    ]);
-    await touch(id);
-    return NextResponse.json({ ok: true, ...(await load(id)) });
+    const remove = async (tx: Prisma.TransactionClient) => {
+      await tx.pageComment.deleteMany({ where: { reviewId: id, parentId: c.id } });
+      await tx.pageComment.delete({ where: { id: c.id } });
+    };
+    if (id === REPORT_ID) await remove(db);
+    else await prisma.$transaction(remove);
+    await touch(id, db);
+    return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
 
   // ── resolve / wontfix ────────────────────────────────────────
   if (action === "setStatus") {
     const p = StatusSchema.safeParse(body);
     if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
-    const c = await prisma.pageComment.findFirst({
+    const c = await db.pageComment.findFirst({
       where: { id: p.data.commentId, reviewId: id },
       select: { id: true },
     });
     if (!c) return NextResponse.json({ error: "No such comment." }, { status: 404 });
-    await prisma.pageComment.update({ where: { id: c.id }, data: { status: p.data.status } });
-    await touch(id);
-    return NextResponse.json({ ok: true, ...(await load(id)) });
+    await db.pageComment.update({ where: { id: c.id }, data: { status: p.data.status } });
+    await touch(id, db);
+    return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
 
   // ── reopen a single settled comment ──────────────────────────
@@ -206,7 +228,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (action === "reopenComment") {
     const p = ReopenSchema.safeParse(body);
     if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
-    const c = await prisma.pageComment.findFirst({
+    const c = await db.pageComment.findFirst({
       where: { id: p.data.commentId, reviewId: id },
       select: { id: true, status: true },
     });
@@ -214,9 +236,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (c.status === "open") {
       return NextResponse.json({ error: "That comment is already open." }, { status: 409 });
     }
-    await prisma.pageComment.update({ where: { id: c.id }, data: { status: "open" } });
-    await touch(id);
-    return NextResponse.json({ ok: true, ...(await load(id)) });
+    await db.pageComment.update({ where: { id: c.id }, data: { status: "open" } });
+    await touch(id, db);
+    return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
 
   // ── reopen a whole round ─────────────────────────────────────
@@ -226,15 +248,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const p = ReopenRoundSchema.safeParse(body);
     if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
-    const r = await prisma.pageComment.updateMany({
+    const r = await db.pageComment.updateMany({
       where: { reviewId: id, round: p.data.round, status: { not: "open" } },
       data: { status: "open" },
     });
     if (r.count === 0) {
       return NextResponse.json({ error: `Round ${p.data.round} has nothing settled to reopen.` }, { status: 409 });
     }
-    await touch(id);
-    return NextResponse.json({ ok: true, reopened: r.count, ...(await load(id)) });
+    await touch(id, db);
+    return NextResponse.json({ ok: true, reopened: r.count, ...(await load(id, db)) });
   }
 
   // ── start the next revision round ────────────────────────────
@@ -245,7 +267,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     // Anything filed this round, plus anything outstanding from an earlier
     // one: a round holding only carried-over items still has work to settle.
-    const currentCount = await prisma.pageComment.count({
+    const currentCount = await db.pageComment.count({
       where: { reviewId: id, OR: [{ round: review.round }, { status: "open" }] },
     });
     if (currentCount === 0) {
@@ -278,13 +300,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return true;
     });
     if (!advanced) return NextResponse.json({ error: "The review changed. Reload before starting another round." }, { status: 409 });
-    return NextResponse.json({ ok: true, ...(await load(id)) });
+    return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
 
   // ── export the brief ─────────────────────────────────────────
   if (action === "export") {
     if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    const comments = await prisma.pageComment.findMany({
+    const comments = await db.pageComment.findMany({
       where: { reviewId: id },
       orderBy: { createdAt: "asc" },
       take: PAGE_REVIEW_COMMENT_LIMIT,
@@ -292,11 +314,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const brief = buildBrief({
       url: review.url, title: review.title, round: review.round, comments,
     });
-    await prisma.pageReview.update({
+    await db.pageReview.update({
       where: { id },
       data: { status: "exported" },
     });
-    return NextResponse.json({ ok: true, brief, ...(await load(id)) });
+    return NextResponse.json({ ok: true, brief, ...(await load(id, db)) });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });
@@ -310,6 +332,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await ctx.params;
+  if (id === REPORT_ID) return NextResponse.json({ error: "The event report cannot be deleted here." }, { status: 409 });
   const review = await prisma.pageReview.findUnique({
     where: { id },
     select: {
@@ -343,12 +366,12 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   return NextResponse.json({ ok: true });
 }
 
-function touch(id: string) {
-  return prisma.pageReview.update({ where: { id }, data: { updatedAt: new Date() } });
+function touch(id: string, db: Prisma.TransactionClient) {
+  return db.pageReview.update({ where: { id }, data: { updatedAt: new Date() } });
 }
 
-async function load(id: string) {
-  const review = await prisma.pageReview.findUnique({
+async function load(id: string, db: Prisma.TransactionClient) {
+  const review = await db.pageReview.findUnique({
     where: { id },
     include: {
       comments: {

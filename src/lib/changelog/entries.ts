@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Review the 2026 Symposium report in Workspace",
+    body: "Open **Workspace → 2026 Symposium → Event Report** to edit the Letter draft, add or remove pages, and leave comments. Each completed round keeps a saved copy. An administrator can approve the report for PDF export.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "EQUIP deadlines moved to the EQUIP menu",
     body: "**Deadlines** now sits in the **EQUIP** section near the top of the left menu, under Funding and the application links, instead of down in **Administration**. Same page, same tools \u2014 one click from where funding rounds are run.",
     kind: "improvement",

@@ -1,0 +1,28 @@
+@page symposium-report { size: letter; margin: 0; }
+
+@media print {
+  body:has(.symposium-report-screen) {
+    margin: 0 !important;
+    background: white !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  body:has(.symposium-report-screen) .report-screen-only,
+  body:has(.symposium-report-screen) .dashboard-layout > :not(main),
+  body:has(.symposium-report-screen) .dashboard-container > :not(.symposium-report-screen),
+  body:has(.symposium-report-screen) > :not(:has(.symposium-report-screen)) { display: none !important; }
+  body:has(.symposium-report-screen) .dashboard-layout,
+  body:has(.symposium-report-screen) .dashboard-layout > main,
+  body:has(.symposium-report-screen) .dashboard-container,
+  body:has(.symposium-report-screen) .symposium-report-screen {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+}

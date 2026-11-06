@@ -19,6 +19,7 @@ import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { NewPageReviewForm } from "@/components/workspace/NewPageReviewForm";
 import { BookmarkletPanel } from "@/components/workspace/BookmarkletPanel";
 import { ReviewIndex, ReviewIndexEmpty, type ReviewSummary } from "@/components/workspace/ReviewIndex";
+import { REPORT_ID, REPORT_PATH } from "@/lib/symposium-report/document";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
 import { createPageReviewViewerToken } from "@/lib/page-review/viewer";
 
@@ -33,6 +34,7 @@ export default async function WebsiteReviewPage({
   if (!session) redirect("/dashboard");
 
   const { r } = await searchParams;
+  if (r === REPORT_ID) redirect(REPORT_PATH);
   const role = (session.user as { role?: string }).role ?? "";
   const isAdmin = role === "admin" || role === "superadmin";
   const meId = (session.user as { id?: string }).id ?? null;
@@ -52,6 +54,7 @@ export default async function WebsiteReviewPage({
     ?? (process.env.NEXTAUTH_URL ?? "https://bhn-training-platform.vercel.app").replace(/\/$/, "");
 
   const reviews = await prisma.pageReview.findMany({
+    where: { id: { not: REPORT_ID } },
     orderBy: { updatedAt: "desc" },
     take: 50,
     select: {

@@ -537,6 +537,14 @@ const workspaceSpeakersItem: NavItem = {
     "Send invited speakers one link and they fill in their own headshot, bio, LinkedIn and what their session offers — no account needed. Review what comes back before it goes on the website.",
 };
 
+const workspaceSymposiumReportItem: NavItem = {
+  label: "Event Report",
+  href: "/admin/workspace/symposium-2026/report",
+  icon: FileText,
+  minRole: "instructor",
+  description: "Edit and review the Letter report for the Annual Symposium and Training Week.",
+};
+
 const workspacePrintItem: NavItem = {
   label: "Print Jobs",
   href: "/admin/workspace/symposium-2026/print",
@@ -2196,6 +2204,7 @@ export function Sidebar({
               <NavLink item={workspaceTrainingCheckInItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
+              <NavLink item={workspaceSymposiumReportItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSpeakersItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
