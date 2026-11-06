@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Publication layout for the Symposium report",
+    body: "The Letter report now sets longer sections in two columns, with numbered section headings, running page numbers and clearer photo captions. Text still flows across linked pages, and reviewers can swap photos and save their draft in the current round.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Swap and crop photos in the Symposium report",
     body: "Use **Swap photo** beside a page in **Workspace → 2026 Symposium → Event Report** to pick a photograph, preview a headshot crop, and save it with the draft. The cover combines the crystal banner with the symposium photograph, and shorter pages use their spare space for photos.",
     kind: "improvement",

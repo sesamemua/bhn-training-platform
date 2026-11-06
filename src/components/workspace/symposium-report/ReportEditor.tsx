@@ -118,11 +118,12 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
     const entry = layout?.find(({ page }) => page.id === frame.id);
     if (frame.id !== "cover" && !entry) return;
     select(frame);
+    const automatic = entry ? pagePhoto({ ...entry.page, photos: undefined }, frame.index) : photoPreset("cover.jpg");
+    const existingHeight = entry?.photoHeights[frame.index] ?? 0;
     setEdit({
-      kind: "photo", frame,
-      initial: entry ? entry.page.photos?.[String(frame.index)] : report.cover.photo,
-      automatic: entry ? pagePhoto({ ...entry.page, photos: undefined }, frame.index) : photoPreset("cover.jpg"),
-      height: entry ? Math.max(MIN_FILL_PHOTO, entry.photoHeights[frame.index] ?? 0) : 385,
+      kind: "photo", frame, automatic,
+      initial: entry ? entry.page.photos?.[String(frame.index)] ?? (existingHeight ? undefined : automatic) : report.cover.photo,
+      height: entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 385,
     });
     requestAnimationFrame(() => {
       window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.scrollIntoView({ block: "start" });

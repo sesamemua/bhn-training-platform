@@ -87,14 +87,25 @@
 
 .sheet { scroll-margin-top: 1rem; position: relative; }
 .sheetBar { justify-content: space-between; padding-top: 7px; }
-.sheetBar button { min-height: 34px; font-size: 14px; }
+.sheetBar button { min-height: 38px; font-size: 14px; }
 .sheetBar button[aria-pressed="true"] { box-shadow: inset 0 -2px var(--report-blue); }
+
+.toolbar :is(button, select):focus-visible,
+.rail button:focus-visible,
+.sheetBar button:focus-visible,
+.editForm :is(button, input, textarea, select):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
 
 .paper {
   --ink: var(--report-ink);
   --accent: var(--report-teal);
   --serif: Georgia, "Times New Roman", serif;
   --sans: Arial, sans-serif;
+  --gutter: 32px;
+  --outer-margin: 60px;
+  --inner-margin: 72px;
   box-sizing: border-box;
   position: relative;
   width: 8.5in;
@@ -140,26 +151,37 @@
   border: 1px solid color-mix(in srgb, var(--report-rule) 46%, transparent);
 }
 .logo { width: 170px; height: auto; }
-.coverText { position: absolute; inset: auto 65px 63px; }
+.coverText { position: absolute; inset: auto 60px 60px; }
 .kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: var(--report-light);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: .18em;
+  letter-spacing: .2em;
   text-transform: uppercase;
 }
+.kicker::before { content: ""; inline-size: 28px; border-top: 1px solid currentColor; }
 .coverText h1, .backText h2 {
   margin: 16px 0 22px;
   max-width: 640px;
   font-family: var(--serif);
   font-weight: 400;
-  font-size: 66px;
+  font-size: 68px;
   line-height: .99;
-  letter-spacing: -.042em;
+  letter-spacing: -.045em;
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
-.coverTheme { max-width: 550px; font-size: 23px; line-height: 1.35; margin-bottom: 30px; }
-.coverDate { border-top: 1px solid color-mix(in srgb, var(--report-rule) 42%, transparent); padding-top: 16px; font-size: 15px; letter-spacing: .09em; }
+.coverTheme { max-width: 550px; font: 22px/1.35 var(--sans); margin-bottom: 28px; }
+.coverDate {
+  border-top: 1px solid color-mix(in srgb, var(--report-rule) 48%, transparent);
+  padding-top: 16px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .14em;
+}
 .back {
   background-image: linear-gradient(180deg, color-mix(in srgb, var(--report-deep) 32%, transparent), color-mix(in srgb, var(--report-deep) 65%, transparent) 52%, var(--report-deep) 85%), url("/api/workspace/symposium-2026/report/assets/recap-optical-passage.webp");
   background-size: cover;
@@ -188,35 +210,43 @@
   --figure-height: 0px;
   display: grid;
   grid-template-rows: auto var(--figure-height) minmax(0, 1fr) 30px;
-  padding: 55px 66px 35px;
+  padding: 56px var(--outer-margin) 36px var(--inner-margin);
 }
+.sheet:nth-child(even) .chapter { padding-inline: var(--outer-margin) var(--inner-margin); }
 .chapter:has(.photo) { --figure-height: auto; }
 .chapter[data-figure="photo"]:not([data-continued="true"]) { --figure-height: 214px; }
 .chapter:has(.registration), .chapter[data-figure="chart"]:not([data-continued="true"]) { --figure-height: 279px; }
-.chapterHead { grid-row: 1; padding-bottom: 24px; }
-.chapterHead span {
-  display: block;
+.chapterHead { grid-row: 1; padding-bottom: 22px; }
+.chapterHead span, .continuationHead {
   color: var(--accent);
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: .16em;
+  font: 700 11px/1.35 var(--sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .15em;
   text-transform: uppercase;
 }
+.chapterHead span {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.chapterHead span::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--report-rule);
+}
 .chapterHead h2 {
-  max-width: 690px;
-  margin: 8px 0 0;
-  font: 400 49px/.99 var(--serif);
+  margin: 12px 0 0;
+  font: 400 51px/1.01 var(--serif);
   letter-spacing: -.047em;
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .continuationHead {
   grid-row: 1;
-  padding: 0 0 26px;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  border-bottom: 1px solid var(--report-rule);
+  padding: 0 0 9px;
+  margin-bottom: 17px;
+  overflow-wrap: anywhere;
 }
 .continuationHead span { color: var(--report-slate); font-weight: 400; }
 .chapter[data-continued="true"] .chapterHead, .chapter:not([data-continued="true"]) .chapterHead + .continuationHead { display: none; }
@@ -234,9 +264,22 @@
 .photoMat img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--photo-focus); min-height: 0; }
 .photoMat[data-fit="portrait"] img { left: 50%; right: auto; transform: translateX(-50%); width: auto; max-width: 100%; aspect-ratio: 5 / 4; }
 .photoMat[data-fit="whole"] img { object-fit: contain; }
-.photo figcaption, .fillPhoto figcaption { height: 23px; color: var(--report-slate); padding-top: 6px; font-size: 11px; }
+.photo figcaption, .fillPhoto figcaption {
+  height: 23px;
+  color: var(--report-slate);
+  padding-top: 6px;
+  font: 11px/1.25 var(--sans);
+  letter-spacing: .018em;
+}
+.photo figcaption::before, .fillPhoto figcaption::before {
+  content: "";
+  display: inline-block;
+  inline-size: 16px;
+  border-top: 1px solid var(--report-teal);
+  margin: 0 7px 3px 0;
+}
 .fillPhoto { margin: auto 0 0; }
-.registration { margin-bottom: 21px; background: var(--report-panel); border: 1px solid var(--report-rule); padding: 14px 17px; }
+.registration { margin-bottom: 21px; background: var(--report-panel); border-block: 1px solid var(--report-rule); padding: 14px 17px; }
 .registration figcaption { display: flex; justify-content: space-between; gap: 8px; color: var(--report-teal); font-weight: 750; font-size: 14px; }
 .registration figcaption span { color: var(--report-slate); font-size: 11px; font-weight: 500; }
 .chartRow { display: flex; align-items: center; gap: 22px; margin-block: 6px; }
@@ -250,33 +293,74 @@
 .registration > p { margin: 0; font: 11px/1.3 var(--sans); color: var(--report-slate); }
 
 .copy { grid-row: 3; min-height: 0; display: flex; flex-direction: column; }
-.story { display: flow-root; flex: none; }
+.story {
+  display: flow-root;
+  flex: none;
+  max-inline-size: 600px;
+}
+.chapter[data-columns="2"] .story {
+  max-inline-size: none;
+  column-count: 2;
+  column-gap: var(--gutter);
+  column-rule: 1px solid var(--report-rule);
+  column-fill: balance;
+}
 .paragraph, .heading, .note {
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.paragraph { font: 16.4px/1.49 var(--serif); padding-bottom: 13px; }
-.heading { font: 700 15px/1.26 var(--sans); color: var(--report-teal); padding: 5px 0 6px; }
+.paragraph {
+  font: 16px/1.48 var(--serif);
+  padding-bottom: 12px;
+  widows: 2;
+  orphans: 2;
+}
+.chapter:not([data-continued="true"]) .story > .paragraph:first-child {
+  column-span: all;
+  font: 20px/1.35 var(--serif);
+  letter-spacing: -.012em;
+  padding-bottom: 18px;
+}
+.heading {
+  font: 700 13px/1.35 var(--sans);
+  color: var(--accent);
+  letter-spacing: .025em;
+  padding: 4px 0 6px;
+  break-after: avoid-column;
+  break-inside: avoid-column;
+}
 .note {
-  font: 13px/1.42 var(--sans);
-  background: var(--report-edit-bg);
+  font: 12px/1.42 var(--sans);
+  background: color-mix(in srgb, var(--report-edit-bg) 75%, var(--report-paper));
   color: var(--report-edit-ink);
-  border-left: 3px solid var(--report-edit-rule);
-  margin-bottom: 11px;
+  border-left: 2px solid var(--report-edit-rule);
+  margin-bottom: 12px;
   padding: 8px 11px;
+  break-inside: avoid-column;
+}
+.note::before {
+  content: "Review note";
+  display: block;
+  margin-bottom: 2px;
+  font: 700 9px/1.3 var(--sans);
+  letter-spacing: .13em;
+  text-transform: uppercase;
 }
 .folio {
   grid-row: 4;
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: baseline;
   border-top: 1px solid var(--report-rule);
+  padding-top: 6px;
   color: var(--report-slate);
-  font: 700 10px var(--sans);
-  letter-spacing: .1em;
+  font: 700 9px/1.25 var(--sans);
+  letter-spacing: .14em;
   text-transform: uppercase;
 }
+.folio span:last-child { color: var(--ink); font: 400 18px/1 var(--serif); letter-spacing: 0; }
+.sheet:nth-child(even) .folio { flex-direction: row-reverse; }
 .ruler { position: absolute; left: 0; width: 1px; height: 1px; overflow: hidden; visibility: hidden; pointer-events: none; }
 
 .editForm {
@@ -320,6 +404,7 @@
 }
 @media (max-width: 530px) {
   .stage { padding: .35rem; }
+  .sheetBar button, .pageActions button, .tabs button, .editForm button { min-height: 44px; }
   .sheetBar button { font-size: 12px; }
   .editForm { inset: .3rem .3rem auto; max-height: calc(100% - 2rem); padding: .7rem; }
   .editForm .storyLabel textarea { height: 170px; }

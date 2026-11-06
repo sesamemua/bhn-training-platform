@@ -47,7 +47,9 @@ function Blocks({ blocks }: { blocks: Block[] }) {
   });
 }
 
-export type LaidOutReport = { page: ReportPage; frames: Block[][]; photoHeights: number[] }[];
+const folioText = (number: number) => String(number).padStart(2, "0");
+
+export type LaidOutReport = { page: ReportPage; columns: 1 | 2; frames: Block[][]; photoHeights: number[] }[];
 
 export function useReportLayout(report: Report) {
   const ruler = useRef<HTMLDivElement>(null);
@@ -72,10 +74,12 @@ export function useReportLayout(report: Report) {
       }));
       return measure.clientHeight - Math.ceil(story.getBoundingClientRect().height);
     };
-    const result = report.pages.map((page) => {
+    const result = report.pages.map((page, index) => {
+      const columns: 1 | 2 = page.text.length >= 900 ? 2 : 1;
+      pageNode.dataset.columns = String(columns);
       title.textContent = page.title;
-      continuation.firstChild!.textContent = page.title;
-      label.textContent = page.label;
+      continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
+      label.textContent = `${folioText(index + 1)} / ${page.label}`;
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
       const frames = paginate(reportBlocks(page.text), page.frames, (candidate, index) => {
         const reserve = !hasLeadPhoto(page, index) && page.photos?.[String(index)]
@@ -87,7 +91,7 @@ export function useReportLayout(report: Report) {
         const space = measureText(blocks, index) - PHOTO_CAPTION_SPACE - PHOTO_GAP;
         return space >= MIN_FILL_PHOTO ? space : 0;
       });
-      return { page, frames, photoHeights };
+      return { page, columns, frames, photoHeights };
     });
     // Pagination uses the browser's actual font and frame measurements.
     setLayout({ report, pages: result });
@@ -133,20 +137,21 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   }, []);
   const num = 2 + layout.reduce((sum, { frames }) => sum + frames.length, 0);
   let folio = 1;
-  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false) => {
+  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false, columns?: 1 | 2) => {
     const pageNumber = folio++;
     const isActive = active.id === frame.id && active.index === frame.index;
     return (
       <div key={`${frame.id}:${frame.index}`} id={`report-frame-${frame.id}-${frame.index}`}
         className={styles.sheet} style={{ width: 816 * scale }}>
-        <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`} data-print-page="">
+        <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
+          data-print-page="" data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}>
           {!ready && <span className={styles.draft}>Review draft</span>}
           {content}
         </article>
         {isActive && edit}
         <div className={`${styles.sheetBar} report-screen-only`}>
           <button type="button" aria-pressed={isActive} onClick={() => onSelect(frame)}>
-            {String(pageNumber).padStart(2, "0")} / {String(num).padStart(2, "0")} · {name}
+            {folioText(pageNumber)} / {folioText(num)} · {name}
           </button>
           <div>
             {onEdit && <button type="button" onClick={() => onEdit(frame)}>Edit on page</button>}
@@ -171,19 +176,19 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           <p className={styles.coverDate}>{report.cover.date}</p>
         </div>
       </>, styles.cover, true)}
-      {layout.map(({ page, frames, photoHeights }) => frames.map((blocks, index) =>
+      {layout.map(({ page, columns, frames, photoHeights }, section) => frames.map((blocks, index) =>
         wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
-            ? <header className={styles.chapterHead}><span>{page.label}</span><h2>{page.title}</h2></header>
-            : <header className={styles.continuationHead}>{page.title} <span> / continued</span></header>}
+            ? <header className={styles.chapterHead}><span>{folioText(section + 1)} / {page.label}</span><h2>{page.title}</h2></header>
+            : <header className={styles.continuationHead}>{folioText(section + 1)} / {page.title} <span> / continued</span></header>}
           {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} />}
           {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index)} height={photoHeights[index]} lead />}
           <div className={styles.copy}>
             <div className={styles.story}><Blocks blocks={blocks} /></div>
             {!hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index)} height={photoHeights[index]} />}
           </div>
-          <footer className={styles.folio}><span>BioHubNet · 2026 Event Report</span><span>{String(folio).padStart(2, "0")}</span></footer>
-        </>, styles.chapter, photoHeights[index] > 0),
+          <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
+        </>, styles.chapter, photoHeights[index] > 0, columns),
       ))}
       {wrap({ id: "back", index: 0 }, "Back cover", <>
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
