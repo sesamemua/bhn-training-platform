@@ -131,17 +131,19 @@
   overflow: hidden;
 }
 .coverArt img { position: absolute; display: block; width: 100%; object-fit: cover; }
-.coverCrystal { inset: 0 0 auto; height: 49%; object-position: 65% 45%; }
-.coverEvent {
-  inset: 34% 0 auto;
-  height: 43.5%;
-  mask-image: linear-gradient(to bottom, transparent, black 16%, black 67%, transparent);
+.coverArt .coverCrystal {
+  inset: auto 0 0 auto;
+  width: 55%;
+  height: 30%;
+  object-position: right center;
+  opacity: .22;
+  mix-blend-mode: screen;
+  mask-image: linear-gradient(135deg, transparent 25%, black 85%);
 }
-.coverArt::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--report-deep) 29%, transparent), transparent 24%, transparent 53%, var(--report-deep) 79%);
+.coverEvent {
+  inset: 17% 0 auto;
+  height: 43.5%;
+  mask-image: linear-gradient(to bottom, transparent, black 12%, black 83%, transparent);
 }
 .cover::before {
   content: "";
