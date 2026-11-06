@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import type { Registration, Report, ReportPage } from "@/lib/symposium-report/document";
+import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
 import { hasLeadPhoto, MIN_FILL_PHOTO, pagePhoto, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, REPORT_ASSETS } from "@/lib/symposium-report/photos";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
@@ -115,8 +115,9 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
 
 export type Frame = { id: string; index: number };
 
-export function ReportPaper({ report, layout, active, ready, onSelect, edit, onEdit, onComment, onPhoto }: {
+export function ReportPaper({ report, layout, active, ready, onSelect, edit, onEdit, onComment, onPhoto, recommendations }: {
   report: Report;
+  recommendations: Record<string, ReportPhoto[]>;
   layout: LaidOutReport;
   active: Frame;
   ready: boolean;
@@ -143,12 +144,6 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
     return (
       <div key={`${frame.id}:${frame.index}`} id={`report-frame-${frame.id}-${frame.index}`}
         className={styles.sheet} style={{ width: 816 * scale }}>
-        <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
-          data-print-page="" data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}>
-          {!ready && <span className={styles.draft}>Review draft</span>}
-          {content}
-        </article>
-        {isActive && edit}
         <div className={`${styles.sheetBar} report-screen-only`}>
           <button type="button" aria-pressed={isActive} onClick={() => onSelect(frame)}>
             {folioText(pageNumber)} / {folioText(num)} · {name}
@@ -159,6 +154,12 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
             {onComment && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onComment(frame)}>Comment</button>}
           </div>
         </div>
+        <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
+          data-print-page="" data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}>
+          {!ready && <span className={styles.draft}>Review draft</span>}
+          {content}
+        </article>
+        {isActive && edit}
       </div>
     );
   };
@@ -166,7 +167,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   return (
     <div className={styles.stage} ref={stage} data-report-paper="">
       {wrap({ id: "cover", index: 0 }, "Cover", <>
-        <CoverArt photo={report.cover.photo ?? photoPreset("cover.jpg")} />
+        <CoverArt photo={report.cover.photo ?? recommendations.cover?.[0] ?? photoPreset("cover.jpg")} />
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
         <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
         <div className={styles.coverText}>
@@ -182,10 +183,10 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
             ? <header className={styles.chapterHead}><span>{folioText(section + 1)} / {page.label}</span><h2>{page.title}</h2></header>
             : <header className={styles.continuationHead}>{folioText(section + 1)} / {page.title} <span> / continued</span></header>}
           {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} />}
-          {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index)} height={photoHeights[index]} lead />}
+          {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} lead />}
           <div className={styles.copy}>
             <div className={styles.story}><Blocks blocks={blocks} /></div>
-            {!hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index)} height={photoHeights[index]} />}
+            {!hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} />}
           </div>
           <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
         </>, styles.chapter, photoHeights[index] > 0, columns),

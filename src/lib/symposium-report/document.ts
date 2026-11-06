@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { reportPhotos, type ReportPhotoFile } from "./photos";
+import { reportPhotos } from "./photos";
+import { isGalleryPhoto } from "./gallery";
 
 export const REPORT_ID = "symposium-2026-event-report";
 export const REPORT_PATH = "/admin/workspace/symposium-2026/report";
@@ -15,7 +16,8 @@ export const reportAssetTypes: Readonly<Record<string, string>> = {
 };
 
 const reportPhoto = z.object({
-  file: z.custom<ReportPhotoFile>((file) => typeof file === "string" && Object.hasOwn(reportPhotos, file), "Choose a report photograph"),
+  file: z.string().refine((file) => Object.hasOwn(reportPhotos, file) || isGalleryPhoto(file), "Choose a report photograph"),
+  caption: z.string().trim().min(1).max(120).optional(),
   x: z.number().int().min(0).max(100),
   y: z.number().int().min(0).max(100),
   fit: z.enum(["cover", "portrait", "whole"]),

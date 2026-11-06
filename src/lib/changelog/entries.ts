@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Browse final session photos in the Symposium report",
+    body: "The report now opens directly in Review. Use **Swap photo** above a page to browse the final photographs by session or choose a picture from your device. New choices stay in the staff gallery and save with the draft.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Publication layout for the Symposium report",
     body: "The Letter report now sets longer sections in two columns, with numbered section headings, running page numbers and clearer photo captions. Text still flows across linked pages, and reviewers can swap photos and save their draft in the current round.",
     kind: "improvement",

@@ -18,6 +18,7 @@ type Props = {
   history: { round: number; report: Report }[];
   review: Review;
   revision: string;
+  recommendations: Record<string, ReportPhoto[]>;
   meId: string;
   isAdmin: boolean;
 };
@@ -46,7 +47,7 @@ function ChartFields({ chart, onChange }: { chart: Registration; onChange: (char
   );
 }
 
-export function ReportEditor({ report: initial, revision, history, review, meId, isAdmin }: Props) {
+export function ReportEditor({ report: initial, revision, history, review, recommendations, meId, isAdmin }: Props) {
   const router = useRouter();
   const { confirmDialog, node } = useConfirmDialog();
   const [report, setReport] = useState(initial);
@@ -55,7 +56,7 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
   const [past, setPast] = useState<number | null>(null);
   const [active, setActive] = useState<Frame>(cover);
   const [edit, setEdit] = useState<Edit | null>(null);
-  const [tab, setTab] = useState<"pages" | "comments">("pages");
+  const [tab, setTab] = useState<"pages" | "comments">("comments");
   const [quote, setQuote] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -118,7 +119,7 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
     const entry = layout?.find(({ page }) => page.id === frame.id);
     if (frame.id !== "cover" && !entry) return;
     select(frame);
-    const automatic = entry ? pagePhoto({ ...entry.page, photos: undefined }, frame.index) : photoPreset("cover.jpg");
+    const automatic = entry ? pagePhoto({ ...entry.page, photos: undefined }, frame.index, recommendations) : recommendations.cover?.[0] ?? photoPreset("cover.jpg");
     const existingHeight = entry?.photoHeights[frame.index] ?? 0;
     setEdit({
       kind: "photo", frame, automatic,
@@ -226,7 +227,7 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
   const controlsDisabled = !editable || !!edit || busy;
   const removable = chapter && (active.index === 0 ? report.pages.length > 1 : active.index === chapter.frames.length - 1 && chapter.page.frames === chapter.frames.length && !chapter.frames.at(-1)?.length);
   const editForm = edit?.kind === "photo" ? (
-    <PhotoEditor initial={edit.initial} automatic={edit.automatic} height={edit.height} cover={edit.frame.id === "cover"}
+    <PhotoEditor initial={edit.initial} automatic={edit.automatic} height={edit.height} section={edit.frame.id} cover={edit.frame.id === "cover"}
       onApply={applyPhoto} onCancel={() => setEdit(null)} />
   ) : edit && (
     <form className={`${styles.editForm} report-screen-only`} data-report-edit-form="" onSubmit={apply}
@@ -308,12 +309,23 @@ export function ReportEditor({ report: initial, revision, history, review, meId,
               <p>Linked pages share one story. Extra pages appear as the text grows.</p>
             </div>}
           </>}
+          {tab === "comments" && <label className={styles.reviewJump}>Jump to page
+            <select aria-label="Jump to page" value={`${active.id}:${active.index}`} disabled={!!edit} onChange={(e) => {
+              const [id, index] = e.target.value.split(":");
+              select({ id, index: Number(index) }, true);
+            }}>
+              <option value="cover:0">Cover</option>
+              {layout?.flatMap(({ page, frames }) => frames.map((_, index) => <option key={`${page.id}:${index}`}
+                value={`${page.id}:${index}`}>{page.title}{index > 0 ? ` · continued ${index + 1}` : ""}</option>))}
+              <option value="back:0">Back cover</option>
+            </select>
+          </label>}
           <div id="report-comments" hidden={tab !== "comments"}>
             <PageReviewClient initialReview={review} meId={meId} isAdmin={isAdmin}
               reportAnchor={{ label, quote, readOnly: past !== null, key: `#report-frame-${active.id}-${active.index}` }} />
           </div>
         </aside>
-        {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved}
+        {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
           onSelect={select} edit={editForm} onEdit={controlsDisabled ? undefined : startEdit}
           onPhoto={controlsDisabled ? undefined : startPhoto}
           onComment={past === null && review.status === "open" && !edit ? commentOn : undefined} />}

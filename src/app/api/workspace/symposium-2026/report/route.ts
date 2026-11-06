@@ -38,6 +38,11 @@ export async function POST(req: Request) {
     if (data.action !== "advance" && review.status !== "open") return failure("This round is locked.", 409);
 
     if (data.action === "save") {
+      const photos = [data.report.cover.photo, ...data.report.pages.flatMap((page) => Object.values(page.photos ?? {}))];
+      const files = [...new Set(photos.flatMap((photo) => photo ? [photo.file] : []))];
+      if (files.length && await tx.symposiumReportAsset.count({ where: { name: { in: files } } }) !== files.length) {
+        return failure("One of the selected photographs is no longer available. Choose a replacement.", 409);
+      }
       const text = JSON.stringify(data.report);
       await tx.pageReview.update({ where: { id: REPORT_ID }, data: { pastedHtml: text } });
       return NextResponse.json({ revision: reportRevision(text) });

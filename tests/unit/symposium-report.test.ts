@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { catalogueSchema, isGalleryPhoto } from "../../src/lib/symposium-report/gallery";
 import { pagePhoto, photoPreset } from "../../src/lib/symposium-report/photos";
 import { reportSchema } from "../../src/lib/symposium-report/document";
 import { paginate, reportBlocks } from "../../src/lib/symposium-report/paginate";
@@ -67,4 +68,15 @@ test("photo choices and crops belong to their report page and must use known art
   assert.deepEqual(pagePhoto(report.pages[0], 1), crop);
   assert.equal(reportSchema.safeParse({ ...input, cover: { ...input.cover, photo: { ...crop, file: "../private" } } }).success, false);
   assert.equal(reportSchema.safeParse({ ...input, cover: { ...input.cover, photo: { ...crop, y: 101 } } }).success, false);
+});
+
+test("the private photo catalogue accepts organized and uploaded identifiers without accepting paths", () => {
+  const file = "final." + "a".repeat(24) + ".webp";
+  const choice = { file, label: "Panelists on stage", x: 50, y: 30, fit: "whole" };
+  assert.equal(isGalleryPhoto(file), true);
+  assert.equal(isGalleryPhoto("local.panels." + "b".repeat(24) + ".panel-room.webp"), true);
+  assert.equal(isGalleryPhoto("../" + file), false);
+  assert.equal(isGalleryPhoto(file + ".svg"), false);
+  assert.equal(catalogueSchema.safeParse({ groups: [{ id: "panels", title: "Panels", photos: [choice] }], defaults: { panels: [choice] } }).success, true);
+  assert.equal(catalogueSchema.safeParse({ groups: [{ id: "panels", title: "Panels", photos: [{ ...choice, file: "/tmp/photo.jpg" }] }], defaults: {} }).success, false);
 });

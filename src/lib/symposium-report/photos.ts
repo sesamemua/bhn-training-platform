@@ -48,10 +48,15 @@ const sectionPhotos: Record<string, ReportPhotoFile[]> = {
   "follow-through": ["network.jpg", "networking-2.webp"],
 };
 
-export function pagePhoto(page: ReportPage, index: number): ReportPhoto {
+export function pagePhoto(page: ReportPage, index: number, recommendations: Record<string, ReportPhoto[]> = {}): ReportPhoto {
+  const choices = recommendations[page.id];
   const options = sectionPhotos[page.id] ?? ["cover.jpg"];
   const original = index === 0 && page.image && page.image !== "registration" ? `${page.image}.jpg` as const : null;
-  return page.photos?.[String(index)] ?? photoPreset(original ?? options[index % options.length]);
+  return page.photos?.[String(index)] ?? (choices?.length ? choices[index % choices.length] : photoPreset(original ?? options[index % options.length]));
+}
+
+export function photoLabel(photo: ReportPhoto) {
+  return photo.caption ?? (Object.hasOwn(reportPhotos, photo.file) ? reportPhotos[photo.file as ReportPhotoFile].label : "Symposium photograph");
 }
 
 export function hasLeadPhoto(page: ReportPage, index: number) {
