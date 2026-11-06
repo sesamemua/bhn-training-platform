@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
-import { hasLeadPhoto, MIN_FILL_PHOTO, pagePhoto, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, REPORT_ASSETS } from "@/lib/symposium-report/photos";
+import { hasLeadPhoto, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS } from "@/lib/symposium-report/photos";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
 
@@ -81,13 +81,15 @@ export function useReportLayout(report: Report) {
       continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
       label.textContent = `${folioText(index + 1)} / ${page.label}`;
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
+      const stripSpace = portraitPhotos(page).length ? PORTRAIT_STRIP_SPACE : 0;
+      pageNode.dataset.portraits = String(stripSpace > 0);
       const frames = paginate(reportBlocks(page.text), page.frames, (candidate, index) => {
         const reserve = !hasLeadPhoto(page, index) && page.photos?.[String(index)]
           ? MIN_FILL_PHOTO + PHOTO_CAPTION_SPACE + PHOTO_GAP : 0;
-        return measureText(candidate, index) >= reserve;
+        return measureText(candidate, index) >= reserve + (index === 0 ? stripSpace : 0);
       });
       const photoHeights = frames.map((blocks, index) => {
-        if (hasLeadPhoto(page, index)) return 174 + Math.max(0, measureText(blocks, index) - 3);
+        if (hasLeadPhoto(page, index)) return 174 + Math.max(0, measureText(blocks, index) - stripSpace - 3);
         const space = measureText(blocks, index) - PHOTO_CAPTION_SPACE - PHOTO_GAP;
         return space >= MIN_FILL_PHOTO ? space : 0;
       });
@@ -125,7 +127,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   edit: ReactNode;
   onEdit?: (frame: Frame) => void;
   onComment?: (frame: Frame) => void;
-  onPhoto?: (frame: Frame) => void;
+  onPhoto?: (frame: Frame, portrait?: string) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -138,7 +140,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
   }, []);
   const num = 2 + layout.reduce((sum, { frames }) => sum + frames.length, 0);
   let folio = 1;
-  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false, columns?: 1 | 2) => {
+  const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false, columns?: 1 | 2, portraits: ReturnType<typeof portraitPhotos> = []) => {
     const pageNumber = folio++;
     const isActive = active.id === frame.id && active.index === frame.index;
     return (
@@ -150,12 +152,19 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           </button>
           <div>
             {onEdit && <button type="button" onClick={() => onEdit(frame)}>Edit on page</button>}
-            {onPhoto && frame.id !== "back" && <button type="button" onClick={() => onPhoto(frame)}>{hasPhoto ? "Swap photo" : "Add photo"}</button>}
+            {onPhoto && frame.id !== "back" && <button type="button" onClick={() => onPhoto(frame)}>{portraits.length ? "Swap wide photo" : hasPhoto ? "Swap photo" : "Add photo"}</button>}
+            {onPhoto && portraits.length > 0 && (
+              <select aria-label="Swap portrait" value="" onChange={(event) => onPhoto(frame, event.target.value)}>
+                <option value="" disabled>Swap portrait…</option>
+                {portraits.map(([key, photo]) => <option key={key} value={key}>{photoLabel(photo)}</option>)}
+              </select>
+            )}
             {onComment && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onComment(frame)}>Comment</button>}
           </div>
         </div>
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
-          data-print-page="" data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}>
+          data-print-page="" data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
+          data-portraits={portraits.length ? "true" : undefined}>
           {!ready && <span className={styles.draft}>Review draft</span>}
           {content}
         </article>
@@ -177,8 +186,9 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           <p className={styles.coverDate}>{report.cover.date}</p>
         </div>
       </>, styles.cover, true)}
-      {layout.map(({ page, columns, frames, photoHeights }, section) => frames.map((blocks, index) =>
-        wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
+      {layout.map(({ page, columns, frames, photoHeights }, section) => frames.map((blocks, index) => {
+        const portraits = index === 0 ? portraitPhotos(page) : [];
+        return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
             ? <header className={styles.chapterHead}><span>{folioText(section + 1)} / {page.label}</span><h2>{page.title}</h2></header>
             : <header className={styles.continuationHead}>{folioText(section + 1)} / {page.title} <span> / continued</span></header>}
@@ -187,10 +197,13 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onE
           <div className={styles.copy}>
             <div className={styles.story}><Blocks blocks={blocks} /></div>
             {!hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} />}
+            {portraits.length > 0 && <div className={styles.portraitStrip} aria-label="Panel speakers">
+              {portraits.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={portraitHeight(portraits.length)} />)}
+            </div>}
           </div>
           <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
-        </>, styles.chapter, photoHeights[index] > 0, columns),
-      ))}
+        </>, styles.chapter, photoHeights[index] > 0, columns, portraits);
+      }))}
       {wrap({ id: "back", index: 0 }, "Back cover", <>
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
         <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />

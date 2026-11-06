@@ -41,7 +41,7 @@ const page = z.object({
   text: z.string().max(16_000),
   image: z.enum(reportImages).optional(),
   registration: registrationChart.optional(),
-  photos: z.record(z.string().regex(/^(0|[1-9]\d?)$/), reportPhoto).optional(),
+  photos: z.record(z.string().regex(/^(0|[1-9]\d?|portrait-[1-5])$/), reportPhoto).optional(),
   frames: z.number().int().min(1).max(20),
 });
 export const reportSchema = z.object({

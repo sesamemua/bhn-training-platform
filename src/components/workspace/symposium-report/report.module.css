@@ -20,7 +20,7 @@
 .history { gap: .3rem; }
 .history select { font: inherit; max-width: 13rem; }
 
-.actions button, .history select, .tabs button, .pageActions button, .sheetBar button, .editForm button {
+.actions button, .history select, .tabs button, .pageActions button, .sheetBar button, .sheetBar select, .editForm button {
   display: inline-flex;
   gap: .35rem;
   align-items: center;
@@ -87,12 +87,14 @@
 
 .sheet { scroll-margin-top: 1rem; position: relative; }
 .sheetBar { justify-content: space-between; padding: 0 0 8px; }
-.sheetBar button { min-height: 38px; font-size: 14px; }
+.sheetBar button, .sheetBar select { min-height: 38px; font-size: 14px; }
+.sheetBar select { max-width: min(100%, 12rem); }
 .sheetBar button[aria-pressed="true"] { box-shadow: inset 0 -2px var(--report-blue); }
 
 .toolbar :is(button, select):focus-visible,
 .rail button:focus-visible,
 .sheetBar button:focus-visible,
+.sheetBar select:focus-visible,
 .editForm :is(button, input, textarea, select):focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
@@ -281,6 +283,24 @@
   margin: 0 7px 3px 0;
 }
 .fillPhoto { margin: auto 0 0; }
+.portraitStrip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  flex: none;
+  margin-top: auto;
+}
+.portraitStrip figcaption {
+  height: 34px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.portraitStrip figcaption::before { display: none; }
 .registration { margin-bottom: 21px; background: var(--report-panel); border-block: 1px solid var(--report-rule); padding: 14px 17px; }
 .registration figcaption { display: flex; justify-content: space-between; gap: 8px; color: var(--report-teal); font-weight: 750; font-size: 14px; }
 .registration figcaption span { color: var(--report-slate); font-size: 11px; font-weight: 500; }
@@ -323,6 +343,11 @@
   font: 20px/1.35 var(--serif);
   letter-spacing: -.012em;
   padding-bottom: 18px;
+}
+.chapter[data-portraits="true"]:not([data-continued="true"]) .story { max-inline-size: none; }
+.chapter[data-portraits="true"]:not([data-continued="true"]) .story > .paragraph:first-child {
+  font-size: 18px;
+  line-height: 1.42;
 }
 .heading {
   font: 700 13px/1.35 var(--sans);
@@ -405,8 +430,8 @@
 }
 @media (max-width: 530px) {
   .stage { padding: .35rem; }
-  .sheetBar button, .pageActions button, .tabs button, .editForm button { min-height: 44px; }
-  .sheetBar button { font-size: 12px; }
+  .sheetBar button, .sheetBar select, .pageActions button, .tabs button, .editForm button { min-height: 44px; }
+  .sheetBar button, .sheetBar select { font-size: 12px; }
   .editForm { inset: .3rem .3rem auto; max-height: calc(100% - 2rem); padding: .7rem; }
   .editForm .storyLabel textarea { height: 170px; }
 }

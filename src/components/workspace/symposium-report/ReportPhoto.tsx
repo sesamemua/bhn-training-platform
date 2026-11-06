@@ -59,12 +59,13 @@ async function photoForUpload(file: File) {
   } finally { image.close(); }
 }
 
-export function PhotoEditor({ initial, automatic, height, section, cover, onApply, onCancel }: {
+export function PhotoEditor({ initial, automatic, height, section, cover, portrait, onApply, onCancel }: {
   initial?: ReportPhoto;
   automatic: ReportPhoto;
   height: number;
   section: string;
   cover: boolean;
+  portrait: boolean;
   onApply: (photo: ReportPhoto | undefined) => void;
   onCancel: () => void;
 }) {
@@ -75,6 +76,7 @@ export function PhotoEditor({ initial, automatic, height, section, cover, onAppl
   const [error, setError] = useState("");
   const group = groups?.find((item) => item.id === groupId) ?? groups?.[0];
   const photo = selected ?? automatic;
+  const fixedCrop = cover || portrait;
 
   useEffect(() => {
     const abort = new AbortController();
@@ -117,13 +119,13 @@ export function PhotoEditor({ initial, automatic, height, section, cover, onAppl
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!uploading) onApply(selected);
+    if (!uploading) onApply(selected && portrait ? { ...selected, fit: "cover" } : selected);
   }
 
   return (
     <form className={`${styles.editForm} report-screen-only`} onSubmit={submit} onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}>
       <div className={styles.editHeader}>
-        <div><p>{cover ? "Cover photograph" : "Page photograph"}</p><h2>Swap or crop photo</h2></div>
+        <div><p>{cover ? "Cover photograph" : portrait ? "Panel portrait" : "Page photograph"}</p><h2>Swap or crop photo</h2></div>
         <button type="button" onClick={onCancel}>Cancel</button>
       </div>
       <div className={styles.photoWorkbench}>
@@ -151,16 +153,16 @@ export function PhotoEditor({ initial, automatic, height, section, cover, onAppl
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </div>
         <div className={styles.photoPreview}>
-          <PhotoFigure photo={cover ? { ...photo, fit: "cover" } : photo} height={height} />
-          <button type="button" onClick={() => setSelected(undefined)}>Use recommended photo</button>
-          {!cover && <label>Crop style
+          <PhotoFigure photo={fixedCrop ? { ...photo, fit: "cover" } : photo} height={height} />
+          <button type="button" onClick={() => setSelected(undefined)}>{portrait ? "Use current photo" : "Use recommended photo"}</button>
+          {!fixedCrop && <label>Crop style
             <select value={photo.fit} onChange={(event) => setSelected({ ...photo, fit: event.target.value as ReportPhoto["fit"] })}>
               <option value="cover">Fill frame</option>
               <option value="portrait">Headshot crop</option>
               <option value="whole">Show full photograph</option>
             </select>
           </label>}
-          {(cover || photo.fit !== "whole") && <div className={styles.cropControls}>
+          {(fixedCrop || photo.fit !== "whole") && <div className={styles.cropControls}>
             <label>Horizontal crop<input type="range" min={0} max={100} value={photo.x} onChange={(e) => setCrop("x", Number(e.target.value))} /></label>
             <label>Vertical crop<input type="range" min={0} max={100} value={photo.y} onChange={(e) => setCrop("y", Number(e.target.value))} /></label>
           </div>}

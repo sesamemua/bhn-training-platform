@@ -59,10 +59,19 @@ export function photoLabel(photo: ReportPhoto) {
   return photo.caption ?? (Object.hasOwn(reportPhotos, photo.file) ? reportPhotos[photo.file as ReportPhotoFile].label : "Symposium photograph");
 }
 
+export function portraitPhotos(page: ReportPage) {
+  return Object.entries(page.photos ?? {}).filter(([key]) => key.startsWith("portrait-")).sort(([a], [b]) => a.localeCompare(b));
+}
+
+export function portraitHeight(count: number) {
+  return 684 * 144 * count / (684 - 10 * (count - 1));
+}
+
 export function hasLeadPhoto(page: ReportPage, index: number) {
-  return index === 0 && (page.id === "panels" || Boolean(page.image && page.image !== "registration"));
+  return index === 0 && (page.id === "panels" || portraitPhotos(page).length > 0 || Boolean(page.image && page.image !== "registration"));
 }
 
 export const MIN_FILL_PHOTO = 112;
 export const PHOTO_CAPTION_SPACE = 23;
 export const PHOTO_GAP = 13;
+export const PORTRAIT_STRIP_SPACE = 144 + 34 + PHOTO_GAP;

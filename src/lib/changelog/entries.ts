@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Panel photo sets in the Symposium report",
+    body: "Each panel page pairs a wide view from the audience with individual portraits. Reviewers can swap the room photo or choose a portrait to replace with another image from that session or their device.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "New cover for the Symposium report",
     body: "The cover now features a new keynote photo of Christopher Procyshyn, with the crystal artwork tucked into the lower corner.",
     kind: "improvement",

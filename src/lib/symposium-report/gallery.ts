@@ -27,6 +27,8 @@ export const chapterGallery: Record<string, string[]> = {
   "training-week": ["microbix", "ccrm", "communication", "negotiation", "ignited"],
   "annual-symposium": ["keynote", "program-impact", "registration"],
   panels: ["panel-1", "panel-2", "panel-3"],
+  "panel-2": ["panel-2"],
+  "panel-3": ["panel-3"],
   venturelift: ["venturelift"],
   discussion: ["discussion", "networking-discussion"],
   "program-impact": ["program-impact"],
