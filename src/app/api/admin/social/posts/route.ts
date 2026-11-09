@@ -13,11 +13,16 @@ import { consentingRecipients, cycleById } from "@/lib/social/cycles";
 import { syncCycle, syncRecipients } from "@/lib/social/sync";
 import { TERMINAL_STATUSES, type SocialStatus } from "@/lib/social/types";
 import { editSocialPost } from "@/lib/social/edit";
+import { LINKEDIN_STREAM } from "@/lib/social/review";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const Body = z.discriminatedUnion("action", [
+  /* A post the team writes from scratch. requestId makes a double-click one post. */
+  z.object({ action: z.literal("create"), title: z.string().trim().min(1).max(200), body: z.string().trim().min(1).max(3000), scheduledFor: z.string().datetime(), requestId: z.string().uuid() }),
+  /* A review note; with reviewerId it asks that teammate to review. */
+  z.object({ action: z.literal("comment"), id: z.string().min(1), body: z.string().trim().min(1).max(2000), reviewerId: z.string().min(1).optional() }),
   z.object({ action: z.literal("edit"), id: z.string().min(1), body: z.string().trim().min(1).max(6000), expectedVersion: z.number().int().nonnegative(), trackChanges: z.boolean() }),
   z.object({ action: z.literal("approve"), id: z.string().min(1), expectedVersion: z.number().int().nonnegative() }),
   /* Back to draft. The words stay — an unapprove is "I want to change
@@ -48,6 +53,33 @@ export async function POST(req: NextRequest) {
     if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const outcome = await prisma.$transaction((tx) => editSocialPost(tx, actorId, data));
     return NextResponse.json(outcome.result, { status: outcome.status });
+  }
+
+  if (data.action === "create") {
+    const key = `${LINKEDIN_STREAM}:post:${data.requestId}:0`;
+    const post = await prisma.socialPost.upsert({
+      where: { key }, update: {},
+      create: { key, stream: LINKEDIN_STREAM, kind: "post", deadlineId: data.requestId, body: data.body,
+        scheduledFor: new Date(data.scheduledFor), assetSpec: { title: data.title } },
+    });
+    return NextResponse.json({ ok: true, post: { id: post.id, body: post.body, editVersion: post.editVersion, scheduledFor: post.scheduledFor.toISOString() } });
+  }
+
+  if (data.action === "comment") {
+    if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const target = await prisma.socialPost.findUnique({ where: { id: data.id }, select: { id: true } });
+    if (!target) return NextResponse.json({ error: "Unknown post." }, { status: 404 });
+    const reviewer = data.reviewerId
+      ? await prisma.user.findFirst({ where: { id: data.reviewerId, role: { in: ["admin", "superadmin"] } }, select: { id: true, name: true, email: true } })
+      : null;
+    if (data.reviewerId && !reviewer) return NextResponse.json({ error: "Pick a teammate on the list." }, { status: 400 });
+    const reviewerName = reviewer ? reviewer.name || reviewer.email || "Team member" : null;
+    const entry = await prisma.auditLog.create({
+      data: { actorId, action: "social.post.comment", targetType: "socialPost", targetId: target.id,
+        detail: JSON.stringify({ body: data.body, reviewerId: reviewer?.id ?? null, reviewerName }) },
+      select: { id: true, createdAt: true, actor: { select: { name: true } } },
+    });
+    return NextResponse.json({ ok: true, comment: { id: entry.id, at: entry.createdAt.toISOString(), author: entry.actor.name ?? "Team member", body: data.body, reviewerName } });
   }
 
   if (data.action === "regenerate") {

@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { withSocialTags } from "./tags";
 import type { SavedSocialText, SocialEditResponse } from "./edit-history";
 
-const selectText = { id: true, body: true, status: true, editVersion: true, trackChanges: true } as const;
+const selectText = { id: true, body: true, status: true, editVersion: true, trackChanges: true, stream: true } as const;
 
 export async function editSocialPost(
   tx: Prisma.TransactionClient,
@@ -17,7 +17,7 @@ export async function editSocialPost(
   if (post.editVersion !== input.expectedVersion) {
     return { status: 409, result: { error: "Someone else changed this post. Review the latest version.", post } };
   }
-  const body = withSocialTags(input.body.trim());
+  const body = withSocialTags(input.body.trim(), post.stream);
   if (!input.body.trim() || body.length > 6000) {
     return { status: 400, result: { error: "Use between 1 and 6,000 characters, including the standing tags." } };
   }

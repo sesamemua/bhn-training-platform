@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Social: write, review and approve LinkedIn posts",
+    body: "**Workspace \u2192 Marketing \u2192 Social** now opens on **LinkedIn posts**. Choose **New post** to write one from scratch with a title and planned date, then edit it with tracked changes. Under any post, **Review & comments** lets you leave a note or **ask a teammate to review**; the post shows **Waiting on \u2026** until someone approves it. Approve, add a graphic, then publish or schedule it to the BioHubNet LinkedIn Page as before. These posts don\u2019t get the symposium speaker tags.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Edit report text directly on the page",
     body: "Click the copy in the Symposium report to edit it in place. The story reflows across linked pages, and Save draft shares your changes with reviewers.",
     kind: "improvement",

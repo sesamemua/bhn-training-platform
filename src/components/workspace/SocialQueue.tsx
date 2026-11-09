@@ -9,6 +9,8 @@ import { useInputDialog } from "@/components/ui/InputDialog";
 import { SocialPostEditor } from "./SocialPostEditor";
 import { SocialGraphicReview } from "./SocialGraphicReview";
 import { SocialPublishControls, type PublishingConnection } from "./SocialPublishControls";
+import { SocialReviewThread } from "./SocialReviewThread";
+import { waitingOn, type SocialComment } from "@/lib/social/review";
 import type { ArtworkViewData } from "./DesignArtworkView";
 import type { SavedSocialText } from "@/lib/social/edit-history";
 import { withSocialTags } from "@/lib/social/tags";
@@ -45,9 +47,14 @@ export interface QueuePost {
   stale: boolean;
   /** Comments pinned on its graphic (Design Review's records), once someone has started. */
   graphicReview?: ArtworkViewData | null;
+  /** Review notes and "please review" asks, oldest first. */
+  comments?: SocialComment[];
 }
 
+type Group = "linkedin" | "symposium_2026" | "symposium_sessions" | "symposium_day" | "venture_connect" | "events";
+
 const KIND_LABEL: Record<string, string> = {
+  post: "LinkedIn post",
   launch: "Launch",
   reminder: "Reminder",
   recipients: "Recipients",
@@ -81,13 +88,15 @@ export async function approveSeries(posts: QueuePost[], approve: (id: string) =>
   return approved;
 }
 
-export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_ORDER, version: null }, initialDayOrder = { order: [], version: null }, initialGroup = "symposium_2026", reviewMode = false, seriesReview = false, me = null }: {
+export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_ORDER, version: null }, initialDayOrder = { order: [], version: null }, initialGroup = "symposium_2026", reviewMode = false, seriesReview = false, me = null, team = [] }: {
   initial: QueuePost[];
   /** Who is looking — for commenting on graphics. */
   me?: { id: string; name: string; admin: boolean } | null;
   initialOrder?: SocialOrder | null;
   initialDayOrder?: SocialOrder | null;
-  initialGroup?: "symposium_2026" | "symposium_sessions" | "symposium_day" | "venture_connect" | "events";
+  initialGroup?: Group;
+  /** Who can be asked to review a post. */
+  team?: { id: string; name: string }[];
   reviewMode?: boolean;
   seriesReview?: boolean;
 }) {
@@ -95,7 +104,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   // Graphic comments change underneath the queue (a pin, a reply): read them from the latest
   // server render, not from the queue's own copy, which only tracks text and approval.
   const graphicReviewOf = new Map(initial.map((p) => [p.id, p.graphicReview ?? null]));
-  const [group, setGroup] = useState(initialGroup);
+  const [group, setGroup] = useState<Group>(initialGroup);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -113,6 +122,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   const [dayLayout, setDayLayout] = useState(initialDayOrder ?? { order: [], version: null });
   const [dayOrderUnavailable, setDayOrderUnavailable] = useState(initialDayOrder === null);
   const [newDayPost, setNewDayPost] = useState<{ title: string; body: string; requestId: string } | null>(null);
+  const [newPost, setNewPost] = useState<{ title: string; body: string; when: string; requestId: string } | null>(null);
   const [orderUnavailable, setOrderUnavailable] = useState(initialOrder === null);
   const [orderBusy, setOrderBusy] = useState(false);
   const { inputDialog, node: inputNode } = useInputDialog();
@@ -188,7 +198,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   }
 
   async function copy(p: QueuePost) {
-    const body = withSocialTags(drafts[p.id]?.body ?? p.body);
+    const body = withSocialTags(drafts[p.id]?.body ?? p.body, p.stream);
     try {
       await navigator.clipboard.writeText(body);
       setCopied(p.id);
@@ -306,6 +316,24 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
     finally { setBusy(null); }
   }
 
+  async function createPost() {
+    if (!newPost || busy) return;
+    const at = new Date(newPost.when);
+    if (Number.isNaN(at.getTime())) return setNote("Pick a date and time for the post.");
+    setBusy("new"); setNote(null);
+    try {
+      const response = await fetch("/api/admin/social/posts", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", title: newPost.title, body: newPost.body, scheduledFor: at.toISOString(), requestId: newPost.requestId }) });
+      const result = await response.json().catch(() => ({})) as { post?: { id: string; body: string; editVersion: number; scheduledFor: string }; error?: string };
+      if (!response.ok || !result.post) throw new Error(result.error ?? "Couldn't create the draft.");
+      const created: QueuePost = { ...result.post, stream: "linkedin", kind: "post", status: "draft", cycleLabel: newPost.title.trim(), daysBefore: 0,
+        trackChanges: true, assetUrl: null, organization: null, companyLogoUrl: null, assetSpec: { title: newPost.title.trim() }, overdue: false, stale: false, comments: [] };
+      setPosts(all => all.some(p => p.id === created.id) ? all : [...all, created]);
+      setNewPost(null); setNote("Draft created. Nothing has been published.");
+    } catch (error) { setNote(error instanceof Error ? error.message : "Couldn't create the draft."); }
+    finally { setBusy(null); }
+  }
+
   async function approveSelected() {
     if (seriesBusy || busy || hasUnsavedChanges || !chosen.length) return;
     setSeriesBusy(true);
@@ -334,6 +362,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       ) : (<>
       <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
         {([
+          ["linkedin", "LinkedIn posts"],
           ["symposium_2026", "2026 Symposium & Training Week"],
           ["symposium_sessions", "Networking & discussion"],
           ["symposium_day", "Symposium Day · Oct 29"],
@@ -357,11 +386,23 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
         ))}
       </div>
       <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
-        {group === "symposium_sessions" ? "Networking & discussion" : group === "symposium_day" ? "Symposium Day · October 29" : group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
+        {group === "linkedin" ? "LinkedIn posts" : group === "symposium_sessions" ? "Networking & discussion" : group === "symposium_day" ? "Symposium Day · October 29" : group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
       </h2>
       {group === "symposium_sessions" && <p className="text-sm text-muted">{visible.filter(post => post.status === "published").length} posted · {visible.filter(post => post.status !== "published").length} remaining</p>}
       {group === "symposium_2026" && visible.length > 0 && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review & approve series</Link>}
-      {group !== "symposium_2026" && group !== "symposium_sessions" && group !== "symposium_day" && <p className="text-[14px] text-muted">
+      {group === "linkedin" && <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-[14px] text-muted">Write a post, ask a teammate to review it, approve it, then publish or schedule it to the BioHubNet LinkedIn Page.</p>
+          <button type="button" disabled={!!busy || hasUnsavedChanges || !!newPost} onClick={() => setNewPost({ title: "", body: "", when: "", requestId: crypto.randomUUID() })} className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"><Plus size={16} /> New post</button>
+        </div>
+        {newPost && <form className="max-w-[555px] space-y-2" onSubmit={e => { e.preventDefault(); void createPost(); }}>
+          <label className="block text-sm font-semibold">Title <span className="font-normal text-muted">(for the team, not posted)</span><input required maxLength={200} disabled={!!busy} value={newPost.title} onChange={e => setNewPost({ ...newPost, title: e.target.value })} className="mt-1 w-full rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /></label>
+          <label className="block text-sm font-semibold">Post text<textarea required maxLength={3000} rows={6} disabled={!!busy} value={newPost.body} onChange={e => setNewPost({ ...newPost, body: e.target.value })} className="mt-1 w-full rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /><span className="mt-1 block text-right text-[12px] font-normal text-muted">{newPost.body.length.toLocaleString()} / 3,000</span></label>
+          <label className="block text-sm font-semibold">Planned for<input type="datetime-local" required disabled={!!busy} value={newPost.when} onChange={e => setNewPost({ ...newPost, when: e.target.value })} className="mt-1 block rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /></label>
+          <div className="flex gap-2"><button type="submit" disabled={!!busy} className="rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Save draft</button><button type="button" disabled={!!busy} onClick={() => setNewPost(null)} className="rounded-md px-3 py-2 text-sm text-muted">Cancel</button></div>
+        </form>}
+      </div>}
+      {group !== "linkedin" && group !== "symposium_2026" && group !== "symposium_sessions" && group !== "symposium_day" && <p className="text-[14px] text-muted">
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
@@ -396,7 +437,9 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       {orderUnavailable && (group === "symposium_2026" || group === "symposium_sessions" || seriesReview) && <p role="status" className="text-[13px] text-amber-700">Shared post order is unavailable. Refresh before moving posts.</p>}
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
-          {group === "events"
+          {group === "linkedin"
+            ? "No LinkedIn posts yet. Choose New post to write one."
+            : group === "events"
             ? "No event posts yet."
             : group === "symposium_sessions"
             ? "No networking or discussion posts yet."
@@ -444,6 +487,9 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             {p.status === "approved" && p.approvedAt && (
               <span className="text-[12px] text-muted">Approved{p.approvedByName ? ` by ${p.approvedByName}` : ""} on {new Date(p.approvedAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}</span>
             )}
+            {p.status === "draft" && waitingOn(p.comments ?? [], p.approvedAt) && (
+              <span className="text-[12px] font-semibold text-amber-700">Waiting on {waitingOn(p.comments ?? [], p.approvedAt)}</span>
+            )}
             {p.overdue && p.status === "draft" && (
               <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-amber-700">
                 <Clock size={12} /> overdue
@@ -478,7 +524,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             </div>
 
             <div className="px-4 pb-3 pt-2">
-              <SocialPostEditor post={{ ...p, body: withSocialTags(p.body) }} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
+              <SocialPostEditor post={{ ...p, body: withSocialTags(p.body, p.stream) }} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
             </div>
 
             {p.assetUrl && (
@@ -498,7 +544,12 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             </details>
           )}
 
-          {p.stream === "events" && ["draft", "approved"].includes(p.status) && (
+          {p.status !== "published" && p.status !== "skipped" && (
+            <SocialReviewThread postId={p.id} label={p.cycleLabel} comments={p.comments ?? []} team={team}
+              onAdded={(comment) => setPosts((all) => all.map((item) => item.id === p.id ? { ...item, comments: [...(item.comments ?? []), comment] } : item))} />
+          )}
+
+          {(p.stream === "events" || p.stream === "linkedin") && ["draft", "approved"].includes(p.status) && (
             <div className="flex flex-wrap items-center gap-3 px-1 py-2">
               <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50 focus-within:ring-2 focus-within:ring-brand-500">
                 <ImageIcon size={16} /> {busy === p.id && !seriesBusy ? "Uploading…" : p.assetUrl ? "Replace graphic" : "Upload graphic"}
@@ -572,7 +623,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
             {["draft", "approved"].includes(p.status) && (
-              p.symposiumDay ? <ConfirmPopover message={`Delete ${p.cycleLabel}?`} detail="Removes this draft from the day-of board. It will not be regenerated." confirmLabel="Delete post" onConfirm={() => { void act(p.id, "skip"); }}>
+              p.symposiumDay || p.stream === "linkedin" ? <ConfirmPopover message={`Delete ${p.cycleLabel}?`} detail={p.symposiumDay ? "Removes this draft from the day-of board. It will not be regenerated." : "Removes this draft from the LinkedIn posts list."} confirmLabel="Delete post" onConfirm={() => { void act(p.id, "skip"); }}>
                 {open => <button type="button" onClick={open} disabled={!!busy || drafts[p.id]?.pending} className="mr-auto inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-500/10 disabled:opacity-40"><Trash2 size={14} /> Delete post</button>}
               </ConfirmPopover> :
               <button

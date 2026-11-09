@@ -11,7 +11,9 @@ export const SOCIAL_MENTIONS = [
   "@BioHubNet",
 ] as const;
 
-export function withSocialTags(body: string): string {
+/** Posts the team writes from scratch carry no standing symposium tags. */
+export function withSocialTags(body: string, stream?: string): string {
+  if (stream === "linkedin") return body;
   const footer = SOCIAL_MENTIONS.join(", ");
   return body.trimEnd().endsWith(footer) ? body : `${body.trimEnd()}\n\n${footer}`;
 }

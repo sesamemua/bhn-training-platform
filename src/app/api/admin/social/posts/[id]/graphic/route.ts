@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   const post = await prisma.socialPost.findUnique({ where: { id } });
-  if (!post || post.stream !== "events") return NextResponse.json({ error: "Event post not found." }, { status: 404 });
+  if (!post || !["events", "linkedin"].includes(post.stream)) return NextResponse.json({ error: "Post not found." }, { status: 404 });
   if (["published", "skipped", "publishing", "scheduled"].includes(post.status)) {
     return NextResponse.json({ error: "This post can no longer be edited." }, { status: 409 });
   }
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "That file is not a valid image." }, { status: 400 });
   }
 
-  const key = `social/events/${id}/${randomUUID()}.${TYPES[file.type]}`;
+  const key = `social/${post.stream}/${id}/${randomUUID()}.${TYPES[file.type]}`;
   const url = r2PublicUrl(key);
   try {
     await putR2Object(key, bytes, file.type);

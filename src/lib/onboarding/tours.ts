@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.04b";
+export const TOUR_VERSION = "2026.11.09";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "social.linkedin-posts",
+    title: "LinkedIn posts",
+    body: "Write a post with New post, ask a teammate to review it under Review & comments, then approve and publish it.",
+    path: "/admin/workspace/marketing/social",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.09",
+  },
   {
     id: "equip.deadlines-in-equip-menu",
     title: "Deadlines moved to EQUIP",

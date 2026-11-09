@@ -146,7 +146,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
         }
       },
       findMany: async ({ where }: { where: unknown }) => { lastWhere = where; return [...saved.values()]; },
-    }, bhnEvent: { findUnique: async () => null }, designArtwork: { findMany: async () => [] } } },
+    }, bhnEvent: { findUnique: async () => null }, designArtwork: { findMany: async () => [] }, auditLog: { findMany: async () => [] }, user: { findMany: async () => [] } } },
     "@/components/ui/PageHero": { PageHero: () => null },
     "@/components/workspace/FullWidthWhenCollapsed": { FullWidthWhenCollapsed: () => null },
     "@/components/workspace/SocialQueue": { SocialQueue },
@@ -167,7 +167,7 @@ test("page creates missing drafts once, preserves edits and graphics, and no lon
   await assert.rejects(render, /redirect/);
   assert.equal(creations, 0);
   authorized = true;
-  const html = renderToStaticMarkup(await render());
+  const html = renderToStaticMarkup(await render({ tab: "symposium_2026" }));
   assert.deepEqual(lastWhere, { OR: [
     { status: { in: ["draft", "approved", "scheduled", "publishing", "published"] } },
     { key: { in: SYMPOSIUM_CAMPAIGN_PLAN.map((post) => `events:event:${post.slug}:0`) } },

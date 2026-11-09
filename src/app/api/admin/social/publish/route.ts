@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   if (post.status !== "approved" || !post.approvedAt || !post.approvedById || post.bufferPostId || post.editVersion !== input.data.expectedVersion) {
     return NextResponse.json({ error: "Refresh and approve the latest version before posting." }, { status: 409 });
   }
-  const text = withSocialTags(post.body);
+  const text = withSocialTags(post.body, post.stream);
   if (!text.trim() || text.length > 3000) return NextResponse.json({ error: "LinkedIn allows up to 3,000 characters, including tags. Shorten this post and approve it again." }, { status: 400 });
   const speaker = post.stream === "symposium_2026" && post.kind === "speaker"
     ? await prisma.speaker.findUnique({ where: { id: post.deadlineId }, select: { updatedAt: true } }) : null;

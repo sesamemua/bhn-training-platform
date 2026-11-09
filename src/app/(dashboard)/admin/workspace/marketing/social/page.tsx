@@ -25,6 +25,7 @@ import { loadSymposiumDayOrder } from "@/lib/social/symposium-day-store";
 import { SOCIAL_SOURCE_PREFIX, socialSource } from "@/lib/social/graphic-source";
 import { isApproval, isReviewer, pagesOf, reviewerStates } from "@/lib/design-review/types";
 import type { ArtworkViewData } from "@/components/workspace/DesignArtworkView";
+import { LINKEDIN_STREAM, SocialCommentDetail, type SocialComment } from "@/lib/social/review";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,27 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     pins: a.pins.map((n) => ({ id: n.id, page: n.page, x: n.x, y: n.y, parentId: n.parentId, authorId: n.authorId, authorName: n.authorName, body: n.body, status: n.status, round: n.round, createdAt: n.createdAt.toISOString() })),
     reviewers: reviewerStates(reviewers, a.reviews),
   }]));
+  // Review notes and "please review" requests, oldest first; plus who can be asked.
+  const [commentRows, teamRows] = await Promise.all([
+    prisma.auditLog.findMany({
+      where: { targetType: "socialPost", action: "social.post.comment", targetId: { in: rows.map((r) => r.id) } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, targetId: true, detail: true, createdAt: true, actor: { select: { name: true } } },
+    }),
+    prisma.user.findMany({
+      where: { role: { in: ["admin", "superadmin"] }, NOT: [{ email: { contains: "demo" } }, { email: { endsWith: ".test" } }] },
+      select: { id: true, name: true, email: true }, orderBy: { name: "asc" },
+    }),
+  ]);
+  const commentsOf = new Map<string, SocialComment[]>();
+  for (const c of commentRows) {
+    const detail = SocialCommentDetail.safeParse((() => { try { return JSON.parse(c.detail ?? "null"); } catch { return null; } })());
+    if (!detail.success || !c.targetId) continue;
+    const list = commentsOf.get(c.targetId) ?? [];
+    list.push({ id: c.id, author: c.actor.name ?? "Team member", at: c.createdAt.toISOString(), body: detail.data.body, reviewerName: detail.data.reviewerName ?? null });
+    commentsOf.set(c.targetId, list);
+  }
+  const team = teamRows.map((t) => ({ id: t.id, name: t.name || t.email || "Team member" }));
   const u = session.user as { id?: string; name?: string | null; email?: string | null; role?: string };
   const me = { id: u.id ?? "", name: u.name || u.email || "Team member", admin: u.role === "admin" || u.role === "superadmin" };
 
@@ -122,7 +144,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       approvedAt: r.approvedAt?.toISOString() ?? null,
       approvedByName: r.approvedBy?.name ?? null,
       symposiumDay: r.key.startsWith(SYMPOSIUM_DAY_PREFIX),
-      cycleLabel: r.stream === "events"
+      cycleLabel: r.stream === "events" || r.stream === LINKEDIN_STREAM
         ? campaign?.title ?? (r.assetSpec as { title?: string } | null)?.title ?? "Event"
         : speaker?.fullName ?? cycle?.cycleLabel ?? "Closed cycle",
       daysBefore: r.daysBefore,
@@ -145,6 +167,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         : undefined,
       scheduledFor: r.scheduledFor.toISOString(),
       graphicReview: reviewOf.get(r.id) ?? null,
+      comments: commentsOf.get(r.id) ?? [],
       overdue: r.stream === "venture_connect" && r.scheduledFor.getTime() < now.getTime(),
       /*
        * The one thing the queue knows that the post does not.
@@ -172,11 +195,11 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
       <PageHero
         eyebrow="Workspace · Marketing"
         title={seriesReview ? "Series review" : postId ? "Post review" : "Social"}
-        description={postId || seriesReview ? undefined : "Draft, review and prepare social posts for events, VentureConnect and the 2026 Symposium. Posts stay here until a person approves and shares them."}
+        description={postId || seriesReview ? undefined : "Write, review and approve LinkedIn posts, plus the ones drafted for events, VentureConnect and the 2026 Symposium. Nothing goes out until a person approves and shares it."}
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} initialDayOrder={dayOrder} reviewMode={!!postId} seriesReview={seriesReview} initialGroup={tab === "symposium_sessions" ? "symposium_sessions" : tab === "symposium_day" ? "symposium_day" : tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : "symposium_2026"} me={me} />
+        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} initialDayOrder={dayOrder} reviewMode={!!postId} seriesReview={seriesReview} team={team} initialGroup={tab === "linkedin" ? "linkedin" : tab === "symposium_sessions" ? "symposium_sessions" : tab === "symposium_day" ? "symposium_day" : tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : tab === "symposium_2026" ? "symposium_2026" : "linkedin"} me={me} />
       </div>
     </>
   );
