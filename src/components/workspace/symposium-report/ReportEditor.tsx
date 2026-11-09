@@ -7,7 +7,7 @@ import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { REPORT_API, reportSchema, type Report, type ReportPhoto } from "@/lib/symposium-report/document";
 import { ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
-import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT } from "@/lib/symposium-report/photos";
+import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
 import styles from "./report.module.css";
 import "./report-print.css";
@@ -86,7 +86,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     const existingHeight = entry?.photoHeights[frame.index] ?? 0;
     let height = entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 438;
     if (entry && slot) {
-      height = hasTrainingPhotoGrid(entry.page, frame.index)
+      height = slot.startsWith("workshop-") ? 684 * workshopTileHeight(entry.page, slot.split("-")[1]) / 337 : hasTrainingPhotoGrid(entry.page, frame.index)
         ? TRAINING_TILE_PREVIEW_HEIGHT
         : portraitHeight(stripPhotos(entry.page, frame.index).length);
     }

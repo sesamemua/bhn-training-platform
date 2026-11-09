@@ -73,6 +73,16 @@ export function portraitHeight(count: number) {
   return 684 * 144 * count / (684 - 10 * (count - 1));
 }
 
+export function workshopPhotos(page: ReportPage, row?: string) {
+  return row ? Object.entries(page.photos ?? {}).filter(([key]) => key.startsWith(`workshop-${row}-`)).sort(([a], [b]) => a.localeCompare(b)) : [];
+}
+
+export function workshopTileHeight(page: ReportPage, row?: string) {
+  const count = Object.keys(page.photos ?? {}).filter((key) => key.startsWith("workshop-")).length;
+  if (count <= 4) return 190;
+  return Number(row) <= 3 ? 128 : 150;
+}
+
 export function hasLeadPhoto(page: ReportPage, index: number) {
   return index === 0 && page.image !== "registration" && (page.id === "panels" || Boolean(page.image) || stripPhotos(page, index).length > 0);
 }

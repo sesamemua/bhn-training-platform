@@ -50,6 +50,20 @@ test("editing a continued fragment preserves the rest of the story and its forma
   assert.deepEqual(reportBlocks(updated).map(({ kind }) => kind), ["heading", "paragraph", "note"]);
 });
 
+test("workshop copy and its photo row move together and remain linked after an edit", () => {
+  const source = "A".repeat(68) + "\n\n## Negotiation Navigator\n\nTrainees practised at the board.\n[[photos:2]]";
+  const blocks = reportBlocks(source);
+  const fits = (items: typeof blocks) => items.reduce((size, block) => size + block.text.length + (block.photoRow ? 40 : 0), 0) <= 105;
+  const frames = paginate(blocks, 1, fits);
+  assert.deepEqual(frames.map((frame) => frame.map(({ kind }) => kind)), [["paragraph"], ["heading", "paragraph"]]);
+  const description = frames[1][1];
+  assert.equal(description.photoRow, "2");
+  assert.equal(description.text, "Trainees practised at the board.");
+  const edited = replaceReportBlock(source, description, "Trainees compared their approaches.");
+  assert.equal(reportBlocks(edited).at(-1)?.photoRow, "2");
+  assert(edited.endsWith("Trainees compared their approaches.\n[[photos:2]]"));
+});
+
 test("registration counts and source are part of the editable document", () => {
   const document = {
     cover: { title: "Annual symposium", theme: "Future workforce", date: "October 26–29" },

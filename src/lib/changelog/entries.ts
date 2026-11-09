@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Training Week photos follow each workshop",
+    body: "The Symposium report pairs each workshop description with its photographs. Reviewers can swap and crop each photo in the layout.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Social: write, review and approve LinkedIn posts",
     body: "**Workspace \u2192 Marketing \u2192 Social** now opens on **LinkedIn posts**. Choose **New post** to write one from scratch with a title and planned date, then edit it with tracked changes. Under any post, **Review & comments** lets you leave a note or **ask a teammate to review**; the post shows **Waiting on \u2026** until someone approves it. Approve, add a graphic, then publish or schedule it to the BioHubNet LinkedIn Page as before. These posts don\u2019t get the symposium speaker tags.",
     kind: "feature",

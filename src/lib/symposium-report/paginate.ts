@@ -1,4 +1,4 @@
-export type Block = { kind: "paragraph" | "heading" | "note"; text: string; start: number; continued?: boolean };
+export type Block = { kind: "paragraph" | "heading" | "note"; text: string; start: number; continued?: boolean; photoRow?: string };
 
 const markers = { paragraph: "", heading: "## ", note: "> " };
 
@@ -11,7 +11,8 @@ export function reportBlocks(text: string): Block[] {
     cursor = offset + value.length;
     const kind = value.startsWith(markers.heading) ? "heading" : value.startsWith(markers.note) ? "note" : "paragraph";
     const marker = markers[kind].length;
-    return [{ kind, text: value.slice(marker), start: offset + marker }];
+    const photoAnchor = /(?:^|\r?\n)\[\[photos:([1-6])\]\]$/.exec(value);
+    return [{ kind, text: value.slice(marker, photoAnchor?.index), start: offset + marker, photoRow: photoAnchor?.[1] }];
   });
 }
 
@@ -28,8 +29,11 @@ export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[
   const room = (block: Block) => fits([...current(), block], frames.length - 1);
   for (const [index, original] of blocks.entries()) {
     const next = blocks[index + 1];
-    if (original.kind === "heading" && next && current().length &&
-      !fits([...current(), original, { ...next, text: Array.from(next.text).slice(0, 35).join("") }], frames.length - 1)) {
+    if (current().length && original.kind === "heading" && next) {
+      const keep = next.photoRow && fits([original, next], frames.length)
+        ? next : { ...next, photoRow: undefined, text: Array.from(next.text).slice(0, 35).join("") };
+      if (!fits([...current(), original, keep], frames.length - 1)) frames.push([]);
+    } else if (original.photoRow && current().length && !room(original) && fits([original], frames.length)) {
       frames.push([]);
     }
 
@@ -39,7 +43,7 @@ export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[
       let low = 0, high = letters.length - 1;
       while (low < high) {
         const mid = Math.ceil((low + high) / 2);
-        if (room({ ...block, text: letters.slice(0, mid).join("") })) low = mid;
+        if (room({ ...block, photoRow: undefined, text: letters.slice(0, mid).join("") })) low = mid;
         else high = mid - 1;
       }
       if (low === 0 || (current().length && low < Math.min(50, letters.length))) {
@@ -52,7 +56,7 @@ export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[
         if (/\s/u.test(letters[i])) { cut = i + 1; break; }
       }
       const prefix = letters.slice(0, cut).join("");
-      current().push({ ...block, text: prefix });
+      current().push({ ...block, text: prefix, photoRow: undefined });
       frames.push([]);
       block = { ...block, text: letters.slice(cut).join(""), start: block.start + prefix.length, continued: true };
     }

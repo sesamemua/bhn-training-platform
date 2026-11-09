@@ -1,9 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, replaceReportBlock, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
-import { hasLeadPhoto, hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS, stripPhotos, TRAINING_PHOTO_GRID_SPACE, TRAINING_TILE_PREVIEW_HEIGHT } from "@/lib/symposium-report/photos";
+import { hasLeadPhoto, hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS, stripPhotos, TRAINING_PHOTO_GRID_SPACE, TRAINING_TILE_PREVIEW_HEIGHT, workshopPhotos, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
 
@@ -53,19 +53,25 @@ function RegistrationChart({ chart, showSource, inline, change }: {
   );
 }
 
-function Blocks({ blocks, inline, change }: { blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void }) {
+function Blocks({ page, blocks, inline, change }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void }) {
   return blocks.map((block, index) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : "p";
-    return <Tag className={styles[block.kind]} key={index}
-      {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
-      {block.text}
-    </Tag>;
+    const photos = workshopPhotos(page, block.photoRow);
+    return <Fragment key={index}>
+      {block.text && <Tag className={styles[block.kind]}
+        {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
+        {block.text}
+      </Tag>}
+      {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">
+        {photos.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={684 * workshopTileHeight(page, block.photoRow) / 337} />)}
+      </div>}
+    </Fragment>;
   });
 }
 
 const folioText = (number: number) => String(number).padStart(2, "0");
 
-export type LaidOutReport = { page: ReportPage; columns: 1 | 2; frames: Block[][]; photoHeights: number[] }[];
+export type LaidOutReport = { page: ReportPage; columns: 1 | 2; frames: Block[][]; photoHeights: number[]; hasWorkshops: boolean }[];
 
 export function useReportLayout(report: Report, approved: boolean) {
   const ruler = useRef<HTMLDivElement>(null);
@@ -81,19 +87,28 @@ export function useReportLayout(report: Report, approved: boolean) {
     const continuation = pageNode.querySelector<HTMLElement>("[data-measure-continuation]")!;
     const measure = pageNode.querySelector<HTMLElement>("[data-measure-copy]")!;
     const story = measure.firstElementChild as HTMLElement;
-    const measureText = (blocks: Block[], index: number, hasStrip: boolean) => {
+    const measureText = (page: ReportPage, blocks: Block[], index: number, hasStrip: boolean) => {
       pageNode.dataset.continued = String(index > 0);
       pageNode.dataset.photoStrip = String(hasStrip);
-      story.replaceChildren(...blocks.map((block) => {
+      story.replaceChildren(...blocks.flatMap((block) => {
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : "p");
         node.className = styles[block.kind];
         node.textContent = block.text;
-        return node;
+        const nodes: HTMLElement[] = block.text ? [node] : [];
+        if (workshopPhotos(page, block.photoRow).length) {
+          const space = document.createElement("div");
+          space.style.height = `${workshopTileHeight(page, block.photoRow) + 27 + 13}px`;
+          nodes.push(space);
+        }
+        return nodes;
       }));
       return measure.clientHeight - Math.ceil(story.getBoundingClientRect().height);
     };
     const result = report.pages.map((page, index) => {
-      const columns: 1 | 2 = page.text.length >= 900 ? 2 : 1;
+      const blocks = reportBlocks(page.text);
+      const hasWorkshops = blocks.some((block) => !!block.photoRow);
+      const columns: 1 | 2 = !hasWorkshops && page.text.length >= 900 ? 2 : 1;
+      story.classList.toggle(styles.workshopStory, hasWorkshops);
       pageNode.dataset.columns = String(columns);
       title.textContent = page.title;
       continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
@@ -105,17 +120,18 @@ export function useReportLayout(report: Report, approved: boolean) {
       };
       const hasPortraits = portraitPhotos(page).length > 0;
       pageNode.dataset.portraits = String(hasPortraits);
-      const frames = paginate(reportBlocks(page.text), page.frames, (candidate, index) => {
+      const frames = paginate(blocks, page.frames, (candidate, index) => {
         const reserve = !hasLeadPhoto(page, index) && !hasTrainingPhotoGrid(page, index) && page.photos?.[String(index)]
           ? MIN_FILL_PHOTO + PHOTO_CAPTION_SPACE + PHOTO_GAP : 0;
         const strip = stripSpace(index);
-        return measureText(candidate, index, strip > 0) >= reserve + strip;
+        return measureText(page, candidate, index, strip > 0) >= reserve + strip;
       });
       const photoHeights = frames.map((blocks, index) => {
+        if (hasWorkshops && !page.photos?.[String(index)] && !hasLeadPhoto(page, index)) return 0;
         if (index === 0 && !blocks.length && !page.photos?.["0"] && !hasLeadPhoto(page, 0)) return 0;
         if (hasTrainingPhotoGrid(page, index)) return TRAINING_TILE_PREVIEW_HEIGHT;
         const strip = stripSpace(index);
-        const freeSpace = measureText(blocks, index, strip > 0) - strip;
+        const freeSpace = measureText(page, blocks, index, strip > 0) - strip;
         if (hasLeadPhoto(page, index)) {
           const minimum = strip && !hasPortraits ? 146 : 174;
           return minimum + Math.max(0, freeSpace - 3);
@@ -124,7 +140,7 @@ export function useReportLayout(report: Report, approved: boolean) {
         const space = freeSpace - PHOTO_CAPTION_SPACE - PHOTO_GAP;
         return space >= MIN_FILL_PHOTO ? space : 0;
       });
-      return { page, columns, frames, photoHeights };
+      return { page, columns, frames, photoHeights, hasWorkshops };
     });
     // Pagination uses the browser's actual font and frame measurements.
     setLayout(result);
@@ -202,7 +218,8 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
     const pageNumber = folio++;
     const isActive = active.id === frame.id && active.index === frame.index;
     const portraits = strip[0]?.[0].startsWith("portrait-");
-    const swapLabel = portraits ? "Swap portrait" : "Swap additional photo";
+    const hasWorkshopPhotos = strip.some(([key]) => key.startsWith("workshop-"));
+    const swapLabel = portraits ? "Swap portrait" : hasWorkshopPhotos ? "Swap workshop photo" : "Swap additional photo";
     return (
       <div key={`${frame.id}:${frame.index}`} id={`report-frame-${frame.id}-${frame.index}`}
         className={styles.sheet} style={{ width: 816 * scale }}>
@@ -211,7 +228,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             {folioText(pageNumber)} / {folioText(num)} · {name}
           </button>
           <div>
-            {onPhoto && frame.id !== "back" && <button type="button" onClick={() => onPhoto(frame)}>{portraits ? "Swap wide photo" : hasPhoto ? "Swap photo" : "Add photo"}</button>}
+            {onPhoto && frame.id !== "back" && (hasPhoto || !hasWorkshopPhotos) && <button type="button" onClick={() => onPhoto(frame)}>{portraits ? "Swap wide photo" : hasPhoto ? "Swap photo" : "Add photo"}</button>}
             {onPhoto && strip.length > 0 && (
               <select aria-label={swapLabel} value="" onChange={(event) => onPhoto(frame, event.target.value)}>
                 <option value="" disabled>{swapLabel}…</option>
@@ -246,8 +263,9 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
           <p className={styles.coverDate} {...inline(report.cover.date, "Cover date", (date) => onTextChange?.({ ...report, cover: { ...report.cover, date } }))}>{report.cover.date}</p>
         </div>
       </>, styles.cover, true)}
-      {layout.map(({ page, columns, frames, photoHeights }, section) => frames.map((blocks, index) => {
+      {layout.map(({ page, columns, frames, photoHeights, hasWorkshops }, section) => frames.map((blocks, index) => {
         const strip = stripPhotos(page, index);
+        const choices = [...strip, ...blocks.flatMap((block) => workshopPhotos(page, block.photoRow))];
         const photoGrid = hasTrainingPhotoGrid(page, index);
         const stripHeight = photoGrid ? TRAINING_TILE_PREVIEW_HEIGHT : portraitHeight(strip.length);
         return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
@@ -261,8 +279,8 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             inline={inline} change={(registration) => patchPage(page.id, () => ({ registration }))} />}
           {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} lead />}
           <div className={styles.copy}>
-            <div className={styles.story}>
-              <Blocks blocks={blocks} inline={inline}
+            <div className={`${styles.story}${hasWorkshops ? ` ${styles.workshopStory}` : ""}`}>
+              <Blocks page={page} blocks={blocks} inline={inline}
                 change={(block, text) => patchPage(page.id, (current) => ({ text: replaceReportBlock(current.text, block, text) }))} />
               {onTextChange && index === 0 && !page.text.trim() && photoHeights[index] === 0 &&
                 <p className={`${styles.paragraph} ${styles.emptyStory}`} {...inline("", "Story text", (text) => patchPage(page.id, () => ({ text })), true)} />}
@@ -275,7 +293,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             </div>}
           </div>
           <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
-        </>, styles.chapter, photoHeights[index] > 0, columns, strip);
+        </>, styles.chapter, photoHeights[index] > 0, columns, choices);
       }))}
       {wrap({ id: "back", index: 0 }, "Back cover", <>
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}

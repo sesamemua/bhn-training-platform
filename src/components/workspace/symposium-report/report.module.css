@@ -327,6 +327,16 @@
   flex: none;
   max-inline-size: 600px;
 }
+.workshopStory { max-inline-size: none; }
+.workshopStory .paragraph { font: 15px/1.4 var(--serif); padding-bottom: 8px; }
+.workshopPhotos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-bottom: 13px;
+}
+.workshopPhotos figure { margin: 0; }
+.workshopPhotos figcaption { height: 27px; overflow: hidden; overflow-wrap: anywhere; }
 .chapter[data-columns="2"] .story {
   max-inline-size: none;
   column-count: 2;
