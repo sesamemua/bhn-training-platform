@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Social: drag and drop pictures onto posts",
+    body: "On **LinkedIn posts** and **Events**, drag a picture onto the box under a post (or click it to choose a file) to add or replace its graphic. **New post** takes a picture too, uploaded with the draft. Photos over 3 MB are shrunk in your browser before uploading, so phone pictures go straight in.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Training Week photos follow each workshop",
     body: "The Symposium report pairs each workshop description with its photographs. Reviewers can swap and crop each photo in the layout.",
     kind: "improvement",

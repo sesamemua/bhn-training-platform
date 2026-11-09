@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.09";
+export const TOUR_VERSION = "2026.11.09b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "social.drag-drop-pictures",
+    title: "Drag pictures onto posts",
+    body: "Drop a picture on the box under a LinkedIn or event post to add its graphic. Big phone photos are shrunk to fit.",
+    path: "/admin/workspace/marketing/social",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.09b",
+  },
   {
     id: "social.linkedin-posts",
     title: "LinkedIn posts",

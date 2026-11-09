@@ -10,6 +10,7 @@ import { SocialPostEditor } from "./SocialPostEditor";
 import { SocialGraphicReview } from "./SocialGraphicReview";
 import { SocialPublishControls, type PublishingConnection } from "./SocialPublishControls";
 import { SocialReviewThread } from "./SocialReviewThread";
+import { PictureDrop } from "./PictureDrop";
 import { waitingOn, type SocialComment } from "@/lib/social/review";
 import type { ArtworkViewData } from "./DesignArtworkView";
 import type { SavedSocialText } from "@/lib/social/edit-history";
@@ -122,7 +123,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   const [dayLayout, setDayLayout] = useState(initialDayOrder ?? { order: [], version: null });
   const [dayOrderUnavailable, setDayOrderUnavailable] = useState(initialDayOrder === null);
   const [newDayPost, setNewDayPost] = useState<{ title: string; body: string; requestId: string } | null>(null);
-  const [newPost, setNewPost] = useState<{ title: string; body: string; when: string; requestId: string } | null>(null);
+  const [newPost, setNewPost] = useState<{ title: string; body: string; when: string; requestId: string; picture?: File; preview?: string } | null>(null);
   const [orderUnavailable, setOrderUnavailable] = useState(initialOrder === null);
   const [orderBusy, setOrderBusy] = useState(false);
   const { inputDialog, node: inputNode } = useInputDialog();
@@ -329,7 +330,11 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       const created: QueuePost = { ...result.post, stream: "linkedin", kind: "post", status: "draft", cycleLabel: newPost.title.trim(), daysBefore: 0,
         trackChanges: true, assetUrl: null, organization: null, companyLogoUrl: null, assetSpec: { title: newPost.title.trim() }, overdue: false, stale: false, comments: [] };
       setPosts(all => all.some(p => p.id === created.id) ? all : [...all, created]);
-      setNewPost(null); setNote("Draft created. Nothing has been published.");
+      const picture = newPost.picture;
+      if (newPost.preview) URL.revokeObjectURL(newPost.preview);
+      setNewPost(null);
+      if (picture) await uploadGraphic(created, picture);
+      setNote(picture ? "Draft created with its picture. Nothing has been published." : "Draft created. Nothing has been published.");
     } catch (error) { setNote(error instanceof Error ? error.message : "Couldn't create the draft."); }
     finally { setBusy(null); }
   }
@@ -398,6 +403,15 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
         {newPost && <form className="max-w-[555px] space-y-2" onSubmit={e => { e.preventDefault(); void createPost(); }}>
           <label className="block text-sm font-semibold">Title <span className="font-normal text-muted">(for the team, not posted)</span><input required maxLength={200} disabled={!!busy} value={newPost.title} onChange={e => setNewPost({ ...newPost, title: e.target.value })} className="mt-1 w-full rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /></label>
           <label className="block text-sm font-semibold">Post text<textarea required maxLength={3000} rows={6} disabled={!!busy} value={newPost.body} onChange={e => setNewPost({ ...newPost, body: e.target.value })} className="mt-1 w-full rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /><span className="mt-1 block text-right text-[12px] font-normal text-muted">{newPost.body.length.toLocaleString()} / 3,000</span></label>
+          <div className="text-sm font-semibold">Picture <span className="font-normal text-muted">(optional)</span>
+            <div className="mt-1 space-y-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {newPost.preview && <img src={newPost.preview} alt="Picture for the new post" className="block max-h-56 w-full rounded-[8px] border border-line object-contain" />}
+              <PictureDrop label="Picture for the new post" busy={!!busy} hasPicture={!!newPost.picture} onError={setNote}
+                onFile={(file) => { if (newPost.preview) URL.revokeObjectURL(newPost.preview); setNewPost({ ...newPost, picture: file, preview: URL.createObjectURL(file) }); }} />
+              {newPost.picture && <button type="button" onClick={() => { if (newPost.preview) URL.revokeObjectURL(newPost.preview); setNewPost({ ...newPost, picture: undefined, preview: undefined }); }} className="text-[12px] font-semibold text-rose-700">Remove picture</button>}
+            </div>
+          </div>
           <label className="block text-sm font-semibold">Planned for<input type="datetime-local" required disabled={!!busy} value={newPost.when} onChange={e => setNewPost({ ...newPost, when: e.target.value })} className="mt-1 block rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /></label>
           <div className="flex gap-2"><button type="submit" disabled={!!busy} className="rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Save draft</button><button type="button" disabled={!!busy} onClick={() => setNewPost(null)} className="rounded-md px-3 py-2 text-sm text-muted">Cancel</button></div>
         </form>}
@@ -550,23 +564,9 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
           )}
 
           {(p.stream === "events" || p.stream === "linkedin") && ["draft", "approved"].includes(p.status) && (
-            <div className="flex flex-wrap items-center gap-3 px-1 py-2">
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50 focus-within:ring-2 focus-within:ring-brand-500">
-                <ImageIcon size={16} /> {busy === p.id && !seriesBusy ? "Uploading…" : p.assetUrl ? "Replace graphic" : "Upload graphic"}
-                <input
-                  type="file"
-                  aria-label={`Upload graphic for ${p.cycleLabel}`}
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  className="sr-only"
-                  disabled={busy === p.id}
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0];
-                    if (file) void uploadGraphic(p, file);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-              <span className="text-[12px] text-muted">PNG, JPEG, WebP or GIF · under 3 MB</span>
+            <div className="space-y-2 px-1 py-2">
+              <PictureDrop label={`Upload graphic for ${p.cycleLabel}`} busy={busy === p.id && !seriesBusy} hasPicture={!!p.assetUrl}
+                onFile={(file) => void uploadGraphic(p, file)} onError={setNote} />
               {p.assetUrl && <a href={p.assetUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-brand-700 underline">Open graphic</a>}
             </div>
           )}
