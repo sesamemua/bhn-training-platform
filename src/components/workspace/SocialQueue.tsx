@@ -522,27 +522,11 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
               )}
             </span>
             {!seriesReview && <span className="text-[14px] font-semibold text-fg">{p.cycleLabel}</span>}
-            <span
-              className={cn(
-                "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-inset",
-                STATUS_TONE[p.status] ?? STATUS_TONE.draft,
-              )}
-            >
+            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-inset", STATUS_TONE[p.status] ?? STATUS_TONE.draft)}>
               {p.status}
             </span>
-            {p.status === "scheduled" && p.bufferPostId && (
-              <time dateTime={p.scheduledFor} className="text-[12px] font-semibold text-fg">{new Date(p.scheduledFor).toLocaleString("en-CA", { timeZone: "America/Toronto", dateStyle: "medium", timeStyle: "long" })}</time>
-            )}
-            {p.status === "approved" && p.approvedAt && (
-              <span className="text-[12px] text-muted">Approved{p.approvedByName ? ` by ${p.approvedByName}` : ""} on {new Date(p.approvedAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}</span>
-            )}
-            {p.status === "draft" && waitingOn(p.comments ?? [], p.approvedAt) && (
-              <span className="text-[12px] font-semibold text-amber-700">Waiting on {waitingOn(p.comments ?? [], p.approvedAt)}</span>
-            )}
             {p.overdue && p.status === "draft" && (
-              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-amber-700">
-                <Clock size={12} /> overdue
-              </span>
+              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-amber-700"><Clock size={12} /> overdue</span>
             )}
             {/* The one thing the queue can tell you that the post cannot
                 tell you itself: the cycle moved after somebody approved
@@ -554,156 +538,167 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
                   : "the deadline moved since this was approved"}
               </span>
             )}
-            {["draft", "approved"].includes(p.status) && <div className="ml-auto">
-              <ConfirmPopover message="Mark this post as already posted?" detail="Records a manual post only. Nothing is sent to LinkedIn. Further edits will be locked." confirmLabel="Mark as posted" onConfirm={() => { void act(p.id, "markPublished"); }}>
-                {open => <button type="button" aria-label={`Mark ${p.cycleLabel} as posted`} onClick={open} disabled={!!busy || drafts[p.id]?.pending} className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-fg hover:bg-elevated disabled:opacity-40"><Check size={14} /> Mark as posted</button>}
-              </ConfirmPopover>
-            </div>}
           </div>
 
-          <article className="overflow-hidden rounded-[8px] border border-line-strong bg-card-solid text-fg shadow-sm">
-            <div className="flex items-center gap-2.5 px-4 pb-1 pt-3">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-full border border-line bg-card-solid">
-                <LogoMark size={34} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[14px] font-semibold leading-tight">BioHubNet</p>
-                <p className="text-[12px] text-muted">LinkedIn post preview</p>
-              </div>
-            </div>
+          {(() => {
+            // One column, top to bottom, every main button on the same left edge:
+            // write → picture → review → approve → publish.
+            const waiting = p.status === "draft" ? waitingOn(p.comments ?? [], p.approvedAt) : null;
+            const approvedLike = ["approved", "publishing", "scheduled", "published"].includes(p.status);
+            const done = [
+              !!(drafts[p.id]?.body ?? p.body).trim(),
+              !!p.assetUrl,
+              approvedLike || ((p.comments ?? []).some((c) => c.reviewerName) && !waiting),
+              approvedLike,
+              p.status === "published" || (p.status === "scheduled" && !!p.bufferPostId),
+            ];
+            const current = done.findIndex((d) => !d);
+            const state = (i: number): StepState => done[i] ? "done" : i === current ? "current" : "todo";
+            const editable = ["draft", "approved"].includes(p.status);
+            return (
+              <ol className="px-1 pt-1">
+                <Step n={1} title="Write" state={state(0)}>
+                  <article className="overflow-hidden rounded-[8px] border border-line-strong bg-card-solid text-fg shadow-sm">
+                    <div className="flex items-center gap-2.5 px-4 pb-1 pt-3">
+                      <span className="flex size-12 shrink-0 items-center justify-center rounded-full border border-line bg-card-solid">
+                        <LogoMark size={34} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold leading-tight">BioHubNet</p>
+                        <p className="text-[12px] text-muted">LinkedIn post preview</p>
+                      </div>
+                    </div>
+                    <div className="px-4 pb-3 pt-2">
+                      <SocialPostEditor post={{ ...p, body: withSocialTags(p.body, p.stream) }} taggable={p.stream === "linkedin"} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
+                    </div>
+                    {p.assetUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-t border-line object-contain" />
+                    )}
+                  </article>
+                </Step>
 
-            <div className="px-4 pb-3 pt-2">
-              <SocialPostEditor post={{ ...p, body: withSocialTags(p.body, p.stream) }} taggable={p.stream === "linkedin"} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
-            </div>
+                <Step n={2} title="Picture" state={state(1)} hint={p.assetUrl ? "Shown in the preview above" : p.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}>
+                  {(p.stream === "events" || p.stream === "linkedin") && editable && (<>
+                    <PictureDrop label={`Upload graphic for ${p.cycleLabel}`} busy={busy === p.id && !seriesBusy} hasPicture={!!p.assetUrl}
+                      onFile={(file) => void uploadGraphic(p, file)} onError={setNote} />
+                    <AssetPicker label={p.cycleLabel} onPick={(a) => void pickLibraryAsset(p, a.id)} />
+                  </>)}
+                  {p.stream === "symposium_2026" && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {p.companyLogoUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={p.companyLogoUrl} alt={`${p.organization ?? "Organization"} logo`} className="h-16 w-40 object-contain" />
+                      ) : <span className="text-[13px] text-muted">No organization logo selected</span>}
+                      {editable && (
+                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50">
+                          <ImageIcon size={16} /> {p.companyLogoUrl ? "Replace organization logo" : "Upload organization logo"}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={busy === p.id}
+                            onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void uploadLogo(p, file); event.currentTarget.value = ""; }} />
+                        </label>
+                      )}
+                    </div>
+                  )}
+                  {p.assetUrl && <SocialGraphicReview postId={p.id} assetUrl={p.assetUrl} label={p.cycleLabel} artwork={graphicReviewOf.get(p.id) ?? null} me={me} />}
+                  {(p.campaign || p.symposiumDay) && (
+                    <details className="text-[13px] text-muted">
+                      <summary className="cursor-pointer font-semibold text-fg">Image & publication brief</summary>
+                      <p className="mt-2 leading-relaxed">{p.visualBrief}</p>
+                      <p className="mt-2 leading-relaxed">{p.publicationNote}</p>
+                    </details>
+                  )}
+                </Step>
 
+                <Step n={3} title="Review" state={state(2)} hint={waiting ? <span className="font-semibold text-amber-700">Waiting on {waiting}</span> : undefined}>
+                  {p.status !== "published" && p.status !== "skipped" ? (
+                    <SocialReviewThread postId={p.id} label={p.cycleLabel} comments={p.comments ?? []} team={team} showLink={!seriesReview}
+                      onAdded={(comment) => setPosts((all) => all.map((item) => item.id === p.id ? { ...item, comments: [...(item.comments ?? []), comment] } : item))} />
+                  ) : <p className="text-[12px] text-muted">Closed once the post went out.</p>}
+                </Step>
+
+                <Step n={4} title="Approve" state={state(3)}>
+                  {p.status === "draft" && (
+                    <button type="button" disabled={busy === p.id || drafts[p.id]?.pending || (seriesReview && !canApproveInSeries(p))} onClick={() => void act(p.id, "approve")}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] bg-emerald-700 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-40">
+                      <Check size={14} /> Approve
+                    </button>
+                  )}
+                  {approvedLike && p.approvedAt && (
+                    <p className="text-[12px] text-muted">Approved{p.approvedByName ? ` by ${p.approvedByName}` : ""} on {new Date(p.approvedAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}</p>
+                  )}
+                  {p.status === "approved" && (
+                    <button type="button" disabled={busy === p.id || drafts[p.id]?.pending} onClick={() => void act(p.id, "unapprove")}
+                      className="rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:bg-elevated">
+                      Back to draft
+                    </button>
+                  )}
+                </Step>
+
+                <Step n={5} title="Publish" state={state(4)} last>
+                  <SocialPublishControls post={p} connection={connection} pending={!!busy || hasUnsavedChanges || seriesBusy} onResult={(saved, message) => {
+                    setPosts(all => all.map(item => item.id === saved.id ? { ...item, ...saved } : item));
+                    setNote(message);
+                  }} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => void copy(p)} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-1.5 text-[13px] font-semibold text-fg transition-colors hover:bg-brand-50">
+                      <Copy size={14} /> {copied === p.id ? "Copied" : "Copy post"}
+                    </button>
+                    {editable && (
+                      <ConfirmPopover align="start" message="Mark this post as already posted?" detail="Records a manual post only. Nothing is sent to LinkedIn. Further edits will be locked." confirmLabel="Mark as posted" onConfirm={() => { void act(p.id, "markPublished"); }}>
+                        {open => <button type="button" aria-label={`Mark ${p.cycleLabel} as posted`} onClick={open} disabled={!!busy || drafts[p.id]?.pending} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-1.5 text-[13px] font-semibold text-fg hover:bg-elevated disabled:opacity-40"><Check size={14} /> Mark as posted</button>}
+                      </ConfirmPopover>
+                    )}
+                  </div>
+                </Step>
+              </ol>
+            );
+          })()}
+
+          <footer className="flex flex-wrap items-center gap-2 border-t border-line px-1 pb-6 pt-3 text-[13px]">
+            {!reviewMode && !seriesReview && <Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(p.id)}${group === "symposium_sessions" ? "&tab=symposium_sessions" : ""}`} className="inline-flex items-center gap-1.5 font-semibold text-brand-700"><LinkIcon size={14} /> Review page</Link>}
+            <button type="button" onClick={() => void copyReviewLink(p.id)} title="Copy review link" aria-label={`Copy review link for ${p.cycleLabel}`} className="inline-flex size-8 items-center justify-center rounded-[6px] text-brand-700 hover:bg-brand-50"><LinkIcon size={14} /></button>
             {p.assetUrl && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-t border-line object-contain" />
-            )}
-          </article>
-
-          {!p.assetUrl && <p className="px-1 text-[12px] text-muted">{p.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}</p>}
-          {p.assetUrl && <SocialGraphicReview postId={p.id} assetUrl={p.assetUrl} label={p.cycleLabel} artwork={graphicReviewOf.get(p.id) ?? null} me={me} />}
-
-          {(p.campaign || p.symposiumDay) && (
-            <details className="border-b border-line px-1 py-2 text-[13px] text-muted">
-              <summary className="cursor-pointer font-semibold text-fg">Image & publication brief</summary>
-              <p className="mt-2 leading-relaxed">{p.visualBrief}</p>
-              <p className="mt-2 leading-relaxed">{p.publicationNote}</p>
-            </details>
-          )}
-
-          {p.status !== "published" && p.status !== "skipped" && (
-            <SocialReviewThread postId={p.id} label={p.cycleLabel} comments={p.comments ?? []} team={team} showLink={!seriesReview}
-              onAdded={(comment) => setPosts((all) => all.map((item) => item.id === p.id ? { ...item, comments: [...(item.comments ?? []), comment] } : item))} />
-          )}
-
-          {(p.stream === "events" || p.stream === "linkedin") && ["draft", "approved"].includes(p.status) && (
-            <div className="space-y-2 px-1 py-2">
-              <PictureDrop label={`Upload graphic for ${p.cycleLabel}`} busy={busy === p.id && !seriesBusy} hasPicture={!!p.assetUrl}
-                onFile={(file) => void uploadGraphic(p, file)} onError={setNote} />
-              <AssetPicker label={p.cycleLabel} onPick={(a) => void pickLibraryAsset(p, a.id)} />
-              {p.assetUrl && <a href={p.assetUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-brand-700 underline">Open graphic</a>}
-            </div>
-          )}
-
-          {p.stream === "symposium_2026" && (
-            <div className="flex flex-wrap items-center gap-3 px-1 py-2">
-              {p.companyLogoUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={p.companyLogoUrl} alt={`${p.organization ?? "Organization"} logo`} className="h-16 w-40 object-contain" />
-              ) : <span className="text-[13px] text-muted">No organization logo selected</span>}
-              {["draft", "approved"].includes(p.status) && (
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[13px] font-semibold text-brand-700 hover:bg-brand-50">
-                  <ImageIcon size={16} /> {p.companyLogoUrl ? "Replace organization logo" : "Upload organization logo"}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="sr-only"
-                    disabled={busy === p.id}
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      if (file) void uploadLogo(p, file);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
-              )}
-            </div>
-          )}
-
-          <footer className="flex flex-col gap-2 px-1 pb-6 pt-1">
-            <div className="flex flex-wrap items-center gap-2">
-            {!reviewMode && !seriesReview && <Link href={`/admin/workspace/marketing/social?post=${encodeURIComponent(p.id)}${group === "symposium_sessions" ? "&tab=symposium_sessions" : ""}`} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-brand-700"><LinkIcon size={16} /> Review</Link>}
-            <button type="button" onClick={() => void copyReviewLink(p.id)} title="Copy review link" aria-label={`Copy review link for ${p.cycleLabel}`} className="inline-flex size-10 items-center justify-center rounded-[6px] border border-line text-brand-700 hover:bg-brand-50"><LinkIcon size={16} /></button>
-            <button
-              type="button"
-              onClick={() => void copy(p)}
-              className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
-            >
-              <Copy size={16} /> {copied === p.id ? "Copied" : "Copy post"}
-            </button>
-
-            {p.assetUrl && (
-              <button
-                type="button"
-                aria-label={`Download graphic for ${p.cycleLabel}`}
-                disabled={!!downloadBusy}
-                onClick={() => void downloadGraphics([p])}
-                className="inline-flex items-center gap-1.5 rounded-[6px] border border-line px-3 py-2 text-[14px] font-semibold text-fg transition-colors hover:bg-brand-50"
-              >
-                <Download size={16} /> {downloadBusy === p.id ? "Downloading..." : "Download graphic"}
+              <button type="button" aria-label={`Download graphic for ${p.cycleLabel}`} disabled={!!downloadBusy} onClick={() => void downloadGraphics([p])}
+                className="inline-flex items-center gap-1.5 font-semibold text-fg hover:text-brand-700">
+                <Download size={14} /> {downloadBusy === p.id ? "Downloading..." : "Download graphic"}
               </button>
             )}
-
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
             {["draft", "approved"].includes(p.status) && (
               p.symposiumDay || p.stream === "linkedin" ? <ConfirmPopover message={`Delete ${p.cycleLabel}?`} detail={p.symposiumDay ? "Removes this draft from the day-of board. It will not be regenerated." : "Removes this draft from the LinkedIn posts list."} confirmLabel="Delete post" onConfirm={() => { void act(p.id, "skip"); }}>
-                {open => <button type="button" onClick={open} disabled={!!busy || drafts[p.id]?.pending} className="mr-auto inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-500/10 disabled:opacity-40"><Trash2 size={14} /> Delete post</button>}
+                {open => <button type="button" onClick={open} disabled={!!busy || drafts[p.id]?.pending} className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-500/10 disabled:opacity-40"><Trash2 size={14} /> Delete post</button>}
               </ConfirmPopover> :
-              <button
-                type="button"
-                disabled={busy === p.id || drafts[p.id]?.pending}
-                onClick={() => void act(p.id, "skip")}
-                className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:bg-elevated disabled:opacity-40"
-                title="Decline this post"
-              >
+              <button type="button" disabled={busy === p.id || drafts[p.id]?.pending} onClick={() => void act(p.id, "skip")} title="Decline this post"
+                className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-semibold text-muted transition-colors hover:bg-elevated disabled:opacity-40">
                 <X size={12} /> Not this one
               </button>
             )}
-            {p.status === "draft" && (
-              <button
-                type="button"
-                disabled={busy === p.id || drafts[p.id]?.pending || (seriesReview && !canApproveInSeries(p))}
-                onClick={() => void act(p.id, "approve")}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-[6px] bg-emerald-700 px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-40"
-              >
-                <Check size={12} /> Approve
-              </button>
-            )}
-            {p.status === "approved" && (
-              <>
-                <button
-                  type="button"
-                  disabled={busy === p.id || drafts[p.id]?.pending}
-                  onClick={() => void act(p.id, "unapprove")}
-                  className="rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:bg-elevated"
-                >
-                  Back to draft
-                </button>
-              </>
-            )}
-            </div>
-            <SocialPublishControls post={p} connection={connection} pending={!!busy || hasUnsavedChanges || seriesBusy} onResult={(saved, message) => {
-              setPosts(all => all.map(item => item.id === saved.id ? { ...item, ...saved } : item));
-              setNote(message);
-            }} />
           </footer>
         </section>
       ))}
       </div>
       </fieldset>
     </div>
+  );
+}
+
+type StepState = "done" | "current" | "todo";
+
+/** One step of a post's path. The rail and numbers sit in one column so the eye and mouse move straight down. */
+function Step({ n, title, state, hint, last = false, children }: { n: number; title: string; state: StepState; hint?: React.ReactNode; last?: boolean; children: React.ReactNode }) {
+  return (
+    <li className="relative grid grid-cols-[26px_minmax(0,1fr)] gap-x-3" aria-current={state === "current" ? "step" : undefined}>
+      <span aria-hidden className={cn("relative z-10 flex size-[26px] items-center justify-center rounded-full text-[12px] font-bold",
+        state === "done" ? "bg-emerald-600 text-white" : state === "current" ? "bg-brand-600 text-white ring-4 ring-brand-100" : "border border-line bg-card-solid text-muted")}>
+        {state === "done" ? <Check size={14} /> : n}
+      </span>
+      {!last && <span aria-hidden className={cn("absolute left-[12.5px] top-[26px] bottom-0 w-px", state === "done" ? "bg-emerald-300" : "bg-line")} />}
+      <div className={cn("min-w-0 space-y-2", !last && "pb-5")}>
+        <p className="flex min-h-[26px] flex-wrap items-center gap-x-2 text-[13px] font-bold text-fg">
+          {title}<span className="sr-only"> ({state === "done" ? "done" : state === "current" ? "next" : "to do"})</span>
+          {hint && <span className="text-[12px] font-normal text-muted">{hint}</span>}
+        </p>
+        {children}
+      </div>
+    </li>
   );
 }

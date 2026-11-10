@@ -58,9 +58,9 @@ export function SocialPublishControls({ post, connection, pending, onResult }: {
     catch (failure) { timeError = (failure as Error).message; }
   }
   const past = !!selected && selected.getTime() < clock + 60_000;
-  return <div className="space-y-2 border-t border-line pt-3">
+  return <div className="space-y-2">
     {node}
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-start gap-2">
       {post.status === "approved" && <button type="button" disabled={disabled}
         onClick={() => void act("publish")} aria-label={`Post ${post.cycleLabel} to LinkedIn`}
         className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40">

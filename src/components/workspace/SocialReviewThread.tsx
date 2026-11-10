@@ -99,7 +99,7 @@ export function SocialReviewThread({ postId, label, comments, team, onAdded, sho
             </label>
           )}
           <button type="submit" disabled={busy}
-            className="ml-auto rounded-md bg-brand px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40">
+            className="rounded-md bg-brand px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40">
             {busy ? (reviewerId && email ? "Sending…" : "Saving…") : reviewerId ? (email ? "Ask & email" : "Ask for review") : "Comment"}
           </button>
         </div>

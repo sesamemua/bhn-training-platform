@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Social: each post is now five steps, top to bottom",
+    body: "Every Social post card reads straight down as **1 Write \u2192 2 Picture \u2192 3 Review \u2192 4 Approve \u2192 5 Publish**, with a numbered rail that ticks off finished steps and highlights the next one. Every main button now sits on the same left edge, so your mouse moves in a straight line: the picture upload comes right after the text, **Approve** sits under the review thread, and **Mark as posted** lives with **Copy post** in the Publish step. The odds and ends (review page, copy link, download graphic, delete) sit in one quiet row at the bottom.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Social: tag people on LinkedIn posts",
     body: "LinkedIn posts (and **New post**) now have a **Tag** row: Molly Shoichet, Gilbert Walker, Darius Rackus, Yoo Jin Park, Akshita Vincent, Epshita Islam, Yeseul, Roshni and HI\u00b3. Click a name to add its @mention to the post's closing line, click again to take it out, or use **Tag all**. Changes save and are tracked like any other edit.",
     kind: "improvement",
