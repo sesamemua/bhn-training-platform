@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import ts from "typescript";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { NewsletterPageReview } from "../../src/components/workspace/NewsletterPageReview";
 import { WorkshopIcon } from "../../src/components/training-week/WorkshopIcon";
+import { REPORT_ID, REPORT_REVIEW_PATH } from "../../src/lib/symposium-report/document";
 
 function loadModule(path: string, mocks: Record<string, unknown>) {
   const require = createRequire(import.meta.url);
@@ -14,7 +16,9 @@ function loadModule(path: string, mocks: Record<string, unknown>) {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX,
   } }).outputText;
   const exports: Record<string, any> = {};
-  new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), exports);
+  new Function("require", "exports", compiled)((id: string) => mocks[id] ?? (id === "@/lib/workspace-review-invites"
+    ? loadModule("src/lib/workspace-review-invites.ts", mocks)
+    : require(id)), exports);
   return exports;
 }
 
@@ -68,6 +72,57 @@ test("review invitations are authenticated, staff-only, deduplicated and report 
   const partial = await api.sendNewsletterReviewInvites({ issueId: "october", userIds: ["one", "two"] });
   assert.deepEqual(partial.sent, ["one"]);
   assert.match(partial.error, /unsent recipients/);
+});
+
+test("report invitations email the private review link only for the current saved round and active staff", async () => {
+  const reportRevision = (text: string) => createHash("sha256").update(text).digest("hex");
+  const report = { round: 2, status: "open", title: "Symposium report", pastedHtml: "Private report copy" };
+  const actor = { id: "editor", name: "Editor", email: "editor@example.com" };
+  const reviewer = { id: "reviewer", name: "Reviewer", email: "reviewer@example.com" };
+  const mail: { to: string; text: string }[] = [];
+  const audits: { action: string; detail: string }[] = [];
+  let signedIn = false, active = true;
+  const api = loadModule("src/lib/symposium-report/review-invites.ts", {
+    "./document": { REPORT_ID, REPORT_REVIEW_PATH },
+    "./store": { reportRevision },
+    "@/lib/auth": { requireRole: async (role: string) => { assert.equal(role, "instructor"); return signedIn ? { user: actor } : null; } },
+    "@/lib/mail": { mailConfigured: () => true, sendMail: async (item: typeof mail[number]) => { mail.push(item); } },
+    "@/lib/prisma": { prisma: {
+      pageReview: { findUnique: async ({ where }: { where: object }) => { assert.deepEqual(where, { id: REPORT_ID, kind: "report" }); return report; } },
+      user: {
+        findFirst: async () => active ? actor : null,
+        findMany: async ({ where }: { where: { id?: { in: string[] }; isActive: boolean; accountKind: string; role: { in: string[] } } }) => {
+          assert.equal(where.isActive, true);
+          assert.equal(where.accountKind, "real");
+          assert.deepEqual(where.role.in, ["instructor", "admin", "superadmin"]);
+          return !where.id || where.id.in.includes(reviewer.id) ? [reviewer] : [];
+        },
+      },
+      auditLog: { create: async ({ data }: { data: typeof audits[number] }) => { audits.push(data); } },
+    } },
+  });
+  const request = { userIds: ["reviewer", "reviewer"], round: 2, revision: reportRevision(report.pastedHtml) };
+  assert.equal((await api.reportReviewRecipients()).error, "Forbidden.");
+  assert.equal((await api.sendReportReviewInvites(request)).error, "Forbidden.");
+  signedIn = true; active = false;
+  assert.equal((await api.sendReportReviewInvites(request)).error, "Forbidden.");
+  active = true;
+  assert.deepEqual((await api.reportReviewRecipients()).recipients, [{ id: "reviewer", label: "Reviewer" }]);
+  assert.match((await api.sendReportReviewInvites({ ...request, round: 1 })).error, /changed/);
+  assert.match((await api.sendReportReviewInvites({ ...request, revision: "0".repeat(64) })).error, /changed/);
+  assert.match((await api.sendReportReviewInvites({ ...request, userIds: ["reviewer", "outside-account"] })).error, /active colleagues/);
+  report.status = "closed";
+  assert.match((await api.sendReportReviewInvites(request)).error, /Open a review round/);
+  assert.equal(mail.length, 0);
+  report.status = "open";
+  assert.deepEqual((await api.sendReportReviewInvites(request)).sent, ["reviewer"]);
+  assert.equal(mail.length, 1);
+  assert.equal(mail[0].to, reviewer.email);
+  assert.ok(mail[0].text.includes(REPORT_REVIEW_PATH));
+  assert.match(mail[0].text, /Round 2/);
+  assert.doesNotMatch(mail[0].text, /Private report copy|bhn-reviewer|shareToken/);
+  assert.equal(audits[0].action, "symposium.report.review.invite");
+  assert.equal(JSON.parse(audits[0].detail).round, 2);
 });
 
 test("past issues exclude current and future drafts but keep sent issues, without creating data", async () => {

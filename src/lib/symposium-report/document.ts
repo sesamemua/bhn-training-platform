@@ -4,6 +4,7 @@ import { isGalleryPhoto } from "./gallery";
 
 export const REPORT_ID = "symposium-2026-event-report";
 export const REPORT_PATH = "/admin/workspace/symposium-2026/report";
+export const REPORT_REVIEW_PATH = "/review/symposium-2026/report";
 export const REPORT_API = "/api/workspace/symposium-2026/report";
 export const REPORT_TITLE = "2026 Symposium & Training Week Report";
 

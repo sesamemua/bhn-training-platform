@@ -9,6 +9,7 @@ import { REPORT_API, reportSchema, type Report, type ReportPhoto } from "@/lib/s
 import { ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
 import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
+import { ReportReviewShare } from "./ReportReviewShare";
 import styles from "./report.module.css";
 import "./report-print.css";
 
@@ -228,6 +229,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
           {isAdmin && editable && <button type="button" disabled={controlsDisabled || dirty} onClick={() => write("approve")}>Approve report</button>}
           {approved && layout && <button type="button" className={styles.primary} onClick={() => window.print()}><Printer size={15} /> Print / Save PDF</button>}
         </div>
+        <ReportReviewShare round={review.round} revision={token} canInvite={!controlsDisabled && !dirty} />
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
