@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { deleteR2ObjectByUrl, putR2Object, r2PublicUrl, R2_PUBLIC_URL } from "@/lib/r2";
+import { R2_PUBLIC_URL } from "@/lib/r2";
+import { assetUrl, ingestAsset, setUsage } from "@/lib/assets/store";
 
 export const runtime = "nodejs";
 
@@ -33,21 +33,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "That file is not a valid image." }, { status: 400 });
   }
 
-  const key = `social/${post.stream}/${id}/${randomUUID()}.${TYPES[file.type]}`;
-  const url = r2PublicUrl(key);
+  // Every uploaded graphic lands in the asset library; the post points at the library's copy.
+  const user = session.user as { id?: string; name?: string | null; email?: string | null };
+  let url: string;
+  let assetId: string;
   try {
-    await putR2Object(key, bytes, file.type);
+    const { asset } = await ingestAsset({ bytes, fileName: file.name || `graphic.${TYPES[file.type]}`, mimeType: file.type, folder: "Social",
+      tags: [post.stream], actor: { id: user.id ?? null, name: user.name || user.email || null } });
+    url = assetUrl(asset.key)!;
+    assetId = asset.id;
     const saved = await prisma.socialPost.updateMany({
       where: { id, status: post.status, assetUrl: post.assetUrl, editVersion: post.editVersion },
       data: { assetUrl: url, editVersion: { increment: 1 }, status: "draft", approvedAt: null, approvedById: null },
     });
-    if (!saved.count) {
-      await deleteR2ObjectByUrl(url);
-      return NextResponse.json({ error: "The post changed during upload. Refresh and try again." }, { status: 409 });
-    }
+    if (!saved.count) return NextResponse.json({ error: "The post changed during upload. Refresh and try again." }, { status: 409 });
   } catch (error) {
     console.error("Social graphic upload failed", error);
     return NextResponse.json({ error: "Couldn't save the graphic. Please try again." }, { status: 500 });
   }
+  await setUsage(assetId, { targetType: "socialPost", targetId: id, label: `Social post · ${(post.assetSpec as { title?: string } | null)?.title ?? post.stream}`, href: `/admin/workspace/marketing/social?post=${id}` }).catch(() => {});
   return NextResponse.json({ url, editVersion: post.editVersion + 1 });
 }

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Assets: the team's picture library",
+    body: "New **Workspace \u2192 Marketing \u2192 Assets**. Drop or paste pictures anywhere on the page (big phone photos are shrunk to fit) and each one is turned upright, stripped of GPS and camera data, and **captioned and tagged by AI**, so you can search by what's in a picture (\u201cpanel speakers on stage\u201d). Filter by folder, tag, colour or consent; Shift- or \u2318-click to select many and tag, move, set consent, add to a collection or trash them at once. Each picture's panel holds its **rights** (who's pictured, consent, credit, licence, expiry), **ready-made LinkedIn, square, portrait, story and banner sizes** cropped around the subject, **where it's used**, and **versions** when you replace it. Lock brand files as a **brand kit**, share a **collection** by a view-only link that expires, and keep deleted pictures in **Trash** for 30 days. Social posts can **choose from the library**, every Social upload lands there automatically, and a post won't publish a picture of people without recorded consent. **Import existing pictures** brings in the current social graphics, speaker photos and event covers.",
+    kind: "feature",
+    visibleTo: ["superadmin"],
+    daysAgo: 0,
+  },
+  {
     title: "Social: drag and drop pictures onto posts",
     body: "On **LinkedIn posts** and **Events**, drag a picture onto the box under a post (or click it to choose a file) to add or replace its graphic. **New post** takes a picture too, uploaded with the draft. Photos over 3 MB are shrunk in your browser before uploading, so phone pictures go straight in.",
     kind: "improvement",

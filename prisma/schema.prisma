@@ -4281,16 +4281,16 @@ model SocialPost {
 
   /// The generated copy, as edited. Regenerating overwrites this ONLY
   /// while the post is still a draft.
-  body      String
+  body         String
   trackChanges Boolean @default(true)
-  editVersion Int @default(0)
+  editVersion  Int     @default(0)
   /// The contract with the image renderer, which a separate agent
   /// builds. Shape in lib/social/types.ts — deliberately free of
   /// database ids and of anything the body does not also say.
-  assetSpec Json
+  assetSpec    Json
   /// Written back by that renderer. Null until an image exists; a post
   /// is publishable without one.
-  assetUrl  String?
+  assetUrl     String?
 
   /// When it should go out. 9am Toronto on its day.
   scheduledFor DateTime
@@ -4298,7 +4298,7 @@ model SocialPost {
   approvedAt   DateTime?
   approvedById String?
   publishedAt  DateTime?
-  bufferPostId String? @unique
+  bufferPostId String?   @unique
   publishError String?
 
   createdAt DateTime @default(now())
@@ -5405,34 +5405,34 @@ model ShowcaseSubmission {
 /// ShowcaseSubmission.programSlug == ShowcaseGroup.slug (matches the
 /// existing slug-keyed design; no FK so legacy rows are unaffected).
 model ShowcaseGroup {
-  id          String   @id @default(cuid())
+  id             String   @id @default(cuid())
   /// URL slug — the public link is /showcase/<slug>. Unique.
-  slug        String   @unique
+  slug           String   @unique
   /// Showcase title shown on the public page (e.g. "Graduate Showcase").
-  name        String
+  name           String
   /// Small category/eyebrow above the title (e.g. "Learning Pathway · Regulatory Affairs").
-  eyebrow     String?
+  eyebrow        String?
   /// Intro blurb under the title on the public submission page.
-  intro       String?
+  intro          String?
   /// false = the public page hides the form and shows "submissions closed",
   /// and the submit API rejects new entries for this slug.
-  active      Boolean  @default(true)
+  active         Boolean  @default(true)
   /// When set, the form also asks this one written question (its answer is
   /// stored as the submission's `quote`), up to `quoteMaxWords` words.
-  quotePrompt   String?
-  quoteMaxWords Int      @default(250)
+  quotePrompt    String?
+  quoteMaxWords  Int      @default(250)
   /// What the photo question is called — "Headshot" when null.
-  photoLabel    String?
+  photoLabel     String?
   /// When set, the form ends with a required checkbox saying this; submissions record when it was ticked.
-  consentText   String?
+  consentText    String?
   /// Testimonial links: the guide questions (a JSON list of strings). People pick
   /// any of them and answer each by typing or with a short recording.
-  questions     Json?
+  questions      Json?
   /// "Which programme are you part of?" — the choices, when the link asks it.
   programChoices String[] @default([])
-  createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   /// When set, this group is a COHORT of a pathway: its public branding
   /// comes from the pathway, and `name` holds the cohort label (e.g.
@@ -5671,18 +5671,18 @@ model SharedFile {
 /// sheets). Title and date are columns for sorting; location, logistics,
 /// people and schedule live in `data`, validated by CallSheetDataSchema.
 model CallSheet {
-  id          String    @id @default(cuid())
+  id          String        @id @default(cuid())
   /// The video project this shoot day belongs to (its Call sheets tab).
   projectId   String?
   project     VideoProject? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title       String
   /// The shoot day. NULL until someone sets it.
-  shootDate   DateTime? @db.Date
-  data        Json      @default("{}")
+  shootDate   DateTime?     @db.Date
+  data        Json          @default("{}")
   /// User.id of whoever created it (plain id, like VideoProject).
   createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([shootDate])
   @@index([projectId, shootDate])
@@ -6463,7 +6463,7 @@ model PageReviewVersion {
   reviewId  String
   round     Int
   html      String
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
   review    PageReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   @@id([reviewId, round])
@@ -6838,28 +6838,28 @@ model FilmingPerson {
 /// A bar on the timeline: a task, an interview, a lab session. For an
 /// interview, the first prepMinutes are preparation, the rest filming.
 model FilmingBlock {
-  id          String          @id @default(cuid())
-  scheduleId  String
-  schedule    FilmingSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  id           String          @id @default(cuid())
+  scheduleId   String
+  schedule     FilmingSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   /// "setup" | "logistics" | "meal" | "interview" | "lab"
-  kind        String          @default("logistics")
-  title       String
-  notes       String          @default("")
-  start       DateTime
-  end         DateTime
-  prepMinutes Int             @default(0)
+  kind         String          @default("logistics")
+  title        String
+  notes        String          @default("")
+  start        DateTime
+  end          DateTime
+  prepMinutes  Int             @default(0)
   /// Pinned: the timeline will not drag it.
-  locked      Boolean         @default(false)
+  locked       Boolean         @default(false)
   /// Time not certain: others' filming may overlap it, and nobody on it counts as double-booked.
-  flexible    Boolean         @default(false)
+  flexible     Boolean         @default(false)
   /// Ticked off on the day: shown greyed and struck through.
-  done        Boolean         @default(false)
+  done         Boolean         @default(false)
   /// FilmingPerson ids dragged onto it: the interviewee, the crew, whoever does it.
   people       String[]        @default([])
   /// Interviews: FilmingPerson ids who run the prep and sit in on the filming.
   facilitators String[]        @default([])
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([scheduleId, start])
 }
@@ -6939,13 +6939,13 @@ model DesignPin {
 
 /// Where one person stands on one artwork: seen it, and said it is OK.
 model DesignReview {
-  id        String        @id @default(cuid())
-  artworkId String
-  artwork   DesignArtwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
-  userId    String
-  userName  String
-  viewedAt  DateTime?
-  okAt      DateTime?
+  id              String        @id @default(cuid())
+  artworkId       String
+  artwork         DesignArtwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  userId          String
+  userName        String
+  viewedAt        DateTime?
+  okAt            DateTime?
   /// Somebody asked this person to review it.
   requestedAt     DateTime?
   requestedByName String?
@@ -7007,4 +7007,104 @@ model DesignAnswer {
 model SymposiumReportAsset {
   name    String @id
   content Bytes
+}
+
+/// Digital asset library (Workspace → Assets). One row per file the team
+/// keeps; features point at an asset instead of pasting a URL. The bytes
+/// live in R2 under `key`; this row is everything we know about them.
+model Asset {
+  id             String                      @id @default(cuid())
+  key            String
+  thumbKey       String?
+  fileName       String
+  title          String
+  mimeType       String
+  sizeBytes      Int
+  width          Int?
+  height         Int?
+  /// sha256 of the stored bytes — exact-duplicate detection.
+  sha256         String
+  /// Dominant colour (#rrggbb) and a tiny blurred data-URI placeholder.
+  color          String?
+  blur           String?
+  folder         String                      @default("General")
+  tags           String[]                    @default([])
+  caption        String?
+  altText        String?
+  /// True once the AI pass has run (captions/tags may still be empty).
+  aiTagged       Boolean                     @default(false)
+  /// Rights. consent: given | not_needed | unknown | refused.
+  people         String?
+  consent        String                      @default("unknown")
+  credit         String?
+  license        String?
+  source         String?
+  expiresAt      DateTime?
+  /// Brand kit: locked assets cannot be edited, replaced or trashed.
+  locked         Boolean                     @default(false)
+  version        Int                         @default(1)
+  uploadedById   String?
+  uploadedByName String?
+  /// Trash: set when deleted; purged for good 30 days later.
+  deletedAt      DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  /// 384-d BGE-small embedding of title+caption+tags; raw SQL (pgvector).
+  embedding      Unsupported("vector(384)")?
+
+  versions AssetVersion[]
+  usages   AssetUsage[]
+
+  @@index([deletedAt, createdAt])
+  @@index([sha256])
+  @@index([folder])
+}
+
+/// A file an asset used to be, kept when someone replaces it.
+model AssetVersion {
+  id          String   @id @default(cuid())
+  assetId     String
+  version     Int
+  key         String
+  thumbKey    String?
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, version])
+}
+
+/// Where an asset is used — so the library can say "Used in" and refuse
+/// to delete something a live post still shows.
+model AssetUsage {
+  id         String   @id @default(cuid())
+  assetId    String
+  /// e.g. "socialPost"
+  targetType String
+  targetId   String
+  label      String
+  href       String?
+  createdAt  DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+/// A hand-picked set of assets, optionally shared by an expiring,
+/// view-only link.
+model AssetCollection {
+  id             String    @id @default(cuid())
+  name           String
+  assetIds       String[]  @default([])
+  shareToken     String?   @unique
+  shareExpiresAt DateTime?
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }

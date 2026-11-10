@@ -40,6 +40,7 @@ test("graphic upload requires admin, validates images, and preserves the current
   const writes: unknown[] = [];
   const uploads: string[] = [];
   const removed: string[] = [];
+  let usages = 0;
   const mocks: Record<string, unknown> = {
     "@/lib/auth": { requireRole: async () => authorized ? { user: { id: "admin" } } : null },
     "@/lib/prisma": { prisma: { socialPost: {
@@ -57,6 +58,12 @@ test("graphic upload requires admin, validates images, and preserves the current
       putR2Object: async (key: string) => { uploads.push(key); },
       r2PublicUrl: (key: string) => `https://images.example/${key}`,
       deleteR2ObjectByUrl: async (url: string) => { removed.push(url); },
+    },
+    // Uploads go through the asset library; stand in for it here.
+    "@/lib/assets/store": {
+      ingestAsset: async () => { uploads.push("asset"); return { asset: { id: `as${uploads.length}`, key: `assets/as${uploads.length}/v1.png` }, duplicate: false }; },
+      assetUrl: (key: string) => `https://images.example/${key}`,
+      setUsage: async () => { usages++; },
     },
   };
   const exports: { POST?: (request: Request, context: unknown) => Promise<Response> } = {};
@@ -90,6 +97,7 @@ test("graphic upload requires admin, validates images, and preserves the current
   raced = true;
   assert.equal((await send(png)).status, 409);
   assert.equal(writes.length, 1);
-  assert.equal(removed.length, 1);
-  assert.notEqual(removed[0], post.assetUrl);
+  // The post keeps its current graphic; the raced upload stays in the library, linked to nothing.
+  assert.equal(removed.length, 0);
+  assert.equal(usages, 1);
 });

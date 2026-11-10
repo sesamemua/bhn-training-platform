@@ -410,6 +410,15 @@ const workspaceSponsorshipItem: NavItem = {
 // for this event — beside AV. Distinct from Operations → Merch
 // fulfilment, which is the rewards vault trainees redeem credits
 // against.
+// WORKSPACE → Marketing → Assets. The team's picture library — every
+// upload in one place, tagged by AI, with consent and where each is used.
+const workspaceAssetsItem: NavItem = {
+  label: "Assets",
+  href: "/admin/workspace/assets",
+  icon: Images,
+  minRole: "superadmin",
+  description: "The team's picture library: drop pictures in, find them by what's in them, check consent, download LinkedIn sizes, and share collections.",
+};
 // WORKSPACE → Marketing → Social. Posts drafted from live EQUIP
 // cycles rather than typed, so a reminder cannot go out carrying last
 // month's deadline. Drafts only — nothing here publishes.
@@ -2232,6 +2241,7 @@ export function Sidebar({
               <NavLink item={workspaceSponsorshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceNewsletterItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSocialItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              {userRank >= ROLE_RANK.superadmin && <NavLink item={workspaceAssetsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />}
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Review">
               <NavLink item={workspaceWebsiteReviewItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

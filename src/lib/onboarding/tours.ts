@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.09b";
+export const TOUR_VERSION = "2026.11.09c";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.assets-library",
+    title: "Your picture library",
+    body: "Drop or paste pictures anywhere on Assets. They're tagged by AI, so search by what's in them; check consent and download LinkedIn sizes from each picture's panel.",
+    path: "/admin/workspace/assets",
+    placement: "center",
+    roles: ["superadmin"],
+    since: "2026.11.09c",
+  },
   {
     id: "social.drag-drop-pictures",
     title: "Drag pictures onto posts",

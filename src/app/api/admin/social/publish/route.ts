@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { R2_PUBLIC_URL_PREFIXES, putR2Object, r2PublicUrl } from "@/lib/r2";
 import { withSocialTags } from "@/lib/social/tags";
+import { publishBlock } from "@/lib/assets/core";
 import { BUFFER_CHANNEL_URL, BufferRejected, connectedBufferPage, createBufferPost, readBufferPost, type BufferPost } from "@/lib/social/buffer";
 import { GET as speakerGraphic } from "../posts/[id]/image/route";
 
@@ -65,6 +66,12 @@ export async function POST(req: NextRequest) {
   if (post.stream === "venture_connect" && post.kind === "reminder") {
     const cycle = await prisma.equipDeadline.findUnique({ where: { id: post.deadlineId }, select: { deadlineAt: true } });
     if (!cycle || Math.abs(cycle.deadlineAt.getTime() - post.daysBefore * 86400000 - post.scheduledFor.getTime()) > 36 * 3600000) return NextResponse.json({ error: "The application deadline changed. Review this post before publishing." }, { status: 409 });
+  }
+  // Rights: a library picture with people and no recorded consent (or an expired licence) does not go out.
+  const usedAsset = await prisma.assetUsage.findFirst({ where: { targetType: "socialPost", targetId: post.id }, select: { asset: { select: { consent: true, people: true, expiresAt: true, deletedAt: true, key: true } } } });
+  if (usedAsset && post.assetUrl?.includes(usedAsset.asset.key)) {
+    const blocked = publishBlock(usedAsset.asset);
+    if (blocked) return NextResponse.json({ error: `${blocked} Update it in Workspace → Assets.` }, { status: 409 });
   }
   try { await connectedBufferPage(); }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Buffer unavailable." }, { status: 503 }); }

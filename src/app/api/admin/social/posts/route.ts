@@ -14,6 +14,7 @@ import { syncCycle, syncRecipients } from "@/lib/social/sync";
 import { TERMINAL_STATUSES, type SocialStatus } from "@/lib/social/types";
 import { editSocialPost } from "@/lib/social/edit";
 import { LINKEDIN_STREAM } from "@/lib/social/review";
+import { assetUrl, setUsage } from "@/lib/assets/usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,8 @@ const Body = z.discriminatedUnion("action", [
   /* A post the team writes from scratch. requestId makes a double-click one post. */
   z.object({ action: z.literal("create"), title: z.string().trim().min(1).max(200), body: z.string().trim().min(1).max(3000), scheduledFor: z.string().datetime(), requestId: z.string().uuid() }),
   /* A review note; with reviewerId it asks that teammate to review. */
+  /* Use a picture from the asset library as the post's graphic. */
+  z.object({ action: z.literal("useAsset"), id: z.string().min(1), assetId: z.string().min(1), expectedVersion: z.number().int().nonnegative() }),
   z.object({ action: z.literal("comment"), id: z.string().min(1), body: z.string().trim().min(1).max(2000), reviewerId: z.string().min(1).optional() }),
   z.object({ action: z.literal("edit"), id: z.string().min(1), body: z.string().trim().min(1).max(6000), expectedVersion: z.number().int().nonnegative(), trackChanges: z.boolean() }),
   z.object({ action: z.literal("approve"), id: z.string().min(1), expectedVersion: z.number().int().nonnegative() }),
@@ -63,6 +66,23 @@ export async function POST(req: NextRequest) {
         scheduledFor: new Date(data.scheduledFor), assetSpec: { title: data.title } },
     });
     return NextResponse.json({ ok: true, post: { id: post.id, body: post.body, editVersion: post.editVersion, scheduledFor: post.scheduledFor.toISOString() } });
+  }
+
+  if (data.action === "useAsset") {
+    const [post, asset] = await Promise.all([
+      prisma.socialPost.findUnique({ where: { id: data.id }, select: { id: true, status: true, stream: true, editVersion: true, assetSpec: true } }),
+      prisma.asset.findFirst({ where: { id: data.assetId, deletedAt: null }, select: { id: true, key: true } }),
+    ]);
+    if (!post || !asset) return NextResponse.json({ error: "That post or picture no longer exists." }, { status: 404 });
+    if (!["draft", "approved"].includes(post.status)) return NextResponse.json({ error: "This post can no longer be edited." }, { status: 409 });
+    const url = assetUrl(asset.key)!;
+    const saved = await prisma.socialPost.updateMany({
+      where: { id: post.id, editVersion: data.expectedVersion, status: post.status },
+      data: { assetUrl: url, editVersion: { increment: 1 }, status: "draft", approvedAt: null, approvedById: null },
+    });
+    if (!saved.count) return NextResponse.json({ error: "The post changed. Refresh and try again." }, { status: 409 });
+    await setUsage(asset.id, { targetType: "socialPost", targetId: post.id, label: `Social post · ${(post.assetSpec as { title?: string } | null)?.title ?? post.stream}`, href: `/admin/workspace/marketing/social?post=${post.id}` });
+    return NextResponse.json({ ok: true, url, editVersion: data.expectedVersion + 1 });
   }
 
   if (data.action === "comment") {
@@ -137,6 +157,8 @@ export async function POST(req: NextRequest) {
       break;
     case "skip":
       changed = await prisma.socialPost.updateMany({ where: { id: post.id, status: post.status, editVersion: post.editVersion }, data: { status: "skipped" } });
+      // A declined post no longer uses its picture, so the library may let it go.
+      if (changed.count) await setUsage(null, { targetType: "socialPost", targetId: post.id, label: "" }).catch(() => {});
       break;
     case "schedule":
       return NextResponse.json({ error: "Use Schedule on an approved post to queue it with Buffer. Saving a date alone does not schedule publication." }, { status: 409 });

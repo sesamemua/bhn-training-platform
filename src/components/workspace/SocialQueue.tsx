@@ -11,6 +11,7 @@ import { SocialGraphicReview } from "./SocialGraphicReview";
 import { SocialPublishControls, type PublishingConnection } from "./SocialPublishControls";
 import { SocialReviewThread } from "./SocialReviewThread";
 import { PictureDrop } from "./PictureDrop";
+import { AssetPicker } from "./assets/AssetPicker";
 import { waitingOn, type SocialComment } from "@/lib/social/review";
 import type { ArtworkViewData } from "./DesignArtworkView";
 import type { SavedSocialText } from "@/lib/social/edit-history";
@@ -229,6 +230,19 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
     } finally {
       setBusy(null);
     }
+  }
+
+  async function pickLibraryAsset(post: QueuePost, assetId: string) {
+    setBusy(post.id); setNote(null);
+    try {
+      const res = await fetch("/api/admin/social/posts", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "useAsset", id: post.id, assetId, expectedVersion: post.editVersion }) });
+      const j = await res.json().catch(() => ({})) as { url?: string; editVersion?: number; error?: string };
+      if (!res.ok || !j.url) throw new Error(j.error ?? "Couldn't use that picture.");
+      setPosts((all) => all.map((item) => item.id === post.id ? { ...item, assetUrl: j.url!, editVersion: j.editVersion!, status: "draft", approvedAt: null, approvedByName: null } : item));
+      setNote("Picture added from the library.");
+    } catch (e) { setNote(e instanceof Error ? e.message : "Couldn't use that picture."); }
+    finally { setBusy(null); }
   }
 
   async function copyReviewLink(id: string) {
@@ -567,6 +581,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             <div className="space-y-2 px-1 py-2">
               <PictureDrop label={`Upload graphic for ${p.cycleLabel}`} busy={busy === p.id && !seriesBusy} hasPicture={!!p.assetUrl}
                 onFile={(file) => void uploadGraphic(p, file)} onError={setNote} />
+              <AssetPicker label={p.cycleLabel} onPick={(a) => void pickLibraryAsset(p, a.id)} />
               {p.assetUrl && <a href={p.assetUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-brand-700 underline">Open graphic</a>}
             </div>
           )}

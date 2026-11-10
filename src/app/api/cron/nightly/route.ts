@@ -12,6 +12,7 @@
  *   backup        — email every registration in one file
  *   equipDrafts   — remove public EQUIP drafts two weeks after their
  *                   owners were emailed the link and the deadline
+ *   assetTrash    — remove library assets trashed 30+ days ago that nothing uses
  *
  * The single-job routes still exist, to run any one of them by hand.
  */
@@ -19,6 +20,7 @@ import { NextResponse } from "next/server";
 import { importFromSheet } from "@/lib/eligibility/apply";
 import { backupAllRegistrations } from "@/lib/events/registration-backup";
 import { purgeExpiredDrafts } from "@/lib/equip/draft-notice";
+import { purgeTrashedAssets } from "@/lib/assets/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +40,7 @@ export async function GET(req: Request) {
     : { skipped: "ELIGIBILITY_SHEET_CSV is not set" };
   const backup = await run(async () => (await backupAllRegistrations()) ?? { skipped: "no mail server" });
   const equipDrafts = await run(() => purgeExpiredDrafts());
+  const assetTrash = await run(() => purgeTrashedAssets());
 
-  return NextResponse.json({ ok: true, eligibility, backup, equipDrafts });
+  return NextResponse.json({ ok: true, eligibility, backup, equipDrafts, assetTrash });
 }

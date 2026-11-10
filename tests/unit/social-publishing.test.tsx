@@ -52,7 +52,10 @@ function harness() {
       speaker: { findUnique: async () => ({ updatedAt: state.speakerAt }) },
       equipDeadline: { findUnique: async () => null },
       auditLog: { create: async () => { state.audits++; } },
+      assetUsage: { findFirst: async () => null, deleteMany: async () => ({ count: 0 }), upsert: async () => ({}) },
     } },
+    "@/lib/assets/store": { ingestAsset: async () => ({ asset: { id: "as1", key: "assets/as1/v1.png" }, duplicate: false }),
+      assetUrl: (key: string) => `https://images.example/${key}`, setUsage: async () => {} },
     "@/lib/r2": { R2_PUBLIC_URL_PREFIXES: ["https://images.example"],
       putR2Object: async () => { state.uploads++; }, r2PublicUrl: (key: string) => `https://images.example/${key}` },
     "@/lib/social/buffer": {
