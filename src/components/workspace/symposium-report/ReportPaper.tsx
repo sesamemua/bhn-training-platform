@@ -57,14 +57,15 @@ function Blocks({ page, blocks, inline, change }: { page: ReportPage; blocks: Bl
   return blocks.map((block, index) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : "p";
     const photos = workshopPhotos(page, block.photoRow);
+    const copy = block.text && <Tag className={styles[block.kind]}
+      {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
+      {block.text}
+    </Tag>;
+    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={684 * workshopTileHeight(page, block.photoRow) / 337} />);
+    if (page.id === "venturelift" && photos.length) return <div key={index} className={styles.ventureProfile}>{copy}<div>{figures}</div></div>;
     return <Fragment key={index}>
-      {block.text && <Tag className={styles[block.kind]}
-        {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
-        {block.text}
-      </Tag>}
-      {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">
-        {photos.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={684 * workshopTileHeight(page, block.photoRow) / 337} />)}
-      </div>}
+      {copy}
+      {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">{figures}</div>}
     </Fragment>;
   });
 }
@@ -95,9 +96,19 @@ export function useReportLayout(report: Report, approved: boolean) {
         node.className = styles[block.kind];
         node.textContent = block.text;
         const nodes: HTMLElement[] = block.text ? [node] : [];
-        if (workshopPhotos(page, block.photoRow).length) {
+        const photos = workshopPhotos(page, block.photoRow);
+        if (photos.length) {
           const space = document.createElement("div");
-          space.style.height = `${workshopTileHeight(page, block.photoRow) + 27 + 13}px`;
+          const height = workshopTileHeight(page, block.photoRow);
+          if (page.id === "venturelift") {
+            const row = document.createElement("div");
+            row.className = styles.ventureProfile;
+            space.style.aspectRatio = `337 / ${height * photos.length}`;
+            space.style.marginBottom = `${PHOTO_CAPTION_SPACE * photos.length}px`;
+            row.append(...nodes, space);
+            return [row];
+          }
+          space.style.height = `${height + 27 + 13}px`;
           nodes.push(space);
         }
         return nodes;
@@ -219,7 +230,9 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
     const isActive = active.id === frame.id && active.index === frame.index;
     const portraits = strip[0]?.[0].startsWith("portrait-");
     const hasWorkshopPhotos = strip.some(([key]) => key.startsWith("workshop-"));
-    const swapLabel = portraits ? "Swap portrait" : hasWorkshopPhotos ? "Swap workshop photo" : "Swap additional photo";
+    const swapLabel = portraits ? "Swap portrait" : hasWorkshopPhotos
+      ? frame.id === "venturelift" ? "Swap venture photo" : "Swap workshop photo"
+      : "Swap additional photo";
     return (
       <div key={`${frame.id}:${frame.index}`} id={`report-frame-${frame.id}-${frame.index}`}
         className={styles.sheet} style={{ width: 816 * scale }}>

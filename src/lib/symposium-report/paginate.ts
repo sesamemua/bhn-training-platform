@@ -11,7 +11,7 @@ export function reportBlocks(text: string): Block[] {
     cursor = offset + value.length;
     const kind = value.startsWith(markers.heading) ? "heading" : value.startsWith(markers.note) ? "note" : "paragraph";
     const marker = markers[kind].length;
-    const photoAnchor = /(?:^|\r?\n)\[\[photos:([1-6])\]\]$/.exec(value);
+    const photoAnchor = /(?:^|\r?\n)\[\[photos:([1-7])\]\]$/.exec(value);
     return [{ kind, text: value.slice(marker, photoAnchor?.index), start: offset + marker, photoRow: photoAnchor?.[1] }];
   });
 }

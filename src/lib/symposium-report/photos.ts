@@ -78,6 +78,7 @@ export function workshopPhotos(page: ReportPage, row?: string) {
 }
 
 export function workshopTileHeight(page: ReportPage, row?: string) {
+  if (page.id === "venturelift") return 225;
   const count = Object.keys(page.photos ?? {}).filter((key) => key.startsWith("workshop-")).length;
   if (count <= 4) return 190;
   return Number(row) <= 3 ? 128 : 150;

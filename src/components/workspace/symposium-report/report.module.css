@@ -337,6 +337,15 @@
 }
 .workshopPhotos figure { margin: 0; }
 .workshopPhotos figcaption { height: 27px; overflow: hidden; overflow-wrap: anywhere; }
+.ventureProfile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 228px;
+  gap: 18px;
+  align-items: start;
+  padding-bottom: 14px;
+}
+.ventureProfile > div { grid-column: 2; }
+.ventureProfile .paragraph { font-size: 14.5px; padding-bottom: 0; }
 .chapter[data-columns="2"] .story {
   max-inline-size: none;
   column-count: 2;
