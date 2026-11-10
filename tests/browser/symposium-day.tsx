@@ -8,7 +8,7 @@ import { SYMPOSIUM_DAY_POSTS } from "../../src/lib/social/symposium-day";
 import type { QueuePost } from "../../src/components/workspace/SocialQueue";
 
 async function main() {
-  let posts: QueuePost[] = SYMPOSIUM_DAY_POSTS.slice(0, 2).map((p, i) => ({ ...p, id: `day-${i}`, symposiumDay: true, campaignSlug: `day-${i}`,
+  const posts: QueuePost[] = SYMPOSIUM_DAY_POSTS.slice(0, 2).map((p, i) => ({ ...p, id: `day-${i}`, symposiumDay: true, campaignSlug: `day-${i}`,
     cycleLabel: p.assetSpec.title, status: "draft", daysBefore: 0, editVersion: 0, trackChanges: true, assetUrl: null,
     organization: null, companyLogoUrl: null, scheduledFor: p.scheduledFor.toISOString(), overdue: false, stale: false }));
   let layout = { order: posts.map(p => p.id), version: null as string | null }, savedEmail = "", emailWrites = 0, publications = 0;
@@ -32,7 +32,15 @@ async function main() {
     await page.route("https://social.test/api/admin/social/publish", route => { if (route.request().method() === "POST") publications++; return route.fulfill({ json: { ready: false } }); });
     await page.route("https://social.test/fixture-email", route => { const input = route.request().postDataJSON(); assert.equal(input.id, "registration-1"); savedEmail = input.email; emailWrites++; return route.fulfill({ json: { ok: true } }); });
     await page.route("https://social.test/api/admin/social/posts", route => {
-      const input = route.request().postDataJSON(), post = posts.find(p => p.id === input.id)!;
+      const input = route.request().postDataJSON();
+      if (input.action === "create") {
+        assert.equal(input.pillar, "experience");
+        const post = { ...posts[0], id: "experience-draft", stream: "linkedin", kind: "post", symposiumDay: false,
+          cycleLabel: input.title, body: input.body, editVersion: 0, assetSpec: { title: input.title, pillar: input.pillar }, scheduledFor: input.scheduledFor };
+        posts.push(post);
+        return route.fulfill({ json: { post } });
+      }
+      const post = posts.find(p => p.id === input.id)!;
       assert.equal(input.expectedVersion, post.editVersion);
       if (input.action === "edit") { post.body = input.body; post.trackChanges = input.trackChanges; post.editVersion++; }
       else { assert.equal(input.action, "skip"); post.status = "skipped"; }
@@ -47,7 +55,9 @@ async function main() {
       return route.fulfill({ json: { post, layout } });
     });
     await page.goto("https://social.test/");
-    await expect(page.getByRole("tab", { name: /Symposium Day/ })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab")).toHaveCount(4);
+    await expect(page.getByRole("tab", { name: "Events / Announcements" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("button", { name: /Symposium Day/ })).toHaveAttribute("aria-pressed", "true");
     const firstText = page.getByRole("textbox", { name: "Post text for Breakfast and Registration", exact: true });
     await firstText.fill("A human-edited welcome post."); await firstText.blur();
     await expect.poll(() => posts[0].body).toBe("A human-edited welcome post.");
@@ -72,6 +82,19 @@ async function main() {
     await mkdir("output", { recursive: true }); await page.screenshot({ path: "output/symposium-day-desktop.png" });
     for (const width of [390, 320]) { await page.setViewportSize({ width, height: 1000 }); assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false, `no overflow at ${width}px`); }
     await page.screenshot({ path: "output/symposium-day-mobile.png" });
+    await page.getByRole("tab", { name: "EXPERIENCE", exact: true }).press("Enter");
+    await page.getByRole("button", { name: "New post", exact: true }).click();
+    await page.getByRole("textbox", { name: /Title \(for the team/ }).fill("Knowledge Exchange test");
+    await page.getByRole("textbox", { name: /^Post text/ }).fill("A draft for Experience.");
+    await page.getByLabel("Planned for", { exact: true }).fill("2026-11-10T12:00");
+    await page.getByRole("button", { name: "Save draft", exact: true }).click();
+    await expect(page.getByText("Draft created. Nothing has been published.")).toBeVisible();
+    await page.reload();
+    await page.getByRole("tab", { name: "EXPERIENCE", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "Post text for Knowledge Exchange test" })).toBeVisible();
+    await page.getByRole("tab", { name: "EQUIP", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "VentureConnect", exact: true })).toBeVisible();
+    assert.equal(publications, 0);
     assert.deepEqual(errors, []);
     console.log("PASS: day-of tab, inline edit, create, shared reorder, deletion persistence, missing email entry, no publication and responsive layouts");
   } finally { await browser.close(); }

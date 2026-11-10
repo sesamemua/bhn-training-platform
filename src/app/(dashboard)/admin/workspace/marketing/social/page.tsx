@@ -25,7 +25,7 @@ import { loadSymposiumDayOrder } from "@/lib/social/symposium-day-store";
 import { SOCIAL_SOURCE_PREFIX, socialSource } from "@/lib/social/graphic-source";
 import { isApproval, isReviewer, pagesOf, reviewerStates } from "@/lib/design-review/types";
 import type { ArtworkViewData } from "@/components/workspace/DesignArtworkView";
-import { LINKEDIN_STREAM, SocialCommentDetail, type SocialComment } from "@/lib/social/review";
+import { isSocialPillar, LINKEDIN_STREAM, SocialCommentDetail, type SocialComment } from "@/lib/social/review";
 
 export const dynamic = "force-dynamic";
 
@@ -199,7 +199,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         icon={<Megaphone />}
       />
       <div className="mt-6">
-        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} initialDayOrder={dayOrder} reviewMode={!!postId} seriesReview={seriesReview} team={team} initialGroup={tab === "linkedin" ? "linkedin" : tab === "symposium_sessions" ? "symposium_sessions" : tab === "symposium_day" ? "symposium_day" : tab === "events" ? "events" : tab === "venture_connect" ? "venture_connect" : tab === "symposium_2026" ? "symposium_2026" : "linkedin"} me={me} />
+        <SocialQueue key={series ?? postId ?? tab ?? "social"} initial={posts} initialOrder={socialOrder} initialDayOrder={dayOrder} reviewMode={!!postId} seriesReview={seriesReview} team={team} initialGroup={isSocialPillar(tab) || tab === "symposium_sessions" || tab === "symposium_day" || tab === "events" || tab === "venture_connect" || tab === "symposium_2026" ? tab : "linkedin"} me={me} />
       </div>
     </>
   );

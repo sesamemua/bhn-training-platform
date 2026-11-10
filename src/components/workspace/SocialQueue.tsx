@@ -12,7 +12,7 @@ import { SocialPublishControls, type PublishingConnection } from "./SocialPublis
 import { SocialReviewThread } from "./SocialReviewThread";
 import { PictureDrop } from "./PictureDrop";
 import { AssetPicker } from "./assets/AssetPicker";
-import { waitingOn, type SocialComment } from "@/lib/social/review";
+import { isSocialPillar, waitingOn, type SocialComment } from "@/lib/social/review";
 import type { ArtworkViewData } from "./DesignArtworkView";
 import type { SavedSocialText } from "@/lib/social/edit-history";
 import { withSocialTags } from "@/lib/social/tags";
@@ -53,7 +53,19 @@ export interface QueuePost {
   comments?: SocialComment[];
 }
 
-type Group = "linkedin" | "symposium_2026" | "symposium_sessions" | "symposium_day" | "venture_connect" | "events";
+const SOCIAL_SECTIONS = [
+  { label: "Events / Announcements", tabs: [
+    ["linkedin", "LinkedIn posts"],
+    ["events", "Events"],
+    ["symposium_2026", "2026 Symposium & Training Week"],
+    ["symposium_sessions", "Networking & discussion"],
+    ["symposium_day", "Symposium Day · October 29"],
+  ] },
+  { label: "ENGAGE", tabs: [["engage", "ENGAGE"]] },
+  { label: "EXPERIENCE", tabs: [["experience", "EXPERIENCE"]] },
+  { label: "EQUIP", tabs: [["venture_connect", "VentureConnect"], ["equip", "EQUIP drafts"]] },
+] as const;
+type Group = (typeof SOCIAL_SECTIONS)[number]["tabs"][number][0];
 
 const KIND_LABEL: Record<string, string> = {
   post: "LinkedIn post",
@@ -74,6 +86,8 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 function postGroup(post: QueuePost) {
+  const pillar = (post.assetSpec as { pillar?: unknown } | null)?.pillar;
+  if (post.stream === "linkedin" && isSocialPillar(pillar)) return pillar;
   return post.symposiumDay ? "symposium_day" : post.campaign ? "symposium_2026" : post.stream;
 }
 
@@ -258,6 +272,9 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   const active = posts.filter((post) => !["published", "skipped"].includes(post.status));
   const boardPosts = posts.filter((post) => post.status !== "skipped");
   const sessionPosts = boardPosts.filter((post) => /Structured Networking with Industry Professionals|Interactive Discussion Session/i.test(post.cycleLabel));
+  const section = SOCIAL_SECTIONS.find(({ tabs }) => tabs.some(([key]: readonly [Group, string]) => key === group)) ?? SOCIAL_SECTIONS[0];
+  const isDraftList = group === "linkedin" || isSocialPillar(group);
+  const tabsLocked = hasUnsavedChanges || !!busy || !!newPost || !!newDayPost;
   const visible = sortSocialPosts(seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : group === "symposium_sessions" ? sessionPosts : boardPosts.filter((post) => postGroup(post) === group), group === "symposium_day" ? dayLayout.order : layout.order);
   const ready = visible.filter(canApproveInSeries);
   const chosen = ready.filter((post) => selected.includes(post.id));
@@ -338,11 +355,11 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
     setBusy("new"); setNote(null);
     try {
       const response = await fetch("/api/admin/social/posts", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create", title: newPost.title, body: newPost.body, scheduledFor: at.toISOString(), requestId: newPost.requestId }) });
-      const result = await response.json().catch(() => ({})) as { post?: { id: string; body: string; editVersion: number; scheduledFor: string }; error?: string };
+        body: JSON.stringify({ action: "create", title: newPost.title, body: newPost.body, scheduledFor: at.toISOString(), requestId: newPost.requestId, pillar: isSocialPillar(group) ? group : undefined }) });
+      const result = await response.json().catch(() => ({})) as { post?: Pick<QueuePost, "id" | "body" | "editVersion" | "scheduledFor" | "assetSpec">; error?: string };
       if (!response.ok || !result.post) throw new Error(result.error ?? "Couldn't create the draft.");
       const created: QueuePost = { ...result.post, stream: "linkedin", kind: "post", status: "draft", cycleLabel: newPost.title.trim(), daysBefore: 0,
-        trackChanges: true, assetUrl: null, organization: null, companyLogoUrl: null, assetSpec: { title: newPost.title.trim() }, overdue: false, stale: false, comments: [] };
+        trackChanges: true, assetUrl: null, organization: null, companyLogoUrl: null, overdue: false, stale: false, comments: [] };
       setPosts(all => all.some(p => p.id === created.id) ? all : [...all, created]);
       const picture = newPost.picture;
       if (newPost.preview) URL.revokeObjectURL(newPost.preview);
@@ -380,36 +397,38 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
         </div>
       ) : (<>
       <div className="flex flex-wrap gap-1 border-b border-line" role="tablist" aria-label="Social content groups">
-        {([
-          ["linkedin", "LinkedIn posts"],
-          ["symposium_2026", "2026 Symposium & Training Week"],
-          ["symposium_sessions", "Networking & discussion"],
-          ["symposium_day", "Symposium Day · Oct 29"],
-          ["venture_connect", "VentureConnect"],
-          ["events", "Events"],
-        ] as const).map(([key, label]) => (
+        {SOCIAL_SECTIONS.map((item) => (
           <button
-            key={key}
+            key={item.label}
             type="button"
             role="tab"
-            aria-selected={group === key}
-            disabled={hasUnsavedChanges && group !== key}
-            onClick={() => setGroup(key)}
+            aria-selected={section === item}
+            disabled={tabsLocked && section !== item}
+            onClick={() => { if (section !== item) setGroup(item.tabs[0][0]); }}
             className={cn(
               "border-b-2 px-4 py-3 text-[16px] font-semibold transition-colors",
-              group === key ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-fg",
+              section === item ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-fg",
             )}
           >
-            {label} <span className="ml-1 text-subtle">{key === "symposium_sessions" ? sessionPosts.length : boardPosts.filter((post) => postGroup(post) === key).length}</span>
+            {item.label}
           </button>
         ))}
       </div>
+      {section.tabs.length > 1 && <div className="flex flex-wrap gap-2" role="group" aria-label={section.label + " views"}>
+        {section.tabs.map(([key, label]: readonly [Group, string]) => (
+          <button key={key} type="button" aria-pressed={group === key} disabled={tabsLocked && group !== key}
+            onClick={() => setGroup(key)}
+            className={cn("rounded-md border border-line px-3 py-2 text-sm font-semibold disabled:opacity-50", group === key ? "bg-brand-50 text-brand-800" : "text-muted hover:text-fg")}>
+            {label} <span className="ml-1 text-subtle">{key === "symposium_sessions" ? sessionPosts.length : boardPosts.filter((post) => postGroup(post) === key).length}</span>
+          </button>
+        ))}
+      </div>}
       <h2 className="text-[26px] font-bold leading-tight text-fg sm:text-[32px]">
-        {group === "linkedin" ? "LinkedIn posts" : group === "symposium_sessions" ? "Networking & discussion" : group === "symposium_day" ? "Symposium Day · October 29" : group === "events" ? "Events" : group === "symposium_2026" ? "2026 Symposium & Training Week" : "VentureConnect"}
+        {section.tabs.find(([key]) => key === group)?.[1]}
       </h2>
       {group === "symposium_sessions" && <p className="text-sm text-muted">{visible.filter(post => post.status === "published").length} posted · {visible.filter(post => post.status !== "published").length} remaining</p>}
       {group === "symposium_2026" && visible.length > 0 && <Link href="/admin/workspace/marketing/social?series=symposium_2026" className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"><Check size={16} /> Review & approve series</Link>}
-      {group === "linkedin" && <div className="space-y-3">
+      {isDraftList && <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-[14px] text-muted">Write a post, ask a teammate to review it, approve it, then publish or schedule it to the BioHubNet LinkedIn Page.</p>
           <button type="button" disabled={!!busy || hasUnsavedChanges || !!newPost} onClick={() => setNewPost({ title: "", body: "", when: "", requestId: crypto.randomUUID() })} className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"><Plus size={16} /> New post</button>
@@ -430,7 +449,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
           <div className="flex gap-2"><button type="submit" disabled={!!busy} className="rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">Save draft</button><button type="button" disabled={!!busy} onClick={() => setNewPost(null)} className="rounded-md px-3 py-2 text-sm text-muted">Cancel</button></div>
         </form>}
       </div>}
-      {group !== "linkedin" && group !== "symposium_2026" && group !== "symposium_sessions" && group !== "symposium_day" && <p className="text-[14px] text-muted">
+      {(group === "events" || group === "venture_connect") && <p className="text-[14px] text-muted">
         {group === "events"
           ? "Edit your event posts directly in the preview. Changes save automatically; upload a graphic when it’s ready."
           : "Posts follow live VentureConnect cycles. Approve the words before sharing them."}
@@ -465,7 +484,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
       {orderUnavailable && (group === "symposium_2026" || group === "symposium_sessions" || seriesReview) && <p role="status" className="text-[13px] text-amber-700">Shared post order is unavailable. Refresh before moving posts.</p>}
       {visible.length === 0 && (
         <p className="rounded-lg border border-line bg-card p-5 text-[13px] leading-relaxed text-muted">
-          {group === "linkedin"
+          {isDraftList
             ? "No LinkedIn posts yet. Choose New post to write one."
             : group === "events"
             ? "No event posts yet."

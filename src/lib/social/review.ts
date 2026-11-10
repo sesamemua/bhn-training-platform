@@ -9,6 +9,11 @@ import { z } from "zod";
 
 /** The stream for posts the team writes from scratch (no generator, no standing tags). */
 export const LINKEDIN_STREAM = "linkedin";
+export const SOCIAL_PILLARS = ["engage", "experience", "equip"] as const;
+
+export function isSocialPillar(value: unknown): value is (typeof SOCIAL_PILLARS)[number] {
+  return SOCIAL_PILLARS.some((pillar) => pillar === value);
+}
 
 export const SocialCommentDetail = z.object({
   body: z.string(),

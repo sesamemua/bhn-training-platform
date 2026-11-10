@@ -32,6 +32,29 @@ test("queue links to individual reviews and approved review identifies the human
   assert.doesNotMatch(approved, /> Approve<\/button>/);
 });
 
+test("four groups retain event and VentureConnect views and separate program drafts", () => {
+  const knowledge = { ...post, id: "ke6", stream: "linkedin", kind: "post", cycleLabel: "Knowledge Exchange Round 6",
+    assetSpec: { pillar: "experience" }, body: "Apply for a Knowledge Exchange placement." };
+  const general = { ...knowledge, id: "general", cycleLabel: "General announcement", assetSpec: {} };
+  const funding = { ...post, id: "vc", stream: "venture_connect", cycleLabel: "VentureConnect November" };
+  const initial = [post, knowledge, general, funding];
+  const experience = renderToStaticMarkup(createElement(SocialQueue, { initial, initialGroup: "experience" }));
+  assert.equal((experience.match(/role="tab"/g) ?? []).length, 4);
+  for (const label of ["Events / Announcements", "ENGAGE", "EXPERIENCE", "EQUIP"]) assert.ok(experience.includes(label));
+  assert.match(experience, /Knowledge Exchange Round 6/);
+  assert.match(experience, /New post/);
+  assert.doesNotMatch(experience, /General announcement|VentureConnect November|Join our symposium/);
+  const announcements = renderToStaticMarkup(createElement(SocialQueue, { initial, initialGroup: "linkedin" }));
+  assert.match(announcements, /General announcement/);
+  assert.match(announcements, /2026 Symposium &amp; Training Week/);
+  assert.doesNotMatch(announcements, /Knowledge Exchange Round 6/);
+  const equip = renderToStaticMarkup(createElement(SocialQueue, { initial, initialGroup: "venture_connect" }));
+  assert.match(equip, /VentureConnect November/);
+  assert.match(equip, /EQUIP drafts/);
+  const review = renderToStaticMarkup(createElement(SocialQueue, { initial: [knowledge], reviewMode: true }));
+  assert.match(review, /\?tab=experience/);
+});
+
 test("approval requires an identified admin and exact revision; asset replacement invalidates approval", async () => {
   const source = readFileSync("src/app/api/admin/social/posts/route.ts", "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;

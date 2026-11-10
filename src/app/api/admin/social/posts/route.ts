@@ -13,7 +13,7 @@ import { consentingRecipients, cycleById } from "@/lib/social/cycles";
 import { syncCycle, syncRecipients } from "@/lib/social/sync";
 import { TERMINAL_STATUSES, type SocialStatus } from "@/lib/social/types";
 import { editSocialPost } from "@/lib/social/edit";
-import { LINKEDIN_STREAM } from "@/lib/social/review";
+import { LINKEDIN_STREAM, SOCIAL_PILLARS } from "@/lib/social/review";
 import { assetUrl, setUsage } from "@/lib/assets/usage";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 const Body = z.discriminatedUnion("action", [
   /* A post the team writes from scratch. requestId makes a double-click one post. */
-  z.object({ action: z.literal("create"), title: z.string().trim().min(1).max(200), body: z.string().trim().min(1).max(3000), scheduledFor: z.string().datetime(), requestId: z.string().uuid() }),
+  z.object({ action: z.literal("create"), title: z.string().trim().min(1).max(200), body: z.string().trim().min(1).max(3000), scheduledFor: z.string().datetime(), requestId: z.string().uuid(), pillar: z.enum(SOCIAL_PILLARS).optional() }),
   /* A review note; with reviewerId it asks that teammate to review. */
   /* Use a picture from the asset library as the post's graphic. */
   z.object({ action: z.literal("useAsset"), id: z.string().min(1), assetId: z.string().min(1), expectedVersion: z.number().int().nonnegative() }),
@@ -63,9 +63,9 @@ export async function POST(req: NextRequest) {
     const post = await prisma.socialPost.upsert({
       where: { key }, update: {},
       create: { key, stream: LINKEDIN_STREAM, kind: "post", deadlineId: data.requestId, body: data.body,
-        scheduledFor: new Date(data.scheduledFor), assetSpec: { title: data.title } },
+        scheduledFor: new Date(data.scheduledFor), assetSpec: { title: data.title, ...(data.pillar ? { pillar: data.pillar } : {}) } },
     });
-    return NextResponse.json({ ok: true, post: { id: post.id, body: post.body, editVersion: post.editVersion, scheduledFor: post.scheduledFor.toISOString() } });
+    return NextResponse.json({ ok: true, post: { id: post.id, body: post.body, editVersion: post.editVersion, scheduledFor: post.scheduledFor.toISOString(), assetSpec: post.assetSpec } });
   }
 
   if (data.action === "useAsset") {
