@@ -18,3 +18,14 @@ test("team-written LinkedIn posts don't get the symposium tags", () => {
   assert.equal(withSocialTags("Hello", "linkedin"), "Hello");
   assert.ok(withSocialTags("Hello", "events").endsWith(SOCIAL_MENTIONS.join(", ")));
 });
+
+import { reviewPath, reviewRequestEmail } from "../../src/lib/social/review";
+test("the review email names who asked, carries the note, the link and the post", () => {
+  const m = reviewRequestEmail({ reviewerName: "Ana Lee", requesterName: "Ruilin", title: "Panel recap", note: "Check the dates.", body: "We had a great day.", link: "https://x.test" + reviewPath("p1") });
+  assert.equal(m.subject, "Please review: Panel recap");
+  assert.match(m.text, /^Hi Ana,/);
+  assert.match(m.text, /Ruilin asked you to review/);
+  assert.match(m.text, /Check the dates\./);
+  assert.match(m.text, /https:\/\/x\.test\/admin\/workspace\/marketing\/social\?post=p1/);
+  assert.match(m.text, /We had a great day\./);
+});

@@ -592,7 +592,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
           )}
 
           {p.status !== "published" && p.status !== "skipped" && (
-            <SocialReviewThread postId={p.id} label={p.cycleLabel} comments={p.comments ?? []} team={team}
+            <SocialReviewThread postId={p.id} label={p.cycleLabel} comments={p.comments ?? []} team={team} showLink={!seriesReview}
               onAdded={(comment) => setPosts((all) => all.map((item) => item.id === p.id ? { ...item, comments: [...(item.comments ?? []), comment] } : item))} />
           )}
 

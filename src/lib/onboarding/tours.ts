@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.10";
+export const TOUR_VERSION = "2026.11.10b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "social.email-review-link",
+    title: "Email a reviewer",
+    body: "Ask a teammate to review a post and tick Email them the review link. Or copy the review link from Review & comments.",
+    path: "/admin/workspace/marketing/social",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.10b",
+  },
   {
     id: "workspace.assets-ask-library",
     title: "Ask the library",

@@ -13,7 +13,9 @@ import { consentingRecipients, cycleById } from "@/lib/social/cycles";
 import { syncCycle, syncRecipients } from "@/lib/social/sync";
 import { TERMINAL_STATUSES, type SocialStatus } from "@/lib/social/types";
 import { editSocialPost } from "@/lib/social/edit";
-import { LINKEDIN_STREAM, SOCIAL_PILLARS } from "@/lib/social/review";
+import { LINKEDIN_STREAM, reviewPath, reviewRequestEmail, SOCIAL_PILLARS } from "@/lib/social/review";
+import { mailConfigured, sendMail } from "@/lib/mail";
+import { absolute } from "@/lib/notify/email";
 import { assetUrl, setUsage } from "@/lib/assets/usage";
 
 export const runtime = "nodejs";
@@ -25,7 +27,7 @@ const Body = z.discriminatedUnion("action", [
   /* A review note; with reviewerId it asks that teammate to review. */
   /* Use a picture from the asset library as the post's graphic. */
   z.object({ action: z.literal("useAsset"), id: z.string().min(1), assetId: z.string().min(1), expectedVersion: z.number().int().nonnegative() }),
-  z.object({ action: z.literal("comment"), id: z.string().min(1), body: z.string().trim().min(1).max(2000), reviewerId: z.string().min(1).optional() }),
+  z.object({ action: z.literal("comment"), id: z.string().min(1), body: z.string().trim().min(1).max(2000), reviewerId: z.string().min(1).optional(), email: z.boolean().optional() }),
   z.object({ action: z.literal("edit"), id: z.string().min(1), body: z.string().trim().min(1).max(6000), expectedVersion: z.number().int().nonnegative(), trackChanges: z.boolean() }),
   z.object({ action: z.literal("approve"), id: z.string().min(1), expectedVersion: z.number().int().nonnegative() }),
   /* Back to draft. The words stay — an unapprove is "I want to change
@@ -87,19 +89,34 @@ export async function POST(req: NextRequest) {
 
   if (data.action === "comment") {
     if (!actorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    const target = await prisma.socialPost.findUnique({ where: { id: data.id }, select: { id: true } });
+    const target = await prisma.socialPost.findUnique({ where: { id: data.id }, select: { id: true, body: true, stream: true, assetSpec: true } });
     if (!target) return NextResponse.json({ error: "Unknown post." }, { status: 404 });
     const reviewer = data.reviewerId
       ? await prisma.user.findFirst({ where: { id: data.reviewerId, role: { in: ["admin", "superadmin"] } }, select: { id: true, name: true, email: true } })
       : null;
     if (data.reviewerId && !reviewer) return NextResponse.json({ error: "Pick a teammate on the list." }, { status: 400 });
     const reviewerName = reviewer ? reviewer.name || reviewer.email || "Team member" : null;
+    const requesterName = session.user?.name || session.user?.email || "A teammate";
+    // Email the reviewer only when asked to, and only a review request to a real address.
+    let emailed = false, emailError: string | null = null;
+    if (reviewer && data.email) {
+      if (!reviewer.email) emailError = `${reviewerName} has no email address on file.`;
+      else if (!mailConfigured()) emailError = "Email isn't set up on this site.";
+      else {
+        const letter = reviewRequestEmail({ reviewerName: reviewerName!, requesterName, note: data.body, body: target.body,
+          title: (target.assetSpec as { title?: string } | null)?.title ?? `${target.stream} post`, link: absolute(reviewPath(target.id)) });
+        try {
+          await sendMail({ to: reviewer.email, subject: letter.subject, text: letter.text, ...(session.user?.email ? { cc: session.user.email } : {}), signature: false });
+          emailed = true;
+        } catch { emailError = "The email didn't send. Copy the review link and send it yourself."; }
+      }
+    }
     const entry = await prisma.auditLog.create({
       data: { actorId, action: "social.post.comment", targetType: "socialPost", targetId: target.id,
-        detail: JSON.stringify({ body: data.body, reviewerId: reviewer?.id ?? null, reviewerName }) },
+        detail: JSON.stringify({ body: data.body, reviewerId: reviewer?.id ?? null, reviewerName, ...(emailed ? { emailed } : {}) }) },
       select: { id: true, createdAt: true, actor: { select: { name: true } } },
     });
-    return NextResponse.json({ ok: true, comment: { id: entry.id, at: entry.createdAt.toISOString(), author: entry.actor.name ?? "Team member", body: data.body, reviewerName } });
+    return NextResponse.json({ ok: true, emailError, comment: { id: entry.id, at: entry.createdAt.toISOString(), author: entry.actor.name ?? "Team member", body: data.body, reviewerName, emailed } });
   }
 
   if (data.action === "regenerate") {

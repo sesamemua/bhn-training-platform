@@ -119,7 +119,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
     const detail = SocialCommentDetail.safeParse((() => { try { return JSON.parse(c.detail ?? "null"); } catch { return null; } })());
     if (!detail.success || !c.targetId) continue;
     const list = commentsOf.get(c.targetId) ?? [];
-    list.push({ id: c.id, author: c.actor.name ?? "Team member", at: c.createdAt.toISOString(), body: detail.data.body, reviewerName: detail.data.reviewerName ?? null });
+    list.push({ id: c.id, author: c.actor.name ?? "Team member", at: c.createdAt.toISOString(), body: detail.data.body, reviewerName: detail.data.reviewerName ?? null, emailed: detail.data.emailed ?? false });
     commentsOf.set(c.targetId, list);
   }
   const team = teamRows.map((t) => ({ id: t.id, name: t.name || t.email || "Team member" }));

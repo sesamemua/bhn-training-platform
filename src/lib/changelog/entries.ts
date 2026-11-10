@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Social: email a review request and copy the review link",
+    body: "Under **Review & comments** on any Social post there's now a **Review link** with a **Copy** button. When you pick a teammate under **Ask to review**, **Email them the review link** is ticked by default: they get your note, the link and the post text, and you're copied. Requests that were emailed are marked in the thread. If the email can't be sent, the request is still saved and you're told so you can share the link yourself.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Assets: AI agent, provenance labels, look-alikes, AI expand, video and smart collections",
     body: "**Ask the library** at the top of Assets: say what you need (\u201cfind consented photos from the panel and draft a LinkedIn post\u201d) and it picks pictures cleared to publish, drafts the post, runs pre-publish checks and, when you say so, creates the Social draft. Every picture now carries an **origin label** (camera, edited, AI-edited, AI-generated), suggested from its own metadata and Content Credentials, with a filter and a reminder to disclose AI in posts. **Find similar** shows near-duplicates and look-alikes, and a **Duplicates** view gathers them. Ready-made sizes add **Fit** (whole picture over a blurred backdrop) and **AI expand** (AI paints the missing edges; saved as a new, labelled picture). **Videos** upload straight to storage with a poster frame and an AI transcript, so you can search by what\u2019s said. Each picture shows **downloads and published posts**, share links count their **views**, a **Most used** view ranks the library, and any search can be saved as a **smart collection** that updates itself. Event covers and speaker headshots now land in the library automatically.",
     kind: "feature",
