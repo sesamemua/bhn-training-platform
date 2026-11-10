@@ -10,6 +10,7 @@ import { SocialPostEditor } from "./SocialPostEditor";
 import { SocialGraphicReview } from "./SocialGraphicReview";
 import { SocialPublishControls, type PublishingConnection } from "./SocialPublishControls";
 import { SocialReviewThread } from "./SocialReviewThread";
+import { SocialTagPicker } from "./SocialTagPicker";
 import { PictureDrop } from "./PictureDrop";
 import { AssetPicker } from "./assets/AssetPicker";
 import { isSocialPillar, waitingOn, type SocialComment } from "@/lib/social/review";
@@ -436,6 +437,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
         {newPost && <form className="max-w-[555px] space-y-2" onSubmit={e => { e.preventDefault(); void createPost(); }}>
           <label className="block text-sm font-semibold">Title <span className="font-normal text-muted">(for the team, not posted)</span><input required maxLength={200} disabled={!!busy} value={newPost.title} onChange={e => setNewPost({ ...newPost, title: e.target.value })} className="mt-1 w-full rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /></label>
           <label className="block text-sm font-semibold">Post text<textarea required maxLength={3000} rows={6} disabled={!!busy} value={newPost.body} onChange={e => setNewPost({ ...newPost, body: e.target.value })} className="mt-1 w-full rounded-md border border-line bg-card-solid px-3 py-2 text-fg" /><span className="mt-1 block text-right text-[12px] font-normal text-muted">{newPost.body.length.toLocaleString()} / 3,000</span></label>
+          <SocialTagPicker body={newPost.body} disabled={!!busy} onChange={(body) => setNewPost({ ...newPost, body })} />
           <div className="text-sm font-semibold">Picture <span className="font-normal text-muted">(optional)</span>
             <div className="mt-1 space-y-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -571,7 +573,7 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             </div>
 
             <div className="px-4 pb-3 pt-2">
-              <SocialPostEditor post={{ ...p, body: withSocialTags(p.body, p.stream) }} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
+              <SocialPostEditor post={{ ...p, body: withSocialTags(p.body, p.stream) }} taggable={p.stream === "linkedin"} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
             </div>
 
             {p.assetUrl && (

@@ -29,3 +29,23 @@ test("the review email names who asked, carries the note, the link and the post"
   assert.match(m.text, /https:\/\/x\.test\/admin\/workspace\/marketing\/social\?post=p1/);
   assert.match(m.text, /We had a great day\./);
 });
+
+import { hasMention, TAGGABLE, tagLabel, toggleMention } from "../../src/lib/social/tags";
+test("tags toggle in and out of the post's closing mentions line", () => {
+  assert.equal(TAGGABLE.length, 9);
+  assert.ok(!TAGGABLE.includes("@BioHubNet" as never));
+  assert.equal(tagLabel("@Canadian Hub for Health Intelligence and Innovation in Infectious Diseases (HI³)"), "HI³");
+  let body = "Great panel today.";
+  body = toggleMention(body, "@Molly Shoichet");
+  assert.equal(body, "Great panel today.\n\n@Molly Shoichet");
+  body = toggleMention(body, "@Roshni");
+  assert.equal(body, "Great panel today.\n\n@Molly Shoichet, @Roshni");
+  assert.ok(hasMention(body, "@Roshni"));
+  body = toggleMention(body, "@Molly Shoichet");
+  assert.equal(body, "Great panel today.\n\n@Roshni");
+  body = toggleMention(body, "@Roshni");
+  assert.equal(body, "Great panel today.");
+  assert.equal(toggleMention("", "@Yeseul"), "@Yeseul");
+  // An @ inside a sentence isn't the mentions line.
+  assert.equal(toggleMention("Thanks @Roshni for hosting.", "@Roshni"), "Thanks @Roshni for hosting.\n\n@Roshni");
+});

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Social: tag people on LinkedIn posts",
+    body: "LinkedIn posts (and **New post**) now have a **Tag** row: Molly Shoichet, Gilbert Walker, Darius Rackus, Yoo Jin Park, Akshita Vincent, Epshita Islam, Yeseul, Roshni and HI\u00b3. Click a name to add its @mention to the post's closing line, click again to take it out, or use **Tag all**. Changes save and are tracked like any other edit.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Social: email a review request and copy the review link",
     body: "Under **Review & comments** on any Social post there's now a **Review link** with a **Copy** button. When you pick a teammate under **Ask to review**, **Email them the review link** is ticked by default: they get your note, the link and the post text, and you're copied. Requests that were emailed are marked in the thread. If the email can't be sent, the request is still saved and you're told so you can share the link yourself.",
     kind: "improvement",

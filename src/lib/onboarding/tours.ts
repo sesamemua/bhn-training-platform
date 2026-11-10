@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.10b";
+export const TOUR_VERSION = "2026.11.10c";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "social.tag-people",
+    title: "Tag people on a post",
+    body: "Click a name in the Tag row under a LinkedIn post to add or remove its @mention.",
+    path: "/admin/workspace/marketing/social",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.10c",
+  },
   {
     id: "social.email-review-link",
     title: "Email a reviewer",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { SocialTagPicker } from "./SocialTagPicker";
 import { diffWordsWithSpace } from "diff";
 import { Check, History, LoaderCircle, RotateCcw } from "lucide-react";
 import type { SavedSocialText, SocialEditResponse, SocialTextChange } from "@/lib/social/edit-history";
@@ -16,9 +17,11 @@ function TextChanges({ before, after }: { before: string; after: string }) {
   </p>;
 }
 
-export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
+export function SocialPostEditor({ post, label, onSaved, onDraftState, taggable = false }: {
   post: SavedSocialText;
   label: string;
+  /** Show the "Tag people" chips (team-written LinkedIn posts). */
+  taggable?: boolean;
   onSaved: (post: SavedSocialText) => void;
   onDraftState: (id: string, body: string, pending: boolean) => void;
 }) {
@@ -164,6 +167,7 @@ export function SocialPostEditor({ post, label, onSaved, onDraftState }: {
       spellCheck
       className="block min-h-20 w-full resize-none overflow-hidden rounded-[2px] border-0 bg-transparent p-0 text-[16px] leading-[1.5] text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:text-[14px]"
     />}
+    {taggable && !readOnly && <div className="mt-3"><SocialTagPicker body={value} disabled={!!conflict} onChange={(body) => { changeText(body); void save(); }} /></div>}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-[12px]">
       <label className="inline-flex cursor-pointer items-center gap-2 text-muted">
         <input type="checkbox" role="switch" checked={tracking} disabled={readOnly || !!conflict} onChange={(event) => {
