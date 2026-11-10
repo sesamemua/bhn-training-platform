@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Assets: AI agent, provenance labels, look-alikes, AI expand, video and smart collections",
+    body: "**Ask the library** at the top of Assets: say what you need (\u201cfind consented photos from the panel and draft a LinkedIn post\u201d) and it picks pictures cleared to publish, drafts the post, runs pre-publish checks and, when you say so, creates the Social draft. Every picture now carries an **origin label** (camera, edited, AI-edited, AI-generated), suggested from its own metadata and Content Credentials, with a filter and a reminder to disclose AI in posts. **Find similar** shows near-duplicates and look-alikes, and a **Duplicates** view gathers them. Ready-made sizes add **Fit** (whole picture over a blurred backdrop) and **AI expand** (AI paints the missing edges; saved as a new, labelled picture). **Videos** upload straight to storage with a poster frame and an AI transcript, so you can search by what\u2019s said. Each picture shows **downloads and published posts**, share links count their **views**, a **Most used** view ranks the library, and any search can be saved as a **smart collection** that updates itself. Event covers and speaker headshots now land in the library automatically.",
+    kind: "feature",
+    visibleTo: ["superadmin"],
+    daysAgo: 0,
+  },
+  {
     title: "Assets: the team's picture library",
     body: "New **Workspace \u2192 Marketing \u2192 Assets**. Drop or paste pictures anywhere on the page (big phone photos are shrunk to fit) and each one is turned upright, stripped of GPS and camera data, and **captioned and tagged by AI**, so you can search by what's in a picture (\u201cpanel speakers on stage\u201d). Filter by folder, tag, colour or consent; Shift- or \u2318-click to select many and tag, move, set consent, add to a collection or trash them at once. Each picture's panel holds its **rights** (who's pictured, consent, credit, licence, expiry), **ready-made LinkedIn, square, portrait, story and banner sizes** cropped around the subject, **where it's used**, and **versions** when you replace it. Lock brand files as a **brand kit**, share a **collection** by a view-only link that expires, and keep deleted pictures in **Trash** for 30 days. Social posts can **choose from the library**, every Social upload lands there automatically, and a post won't publish a picture of people without recorded consent. **Import existing pictures** brings in the current social graphics, speaker photos and event covers.",
     kind: "feature",

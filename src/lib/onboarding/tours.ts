@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.09c";
+export const TOUR_VERSION = "2026.11.10";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "workspace.assets-ask-library",
+    title: "Ask the library",
+    body: "Describe what you need and the library picks consented pictures and drafts a LinkedIn post. Each picture also shows its origin (camera, edited or AI), look-alikes and an AI expand for any size.",
+    path: "/admin/workspace/assets",
+    placement: "center",
+    roles: ["superadmin"],
+    since: "2026.11.10",
+  },
   {
     id: "workspace.assets-library",
     title: "Your picture library",

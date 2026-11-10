@@ -18,6 +18,63 @@ export const CONSENT_LABEL: Record<Consent, string> = {
 };
 
 export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
+export const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"] as const;
+/** Videos go straight from the browser to storage, so they aren't held to the 4.5 MB request cap. */
+export const MAX_VIDEO_BYTES = 500_000_000;
+/** Whisper is sent the file itself; past this size, upload captions instead. */
+export const MAX_TRANSCRIBE_BYTES = 25_000_000;
+
+/**
+ * Where a picture came from. Suggested from its own metadata at upload
+ * (IPTC digital source type, Content Credentials, camera/software tags);
+ * a person can always correct it.
+ */
+export const ORIGINS = ["camera", "edited", "ai_edited", "ai_generated", "unknown"] as const;
+export type Origin = (typeof ORIGINS)[number];
+export const ORIGIN_LABEL: Record<Origin, string> = {
+  camera: "Camera original", edited: "Edited", ai_edited: "AI-edited", ai_generated: "AI-generated", unknown: "Origin unknown",
+};
+/** What a post using this picture should tell its readers, or null. */
+export function aiDisclosure(origin: string): string | null {
+  if (origin === "ai_generated") return "This picture is AI-generated. Say so in the post.";
+  if (origin === "ai_edited") return "This picture was edited with AI. Consider saying so in the post.";
+  return null;
+}
+
+/** Bits that differ between two 64-bit hex hashes (0 = look identical). */
+export function hamming(a: string, b: string): number {
+  let d = 0;
+  for (let i = 0; i < 16; i += 4) {
+    let x = (parseInt(a.slice(i, i + 4), 16) ^ parseInt(b.slice(i, i + 4), 16)) >>> 0;
+    while (x) { d += x & 1; x >>>= 1; }
+  }
+  return d;
+}
+/** Near-duplicates: burst shots, re-exports, the same photo resized. */
+export const NEAR_DUPLICATE_BITS = 8;
+
+/** Group assets whose hashes are within NEAR_DUPLICATE_BITS of each other. */
+export function duplicateGroups<T extends { id: string; phash: string | null }>(items: T[]): T[][] {
+  const withHash = items.filter((i) => i.phash);
+  const seen = new Set<string>();
+  const groups: T[][] = [];
+  for (const a of withHash) {
+    if (seen.has(a.id)) continue;
+    const group = withHash.filter((b) => !seen.has(b.id) && hamming(a.phash!, b.phash!) <= NEAR_DUPLICATE_BITS);
+    if (group.length > 1) { group.forEach((g) => seen.add(g.id)); groups.push(group); }
+  }
+  return groups;
+}
+
+/** Guess origin from what the file says about itself. */
+export function inferOrigin(p: { digitalSourceType?: string | null; software?: string | null; make?: string | null; generator?: string | null }): Origin {
+  const dst = (p.digitalSourceType ?? "").toLowerCase();
+  if (dst.includes("compositewithtrainedalgorithmicmedia") || dst.includes("algorithmicallyenhanced")) return "ai_edited";
+  if (dst.includes("trainedalgorithmicmedia") || p.generator) return "ai_generated";
+  if (p.software && /photoshop|lightroom|snapseed|gimp|affinity|canva|capture one|vsco|picsart/i.test(p.software)) return "edited";
+  if (p.make) return "camera";
+  return "unknown";
+}
 /**
  * Upload cap per file. Vercel refuses request bodies over 4.5 MB, so the
  * library shrinks bigger photos in the browser (fitPicture) to fit this.
@@ -105,6 +162,8 @@ export const AssetPatch = z.object({
   expiresAt: z.string().datetime().nullable().optional(),
   locked: z.boolean().optional(),
   trashed: z.boolean().optional(),
+  origin: z.enum(ORIGINS).optional(),
+  transcript: z.string().max(100_000).nullable().optional(),
 });
 export type AssetPatch = z.infer<typeof AssetPatch>;
 
@@ -115,7 +174,35 @@ export const AssetQuery = z.object({
   tag: z.string().max(40).optional(),
   consent: z.enum(CONSENT).optional(),
   color: z.enum(Object.keys(SWATCHES) as [Swatch, ...Swatch[]]).optional(),
-  view: z.enum(["all", "unused", "brand", "trash", "expiring"]).default("all"),
+  view: z.enum(["all", "unused", "brand", "trash", "expiring", "duplicates", "videos", "top"]).default("all"),
   collection: z.string().max(40).optional(),
+  origin: z.enum(ORIGINS).optional(),
 });
+/** The filters a smart collection saves (no view, no collection). */
+export const SmartQuery = AssetQuery.pick({ q: true, folder: true, tag: true, consent: true, color: true, origin: true });
 export type AssetQuery = z.infer<typeof AssetQuery>;
+
+/** Caption files → plain words: drop cue numbers, timings and tags. */
+export function captionText(raw: string): string {
+  return raw.replace(/^WEBVTT.*$/m, "").split(/\r?\n/)
+    .filter((l) => l.trim() && !/^\d+$/.test(l.trim()) && !/-->/.test(l) && !/^(NOTE|STYLE|REGION)\b/.test(l))
+    .map((l) => l.replace(/<[^>]+>/g, "").trim()).join(" ").replace(/\s+/g, " ").trim();
+}
+
+/** Pre-publish checks for a drafted LinkedIn post and its picture. */
+export function postChecks(body: string, asset: (RightsFacts & { origin: string }) | null): { ok: boolean; label: string }[] {
+  const text = body.trim();
+  const tags = text.match(/#[\p{L}\d_]+/gu) ?? [];
+  const checks = [
+    { ok: text.length > 0 && text.length <= 3000, label: `Length ${text.length.toLocaleString()} / 3,000 characters` },
+    { ok: tags.length <= 5, label: tags.length ? `${tags.length} hashtag${tags.length === 1 ? "" : "s"} (5 or fewer reads best)` : "No hashtags" },
+    { ok: !/\b(lorem|TODO|TBD|\[insert)/i.test(text), label: "No placeholders left in the text" },
+  ];
+  if (asset) {
+    const block = publishBlock(asset);
+    checks.push({ ok: !block, label: block ?? "Picture rights and consent are clear" });
+    const disclose = aiDisclosure(asset.origin);
+    if (disclose) checks.push({ ok: /\bAI\b|artificial intelligence|generated/i.test(text), label: disclose });
+  } else checks.push({ ok: false, label: "Pick a picture for the post" });
+  return checks;
+}

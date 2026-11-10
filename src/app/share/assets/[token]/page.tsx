@@ -7,18 +7,20 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { assetUrl } from "@/lib/assets/usage";
+import { sharedAssetIds, sharedCollection } from "@/lib/assets/share";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Shared pictures · BioHubNet", robots: { index: false, follow: false } };
 
 export default async function SharedCollection({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  if (!/^[\w-]{16,64}$/.test(token)) notFound();
-  const c = await prisma.assetCollection.findUnique({ where: { shareToken: token } });
-  if (!c || !c.shareExpiresAt || c.shareExpiresAt <= new Date()) notFound();
+  const c = await sharedCollection(token);
+  if (!c || !c.shareExpiresAt) notFound();
+  const ids = (await sharedAssetIds(token)) ?? [];
+  await prisma.assetCollection.update({ where: { id: c.id }, data: { views: { increment: 1 } } }).catch(() => {});
   const assets = await prisma.asset.findMany({
-    where: { id: { in: c.assetIds }, deletedAt: null, key: { not: "" }, consent: { not: "refused" } },
-    select: { id: true, title: true, key: true, thumbKey: true, altText: true, credit: true, width: true, height: true, color: true },
+    where: { id: { in: ids } },
+    select: { id: true, title: true, key: true, thumbKey: true, altText: true, credit: true, width: true, height: true, color: true, kind: true },
     orderBy: { createdAt: "desc" },
   });
   return (
@@ -29,12 +31,16 @@ export default async function SharedCollection({ params }: { params: Promise<{ t
       <div className="mt-6 columns-2 gap-3 sm:columns-3 lg:columns-4">
         {assets.map((a) => (
           <figure key={a.id} className="mb-3 break-inside-avoid overflow-hidden rounded-[12px] border border-line bg-card-solid">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={assetUrl(a.thumbKey) ?? assetUrl(a.key)!} alt={a.altText ?? a.title} loading="lazy" width={a.width ?? undefined} height={a.height ?? undefined}
-              className="block h-auto w-full" style={{ backgroundColor: a.color ?? undefined }} />
+            {a.kind === "video" ? (
+              <video src={assetUrl(a.key)!} poster={assetUrl(a.thumbKey) ?? undefined} controls preload="none" className="block h-auto w-full" />
+            ) : (<>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={assetUrl(a.thumbKey) ?? assetUrl(a.key)!} alt={a.altText ?? a.title} loading="lazy" width={a.width ?? undefined} height={a.height ?? undefined}
+                className="block h-auto w-full" style={{ backgroundColor: a.color ?? undefined }} />
+            </>)}
             <figcaption className="flex items-center gap-2 px-2.5 py-2 text-[12px]">
               <span className="min-w-0 flex-1 truncate font-semibold text-fg">{a.title}{a.credit ? <span className="font-normal text-muted"> · © {a.credit}</span> : null}</span>
-              <a href={assetUrl(a.key)!} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-brand-700 hover:underline">Download</a>
+              <a href={`/share/assets/${token}/download/${a.id}`} className="shrink-0 font-semibold text-brand-700 hover:underline">Download</a>
             </figcaption>
           </figure>
         ))}

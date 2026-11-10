@@ -165,6 +165,12 @@ export async function POST(req: NextRequest, ctx: Context) {
         detail: JSON.stringify({ before: source.photoUrl, after: url, original: originalUrl, previousOriginal: source.originalUrl, framing, websiteUpdated, publishedUrl }),
       } });
     });
+    // Keep a copy in the asset library (People), linked back to this speaker. Never blocks the save.
+    if (source.speaker) {
+      const speakerId = source.speaker.id;
+      void import("@/lib/assets/store").then((m) => m.libraryCopy({ bytes, fileName: `headshot-${speakerId}.png`, mimeType: "image/png", folder: "People",
+        tags: ["speaker", "headshot"], actor: { id: actorId, name: null }, usage: { targetType: "speaker", targetId: speakerId, label: "Speaker headshot" } })).catch(() => {});
+    }
     return NextResponse.json({ photoUrl: url });
   } catch (error) {
     // Keep shared content-addressed images, source photos and prior crops; discard only this editor's uploads.

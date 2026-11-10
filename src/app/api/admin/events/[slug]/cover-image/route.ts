@@ -14,6 +14,7 @@ import { randomBytes } from "node:crypto";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { putR2Object, r2PublicUrl, deleteR2ObjectByUrl } from "@/lib/r2";
+import { libraryCopy } from "@/lib/assets/store";
 
 export const runtime = "nodejs";
 
@@ -82,5 +83,11 @@ export async function POST(
     where: { id: event.id },
     data: { coverImageUrl: url },
   });
+  // Keep a copy in the asset library, linked back to this event.
+  if (["image/png", "image/jpeg", "image/webp", "image/gif"].includes(contentType)) {
+    const user = session.user as { id?: string; name?: string | null };
+    libraryCopy({ bytes: buf, fileName: filename, mimeType: contentType, folder: "Events", tags: ["event cover", slug],
+      actor: { id: user.id ?? null, name: user.name ?? null }, usage: { targetType: "eventCover", targetId: event.id, label: `Event cover · ${slug}`, href: `/events/${slug}` } });
+  }
   return NextResponse.json({ ok: true, url });
 }

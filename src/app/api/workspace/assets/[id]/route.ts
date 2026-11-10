@@ -12,7 +12,9 @@ type Ctx = { params: Promise<{ id: string }> };
 async function detail(id: string) {
   const a = await prisma.asset.findUnique({ where: { id }, include: { _count: { select: { usages: true } }, usages: { orderBy: { createdAt: "desc" } }, versions: { orderBy: { version: "desc" } } } });
   if (!a) return null;
-  return { ...toCard(a),
+  const postIds = a.usages.filter((u) => u.targetType === "socialPost").map((u) => u.targetId);
+  const publishedIn = postIds.length ? await prisma.socialPost.count({ where: { id: { in: postIds }, status: "published" } }) : 0;
+  return { ...toCard(a), transcript: a.transcript, publishedIn,
     usages: a.usages.map((u) => ({ id: u.id, label: u.label, href: u.href, targetType: u.targetType, at: u.createdAt.toISOString() })),
     versions: a.versions.map((v) => ({ version: v.version, url: assetUrl(v.key)!, thumbUrl: assetUrl(v.thumbKey), sizeBytes: v.sizeBytes, width: v.width, height: v.height, at: v.createdAt.toISOString() })),
   };

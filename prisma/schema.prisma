@@ -7049,6 +7049,22 @@ model Asset {
   deletedAt      DateTime?
   createdAt      DateTime                    @default(now())
   updatedAt      DateTime                    @updatedAt
+  /// "image" | "video"
+  kind           String                      @default("image")
+  /// Where the picture came from: camera | edited | ai_edited | ai_generated | unknown.
+  /// Suggested from the file's metadata at upload; a person can correct it.
+  origin         String                      @default("unknown")
+  /// What the file said about itself before metadata was stripped
+  /// (camera, software, capture date, IPTC digital source type, whether
+  /// Content Credentials were present). Never GPS.
+  provenance     Json?
+  /// 64-bit difference hash (hex) for near-duplicate / look-alike detection.
+  phash          String?
+  /// Video: length and spoken words (Whisper or uploaded captions).
+  durationSec    Float?
+  transcript     String?
+  /// Times a size or the original was downloaded through the platform.
+  downloads      Int                         @default(0)
   /// 384-d BGE-small embedding of title+caption+tags; raw SQL (pgvector).
   embedding      Unsupported("vector(384)")?
 
@@ -7058,6 +7074,7 @@ model Asset {
   @@index([deletedAt, createdAt])
   @@index([sha256])
   @@index([folder])
+  @@index([phash])
 }
 
 /// A file an asset used to be, kept when someone replaces it.
@@ -7104,6 +7121,10 @@ model AssetCollection {
   assetIds       String[]  @default([])
   shareToken     String?   @unique
   shareExpiresAt DateTime?
+  /// Smart collection: saved library filters; members are whatever matches now.
+  query          Json?
+  /// Times the shared link was opened.
+  views          Int       @default(0)
   createdById    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

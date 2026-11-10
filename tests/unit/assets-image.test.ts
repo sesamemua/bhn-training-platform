@@ -26,3 +26,26 @@ test("a file that isn't the picture type it claims is refused", async () => {
   await assert.rejects(processImage(Buffer.from("<html>"), "image/png"), /not the picture type/);
   await assert.rejects(processImage(png, "image/svg+xml"), /PNG, JPEG, WebP or GIF/);
 });
+
+import { lookHash, readProvenance } from "../../src/lib/assets/image";
+import { hamming, inferOrigin } from "../../src/lib/assets/core";
+
+test("provenance keeps camera and software, flags AI source types, never GPS", async () => {
+  const camera = await sharp({ create: { width: 30, height: 20, channels: 3, background: "#888" } })
+    .withExif({ IFD0: { Make: "Canon", Model: "EOS R6", Software: "Adobe Photoshop 26.1" }, IFD3: { GPSLatitudeRef: "N" } }).jpeg().toBuffer();
+  const p = await readProvenance(camera);
+  assert.equal(p.make, "Canon"); assert.equal(p.model, "EOS R6"); assert.match(p.software!, /Photoshop/);
+  assert.equal(inferOrigin(p), "edited");
+  assert.ok(!JSON.stringify(p).includes("GPS"));
+  const xmp = `<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" Iptc4xmpExt:DigitalSourceType="http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"/></rdf:RDF></x:xmpmeta>`;
+  const ai = await sharp({ create: { width: 30, height: 20, channels: 3, background: "#888" } }).withXmp(xmp).png().toBuffer();
+  assert.equal(inferOrigin(await readProvenance(ai)), "ai_generated");
+});
+
+test("look-alike hash: a resized copy is a near-duplicate, a different picture isn't", async () => {
+  const draw = (w: number, h: number, flip = false) => sharp({ create: { width: w, height: h, channels: 3, background: "#fff" } })
+    .composite([{ input: Buffer.from(`<svg width="${w}" height="${h}"><rect x="${flip ? w / 2 : 0}" width="${w / 2}" height="${h}" fill="#000"/></svg>`) }]).png().toBuffer();
+  const a = await lookHash(await draw(400, 300)), b = await lookHash(await draw(200, 150)), c = await lookHash(await draw(400, 300, true));
+  assert.ok(hamming(a, b) <= 8, `resized copy differs by ${hamming(a, b)} bits`);
+  assert.ok(hamming(a, c) > 8, `mirror image differs by only ${hamming(a, c)} bits`);
+});

@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ASSET_FOLDERS, AssetQuery, MAX_ASSET_BYTES, nearestSwatch } from "@/lib/assets/core";
+import { ASSET_FOLDERS, AssetQuery, duplicateGroups, MAX_ASSET_BYTES, nearestSwatch, SmartQuery } from "@/lib/assets/core";
 import { assetActor, ingestAsset, semanticSearch, toCard } from "@/lib/assets/store";
 
 export const runtime = "nodejs";
@@ -16,8 +16,16 @@ export async function GET(req: NextRequest) {
   if ("error" in gate) return gate.error;
   const parsed = AssetQuery.safeParse(Object.fromEntries(req.nextUrl.searchParams));
   if (!parsed.success) return NextResponse.json({ error: "Invalid filters." }, { status: 400 });
-  const f = parsed.data;
+  let f = parsed.data;
   const now = new Date();
+  // A smart collection is a saved search: run its filters instead of a fixed list.
+  let fixedIds: string[] | null = null;
+  if (f.collection) {
+    const c = await prisma.assetCollection.findUnique({ where: { id: f.collection }, select: { assetIds: true, query: true } });
+    const smart = c?.query ? SmartQuery.safeParse(c.query) : null;
+    if (smart?.success) f = { ...f, ...smart.data, collection: undefined };
+    else fixedIds = c?.assetIds ?? [];
+  }
   const where: Prisma.AssetWhereInput = {
     deletedAt: f.view === "trash" ? { not: null } : null,
     key: { not: "" }, // failed-import markers
@@ -27,10 +35,14 @@ export async function GET(req: NextRequest) {
     ...(f.folder ? { folder: f.folder } : {}),
     ...(f.tag ? { tags: { has: f.tag } } : {}),
     ...(f.consent ? { consent: f.consent } : {}),
+    ...(f.origin ? { origin: f.origin } : {}),
+    ...(f.view === "videos" ? { kind: "video" } : {}),
   };
-  if (f.collection) {
-    const c = await prisma.assetCollection.findUnique({ where: { id: f.collection }, select: { assetIds: true } });
-    where.id = { in: c?.assetIds ?? [] };
+  if (fixedIds) where.id = { in: fixedIds };
+  if (f.view === "duplicates") {
+    const hashed = await prisma.asset.findMany({ where: { deletedAt: null, phash: { not: null } }, select: { id: true, phash: true } });
+    const groups = duplicateGroups(hashed);
+    where.id = { in: groups.flat().map((g) => g.id) };
   }
   let ids: string[] | null = null;
   if (f.q) {
@@ -46,7 +58,8 @@ export async function GET(req: NextRequest) {
     ids = [...new Set([...keyword.map((r) => r.id), ...meaning])];
     where.id = { in: ids, ...(where.id as object | undefined) };
   }
-  const rows = await prisma.asset.findMany({ where, include: { _count: { select: { usages: true } } }, orderBy: { createdAt: "desc" }, take: 400 });
+  const rows = await prisma.asset.findMany({ where, include: { _count: { select: { usages: true } } }, take: 400,
+    orderBy: f.view === "top" ? [{ usages: { _count: "desc" } }, { downloads: "desc" }, { createdAt: "desc" }] : f.view === "duplicates" ? [{ phash: "asc" }] : [{ createdAt: "desc" }] });
   // ponytail: colour filter runs in JS over ≤400 rows; add a stored swatch column if the library outgrows that.
   let list = f.color ? rows.filter((r) => r.color && nearestSwatch(r.color) === f.color) : rows;
   if (ids) { const rank = new Map(ids.map((id, i) => [id, i])); list = [...list].sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0)); }

@@ -21,7 +21,7 @@ export function AssetPicker({ label, onPick }: { label: string; onPick: (asset: 
           if (r.status === 403) throw new Error("The asset library is open to the team’s superadmin accounts.");
           const j = await r.json() as { assets?: AssetCard[]; error?: string };
           if (!r.ok) throw new Error(j.error ?? "Couldn't load the library.");
-          setAssets((j.assets ?? []).slice(0, 24)); setError(null);
+          setAssets((j.assets ?? []).filter((a) => a.kind === "image").slice(0, 24)); setError(null);
         }).catch((e) => { if (!c.signal.aborted) setError((e as Error).message); });
     }, q ? 280 : 0);
     return () => { clearTimeout(t); c.abort(); };
@@ -51,8 +51,9 @@ export function AssetPicker({ label, onPick }: { label: string; onPick: (asset: 
             <button key={a.id} type="button" onClick={() => { onPick(a); setOpen(false); }} title={blocked ? `${a.title}: ${blocked}` : a.title}
               className="group relative overflow-hidden rounded-[6px] border border-line hover:border-brand-500" style={{ backgroundColor: a.color ?? undefined }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={a.thumbUrl} alt={a.altText ?? a.title} loading="lazy" className="block aspect-square w-full object-cover" />
+              <img src={a.thumbUrl ?? a.url} alt={a.altText ?? a.title} loading="lazy" className="block aspect-square w-full object-cover" />
               {blocked && <span className="block bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-800">Needs consent</span>}
+              {!blocked && a.origin.startsWith("ai") && <span className="block bg-violet-100 px-1 py-0.5 text-[10px] font-semibold text-violet-800">{a.origin === "ai_generated" ? "AI-generated" : "AI-edited"}</span>}
             </button>
           );
         })}
