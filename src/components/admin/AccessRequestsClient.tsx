@@ -1,4 +1,5 @@
 "use client";
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useMemo, useState } from "react";
 import { CheckCircle2, X, Building2, GraduationCap, ExternalLink, Mail, MessageSquare } from "lucide-react";
 import Link from "next/link";
@@ -42,7 +43,7 @@ export function AccessRequestsClient({
   siteUrl: string;
 }) {
   const [list, setList] = useState(initial);
-  const [tab, setTab] = useState<"pending" | "approved" | "rejected">("pending");
+  const [tab, setTab] = useTabParam<"pending" | "approved" | "rejected">("tab", "pending", ["pending", "approved", "rejected"]);
   const [busy, setBusy] = useState<string | null>(null);
 
   const counts = useMemo(() => ({

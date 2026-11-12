@@ -15,6 +15,7 @@ import { redirect } from "next/navigation";
 import { Speaker } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { PageHero } from "@/components/ui/PageHero";
+import { AvTabs } from "@/components/workspace/AvTabs";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { Av2026Quotes } from "@/components/workspace/Av2026Quotes";
 import { AV26_DECISION } from "@/lib/symposium/av-2026";
@@ -37,6 +38,7 @@ export default async function SymposiumAv2026Page() {
         description={`Livecast's latest: the room and the stream back in one quote. The room alone is ${cad(AV26_DECISION.roomOnly.total)}; the stream adds ${cad(AV26_DECISION.streaming.total)}, for ${cad(AV26_DECISION.withStream.total)} in total — back on the 1 September price.`}
         icon={<Speaker />}
       />
+      <AvTabs active="2026" />
       <div className="@container mt-6">
         <Av2026Quotes />
       </div>

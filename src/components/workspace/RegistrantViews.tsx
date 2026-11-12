@@ -7,6 +7,7 @@
  * filters, save it as a new view, update, rename or delete it. Saved
  * views are shared by every admin.
  */
+import { setUrlParam } from "@/lib/hooks/use-tab-param";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -208,7 +209,8 @@ const same = (a: View, b: View) => JSON.stringify({ ...a, name: "" }) === JSON.s
 
 export function RegistrantViews({ workshops, initialViews }: { workshops: AdminWorkshop[]; initialViews: View[] }) {
   const searchParams = useSearchParams();
-  const initial = workshopRegistrantView(searchParams.get("workshop"), workshops.map((w) => w.id));
+  const linked = [...BUILT_IN_VIEWS, ...initialViews].find((v) => v.id === searchParams.get("view"));
+  const initial = linked ?? workshopRegistrantView(searchParams.get("workshop"), workshops.map((w) => w.id));
   const [saved, setSaved] = useState<View[]>(initialViews);
   const all = [...BUILT_IN_VIEWS, ...saved];
   const [activeId, setActiveId] = useState(initial.id);
@@ -353,7 +355,7 @@ export function RegistrantViews({ workshops, initialViews }: { workshops: AdminW
   const custom = !isBuiltIn(active.id);
 
   const setF = (patch: Partial<Filters>) => setDraft((d) => ({ ...d, filters: { ...d.filters, ...patch } }));
-  const open = (v: View) => { setActiveId(v.id); setDraft(v); setSaid(null); setPicked(new Set()); };
+  const open = (v: View) => { setActiveId(v.id); setDraft(v); setSaid(null); setPicked(new Set()); setUrlParam("view", v.id === BUILT_IN_VIEWS[0].id ? null : v.id); };
 
   function persist(next: View[], message: string, openId?: string) {
     start(async () => {

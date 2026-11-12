@@ -1,5 +1,6 @@
 "use client";
 
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Archive, Check, CloudUpload, Copy, GripVertical, Loader2, Pencil, Plus, RefreshCw, Save, Search, Trash2, Unlink, X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -17,8 +18,8 @@ const BUTTON = "inline-flex items-center justify-center gap-1.5 rounded-md borde
 type Draft = PersonInput & { session: PlanSession; key: string };
 
 export function SymposiumPeopleTabs({ children, initialReview }: { children: ReactNode; initialReview?: { id: string; session: PlanSession | null } }) {
-  const [tab, setTab] = useState(initialReview ? "publication" : "people");
-  const [publicationOpened, setPublicationOpened] = useState(!!initialReview);
+  const [tab, setTab] = useTabParam<string>("tab", "people", ["people", "roster", "submissions", "publication"], initialReview ? "publication" : undefined);
+  const [publicationOpened, setPublicationOpened] = useState(!!initialReview || tab === "publication");
   const [publicationDirty, setPublicationDirty] = useState(false);
   const [intakeReview, setIntakeReview] = useState<{ id: string; session: PlanSession | null; key: number } | null>(initialReview ? { ...initialReview, key: 0 } : null);
   const router = useRouter();

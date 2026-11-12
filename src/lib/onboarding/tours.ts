@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.10d";
+export const TOUR_VERSION = "2026.11.12";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "nav.other-tabs",
+    title: "Where did the rest of the menu go?",
+    body: "The team menu now shows EQUIP and Workspace. Everything else is under See other available tabs at the bottom of the menu.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.12",
+  },
   {
     id: "social.five-steps",
     title: "Five steps, straight down",

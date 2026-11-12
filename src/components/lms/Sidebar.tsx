@@ -583,22 +583,12 @@ const workspaceSymposiumLinkedinItem: NavItem = {
 // The invoice is in there because 2025 was billed 12% above its own
 // quote — comparing 2026 against last year's estimate alone would say
 // the price rose 47% when the honest figure is 31%.
-const workspaceAv2025Item: NavItem = {
-  label: "AV 2025",
-  href: "/admin/workspace/symposium-2026/av/2025",
-  icon: Speaker,
-  minRole: "admin",
-  description:
-    "Livecast's September 1 quote against last year's quote and last year's final invoice — line by line, plus the terms that changed and the two that commit BHN to spending not in the quote.",
-};
 
-// WORKSPACE → 2026 Symposium → AV 2026. The quote as it stands (round 3)
-// and the decision it leaves — the room, or the room with a stream. Its
-// own item rather than a column on the 2025 page, which argues about
-// whether this year's number is reasonable; this one is what to sign.
-const workspaceAv2026Item: NavItem = {
-  label: "AV 2026",
-  href: "/admin/workspace/symposium-2026/av/2026",
+// WORKSPACE → 2026 Symposium → AV. One tab for both years: it opens
+// this year's quote, and the 2025 comparison is a tab on that page.
+const workspaceAvItem: NavItem = {
+  label: "AV",
+  href: "/admin/workspace/symposium-2026/av",
   icon: Speaker,
   minRole: "admin",
   description:
@@ -1686,6 +1676,48 @@ function writeRailCollapsed(next: boolean) {
   collapseListeners.forEach((fn) => fn());
 }
 
+/**
+ * "See other available tabs": the team's menu stops at Workspace; the
+ * learner pillars, HR preview, buddies, changelog and Administration sit
+ * behind this one disclosure. Closed by default for everybody; the
+ * choice is remembered per browser like the rail collapse above.
+ */
+const OTHER_TABS_KEY = "bhn.sidebar.otherTabs.open.v1";
+const otherTabsListeners = new Set<() => void>();
+function subscribeOtherTabs(onChange: () => void) {
+  otherTabsListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => { otherTabsListeners.delete(onChange); window.removeEventListener("storage", onChange); };
+}
+function readOtherTabsOpen(): boolean {
+  try { return localStorage.getItem(OTHER_TABS_KEY) === "1"; } catch { return false; }
+}
+function writeOtherTabsOpen(next: boolean) {
+  try { localStorage.setItem(OTHER_TABS_KEY, next ? "1" : "0"); } catch { /* the toggle still works for this page */ }
+  otherTabsListeners.forEach((fn) => fn());
+}
+
+function OtherTabs({ children }: { children: React.ReactNode }) {
+  const open = useSyncExternalStore(subscribeOtherTabs, readOtherTabsOpen, () => false);
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="sidebar-other-tabs"
+        onClick={() => writeOtherTabsOpen(!open)}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-muted transition-colors hover:bg-elevated hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"
+      >
+        <ChevronRight size={14} className={cn("shrink-0 transition-transform", open && "rotate-90")} aria-hidden />
+        {open ? "Hide other tabs" : "See other available tabs"}
+      </button>
+      <div id="sidebar-other-tabs" hidden={!open} className="space-y-1 pt-1">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar({
   role, realRole, actingAs, user, credits, allowPlatformContent = false,
   queueCounts,
@@ -1844,6 +1876,249 @@ export function Sidebar({
   //     trainee never would.
   const showHrViewPreview = realRole === "superadmin" && !actingAs;
 
+  // Sections that staff reach through "See other available tabs" and
+  // everyone else sees in place.
+  const engageSection = (
+    <>
+        {/* Where the pillars are paused only Events is left here: drop the
+            header when that is hidden too, and the pathway programmes. */}
+        {showLearnerNav && (!pausedPillarsActive() || isEngageHqpAdvisor || visibleByPrefs(engageItems).length > 0) && (
+          <SectionGroup
+            title="ENGAGE"
+            tone="engage"
+            description="Industry-led training, workshops, and mentorship."
+            programs={pausedPillarsActive() ? undefined : [
+              {
+                title: "Medical Affairs Learning Pathway",
+                body: "MSL Accelerator with Agilis Health — 2-day intensive in Toronto. Cohort runs in spring; next group in Fall.",
+              },
+              {
+                title: "Entrepreneurship Learning Pathway",
+                body: "Programme for life-sciences founders and aspiring founders.",
+              },
+            ]}
+          >
+            {visibleByPrefs(engageItems).map((item) => {
+              const labeled = { ...item, label: t(item.labelKey) };
+              return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
+            })}
+            {/* ENGAGE HQP Advisory shortcut — renders inline under
+                the ENGAGE pillar section instead of in a standalone
+                COMMITTEES block, per user request. Visible only for
+                users in the `engage_hqp_advisor` role seat. */}
+            {isEngageHqpAdvisor && (
+              <NavLink
+                item={{
+                  label: "ENGAGE HQP advisory",
+                  href: "/committee/hqp",
+                  icon: Award,
+                  description: "ENGAGE-pillar HQP advisory dashboard — training-side perspectives, course quality, learner feedback.",
+                }}
+                pathname={pathname}
+                onNavigate={() => setMobileOpen(false)}
+                queueCounts={queueCounts}
+              />
+            )}
+          </SectionGroup>
+        )}
+    </>
+  );
+  const experienceSection = (
+    <>
+        {showLearnerNav && withoutPaused(experienceItems).length > 0 && (
+          <SectionGroup
+            title="EXPERIENCE"
+            tone="experience"
+            description="Bridging theory and practice through experiential learning."
+            programs={[
+              {
+                title: "My Application",
+                body: "Resume, 1-minute video, and elevator pitch — built once, reused by every form you submit.",
+              },
+              {
+                title: "Knowledge Exchange — Round 4",
+                body: "Industry placements running 1, 4, or 6 months. Application deadline 29 May 2026.",
+              },
+              {
+                title: "Talent Application",
+                body: "Submit your bio, supervisor letter, transcript, resume, and STAR video — we share with vetted partners.",
+              },
+              {
+                title: "Internships",
+                body: "Live job board of internship and co-op postings from BHN industry partners.",
+              },
+            ]}
+          >
+            {visibleByPrefs(experienceItems).map((item) => {
+              const labeled = { ...item, label: t(item.labelKey) };
+              return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
+            })}
+          </SectionGroup>
+        )}
+    </>
+  );
+  const hrPreviewSection = (
+    <>
+        {showHrViewPreview && !isEmployer && visibleEmployerItems.length > 0 && (
+          <SectionGroup
+            title="HR PREVIEW"
+            description="What an HR account sees in their menu. Click any link to preview the route; use the xx keyboard shortcut to view-as HR with the act-as cookie set."
+            tone="hr-preview"
+          >
+            {/* Lifted out of the Admin section so the HR surface
+                reads as a peer of ENGAGE / EXPERIENCE rather than
+                buried under Administration. Gated on superadmin
+                (showHrViewPreview) AND not currently acting as
+                employer — the top-of-nav EMPLOYER PORTAL block
+                already covers that case and we don't want to
+                render the same six links twice.
+
+                Visual treatment: violet "hr-preview" tone — distinctly
+                brighter than the surrounding sections so a superadmin
+                spots it instantly when scanning the sidebar. Pairs
+                with the Eye glyph + violet-tinted explainer below. */}
+            <p className="px-3 -mt-0.5 pb-1.5 text-[11px] text-violet-800 leading-snug inline-flex items-start gap-1.5">
+              <Eye size={11} className="text-violet-700 mt-0.5 shrink-0" />
+              <span>
+                Preview only · use{" "}
+                <code className="font-mono text-violet-900 bg-violet-50 ring-1 ring-inset ring-violet-200 px-1 rounded">xx</code>{" "}
+                to view-as HR
+              </span>
+            </p>
+            {visibleEmployerItems.map((item) => (
+              <NavLink
+                key={item.href}
+                item={{ ...item, label: t(item.labelKey) }}
+                pathname={pathname}
+                onNavigate={() => setMobileOpen(false)}
+                queueCounts={queueCounts}
+              />
+            ))}
+          </SectionGroup>
+        )}
+    </>
+  );
+  const miscSection = (
+    <>
+        {showLearnerNav && (
+          <>
+            <div className="pt-2" />
+            {visibleByPrefs(miscItems)
+              // miscItems default to trainee-visible unless an explicit
+              // `minRole` is set (e.g. roadmap is superadmin-only). The
+              // shared filterByRole helper assumes admin-default for
+              // admin-zone items, which is the wrong default here.
+              .filter((item) => {
+                const required = ROLE_RANK[item.minRole ?? "trainee"] ?? 0;
+                return userRank >= required;
+              })
+              .map((item) => {
+                // Trainees see the changelog as "What's new"; staff as "Changelog".
+                const key = item.href === "/changelog" && !isStaff ? "nav.changelogTrainee" : item.labelKey;
+                const labeled = { ...item, label: t(key) };
+                return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
+              })}
+          </>
+        )}
+    </>
+  );
+  const administrationSection = (
+    <>
+        {isAdmin && (
+          <SectionGroup
+            title={t("nav.administration").toUpperCase()}
+            tone="electric"
+            description="Privileged territory — manage learners, employers, the EQUIP pillar, the platform itself, and security. Sub-grouped into ENGAGE / EXPERIENCE / EQUIP / Insights / Platform / Security & compliance / System so each list stays scannable."
+          >
+            {/* Overview sits at the top, ungrouped — single canonical link. */}
+            <NavLink item={adminOverview} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+
+            {visibleEngageAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Engage">
+                {visibleEngageAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+
+            {visibleExperienceAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Experience">
+                {visibleExperienceAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+
+            {visibleEquipAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.equip} label="Equip">
+                {visibleEquipAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+
+            {/*
+              Operations sits between Equip and Insights — the three
+              pillars (Engage / Experience / Equip) are pipeline-shaped
+              work that happens IN the platform, then Operations is the
+              cross-pillar mechanics that keep the platform running,
+              and Insights is what you look at after the work is done.
+            */}
+            {visibleOperationsAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Operations">
+                {visibleOperationsAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+
+            {visibleInsightsAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Design & Insight">
+                {visibleInsightsAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+
+            {/* HR-view preview was here; moved out of Admin into
+                its own top-level SectionGroup placed before the
+                misc items (Learning buddies, Change log) so it
+                reads as a peer surface, not buried under
+                Administration. */}
+
+            {visiblePlatformAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.platform} label="Platform">
+                {/* Platform is 11 items (was 24) — flat list
+                    like Engage / Experience. The collapsible UI
+                    that gated 24 items behind a click is removed
+                    in favour of consistent visual treatment
+                    across the sub-groups. */}
+                {visiblePlatformAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+
+            {visibleSecurityAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.security} label="Security & compliance">
+                {visibleSecurityAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+
+            {visibleSystemAdmin.length > 0 && (
+              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.system} label="System (superadmin)">
+                {visibleSystemAdmin.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                ))}
+              </AdminSubgroup>
+            )}
+          </SectionGroup>
+        )}
+    </>
+  );
+
   return (
     <>
       {/* Mobile hamburger — fixed to the top-left of the viewport when
@@ -1966,78 +2241,9 @@ export function Sidebar({
           </SectionGroup>
         )}
 
-        {/* Where the pillars are paused only Events is left here: drop the
-            header when that is hidden too, and the pathway programmes. */}
-        {showLearnerNav && (!pausedPillarsActive() || isEngageHqpAdvisor || visibleByPrefs(engageItems).length > 0) && (
-          <SectionGroup
-            title="ENGAGE"
-            tone="engage"
-            description="Industry-led training, workshops, and mentorship."
-            programs={pausedPillarsActive() ? undefined : [
-              {
-                title: "Medical Affairs Learning Pathway",
-                body: "MSL Accelerator with Agilis Health — 2-day intensive in Toronto. Cohort runs in spring; next group in Fall.",
-              },
-              {
-                title: "Entrepreneurship Learning Pathway",
-                body: "Programme for life-sciences founders and aspiring founders.",
-              },
-            ]}
-          >
-            {visibleByPrefs(engageItems).map((item) => {
-              const labeled = { ...item, label: t(item.labelKey) };
-              return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
-            })}
-            {/* ENGAGE HQP Advisory shortcut — renders inline under
-                the ENGAGE pillar section instead of in a standalone
-                COMMITTEES block, per user request. Visible only for
-                users in the `engage_hqp_advisor` role seat. */}
-            {isEngageHqpAdvisor && (
-              <NavLink
-                item={{
-                  label: "ENGAGE HQP advisory",
-                  href: "/committee/hqp",
-                  icon: Award,
-                  description: "ENGAGE-pillar HQP advisory dashboard — training-side perspectives, course quality, learner feedback.",
-                }}
-                pathname={pathname}
-                onNavigate={() => setMobileOpen(false)}
-                queueCounts={queueCounts}
-              />
-            )}
-          </SectionGroup>
-        )}
+        {!isAdmin && engageSection}
 
-        {showLearnerNav && withoutPaused(experienceItems).length > 0 && (
-          <SectionGroup
-            title="EXPERIENCE"
-            tone="experience"
-            description="Bridging theory and practice through experiential learning."
-            programs={[
-              {
-                title: "My Application",
-                body: "Resume, 1-minute video, and elevator pitch — built once, reused by every form you submit.",
-              },
-              {
-                title: "Knowledge Exchange — Round 4",
-                body: "Industry placements running 1, 4, or 6 months. Application deadline 29 May 2026.",
-              },
-              {
-                title: "Talent Application",
-                body: "Submit your bio, supervisor letter, transcript, resume, and STAR video — we share with vetted partners.",
-              },
-              {
-                title: "Internships",
-                body: "Live job board of internship and co-op postings from BHN industry partners.",
-              },
-            ]}
-          >
-            {visibleByPrefs(experienceItems).map((item) => {
-              const labeled = { ...item, label: t(item.labelKey) };
-              return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
-            })}
-          </SectionGroup>
-        )}
+        {!isAdmin && experienceSection}
 
         {showLearnerNav && equipItems.length > 0 && (
           <SectionGroup
@@ -2122,64 +2328,9 @@ export function Sidebar({
           </SectionGroup>
         )}
 
-        {showHrViewPreview && !isEmployer && visibleEmployerItems.length > 0 && (
-          <SectionGroup
-            title="HR PREVIEW"
-            description="What an HR account sees in their menu. Click any link to preview the route; use the xx keyboard shortcut to view-as HR with the act-as cookie set."
-            tone="hr-preview"
-          >
-            {/* Lifted out of the Admin section so the HR surface
-                reads as a peer of ENGAGE / EXPERIENCE rather than
-                buried under Administration. Gated on superadmin
-                (showHrViewPreview) AND not currently acting as
-                employer — the top-of-nav EMPLOYER PORTAL block
-                already covers that case and we don't want to
-                render the same six links twice.
+        {!isAdmin && hrPreviewSection}
 
-                Visual treatment: violet "hr-preview" tone — distinctly
-                brighter than the surrounding sections so a superadmin
-                spots it instantly when scanning the sidebar. Pairs
-                with the Eye glyph + violet-tinted explainer below. */}
-            <p className="px-3 -mt-0.5 pb-1.5 text-[11px] text-violet-800 leading-snug inline-flex items-start gap-1.5">
-              <Eye size={11} className="text-violet-700 mt-0.5 shrink-0" />
-              <span>
-                Preview only · use{" "}
-                <code className="font-mono text-violet-900 bg-violet-50 ring-1 ring-inset ring-violet-200 px-1 rounded">xx</code>{" "}
-                to view-as HR
-              </span>
-            </p>
-            {visibleEmployerItems.map((item) => (
-              <NavLink
-                key={item.href}
-                item={{ ...item, label: t(item.labelKey) }}
-                pathname={pathname}
-                onNavigate={() => setMobileOpen(false)}
-                queueCounts={queueCounts}
-              />
-            ))}
-          </SectionGroup>
-        )}
-
-        {showLearnerNav && (
-          <>
-            <div className="pt-2" />
-            {visibleByPrefs(miscItems)
-              // miscItems default to trainee-visible unless an explicit
-              // `minRole` is set (e.g. roadmap is superadmin-only). The
-              // shared filterByRole helper assumes admin-default for
-              // admin-zone items, which is the wrong default here.
-              .filter((item) => {
-                const required = ROLE_RANK[item.minRole ?? "trainee"] ?? 0;
-                return userRank >= required;
-              })
-              .map((item) => {
-                // Trainees see the changelog as "What's new"; staff as "Changelog".
-                const key = item.href === "/changelog" && !isStaff ? "nav.changelogTrainee" : item.labelKey;
-                const labeled = { ...item, label: t(key) };
-                return <NavLink key={item.href} item={labeled} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />;
-              })}
-          </>
-        )}
+        {!isAdmin && miscSection}
 
         {/* MY PROFILE retired — the avatar at the bottom-left of
             the sidebar already routes to /profile, so this section
@@ -2220,8 +2371,7 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumLinkedinItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspacePrintItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSymposiumRegistrationPilotItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceAv2026Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-              <NavLink item={workspaceAv2025Item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceAvItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             {/* Straight after the events still being run: upcoming, then
@@ -2262,97 +2412,17 @@ export function Sidebar({
           </SectionGroup>
         )}
 
+        {/* The team's menu ends with Workspace. Everything else they can
+            reach (learner pillars, HR preview, buddies, changelog,
+            Administration) sits behind one closed-by-default disclosure. */}
         {isAdmin && (
-          <SectionGroup
-            title={t("nav.administration").toUpperCase()}
-            tone="electric"
-            description="Privileged territory — manage learners, employers, the EQUIP pillar, the platform itself, and security. Sub-grouped into ENGAGE / EXPERIENCE / EQUIP / Insights / Platform / Security & compliance / System so each list stays scannable."
-          >
-            {/* Overview sits at the top, ungrouped — single canonical link. */}
-            <NavLink item={adminOverview} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-
-            {visibleEngageAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.engage} label="Engage">
-                {visibleEngageAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-
-            {visibleExperienceAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Experience">
-                {visibleExperienceAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-
-            {visibleEquipAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.equip} label="Equip">
-                {visibleEquipAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-
-            {/*
-              Operations sits between Equip and Insights — the three
-              pillars (Engage / Experience / Equip) are pipeline-shaped
-              work that happens IN the platform, then Operations is the
-              cross-pillar mechanics that keep the platform running,
-              and Insights is what you look at after the work is done.
-            */}
-            {visibleOperationsAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.operations} label="Operations">
-                {visibleOperationsAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-
-            {visibleInsightsAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.insights} label="Design & Insight">
-                {visibleInsightsAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-
-            {/* HR-view preview was here; moved out of Admin into
-                its own top-level SectionGroup placed before the
-                misc items (Learning buddies, Change log) so it
-                reads as a peer surface, not buried under
-                Administration. */}
-
-            {visiblePlatformAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.platform} label="Platform">
-                {/* Platform is 11 items (was 24) — flat list
-                    like Engage / Experience. The collapsible UI
-                    that gated 24 items behind a click is removed
-                    in favour of consistent visual treatment
-                    across the sub-groups. */}
-                {visiblePlatformAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-
-            {visibleSecurityAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.security} label="Security & compliance">
-                {visibleSecurityAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-
-            {visibleSystemAdmin.length > 0 && (
-              <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.system} label="System (superadmin)">
-                {visibleSystemAdmin.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-                ))}
-              </AdminSubgroup>
-            )}
-          </SectionGroup>
+          <OtherTabs>
+            {engageSection}
+            {experienceSection}
+            {hrPreviewSection}
+            {miscSection}
+            {administrationSection}
+          </OtherTabs>
         )}
       </nav>
 

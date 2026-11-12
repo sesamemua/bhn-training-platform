@@ -10,6 +10,7 @@
  *
  * Both views call the same /api/admin/equip/deadlines endpoints.
  */
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -128,7 +129,7 @@ function torontoTimeInput(dateLike: string | Date): string {
 }
 
 export function DeadlineManager({ initial, vlRoundStages }: Props) {
-  const [tab, setTab] = useState<"list" | "calendar">("list");
+  const [tab, setTab] = useTabParam<"list" | "calendar">("view", "list", ["list", "calendar"]);
 
   return (
     <div className="space-y-5">

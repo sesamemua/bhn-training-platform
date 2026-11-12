@@ -1,5 +1,6 @@
 "use client";
 
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useEffect, useRef, useState } from "react";
 import { BadgePreview } from "./BadgePreview";
 import { AdditionalBadges } from "./AdditionalBadges";
@@ -26,7 +27,7 @@ export function SymposiumPrintJobs() {
   const [snapshot, setSnapshot] = useState<PrintWorkspace | null>(null), current = useRef<PrintWorkspace | null>(null);
   const [busy, setBusy] = useState(false), working = useRef(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState("");
-  const [view, setView] = useState<View>("badges");
+  const [view, setView] = useTabParam<View>("tab", "badges", ["badges", "additional", "missing-names", "tents", "agenda", "signage", "queue"]);
   const [signageSlug, setSignageSlug] = useState(PRINT_SIGNS[0].slug);
   const [tentStyle, setTentStyle] = useState<NonNullable<PrintJob["tentStyle"]> | "">("");
   const [query, setQuery] = useState(""), [filter, setFilter] = useState("all"), [allStatuses, setAllStatuses] = useState(false);
@@ -71,7 +72,6 @@ export function SymposiumPrintJobs() {
       const id = new URLSearchParams(window.location.search).get("job");
       const job = body.board.jobs.find((j: PrintJob) => j.id === id);
       if (job) { chooseJob(job); setView("queue"); }
-      else if (new URLSearchParams(window.location.search).get("tab") === "additional") setView("additional");
       working.current = false;
       if (!body.board.syncedAt && body.autoSyncAvailable) await mutate({ action: "sync" }, body.version);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not load Print Jobs."); }

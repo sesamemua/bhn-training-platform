@@ -1,5 +1,6 @@
 "use client";
 
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Clock, Download, RefreshCw, X, Plus, Trash2, Link as LinkIcon, ArrowLeft, ArrowUp, ArrowDown, Image as ImageIcon } from "lucide-react";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
@@ -121,7 +122,8 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   // Graphic comments change underneath the queue (a pin, a reply): read them from the latest
   // server render, not from the queue's own copy, which only tracks text and approval.
   const graphicReviewOf = new Map(initial.map((p) => [p.id, p.graphicReview ?? null]));
-  const [group, setGroup] = useState<Group>(initialGroup);
+  // The open tab lives in the URL (?tab=), so a refresh or a shared link stays on it.
+  const [group, setGroup] = useTabParam<Group>("tab", "linkedin", SOCIAL_SECTIONS.flatMap((s) => s.tabs.map((t) => t[0] as Group)), initialGroup);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);

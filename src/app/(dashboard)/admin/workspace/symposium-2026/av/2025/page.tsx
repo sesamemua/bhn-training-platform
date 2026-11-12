@@ -14,6 +14,7 @@ import { redirect } from "next/navigation";
 import { Speaker } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { PageHero } from "@/components/ui/PageHero";
+import { AvTabs } from "@/components/workspace/AvTabs";
 import { FullWidthWhenCollapsed } from "@/components/workspace/FullWidthWhenCollapsed";
 import { AvComparison } from "@/components/workspace/AvComparison";
 import { AV_DELTAS } from "@/lib/symposium/av";
@@ -36,6 +37,7 @@ export default async function SymposiumAv2025Page() {
         description={`Livecast's 2026 quote against last year's quote and last year's final invoice, line by line. The invoice is in there because 2025 was billed ${cad(AV_DELTAS.overrun2025.amount)} above its own quote — the 2025 estimate is not what the 2025 Symposium cost.`}
         icon={<Speaker />}
       />
+      <AvTabs active="2025" />
       <AvComparison />
     </>
   );

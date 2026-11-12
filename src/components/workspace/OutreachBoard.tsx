@@ -12,6 +12,7 @@
  *   • E-mail is the identity key: saving an e-mail that belongs to another
  *     person offers a merge instead of creating a duplicate.
  */
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -248,7 +249,7 @@ export function OutreachBoard({
 }) {
   const router = useRouter();
   const [board, setBoard] = useState<OutreachData>(data);
-  const [activeId, setActiveId] = useState<string>(data.lists[0]?.id ?? DIR_TAB);
+  const [activeId, setActiveId] = useTabParam<string>("list", data.lists[0]?.id ?? DIR_TAB, (v) => v === DIR_TAB || data.lists.some((l) => l.id === v));
   const [busy, setBusy] = useState(false);
   const [newListOpen, setNewListOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
@@ -264,9 +265,8 @@ export function OutreachBoard({
 
   useEffect(() => {
     setBoard(data);
-    setActiveId((cur) =>
-      cur === DIR_TAB || data.lists.some((l) => l.id === cur) ? cur : data.lists[0]?.id ?? DIR_TAB,
-    );
+    if (!(activeId === DIR_TAB || data.lists.some((l) => l.id === activeId))) setActiveId(data.lists[0]?.id ?? DIR_TAB);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-check only when the lists change
   }, [data]);
 
   const isDir = activeId === DIR_TAB;

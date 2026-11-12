@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "A shorter menu for the team, and tabs you can link to",
+    body: "The team's side menu now shows **Dashboard**, **EQUIP** and **Workspace**. Engage, Experience, HR preview, Learning buddies, Changelog and Administration moved into **See other available tabs** at the bottom, closed until you open it (it remembers your choice). Trainees' menus are unchanged. In 2026 Symposium, **AV 2025** and **AV 2026** are now one **AV** tab, with the two years as tabs on the page. And tabs inside pages now keep their place: Social, Training Week admin, registrant views, Outreach lists, Assets, EQUIP deadlines, Access requests, Print jobs and Headshots & bios put the open tab in the address bar, so refreshing stays on it and you can send a link straight to it.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Social: each post is now five steps, top to bottom",
     body: "Every Social post card reads straight down as **1 Write \u2192 2 Picture \u2192 3 Review \u2192 4 Approve \u2192 5 Publish**, with a numbered rail that ticks off finished steps and highlights the next one. Every main button now sits on the same left edge, so your mouse moves in a straight line: the picture upload comes right after the text, **Approve** sits under the review thread, and **Mark as posted** lives with **Copy post** in the Publish step. The odds and ends (review page, copy link, download graphic, delete) sit in one quiet row at the bottom.",
     kind: "improvement",

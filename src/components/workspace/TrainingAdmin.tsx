@@ -8,6 +8,7 @@
  * capacity, then write to the people it just let in — and a navigation
  * between each of those is four chances to lose your place.
  */
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { NumberField } from "@/components/training-week/TrainingWeekCapacity";
 import { projectWeekSeats } from "@/lib/allocation/seat-projection";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -107,7 +108,7 @@ export function TrainingAdmin({
 }) {
   // Opens on the dashboard: the first question anybody has here is
   // "how is it going", not "let me change the policy". A link can name a tab.
-  const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : "dashboard");
+  const [tab, setTab] = useTabParam<Tab>("tab", "dashboard", (v) => isTab(v), isTab(initialTab) ? initialTab : undefined);
 
   return (
     <div className="mt-6">

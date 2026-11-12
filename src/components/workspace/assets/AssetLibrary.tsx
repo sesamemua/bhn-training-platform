@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- R2 thumbnails are already sized; next/image would re-optimise them */
 
+import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check, CloudUpload, Folder, FolderInput, Images, Layers, Lock, Plus, RotateCcw, Search, Share2, Sparkles, Tag, Trash2, X, Users, Clock, ShieldCheck,
@@ -32,7 +33,7 @@ export function AssetLibrary() {
   const [folders, setFolders] = useState<{ name: string; n: number }[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<View>("all");
+  const [view, setView] = useTabParam<View>("view", "all", VIEWS.map((v) => v[0]));
   const [folder, setFolder] = useState<string | null>(null);
   const [tag, setTag] = useState<string | null>(null);
   const [color, setColor] = useState<Swatch | null>(null);
