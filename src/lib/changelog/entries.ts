@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Menu: one Symposium & Training Week group, Committees tucked away",
+    body: "In Workspace, **Training Week** and **2026 Symposium** are now one group, **2026 Symposium & Training Week**. Each keeps its own coloured bar on the left (amber for Training Week, fuchsia for the Symposium) with a small date caption. The **Committees** section is gone from the team's menu: EQUIP deadlines live only under **EQUIP**, and the rest of Committees is under **See other available tabs**.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "A shorter menu for the team, and tabs you can link to",
     body: "The team's side menu now shows **Dashboard**, **EQUIP** and **Workspace**. Engage, Experience, HR preview, Learning buddies, Changelog and Administration moved into **See other available tabs** at the bottom, closed until you open it (it remembers your choice). Trainees' menus are unchanged. In 2026 Symposium, **AV 2025** and **AV 2026** are now one **AV** tab, with the two years as tabs on the page. And tabs inside pages now keep their place: Social, Training Week admin, registrant views, Outreach lists, Assets, EQUIP deadlines, Access requests, Print jobs and Headshots & bios put the open tab in the address bar, so refreshing stays on it and you can send a link straight to it.",
     kind: "improvement",

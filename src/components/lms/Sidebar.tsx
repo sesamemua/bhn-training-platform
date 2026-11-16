@@ -1359,6 +1359,16 @@ type AdminSubgroupTone = (typeof ADMIN_SUBGROUP_TONES)[keyof typeof ADMIN_SUBGRO
  *    • Bar is `w-0.5` (2 px) to hold its weight against the bolder
  *      heading without feeling fussy. */
 /** One past event's name, above its links — the links themselves stay short. */
+/** A stretch of links inside a subgroup with its own left-bar colour, drawn over the subgroup's bar. */
+function ToneRun({ bar, children }: { bar: string; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <span aria-hidden className="absolute left-0 top-0 bottom-0 z-20 w-0.5 rounded-full pointer-events-none" style={{ background: bar }} />
+      {children}
+    </div>
+  );
+}
+
 function PastEventCaption({ children }: { children: React.ReactNode }) {
   return <p className="truncate px-3 pb-0.5 pt-1 text-[11px] font-semibold text-muted">{children}</p>;
 }
@@ -1841,6 +1851,9 @@ export function Sidebar({
     ...adminPlatformItems.map((i) => i.href),
     ...adminSecurityItems.map((i) => i.href),
     ...adminSystemItems.map((i) => i.href),
+    // Admin links that live in the EQUIP section rather than Administration.
+    equipDeadlinesItem.href,
+    equipAdminDashboardItem.href,
   ]);
   const visibleCommittees = rawVisibleCommittees
     .map((c) => ({
@@ -1878,6 +1891,46 @@ export function Sidebar({
 
   // Sections that staff reach through "See other available tabs" and
   // everyone else sees in place.
+  const committeesSection = (
+    <>
+        {/* COMMITTEES — only rendered when the user belongs to ≥1
+            committee. Listed under their own section so committee
+            members spot the shortcut immediately on first paint;
+            primary roles still see ENGAGE / EXPERIENCE / EQUIP /
+            ADMINISTRATION as before. */}
+        {visibleCommittees.length > 0 && (
+          <SectionGroup
+            title="COMMITTEES"
+            description="Your committee surfaces. Equip Review members can claim + decide on funding apps; HQP members coordinate via the HQP dashboard."
+          >
+            {visibleCommittees.flatMap((c) =>
+              c.sidebarItems.map((s: CommitteeSidebarItem) => {
+                const Icon = COMMITTEE_ICONS[s.icon] ?? Sparkles;
+                // No minRole — visibility is gated by the
+                // visibleCommittees filter above (only renders when
+                // the user belongs to ≥1 committee), so the per-
+                // link role check would be redundant.
+                const item: NavItem = {
+                  label: s.label,
+                  href: s.href,
+                  icon: Icon,
+                  description: c.description,
+                };
+                return (
+                  <NavLink
+                    key={`${c.slug}-${s.href}`}
+                    item={item}
+                    pathname={pathname}
+                    onNavigate={() => setMobileOpen(false)}
+                    queueCounts={queueCounts}
+                  />
+                );
+              }),
+            )}
+          </SectionGroup>
+        )}
+    </>
+  );
   const engageSection = (
     <>
         {/* Where the pillars are paused only Events is left here: drop the
@@ -2291,42 +2344,9 @@ export function Sidebar({
           </SectionGroup>
         )}
 
-        {/* COMMITTEES — only rendered when the user belongs to ≥1
-            committee. Listed under their own section so committee
-            members spot the shortcut immediately on first paint;
-            primary roles still see ENGAGE / EXPERIENCE / EQUIP /
-            ADMINISTRATION as before. */}
-        {visibleCommittees.length > 0 && (
-          <SectionGroup
-            title="COMMITTEES"
-            description="Your committee surfaces. Equip Review members can claim + decide on funding apps; HQP members coordinate via the HQP dashboard."
-          >
-            {visibleCommittees.flatMap((c) =>
-              c.sidebarItems.map((s: CommitteeSidebarItem) => {
-                const Icon = COMMITTEE_ICONS[s.icon] ?? Sparkles;
-                // No minRole — visibility is gated by the
-                // visibleCommittees filter above (only renders when
-                // the user belongs to ≥1 committee), so the per-
-                // link role check would be redundant.
-                const item: NavItem = {
-                  label: s.label,
-                  href: s.href,
-                  icon: Icon,
-                  description: c.description,
-                };
-                return (
-                  <NavLink
-                    key={`${c.slug}-${s.href}`}
-                    item={item}
-                    pathname={pathname}
-                    onNavigate={() => setMobileOpen(false)}
-                    queueCounts={queueCounts}
-                  />
-                );
-              }),
-            )}
-          </SectionGroup>
-        )}
+        {/* Committees: in place for committee members who aren't staff;
+            the team reaches it under "See other available tabs". */}
+        {!isAdmin && committeesSection}
 
         {!isAdmin && hrPreviewSection}
 
@@ -2358,12 +2378,18 @@ export function Sidebar({
                 Dashboard" did not say which admin. Under this heading
                 they are a pair and neither label has to carry the
                 event's name. */}
-            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Training Week">
+            {/* One subgroup for the two October events. Each keeps its own
+                left bar (amber for Training Week, fuchsia for the Symposium)
+                so you can still tell at a glance which a link belongs to. */}
+            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium & Training Week">
+              <ToneRun bar={ADMIN_SUBGROUP_TONES.experience.bar}>
+              <PastEventCaption>Training Week · 26–28 Oct</PastEventCaption>
               <NavLink item={workspaceTrainingFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingCheckInItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
-            </AdminSubgroup>
-            <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium">
+              </ToneRun>
+              <ToneRun bar={ADMIN_SUBGROUP_TONES.symposium.bar}>
+              <PastEventCaption>Symposium · 29 Oct</PastEventCaption>
               <NavLink item={workspaceSymposiumReportItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
@@ -2373,6 +2399,7 @@ export function Sidebar({
               <NavLink item={workspaceSymposiumRegistrationPilotItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceAvItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceMerchItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              </ToneRun>
             </AdminSubgroup>
             {/* Straight after the events still being run: upcoming, then
                 past. Neutral tone, because nothing in it is waiting on
@@ -2417,6 +2444,7 @@ export function Sidebar({
             Administration) sits behind one closed-by-default disclosure. */}
         {isAdmin && (
           <OtherTabs>
+            {committeesSection}
             {engageSection}
             {experienceSection}
             {hrPreviewSection}

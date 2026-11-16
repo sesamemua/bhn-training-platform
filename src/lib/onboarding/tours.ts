@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.12";
+export const TOUR_VERSION = "2026.11.16";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "nav.symposium-training-week-group",
+    title: "Symposium and Training Week together",
+    body: "Both October events now share one menu group in Workspace. The amber bar marks Training Week, the fuchsia bar the Symposium.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.16",
+  },
   {
     id: "nav.other-tabs",
     title: "Where did the rest of the menu go?",
