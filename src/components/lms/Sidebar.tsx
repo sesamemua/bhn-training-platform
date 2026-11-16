@@ -1360,12 +1360,23 @@ type AdminSubgroupTone = (typeof ADMIN_SUBGROUP_TONES)[keyof typeof ADMIN_SUBGRO
  *      heading without feeling fussy. */
 /** One past event's name, above its links — the links themselves stay short. */
 /** A stretch of links inside a subgroup with its own left-bar colour, drawn over the subgroup's bar. */
-function ToneRun({ bar, children }: { bar: string; children: React.ReactNode }) {
+function ToneRun({ bar, className, children }: { bar: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className="relative">
+    <div className={cn("relative", className)}>
       <span aria-hidden className="absolute left-0 top-0 bottom-0 z-20 w-0.5 rounded-full pointer-events-none" style={{ background: bar }} />
       {children}
     </div>
+  );
+}
+
+/** The heading of one event inside a combined event group: icon, name, dates, in the event's own colour. */
+function EventRunTitle({ icon: Icon, color, dates, children }: { icon: React.ElementType; color: string; dates: string; children: React.ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 px-3 pb-1 pt-1.5 text-[14px] font-semibold" style={{ color }}>
+      <Icon size={16} aria-hidden className="shrink-0" />
+      <span className="min-w-0">{children}</span>
+      <span className="shrink-0 text-[12px] font-medium opacity-75">{dates}</span>
+    </p>
   );
 }
 
@@ -2383,13 +2394,13 @@ export function Sidebar({
                 so you can still tell at a glance which a link belongs to. */}
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.symposium} label="2026 Symposium & Training Week">
               <ToneRun bar={ADMIN_SUBGROUP_TONES.experience.bar}>
-              <PastEventCaption>Training Week · 26–28 Oct</PastEventCaption>
+              <EventRunTitle icon={GraduationCap} color={ADMIN_SUBGROUP_TONES.experience.text} dates="26–28 Oct">Training Week</EventRunTitle>
               <NavLink item={workspaceTrainingFormItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingAdminItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceTrainingCheckInItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               </ToneRun>
-              <ToneRun bar={ADMIN_SUBGROUP_TONES.symposium.bar}>
-              <PastEventCaption>Symposium · 29 Oct</PastEventCaption>
+              <ToneRun bar={ADMIN_SUBGROUP_TONES.symposium.bar} className="mt-4">
+              <EventRunTitle icon={Mic} color={ADMIN_SUBGROUP_TONES.symposium.text} dates="29 Oct">Symposium</EventRunTitle>
               <NavLink item={workspaceSymposiumReportItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceSymposiumItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceLogoVoteItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Menu: clearer event headings",
+    body: "In **2026 Symposium & Training Week**, the two event headings are bigger, carry an icon (a cap for Training Week, a microphone for the Symposium) with their dates beside them, and have more space between them.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Menu: one Symposium & Training Week group, Committees tucked away",
     body: "In Workspace, **Training Week** and **2026 Symposium** are now one group, **2026 Symposium & Training Week**. Each keeps its own coloured bar on the left (amber for Training Week, fuchsia for the Symposium) with a small date caption. The **Committees** section is gone from the team's menu: EQUIP deadlines live only under **EQUIP**, and the rest of Committees is under **See other available tabs**.",
     kind: "improvement",

@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.16";
+export const TOUR_VERSION = "2026.11.16b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "nav.event-headings",
+    title: "Easier-to-spot event headings",
+    body: "Training Week and the Symposium now have their own icon and dates in the menu.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.16b",
+  },
   {
     id: "nav.symposium-training-week-group",
     title: "Symposium and Training Week together",
