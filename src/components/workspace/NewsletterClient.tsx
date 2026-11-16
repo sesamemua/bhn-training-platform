@@ -15,7 +15,8 @@ import {
   Link2, Mail,
 } from "lucide-react";
 import { SECTIONS, SECTION_THEME } from "@/lib/newsletter/types";
-import type { Section } from "@/lib/newsletter/types";
+import type { NewsletterImage, Section } from "@/lib/newsletter/types";
+import { NewsletterImages } from "./NewsletterImages";
 
 interface Piece {
   id: string; section: string; position: number; rawBody: string;
@@ -24,6 +25,8 @@ interface Piece {
 interface Issue {
   id: string; title: string; dateline: string; status: string;
   renderedHtml: string | null; renderedAt: string | null; pieces: Piece[];
+  sectionImages?: Partial<Record<Section, NewsletterImage[]>>;
+  imagesByPieceId?: Record<string, NewsletterImage[]>;
 }
 
 export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issue; canEdit: boolean }) {
@@ -36,6 +39,14 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const mediaChanged = !!issue.renderedHtml && !issue.renderedAt;
+  const hasContent = issue.pieces.length > 0 || Object.values(issue.sectionImages ?? {}).some((images) => images?.length);
+
+  function updateImages(targetType: "section" | "piece", targetId: string, images: NewsletterImage[]) {
+    setIssue((current) => targetType === "section"
+      ? { ...current, renderedAt: null, sectionImages: { ...current.sectionImages, [targetId]: images } }
+      : { ...current, renderedAt: null, imagesByPieceId: { ...current.imagesByPieceId, [targetId]: images } });
+  }
 
   const draftFor = (s: Section) => drafts[s] ?? { body: "", url: "" };
 
@@ -97,22 +108,27 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
 
   async function applyPaste() {
     if (!paste.trim()) return;
+    setBusy("apply");
     setError(null);
     setReport(null);
-    const r = await fetch(`/api/workspace/newsletter/${issue.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "aiApply", text: paste }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      setError(j?.error ?? "That didn't work.");
-      if (j?.report) setReport(j.report);
-      return;
-    }
-    if (j.issue) setIssue(j.issue as Issue);
-    setReport(j.report ?? null);
-    setPaste("");
+    try {
+      const r = await fetch(`/api/workspace/newsletter/${issue.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "aiApply", text: paste }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(j?.error ?? "That didn't work.");
+        if (j?.report) setReport(j.report);
+        return;
+      }
+      if (j.issue) setIssue(j.issue as Issue);
+      setReport(j.report ?? null);
+      setPaste("");
+    } catch {
+      setError("Could not confirm the layout change. Reload to check the issue before trying again.");
+    } finally { setBusy(null); }
   }
 
   async function copyHtml() {
@@ -137,6 +153,9 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* ── Drop boxes ────────────────────────────────── */}
         <div className="space-y-4">
+          <p className="text-xs leading-relaxed text-muted">
+            Add pictures to a whole section or to an individual item. Uploaded pictures use public links for newsletter readers — don’t upload confidential material.
+          </p>
           {SECTIONS.map((s) => {
             const t = SECTION_THEME[s];
             const mine = issue.pieces.filter((p) => p.section === s);
@@ -156,6 +175,10 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 </header>
 
                 <div className="p-4 space-y-2">
+                  <NewsletterImages issueId={issue.id} targetType="section" targetId={s} label={`${t.label} section`}
+                    images={issue.sectionImages?.[s] ?? []} disabled={issue.status === "sent" || !!busy}
+                    onChange={(images) => updateImages("section", s, images)}
+                    onBusyChange={(pending) => setBusy(pending ? `images-section-${s}` : null)} />
                   {mine.map((p, i) => (
                     <div key={p.id} className="rounded-lg bg-elevated/60 ring-1 ring-inset ring-line px-3 py-2">
                       {editing?.id === p.id ? (
@@ -228,6 +251,12 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                           </span>
                         )}
                       </div>
+                      <div className="mt-3">
+                        <NewsletterImages issueId={issue.id} targetType="piece" targetId={p.id} label={`${t.label} item ${i + 1}`}
+                          images={issue.imagesByPieceId?.[p.id] ?? []} disabled={issue.status === "sent" || !!busy}
+                          onChange={(images) => updateImages("piece", p.id, images)}
+                          onBusyChange={(pending) => setBusy(pending ? `images-piece-${p.id}` : null)} />
+                      </div>
                     </div>
                   ))}
 
@@ -247,7 +276,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                     />
                     <button
                       onClick={() => add(s)}
-                      disabled={busy === `add-${s}`}
+                      disabled={!!busy}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 disabled:opacity-60"
                     >
                       {busy === `add-${s}` ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Add
@@ -272,11 +301,16 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
             {staleSince && (
               <p className="text-xs text-amber-700 mt-2">New contributions since the last layout — re-run it.</p>
             )}
+            {mediaChanged && (
+              <p className="text-xs text-amber-700 mt-2">
+                Pictures saved. {canEdit ? "Lay out again" : "Ask an editor to lay out again"} to include them in the preview and Mailchimp HTML; existing review rounds stay unchanged.
+              </p>
+            )}
             {canEdit && (
               <div className="flex gap-2 mt-4 flex-wrap">
                 <button
                   onClick={generate}
-                  disabled={busy === "gen" || issue.pieces.length === 0}
+                  disabled={!!busy || !hasContent}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 disabled:opacity-60 shadow-md shadow-brand-600/25"
                 >
                   {busy === "gen" ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -284,7 +318,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 </button>
                 <button
                   onClick={() => setHandoff((v) => !v)}
-                  disabled={issue.pieces.length === 0}
+                  disabled={!!busy || issue.pieces.length === 0}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-60"
                 >
                   <ClipboardPaste size={14} />
@@ -293,7 +327,8 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 {issue.renderedHtml && (
                   <button
                     onClick={copyHtml}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated"
+                    disabled={!!busy || mediaChanged || !issue.renderedHtml}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-50"
                   >
                     {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                     {copied ? "Copied" : "Copy Mailchimp HTML"}
@@ -325,7 +360,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     onClick={copyBrief}
-                    disabled={busy === "brief"}
+                    disabled={!!busy}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white font-bold text-[12.5px] hover:bg-brand-700 disabled:opacity-60"
                   >
                     {busy === "brief" ? <Loader2 size={13} className="animate-spin" />
@@ -349,7 +384,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
 
                 <button
                   onClick={applyPaste}
-                  disabled={!paste.trim()}
+                  disabled={!!busy || !paste.trim()}
                   className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card ring-1 ring-inset ring-line text-fg font-bold text-[12.5px] hover:bg-elevated disabled:opacity-50"
                 >
                   <ClipboardPaste size={13} /> Apply to the issue

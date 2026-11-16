@@ -18,22 +18,31 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const parsed = Schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Provide newsletter HTML and a valid revision." }, { status: 400 });
   const { id } = await ctx.params;
-  const issue = await prisma.newsletterIssue.findUnique({ where: { id }, select: { title: true } });
+  const issue = await prisma.newsletterIssue.findUnique({ where: { id }, select: { title: true, status: true } });
   if (!issue) return NextResponse.json({ error: "Issue not found." }, { status: 404 });
 
   // One stable review per issue, including after a revision or simultaneous first opens.
   const reviewId = `newsletter-${id}`;
   if (parsed.data.action === "open") {
     const token = randomBytes(16).toString("base64url");
-    const review = await prisma.pageReview.upsert({
-      where: { id: reviewId },
-      update: {},
-      create: {
-        id: reviewId, kind: "paste", title: issue.title,
-        pastedHtml: parsed.data.html, url: `/review-paste/${token}`, shareToken: token,
-        createdById: (session.user as { id?: string }).id ?? null,
-      },
-      select: { id: true, round: true, status: true },
+    const review = await prisma.$transaction(async (tx) => {
+      const existing = await tx.pageReview.findUnique({ where: { id: reviewId }, select: { id: true } });
+      const saved = await tx.pageReview.upsert({
+        where: { id: reviewId },
+        update: {},
+        create: {
+          id: reviewId, kind: "paste", title: issue.title,
+          pastedHtml: parsed.data.html, url: `/review-paste/${token}`, shareToken: token,
+          createdById: (session.user as { id?: string }).id ?? null,
+        },
+        select: { id: true, round: true, status: true, pastedHtml: true },
+      });
+      if (!existing && issue.status !== "sent") {
+        await tx.newsletterIssue.update({
+          where: { id }, data: { renderedHtml: saved.pastedHtml, renderedAt: new Date() },
+        });
+      }
+      return { id: saved.id, round: saved.round, status: saved.status };
     });
     return NextResponse.json({ ok: true, review });
   }
@@ -58,6 +67,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       await tx.pageReviewVersion.upsert({
         where: { reviewId_round: { reviewId, round: current.round } },
         create: { reviewId, round: current.round, html: current.pastedHtml }, update: {},
+      });
+    }
+    if (result.count && issue.status !== "sent") {
+      await tx.newsletterIssue.update({
+        where: { id }, data: { renderedHtml: parsed.data.html, renderedAt: new Date() },
       });
     }
     return result;

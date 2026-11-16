@@ -23,6 +23,7 @@ import { renderIssue } from "@/lib/newsletter/render";
 import { SECTIONS, isSection } from "@/lib/newsletter/types";
 import type { Section, PieceLayout } from "@/lib/newsletter/types";
 import { buildAiBrief, parseAiReturn } from "@/lib/newsletter/handoff";
+import { getNewsletterMedia, removeNewsletterPieceImages } from "@/lib/newsletter/media";
 
 export const dynamic = "force-dynamic";
 
@@ -125,7 +126,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!piece) return NextResponse.json({ error: "No such piece." }, { status: 404 });
 
     if (parsed.data.action === "deletePiece") {
-      await prisma.newsletterPiece.delete({ where: { id: piece.id } });
+      await prisma.$transaction(async (tx) => {
+        await removeNewsletterPieceImages(tx, id, piece.id);
+        await tx.newsletterPiece.delete({ where: { id: piece.id } });
+      }, { isolationLevel: "Serializable" });
     } else {
       // Swap positions with the neighbour in the same section.
       const dir = parsed.data.direction === "up" ? "lt" : "gt";
@@ -221,7 +225,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
 
     const fresh = await loadIssue(id);
-    return NextResponse.json({ ok: true, issue: fresh, report });
+    return NextResponse.json({ ok: true, ...fresh, report });
   }
 
   if (action === "generate") {
@@ -237,12 +241,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
     });
     if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
-    if (issue.pieces.length === 0) {
-      return NextResponse.json({ error: "Nothing to lay out yet — add a piece first." }, { status: 400 });
+    const media = await getNewsletterMedia(id);
+    if (issue.pieces.length === 0 && !Object.values(media.sectionImages).some((images) => images.length)) {
+      return NextResponse.json({ error: "Nothing to lay out yet — add a contribution or picture first." }, { status: 400 });
     }
 
     const headlines: string[] = [];
     const bySection = emptyBuckets();
+    const idsBySection: Partial<Record<Section, string[]>> = {};
 
     for (const p of issue.pieces) {
       if (p.status === "excluded" || !isSection(p.section)) continue;
@@ -268,17 +274,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }
       headlines.push(layout.headline);
       bySection[p.section].push(layout);
+      (idsBySection[p.section] ??= []).push(p.id);
     }
 
     const html = renderIssue({
       dateline: issue.dateline,
       preheader: issue.preheader,
       bySection,
+      idsBySection,
+      ...media,
     });
-    await prisma.newsletterIssue.update({
-      where: { id },
+    const saved = await prisma.newsletterIssue.updateMany({
+      where: { id, updatedAt: issue.updatedAt },
       data: { renderedHtml: html, renderedAt: new Date(), status: "generated" },
     });
+    if (!saved.count) return NextResponse.json({ error: "Pictures changed while laying out. Please run layout again." }, { status: 409 });
     return NextResponse.json({ ok: true, html, ...(await loadIssue(id)) });
   }
 
@@ -306,5 +316,5 @@ async function loadIssue(id: string) {
     where: { id },
     include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
   });
-  return { issue };
+  return { issue: issue ? { ...issue, ...(await getNewsletterMedia(id)) } : null };
 }

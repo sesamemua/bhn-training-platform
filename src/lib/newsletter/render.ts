@@ -12,7 +12,7 @@
  * gradient strips top and bottom, one ribbon per section.
  */
 import { SECTION_THEME, SECTIONS } from "./types";
-import type { Section, PieceLayout, GlanceRow, PersonRow, LinkRow } from "./types";
+import type { Section, PieceLayout, GlanceRow, PersonRow, LinkRow, NewsletterImage } from "./types";
 
 /** Escape for HTML text nodes. Contributions are pasted prose, so this is
  *  the only thing standing between a stray `<` and a broken email. */
@@ -105,7 +105,17 @@ function button(label: string, url: string, solid: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tbody><tr><td align="center" style="background-color:${solid}; background-image:linear-gradient(135deg, ${solid} 0%, ${solid} 100%); border-radius:30px;"><a href="${url}" target="_blank" style="display:inline-block; padding:14px 32px; font-family:${FONT}; font-size:15px; line-height:20px; color:#ffffff; text-decoration:none; font-weight:600; letter-spacing:0.3px;">${esc(label)} &rarr;</a></td></tr></tbody></table></td></tr></tbody></table>`;
 }
 
-function renderPiece(l: PieceLayout, s: Section, isLast: boolean, pieceId?: string): string {
+function imageList(images: NewsletterImage[], anchor: string, ctaUrl?: string): string {
+  const link = safeUrl(ctaUrl);
+  return images.map((image, index) => {
+    const src = /^https:\/\//i.test(image.url.trim()) ? safeUrl(image.url) : null;
+    if (!src) return "";
+    const img = `<img src="${src}" width="512" alt="${esc(image.alt)}" style="display:block; width:100%; max-width:512px; height:auto; border:0;">`;
+    return `<p data-nl-piece="${esc(anchor)}" data-nl-part="Picture ${index + 1}" data-nl-image="${esc(image.id)}" style="margin:0 0 20px 0;">${link ? `<a href="${link}" target="_blank" style="text-decoration:none;">${img}</a>` : img}</p>`;
+  }).join("\n");
+}
+
+function renderPiece(l: PieceLayout, s: Section, isLast: boolean, pieceId?: string, images: NewsletterImage[] = []): string {
   const t = SECTION_THEME[s];
   const out: string[] = [];
   // Review anchors. `data-nl-*` attributes are inert in every email
@@ -123,6 +133,7 @@ function renderPiece(l: PieceLayout, s: Section, isLast: boolean, pieceId?: stri
       `<h3${a("Subhead")} style="margin:0 0 14px 0; font-family:${FONT}; font-size:16px; line-height:23px; color:#3a4a5c; font-weight:500; letter-spacing:-0.1px;">${esc(l.subhead)}</h3>`,
     );
   }
+  if (images.length) out.push(imageList(images, pieceId ?? s, l.ctaUrl));
   l.body.forEach((p, i) =>
     out.push(paragraph(p, i === l.body.length - 1 && !l.glance && !l.people, a(`Paragraph ${i + 1}`))),
   );
@@ -148,6 +159,8 @@ export interface RenderIssueInput {
    * in-app review preview, where they are what a comment pins to.
    */
   idsBySection?: Partial<Record<Section, string[]>>;
+  sectionImages?: Partial<Record<Section, NewsletterImage[]>>;
+  imagesByPieceId?: Record<string, NewsletterImage[]>;
 }
 
 /** Build the Mailchimp code-block fragment for a whole issue. */
@@ -175,10 +188,14 @@ export function renderIssue(input: RenderIssueInput): string {
 
   for (const s of SECTIONS) {
     const pieces = input.bySection[s] ?? [];
-    if (pieces.length === 0) continue; // an empty section prints nothing
+    const sectionPictures = imageList(input.sectionImages?.[s] ?? [], `section-${s}`);
+    if (pieces.length === 0 && !sectionPictures) continue;
     const t = SECTION_THEME[s];
-    const inner = pieces
-      .map((p, i) => renderPiece(p, s, i === pieces.length - 1, ids[s]?.[i]))
+    const inner = sectionPictures + pieces
+      .map((p, i) => {
+        const id = ids[s]?.[i];
+        return renderPiece(p, s, i === pieces.length - 1, id, id ? input.imagesByPieceId?.[id] : []);
+      })
       .join("\n");
 
     if (t.light) {

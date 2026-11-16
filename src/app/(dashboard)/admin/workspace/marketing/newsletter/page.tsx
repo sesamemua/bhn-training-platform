@@ -14,6 +14,7 @@ import { PageHero } from "@/components/ui/PageHero";
 import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
 import { NewsletterClient } from "@/components/workspace/NewsletterClient";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
+import { getNewsletterMedia } from "@/lib/newsletter/media";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,7 @@ export default async function NewsletterWorkshopPage() {
   }
 
   const initialIssue = {
+    ...(await getNewsletterMedia(issue.id)),
     id: issue.id,
     title: issue.title,
     dateline: issue.dateline,

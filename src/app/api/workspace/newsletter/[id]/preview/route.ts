@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderIssue } from "@/lib/newsletter/render";
+import { getNewsletterMedia } from "@/lib/newsletter/media";
 import { EMPTY_LAYOUT, SECTIONS, isSection, type PieceLayout, type Section } from "@/lib/newsletter/types";
 
 export const runtime = "nodejs";
@@ -62,6 +63,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     preheader: issue.preheader,
     bySection,
     idsBySection,
+    ...(await getNewsletterMedia(id)),
   });
 
   return NextResponse.json({

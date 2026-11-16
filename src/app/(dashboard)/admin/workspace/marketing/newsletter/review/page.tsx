@@ -16,6 +16,7 @@ import { NewsletterReviewClient, SignOff } from "@/components/workspace/Newslett
 import { NewsletterPageReview } from "@/components/workspace/NewsletterPageReview";
 import { PastedNewsletterReview } from "@/components/workspace/PastedNewsletterReview";
 import { renderIssue } from "@/lib/newsletter/render";
+import { getNewsletterMedia } from "@/lib/newsletter/media";
 import {
   EMPTY_LAYOUT,
   SECTIONS,
@@ -119,6 +120,7 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
     preheader: issue.preheader,
     bySection,
     idsBySection,
+    ...(await getNewsletterMedia(issue.id)),
   });
 
   const comments = await prisma.newsletterComment.findMany({

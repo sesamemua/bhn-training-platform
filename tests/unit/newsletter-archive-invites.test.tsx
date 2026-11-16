@@ -199,6 +199,7 @@ test("shared issue links retain their issue and sign-off after login, without re
     "@/lib/newsletter/currentIssue": { resolveCurrentIssue: async () => { throw new Error("must not create an issue"); } },
     "@/lib/newsletter/config": { getNewsletterConfig: async () => ({ approver: { name: "Approver" } }), isApprover: () => false },
     "@/lib/newsletter/render": { renderIssue: () => { throw new Error("sent issues must use their saved HTML"); } },
+    "@/lib/newsletter/media": { getNewsletterMedia: () => { throw new Error("sent issues must keep their saved pictures"); } },
     "@/components/ui/PageHero": { PageHero: ({ description }: any) => createElement("h1", null, description) },
     "@/components/workspace/NewsletterNav": { NewsletterNav: () => null },
     "@/components/workspace/NewsletterPageReview": { NewsletterPageReview: ({ issueId, html }: any) => createElement("div", null, issueId, html) },

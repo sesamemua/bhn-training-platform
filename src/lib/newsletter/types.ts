@@ -11,6 +11,14 @@
 export const SECTIONS = ["top", "engage", "experience", "equip", "event"] as const;
 export type Section = (typeof SECTIONS)[number];
 
+/** Attachments live outside AI-generated copy so laying out text never removes them. */
+export interface NewsletterImage {
+  id: string;
+  assetId: string;
+  url: string;
+  alt: string;
+}
+
 export function isSection(s: string): s is Section {
   return (SECTIONS as readonly string[]).includes(s);
 }

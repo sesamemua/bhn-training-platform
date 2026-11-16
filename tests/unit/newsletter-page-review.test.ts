@@ -13,6 +13,7 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
   let authorized = true;
   let exists = true;
   let writes = 0;
+  let composedHtml: string | null = null;
   let row: Record<string, any> | null = null;
   const versions = new Map<number, string>();
   let failArchive = false;
@@ -24,22 +25,25 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
     "@/lib/auth": { requireRole: async (role: string) => { assert.equal(role, "admin"); return authorized ? { user: { id: "editor" } } : null; } },
     "@/lib/prisma": { prisma: {
       $transaction: async (operation: any) => {
-        const previous = row && { ...row }, previousWrites = writes;
+        const previous = row && { ...row }, previousWrites = writes, previousHtml = composedHtml;
         try { return await operation((mocks["@/lib/prisma"] as any).prisma); }
-        catch (error) { row = previous; writes = previousWrites; throw error; }
+        catch (error) { row = previous; writes = previousWrites; composedHtml = previousHtml; throw error; }
       },
       pageReviewVersion: { upsert: async ({ create, update }: any) => {
         if (failArchive) throw new Error("Archive unavailable");
         assert.deepEqual(update, {});
         if (!versions.has(create.round)) versions.set(create.round, create.html);
       } },
-      newsletterIssue: { findUnique: async () => exists ? { title: "October Newsletter" } : null },
+      newsletterIssue: {
+        findUnique: async () => exists ? { title: "October Newsletter", status: "draft" } : null,
+        update: async ({ data }: any) => { composedHtml = data.renderedHtml; },
+      },
       pageReview: {
         upsert: async ({ where, create, update }: any) => {
           assert.equal(where.id, "newsletter-issue-1");
           assert.deepEqual(update, {});
           if (!row) { row = { ...create, round: 1, status: "open", comments: [{ id: "thread-1", status: "open" }] }; writes++; }
-          return { id: row!.id, round: row!.round, status: row!.status };
+          return { id: row!.id, round: row!.round, status: row!.status, pastedHtml: row!.pastedHtml };
         },
         findUnique: async () => row && { ...row },
         updateMany: async ({ where, data }: any) => {
@@ -70,11 +74,13 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
   await call({ action: "open", html: "should not overwrite" });
   assert.equal(writes, 1);
   assert.equal(row!.pastedHtml, "first");
+  assert.equal(composedHtml, "first", "opening an existing review does not overwrite Compose with the submitted HTML");
   const revised = await (await call({ action: "revise", html: "second", round: 1 })).json();
   assert.equal(revised.review.id, first.review.id);
   assert.equal(revised.review.round, 2);
   assert.equal(row!.snapshotHtml, "first");
   assert.equal(row!.pastedHtml, "second");
+  assert.equal(composedHtml, "second", "saved review graphics and HTML also appear in Compose");
   assert.equal(row!.shareToken, token);
   assert.deepEqual(row!.comments, [{ id: "thread-1", status: "open" }]);
   assert.equal((await call({ action: "revise", html: "stale", round: 1 })).status, 409);
@@ -86,6 +92,7 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
   await assert.rejects(call({ action: "revise", html: "third", round: 2 }), /Archive unavailable/);
   assert.equal(row!.round, 2, "archiving and revision advancement are atomic");
   assert.equal(row!.pastedHtml, "second");
+  assert.equal(composedHtml, "second", "a failed revision does not change the Compose preview");
   failArchive = false;
   await call({ action: "revise", html: "third", round: 2 });
   assert.deepEqual([...versions], [[1, "first"], [2, "second"]]);
