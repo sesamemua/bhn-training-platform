@@ -66,18 +66,31 @@ export const LinkedinEntry = LinkedinInput.extend({
   updatedAt: z.string().datetime(), updatedBy: z.string().max(240), notes: z.string().max(2000).default(""),
   testimonial: z.object({ quote: z.string().trim().min(1).max(1200), publishedAt: z.string().datetime(), publishedBy: z.string().max(240), profile: LinkedinFeedbackProfile.optional(), images: LinkedinFeedbackImages.optional() }).nullable().optional(),
 });
-export const LinkedinBoard = z.object({ entries: z.array(LinkedinEntry).max(2000), checkedAt: z.string().datetime().nullable(), coverage: z.string().max(800) });
+export const LinkedinBoard = z.object({ entries: z.array(LinkedinEntry).max(2000), checkedAt: z.string().datetime().nullable(), coverage: z.string().max(800), publicSearchAt: z.string().datetime().optional() });
 export type LinkedinEntry = z.infer<typeof LinkedinEntry>;
 export type LinkedinBoard = z.infer<typeof LinkedinBoard>;
 export interface LinkedinSnapshot { board: LinkedinBoard; version: string | null }
 export const LinkedinAction = z.discriminatedUnion("action", [
   z.object({ action: z.literal("add"), entry: LinkedinInput }),
   z.object({ action: z.literal("import"), entries: z.array(LinkedinInput).min(1).max(300), coverage: z.string().trim().min(1).max(800) }),
+  z.object({ action: z.literal("public_search"), entries: z.array(LinkedinInput).max(12) }),
   z.object({ action: z.literal("edit"), id: z.string().max(2100), reply: z.string().trim().max(3000), status: LinkedinStatus, notes: z.string().max(2000) }),
   z.object({ action: z.literal("rate"), id: z.string().max(2100), assessment: LinkedinAssessment }),
   z.object({ action: z.literal("testimonial"), id: z.string().max(2100), quote: z.string().trim().max(1200), publish: z.boolean(), profile: LinkedinFeedbackProfile.optional(), images: LinkedinFeedbackImages.optional() }),
 ]);
 export type LinkedinAction = z.infer<typeof LinkedinAction>;
+
+function sameLinkedinPost(a: Pick<LinkedinEntry, "kind" | "sourceUrl" | "author">, b: typeof a) {
+  if (![a.kind, b.kind].every(kind => kind === "mention" || kind === "repost")) return false;
+  const id = (link: string) => link.match(/\/feed\/update\/urn:li:(?:activity|share|ugcPost):(\d+)\/?$/)?.[1];
+  const left = id(a.sourceUrl), right = id(b.sourceUrl);
+  if (!left || !right) return false;
+  if (left === right) return true;
+  // LinkedIn gives a repost's activity and share/UGC records different IDs within the same second.
+  const author = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  return author(a.author) === author(b.author) &&
+    Math.abs(Number(BigInt(left) >> BigInt(22)) - Number(BigInt(right) >> BigInt(22))) <= 1000;
+}
 
 export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction, actor: string, at: string): LinkedinBoard {
   const next = structuredClone(board);
@@ -97,6 +110,8 @@ export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction
   } else {
     for (const input of action.action === "add" ? [action.entry] : action.entries) {
       const sourceUrl = linkedinSourceUrl(input.sourceUrl), id = `${input.kind}:${sourceUrl}`;
+      if (action.action === "public_search" && (next.entries.length >= 2000 ||
+          next.entries.some(entry => sameLinkedinPost(entry, { ...input, sourceUrl })))) continue;
       const existing = next.entries.find(e => e.id === id);
       if (existing) {
         if (action.action === "add") throw new Error("This interaction is already in the queue.");
@@ -104,9 +119,14 @@ export function changeLinkedinBoard(board: LinkedinBoard, action: LinkedinAction
         Object.assign(existing, { sourceText: input.sourceText, occurredLabel: input.occurredLabel, observedAt: at });
         if (!existing.assessment && input.assessment) existing.assessment = input.assessment;
         if (input.reactions) existing.reactions = input.reactions;
-      } else next.entries.push({ ...input, sourceUrl, id, observedAt: at, updatedAt: at, updatedBy: actor, notes: "" });
+      } else {
+        const entry = { ...input, sourceUrl, id, observedAt: at, updatedAt: at, updatedBy: actor, notes: "" };
+        if (action.action === "public_search") next.entries.unshift(entry);
+        else next.entries.push(entry);
+      }
     }
     if (action.action === "import") { next.checkedAt = at; next.coverage = action.coverage; }
+    if (action.action === "public_search") next.publicSearchAt = at;
   }
   return LinkedinBoard.parse(next);
 }

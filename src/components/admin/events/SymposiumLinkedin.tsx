@@ -61,7 +61,7 @@ export function SymposiumLinkedin() {
   return <section className="min-w-0 space-y-5 pb-8" aria-label="Symposium LinkedIn interactions">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><p className="text-xs font-semibold uppercase text-muted">2026 Symposium + Training Week</p><h1 className="mt-1 flex items-center gap-2 text-2xl font-bold"><MessageSquareText size={24} />LinkedIn</h1>
-        <p className="mt-2 text-xs text-muted">{snapshot?.board.checkedAt ? `Browser checked ${stamp(snapshot.board.checkedAt)} ET` : "Not yet checked"} · No background sync · Replies not sent from here</p></div>
+        <p className="mt-2 text-xs text-muted">{snapshot?.board.publicSearchAt ? `Public search checked ${stamp(snapshot.board.publicSearchAt)} ET` : "Daily public search: no successful run yet"} · {snapshot?.board.checkedAt ? `Browser checked ${stamp(snapshot.board.checkedAt)} ET` : "No browser check yet"} · Replies stay private</p></div>
       <div className="flex flex-wrap gap-1">
         <a href={LINKEDIN_ACTIVITY_URL} target="_blank" rel="noopener noreferrer" className={buttonClass}><ExternalLink size={16} />BioHubNet activity</a>
         <button type="button" className={buttonClass} disabled={busy || dirty} onClick={() => { setBusy(true); setError(""); void load(); }} title="Reload saved platform records"><RefreshCw size={16} />Reload queue</button>
@@ -70,7 +70,7 @@ export function SymposiumLinkedin() {
       </div>
     </header>
     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm"><span><strong className="text-xl">{entries.length}</strong> tracked</span><span className="text-amber-700 dark:text-amber-300"><strong className="text-xl">{entries.filter(e => e.status === "pending").length}</strong> needs reply</span><span className="text-emerald-700 dark:text-emerald-300"><strong className="text-xl">{entries.filter(e => e.status === "replied").length}</strong> replied</span><span className="text-muted"><strong className="text-xl">{entries.filter(e => e.status === "no_reply").length}</strong> no reply needed</span></div>
-    {snapshot && <details className="text-xs text-muted"><summary className="cursor-pointer">Coverage</summary><p className="mt-2 max-w-3xl whitespace-pre-wrap">{snapshot.board.coverage}</p></details>}
+    {snapshot && <details className="text-xs text-muted"><summary className="cursor-pointer">Coverage</summary><p className="mt-2 max-w-3xl">Daily search finds indexed public posts only. LinkedIn Page notifications are not connected.</p><p className="mt-2 max-w-3xl whitespace-pre-wrap">{snapshot.board.coverage}</p></details>}
     {snapshot && <div className="flex flex-wrap items-center gap-3 border-y border-line py-3 text-sm"><a href={LINKEDIN_FEEDBACK_PATH} target="_blank" rel="noopener noreferrer" className={buttonClass}><Globe size={16} />Public feedback page<ExternalLink size={14} /></a><span className="text-muted">{publicLinkedinTestimonials(snapshot.board).length} published quotes</span><CopyFeedback quotes={publicLinkedinTestimonials(snapshot.board)} all /></div>}
     {error && <p role="alert" className="rounded-md bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
     {adding && <NewInteraction busy={busy} close={() => setAdding(false)} save={async entry => { if (await save({ action: "add", entry })) setAdding(false); }} />}
