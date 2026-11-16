@@ -15,13 +15,19 @@
 import { useTabParam } from "@/lib/hooks/use-tab-param";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Loader2, Pencil, Check, X,
   Columns3, UserRound, ArrowLeft, ArrowRight, Link2, BookUser, UserMinus,
-  MessagesSquare, MailPlus, ListChecks, MailCheck,
+  MessagesSquare, MailPlus, ListChecks, MailCheck, Search, Upload, Download, Sparkles, ExternalLink,
 } from "lucide-react";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
+import {
+  LIFECYCLE_STAGES, csvToPeople, describeFilter, labelOf, matchesFilter, scoreBand, toCsv, type CrmFilter,
+} from "@/lib/outreach/crm";
+import { crmPost } from "./crm/crm-api";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import { OutreachSharePanel } from "./OutreachSharePanel";
@@ -42,7 +48,7 @@ interface ListRow {
   touchCount: number;
   lastTouchAt: string | null;
 }
-interface ListData { id: string; name: string; description: string; columns: ColumnDef[]; rows: ListRow[]; shareLinks: ShareLinkInfo[] }
+interface ListData { id: string; name: string; description: string; columns: ColumnDef[]; rows: ListRow[]; shareLinks: ShareLinkInfo[]; filter: CrmFilter | null }
 interface DirPerson {
   id: string;
   values: Record<string, string>;
@@ -53,6 +59,11 @@ interface DirPerson {
   lastTouchAt: string | null;
   /** When the intro email was sent; null = net-new, still needs an intro. */
   introSentAt: string | null;
+  lifecycle: string;
+  leadStatus: string;
+  ownerName: string;
+  score: number;
+  unsubscribed: boolean;
 }
 export interface OutreachData { personColumns: ColumnDef[]; lists: ListData[]; directory: DirPerson[] }
 
@@ -249,7 +260,16 @@ export function OutreachBoard({
 }) {
   const router = useRouter();
   const [board, setBoard] = useState<OutreachData>(data);
-  const [activeId, setActiveId] = useTabParam<string>("list", data.lists[0]?.id ?? DIR_TAB, (v) => v === DIR_TAB || data.lists.some((l) => l.id === v));
+  const params = useSearchParams();
+  // A link with ?q= or ?stage= (from Companies or the dashboard) opens the Directory, filtered.
+  const deepFilter = Boolean(params.get("q") || params.get("stage"));
+  const [filter, setFilter] = useState<CrmFilter>(() => ({
+    ...(params.get("q") ? { q: params.get("q")! } : {}),
+    ...(params.get("stage") ? { lifecycle: params.get("stage")! } : {}),
+  }));
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [activeId, setActiveId] = useTabParam<string>("list", deepFilter ? DIR_TAB : (data.lists[0]?.id ?? DIR_TAB), (v) => v === DIR_TAB || data.lists.some((l) => l.id === v));
   const [busy, setBusy] = useState(false);
   const [newListOpen, setNewListOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
@@ -271,6 +291,64 @@ export function OutreachBoard({
 
   const isDir = activeId === DIR_TAB;
   const active = useMemo(() => board.lists.find((l) => l.id === activeId) ?? null, [board, activeId]);
+  const isSmart = Boolean(active?.filter);
+  /** Directory and smart lists render the directory table; static lists render their own. */
+  const showDir = isDir || isSmart;
+
+  const asFilterable = (p: DirPerson) => ({
+    values: p.values, lifecycle: p.lifecycle, leadStatus: p.leadStatus, ownerName: p.ownerName,
+    listIds: p.lists.map((l) => l.listId), score: p.score,
+  });
+  const smartCount = useMemo(() => new Map(board.lists.filter((l) => l.filter).map((l) => [l.id, board.directory.filter((p) => matchesFilter(asFilterable(p), l.filter!)).length])), [board]);
+  const dirRows = useMemo(
+    () => board.directory.filter((p) => (!active?.filter || matchesFilter(asFilterable(p), active.filter)) && matchesFilter(asFilterable(p), filter)),
+    [board.directory, active, filter],
+  );
+  const listRows = useMemo(
+    () => (active && !isSmart
+      ? active.rows.filter((r) => !filter.q || matchesFilter({ values: { ...r.personValues, ...r.values }, lifecycle: "", leadStatus: "", ownerName: "", listIds: [], score: 0 }, { q: filter.q }))
+      : []),
+    [active, isSmart, filter.q],
+  );
+  const owners = useMemo(() => [...new Set(board.directory.map((p) => p.ownerName).filter(Boolean))].sort(), [board.directory]);
+  const filtering = Object.keys(filter).length > 0;
+
+  async function importCsv(file: File) {
+    setImportMsg("Importing…");
+    const rows = csvToPeople(await file.text(), board.personColumns);
+    if (rows.length === 0) { setImportMsg("No rows found. The first line should be headers such as Name, Email, Org, Title."); return; }
+    const { ok, data: res } = await crmPost<{ created: number; updated: number; skipped: number }>("person.import", {
+      rows, listId: !isDir && !isSmart && active ? active.id : undefined,
+    });
+    setImportMsg(ok
+      ? `Imported ${res.created} new, filled in ${res.updated} existing (matched by email)${res.skipped ? `, skipped ${res.skipped} blank` : ""}.`
+      : res.error ?? "The import didn't go through.");
+    router.refresh();
+  }
+
+  function exportCsv() {
+    const cols = board.personColumns;
+    const rows: string[][] = showDir
+      ? [[...cols.map((c) => c.label), "Stage", "Lead status", "Owner", "Score", "Lists"],
+        ...dirRows.map((p) => [...cols.map((c) => p.values[c.key] ?? ""), labelOf(LIFECYCLE_STAGES, p.lifecycle), p.leadStatus, p.ownerName, String(p.score), p.lists.map((l) => l.name).join("; ")])]
+      : [[...cols.map((c) => c.label), ...(active?.columns ?? []).map((c) => c.label)],
+        ...listRows.map((r) => [...cols.map((c) => r.personValues[c.key] ?? ""), ...(active?.columns ?? []).map((c) => r.values[c.key] ?? "")])];
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + toCsv(rows)], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(isDir ? "contacts" : active?.name ?? "list").replace(/[^\w-]+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function saveSmartList(name: string) {
+    const merged = { ...(active?.filter ?? {}), ...filter };
+    const { ok, data: res } = await crmPost<{ id: string }>("list.smart", { name, filter: merged });
+    if (!ok) { setImportMsg(res.error ?? "Couldn't save the smart list."); return; }
+    setFilter({});
+    router.refresh();
+    if (res.id) setActiveId(res.id);
+  }
 
   async function api(path: string, init: RequestInit): Promise<Response | null> {
     setBusy(true);
@@ -404,7 +482,7 @@ export function OutreachBoard({
     router.refresh();
   }
   async function addContact() {
-    if (isDir) {
+    if (isDir || isSmart) {
       await api(`/api/workspace/outreach/people`, { method: "POST", body: JSON.stringify({}) });
     } else if (active) {
       await api(`/api/workspace/outreach/lists/${active.id}/memberships`, { method: "POST", body: JSON.stringify({}) });
@@ -518,7 +596,7 @@ export function OutreachBoard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1 rounded-lg bg-elevated/60 p-1">
           {tab(DIR_TAB, "Directory", board.directory.length, <BookUser size={12} />)}
-          {board.lists.map((l) => tab(l.id, l.name, l.rows.length))}
+          {board.lists.map((l) => tab(l.id, l.name, l.filter ? smartCount.get(l.id) ?? 0 : l.rows.length, l.filter ? <Sparkles size={11} className="text-brand-600" /> : undefined))}
           {newListOpen ? (
             <span className="inline-flex items-center gap-1 pl-1">
               <input
@@ -547,7 +625,7 @@ export function OutreachBoard({
           >
             <MailPlus size={13} /> Email templates
           </button>
-          {!isDir && active && (
+          {!showDir && active && (
             <OutreachSharePanel listId={active.id} listName={active.name} initialLinks={active.shareLinks} />
           )}
           {!isDir && active && (
@@ -569,7 +647,7 @@ export function OutreachBoard({
               </button>
             )
           )}
-          <button
+          {!isSmart && <button
             type="button"
             onClick={openCols}
             className={cn(
@@ -578,7 +656,7 @@ export function OutreachBoard({
             )}
           >
             <Columns3 size={12} /> Edit columns
-          </button>
+          </button>}
           {!isDir && active && (
             <button type="button" onClick={deleteList} title="Delete list" className="inline-flex items-center gap-1.5 rounded-md border border-line bg-card-solid px-3 py-1.5 text-xs font-semibold text-muted hover:bg-elevated hover:text-rose-700">
               <Trash2 size={12} />
@@ -594,9 +672,60 @@ export function OutreachBoard({
         <p className="text-[12px] text-muted">
           {isDir
             ? "Everyone across all lists. Shared details edit here once and update every list."
+            : isSmart ? `Smart list — ${describeFilter(active!.filter!, (id) => board.lists.find((l) => l.id === id)?.name ?? "a list")}. Updates itself as contacts change.`
             : active?.description}
         </p>
       )}
+
+      {/* Search, filters, import / export */}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-[14rem] flex-1">
+          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle" />
+          <span className="sr-only">Search contacts</span>
+          <input
+            id="outreach-search"
+            value={filter.q ?? ""}
+            onChange={(e) => setFilter((f) => { const n = { ...f }; if (e.target.value) n.q = e.target.value; else delete n.q; return n; })}
+            placeholder="Search name, org, email, notes…"
+            className="w-full rounded-md border border-line bg-card-solid py-1.5 pl-8 pr-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-400"
+          />
+        </label>
+        {showDir && (
+          <>
+            <select id="outreach-stage" aria-label="Lifecycle stage" value={filter.lifecycle ?? ""} onChange={(e) => setFilter((f) => { const n = { ...f }; if (e.target.value) n.lifecycle = e.target.value; else delete n.lifecycle; return n; })} className="rounded-md border border-line bg-card-solid px-2 py-1.5 text-xs">
+              <option value="">Any stage</option>
+              {LIFECYCLE_STAGES.map((st) => <option key={st.key} value={st.key}>{st.label}</option>)}
+            </select>
+            {owners.length > 0 && (
+              <select id="outreach-owner" aria-label="Owner" value={filter.owner ?? ""} onChange={(e) => setFilter((f) => { const n = { ...f }; if (e.target.value) n.owner = e.target.value; else delete n.owner; return n; })} className="rounded-md border border-line bg-card-solid px-2 py-1.5 text-xs">
+                <option value="">Any owner</option>
+                {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            )}
+            <select id="outreach-score" aria-label="Lead score" value={String(filter.minScore ?? "")} onChange={(e) => setFilter((f) => { const n = { ...f }; if (e.target.value) n.minScore = Number(e.target.value); else delete n.minScore; return n; })} className="rounded-md border border-line bg-card-solid px-2 py-1.5 text-xs">
+              <option value="">Any score</option>
+              <option value="30">Warm and hot (30+)</option>
+              <option value="60">Hot (60+)</option>
+            </select>
+            {filtering && (
+              <ConfirmPopover message="Save these filters as a smart list" detail="It updates itself as contacts change, and campaigns and sequences can target it." confirmLabel="Save" input={{ placeholder: "Smart list name", maxLength: 120 }} onConfirm={(name) => name.trim() && saveSmartList(name.trim())}>
+                {(open) => <button type="button" onClick={open} className="inline-flex items-center gap-1.5 rounded-md border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 hover:bg-brand-100"><Sparkles size={12} /> Save as smart list</button>}
+              </ConfirmPopover>
+            )}
+          </>
+        )}
+        {filtering && <button type="button" onClick={() => setFilter({})} className="text-xs font-semibold text-muted hover:text-fg">Clear</button>}
+        <span className="ml-auto flex items-center gap-2">
+          <input ref={fileRef} id="outreach-import" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); e.target.value = ""; }} />
+          <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-card-solid px-3 py-1.5 text-xs font-semibold text-fg hover:bg-elevated" title={!isDir && !isSmart && active ? `Adds everyone to ${active.name} too` : "Adds to the directory"}>
+            <Upload size={12} /> Import CSV
+          </button>
+          <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-card-solid px-3 py-1.5 text-xs font-semibold text-fg hover:bg-elevated">
+            <Download size={12} /> Export
+          </button>
+        </span>
+      </div>
+      {importMsg && <p role="status" className="text-[12px] text-muted">{importMsg} <button type="button" onClick={() => setImportMsg(null)} className="font-semibold hover:text-fg">Dismiss</button></p>}
 
       {/* Column editor */}
       {colsOpen && (
@@ -652,7 +781,7 @@ export function OutreachBoard({
       )}
 
       {/* ── DIRECTORY TABLE ── */}
-      {isDir ? (
+      {showDir ? (
         <Card className="max-h-[70vh] overflow-auto p-0">
           <table className="w-full min-w-[760px] border-collapse text-left">
             <thead>
@@ -662,6 +791,8 @@ export function OutreachBoard({
                     <span className="inline-flex items-center gap-1"><Link2 size={9} className="text-brand-600" /> {c.label}</span>
                   </th>
                 ))}
+                <th className="sticky top-0 z-10 border-b border-line bg-card-solid px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-subtle">Stage</th>
+                <th className="sticky top-0 z-10 border-b border-line bg-card-solid px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-subtle" title="Lead score 0–100 from reach-outs, email opens and clicks, forms, registrations and an account">Score</th>
                 <th className="sticky top-0 z-10 border-b border-line bg-card-solid px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-subtle">On lists</th>
                 <th className="sticky top-0 z-10 border-b border-line bg-card-solid px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-subtle">Intro</th>
                 <th className="sticky top-0 z-10 border-b border-line bg-card-solid px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-subtle">Reach-outs</th>
@@ -670,7 +801,7 @@ export function OutreachBoard({
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {board.directory.map((p) => (
+              {dirRows.map((p) => (
                 <tr key={p.id} className="group hover:bg-elevated/30">
                   {board.personColumns.map((c) => (
                     <td key={c.key} className="min-w-[9rem] px-1.5 py-1 align-top">
@@ -681,6 +812,17 @@ export function OutreachBoard({
                       />
                     </td>
                   ))}
+                  <td className="whitespace-nowrap px-3 py-2 align-middle text-[11px] text-muted">{labelOf(LIFECYCLE_STAGES, p.lifecycle)}{p.unsubscribed && <span className="ml-1 text-rose-700">· unsubscribed</span>}</td>
+                  <td className="px-3 py-2 align-middle">
+                    <Link
+                      href={`/admin/workspace/outreach/contacts/${p.id}`}
+                      title="Open the contact record"
+                      className={cn(
+                        "inline-flex min-w-[2rem] justify-center rounded-full px-2 py-0.5 text-[10.5px] font-bold tabular-nums",
+                        { hot: "bg-rose-50 text-rose-700", warm: "bg-amber-50 text-amber-800", cold: "bg-elevated text-muted" }[scoreBand(p.score)],
+                      )}
+                    >{p.score}</Link>
+                  </td>
                   <td className="px-3 py-2 align-middle">
                     <span className="flex flex-wrap items-center gap-1">
                       {p.lists.map((l) => (
@@ -716,10 +858,11 @@ export function OutreachBoard({
                   </td>
                   <td className="whitespace-nowrap px-2 py-1.5 align-middle">
                     <span className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                      <Link href={`/admin/workspace/outreach/contacts/${p.id}`} title="Open the contact record" aria-label="Open the contact record" className={miniBtn}><ExternalLink size={12} /></Link>
                       <ListMembershipMenu
                         personId={p.id}
                         currentListId={null}
-                        lists={board.lists}
+                        lists={board.lists.filter((l) => !l.filter)}
                         busy={busy}
                         onAdd={addToList}
                         onRemove={removeMembership}
@@ -730,8 +873,10 @@ export function OutreachBoard({
                   </td>
                 </tr>
               ))}
-              {board.directory.length === 0 && (
-                <tr><td colSpan={board.personColumns.length + 5} className="px-4 py-10 text-center text-sm text-muted">Nobody in the directory yet — hit <strong>Add contact</strong>.</td></tr>
+              {dirRows.length === 0 && (
+                <tr><td colSpan={board.personColumns.length + 7} className="px-4 py-10 text-center text-sm text-muted">
+                  {board.directory.length === 0 ? <>Nobody in the directory yet — hit <strong>Add contact</strong> or <strong>Import CSV</strong>.</> : "No contacts match these filters."}
+                </td></tr>
               )}
             </tbody>
           </table>
@@ -760,7 +905,7 @@ export function OutreachBoard({
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {active.rows.map((row, i) => (
+              {listRows.map((row, i) => (
                 <tr key={row.membershipId} className="group hover:bg-elevated/30">
                   {board.personColumns.map((c) => (
                     <td key={c.key} className="min-w-[9rem] px-1.5 py-1 align-top">
@@ -804,7 +949,7 @@ export function OutreachBoard({
                       <ListMembershipMenu
                         personId={row.personId}
                         currentListId={active.id}
-                        lists={board.lists}
+                        lists={board.lists.filter((l) => !l.filter)}
                         busy={busy}
                         onAdd={addToList}
                         onRemove={removeMembership}

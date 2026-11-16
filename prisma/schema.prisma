@@ -5877,6 +5877,8 @@ model OutreachList {
   /// Ordered column definitions: [{ key: string, label: string }]
   columns     Json
   order       Int      @default(0)
+  /// Set = smart list: members are whoever matches this filter (CrmFilter), live.
+  filter      Json?
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -5938,6 +5940,17 @@ model OutreachPerson {
   unsubscribedAt  DateTime?
   /// Why, when they told us — free text from the unsubscribe page.
   unsubscribeNote String?
+  /// CRM properties. lifecycle: subscriber | lead | engaged | partner | customer | other.
+  lifecycle       String    @default("lead")
+  /// new | attempting | connected | qualified | unqualified
+  leadStatus      String    @default("new")
+  ownerId         String?
+  ownerName       String    @default("")
+  /// Where the contact came from: manual | import | form:<slug> | shared-list
+  source          String    @default("manual")
+  tasks       OutreachTask[]
+  deals       OutreachDeal[]
+  enrollments OutreachEnrollment[]
 
   memberships OutreachMembership[]
   touches     OutreachTouch[]
@@ -5968,6 +5981,10 @@ model OutreachSend {
   /// so without this there is no way to know what a partner was actually sent.
   body       String           @default("")
   sentAt     DateTime?
+  openedAt   DateTime?
+  opens      Int              @default(0)
+  clickedAt  DateTime?
+  clicks     Int              @default(0)
   byId       String?
   byName     String           @default("BHN team")
   createdAt  DateTime         @default(now())
@@ -6078,6 +6095,91 @@ model OutreachCampaign {
   updatedAt           DateTime       @updatedAt
 
   @@index([createdAt])
+}
+
+// ── Marketing CRM (HubSpot-style) ───────────────────────────────────────
+model OutreachTask {
+  id           String          @id @default(cuid())
+  title        String
+  notes        String          @default("")
+  dueAt        DateTime?
+  doneAt       DateTime?
+  personId     String?
+  person       OutreachPerson? @relation(fields: [personId], references: [id], onDelete: Cascade)
+  dealId       String?
+  deal         OutreachDeal?   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  assigneeId   String?
+  assigneeName String          @default("")
+  byName       String          @default("BHN team")
+  createdAt    DateTime        @default(now())
+
+  @@index([doneAt, dueAt])
+  @@index([personId])
+}
+
+model OutreachDeal {
+  id        String          @id @default(cuid())
+  name      String
+  org       String          @default("")
+  /// lead | contacted | proposal | negotiation | won | lost
+  stage     String          @default("lead")
+  /// Whole Canadian dollars.
+  amount    Int             @default(0)
+  closeDate DateTime?
+  personId  String?
+  person    OutreachPerson? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  ownerId   String?
+  ownerName String          @default("")
+  notes     String          @default("")
+  order     Int             @default(0)
+  tasks     OutreachTask[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([stage, order])
+}
+
+model OutreachSequence {
+  id          String               @id @default(cuid())
+  name        String
+  /// [{ delayDays, subject, body }] — step 0 delay counts from enrolment.
+  steps       Json
+  archived    Boolean              @default(false)
+  byName      String               @default("BHN team")
+  enrollments OutreachEnrollment[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model OutreachEnrollment {
+  id         String           @id @default(cuid())
+  sequenceId String
+  sequence   OutreachSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  personId   String
+  person     OutreachPerson   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// Index of the NEXT step to send.
+  step       Int              @default(0)
+  nextDueAt  DateTime?
+  /// active | done | stopped
+  status     String           @default("active")
+  byName     String           @default("BHN team")
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([sequenceId, personId])
+  @@index([status, nextDueAt])
+}
+
+/// UTM-tagged short link: /go/<slug> counts the click and redirects.
+model OutreachLink {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  label     String   @default("")
+  url       String
+  clicks    Int      @default(0)
+  lastAt    DateTime?
+  byName    String   @default("BHN team")
+  createdAt DateTime @default(now())
 }
 
 // ── Mock Interview practice ──────────────────────────────────────────────

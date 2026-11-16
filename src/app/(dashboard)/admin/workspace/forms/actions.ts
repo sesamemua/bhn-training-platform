@@ -9,6 +9,7 @@
  * what is already there should.
  */
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { getSession, requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +20,7 @@ import { SITE_THEMED_FORM_SLUGS } from "@/lib/formbuilder/site-theme";
 import { checkSubmission, emailFrom } from "@/lib/formbuilder/submit";
 import { sendAcknowledgement } from "@/lib/formbuilder/acknowledge";
 import { makeSeats } from "@/lib/formbuilder/seats";
+import { captureFormSubmission } from "@/lib/outreach/crm-server";
 import type { Receipt } from "@/lib/formbuilder/receipt";
 import type { Answers } from "@/lib/formbuilder/logic";
 import { parseCsv } from "@/lib/formbuilder/csv";
@@ -299,6 +301,12 @@ export async function submitBuiltForm(
   });
 
   await makeSeats(doc, verdict.clean, row.id, user?.id ?? null);
+
+  // Forms → CRM (only forms the team opted in; never for a test).
+  if (!opts?.test) {
+    const email = emailFrom(doc, verdict.clean);
+    after(() => captureFormSubmission({ slug: form.slug, title: form.title }, email, verdict.clean));
+  }
 
   revalidatePath("/admin/workspace/symposium-2026/registration");
   revalidatePath("/admin/workspace/training-admin");

@@ -41,6 +41,19 @@ import {
   composeBody,
   unsubscribeUrl,
 } from "@/lib/outreach/send";
+import { clickUrl, openToken, textToHtml, trackLinks } from "@/lib/outreach/crm-track";
+
+/** The HTML twin carries the open pixel and tracked links; the text part stays as written. */
+function trackedHtml(origin: string, sendId: string, text: string): string {
+  const tracked = trackLinks(text, (u) => clickUrl(origin, sendId, u), (u) => u.includes("/outreach/unsubscribe/"));
+  const shown = (href: string) => {
+    try {
+      const x = new URL(href);
+      return x.pathname.startsWith("/api/outreach/click/") ? x.searchParams.get("u") ?? href : href;
+    } catch { return href; }
+  };
+  return textToHtml(tracked, `${origin.replace(/\/$/, "")}/api/outreach/open/${openToken(sendId)}`, shown);
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -163,20 +176,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     // Claim the recipient BEFORE sending. If two requests race, one insert
     // wins and the other throws on the unique index — that loser must not send.
+    let sendId: string;
     try {
-      await prisma.outreachSend.create({
+      ({ id: sendId } = await prisma.outreachSend.create({
         data: {
           campaignId: id, personId: person.id, email, status: "queued",
           subject, body: text, byId: meId, byName: meName,
         },
-      });
+        select: { id: true },
+      }));
     } catch {
       outcomes.push({ personId: person.id, email, status: "skipped", detail: "Already being sent." });
       continue;
     }
 
     try {
-      await sendMail({ to: email, subject, text, replyTo: meEmail ?? undefined });
+      await sendMail({ to: email, subject, text, html: trackedHtml(origin, sendId, text), replyTo: meEmail ?? undefined });
       await prisma.$transaction([
         prisma.outreachSend.update({
           where: { campaignId_personId: { campaignId: id, personId: person.id } },

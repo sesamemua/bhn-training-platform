@@ -17,6 +17,8 @@ import {
 import {
   getOutreachTemplateOverrides, resolveTemplates, OUTREACH_PLACEHOLDERS,
 } from "@/lib/outreach/templates";
+import { crmPeople } from "@/lib/outreach/crm-server";
+import { sanitizeFilter } from "@/lib/outreach/crm";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,7 @@ export default async function OutreachContactsPage() {
 
   await ensureOutreachDirectory((session.user as { id?: string }).id ?? null);
 
-  const [personColumns, lists, people, templateOverrides] = await Promise.all([
+  const [personColumns, lists, people, templateOverrides, crm] = await Promise.all([
     getPersonColumns(),
     prisma.outreachList.findMany({
       orderBy: { order: "asc" },
@@ -61,7 +63,9 @@ export default async function OutreachContactsPage() {
       },
     }),
     getOutreachTemplateOverrides(),
+    crmPeople(),
   ]);
+  const crmById = new Map(crm.map((p) => [p.id, p]));
 
   const data: OutreachData = {
     personColumns,
@@ -70,6 +74,7 @@ export default async function OutreachContactsPage() {
       name: l.name,
       description: l.description,
       columns: (Array.isArray(l.columns) ? (l.columns as unknown as OutreachColumn[]) : DEFAULT_MEMBERSHIP_COLUMNS),
+      filter: sanitizeFilter(l.filter),
       shareLinks: l.shareTokens.map((t) => ({
         id: t.id, token: t.token, label: t.label, createdAt: t.createdAt.toISOString(),
       })),
@@ -94,6 +99,11 @@ export default async function OutreachContactsPage() {
       touchCount: p._count.touches,
       lastTouchAt: p.touches[0]?.happenedAt.toISOString() ?? null,
       introSentAt: p.introSentAt?.toISOString() ?? null,
+      lifecycle: p.lifecycle,
+      leadStatus: p.leadStatus,
+      ownerName: p.ownerName,
+      score: crmById.get(p.id)?.score ?? 0,
+      unsubscribed: Boolean(p.unsubscribedAt),
     })),
   };
 
@@ -105,7 +115,7 @@ export default async function OutreachContactsPage() {
       <PageHero
         eyebrow={<><BookUser size={11} /> Workspace · Marketing</>}
         title="Outreach"
-        description="One directory of partner contacts, organised into lists. A person can sit on several lists without duplication — edit their shared details once and every list updates. Per-list notes and columns stay separate."
+        description="One directory of contacts, organised into lists and smart lists. Edit shared details once and every list updates. Open a contact for their full record: stage, owner, lead score, tasks, deals and every touchpoint."
       />
       <OutreachNav />
       <OutreachBoard

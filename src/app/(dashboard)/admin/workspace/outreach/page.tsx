@@ -1,6 +1,6 @@
-/** Outreach now has two views — Contacts and Campaigns. Land on Contacts. */
+/** Outreach lands on the CRM dashboard. */
 import { redirect } from "next/navigation";
 
 export default function OutreachIndexPage() {
-  redirect("/admin/workspace/outreach/contacts");
+  redirect("/admin/workspace/outreach/dashboard");
 }

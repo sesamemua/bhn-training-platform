@@ -65,7 +65,7 @@ import {
   Palette,
   Ghost,
   MessageSquare,
-  Gauge,
+  Gauge, HandCoins, CheckSquare,
   Sliders, SlidersHorizontal, FolderOpen, Library,
   Eye,
   Drama,
@@ -697,7 +697,7 @@ const workspaceOutreachContactsItem: NavItem = {
   icon: BookUser,
   minRole: "admin",
   description:
-    "Partner contacts for cross-promoting BHN programs. One directory, many lists; editable columns; every contact records who added it.",
+    "The contact directory: lists, smart lists, search, CSV import/export, and a full record per person with stage, owner, lead score and every touchpoint.",
 };
 const workspaceOutreachCampaignsItem: NavItem = {
   label: "Campaigns",
@@ -706,6 +706,27 @@ const workspaceOutreachCampaignsItem: NavItem = {
   minRole: "admin",
   description:
     "Run a tracked cross-promotion push: pick a target list and an email template, then work down a personalised roster, copying or opening each email and marking contacts reached.",
+};
+const workspaceOutreachDashboardItem: NavItem = {
+  label: "Dashboard",
+  href: "/admin/workspace/outreach/dashboard",
+  icon: Gauge,
+  minRole: "admin",
+  description: "Marketing numbers in one place: contacts by stage, email opens and clicks, pipeline, what's due, and sign-ups by source.",
+};
+const workspaceOutreachDealsItem: NavItem = {
+  label: "Deals",
+  href: "/admin/workspace/outreach/deals",
+  icon: HandCoins,
+  minRole: "admin",
+  description: "Sponsorship and partnership pipeline by stage, with amounts and a weighted total.",
+};
+const workspaceOutreachTasksItem: NavItem = {
+  label: "Tasks",
+  href: "/admin/workspace/outreach/tasks",
+  icon: CheckSquare,
+  minRole: "admin",
+  description: "Follow-ups for the team, plus the sequence emails that are due to send.",
 };
 
 
@@ -2444,7 +2465,10 @@ export function Sidebar({
               <NavLink item={workspaceFormsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
             <AdminSubgroup tone={ADMIN_SUBGROUP_TONES.experience} label="Outreach">
+              <NavLink item={workspaceOutreachDashboardItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceOutreachContactsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceOutreachDealsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <NavLink item={workspaceOutreachTasksItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
               <NavLink item={workspaceOutreachCampaignsItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             </AdminSubgroup>
           </SectionGroup>

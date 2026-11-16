@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.16b";
+export const TOUR_VERSION = "2026.11.16c";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "outreach.crm",
+    title: "Outreach is now a marketing CRM",
+    body: "Open Outreach → Dashboard for contacts, email performance and pipeline. Each contact has a full record, and Deals, Tasks, Sequences and Tracked links are one tab away.",
+    path: "/admin/workspace/outreach/dashboard",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.16c",
+  },
   {
     id: "nav.event-headings",
     title: "Easier-to-spot event headings",

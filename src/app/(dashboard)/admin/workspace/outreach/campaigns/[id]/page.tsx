@@ -11,6 +11,8 @@ import {
   CampaignDetailClient, type Recipient,
 } from "@/components/workspace/CampaignDetailClient";
 import { getOutreachTemplateOverrides, resolveTemplates } from "@/lib/outreach/templates";
+import { sanitizeFilter } from "@/lib/outreach/crm";
+import { smartListMembers } from "@/lib/outreach/crm-server";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
 
   const campaign = await prisma.outreachCampaign.findUnique({
     where: { id },
-    include: { list: { select: { name: true } } },
+    include: { list: { select: { name: true, filter: true } }, sends: { select: { personId: true, openedAt: true, clickedAt: true } } },
   });
   if (!campaign) notFound();
 
@@ -40,7 +42,12 @@ export default async function CampaignDetailPage({ params }: PageProps) {
 
   // Build the roster from the target audience. needsIntro = no intro on file yet.
   let roster: Recipient[];
-  if (campaign.listId) {
+  const smart = sanitizeFilter(campaign.list?.filter);
+  if (smart) {
+    roster = (await smartListMembers(smart)).map((p) => ({
+      personId: p.id, name: p.values.name ?? "", org: p.values.org ?? "", email: p.values.email ?? "", needsIntro: !p.introSentAt,
+    }));
+  } else if (campaign.listId) {
     const memberships = await prisma.outreachMembership.findMany({
       where: { listId: campaign.listId },
       orderBy: { order: "asc" },
@@ -60,6 +67,9 @@ export default async function CampaignDetailPage({ params }: PageProps) {
       return { personId: p.id, name: v.name ?? "", org: v.org ?? "", email: v.email ?? "", needsIntro: !p.introSentAt };
     });
   }
+
+  const track = new Map(campaign.sends.map((x) => [x.personId, x]));
+  roster = roster.map((r) => ({ ...r, opened: Boolean(track.get(r.personId)?.openedAt), clicked: Boolean(track.get(r.personId)?.clickedAt) }));
 
   const senderName = (session.user as { name?: string }).name ?? "";
 

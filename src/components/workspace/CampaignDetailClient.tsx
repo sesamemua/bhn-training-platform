@@ -19,7 +19,7 @@ import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
-export interface Recipient { personId: string; name: string; org: string; email: string; needsIntro: boolean }
+export interface Recipient { personId: string; name: string; org: string; email: string; needsIntro: boolean; opened?: boolean; clicked?: boolean }
 
 interface CampaignInfo {
   id: string;
@@ -286,6 +286,20 @@ export function CampaignDetailClient({
     }
   }
 
+  const [testState, setTestState] = useState<"idle" | "sending" | "sent">("idle");
+  async function sendTest() {
+    setTestState("sending");
+    setError(null);
+    const res = await fetch("/api/workspace/outreach/crm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "campaign.test", campaignId: campaign.id }),
+    }).catch(() => null);
+    const data = (await res?.json().catch(() => ({}))) as { error?: string };
+    if (!res?.ok) { setError(data.error ?? "The test didn't send."); setTestState("idle"); return; }
+    setTestState("sent");
+  }
+
   function toggleExpand(id: string) {
     setExpanded((cur) => {
       const next = new Set(cur);
@@ -451,7 +465,18 @@ export function CampaignDetailClient({
         <div className="border-b border-line px-4 py-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-fg">Recipients <span className="text-subtle">({roster.length})</span></h2>
-            <span className="text-[11px] text-muted">{newCount} new · {returningCount} returning</span>
+            <span className="flex flex-wrap items-center gap-3 text-[11px] text-muted">
+              <span>{newCount} new · {returningCount} returning</span>
+              {sent.size > 0 && (
+                <span className="tabular-nums" title="Opens are approximate: some mail apps load images automatically, others block them.">
+                  {Math.round((roster.filter((r) => r.opened).length / sent.size) * 100)}% opened · {Math.round((roster.filter((r) => r.clicked).length / sent.size) * 100)}% clicked
+                </span>
+              )}
+              <button type="button" onClick={sendTest} disabled={testState === "sending"} className={miniBtn}>
+                {testState === "sending" ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
+                {testState === "sent" ? "Test sent to you" : "Send test to me"}
+              </button>
+            </span>
           </div>
           {returningCount > 0 && !hasReturning && (
             <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800">
@@ -487,7 +512,11 @@ export function CampaignDetailClient({
                           {ver.kind === "returning" ? "Returning" : "Intro"}
                         </span>
                       </p>
-                      <p className="truncate text-[12px] text-subtle">{r.email || "No email on file"}</p>
+                      <p className="truncate text-[12px] text-subtle">
+                        <Link href={`/admin/workspace/outreach/contacts/${r.personId}`} className="hover:text-brand-700 hover:underline">{r.email || "No email on file"}</Link>
+                        {r.clicked ? <span className="ml-2 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-emerald-700">Clicked</span>
+                          : r.opened ? <span className="ml-2 rounded-full bg-sky-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-sky-700">Opened</span> : null}
+                      </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button type="button" onClick={() => toggleExpand(r.personId)} className={miniBtn}>

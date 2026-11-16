@@ -9,6 +9,8 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { OutreachNav } from "@/components/workspace/OutreachNav";
+import { crmPeople } from "@/lib/outreach/crm-server";
+import { matchesFilter, sanitizeFilter } from "@/lib/outreach/crm";
 import { CampaignsClient, type CampaignCard } from "@/components/workspace/CampaignsClient";
 import { ensureOutreachDirectory } from "@/lib/outreach/directory";
 import { getOutreachTemplateOverrides, resolveTemplates } from "@/lib/outreach/templates";
@@ -30,7 +32,7 @@ export default async function OutreachCampaignsPage() {
     }),
     prisma.outreachList.findMany({
       orderBy: { order: "asc" },
-      select: { id: true, name: true, _count: { select: { memberships: true } } },
+      select: { id: true, name: true, filter: true, _count: { select: { memberships: true } } },
     }),
     prisma.outreachPerson.count(),
     getOutreachTemplateOverrides(),
@@ -38,6 +40,14 @@ export default async function OutreachCampaignsPage() {
 
   const templates = resolveTemplates(overrides).map((t) => ({ id: t.id, label: t.label, when: t.when }));
   const listCount = new Map(lists.map((l) => [l.id, l._count.memberships]));
+  // Smart lists have no memberships; count whoever matches right now.
+  if (lists.some((l) => l.filter)) {
+    const people = await crmPeople();
+    for (const l of lists) {
+      const f = sanitizeFilter(l.filter);
+      if (f) listCount.set(l.id, people.filter((p) => matchesFilter(p, f)).length);
+    }
+  }
 
   const cards: CampaignCard[] = campaigns.map((c) => ({
     id: c.id,
@@ -62,7 +72,7 @@ export default async function OutreachCampaignsPage() {
       <OutreachNav />
       <CampaignsClient
         campaigns={cards}
-        lists={lists.map((l) => ({ id: l.id, name: l.name, count: l._count.memberships }))}
+        lists={lists.map((l) => ({ id: l.id, name: l.filter ? `${l.name} (smart)` : l.name, count: listCount.get(l.id) ?? 0 }))}
         peopleCount={peopleCount}
         templates={templates}
       />

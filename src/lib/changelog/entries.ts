@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Outreach is now a full marketing CRM",
+    body: "Under Workspace → **Outreach**: a **Dashboard** (contacts by stage, email open and click rates, pipeline, what's due, sign-ups by source), a record page for every contact (lifecycle stage, lead status, owner, lead score, tasks, deals, sequences, and a timeline of every email, form, registration and note), search and filters, **CSV import and export**, **smart lists** that update themselves, campaign **open and click tracking** with **Send test to me**, **Sequences** of follow-up emails (each step waits on Tasks for you to send it), **Tasks**, a **Deals** pipeline you drag between stages, **Companies**, and **Tracked links** with UTM tags and click counts. On the dashboard, choose which forms add their submitters as contacts.",
+    kind: "feature",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Menu: clearer event headings",
     body: "In **2026 Symposium & Training Week**, the two event headings are bigger, carry an icon (a cap for Training Week, a microphone for the Symposium) with their dates beside them, and have more space between them.",
     kind: "improvement",
