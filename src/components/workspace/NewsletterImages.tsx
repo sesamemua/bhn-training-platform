@@ -44,6 +44,7 @@ export function NewsletterImages({ issueId, targetType, targetId, label, images,
     onBusyChange?.(true);
     setErrors([]);
     const failures: string[] = [];
+    let uploaded = 0;
     try {
       // One request per picture stays below Vercel's 4.5 MB request-body limit.
       for (const [index, original] of files.slice(0, MAX - images.length).entries()) {
@@ -67,13 +68,14 @@ export function NewsletterImages({ issueId, targetType, targetId, label, images,
           }
           onChange(result.images);
           if (result.errors?.length) failures.push(...result.errors);
+          else uploaded++;
         } catch {
           failures.push(`${original.name}: connection lost — try again.`);
         }
       }
       setErrors(failures);
+      setProgress(uploaded ? `${uploaded} ${uploaded === 1 ? "picture" : "pictures"} saved.` : "No new pictures saved.");
     } finally {
-      setProgress("");
       setBusy(false);
       onBusyChange?.(false);
     }
@@ -97,6 +99,7 @@ export function NewsletterImages({ issueId, targetType, targetId, label, images,
       }
       onChange(result.images);
       setEditing(null);
+      setProgress("Picture changes saved.");
     } catch {
       setErrors(["Couldn't confirm the change — reload to check."]);
     } finally {
@@ -126,11 +129,11 @@ export function NewsletterImages({ issueId, targetType, targetId, label, images,
         {images.map((image, index) => (
           <li key={image.id} className={cn("group relative shrink-0 overflow-hidden rounded-md border border-line bg-white", tile)}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={image.url} alt={image.alt} title={image.alt || "No alt text yet"} className="h-full w-full object-cover" loading="lazy" />
+            <img src={image.url} alt={image.alt} title={image.alt || "No alt text yet"} className="h-full w-full object-contain" loading="lazy" />
             {!image.alt && <span aria-hidden className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-1 ring-white" title="Add alt text" />}
             {!disabled && (
               <span className="absolute inset-0 flex flex-wrap content-center items-center justify-center gap-0.5 bg-black/20 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                <button type="button" disabled={busy} aria-label={`Alt text for picture ${index + 1} in ${label}`} title="Alt text"
+                <button type="button" disabled={busy} aria-label={`Edit alt text for picture ${index + 1} in ${label}`} title="Alt text"
                   onClick={() => setEditing({ id: image.id, alt: image.alt })} className={iconBtn}><Type size={11} aria-hidden /></button>
                 <button type="button" disabled={busy} aria-label={`Remove picture ${index + 1} from ${label}`} title="Remove"
                   onClick={() => void change("remove", { imageId: image.id })} className={iconBtn}><X size={11} aria-hidden /></button>
@@ -147,14 +150,14 @@ export function NewsletterImages({ issueId, targetType, targetId, label, images,
         {!disabled && !full && (
           <li className="shrink-0">
             <button type="button" disabled={busy} onClick={() => input.current?.click()}
-              aria-label={`Add pictures to ${label}`}
+              aria-label={`Upload pictures for ${label}`}
               title={`Add pictures (${images.length}/${MAX}) — or drop them here. Public links: nothing confidential.`}
               className={cn(
                 "flex items-center justify-center gap-1 rounded-md border border-dashed border-line-strong text-muted hover:border-brand-400 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-500 disabled:opacity-50",
                 images.length === 0 && size === "md" ? "h-8 px-2.5 text-[11.5px] font-semibold" : size === "sm" ? "h-7 w-7" : tile,
               )}>
               {busy ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <ImagePlus size={13} aria-hidden />}
-              {images.length === 0 && size === "md" && (busy && progress ? progress : "Pictures")}
+              {images.length === 0 && size === "md" && (busy && progress.includes("/") ? progress : "Pictures")}
             </button>
             <input ref={input} id={id} type="file" multiple accept={IMAGE_TYPES.join(",")} className="hidden"
               aria-label={`Choose pictures for ${label}`}
@@ -166,6 +169,8 @@ export function NewsletterImages({ issueId, targetType, targetId, label, images,
           </li>
         )}
       </ul>
+
+      <p role="status" aria-live="polite" className="sr-only">{progress}</p>
 
       {editing && (
         <form className="mt-1.5 flex items-center gap-1.5" onSubmit={(event) => { event.preventDefault(); void change("updateAlt", { imageId: editing.id, alt: editing.alt.trim() }); }}>

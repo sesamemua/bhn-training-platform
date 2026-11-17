@@ -37,13 +37,13 @@ test("contributors get pictures for all five sections and every item, including 
   const html = renderToStaticMarkup(createElement(NewsletterClient, { initialIssue, canEdit: false }));
   assert.equal((html.match(/type="file"/g) ?? []).length, 6);
   assert.equal((html.match(/object-contain/g) ?? []).length, 2);
-  assert.match(html, /public links for newsletter readers/);
-  assert.match(html, /Ask an editor to lay out again/);
+  assert.match(html, /Pictures are public links/);
+  assert.match(html, /Needs a new layout/);
   assert.match(html, /Saved review/);
   const sent = renderToStaticMarkup(createElement(NewsletterClient, { initialIssue: { ...initialIssue, status: "sent" }, canEdit: false }));
   assert.doesNotMatch(sent, /type="file"/);
   const editor = renderToStaticMarkup(createElement(NewsletterClient, { initialIssue, canEdit: true }));
-  const copyButton = [...editor.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].find((match) => match[2].includes("Copy Mailchimp HTML"));
+  const copyButton = [...editor.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].find((match) => match[2].includes("Copy HTML"));
   assert.match(copyButton![1], /\sdisabled(?:=|\s|$)/);
 });
 
