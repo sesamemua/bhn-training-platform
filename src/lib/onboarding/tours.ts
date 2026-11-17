@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.16c";
+export const TOUR_VERSION = "2026.11.17a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "newsletter.compact-boxes",
+    title: "Quicker newsletter boxes",
+    body: "Drop pictures on a section's strip or press +. Hover a thumbnail for alt text, order and remove.",
+    path: "/admin/workspace/marketing/newsletter",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    since: "2026.11.17a",
+  },
   {
     id: "outreach.crm",
     title: "Outreach is now a marketing CRM",

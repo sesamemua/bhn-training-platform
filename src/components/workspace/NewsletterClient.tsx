@@ -39,6 +39,8 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /** Pieces shown in full; the rest are clamped to three lines. */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const mediaChanged = !!issue.renderedHtml && !issue.renderedAt;
   const hasContent = issue.pieces.length > 0 || Object.values(issue.sectionImages ?? {}).some((images) => images?.length);
 
@@ -153,9 +155,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* ── Drop boxes ────────────────────────────────── */}
         <div className="space-y-4">
-          <p className="text-xs leading-relaxed text-muted">
-            Add pictures to a whole section or to an individual item. Uploaded pictures use public links for newsletter readers — don’t upload confidential material.
-          </p>
+          <p className="text-[11px] text-subtle">Pictures are public links — nothing confidential.</p>
           {SECTIONS.map((s) => {
             const t = SECTION_THEME[s];
             const mine = issue.pieces.filter((p) => p.section === s);
@@ -163,24 +163,25 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
             return (
               <section key={s} className="rounded-2xl border border-line bg-card overflow-hidden">
                 <header
-                  className={`px-4 py-3 flex items-baseline gap-2 flex-wrap ${t.light ? "border-b border-line" : ""}`}
+                  title={t.brief}
+                  className={`px-4 py-2.5 flex items-baseline gap-2 min-w-0 ${t.light ? "border-b border-line" : ""}`}
                   style={{ background: t.ribbon }}
                 >
                   {/* The top story's band is pale, so its words are dark — the colours it will have in the email. */}
                   <h3 className="font-bold tracking-wide text-sm" style={{ color: t.light ? t.accent : "#ffffff" }}>{t.label}</h3>
-                  <span className="text-[11px]" style={{ color: t.light ? "#3a4a5c" : "rgba(255,255,255,0.8)" }}>{t.tagline}</span>
+                  <span className="min-w-0 truncate text-[11px]" style={{ color: t.light ? "#3a4a5c" : "rgba(255,255,255,0.8)" }}>{t.tagline}</span>
                   <span className="ml-auto text-[11px] font-mono tabular-nums" style={{ color: t.light ? "#3a4a5c" : "rgba(255,255,255,0.9)" }}>
-                    {mine.length} {mine.length === 1 ? "piece" : "pieces"}
+                    {mine.length || ""}
                   </span>
                 </header>
 
-                <div className="p-4 space-y-2">
+                <div className="p-3 space-y-2">
                   <NewsletterImages issueId={issue.id} targetType="section" targetId={s} label={`${t.label} section`}
                     images={issue.sectionImages?.[s] ?? []} disabled={issue.status === "sent" || !!busy}
                     onChange={(images) => updateImages("section", s, images)}
                     onBusyChange={(pending) => setBusy(pending ? `images-section-${s}` : null)} />
                   {mine.map((p, i) => (
-                    <div key={p.id} className="rounded-lg bg-elevated/60 ring-1 ring-inset ring-line px-3 py-2">
+                    <div key={p.id} className="group rounded-lg bg-elevated/60 ring-1 ring-inset ring-line px-3 py-2 min-w-0">
                       {editing?.id === p.id ? (
                         <div className="space-y-2">
                           <textarea
@@ -225,17 +226,28 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                           </div>
                         </div>
                       ) : (
-                        <p className="text-[13px] text-fg leading-snug whitespace-pre-wrap">{p.rawBody}</p>
+                        <button
+                          type="button"
+                          onClick={() => setExpanded((cur) => { const n = new Set(cur); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })}
+                          aria-expanded={expanded.has(p.id)}
+                          title={expanded.has(p.id) ? "Show less" : "Show all"}
+                          className={`w-full text-left text-[13px] text-fg leading-snug whitespace-pre-wrap break-words ${expanded.has(p.id) ? "block" : "line-clamp-3"}`}
+                        >
+                          {p.rawBody}
+                        </button>
                       )}
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        {p.authorName && <span className="text-[10px] text-subtle">{p.authorName}</span>}
+                      <div className="flex items-center gap-2 mt-1.5 min-w-0">
+                        <NewsletterImages issueId={issue.id} targetType="piece" targetId={p.id} label={`${t.label} item ${i + 1}`} size="sm"
+                          images={issue.imagesByPieceId?.[p.id] ?? []} disabled={issue.status === "sent" || !!busy}
+                          onChange={(images) => updateImages("piece", p.id, images)}
+                          onBusyChange={(pending) => setBusy(pending ? `images-piece-${p.id}` : null)} />
+                        {p.authorName && <span className="shrink-0 text-[10px] text-subtle">{p.authorName}</span>}
                         {p.sourceUrl && (
-                          <span className="text-[10px] text-brand-700 inline-flex items-center gap-0.5">
-                            <Link2 size={9} /> link
-                          </span>
+                          <a href={p.sourceUrl} target="_blank" rel="noreferrer" title={p.sourceUrl} aria-label="Source link"
+                            className="shrink-0 text-brand-700 hover:text-brand-900"><Link2 size={11} /></a>
                         )}
                         {canEdit && (
-                          <span className="ml-auto inline-flex items-center gap-1">
+                          <span className="ml-auto inline-flex shrink-0 items-center gap-0.5 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                             <button aria-label="Move up" disabled={i === 0 || !!busy}
                               onClick={() => post({ action: "movePiece", pieceId: p.id, direction: "up" }, p.id)}
                               className="p-1 rounded hover:bg-raised disabled:opacity-30"><ArrowUp size={12} /></button>
@@ -251,37 +263,33 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                           </span>
                         )}
                       </div>
-                      <div className="mt-3">
-                        <NewsletterImages issueId={issue.id} targetType="piece" targetId={p.id} label={`${t.label} item ${i + 1}`}
-                          images={issue.imagesByPieceId?.[p.id] ?? []} disabled={issue.status === "sent" || !!busy}
-                          onChange={(images) => updateImages("piece", p.id, images)}
-                          onBusyChange={(pending) => setBusy(pending ? `images-piece-${p.id}` : null)} />
-                      </div>
                     </div>
                   ))}
 
                   <textarea
                     value={d.body}
                     onChange={(e) => setDrafts((c) => ({ ...c, [s]: { ...d, body: e.target.value } }))}
-                    rows={3}
-                    placeholder={t.brief ?? `Paste anything for ${t.label} — a paragraph, bullets, a forwarded note.`}
-                    className="w-full text-sm bg-card border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 resize-y"
+                    rows={d.body ? 3 : 1}
+                    aria-label={`New ${t.label} item`}
+                    placeholder="Paste text…"
+                    className="w-full text-sm bg-card border border-line rounded-lg px-3 py-2 max-h-60 focus:outline-none focus:ring-2 focus:ring-brand-500/40 resize-y"
                   />
-                  <div className="flex gap-2 flex-wrap">
+                  {d.body.trim() && <div className="flex gap-2">
                     <input
                       value={d.url}
                       onChange={(e) => setDrafts((c) => ({ ...c, [s]: { ...d, url: e.target.value } }))}
-                      placeholder="Link for the button (optional)"
-                      className="flex-1 min-w-[180px] text-xs bg-card border border-line rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+                      aria-label="Button link (optional)"
+                      placeholder="Button link (optional)"
+                      className="min-w-0 flex-1 text-xs bg-card border border-line rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
                     />
                     <button
                       onClick={() => add(s)}
                       disabled={!!busy}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 disabled:opacity-60"
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 disabled:opacity-60"
                     >
                       {busy === `add-${s}` ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Add
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </section>
             );
@@ -294,18 +302,17 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
             <h3 className="text-base font-bold text-fg inline-flex items-center gap-2">
               <Mail size={15} className="text-brand-600" /> {issue.title}
             </h3>
-            <p className="text-sm text-muted mt-1">
-              {issue.pieces.length} {issue.pieces.length === 1 ? "contribution" : "contributions"} ·{" "}
-              {issue.renderedAt ? `last laid out ${new Date(issue.renderedAt).toLocaleString()}` : "not laid out yet"}
+            <p className="text-xs text-muted mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>{issue.pieces.length} {issue.pieces.length === 1 ? "item" : "items"}</span>
+              <span aria-hidden>·</span>
+              <span>{issue.renderedAt ? `laid out ${new Date(issue.renderedAt).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "not laid out"}</span>
+              {(staleSince || mediaChanged) && (
+                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                  title={mediaChanged ? "Pictures changed since the last layout. Review rounds already sent stay as they were." : "New items since the last layout."}>
+                  {canEdit ? "Lay out again" : "Needs a new layout"}
+                </span>
+              )}
             </p>
-            {staleSince && (
-              <p className="text-xs text-amber-700 mt-2">New contributions since the last layout — re-run it.</p>
-            )}
-            {mediaChanged && (
-              <p className="text-xs text-amber-700 mt-2">
-                Pictures saved. {canEdit ? "Lay out again" : "Ask an editor to lay out again"} to include them in the preview and Mailchimp HTML; existing review rounds stay unchanged.
-              </p>
-            )}
             {canEdit && (
               <div className="flex gap-2 mt-4 flex-wrap">
                 <button
@@ -322,16 +329,17 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-60"
                 >
                   <ClipboardPaste size={14} />
-                  Use my own AI
+                  Own AI
                 </button>
                 {issue.renderedHtml && (
                   <button
+                    title="Copy the HTML for a Mailchimp Code block"
                     onClick={copyHtml}
                     disabled={!!busy || mediaChanged || !issue.renderedHtml}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-50"
                   >
                     {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                    {copied ? "Copied" : "Copy Mailchimp HTML"}
+                    {copied ? "Copied" : "Copy HTML"}
                   </button>
                 )}
               </div>
@@ -340,14 +348,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
             {canEdit && handoff && (
               <section className="mt-4 rounded-xl border border-line bg-elevated/40 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-fg">Lay it out somewhere else</h3>
-                    <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
-                      Copy the submissions as a prompt, run them through whichever tool you
-                      prefer, and paste the answer back. Anything the reply leaves out keeps
-                      the layout it already has.
-                    </p>
-                  </div>
+                  <h3 className="text-sm font-bold text-fg">Lay out with your own AI</h3>
                   <button
                     onClick={() => setHandoff(false)}
                     aria-label="Close"
@@ -365,19 +366,19 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                   >
                     {busy === "brief" ? <Loader2 size={13} className="animate-spin" />
                       : briefCopied ? <Check size={13} /> : <Copy size={13} />}
-                    {busy === "brief" ? "Building…" : briefCopied ? "Copied — paste it into your tool" : "1 · Copy the prompt"}
+                    {busy === "brief" ? "Building…" : briefCopied ? "Copied" : "1 · Copy prompt"}
                   </button>
                 </div>
 
                 <label className="mt-3 block">
                   <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
-                    2 · Paste what came back
+                    2 · Paste the reply
                   </span>
                   <textarea
                     value={paste}
                     onChange={(e) => setPaste(e.target.value)}
                     rows={5}
-                    placeholder="Paste the whole reply — fences, chatter and all."
+                    placeholder="Paste the whole reply"
                     className="mt-1.5 w-full rounded-lg border border-line bg-card px-3 py-2 font-mono text-[12px] leading-relaxed text-fg outline-none focus:border-brand-500"
                   />
                 </label>
@@ -387,7 +388,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                   disabled={!!busy || !paste.trim()}
                   className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card ring-1 ring-inset ring-line text-fg font-bold text-[12.5px] hover:bg-elevated disabled:opacity-50"
                 >
-                  <ClipboardPaste size={13} /> Apply to the issue
+                  <ClipboardPaste size={13} /> 3 · Apply
                 </button>
 
                 {report && (

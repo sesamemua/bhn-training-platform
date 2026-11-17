@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Newsletter: tidier section boxes",
+    body: "Pictures are now a small strip of thumbnails with a **+** tile: click it or drop pictures on the strip. Hover a thumbnail to add alt text, reorder or remove it; an amber dot means alt text is missing. Long items fold to three lines (click to expand), item tools appear on hover, and the link box and **Add** only show once you start typing.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "AI images and captions moved to Cloudflare's new models",
     body: "Cloudflare retires its Stable Diffusion and LLaVA models on 20 November. **AI cover art** for courses and pathways and **AI expand** in the Asset library now use FLUX.2 [klein], and picture captions use Moondream 3.1. Nothing changes in how you use them; new cover art may look a little different.",
     kind: "improvement",
