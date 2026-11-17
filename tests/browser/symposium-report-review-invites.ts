@@ -10,7 +10,13 @@ async function main() {
       build.onResolve({ filter: /report\.module\.css$/ }, () => ({ path: "styles", namespace: "styles" }));
       build.onLoad({ filter: /.*/, namespace: "styles" }, () => ({ contents: "export default {};" }));
       build.onResolve({ filter: /symposium-report\/review-invites$/ }, () => ({ path: "actions", namespace: "fixture" }));
-      build.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ contents: `
+      build.onResolve({ filter: /newsletter\/review-invites$/ }, () => ({ path: "groups", namespace: "fixture" }));
+      build.onLoad({ filter: /^groups$/, namespace: "fixture" }, () => ({ contents: `
+        export async function newsletterReviewTeam() { return {groups:[
+          {id:"editorial", label:"Editorial team", userIds:["one","two"], available:true}
+        ]}; }
+      ` }));
+      build.onLoad({ filter: /^actions$/, namespace: "fixture" }, () => ({ contents: `
         window.requests = [];
         export async function reportReviewRecipients() { return {recipients: [
           {id:"one",label:"Reviewer One"}, {id:"two",label:"Reviewer Two"}
@@ -19,6 +25,7 @@ async function main() {
           window.requests.push(input);
           return window.requests.length === 1 ? {sent:["one"],error:"Some invitations could not be sent."} : {sent:input.userIds};
         }
+        export async function reportReviewHistory() { return {sent:[]}; }
       ` }));
     } }],
   });
@@ -36,14 +43,17 @@ async function main() {
     await page.getByRole("button", { name: "Copy review link", exact: true }).click();
     await expect(page.getByLabel("Copy this review link")).toHaveValue("https://report-invites.test/review/symposium-2026/report");
     await page.getByRole("button", { name: "Email review request", exact: true }).click();
-    await page.getByRole("checkbox", { name: "Reviewer One", exact: true }).check();
-    await page.getByRole("checkbox", { name: "Reviewer Two", exact: true }).check();
+    await page.getByLabel("Reviewer group").selectOption("editorial");
+    await expect(page.getByRole("checkbox", { name: "Reviewer One", exact: true })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Reviewer Two", exact: true })).toBeChecked();
     await page.evaluate(() => { (window as unknown as { setCanInvite: (value: boolean) => void }).setCanInvite(false); });
     await expect(page.getByRole("button", { name: "Send to 2", exact: true })).toBeDisabled();
     await page.evaluate(() => { (window as unknown as { setCanInvite: (value: boolean) => void }).setCanInvite(true); });
     await page.getByRole("button", { name: "Send to 2", exact: true }).click();
     await expect(page.getByRole("checkbox", { name: "Reviewer One", exact: true })).not.toBeChecked();
     await expect(page.getByRole("checkbox", { name: "Reviewer Two", exact: true })).toBeChecked();
+    await page.getByLabel("Reviewer group").selectOption("editorial");
+    await expect(page.getByRole("checkbox", { name: "Reviewer One", exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "Send to 1", exact: true }).click();
     await expect(page.getByRole("button", { name: "Send review request", exact: true })).toBeDisabled();
     assert.deepEqual(await page.evaluate(() => (window as unknown as { requests: { userIds: string[] }[] }).requests.map(x => x.userIds)), [["one", "two"], ["two"]]);

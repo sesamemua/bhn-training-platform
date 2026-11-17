@@ -1,0 +1,31 @@
+import type { Report, ReportPhoto } from "./document";
+import { reportBlocks } from "./paginate";
+import { photoLabel, photoPreset, REPORT_ASSETS } from "./photos";
+
+function escape(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
+}
+
+export function reportReviewSnapshot(report: Report, origin: string) {
+  function figure(photo: ReportPhoto) {
+    const source = new URL(`${REPORT_ASSETS}/${encodeURIComponent(photo.file)}`, origin).href;
+    return `<figure><img src="${escape(source)}" alt="${escape(photoLabel(photo))}" style="object-position:${photo.x}% ${photo.y}%;object-fit:${photo.fit === "whole" ? "contain" : "cover"}"><figcaption>${escape(photoLabel(photo))} · ${photo.fit} · ${photo.x}% / ${photo.y}%</figcaption></figure>`;
+  }
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    body{margin:0;background:#fff;color:#172b35;font:14px/1.5 system-ui,sans-serif;overflow-wrap:anywhere}
+    section{padding:18px 20px;border-bottom:1px solid #dce5e8}
+    h1,h2,h3{line-height:1.2;font-family:Georgia,serif;margin:0 0 8px}
+    p{white-space:pre-wrap}small,figcaption{color:#415760}figure{margin:12px 0}img{width:100%;height:150px;background:#edf1f2}
+  </style></head><body>
+    <section><h1>${escape(report.cover.title)}</h1><p>${escape(report.cover.theme)}</p><p>${escape(report.cover.date)}</p>${figure(report.cover.photo ?? photoPreset("cover.jpg"))}</section>
+    ${report.pages.map((page) => `<section><small>${escape(page.label)}</small><h2>${escape(page.title)}</h2>
+      ${reportBlocks(page.text).map(({ kind, text }) => {
+        const tag = kind === "heading" ? "h3" : kind === "note" ? "blockquote" : "p";
+        return `<${tag}>${escape(text)}</${tag}>`;
+      }).join("")}
+      ${page.registration ? `<p>${escape(page.registration.unit)}: ${page.registration.categories.map(({ label, count }) => `${escape(label)} ${count}`).join(" · ")}</p><p>${escape(page.registration.source)}</p>` : ""}
+      ${Object.entries(page.photos ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([, photo]) => figure(photo)).join("")}
+    </section>`).join("")}
+    <section><h2>${escape(report.back.title)}</h2><p>${escape(report.back.text)}</p></section>
+  </body></html>`;
+}
