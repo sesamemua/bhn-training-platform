@@ -8,6 +8,7 @@
  */
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -87,23 +88,33 @@ export async function replaceAssetFile(id: string, bytes: Buffer, mimeType: stri
 // ── AI: caption, alt text, tags, search vector ─────────────────────────
 const CF_ACCOUNT = process.env.CF_ACCOUNT_ID;
 const CF_TOKEN = process.env.CF_AI_TOKEN;
-const VISION_MODELS = ["@cf/llava-hf/llava-1.5-7b-hf", "@cf/moondream/moondream3.1-9B-A2B"];
+// LLaVA 1.5 was retired on 20 Nov 2026; Moondream 3.1 is Cloudflare's replacement.
+// It takes the picture as a base64 data URI and a question (task "query").
+const VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 
 async function describe(image: Buffer): Promise<string | null> {
   if (!CF_ACCOUNT || !CF_TOKEN) return null;
-  for (const model of VISION_MODELS) {
-    try {
-      const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/run/${model}`, {
-        method: "POST", headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ image: [...image], prompt: "Describe this picture in one plain sentence for alt text. Mention people, setting and any visible text.", max_tokens: 120 }),
-        signal: AbortSignal.timeout(25_000),
-      });
-      const j = await res.json() as { success?: boolean; result?: { description?: string; response?: string } };
-      const text = (j.result?.description ?? j.result?.response)?.trim();
-      if (res.ok && j.success && text) return text.slice(0, 400);
-    } catch { /* try the next model */ }
-  }
-  return null;
+  try {
+    // Small JPEG keeps the request light; plenty for a one-line description.
+    const jpeg = await sharp(image, { pages: 1 }).rotate().resize(768, 768, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
+    const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/run/${VISION_MODEL}`, {
+      method: "POST", headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task: "query",
+        image: `data:image/jpeg;base64,${jpeg.toString("base64")}`,
+        question: "Describe this picture in one plain sentence for alt text. Mention people, setting and any visible text.",
+        // stream:false is required in practice — without it the result comes back empty.
+        reasoning: false, stream: false, max_tokens: 120,
+      }),
+      signal: AbortSignal.timeout(25_000),
+    });
+    type Out = { answer?: string | null; caption?: string | null };
+    const j = await res.json() as { success?: boolean; result?: Out & { result?: Out } };
+    // The answer arrives nested (result.result.answer); accept the flat shape too.
+    const r = j.result?.result ?? j.result;
+    const text = (r?.answer ?? r?.caption)?.trim();
+    return res.ok && j.success && text ? text.slice(0, 400) : null;
+  } catch { return null; }
 }
 
 /** Caption + tags + embedding. Never overwrites what a person already typed. */

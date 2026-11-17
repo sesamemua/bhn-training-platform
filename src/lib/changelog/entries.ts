@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "AI images and captions moved to Cloudflare's new models",
+    body: "Cloudflare retires its Stable Diffusion and LLaVA models on 20 November. **AI cover art** for courses and pathways and **AI expand** in the Asset library now use FLUX.2 [klein], and picture captions use Moondream 3.1. Nothing changes in how you use them; new cover art may look a little different.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "Outreach is now a full marketing CRM",
     body: "Under Workspace → **Outreach**: a **Dashboard** (contacts by stage, email open and click rates, pipeline, what's due, sign-ups by source), a record page for every contact (lifecycle stage, lead status, owner, lead score, tasks, deals, sequences, and a timeline of every email, form, registration and note), search and filters, **CSV import and export**, **smart lists** that update themselves, campaign **open and click tracking** with **Send test to me**, **Sequences** of follow-up emails (each step waits on Tasks for you to send it), **Tasks**, a **Deals** pipeline you drag between stages, **Companies**, and **Tracked links** with UTM tags and click counts. On the dashboard, choose which forms add their submitters as contacts.",
     kind: "feature",

@@ -23,7 +23,7 @@ const STACK: { name: string; detail: string }[] = [
   { name: "Tailwind v4", detail: "CSS-only config with a token system — 13 switchable themes incl. seasonal drops, all AA-checked. Try the palette icon, bottom-left of the sidebar." },
   { name: "Prisma 6 · Postgres (Neon)", detail: "174 models, hand-written SQL migrations, pgvector for semantic course search embeddings." },
   { name: "NextAuth", detail: "Credentials + email-code magic links + TOTP MFA. Role-gated at every route; this demo signs you in through a constrained magic-token path that refuses real accounts." },
-  { name: "Cloudflare Workers AI", detail: "Llama 3.1 chat, BGE embeddings, SDXL course art — with graceful degradation and a Gemini fallback." },
+  { name: "Cloudflare Workers AI", detail: "Llama 3.1 chat, BGE embeddings, FLUX course art — with graceful degradation and a Gemini fallback." },
   { name: "Integrations", detail: "Stripe ticketing, Twilio SMS reminders, R2 object storage, SCORM course player, Google Workspace SMTP." },
 ];
 

@@ -18,7 +18,7 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY;
 export const AI_CONFIGURED = {
   chat:  !!CF_TOKEN || !!GEMINI_KEY,
   embed: !!CF_TOKEN,                 // BGE only on Cloudflare
-  image: !!CF_TOKEN,                 // SDXL Lightning on Cloudflare
+  image: !!CF_TOKEN,                 // FLUX.2 [klein] on Cloudflare
 };
 
 export interface ChatMessage {
@@ -314,44 +314,65 @@ export function toVectorLiteral(v: number[]): string {
 }
 
 interface ImageOpts extends BaseOpts {
-  /** Stable Diffusion sampling steps. SDXL Lightning is sharp at 4–8. */
+  /** Sampling steps. FLUX.2 [klein] is distilled and sharp at 4. */
   steps?: number;
-  negativePrompt?: string;
+  width?: number;
+  height?: number;
 }
 
 /**
- * Generate an image from a text prompt. Returns raw PNG bytes (Uint8Array)
+ * Cloudflare's image model. Stable Diffusion (SDXL Lightning, SD 1.5
+ * inpainting) was retired on 20 Nov 2026; FLUX.2 [klein] replaces both.
+ */
+export const CF_IMAGE_MODEL = "@cf/black-forest-labs/flux-2-klein-9b";
+
+/**
+ * One FLUX.2 [klein] call. The API takes a multipart form and answers JSON
+ * with the picture as base64 JPEG. Pass `image` to edit or extend a
+ * reference picture instead of drawing from scratch. Throws on failure.
+ */
+export async function runFlux(o: { prompt: string; width: number; height: number; steps?: number; image?: Buffer; timeoutMs?: number }): Promise<Buffer> {
+  if (!CF_ACCOUNT || !CF_TOKEN) throw new Error("Cloudflare AI is not configured.");
+  const form = new FormData();
+  form.append("prompt", o.prompt);
+  form.append("width", String(o.width));
+  form.append("height", String(o.height));
+  form.append("steps", String(o.steps ?? 4));
+  if (o.image) form.append("input_image_0", new Blob([new Uint8Array(o.image)], { type: "image/png" }), "input.png");
+  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/run/${CF_IMAGE_MODEL}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${CF_TOKEN}` },
+    body: form,
+    signal: AbortSignal.timeout(o.timeoutMs ?? 60_000),
+  });
+  const body = (await res.json().catch(() => null)) as { result?: { image?: string }; errors?: { message?: string }[] } | null;
+  const b64 = body?.result?.image;
+  if (!res.ok || !b64) throw new Error(`Image gen failed: ${res.status} ${body?.errors?.[0]?.message ?? ""}`.trim());
+  return Buffer.from(b64, "base64");
+}
+
+/**
+ * Generate an image from a text prompt. Returns PNG bytes (Uint8Array)
  * suitable for streaming straight into R2, or null on failure.
  */
 export async function generateImage(prompt: string, opts: ImageOpts = {}): Promise<Uint8Array | null> {
   if (!CF_TOKEN) return null;
   const start = Date.now();
-  const model = "@cf/bytedance/stable-diffusion-xl-lightning";
   try {
-    const res = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT}/ai/run/${model}`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          num_steps: opts.steps ?? 8,
-          negative_prompt:
-            opts.negativePrompt ??
-            "text, words, letters, watermark, signature, low quality, blurry, distorted, ugly",
-        }),
-      }
-    );
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Image gen failed: ${res.status} ${t.slice(0, 200)}`);
-    }
-    const buf = new Uint8Array(await res.arrayBuffer());
+    const jpeg = await runFlux({
+      prompt: `${prompt} No text, words, letters, watermark or signature.`,
+      width: opts.width ?? 1024,
+      height: opts.height ?? 1024,
+      steps: opts.steps,
+    });
+    // Callers store .png in R2; keep that contract.
+    const { default: sharp } = await import("sharp");
+    const buf = new Uint8Array(await sharp(jpeg).png().toBuffer());
     await logInteraction({
       userId: opts.userId,
       kind: opts.feature ?? "image",
       provider: "cloudflare",
-      model: "sdxl-lightning",
+      model: "flux-2-klein-9b",
       latencyMs: Date.now() - start,
       success: true,
     });
@@ -361,7 +382,7 @@ export async function generateImage(prompt: string, opts: ImageOpts = {}): Promi
       userId: opts.userId,
       kind: opts.feature ?? "image",
       provider: "cloudflare",
-      model: "sdxl-lightning",
+      model: "flux-2-klein-9b",
       latencyMs: Date.now() - start,
       success: false,
       errorMessage: (e as Error).message,
