@@ -20,7 +20,8 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteR2ObjectByUrl, putR2Object, r2PublicUrl } from "@/lib/r2";
 import { imageSize } from "@/lib/images/size";
-import { PagesSchema, pagesOf } from "@/lib/design-review/types";
+import { PagesSchema } from "@/lib/design-review/types";
+import { reviseDesignArtwork } from "@/lib/design-review/revise";
 import { socialSource } from "./graphic-source";
 
 const PROJECT = "Social graphics";
@@ -67,15 +68,14 @@ export async function reviewSocialGraphic(postId: string, assetUrl: string): Pro
 
   const title = ((post.assetSpec as { title?: unknown } | null)?.title as string | undefined)?.slice(0, 160) || post.body.split("\n")[0].slice(0, 160) || "Social post";
   const description = [`Graphic for a social post. The post: ${BASE}/admin/workspace/marketing/social?post=${post.id}`, "", post.body.slice(0, 700)].join("\n");
-  const existing = await prisma.designArtwork.findFirst({ where: { sourceName: socialSource(post.id) }, select: { id: true, pages: true } });
+  const existing = await prisma.designArtwork.findFirst({ where: { sourceName: socialSource(post.id) }, select: { id: true } });
   let artworkId: string;
   if (existing) {
     // A new version of the graphic: comments stay; who has looked, who is OK and the approval start again.
-    await prisma.$transaction([
-      prisma.designArtwork.update({ where: { id: existing.id }, data: { title, description, pages: pg.data, approval: "pending", approvalNote: "", approvalById: null, approvalAt: null } }),
-      prisma.designReview.deleteMany({ where: { artworkId: existing.id } }),
-    ]);
-    await Promise.all(pagesOf(existing.pages).map((p) => deleteR2ObjectByUrl(p.url).catch(() => {})));
+    if (!await reviseDesignArtwork(existing.id, pg.data, { title, description })) {
+      await deleteR2ObjectByUrl(pg.data[0].url).catch(() => {});
+      return { ok: false, problem: "The review changed. Refresh before replacing the graphic." };
+    }
     artworkId = existing.id;
   } else {
     const last = await prisma.designArtwork.findFirst({ where: { projectId: project.id }, orderBy: { order: "desc" }, select: { order: true } });

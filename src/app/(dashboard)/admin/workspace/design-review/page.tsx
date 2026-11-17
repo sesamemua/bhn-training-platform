@@ -17,15 +17,17 @@ import { DesignQuestions } from "@/components/workspace/DesignQuestions";
 
 export const dynamic = "force-dynamic";
 
+import { designVersions } from "@/lib/design-review/versions";
+
 const BASE = "/admin/workspace/design-review";
 const approvalOf = (v: string): Approval => (isApproval(v) ? v : "pending");
 
-export default async function DesignReviewPage({ searchParams }: { searchParams: Promise<{ p?: string; a?: string }> }) {
+export default async function DesignReviewPage({ searchParams }: { searchParams: Promise<{ p?: string; a?: string; focus?: string }> }) {
   const session = await requireRole("instructor").catch(() => null);
   if (!session) redirect("/dashboard");
   const u = session.user as { id?: string; name?: string | null; email?: string | null; role?: string };
   const me = { id: u.id ?? "", name: u.name || u.email || "Team member", admin: u.role === "admin" || u.role === "superadmin" };
-  const { p, a } = await searchParams;
+  const { p, a, focus } = await searchParams;
 
   // The team whose review counts: staff accounts, without the demo ones.
   const staffRows = await prisma.user.findMany({
@@ -43,7 +45,7 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
       <PageHero
         eyebrow={<><Palette size={11} /> Workspace</>}
         title="Design Review"
-        description="Put a comment anywhere on a design — a one-pager, a banner, a slide — and ask a teammate to look. Each artwork shows who has looked, who is OK with it, and whether it is approved. When a round is done, copy its feedback for whoever makes the changes; the round locks until you start the next."
+        description="Pin feedback on artwork, compare revisions and record approvals."
       />
     </>
   );
@@ -81,12 +83,13 @@ export default async function DesignReviewPage({ searchParams }: { searchParams:
         )}
         {pagesOf(art.pages).length > 0 && (
         <DesignArtworkView
+          fullPage={focus === "1"}
           me={me}
           approver={art.project.approverId && approverName ? { id: art.project.approverId, name: approverName } : null}
           artwork={{
             id: art.id, title: art.title, description: art.description, pages: pagesOf(art.pages),
             approval: approvalOf(art.approval), approvalNote: art.approvalNote, approvalAt: art.approvalAt?.toISOString() ?? null,
-            round: art.round, locked: !!art.lockedAt, project: art.project.name,
+            round: art.round, locked: !!art.lockedAt, project: art.project.name, versions: designVersions(art.versions),
             pins: art.pins.map((n) => ({ round: n.round, id: n.id, page: n.page, x: n.x, y: n.y, parentId: n.parentId, authorId: n.authorId, authorName: n.authorName, body: n.body, status: n.status, createdAt: n.createdAt.toISOString() })),
             reviewers: reviewerStates(reviewers, art.reviews),
           }}

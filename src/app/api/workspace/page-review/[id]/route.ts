@@ -26,6 +26,7 @@ import { REPORT_ID } from "@/lib/symposium-report/document";
 import { reportTransaction } from "@/lib/symposium-report/store";
 import { buildBrief } from "@/lib/page-review/brief";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
+import { canReviewSocialCopy, SOCIAL_COPY_REVIEW_PREFIX } from "@/lib/social/copy-review";
 
 export const dynamic = "force-dynamic";
 
@@ -58,14 +59,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const body = await req.json().catch(() => ({}));
   const action = typeof body?.action === "string" ? body.action : "";
 
-  const session = await requireRole("instructor").catch(() => null);
+  const social = id.startsWith(SOCIAL_COPY_REVIEW_PREFIX);
+  const session = await requireRole(social ? "admin" : "instructor").catch(() => null);
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const meId = (session.user as { id?: string }).id ?? null;
   const meName = (session.user as { name?: string }).name ?? "Someone";
   const role = (session.user as { role?: string }).role ?? "";
   const isAdmin = role === "admin" || role === "superadmin";
 
-  if (id !== REPORT_ID) return mutate(prisma, id, body, action, meId, meName, isAdmin);
+  if (id !== REPORT_ID && !social) return mutate(prisma, id, body, action, meId, meName, isAdmin);
   return reportTransaction((tx) => mutate(tx, id, body, action, meId, meName, isAdmin));
 }
 
@@ -78,6 +80,14 @@ async function mutate(
     select: { id: true, url: true, title: true, round: true, status: true },
   });
   if (!review) return NextResponse.json({ error: "No such review." }, { status: 404 });
+
+  if (id.startsWith(SOCIAL_COPY_REVIEW_PREFIX)) {
+    const post = await db.socialPost.findUnique({ where: { id: id.slice(SOCIAL_COPY_REVIEW_PREFIX.length) }, select: { status: true } });
+    if (!meId || !isAdmin || !post || !canReviewSocialCopy(post.status) || body?.expectedRound !== review.round ||
+        action === "export" || action === "startNextRound") {
+      return NextResponse.json({ error: "Open the current draft in Social Post Review to make changes." }, { status: 409 });
+    }
+  }
 
   if (id === REPORT_ID) {
     if (action === "export" || action === "startNextRound") {

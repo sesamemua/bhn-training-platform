@@ -54,7 +54,7 @@ export default async function WebsiteReviewPage({
     ?? (process.env.NEXTAUTH_URL ?? "https://bhn-training-platform.vercel.app").replace(/\/$/, "");
 
   const reviews = await prisma.pageReview.findMany({
-    where: { id: { not: REPORT_ID } },
+    where: { id: { not: REPORT_ID }, kind: { not: "social" } },
     orderBy: { updatedAt: "desc" },
     take: 50,
     select: {
@@ -97,7 +97,7 @@ export default async function WebsiteReviewPage({
   // No ?r= means the index. Nothing is auto-selected.
   const active = r
     ? await prisma.pageReview.findUnique({
-        where: { id: r },
+        where: { id: r, kind: { not: "social" } },
         include: {
           comments: {
             orderBy: { createdAt: "asc" },

@@ -6992,6 +6992,8 @@ model DesignArtwork {
   order        Int           @default(0)
   /// [{ url, key, w, h }] — one per page, in order.
   pages        Json
+  /// Immutable page sets from earlier review rounds.
+  versions     Json          @default("[]")
   /// The uploaded file's name, for reference.
   sourceName   String        @default("")
   /// The approver's decision: pending | approved | changes.

@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Copy, ExternalLink, Loader2, Mail, RefreshCw, Save, Send, X } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, Mail, RefreshCw, Save, Send, X } from "lucide-react";
 import { loadTrainingEmailReview, saveTrainingEmailReview, sendTrainingEmailReviewInvites } from "@/app/(dashboard)/admin/workspace/training-admin/email-review-actions";
+import { approveTrainingReview, copyTrainingReviewFeedback, trainingReviewSentHistory } from "@/app/(dashboard)/admin/workspace/training-admin/email-review-tools";
+import { ReviewSentHistory } from "./ReviewSentHistory";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { newsletterReviewTeam } from "@/lib/newsletter/review-invites";
 import { trainingEmailReviewLink, type TrainingEmailReviewBundle } from "@/lib/training-week/email-review";
 
@@ -69,16 +72,31 @@ export function TrainingEmailReview({ eventId }: { eventId: string }) {
   return <section aria-label="Workshop email review" className="mb-5 space-y-3 border-b border-line pb-5">
     <div className="flex flex-wrap items-center gap-3">
       <div className="mr-auto min-w-0"><h2 className="text-base font-bold">Check-in email review</h2>
-        {bundle && <p className="text-xs text-muted">{bundle.emailCount} emails · {bundle.workshopCount} workshops{review && ` · Round ${review.round}`}{bundle.stale && " · Draft changed"}</p>}
+        {bundle && <p className="text-xs text-muted">{bundle.emailCount} emails · {bundle.workshopCount} workshops{review && ` · Round ${review.round}`}{review?.status === "approved" && " · Approved"}{bundle.stale && " · Draft changed"}</p>}
       </div>
       <button type="button" onClick={refresh} disabled={pending} title="Refresh review status" aria-label="Refresh review status" className="p-2 disabled:opacity-50"><RefreshCw size={16} /></button>
       {review && <>
-        <a href={link} target="_blank" rel="noopener noreferrer" className={BUTTON}><ExternalLink size={16} />Open review</a>
-        <button type="button" onClick={() => { void navigator.clipboard.writeText(new URL(link, window.location.origin).href).then(() => setMessage("Review link copied."), () => setError("Could not copy the link. Use Open review.")); }} className={BUTTON}><Copy size={16} />Copy link</button>
+        <a href={link} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={18} />Open full-page review</a>
+        <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
+        <button type="button" onClick={() => { void navigator.clipboard.writeText(new URL(link, window.location.origin).href).then(() => setMessage("Review link copied."), () => setError("Could not copy the link. Use Open full-page review.")); }} className={BUTTON}><Copy size={16} />Copy review link</button>
+        <button type="button" className={BUTTON} onClick={async () => {
+          setError(""); setMessage("");
+          try { await navigator.clipboard.writeText(await copyTrainingReviewFeedback(eventId)); setMessage("Review comments copied."); }
+          catch { setError("Could not copy the comments. Try again."); }
+        }}><Copy size={16} />Copy review comments</button>
         <button type="button" disabled={pending || !bundle?.stale || review.status === "closed"} onClick={() => start(async () => { setError(""); setMessage(""); try { if (await save()) setMessage("Revision saved."); } catch { setError("Could not save the revision. Refresh before retrying."); } })} className={BUTTON}><Save size={16} />Save revision</button>
+        {review.status === "open" && <ConfirmPopover message={`Approve Round ${review.round}?`} detail="This signs off on the saved drafts. It does not send any emails." confirmLabel="Approve templates" onConfirm={() => start(async () => {
+          setError(""); setMessage("");
+          try {
+            const result = await approveTrainingReview(eventId, review.round);
+            if (!result.ok) setError(result.error ?? "Could not approve this round.");
+            else { setMessage("Approved. No emails were sent."); refresh(); }
+          } catch { setError("Could not approve this round. Try again."); }
+        })}>{(confirm) => <button type="button" disabled={pending || bundle?.stale} onClick={confirm} className={BUTTON}><Check size={16} />Approve templates</button>}</ConfirmPopover>}
       </>}
-      <button type="button" onClick={requestReview} disabled={pending || !bundle || !!bundle.stale || review?.status === "closed"} aria-expanded={inviting} aria-controls={`training-email-invite-${eventId}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50">{pending ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}Request review</button>
+      <button type="button" onClick={requestReview} disabled={pending || !bundle || !!bundle.stale || !!review && review.status !== "open"} aria-expanded={inviting} aria-controls={`training-email-invite-${eventId}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50">{pending ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}Request review</button>
     </div>
+    {review && <ReviewSentHistory load={() => trainingReviewSentHistory(eventId)} />}
     {bundle?.issues.map((issue) => <p key={issue} className="text-sm text-amber-700">{issue}</p>)}
     {inviting && <div id={`training-email-invite-${eventId}`} className="max-w-xl space-y-3 rounded-lg bg-elevated/60 p-4">
       <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-bold">Send review request</h3><button type="button" disabled={pending} onClick={() => setInviting(false)} aria-label="Close review request" className="p-1"><X size={16} /></button></div>

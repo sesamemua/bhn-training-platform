@@ -26,6 +26,7 @@ import { SOCIAL_SOURCE_PREFIX, socialSource } from "@/lib/social/graphic-source"
 import { isApproval, isReviewer, pagesOf, reviewerStates } from "@/lib/design-review/types";
 import type { ArtworkViewData } from "@/components/workspace/DesignArtworkView";
 import { isSocialPillar, LINKEDIN_STREAM, SocialCommentDetail, type SocialComment } from "@/lib/social/review";
+import { designVersions } from "@/lib/design-review/versions";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   const reviewOf = new Map(reviewed.map((a): [string, ArtworkViewData] => [a.sourceName.slice(SOCIAL_SOURCE_PREFIX.length), {
     id: a.id, title: a.title, description: a.description, pages: pagesOf(a.pages),
     approval: isApproval(a.approval) ? a.approval : "pending", approvalNote: a.approvalNote, approvalAt: a.approvalAt?.toISOString() ?? null,
-    round: a.round, locked: !!a.lockedAt, project: a.project.name,
+    round: a.round, locked: !!a.lockedAt, project: a.project.name, versions: designVersions(a.versions),
     pins: a.pins.map((n) => ({ id: n.id, page: n.page, x: n.x, y: n.y, parentId: n.parentId, authorId: n.authorId, authorName: n.authorName, body: n.body, status: n.status, round: n.round, createdAt: n.createdAt.toISOString() })),
     reviewers: reviewerStates(reviewers, a.reviews),
   }]));

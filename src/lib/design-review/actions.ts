@@ -13,6 +13,8 @@ import { prisma } from "@/lib/prisma";
 import { deleteR2ObjectByUrl } from "@/lib/r2";
 import { mailConfigured, sendMail } from "@/lib/mail";
 import { AnswerInput, ArtworkInput, PagesSchema, PinInput, ProjectInput, QuestionInput, isApproval, optionsOf, pagesOf } from "@/lib/design-review/types";
+import { allDesignPages, archiveDesignRound } from "./versions";
+import { reviseDesignArtwork } from "./revise";
 
 const PAGE = "/admin/workspace/design-review";
 type Result = { ok: true; id?: string } | { ok: false; error: string };
@@ -48,10 +50,10 @@ export async function updateDesignProject(id: string, input: unknown): Promise<R
 
 export async function deleteDesignProject(id: string): Promise<Result> {
   await me();
-  const row = await prisma.designProject.findUnique({ where: { id }, select: { artworks: { select: { pages: true } } } });
+  const row = await prisma.designProject.findUnique({ where: { id }, select: { artworks: { select: { pages: true, versions: true } } } });
   if (!row) return fail("That project is already gone.");
   await prisma.designProject.delete({ where: { id } });
-  await Promise.all(row.artworks.map((a) => dropPages(a.pages)));
+  await Promise.all(row.artworks.map((a) => dropPages(allDesignPages(a))));
   return done();
 }
 
@@ -90,14 +92,8 @@ export async function replaceDesignArtworkPages(id: string, pages: unknown, sour
   await me();
   const pg = PagesSchema.safeParse(pages);
   if (!pg.success) return fail("The new pages didn't upload properly — try again.");
-  const old = await prisma.designArtwork.findUnique({ where: { id }, select: { pages: true } });
-  if (!old) return fail("That artwork no longer exists.");
-  await prisma.$transaction([
-    prisma.designArtwork.update({ where: { id }, data: { pages: pg.data, sourceName: String(sourceName ?? "").slice(0, 200), approval: "pending", approvalNote: "", approvalById: null, approvalAt: null } }),
-    prisma.designReview.deleteMany({ where: { artworkId: id } }),
-  ]);
-  await dropPages(old.pages);
-  return done(id);
+  return await reviseDesignArtwork(id, pg.data, { sourceName: String(sourceName ?? "").slice(0, 200) })
+    ? done(id) : fail("The artwork changed. Refresh before replacing it.");
 }
 
 export async function moveDesignArtwork(id: string, direction: -1 | 1): Promise<Result> {
@@ -114,10 +110,10 @@ export async function moveDesignArtwork(id: string, direction: -1 | 1): Promise<
 
 export async function deleteDesignArtwork(id: string): Promise<Result> {
   await me();
-  const row = await prisma.designArtwork.findUnique({ where: { id }, select: { pages: true } });
+  const row = await prisma.designArtwork.findUnique({ where: { id }, select: { pages: true, versions: true } });
   if (!row) return fail("That artwork is already gone.");
   await prisma.designArtwork.delete({ where: { id } });
-  await dropPages(row.pages);
+  await dropPages(allDesignPages(row));
   return done();
 }
 
@@ -161,13 +157,13 @@ export async function setDesignApproval(artworkId: string, approval: unknown, no
 export async function requestDesignReview(artworkId: string, userId: string, note: string): Promise<Result> {
   const u = await me();
   const [a, who] = await Promise.all([
-    prisma.designArtwork.findUnique({ where: { id: artworkId }, select: { title: true, project: { select: { name: true } } } }),
-    prisma.user.findFirst({ where: { id: String(userId), role: { in: ["instructor", "admin", "superadmin"] } }, select: { id: true, name: true, email: true } }),
+    prisma.designArtwork.findUnique({ where: { id: artworkId }, select: { title: true, round: true, project: { select: { name: true } } } }),
+    prisma.user.findFirst({ where: { id: String(userId), isActive: true, accountKind: "real", role: { in: ["instructor", "admin", "superadmin"] } }, select: { id: true, name: true, email: true } }),
   ]);
   if (!a) return fail("That artwork no longer exists.");
   if (!who?.email) return fail("That person isn't on the team.");
   if (!mailConfigured()) return fail("Email isn't set up, so the request can't be sent.");
-  const link = `${(process.env.NEXTAUTH_URL ?? "https://bhn-training-platform.vercel.app").replace(/\/$/, "")}${PAGE}?a=${artworkId}`;
+  const link = new URL(`/review/design/${encodeURIComponent(artworkId)}`, process.env.NEXTAUTH_URL || "https://bhn-training-platform.vercel.app").href;
   const extra = String(note ?? "").trim().slice(0, 600);
   try {
     await sendMail({
@@ -183,6 +179,10 @@ export async function requestDesignReview(artworkId: string, userId: string, not
     create: { artworkId, userId: who.id, userName: who.name ?? who.email, requestedAt: new Date(), requestedByName: u.name },
     update: { requestedAt: new Date(), requestedByName: u.name },
   });
+  await prisma.auditLog.create({ data: {
+    actorId: u.id, action: "design.review.invite", targetType: "designArtwork", targetId: artworkId,
+    detail: JSON.stringify({ recipientId: who.id, recipientEmail: who.email, round: a.round }),
+  } }).catch((error) => console.error("Design review invitation audit failed", error));
   return done(artworkId);
 }
 
@@ -195,10 +195,16 @@ export async function lockDesignRound(artworkId: string): Promise<Result> {
 }
 
 /** The next round: comments open again. Anything still open carries over. */
-export async function startDesignRound(artworkId: string): Promise<Result> {
+export async function startDesignRound(artworkId: string, expectedRound: number): Promise<Result> {
   await me();
-  const r = await prisma.designArtwork.updateMany({ where: { id: artworkId, lockedAt: { not: null } }, data: { lockedAt: null, round: { increment: 1 } } });
-  return r.count ? done(artworkId) : fail("This round is still open.");
+  const current = await prisma.designArtwork.findUnique({ where: { id: artworkId }, select: { pages: true, versions: true, round: true, updatedAt: true, lockedAt: true } });
+  if (!current) return fail("That artwork no longer exists.");
+  if (current.round !== expectedRound) return fail("The round changed. Refresh and try again.");
+  const r = await prisma.designArtwork.updateMany({
+    where: { id: artworkId, round: current.round, updatedAt: current.updatedAt },
+    data: { lockedAt: null, round: { increment: 1 }, versions: archiveDesignRound(current) },
+  });
+  return r.count ? done(artworkId) : fail("The round changed. Refresh and try again.");
 }
 
 const LOCKED = "This round is locked — start the next round to comment again.";

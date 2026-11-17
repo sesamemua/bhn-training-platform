@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { Check, Link as LinkIcon, Mail, MessageSquare } from "lucide-react";
 import { reviewPath, type SocialComment } from "@/lib/social/review";
+import { socialCopyReviewPath } from "@/lib/social/copy-review";
 
 /**
  * Review notes under a social post: comments, and "please review" asks
@@ -27,12 +28,12 @@ export function SocialReviewThread({ postId, label, comments, team, onAdded, sho
   const id = useId();
 
   async function submit() {
-    if (!body.trim()) return setError(reviewerId ? "Say what you'd like reviewed." : "Write a comment first.");
+    if (!reviewerId || !body.trim()) return setError("Choose a colleague and say what you'd like reviewed.");
     setBusy(true); setError(null); setNotice(null);
     try {
       const res = await fetch("/api/admin/social/posts", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "comment", id: postId, body, ...(reviewerId ? { reviewerId, email } : {}) }),
+        body: JSON.stringify({ action: "comment", id: postId, body, reviewerId, email }),
       });
       const j = await res.json().catch(() => ({})) as { comment?: SocialComment; error?: string; emailError?: string | null };
       if (!res.ok || !j.comment) throw new Error(j.error ?? "Couldn't save the comment.");
@@ -51,10 +52,12 @@ export function SocialReviewThread({ postId, label, comments, team, onAdded, sho
   const reviewer = team.find((t) => t.id === reviewerId);
 
   return (
-    <details className="border-b border-line px-1 py-2 text-[13px]" open={comments.length > 0 || undefined}>
+    <div>
+    <a href={socialCopyReviewPath(postId)} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch">Open full-page copy review</a>
+    <details className="border-b border-line px-1 py-2 text-[13px]">
       <summary className="cursor-pointer font-semibold text-fg">
         <MessageSquare size={14} className="mr-1.5 inline align-[-2px] text-brand-600" aria-hidden />
-        Review & comments{comments.length ? ` (${comments.length})` : ""}
+        Individual requests & earlier notes{comments.length ? ` (${comments.length})` : ""}
       </summary>
       {comments.length > 0 && (
         <ol className="mt-2 space-y-2">
@@ -80,16 +83,16 @@ export function SocialReviewThread({ postId, label, comments, team, onAdded, sho
         </button>
       </div>}
       <form className="mt-2 space-y-2" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-        <label htmlFor={`${id}-body`} className="sr-only">Comment on {label}</label>
+        <label htmlFor={`${id}-body`} className="sr-only">Review request for {label}</label>
         <textarea id={`${id}-body`} rows={2} maxLength={2000} value={body} disabled={busy}
           onChange={(e) => { setBody(e.target.value); setError(null); }}
-          placeholder="Leave a note, or say what to check"
+          placeholder="Say what you'd like this colleague to check"
           className="w-full rounded-md border border-line bg-card-solid px-3 py-2 text-fg" />
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor={`${id}-reviewer`} className="text-[12px] text-muted">Ask to review</label>
           <select id={`${id}-reviewer`} value={reviewerId} disabled={busy} onChange={(e) => setReviewerId(e.target.value)}
             className="rounded-md border border-line bg-card-solid px-2 py-1.5 text-[13px] text-fg">
-            <option value="">No one — just a comment</option>
+            <option value="">Choose a colleague</option>
             {team.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           {reviewer && (
@@ -98,14 +101,15 @@ export function SocialReviewThread({ postId, label, comments, team, onAdded, sho
               <Mail size={12} className="text-brand-600" aria-hidden /> Email {reviewer.name.split(" ")[0]} the review link
             </label>
           )}
-          <button type="submit" disabled={busy}
+          <button type="submit" disabled={busy || !reviewerId}
             className="rounded-md bg-brand px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40">
-            {busy ? (reviewerId && email ? "Sending…" : "Saving…") : reviewerId ? (email ? "Ask & email" : "Ask for review") : "Comment"}
+            {busy ? (email ? "Sending…" : "Saving…") : email ? "Ask & email" : "Ask for review"}
           </button>
         </div>
         {error && <p role="alert" className="text-[12px] text-rose-700">{error}</p>}
         {notice && <p role="status" className="break-all text-[12px] text-fg">{notice}</p>}
       </form>
     </details>
+    </div>
   );
 }

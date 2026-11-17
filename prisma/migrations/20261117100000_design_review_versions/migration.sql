@@ -1,0 +1,1 @@
+ALTER TABLE "DesignArtwork" ADD COLUMN "versions" JSONB NOT NULL DEFAULT '[]';

@@ -12,13 +12,18 @@
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, CircleDashed, Copy, Eye, Loader2, Lock, MessageSquarePlus, Minus, Plus, RotateCcw, Send, X } from "lucide-react";
+import { Check, CheckCircle2, CircleDashed, Copy, Crosshair, ExternalLink, Eye, Loader2, Lock, MessageSquarePlus, Minus, Move, Plus, RotateCcw, Send, X } from "lucide-react";
 import { APPROVAL_LABEL, designBrief, isWide, type Approval, type Page, type Seen } from "@/lib/design-review/types";
 import {
   addDesignPin, deleteDesignPin, editDesignPin, lockDesignRound, markDesignSeen, replyDesignPin, requestDesignReview, resolveDesignPin,
   setDesignApproval, setDesignOk, startDesignRound,
 } from "@/lib/design-review/actions";
 import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
+import { DesignRevisionCompare } from "./DesignRevisionCompare";
+import { ReviewGroupInvite } from "./ReviewGroupInvite";
+import { ReviewSentHistory } from "./ReviewSentHistory";
+import { designReviewSentHistory, sendDesignReviewGroup } from "@/lib/design-review/review-tools";
+import type { DesignVersion } from "@/lib/design-review/versions";
 
 export interface PinRow { id: string; page: number; x: number; y: number; parentId: string | null; authorId: string | null; authorName: string; body: string; status: string; round: number; createdAt: string }
 export interface ArtworkViewData {
@@ -26,6 +31,7 @@ export interface ArtworkViewData {
   approval: Approval; approvalNote: string; approvalAt: string | null;
   /** The feedback round, whether it is locked, and the project's name (for the copied feedback). */
   round: number; locked: boolean; project: string;
+  versions?: DesignVersion[];
   pins: PinRow[];
   reviewers: { id: string; name: string; state: Seen; asked: boolean }[];
 }
@@ -38,13 +44,14 @@ const APPROVAL_TONE: Record<Approval, string> = {
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const ZOOMS = [0.5, 0.75, 1, 1.5, 2, 3];
 
-export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
+export function DesignArtworkView({ artwork, me, approver, embedded = false, fullPage = false }: {
   artwork: ArtworkViewData;
   me: { id: string; name: string; admin: boolean };
   approver: { id: string; name: string } | null;
   /** Inside another page's card (a social post): stacked, nothing pinned, and no approval —
    *  the host page keeps its own. */
   embedded?: boolean;
+  fullPage?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -59,6 +66,12 @@ export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
   const [note, setNote] = useState(artwork.approvalNote);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showPrevious, setShowPrevious] = useState(false);
+  const [floatingAt, setFloatingAt] = useState<{ left: number; top: number } | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [viewRound, setViewRound] = useState<number | null>(null);
+  const floating = useRef<HTMLElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
   const locked = artwork.locked;
   // A wide strip (the one-pagers) needs the whole width to be readable: its panels go on top, in a row.
   const wide = isWide(artwork.pages[0]);
@@ -89,17 +102,24 @@ export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
   const iOk = mine?.state === "ok";
   const isApprover = approver?.id === me.id;
 
-  /** Copy the round's open comments; the first copy also locks the round. */
+  const reviewPath = `/review/design/${encodeURIComponent(artwork.id)}`;
+  const versions = [...(artwork.versions ?? []).filter(({ round }) => round < artwork.round), { round: artwork.round, pages: artwork.pages }];
+  const previous = threads.filter((thread) => thread.round < artwork.round);
+  const current = threads.filter((thread) => thread.round === artwork.round);
+  const archivedView = versions.find(({ round }) => round === viewRound && round !== artwork.round);
+  const visiblePages = archivedView?.pages ?? artwork.pages;
+  const targetVersion = (thread: PinRow) => versions.find(({ round }) => round === thread.round) ?? versions.at(-1)!;
+  const pinFits = (thread: PinRow) => !!visiblePages[thread.page] && targetVersion(thread).pages[thread.page]?.key === visiblePages[thread.page].key;
+
   const copyFeedback = async () => {
     const text = designBrief({ project: artwork.project, title: artwork.title, round: artwork.round, pages: artwork.pages.length, pins: artwork.pins });
     try { await navigator.clipboard.writeText(text); } catch { setError("Your browser blocked copying — allow clipboard access and try again."); return; }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
-    if (!locked) run(() => lockDesignRound(artwork.id), () => { setDraft(null); setEditing(null); });
   };
 
   const place = (page: number, e: React.MouseEvent<HTMLDivElement>) => {
-    if (locked) return;
+    if (locked || archivedView) return;
     if ((e.target as HTMLElement).closest("[data-pin],[data-card]")) return;
     const r = e.currentTarget.getBoundingClientRect();
     setOpenId(null);
@@ -107,16 +127,22 @@ export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
     setDraft({ page, x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) });
   };
   const jump = (t: PinRow) => {
+    const version = targetVersion(t);
+    if (!version.pages[t.page]) { setError("The artwork for this earlier pin is no longer available."); return; }
+    setError(null);
     setDraft(null);
     setOpenId(t.id);
     if (t.status !== "open") setShowResolved(true);
-    // Scroll the artwork's own frame to the pin — never the page around it. scrollIntoView moves
-    // every scrollable ancestor, which can slide the whole layout sideways.
-    const pin = pageRefs.current.get(t.page)?.querySelector<HTMLElement>(`[data-pin="${t.id}"]`);
-    const frame = scrollerRef.current;
-    if (!pin || !frame) return;
-    const p = pin.getBoundingClientRect(), f = frame.getBoundingClientRect();
-    frame.scrollTo({ left: frame.scrollLeft + p.left - f.left - f.width / 2, top: frame.scrollTop + p.top - f.top - f.height / 2, behavior: "smooth" });
+    if (!pinFits(t)) setViewRound(version.round === artwork.round ? null : version.round);
+    requestAnimationFrame(() => {
+      const pin = pageRefs.current.get(t.page)?.querySelector<HTMLElement>(`[data-pin="${CSS.escape(t.id)}"]`);
+      const frame = scrollerRef.current;
+      if (!pin || !frame) return;
+      const p = pin.getBoundingClientRect(), f = frame.getBoundingClientRect();
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      frame.scrollTo({ left: frame.scrollLeft + p.left - f.left - f.width / 2, top: frame.scrollTop + p.top - f.top - f.height / 2, behavior: still ? "auto" : "smooth" });
+      flash(t.id, 280);
+    });
   };
   /** A card beside a point: to its right and below, flipped near the right or bottom edge. */
   const beside = (x: number, y: number): React.CSSProperties => ({
@@ -124,11 +150,28 @@ export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
     ...(y > 0.7 ? { bottom: `${(1 - y) * 100}%` } : { top: `${y * 100}%` }),
   });
 
+  function flash(id: string, delay = 0) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    window.setTimeout(() => {
+      const pin = scrollerRef.current?.querySelector<HTMLElement>(`[data-pin="${CSS.escape(id)}"]`);
+      pin?.getAnimations().forEach((animation) => animation.cancel());
+      pin?.animate([{ outline: "0 solid transparent" }, { outline: "6px solid #f59e0b" }, { outline: "0 solid transparent" }], { duration: 160, iterations: 5 });
+    }, delay);
+  }
+  const threadList = (rows: PinRow[]) => <ol className="mt-2 space-y-1">
+    {rows.filter((t) => showResolved || t.status === "open").map((t) => <li key={t.id} onPointerEnter={() => flash(t.id)} className="flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-elevated">
+      <span className="shrink-0 text-xs font-bold text-brand-700">{numberOf.get(t.id)}</span>
+      <span className="min-w-0 flex-1 text-xs"><span className="line-clamp-2 break-words">{t.body}</span><span className="text-muted">{t.authorName} · R{t.round}{t.status !== "open" ? " · Resolved" : ""}</span></span>
+      <button type="button" aria-label={`Show me comment ${numberOf.get(t.id)}`} onClick={() => jump(t)} className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-brand-700"><Crosshair size={12} />Show me</button>
+    </li>)}
+  </ol>;
+
   return (
     <div className={embedded ? "flex flex-col gap-3" : wide ? "flex flex-col-reverse gap-4" : "grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]"}>
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-muted">
-          {locked
+          {archivedView ? <><span className="font-semibold text-fg">Viewing Round {archivedView.round}</span>
+            <button type="button" onClick={() => { setViewRound(null); setOpenId(null); }} className="rounded-md border border-line px-2 py-1 font-semibold">Back to current artwork</button></> : locked
             ? <span className="inline-flex items-center gap-1.5 font-semibold text-amber-700"><Lock size={14} /> Round {artwork.round} is locked — start the next round to comment again</span>
             : <span className="inline-flex items-center gap-1.5 font-semibold text-fg"><MessageSquarePlus size={14} /> Round {artwork.round} · Click anywhere on the artwork to comment</span>}
           <span className="ml-auto inline-flex items-center gap-1">
@@ -144,19 +187,19 @@ export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
         {/* Room under the last page, so a comment card opened low on a short artwork is not cut off. */}
         <div ref={scrollerRef} className={`overflow-auto rounded-xl border border-line bg-elevated/40 p-3 pb-80 ${embedded ? "max-h-[60vh]" : wide ? "max-h-[62vh]" : "max-h-[78vh]"}`}>
           <div className="mx-auto space-y-4" style={{ width: `${zoom * 100}%` }}>
-            {artwork.pages.map((pg, i) => (
+            {visiblePages.map((pg, i) => (
               <div key={pg.key}>
-                {artwork.pages.length > 1 && <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-subtle">Page {i + 1}</p>}
+                {visiblePages.length > 1 && <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-subtle">Page {i + 1}</p>}
                 <div
                   ref={(el) => { if (el) pageRefs.current.set(i, el); else pageRefs.current.delete(i); }}
                   onClick={(e) => place(i, e)}
-                  className={`relative select-none bg-white shadow-md ${locked ? "cursor-default" : "cursor-crosshair"}`}
+                  className={`relative select-none bg-white shadow-md ${locked || archivedView ? "cursor-default" : "cursor-crosshair"}`}
                   style={{ aspectRatio: `${pg.w} / ${pg.h}` }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={pg.url} alt={`${artwork.title}${artwork.pages.length > 1 ? ` — page ${i + 1}` : ""}`} draggable={false} className="block h-full w-full" />
+                  <img src={pg.url} alt={`${artwork.title}${visiblePages.length > 1 ? ` — page ${i + 1}` : ""}`} draggable={false} className="block h-full w-full" />
 
-                  {threads.filter((t) => t.page === i && (showResolved || t.status === "open" || t.id === openId)).map((t) => (
+                  {threads.filter((t) => t.page === i && pinFits(t) && (t.round === artwork.round || showPrevious || t.id === openId) && (showResolved || t.status === "open" || t.id === openId)).map((t) => (
                     <button
                       key={t.id}
                       type="button"
@@ -300,36 +343,48 @@ export function DesignArtworkView({ artwork, me, approver, embedded = false }: {
           </button>
         </section>
 
-        <section className="rounded-xl border border-line bg-card p-3">
-          <h3 className="text-[12px] font-bold uppercase tracking-wide text-subtle">Round {artwork.round} · {open} open{threads.length > open ? `, ${threads.length - open} resolved` : ""}</h3>
+        <section ref={floating} className={`rounded-lg border border-line p-3 ${floatingAt ? "fixed z-50 max-h-[75dvh] w-[min(20rem,calc(100vw-1rem))] overflow-auto bg-card/90 shadow-xl backdrop-blur-md" : "bg-card"}`}
+          style={floatingAt ? { ...floatingAt, resize: "both", maxWidth: "calc(100vw - 1rem)" } : undefined}>
+          <div className="flex items-center gap-2">
+            <h3 className="mr-auto text-xs font-bold">Round {artwork.round} · {open} open</h3>
+            <button type="button" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} className="rounded border border-line px-2 py-1 text-xs">{collapsed ? "Expand" : "Collapse"}</button>
+            <button type="button" aria-pressed={!!floatingAt} aria-label={floatingAt ? "Dock comments" : "Float comments"} title={floatingAt ? "Dock comments" : "Float comments"} onClick={() => setFloatingAt(floatingAt ? null : { left: Math.max(8, window.innerWidth - 328), top: 64 })} className="rounded border border-line p-1.5"><Move size={14} /></button>
+          </div>
+          {floatingAt && <button type="button" aria-label="Move comments panel" className="mt-2 w-full cursor-grab touch-none rounded bg-elevated p-1 text-xs" onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            drag.current = { x: event.clientX - floatingAt.left, y: event.clientY - floatingAt.top };
+          }} onPointerMove={(event) => {
+            if (!drag.current) return;
+            setFloatingAt({ left: Math.max(0, Math.min(window.innerWidth - (floating.current?.offsetWidth ?? 320), event.clientX - drag.current.x)),
+              top: Math.max(0, Math.min(window.innerHeight - 100, event.clientY - drag.current.y)) });
+          }} onLostPointerCapture={() => { drag.current = null; }}>Drag panel</button>}
+          {!collapsed && <>
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {!fullPage && <a href={reviewPath} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-line px-2 py-1.5 text-xs font-semibold"><ExternalLink size={13} />Open full-page review</a>}
+            <button type="button" className="rounded-md border border-line px-2 py-1.5 text-xs font-semibold" onClick={async () => {
+              try { await navigator.clipboard.writeText(new URL(reviewPath, window.location.origin).href); setError(null); }
+              catch { setError("Could not copy the review link."); }
+            }}>Copy review link</button>
             <button type="button" disabled={pending} onClick={copyFeedback} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-brand-700 disabled:opacity-50">
-              {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "Copied" : locked ? "Copy feedback" : "Copy feedback and lock round"}
+              {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "Comments copied" : "Copy review comments"}
             </button>
-            {locked && (
-              <ConfirmPopover message={`Start Round ${artwork.round + 1}?`} detail="Comments open again. Anything still open carries over." confirmLabel={`Start Round ${artwork.round + 1}`} onConfirm={() => run(() => startDesignRound(artwork.id))}>
+            {!locked && <ConfirmPopover message={`Lock Round ${artwork.round}?`} detail="Reviewers cannot change feedback until the next round." confirmLabel="Lock round" onConfirm={() => run(() => lockDesignRound(artwork.id), () => { setDraft(null); setEditing(null); })}>
+              {(openConfirm) => <button type="button" onClick={openConfirm} disabled={pending} className="rounded-md border border-line px-2 py-1.5 text-xs font-semibold">Lock round</button>}
+            </ConfirmPopover>}
+              <ConfirmPopover message={`Start Round ${artwork.round + 1}?`} detail="Comments open again. Anything still open carries over." confirmLabel={`Start Round ${artwork.round + 1}`} onConfirm={() => run(() => startDesignRound(artwork.id, artwork.round))}>
                 {(o) => <button type="button" disabled={pending} onClick={o} className="rounded-lg border border-line px-2.5 py-1.5 text-[12.5px] font-semibold text-fg hover:bg-elevated">Start Round {artwork.round + 1}</button>}
               </ConfirmPopover>
-            )}
           </div>
-          <p className="mt-1.5 text-[11.5px] text-subtle">{locked ? "Locked since the feedback was copied, so the list being worked from stays the same." : "Copying puts the open comments on your clipboard for whoever makes the changes, and locks this round."}</p>
-          {threads.length === 0 ? (
-            <p className="mt-2 text-[12.5px] italic text-subtle">None yet. Click the artwork to add one.</p>
-          ) : (
-            <ol className={`mt-2 space-y-1 overflow-y-auto ${wide ? "max-h-40" : "max-h-[40vh]"}`}>
-              {threads.filter((t) => showResolved || t.status === "open").map((t) => (
-                <li key={t.id}>
-                  <button type="button" onClick={() => jump(t)} className={`flex w-full items-start gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-elevated ${openId === t.id ? "bg-elevated" : ""}`}>
-                    <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10.5px] font-bold text-white ${t.status === "open" ? "bg-rose-600" : "bg-slate-400"}`}>{numberOf.get(t.id)}</span>
-                    <span className="min-w-0 text-[12.5px]">
-                      <span className={`line-clamp-2 ${t.status === "open" ? "text-fg" : "text-muted line-through"}`}>{t.body}</span>
-                      <span className="text-[11px] text-subtle">{t.authorName}{repliesOf(t.id).length ? ` · ${repliesOf(t.id).length} repl${repliesOf(t.id).length === 1 ? "y" : "ies"}` : ""}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          )}
+          <div className="mt-2 space-y-2">
+            {versions.length > 1 && <DesignRevisionCompare key={artwork.round} id={artwork.id} versions={versions} />}
+            <ReviewGroupInvite key={artwork.round} disabled={locked} send={(ids) => sendDesignReviewGroup(artwork.id, artwork.round, ids)} />
+            <ReviewSentHistory load={() => designReviewSentHistory(artwork.id)} />
+          </div>
+          {current.length ? threadList(current) : <p className="mt-2 text-xs text-muted">No comments in this round.</p>}
+          {previous.length > 0 && <details onToggle={(event) => setShowPrevious(event.currentTarget.open)} className="mt-2 text-xs">
+            <summary className="cursor-pointer font-semibold">Previous rounds · {previous.length} threads</summary>{threadList(previous)}
+          </details>}
+          </>}
         </section>
       </aside>
     </div>
