@@ -59,6 +59,9 @@ function editedLabel(c: Comment): string {
 /**
  * Scroll a report comment's page into view and flash the quoted passage
  * (or the whole page when the quote is gone). False when the page is gone.
+ * Same feel as the page-review overlay: once the scroll settles, a box is
+ * drawn over the target and blinks amber — drawn on top, so the page's own
+ * clipping, zoom and background can't hide it.
  */
 export function showReportAnchor(key: string, quote: string | null): boolean {
   const sheet = document.getElementById(key.replace(/^#/, ""));
@@ -68,11 +71,42 @@ export function showReportAnchor(key: string, quote: string | null): boolean {
   const blocks = needle ? Array.from(sheet.querySelectorAll("h1, h2, h3, h4, p, li, blockquote, figcaption, td")) : [];
   const hit = blocks.find((el) => squash(el.textContent).includes(needle)) ?? sheet.querySelector("article") ?? sheet;
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  hit.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" });
-  hit.animate?.([
-    { outline: "3px solid rgb(245 158 11)", outlineOffset: "3px", backgroundColor: "rgb(254 243 199)" },
-    { outline: "3px solid rgb(245 158 11 / 0)", outlineOffset: "3px", backgroundColor: "rgb(254 243 199 / 0)" },
-  ], { duration: 1600, delay: still ? 0 : 300, easing: "ease-out" });
+  // A long trip jumps; only a short one glides (a 12,000px glide outlasts the flash).
+  const far = Math.abs(hit.getBoundingClientRect().top) > window.innerHeight * 1.5;
+  hit.scrollIntoView({ behavior: still || far ? "auto" : "smooth", block: "center" });
+
+  document.querySelector("[data-report-flash]")?.remove();
+  const box = document.createElement("div");
+  box.setAttribute("data-report-flash", "");
+  box.setAttribute("aria-hidden", "true");
+  Object.assign(box.style, {
+    position: "fixed", zIndex: "2147483645", pointerEvents: "none", borderRadius: "4px", display: "none",
+    border: "2px solid #2c7587", background: "rgba(44,117,135,.12)",
+  });
+  document.body.appendChild(box);
+  // The box follows the passage every tick, so late image loads or a reader's scroll can't strand it.
+  const place = () => {
+    const r = hit.getBoundingClientRect();
+    Object.assign(box.style, { top: `${r.top - 4}px`, left: `${r.left - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px` });
+    return `${Math.round(r.left)}:${Math.round(r.top)}`;
+  };
+  const started = Date.now();
+  let last = "", steady = 0, flashed = false;
+  // setInterval, not requestAnimationFrame: rAF stalls in background tabs.
+  const tick = window.setInterval(() => {
+    if (!box.isConnected) { window.clearInterval(tick); return; }
+    const at = place();
+    if (flashed) return;
+    steady = at === last ? steady + 1 : 0;
+    last = at;
+    if (steady < 3 && Date.now() - started < 2500) return;
+    flashed = true;
+    box.style.display = "block";
+    const off = { borderColor: "#2c7587", background: "rgba(44,117,135,.12)", boxShadow: "0 0 0 0 rgba(238,166,54,0)" };
+    const on = { borderColor: "#eea636", background: "rgba(238,166,54,.34)", boxShadow: "0 0 0 6px rgba(238,166,54,.3)" };
+    box.animate([off, on, off], { duration: 160, iterations: still ? 1 : 5, easing: "linear" });
+    window.setTimeout(() => { window.clearInterval(tick); box.remove(); }, 2000);
+  }, 40);
   return true;
 }
 

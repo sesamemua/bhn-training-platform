@@ -24,7 +24,7 @@ export interface ChangelogEntry {
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     title: "Event Report comments: Show me",
-    body: "Each comment on the 2026 Symposium **Event Report** now has a **Show me** button, as in the newsletter review. It opens that page, scrolls to the quoted text and flashes it, or flashes the whole page if the text has since changed.",
+    body: "Each comment on the 2026 Symposium **Event Report** now has a **Show me** button, as in the newsletter review. It opens that page, scrolls to the quoted text and blinks an amber box over it, as in the newsletter review. If the text has since changed, it blinks over the whole page.",
     kind: "improvement",
     visibleTo: STAFF,
     daysAgo: 0,
