@@ -273,7 +273,11 @@ export function ReportEditor({ report: initial, revision, history, review, recom
           </label>}
           <div id="report-comments" hidden={tab !== "comments"}>
             <PageReviewClient initialReview={review} meId={meId} isAdmin={isAdmin}
-              reportAnchor={{ label, quote, readOnly: past !== null, key: `#report-frame-${active.id}-${active.index}` }} />
+              reportAnchor={{ label, quote, readOnly: past !== null, key: `#report-frame-${active.id}-${active.index}`,
+                onLocate: (key) => {
+                  const hit = /^#report-frame-(.+)-(\d+)$/.exec(key);
+                  if (hit) select({ id: hit[1], index: Number(hit[2]) });
+                } }} />
           </div>
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}

@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Event Report comments: Show me",
+    body: "Each comment on the 2026 Symposium **Event Report** now has a **Show me** button, as in the newsletter review. It opens that page, scrolls to the quoted text and flashes it, or flashes the whole page if the text has since changed.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Event Report: see who you emailed for review",
     body: "On the 2026 Symposium **Event Report**, the new **Sent history** button lists every review request email: who received it, when, for which round and who sent it.",
     kind: "feature",

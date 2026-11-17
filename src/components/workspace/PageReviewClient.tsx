@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, type ComponentPropsWithoutRef } from "reac
 import { useRouter } from "next/navigation";
 import {
   Loader2, Plus, MessageSquarePlus, Check, Trash2, Pencil, Copy, Lock, RotateCcw,
-  FileDown, ExternalLink, AlertTriangle, ArrowRight, CornerDownRight, X,
+  FileDown, ExternalLink, AlertTriangle, ArrowRight, CornerDownRight, X, Crosshair,
 } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -56,11 +56,31 @@ function editedLabel(c: Comment): string {
   return `· edited by ${c.editedByName}`;
 }
 
+/**
+ * Scroll a report comment's page into view and flash the quoted passage
+ * (or the whole page when the quote is gone). False when the page is gone.
+ */
+export function showReportAnchor(key: string, quote: string | null): boolean {
+  const sheet = document.getElementById(key.replace(/^#/, ""));
+  if (!sheet) return false;
+  const squash = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
+  const needle = squash(quote).slice(0, 40);
+  const blocks = needle ? Array.from(sheet.querySelectorAll("h1, h2, h3, h4, p, li, blockquote, figcaption, td")) : [];
+  const hit = blocks.find((el) => squash(el.textContent).includes(needle)) ?? sheet.querySelector("article") ?? sheet;
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  hit.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" });
+  hit.animate?.([
+    { outline: "3px solid rgb(245 158 11)", outlineOffset: "3px", backgroundColor: "rgb(254 243 199)" },
+    { outline: "3px solid rgb(245 158 11 / 0)", outlineOffset: "3px", backgroundColor: "rgb(254 243 199 / 0)" },
+  ], { duration: 1600, delay: still ? 0 : 300, easing: "ease-out" });
+  return true;
+}
+
 export function PageReviewClient({
   initialReview, meId, isAdmin, reportAnchor,
 }: {
   initialReview: Review; meId: string | null; isAdmin: boolean;
-  reportAnchor?: { key: string; quote: string; label: string; readOnly: boolean };
+  reportAnchor?: { key: string; quote: string; label: string; readOnly: boolean; onLocate?: (key: string) => void };
 }) {
   const router = useRouter();
   const { confirmDialog, node: confirmNode } = useConfirmDialog();
@@ -74,6 +94,7 @@ export function PageReviewClient({
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const [newC, setNewC] = useState({ quote: "", body: "" });
+  const [missing, setMissing] = useState<string | null>(null);
   /**
    * Which round's threads to show. Defaults to the current one — the list
    * used to render every comment ever filed, so a page on Round 3 opened
@@ -370,7 +391,19 @@ export function PageReviewClient({
                     )}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {c.anchorKey && (reportAnchor && c.anchorKey.startsWith("#report-frame-")
-                        ? <a className="text-xs text-brand-700 underline" href={c.anchorKey}>{c.anchorBlock || "Go to page"}</a>
+                        ? <>
+                            <button type="button"
+                              onClick={() => {
+                                const key = c.anchorKey!;
+                                reportAnchor.onLocate?.(key);
+                                setMissing(showReportAnchor(key, c.anchorQuote) ? null : c.id);
+                              }}
+                              title={`Show me where on ${c.anchorBlock || "the report"}`}
+                              className="inline-flex items-center gap-1 rounded-md border border-brand-200 bg-card px-2 py-0.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-500">
+                              <Crosshair size={11} aria-hidden /> {missing === c.id ? "Not found" : "Show me"}
+                            </button>
+                            {c.anchorBlock && <span className="min-w-0 truncate text-xs text-muted">{c.anchorBlock}</span>}
+                          </>
                         : <code className="text-[10px] text-subtle">{c.anchorKey}</code>)}
                       {c.anchorState === "orphaned" && (
                         <span className="text-[10px] text-amber-700 inline-flex items-center gap-1">
