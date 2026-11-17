@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.17a";
+export const TOUR_VERSION = "2026.11.17b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "symposium-report.sent-history",
+    title: "Sent history for review emails",
+    body: "Press Sent history to see who got a review request, when, and for which round.",
+    path: "/admin/workspace/symposium-2026/report",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.11.17b",
+  },
   {
     id: "newsletter.compact-boxes",
     title: "Quicker newsletter boxes",

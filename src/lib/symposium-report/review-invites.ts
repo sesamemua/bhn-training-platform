@@ -54,3 +54,35 @@ export async function sendReportReviewInvites(input: unknown) {
     audit: { action: "symposium.report.review.invite", targetType: "pageReview", targetId: REPORT_ID, round },
   });
 }
+
+export type ReportInviteSent = { at: string; to: string; email: string; round: number | null; by: string };
+
+/** Every review email sent for this report, newest first — read from the audit rows each send writes. */
+export async function reportReviewHistory(): Promise<{ sent: ReportInviteSent[]; error?: string }> {
+  if (!await currentStaff()) return { sent: [], error: "Forbidden." };
+  // ponytail: last 200 sends; page it if a report ever goes past that.
+  const rows = await prisma.auditLog.findMany({
+    where: { action: "symposium.report.review.invite", targetType: "pageReview", targetId: REPORT_ID },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: { createdAt: true, detail: true, actor: { select: { name: true, email: true } } },
+  });
+  const details = rows.map(({ detail }) => {
+    try { return JSON.parse(detail ?? "{}") as { recipientId?: string; recipientEmail?: string; round?: number }; }
+    catch { return {}; }
+  });
+  const ids = [...new Set(details.map((d) => d.recipientId).filter((id): id is string => !!id))];
+  const names = new Map((ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }) : [])
+    .map(({ id, name }) => [id, name]));
+  return { sent: rows.map((row, i) => {
+    const d = details[i];
+    const email = d.recipientEmail ?? "";
+    return {
+      at: row.createdAt.toISOString(),
+      to: (d.recipientId && names.get(d.recipientId)) || email || "Unknown recipient",
+      email,
+      round: typeof d.round === "number" ? d.round : null,
+      by: row.actor.name || row.actor.email || "Unknown",
+    };
+  }) };
+}

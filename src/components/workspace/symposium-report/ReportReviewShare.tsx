@@ -1,9 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Copy, Mail, Send } from "lucide-react";
+import { Copy, History, Mail, Send } from "lucide-react";
 import { REPORT_REVIEW_PATH } from "@/lib/symposium-report/document";
-import { reportReviewRecipients, sendReportReviewInvites } from "@/lib/symposium-report/review-invites";
+import { reportReviewHistory, reportReviewRecipients, sendReportReviewInvites, type ReportInviteSent } from "@/lib/symposium-report/review-invites";
 import styles from "./report.module.css";
 
 export function ReportReviewShare({ round, revision, canInvite }: {
@@ -17,6 +17,22 @@ export function ReportReviewShare({ round, revision, canInvite }: {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [manualLink, setManualLink] = useState("");
+  const [history, setHistory] = useState<ReportInviteSent[] | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  async function loadHistory() {
+    try {
+      const result = await reportReviewHistory();
+      setHistory(result.sent);
+      if (result.error) setError(result.error);
+    } catch { setError("Could not load the sent history. Try again."); }
+  }
+
+  function toggleHistory() {
+    const next = !showHistory;
+    setShowHistory(next);
+    if (next) { setHistory(null); void loadHistory(); }
+  }
 
   async function copy() {
     const link = new URL(REPORT_REVIEW_PATH, window.location.origin).href;
@@ -47,6 +63,7 @@ export function ReportReviewShare({ round, revision, canInvite }: {
       setSelected((current) => current.filter((id) => !result.sent.includes(id)));
       if (result.sent.length) setStatus(`Review request sent to ${result.sent.length} colleague${result.sent.length === 1 ? "" : "s"}.`);
       setError(result.error ?? "");
+      if (result.sent.length && showHistory) void loadHistory();
     } catch { setError("Could not confirm delivery. Check with reviewers before retrying."); }
     finally { setBusy(false); }
   }
@@ -58,6 +75,9 @@ export function ReportReviewShare({ round, revision, canInvite }: {
         aria-expanded={open} aria-controls={id}
         title={!canInvite && !open ? "Save changes and open the current round to send requests." : undefined}>
         <Mail size={15} aria-hidden /> {open ? "Close email request" : "Email review request"}
+      </button>
+      <button type="button" onClick={toggleHistory} aria-expanded={showHistory} aria-controls={`${id}-history`}>
+        <History size={15} aria-hidden /> {showHistory ? "Hide sent history" : "Sent history"}
       </button>
       <span className={styles.status}>Staff sign-in required. Opens the saved draft.</span>
     </div>
@@ -83,6 +103,20 @@ export function ReportReviewShare({ round, revision, canInvite }: {
       </div>
       {!canInvite && <p className={styles.status}>Save the current draft before sending requests.</p>}
     </form>}
+    {showHistory && <div id={`${id}-history`} className={styles.reviewHistory}>
+      {history === null ? <p className={styles.status}>Loading…</p>
+        : history.length === 0 ? <p className={styles.status}>No review emails sent yet.</p>
+        : <table>
+          <caption>Review emails sent ({history.length})</caption>
+          <thead><tr><th scope="col">Sent</th><th scope="col">To</th><th scope="col">Round</th><th scope="col">By</th></tr></thead>
+          <tbody>{history.map((row, i) => <tr key={`${row.at}-${i}`}>
+            <td><time dateTime={row.at}>{new Date(row.at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</time></td>
+            <td title={row.email}>{row.to}</td>
+            <td>{row.round ?? "—"}</td>
+            <td>{row.by}</td>
+          </tr>)}</tbody>
+        </table>}
+    </div>}
     {error && <p className={styles.error} role="alert">{error}</p>}
     {status && <p className={styles.status} role="status">{status}</p>}
   </section>;

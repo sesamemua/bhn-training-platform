@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Event Report: see who you emailed for review",
+    body: "On the 2026 Symposium **Event Report**, the new **Sent history** button lists every review request email: who received it, when, for which round and who sent it.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Newsletter: tidier section boxes",
     body: "Pictures are now a small strip of thumbnails with a **+** tile: click it or drop pictures on the strip. Hover a thumbnail to add alt text, reorder or remove it; an amber dot means alt text is missing. Long items fold to three lines (click to expand), item tools appear on hover, and the link box and **Add** only show once you start typing.",
     kind: "improvement",

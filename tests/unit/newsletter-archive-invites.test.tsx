@@ -224,3 +224,31 @@ test("shared issue links retain their issue and sign-off after login, without re
   await assert.rejects(Page(props), /login/);
   assert.equal(returnTo, "/admin/workspace/marketing/newsletter/review?issue=september");
 });
+
+test("report sent history is staff-only and lists who got each review email, and when", async () => {
+  let signedIn = false;
+  let query: any;
+  const api = loadModule("src/lib/symposium-report/review-invites.ts", {
+    "./document": { REPORT_ID, REPORT_REVIEW_PATH },
+    "./store": { reportRevision: () => "" },
+    "@/lib/auth": { requireRole: async () => signedIn ? { user: { id: "editor" } } : null },
+    "@/lib/mail": { mailConfigured: () => true, sendMail: async () => {} },
+    "@/lib/prisma": { prisma: {
+      user: {
+        findFirst: async () => ({ id: "editor", name: "Editor", email: "editor@example.com" }),
+        findMany: async () => [{ id: "reviewer", name: "Reviewer One" }],
+      },
+      auditLog: { findMany: async (args: any) => { query = args; return [
+        { createdAt: new Date("2026-11-17T15:00:00Z"), detail: JSON.stringify({ recipientId: "reviewer", recipientEmail: "r@example.com", round: 2 }), actor: { name: "Editor", email: "editor@example.com" } },
+        { createdAt: new Date("2026-11-10T15:00:00Z"), detail: "not json", actor: { name: null, email: "editor@example.com" } },
+      ]; } },
+    } },
+  });
+  assert.equal((await api.reportReviewHistory()).error, "Forbidden.");
+  signedIn = true;
+  const { sent } = await api.reportReviewHistory();
+  assert.deepEqual(query.where, { action: "symposium.report.review.invite", targetType: "pageReview", targetId: REPORT_ID });
+  assert.deepEqual(query.orderBy, { createdAt: "desc" });
+  assert.deepEqual(sent[0], { at: "2026-11-17T15:00:00.000Z", to: "Reviewer One", email: "r@example.com", round: 2, by: "Editor" });
+  assert.deepEqual(sent[1], { at: "2026-11-10T15:00:00.000Z", to: "Unknown recipient", email: "", round: null, by: "editor@example.com" });
+});
