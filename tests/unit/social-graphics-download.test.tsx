@@ -9,6 +9,7 @@ import ts from "typescript";
 import sharp from "sharp";
 import unzipper from "unzipper";
 import { imageSize } from "../../src/lib/images/size";
+import { socialPhotos } from "../../src/lib/social/photos";
 import { SocialQueue, type QueuePost } from "../../src/components/workspace/SocialQueue";
 
 test("every available graphic has its own download and each group has one bulk download", () => {
@@ -51,6 +52,7 @@ test("download route authorizes, preserves original bytes, packages in display o
     } } } },
     "@/lib/r2": { R2_PUBLIC_URL_PREFIXES: ["https://images.example"] },
     "@/lib/images/size": { imageSize },
+    "@/lib/social/photos": { socialPhotos },
     "../posts/[id]/image/route": { GET: async () => new Response(new Uint8Array(jpeg), { headers: { "Content-Type": "image/jpeg" } }) },
   };
   const exports: { GET?: (req: NextRequest) => Promise<Response> } = {};

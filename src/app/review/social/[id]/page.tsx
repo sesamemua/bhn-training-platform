@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { reviewPath } from "@/lib/social/review";
 import { canReviewSocialCopy, SocialCopySnapshot, socialCopyReviewId, socialCopyReviewPath, socialCopySnapshot } from "@/lib/social/copy-review";
 import { SocialCopyReviewControls } from "@/components/workspace/SocialCopyReviewControls";
+import { SocialPostPhotos } from "@/components/workspace/SocialPostPhotos";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Social Post Review | BioHubNet", robots: { index: false, follow: false } };
@@ -35,6 +36,7 @@ export default async function SocialCopyReviewPage({ params }: { params: Promise
         <article data-copy-page aria-label={saved.title} className="space-y-4 rounded-lg border border-line bg-card p-5 [overflow-wrap:anywhere]">
           <h2 className="text-lg font-bold">{saved.title}</h2>
           {saved.body.split(/\n\s*\n/).map((part, index) => <p key={index} className="whitespace-pre-wrap leading-relaxed">{part}</p>)}
+          <SocialPostPhotos postId={id} assetSpec={post.assetSpec} />
         </article>
       </div>
     </div>

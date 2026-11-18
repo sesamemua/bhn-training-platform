@@ -8,6 +8,8 @@ import Link from "next/link";
 import { LogoMark } from "@/components/ui/Logo";
 import { useInputDialog } from "@/components/ui/InputDialog";
 import { SocialPostEditor } from "./SocialPostEditor";
+import { SocialPostPhotos } from "./SocialPostPhotos";
+import { socialPhotos } from "@/lib/social/photos";
 import { SocialGraphicReview } from "./SocialGraphicReview";
 import { SocialPublishControls, type PublishingConnection } from "./SocialPublishControls";
 import { SocialReviewThread } from "./SocialReviewThread";
@@ -281,7 +283,28 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
   const visible = sortSocialPosts(seriesReview ? active.filter((post) => post.campaign) : reviewMode ? posts : group === "symposium_sessions" ? sessionPosts : boardPosts.filter((post) => postGroup(post) === group), group === "symposium_day" ? dayLayout.order : layout.order);
   const ready = visible.filter(canApproveInSeries);
   const chosen = ready.filter((post) => selected.includes(post.id));
-  const downloadable = visible.filter((post) => !!post.assetUrl);
+  const downloadable = visible.filter((post) => !!post.assetUrl || socialPhotos(post.assetSpec).length > 0);
+
+  async function uploadPhotos(post: QueuePost, files: File[]) {
+    if (busy || !files.length) return;
+    setBusy(post.id);
+    setNote(null);
+    let version = post.editVersion;
+    try {
+      for (const file of files) {
+        const form = new FormData();
+        form.set("file", file);
+        form.set("expectedVersion", String(version));
+        const response = await fetch(`/api/admin/social/posts/${encodeURIComponent(post.id)}/photos`, { method: "POST", body: form });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Couldn't save the photo.");
+        version = result.editVersion;
+        setPosts(all => all.map(item => item.id === post.id ? { ...item, assetSpec: result.assetSpec, editVersion: result.editVersion, status: "draft", approvedAt: null, approvedByName: null } : item));
+      }
+      setNote("Photos saved. Originals are unchanged. Nothing has been published or scheduled.");
+    } catch (error) { setNote(error instanceof Error ? error.message : "Couldn't save the photos."); }
+    finally { setBusy(null); }
+  }
 
   async function downloadGraphics(items: QueuePost[], zip = false) {
     if (downloadBusy || !items.length) return;
@@ -546,10 +569,11 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
             // One column, top to bottom, every main button on the same left edge:
             // write → picture → review → approve → publish.
             const waiting = p.status === "draft" ? waitingOn(p.comments ?? [], p.approvedAt) : null;
+            const photos = socialPhotos(p.assetSpec);
             const approvedLike = ["approved", "publishing", "scheduled", "published"].includes(p.status);
             const done = [
               !!(drafts[p.id]?.body ?? p.body).trim(),
-              !!p.assetUrl,
+              !!p.assetUrl || photos.length > 0,
               approvedLike || ((p.comments ?? []).some((c) => c.reviewerName) && !waiting),
               approvedLike,
               p.status === "published" || (p.status === "scheduled" && !!p.bufferPostId),
@@ -573,15 +597,20 @@ export function SocialQueue({ initial, initialOrder = { order: DEFAULT_SOCIAL_OR
                     <div className="px-4 pb-3 pt-2">
                       <SocialPostEditor post={{ ...p, body: withSocialTags(p.body, p.stream) }} taggable={p.stream === "linkedin"} label={p.cycleLabel} onSaved={onSaved} onDraftState={onDraftState} />
                     </div>
-                    {p.assetUrl && (
+                    {photos.length > 0 ? <SocialPostPhotos postId={p.id} assetSpec={p.assetSpec} /> : p.assetUrl && (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={p.assetUrl} alt={`Social graphic for ${p.cycleLabel}`} className="block aspect-square w-full border-t border-line object-contain" />
                     )}
                   </article>
                 </Step>
 
-                <Step n={2} title="Picture" state={state(1)} hint={p.assetUrl ? "Shown in the preview above" : p.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}>
-                  {(p.stream === "events" || p.stream === "linkedin") && editable && (<>
+                <Step n={2} title="Picture" state={state(1)} hint={p.assetUrl || photos.length ? "Shown in the preview above" : p.requiresPhoto ? "Awaiting event photos" : "Graphic needed"}>
+                  {p.stream === "linkedin" && editable && !p.assetUrl && <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-elevated">
+                    <Plus size={16} /> {busy === p.id ? "Uploading photos..." : "Add photos"}
+                    <input type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label={`Add photos to ${p.cycleLabel}`} className="sr-only" disabled={!!busy}
+                      onChange={event => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ""; void uploadPhotos(p, files); }} />
+                  </label>}
+                  {(p.stream === "events" || p.stream === "linkedin") && editable && !photos.length && (<>
                     <PictureDrop label={`Upload graphic for ${p.cycleLabel}`} busy={busy === p.id && !seriesBusy} hasPicture={!!p.assetUrl}
                       onFile={(file) => void uploadGraphic(p, file)} onError={setNote} />
                     <AssetPicker label={p.cycleLabel} onPick={(a) => void pickLibraryAsset(p, a.id)} />

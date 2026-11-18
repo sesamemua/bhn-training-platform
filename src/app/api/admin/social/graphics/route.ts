@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { R2_PUBLIC_URL_PREFIXES } from "@/lib/r2";
 import { imageSize } from "@/lib/images/size";
+import { socialPhotos } from "@/lib/social/photos";
 import { GET as speakerImage } from "../posts/[id]/image/route";
 
 export const runtime = "nodejs";
@@ -17,9 +18,11 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const ids = [...new Set((req.nextUrl.searchParams.get("ids") ?? "").split(","))];
   const zip = req.nextUrl.searchParams.get("zip") === "1";
+  const photo = req.nextUrl.searchParams.get("photo");
   if (!ids.length || ids.length > 200 || ids.some((id) => !/^[a-zA-Z0-9_-]{1,100}$/.test(id)) || (!zip && ids.length !== 1)) {
     return NextResponse.json({ error: "Choose up to 200 graphics to download." }, { status: 400 });
   }
+  if (photo !== null && (!/^(0|[1-9]\d?)$/.test(photo) || zip || ids.length !== 1)) return NextResponse.json({ error: "Choose one photo to download." }, { status: 400 });
   const posts = await prisma.socialPost.findMany({
     where: { id: { in: ids } },
     select: { id: true, stream: true, kind: true, assetUrl: true, assetSpec: true },
@@ -32,14 +35,18 @@ export async function GET(req: NextRequest) {
     const signal = AbortSignal.any([req.signal, AbortSignal.timeout(60_000)]);
     for (const [index, id] of ids.entries()) {
       const post = posts.find((item) => item.id === id)!;
+      const photos = socialPhotos(post.assetSpec);
+      if (photo !== null && !photos[Number(photo)]) return NextResponse.json({ error: "That photo no longer exists." }, { status: 404 });
+      const sources = photos.length ? zip ? photos : [photos[Number(photo ?? 0)]] : [{ url: post.assetUrl, name: null }];
+      for (const [photoIndex, source] of sources.entries()) {
       let response: Response;
-      if (post.stream === "symposium_2026" && post.kind === "speaker") {
+      if (!photos.length && post.stream === "symposium_2026" && post.kind === "speaker") {
         response = await speakerImage(req, { params: Promise.resolve({ id }) });
       } else {
-        const url = new URL(post.assetUrl ?? "");
+        const url = new URL(source.url ?? "");
         const trusted = R2_PUBLIC_URL_PREFIXES.some((prefix) => {
           const base = new URL(prefix);
-          return url.protocol === "https:" && url.origin === base.origin && url.pathname.startsWith(`${base.pathname.replace(/\/$/, "")}/`);
+          return url.protocol === "https:" && !url.username && !url.password && url.origin === base.origin && url.pathname.startsWith(`${base.pathname.replace(/\/$/, "")}/`);
         });
         if (!trusted) throw new Error("This graphic is not available from the platform's image store.");
         response = await fetch(url, { cache: "no-store", redirect: "error", signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]) });
@@ -67,7 +74,10 @@ export async function GET(req: NextRequest) {
       if (!image) throw new Error("A graphic is not a supported image.");
       const title = (post.assetSpec as { title?: unknown } | null)?.title;
       const name = (typeof title === "string" ? title : id).normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100) || id;
-      files.push({ name: `${zip ? `${String(index + 1).padStart(2, "0")}-` : ""}${name}.${image.type.split("/")[1]}`, type: image.type, bytes });
+      const filename = source.name?.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/^\.+/, "").slice(0, 180) || `${name}.${image.type.split("/")[1]}`;
+      const prefix = zip ? `${String(index + 1).padStart(2, "0")}-${photos.length ? `${String(photoIndex + 1).padStart(2, "0")}-` : ""}` : "";
+      files.push({ name: `${prefix}${filename}`, type: image.type, bytes });
+      }
     }
     const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
     if (!zip) return new Response(new Uint8Array(files[0].bytes), {
