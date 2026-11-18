@@ -106,3 +106,25 @@ test("the private photo catalogue accepts organized and uploaded identifiers wit
   assert.equal(catalogueSchema.safeParse({ groups: [{ id: "panels", title: "Panels", photos: [choice] }], defaults: { panels: [choice] } }).success, true);
   assert.equal(catalogueSchema.safeParse({ groups: [{ id: "panels", title: "Panels", photos: [{ ...choice, file: "/tmp/photo.jpg" }] }], defaults: {} }).success, false);
 });
+
+test("bullet takeaways and participant quotes stay editable without becoming editorial notes", () => {
+  const source = "- Check AI outputs against the source.\n\n“Hands-on practice helped.” — Participant";
+  const blocks = reportBlocks(source);
+  assert.deepEqual(blocks.map(({ kind }) => kind), ["bullet", "quote"]);
+  const updated = replaceReportBlock(source, blocks[0], "Validate AI outputs against the source.");
+  assert(updated.startsWith("- Validate"));
+  assert.equal(reportBlocks(updated)[1].text, blocks[1].text);
+  const chart = {
+    unit: "participants", source: "Checked attendance workbook",
+    categories: [{ label: "Academic", count: 197 }, { label: "Industry", count: 45 }, { label: "Other", count: 2 }, { label: "Government", count: 14 }],
+    audience: { trainees: 165, professionals: 93 }, percentagesOnly: true,
+  };
+  const document = reportSchema.parse({
+    cover: { title: "Symposium", theme: "Training", date: "October 2026" },
+    pages: [{ id: "at-a-glance", label: "Symposium", title: "Symposium at a glance", text: updated, frames: 1, registration: chart, showCaptions: false, fillPhotos: false }],
+    back: { title: "BioHubNet", text: "Life sciences workforce." },
+  });
+  assert.deepEqual(document.pages[0].registration, chart);
+  assert.equal(document.pages[0].showCaptions, false);
+  assert.equal(document.pages[0].fillPhotos, false);
+});

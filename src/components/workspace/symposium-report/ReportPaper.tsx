@@ -20,10 +20,10 @@ function RegistrationChart({ chart, showSource, inline, change }: {
   const updateCategory = (index: number, patch: Partial<Registration["categories"][number]>) =>
     change({ ...chart, categories: chart.categories.map((item, i) => i === index ? { ...item, ...patch } : item) });
   return (
-    <figure className={styles.registration}>
-      <figcaption>Primary organizational affiliation <span>{total.toLocaleString("en-CA")}{" "}
+    <figure className={styles.registration} data-dual={chart.audience ? "true" : undefined}>
+      <figcaption>{chart.percentagesOnly ? "Organization profile" : "Primary organizational affiliation"} {!chart.percentagesOnly && <span>{total.toLocaleString("en-CA")}{" "}
         <span {...inline(chart.unit, "What was counted?", (unit) => change({ ...chart, unit }))}>{chart.unit}</span>
-      </span></figcaption>
+      </span>}</figcaption>
       <div className={styles.chartRow}>
         <svg width="146" height="146" viewBox="0 0 42 42" aria-hidden="true">
           {chart.categories.map(({ count }, index) => {
@@ -32,7 +32,7 @@ function RegistrationChart({ chart, showSource, inline, change }: {
             return <circle key={index} cx="21" cy="21" r="15.9154943" fill="none" stroke={sectorColors[index]} strokeWidth="8"
               pathLength="100" strokeDasharray={`${share} ${100 - share}`} strokeDashoffset={-offset} transform="rotate(-90 21 21)" />;
           })}
-          <text x="21" y="23" textAnchor="middle" className={styles.chartTotal}>{total}</text>
+          {!chart.percentagesOnly && <text x="21" y="23" textAnchor="middle" className={styles.chartTotal}>{total}</text>}
         </svg>
         <dl className={styles.chartLegend}>
           {chart.categories.map(({ count, label }, index) => (
@@ -40,14 +40,36 @@ function RegistrationChart({ chart, showSource, inline, change }: {
               <dt><i style={{ background: sectorColors[index] }} />
                 <span {...inline(label, `Category ${index + 1}`, (label) => updateCategory(index, { label }))}>{label}</span>
               </dt>
-              <dd><span {...inline(String(count), `Count for ${label}`, (text) => updateCategory(index, { count: text.trim() ? Number(text) : NaN }))}>{count}</span> · {(count / total * 100).toFixed(1)}%</dd>
+              <dd>{!chart.percentagesOnly && <><span {...inline(String(count), `Count for ${label}`, (text) => updateCategory(index, { count: text.trim() ? Number(text) : NaN }))}>{count}</span> · </>}{(count / total * 100).toFixed(1)}%</dd>
             </div>
           ))}
         </dl>
       </div>
+      {chart.audience && <div className={styles.audienceChart}>
+        <h3>HQP and professional participation</h3>
+        <div className={styles.chartRow}>
+          <svg width="146" height="146" viewBox="0 0 42 42" aria-hidden="true">
+            <circle cx="21" cy="21" r="15.9154943" fill="none" stroke={sectorColors[1]} strokeWidth="8" />
+            <circle cx="21" cy="21" r="15.9154943" fill="none" stroke={sectorColors[0]} strokeWidth="8" pathLength="100"
+              strokeDasharray={`${chart.audience.trainees / (chart.audience.trainees + chart.audience.professionals) * 100} 100`} transform="rotate(-90 21 21)" />
+          </svg>
+          <dl className={styles.chartLegend}>
+            <div><dt><i style={{ background: sectorColors[0] }} />Trainee / HQP</dt><dd>{(chart.audience.trainees / (chart.audience.trainees + chart.audience.professionals) * 100).toFixed(0)}%</dd></div>
+            <div><dt><i style={{ background: sectorColors[1] }} />Professional</dt><dd>{(chart.audience.professionals / (chart.audience.trainees + chart.audience.professionals) * 100).toFixed(0)}%</dd></div>
+          </dl>
+        </div>
+      </div>}
       {showSource && <aside className={styles.registrationSource}>
         <strong>For review only · Omitted from the final report</strong>
         <p {...inline(chart.source, "Registration data source", (source) => change({ ...chart, source }))}>{chart.source}</p>
+        {chart.percentagesOnly && <div className={styles.sourceCounts}>
+          {chart.categories.map(({ label, count }, index) => <label key={index}>{label}{" "}
+            <span {...inline(String(count), `Count for ${label}`, (text) => updateCategory(index, { count: text.trim() ? Number(text) : NaN }))}>{count}</span>
+          </label>)}
+          {chart.audience && (["trainees", "professionals"] as const).map((key) => <label key={key}>{key === "trainees" ? "Trainee / HQP" : "Professional"}{" "}
+            <span {...inline(String(chart.audience![key]), `Count for ${key}`, (text) => change({ ...chart, audience: { ...chart.audience!, [key]: text.trim() ? Number(text) : NaN } }))}>{chart.audience![key]}</span>
+          </label>)}
+        </div>}
       </aside>}
     </figure>
   );
@@ -55,13 +77,14 @@ function RegistrationChart({ chart, showSource, inline, change }: {
 
 function Blocks({ page, blocks, inline, change }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void }) {
   return blocks.map((block, index) => {
-    const Tag = block.kind === "heading" && !block.continued ? "h3" : "p";
+    const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p";
     const photos = workshopPhotos(page, block.photoRow);
     const copy = block.text && <Tag className={styles[block.kind]}
       {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
       {block.text}
     </Tag>;
-    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={684 * workshopTileHeight(page, block.photoRow) / 337} />);
+    if (block.kind === "bullet") return <ul key={index} className={styles.list}>{copy}</ul>;
+    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} photo={photo} caption={page.showCaptions !== false} height={684 * workshopTileHeight(page, block.photoRow) / 337} />);
     if (page.id === "venturelift" && photos.length) return <div key={index} className={styles.ventureProfile}>{copy}<div>{figures}</div></div>;
     return <Fragment key={index}>
       {copy}
@@ -92,10 +115,13 @@ export function useReportLayout(report: Report, approved: boolean) {
       pageNode.dataset.continued = String(index > 0);
       pageNode.dataset.photoStrip = String(hasStrip);
       story.replaceChildren(...blocks.flatMap((block) => {
-        const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : "p");
+        const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p");
         node.className = styles[block.kind];
         node.textContent = block.text;
-        const nodes: HTMLElement[] = block.text ? [node] : [];
+        const list = document.createElement("ul");
+        list.className = styles.list;
+        if (block.kind === "bullet") list.append(node);
+        const nodes: HTMLElement[] = block.text ? [block.kind === "bullet" ? list : node] : [];
         const photos = workshopPhotos(page, block.photoRow);
         if (photos.length) {
           const space = document.createElement("div");
@@ -104,11 +130,11 @@ export function useReportLayout(report: Report, approved: boolean) {
             const row = document.createElement("div");
             row.className = styles.ventureProfile;
             space.style.aspectRatio = `337 / ${height * photos.length}`;
-            space.style.marginBottom = `${PHOTO_CAPTION_SPACE * photos.length}px`;
+            space.style.marginBottom = `${(page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) * photos.length}px`;
             row.append(...nodes, space);
             return [row];
           }
-          space.style.height = `${height + 27 + 13}px`;
+          space.style.height = `${height + (page.showCaptions === false ? 0 : 27) + 13}px`;
           nodes.push(space);
         }
         return nodes;
@@ -120,6 +146,8 @@ export function useReportLayout(report: Report, approved: boolean) {
       const hasWorkshops = blocks.some((block) => !!block.photoRow);
       const columns: 1 | 2 = !hasWorkshops && page.text.length >= 900 ? 2 : 1;
       story.classList.toggle(styles.workshopStory, hasWorkshops);
+      pageNode.dataset.section = page.id;
+      pageNode.dataset.audience = String(!!page.registration?.audience);
       pageNode.dataset.columns = String(columns);
       title.textContent = page.title;
       continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
@@ -127,17 +155,18 @@ export function useReportLayout(report: Report, approved: boolean) {
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
       const stripSpace = (index: number) => {
         if (hasTrainingPhotoGrid(page, index)) return TRAINING_PHOTO_GRID_SPACE;
-        return stripPhotos(page, index).length ? PORTRAIT_STRIP_SPACE : 0;
+        return stripPhotos(page, index).length ? PORTRAIT_STRIP_SPACE - (page.showCaptions === false ? 34 : 0) : 0;
       };
       const hasPortraits = portraitPhotos(page).length > 0;
       pageNode.dataset.portraits = String(hasPortraits);
       const frames = paginate(blocks, page.frames, (candidate, index) => {
         const reserve = !hasLeadPhoto(page, index) && !hasTrainingPhotoGrid(page, index) && page.photos?.[String(index)]
-          ? MIN_FILL_PHOTO + PHOTO_CAPTION_SPACE + PHOTO_GAP : 0;
+          ? MIN_FILL_PHOTO + (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) + PHOTO_GAP : 0;
         const strip = stripSpace(index);
         return measureText(page, candidate, index, strip > 0) >= reserve + strip;
       });
       const photoHeights = frames.map((blocks, index) => {
+        if (page.fillPhotos === false && !hasLeadPhoto(page, index) && !page.photos?.[String(index)]) return 0;
         if (hasWorkshops && !page.photos?.[String(index)] && !hasLeadPhoto(page, index)) return 0;
         if (index === 0 && !blocks.length && !page.photos?.["0"] && !hasLeadPhoto(page, 0)) return 0;
         if (hasTrainingPhotoGrid(page, index)) return TRAINING_TILE_PREVIEW_HEIGHT;
@@ -148,7 +177,7 @@ export function useReportLayout(report: Report, approved: boolean) {
           return minimum + Math.max(0, freeSpace - 3);
         }
         if (strip && !page.photos?.[String(index)]) return 0;
-        const space = freeSpace - PHOTO_CAPTION_SPACE - PHOTO_GAP;
+        const space = freeSpace - (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) - PHOTO_GAP;
         return space >= MIN_FILL_PHOTO ? space : 0;
       });
       return { page, columns, frames, photoHeights, hasWorkshops };
@@ -253,7 +282,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         </div>
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
           onFocus={(event) => { if (!isActive && event.target.isContentEditable) onSelect(frame); }}
-          data-print-page="" data-review-draft={!ready} data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
+          data-print-page="" data-section={frame.id} data-audience={String(!!layout.find(x => x.page.id === frame.id)?.page.registration?.audience)} data-review-draft={!ready} data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
           data-portraits={portraits ? "true" : undefined} data-photo-strip={strip.length ? "true" : undefined}>
           {!ready && <span className={styles.draft}>Review draft</span>}
           {content}
@@ -290,7 +319,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             : <header className={styles.continuationHead}>{folioText(section + 1)} / {page.title} <span> / continued</span></header>}
           {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} showSource={!ready}
             inline={inline} change={(registration) => patchPage(page.id, () => ({ registration }))} />}
-          {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} lead />}
+          {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} lead />}
           <div className={styles.copy}>
             <div className={`${styles.story}${hasWorkshops ? ` ${styles.workshopStory}` : ""}`}>
               <Blocks page={page} blocks={blocks} inline={inline}
@@ -298,11 +327,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
               {onTextChange && index === 0 && !page.text.trim() && photoHeights[index] === 0 &&
                 <p className={`${styles.paragraph} ${styles.emptyStory}`} {...inline("", "Story text", (text) => patchPage(page.id, () => ({ text })), true)} />}
             </div>
-            {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={photoHeights[index]} />}
+            {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />}
             {strip.length > 0 && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
               role="group" aria-label={photoGrid ? "Training Week photographs" : "Additional photographs"}>
-              {photoGrid && <PhotoFigure photo={pagePhoto(page, index, recommendations)} height={stripHeight} />}
-              {strip.map(([key, photo]) => <PhotoFigure key={key} photo={photo} height={stripHeight} />)}
+              {photoGrid && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={stripHeight} />}
+              {strip.map(([key, photo]) => <PhotoFigure key={key} photo={photo} caption={page.showCaptions !== false} height={stripHeight} />)}
             </div>}
           </div>
           <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
@@ -319,7 +348,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             <a href="https://www.linkedin.com/company/biohubnet/" className={styles.backQr}>
               {/* eslint-disable-next-line @next/next/no-img-element -- vector QR for print */}
               <img src="/symposium-report-linkedin.svg" width={116} height={116} alt="" />
-              <span>Follow BioHubNet on LinkedIn</span>
+              <span>Scan for BioHubNet on LinkedIn</span>
             </a>
           </div>
         </div>

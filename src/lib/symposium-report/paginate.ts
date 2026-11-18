@@ -1,6 +1,6 @@
-export type Block = { kind: "paragraph" | "heading" | "note"; text: string; start: number; continued?: boolean; photoRow?: string };
+export type Block = { kind: "paragraph" | "heading" | "note" | "bullet" | "quote"; text: string; start: number; continued?: boolean; photoRow?: string };
 
-const markers = { paragraph: "", heading: "## ", note: "> " };
+const markers = { paragraph: "", heading: "## ", note: "> ", bullet: "- ", quote: "" };
 
 export function reportBlocks(text: string): Block[] {
   let cursor = 0;
@@ -9,7 +9,8 @@ export function reportBlocks(text: string): Block[] {
     if (!value) return [];
     const offset = text.indexOf(value, cursor);
     cursor = offset + value.length;
-    const kind = value.startsWith(markers.heading) ? "heading" : value.startsWith(markers.note) ? "note" : "paragraph";
+    const kind = value.startsWith(markers.heading) ? "heading" : value.startsWith(markers.note) ? "note"
+      : value.startsWith(markers.bullet) ? "bullet" : value.startsWith("“") ? "quote" : "paragraph";
     const marker = markers[kind].length;
     const photoAnchor = /(?:^|\r?\n)\[\[photos:([1-7])\]\]$/.exec(value);
     return [{ kind, text: value.slice(marker, photoAnchor?.index), start: offset + marker, photoRow: photoAnchor?.[1] }];

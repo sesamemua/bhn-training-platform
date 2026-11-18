@@ -7,7 +7,7 @@ import { REPORT_API } from "@/lib/symposium-report/document";
 import { PHOTO_UPLOAD_LIMIT, type GalleryEntry, type GalleryGroup } from "@/lib/symposium-report/gallery";
 import styles from "./report.module.css";
 
-export function PhotoFigure({ photo, height, lead = false }: { photo: ReportPhoto; height: number; lead?: boolean }) {
+export function PhotoFigure({ photo, height, lead = false, caption = true }: { photo: ReportPhoto; height: number; lead?: boolean; caption?: boolean }) {
   const source = `${REPORT_ASSETS}/${photo.file}`;
   const label = photoLabel(photo);
   const style = {
@@ -21,7 +21,7 @@ export function PhotoFigure({ photo, height, lead = false }: { photo: ReportPhot
         {/* eslint-disable-next-line @next/next/no-img-element -- same authenticated artwork for preview and print */}
         <img src={source} alt={label} />
       </div>
-      <figcaption>{label}</figcaption>
+      {caption && <figcaption>{label}</figcaption>}
     </figure>
   );
 }

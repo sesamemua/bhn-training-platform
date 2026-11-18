@@ -78,10 +78,11 @@ export function workshopPhotos(page: ReportPage, row?: string) {
 }
 
 export function workshopTileHeight(page: ReportPage, row?: string) {
-  if (page.id === "venturelift") return 225;
+  if (page.id === "venturelift") return Number(row) <= 3 ? 300 : 265;
+  if (page.id === "professional-development") return 214;
   const count = Object.keys(page.photos ?? {}).filter((key) => key.startsWith("workshop-")).length;
   if (count <= 4) return 190;
-  return Number(row) <= 3 ? 128 : 150;
+  return Number(row) <= 3 ? 140 : 175;
 }
 
 export function hasLeadPhoto(page: ReportPage, index: number) {

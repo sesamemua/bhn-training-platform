@@ -32,6 +32,11 @@ const registrationChart = z.object({
     label: z.string().trim().min(1).max(72),
     count: z.number().int().min(0).max(100_000),
   })).length(4).refine((items) => items.some((item) => item.count > 0), "The registration chart needs at least one positive count"),
+  audience: z.object({
+    trainees: z.number().int().min(0).max(100_000),
+    professionals: z.number().int().min(0).max(100_000),
+  }).refine((value) => value.trainees + value.professionals > 0).optional(),
+  percentagesOnly: z.boolean().optional(),
 });
 export type Registration = z.infer<typeof registrationChart>;
 
@@ -42,6 +47,8 @@ const page = z.object({
   text: z.string().max(16_000),
   image: z.enum(reportImages).optional(),
   registration: registrationChart.optional(),
+  showCaptions: z.boolean().optional(),
+  fillPhotos: z.boolean().optional(),
   photos: z.record(z.string().regex(/^(0|[1-9]\d?|portrait-[1-5]|photo-(?:0|[1-9]\d?)-[1-5]|workshop-[1-7]-[12])$/), reportPhoto).optional(),
   frames: z.number().int().min(1).max(20),
 });
