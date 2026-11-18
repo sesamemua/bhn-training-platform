@@ -40,13 +40,15 @@ export const BufferPostSchema = z.object({ id: z.string().min(1), channelId: z.l
 });
 export type BufferPost = z.infer<typeof BufferPostSchema>;
 
-export async function createBufferPost(text: string, image: string, alt: string, dueAt?: string): Promise<BufferPost> {
+export async function createBufferPost(text: string, image: string | string[], alt: string, dueAt?: string): Promise<BufferPost> {
+  const images = typeof image === "string" ? [image] : image;
+  if (!images.length || images.length > 20) throw new BufferRejected("Choose between one and 20 photos.");
   const data = await bufferRequest(`mutation Publish($input: CreatePostInput!) {
     createPost(input: $input) { ... on PostActionSuccess { post { id channelId status sentAt dueAt } }
       ... on MutationError { message } }
   }`, { input: { channelId: BUFFER_CHANNEL_ID, text, schedulingType: "automatic", mode: dueAt ? "customScheduled" : "shareNow",
     ...(dueAt ? { dueAt } : {}),
-    needsApproval: false, saveToDraft: false, assets: [{ image: { url: image, metadata: { altText: alt } } }],
+    needsApproval: false, saveToDraft: false, assets: images.map(url => ({ image: { url, metadata: { altText: alt } } })),
   } });
   if (data.createPost?.message) throw new BufferRejected(String(data.createPost.message).slice(0, 500));
   return BufferPostSchema.parse(data.createPost?.post);

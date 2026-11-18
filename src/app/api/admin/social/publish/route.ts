@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { R2_PUBLIC_URL_PREFIXES, putR2Object, r2PublicUrl } from "@/lib/r2";
 import { withSocialTags } from "@/lib/social/tags";
+import { socialPhotos } from "@/lib/social/photos";
 import { publishBlock } from "@/lib/assets/core";
 import { BUFFER_CHANNEL_URL, BufferRejected, connectedBufferPage, createBufferPost, readBufferPost, type BufferPost } from "@/lib/social/buffer";
 import { GET as speakerGraphic } from "../posts/[id]/image/route";
@@ -96,15 +97,20 @@ export async function POST(req: NextRequest) {
       const latest = await prisma.speaker.findUnique({ where: { id: post.deadlineId }, select: { updatedAt: true } });
       if (!latest || latest.updatedAt.getTime() !== speaker.updatedAt.getTime()) throw new Error("Speaker details changed while preparing the graphic. Review the post again.");
     }
-    if (!image || !URL.canParse(image)) throw new Error("Upload a graphic to the platform before publishing.");
-    const url = new URL(image);
-    if (!R2_PUBLIC_URL_PREFIXES.some(prefix => {
-      const base = new URL(prefix);
-      return url.protocol === "https:" && !url.username && !url.password && url.origin === base.origin && url.pathname.startsWith(`${base.pathname.replace(/\/$/, "")}/`);
-    })) throw new Error("Upload a graphic to the platform before publishing.");
-    await prisma.auditLog.create({ data: { actorId, action: dueAt ? "social.post.schedule" : "social.post.publish", targetType: "socialPost", targetId: post.id, detail: JSON.stringify({ version: post.editVersion, destination: "BioHubNet LinkedIn Page", assetUrl: image, ...(dueAt ? { dueAt } : {}) }) } });
+    const photos = socialPhotos(post.assetSpec);
+    const images = photos.length ? photos.map(photo => photo.url) : image ? [image] : [];
+    if (!images.length) throw new Error("Upload a graphic or photos to the platform before publishing.");
+    for (const image of images) {
+      if (!URL.canParse(image)) throw new Error("Upload a graphic or photos to the platform before publishing.");
+      const url = new URL(image);
+      if (!R2_PUBLIC_URL_PREFIXES.some(prefix => {
+        const base = new URL(prefix);
+        return url.protocol === "https:" && !url.username && !url.password && url.origin === base.origin && url.pathname.startsWith(`${base.pathname.replace(/\/$/, "")}/`);
+      })) throw new Error("Upload a graphic or photos to the platform before publishing.");
+    }
+    await prisma.auditLog.create({ data: { actorId, action: dueAt ? "social.post.schedule" : "social.post.publish", targetType: "socialPost", targetId: post.id, detail: JSON.stringify({ version: post.editVersion, destination: "BioHubNet LinkedIn Page", assetUrl: images[0], ...(photos.length ? { assetUrls: images } : {}), ...(dueAt ? { dueAt } : {}) }) } });
     attempted = true;
-    remote = await createBufferPost(text, url.href, (post.assetSpec as { title?: string } | null)?.title ?? "BioHubNet social graphic", dueAt);
+    remote = await createBufferPost(text, photos.length ? images : images[0], (post.assetSpec as { title?: string } | null)?.title ?? "BioHubNet social graphic", dueAt);
     const saved = await prisma.socialPost.update({ where: { id: post.id }, data: { ...(dueAt ? { scheduledFor: new Date(dueAt) } : {}), ...delivered(remote) }, select });
     return NextResponse.json({ post: saved });
   } catch (error) {

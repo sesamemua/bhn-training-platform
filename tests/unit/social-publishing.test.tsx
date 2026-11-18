@@ -10,6 +10,7 @@ import { BUFFER_CHANNEL_ID, BufferRejected, connectedBufferPage, createBufferPos
 import { SocialPublishControls } from "../../src/components/workspace/SocialPublishControls";
 import type { QueuePost } from "../../src/components/workspace/SocialQueue";
 import { editSocialPost } from "../../src/lib/social/edit";
+import { socialPhotos } from "../../src/lib/social/photos";
 
 const remote = { id: "buffer-1", channelId: BUFFER_CHANNEL_ID, status: "sending", sentAt: null as string | null };
 const initial = {
@@ -33,9 +34,10 @@ function load(path: string, mocks: Record<string, unknown>): Handlers {
 
 function harness() {
   const state = {
-    post: { ...initial }, authorized: true, rejectClaim: false, rejectProvider: false, timeout: false,
+    post: { ...initial, assetUrl: initial.assetUrl as string | null, assetSpec: initial.assetSpec as { title: string; photos?: { url: string; name: string }[] } }, authorized: true, rejectClaim: false, rejectProvider: false, timeout: false,
     connected: true, creates: 0, uploads: 0, audits: 0, result: { ...remote },
     dueAt: undefined as string | undefined,
+    images: [] as string[],
     speakerAt: new Date("2026-10-14T12:00:00Z"),
   };
   const mocks: Record<string, unknown> = {
@@ -58,14 +60,17 @@ function harness() {
       assetUrl: (key: string) => `https://images.example/${key}`, setUsage: async () => {} },
     "@/lib/r2": { R2_PUBLIC_URL_PREFIXES: ["https://images.example"],
       putR2Object: async () => { state.uploads++; }, r2PublicUrl: (key: string) => `https://images.example/${key}` },
+    "@/lib/social/photos": { socialPhotos },
     "@/lib/social/buffer": {
       BUFFER_CHANNEL_URL: "https://publish.buffer.com/company", BufferRejected,
       connectedBufferPage: async () => { if (!state.connected) throw new Error("Reconnect BioHubNet"); },
-      createBufferPost: async (text: string, image: string, alt: string, dueAt?: string) => {
+      createBufferPost: async (text: string, image: string | string[], alt: string, dueAt?: string) => {
         state.creates++;
         state.dueAt = dueAt;
+        state.images = typeof image === "string" ? [image] : image;
         assert.match(text, /Join our symposium/); assert.match(text, /@BioHubNet/);
-        assert.match(image, /^https:\/\/images.example\/social\//); assert.equal(alt, "Annual Symposium");
+        for (const url of state.images) assert.match(url, /^https:\/\/images.example\/social\//);
+        assert.equal(alt, "Annual Symposium");
         if (state.rejectProvider) throw new BufferRejected("Post rejected");
         if (state.timeout) throw new Error("Timeout");
         return state.result;
@@ -108,6 +113,19 @@ test("Buffer API sends the saved text and public image only to the verified comp
     assert.equal(calls[3].variables.input.mode, "customScheduled");
     assert.equal(calls[3].variables.input.dueAt, "2030-10-23T13:00:00.000Z");
     assert.equal(calls[3].variables.input.channelId, BUFFER_CHANNEL_ID);
+    const photos = [1, 2, 3, 4].map(n => `https://images.example/social/photo-${n}.jpg`);
+    await createBufferPost("Four approved photos", photos, "CCRM tour");
+    assert.deepEqual(calls[4].variables.input.assets, photos.map(url => ({ image: { url, metadata: { altText: "CCRM tour" } } })));
+    assert.equal(calls[4].variables.input.mode, "shareNow");
+    assert.equal(calls[4].variables.input.channelId, BUFFER_CHANNEL_ID);
+    await createBufferPost("Four approved photos", photos, "CCRM tour", "2030-10-23T13:00:00.000Z");
+    assert.deepEqual(calls[5].variables.input.assets, calls[4].variables.input.assets);
+    assert.equal(calls[5].variables.input.mode, "customScheduled");
+    assert.equal(calls[5].variables.input.dueAt, "2030-10-23T13:00:00.000Z");
+    const beforeInvalid = calls.length;
+    await assert.rejects(createBufferPost("Empty", [], "alt"), BufferRejected);
+    await assert.rejects(createBufferPost("Too many", Array(21).fill(photos[0]), "alt"), BufferRejected);
+    assert.equal(calls.length, beforeInvalid);
     for (const change of [{ type: "profile" }, { isDisconnected: true }, { isLocked: true }, { id: "personal" }, { name: "Someone else", displayName: "Someone else" }]) {
       const original = channel; channel = { ...channel, ...change };
       await assert.rejects(connectedBufferPage(), /reconnected/); channel = original;
@@ -295,4 +313,53 @@ test("only ready, approved, saved posts offer publishing; sending posts offer a 
   assert.match(sending, /Check status/); assert.doesNotMatch(sending, /Post Annual Symposium to LinkedIn/);
   assert.match(sending, /Scheduled for/);
   assert.match(sending, /dateTime="2026-10-15T13:00:00.000Z"/);
+  const album = render({ assetUrl: null, assetSpec: { photos: [1, 2, 3, 4].map(n => ({ name: `photo-${n}.jpg`, url: `https://images.example/social/photo-${n}.jpg` })) } });
+  assert.match(album, /Post 4 photos to LinkedIn/);
+  assert.doesNotMatch(album, /disabled=""/);
+  assert.match(render({ assetUrl: null, assetSpec: {} }), /disabled=""/);
+});
+
+test("all four approved photos are sent together once, in gallery order, for publishing and scheduling", async () => {
+  const photos = ["DSC00613.JPG", "DSC00643.JPG", "DSC00646.JPG", "DSC00677.JPG"].map(name => ({ name, url: `https://images.example/social/${name}` }));
+  for (const action of ["publish", "schedule"]) {
+    const { state, route, send } = harness();
+    state.post.assetUrl = null;
+    state.post.assetSpec.photos = photos;
+    const at = new Date(Date.now() + 86400000).toISOString();
+    if (action === "schedule") state.result.status = "scheduled";
+    assert.equal((await route.GET()).status, 200);
+    assert.equal(state.creates, 0, "reading connection status never publishes");
+    assert.equal((await send({ expectedVersion: 2 })).status, 409);
+    const results = await Promise.all([send({ action, ...(action === "schedule" ? { at } : {}) }), send({ action, ...(action === "schedule" ? { at } : {}) })]);
+    assert.deepEqual(results.map(r => r.status).sort(), [200, 409]);
+    assert.deepEqual(state.images, photos.map(photo => photo.url));
+    assert.equal(state.creates, 1);
+    assert.equal(state.audits, 1);
+    assert.equal(state.dueAt, action === "schedule" ? at : undefined);
+    assert.equal((await send()).status, 409);
+  }
+});
+
+test("an unsafe photo anywhere rejects the entire set; provider errors never cause partial or duplicate albums", async () => {
+  const photos = [1, 2, 3, 4].map(n => ({ name: `photo-${n}.jpg`, url: `https://images.example/social/photo-${n}.jpg` }));
+  for (const url of ["https://evil.test/photo.jpg", "https://images.example.evil.test/photo.jpg", "https://user:pass@images.example/photo.jpg", "javascript:alert(1)"]) {
+    const { state, send } = harness();
+    state.post.assetUrl = null;
+    state.post.assetSpec.photos = photos.map((photo, index) => index === 2 ? { ...photo, url } : photo);
+    assert.equal((await send()).status, 502);
+    assert.equal(state.creates, 0);
+    assert.equal(state.post.status, "approved");
+  }
+  for (const uncertain of [false, true]) {
+    const { state, send } = harness();
+    state.post.assetUrl = null;
+    state.post.assetSpec.photos = photos;
+    state.timeout = uncertain;
+    state.rejectProvider = !uncertain;
+    assert.equal((await send()).status, uncertain ? 202 : 502);
+    assert.equal(state.creates, 1);
+    assert.deepEqual(state.images, photos.map(photo => photo.url));
+    assert.equal(state.post.status, uncertain ? "publishing" : "approved");
+    if (uncertain) { assert.equal((await send()).status, 409); assert.equal(state.creates, 1); }
+  }
 });

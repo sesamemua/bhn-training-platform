@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, ExternalLink, RefreshCw, Send, X } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { POSTING_TIME_SOURCE, SOCIAL_TIME_ZONE, recommendedPostingTimes, socialDate, socialScheduledInstant } from "@/lib/social/scheduling";
+import { socialPhotos } from "@/lib/social/photos";
 import type { QueuePost } from "./SocialQueue";
 
 export type PublishingConnection = { ready: boolean; error?: string; url?: string };
@@ -25,6 +26,7 @@ export function SocialPublishControls({ post, connection, pending, onResult }: {
     return () => clearInterval(timer);
   }, [scheduling]);
   if (!['draft', 'approved', 'publishing', 'scheduled', 'published'].includes(post.status)) return null;
+  const photos = socialPhotos(post.assetSpec);
 
   async function act(action: "publish" | "schedule" | "refresh") {
     if (busy || pending) return;
@@ -34,7 +36,7 @@ export function SocialPublishControls({ post, connection, pending, onResult }: {
       const scheduled = action === "schedule" ? socialScheduledInstant(day, time) : null;
       if (scheduled && (!Number.isFinite(scheduled.getTime()) || scheduled.getTime() < Date.now() + 60_000)) throw new Error("Choose a time at least one minute in the future.");
       if (action !== "refresh" && !await confirmDialog({ title: scheduled ? "Schedule this post on BioHubNet's LinkedIn Page?" : "Post to BioHubNet's LinkedIn Page now?",
-        description: `This publishes the approved text and graphic for "${post.cycleLabel}" publicly as BioHubNet${scheduled ? " on " + scheduled.toLocaleString("en-CA", { timeZone: SOCIAL_TIME_ZONE, dateStyle: "full", timeStyle: "long" }) + " (Toronto)" : " now"}.`,
+        description: `This publishes the approved text and ${photos.length ? `${photos.length} photo${photos.length === 1 ? "" : "s"} together in one post` : "graphic"} for "${post.cycleLabel}" publicly as BioHubNet${scheduled ? " on " + scheduled.toLocaleString("en-CA", { timeZone: SOCIAL_TIME_ZONE, dateStyle: "full", timeStyle: "long" }) + " (Toronto)" : " now"}.`,
         confirmLabel: scheduled ? "Schedule post" : "Post now", tone: "warning",
       })) return;
       const response = await fetch("/api/admin/social/publish", {
@@ -51,7 +53,7 @@ export function SocialPublishControls({ post, connection, pending, onResult }: {
   }
 
   const locked = post.status === "publishing" || post.status === "scheduled";
-  const disabled = busy || pending || post.stale || !post.assetUrl || !connection?.ready || post.status !== "approved";
+  const disabled = busy || pending || post.stale || (!post.assetUrl && !photos.length) || !connection?.ready || post.status !== "approved";
   let selected: Date | null = null, timeError: string | null = null;
   if (day && time) {
     try { selected = socialScheduledInstant(day, time); }
@@ -64,7 +66,7 @@ export function SocialPublishControls({ post, connection, pending, onResult }: {
       {post.status === "approved" && <button type="button" disabled={disabled}
         onClick={() => void act("publish")} aria-label={`Post ${post.cycleLabel} to LinkedIn`}
         className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40">
-        <Send size={16} />{busy ? "Posting..." : "Post to LinkedIn"}
+        <Send size={16} />{busy ? "Posting..." : photos.length > 1 ? `Post ${photos.length} photos to LinkedIn` : "Post to LinkedIn"}
       </button>}
       {["draft", "approved"].includes(post.status) && <button type="button" disabled={disabled}
         title={post.status === "draft" ? "Approve the latest version before scheduling" : "Schedule publication"}

@@ -6,6 +6,7 @@ import { createElement, type ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as scheduling from "../../src/lib/social/scheduling";
+import { socialPhotos } from "../../src/lib/social/photos";
 
 test("three day-specific options follow Buffer's published ranking, not made-up account analytics", () => {
   assert.deepEqual(scheduling.recommendedPostingTimes("2026-10-19"), ["22:00", "17:00", "21:00"]);
@@ -52,6 +53,7 @@ test("the scheduling form offers a calendar date, three selectable recommendatio
     react: { useState: () => [state[index++], () => {}], useEffect: () => {} },
     "@/components/ui/ConfirmDialog": { useConfirmDialog: () => ({ node: null, confirmDialog: async () => false }) },
     "@/lib/social/scheduling": scheduling,
+    "@/lib/social/photos": { socialPhotos },
   };
   new Function("require", "exports", source)((id: string) => mocks[id] ?? require(id), exports);
   const render = (status = "approved") => {
