@@ -79,9 +79,12 @@ function Blocks({ page, blocks, inline, change }: { page: ReportPage; blocks: Bl
   return blocks.map((block, index) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p";
     const photos = workshopPhotos(page, block.photoRow);
-    const copy = block.text && <Tag className={styles[block.kind]}
-      {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
-      {block.text}
+    // Chromium can mislay columns when a spanning layout block is directly editable.
+    const copy = block.text && <Tag className={styles[block.kind]}>
+      <span className={styles.textFrame}
+        {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
+        {block.text}
+      </span>
     </Tag>;
     if (block.kind === "bullet") return <ul key={index} className={styles.list}>{copy}</ul>;
     const figures = photos.map(([key, photo]) => <PhotoFigure key={key} photo={photo} caption={page.showCaptions !== false} height={684 * workshopTileHeight(page, block.photoRow) / 337} />);
@@ -117,7 +120,10 @@ export function useReportLayout(report: Report, approved: boolean) {
       story.replaceChildren(...blocks.flatMap((block) => {
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p");
         node.className = styles[block.kind];
-        node.textContent = block.text;
+        const text = document.createElement("span");
+        text.className = styles.textFrame;
+        text.textContent = block.text;
+        node.append(text);
         const list = document.createElement("ul");
         list.className = styles.list;
         if (block.kind === "bullet") list.append(node);
