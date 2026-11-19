@@ -22,6 +22,16 @@
 
 .reviewShare { flex-basis: 100%; min-width: 0; border-top: 1px solid var(--line); padding-top: .75rem; }
 .reviewShare .status { margin: 0; }
+
+.reviewLaunch { animation: reviewLaunchPulse 5s ease-in-out infinite; }
+.reviewLaunch:is(:hover, :focus-visible) { animation: none; }
+@keyframes reviewLaunchPulse {
+  0%, 32%, 100% { box-shadow: 0 4px 12px rgb(184 54 76 / 20%); transform: translateY(0); }
+  14% { box-shadow: 0 0 0 6px rgb(184 54 76 / 14%), 0 7px 20px rgb(184 54 76 / 28%); transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce), (forced-colors: active) {
+  .reviewLaunch { animation: none; }
+}
 .reviewInvite { margin-top: .75rem; display: grid; gap: .65rem; max-width: 34rem; }
 .reviewInvite fieldset { min-width: 0; }
 .reviewInvite legend { font-size: .85rem; font-weight: 700; margin-bottom: .4rem; }
