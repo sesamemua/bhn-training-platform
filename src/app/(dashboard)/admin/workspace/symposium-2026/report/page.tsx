@@ -22,7 +22,7 @@ export default async function SymposiumReportPage() {
     <div className="symposium-report-screen space-y-6">
       <div className="report-screen-only">
         <PageHero eyebrow={<><FileText size={12} /> 2026 Symposium</>} title="Event Report"
-          description="Edit the Letter draft, swap in final event photos, and leave feedback in the current review round." />
+          description="Edit the Letter draft and swap final event photos. Open the full-page review to leave comments." />
       </div>
       {data ? <ReportEditor key={`${data.review.round}:${data.review.status}`} {...data}
         recommendations={recommendations} meId={user.id} isAdmin={user.role === "admin" || user.role === "superadmin"} />

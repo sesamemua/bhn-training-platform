@@ -37,7 +37,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const [edit, setEdit] = useState<PhotoEdit | null>(null);
   const [typing, setTyping] = useState(false);
   const [tab, setTab] = useState<"pages" | "comments">("comments");
-  const [quote, setQuote] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -62,7 +61,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   function select(frame: Frame, scroll = false) {
     if (edit) return;
     setActive(frame);
-    setQuote("");
     if (scroll) window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.scrollIntoView({ block: "start" });
   }
 
@@ -185,17 +183,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     } finally { setBusy(false); }
   }
 
-  function commentOn(frame: Frame) {
-    const selection = window.getSelection();
-    const sheet = window.document.getElementById(`report-frame-${frame.id}-${frame.index}`);
-    const selected = sheet && selection?.anchorNode && selection.focusNode
-      && sheet.contains(selection.anchorNode) && sheet.contains(selection.focusNode) ? selection.toString().trim() : "";
-    setActive(frame);
-    setQuote(selected.slice(0, 600));
-    setTab("comments");
-    requestAnimationFrame(() => window.document.getElementById("report-comments")?.scrollIntoView({ block: "nearest" }));
-  }
-
   const controlsDisabled = !editable || !!edit || busy;
   const removable = chapter && (active.index === 0 ? report.pages.length > 1 : active.index === chapter.frames.length - 1 && chapter.page.frames === chapter.frames.length && !chapter.frames.at(-1)?.length);
   const editForm = edit && (
@@ -272,8 +259,9 @@ export function ReportEditor({ report: initial, revision, history, review, recom
             </select>
           </label>}
           <div id="report-comments" hidden={tab !== "comments"}>
+            <p className={styles.status}>Choose “Open full-page review” above to add or reply to comments.</p>
             <PageReviewClient initialReview={review} meId={meId} isAdmin={isAdmin}
-              reportAnchor={{ label, quote, readOnly: past !== null, key: `#report-frame-${active.id}-${active.index}`,
+              reportAnchor={{ label, quote: "", readOnly: true, key: `#report-frame-${active.id}-${active.index}`,
                 onLocate: (key) => {
                   const hit = /^#report-frame-(.+)-(\d+)$/.exec(key);
                   if (hit) select({ id: hit[1], index: Number(hit[2]) });
@@ -282,8 +270,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
           onSelect={select} edit={editForm} onTextChange={controlsDisabled ? undefined : applyText} onTyping={setTyping}
-          onPhoto={controlsDisabled ? undefined : startPhoto}
-          onComment={past === null && review.status === "open" && !edit ? commentOn : undefined} />}
+          onPhoto={controlsDisabled ? undefined : startPhoto} />}
         <ReportRuler ruler={ruler} />
       </div>
       {node}
