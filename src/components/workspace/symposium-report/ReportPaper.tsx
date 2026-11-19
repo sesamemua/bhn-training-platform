@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, replaceReportBlock, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
 import { hasLeadPhoto, hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS, stripPhotos, TRAINING_PHOTO_GRID_SPACE, TRAINING_TILE_PREVIEW_HEIGHT, workshopPhotos, workshopTileHeight } from "@/lib/symposium-report/photos";
@@ -75,12 +75,20 @@ function RegistrationChart({ chart, showSource, inline, change }: {
   );
 }
 
+function blockClassName(block: Block, rosterStart: number | undefined) {
+  const roster = rosterStart !== undefined && block.start >= rosterStart;
+  return `${styles[block.kind]}${roster ? ` ${styles[block.kind === "heading" ? "rosterHeading" : "rosterNames"]}` : ""}`;
+}
+
 function Blocks({ page, blocks, inline, change }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void }) {
+  const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading")?.start : undefined;
   return blocks.map((block, index) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p";
     const photos = workshopPhotos(page, block.photoRow);
     // Chromium can mislay columns when a spanning layout block is directly editable.
-    const copy = block.text && <Tag className={styles[block.kind]}>
+    const copy = block.text && <Tag className={blockClassName(block, rosterStart)} onClick={(event: MouseEvent<HTMLElement>) => {
+      if (event.target === event.currentTarget) event.currentTarget.querySelector<HTMLElement>('[contenteditable]')?.focus();
+    }}>
       <span className={styles.textFrame}
         {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
         {block.text}
@@ -117,9 +125,10 @@ export function useReportLayout(report: Report, approved: boolean) {
     const measureText = (page: ReportPage, blocks: Block[], index: number, hasStrip: boolean) => {
       pageNode.dataset.continued = String(index > 0);
       pageNode.dataset.photoStrip = String(hasStrip);
+      const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading")?.start : undefined;
       story.replaceChildren(...blocks.flatMap((block) => {
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p");
-        node.className = styles[block.kind];
+        node.className = blockClassName(block, rosterStart);
         const text = document.createElement("span");
         text.className = styles.textFrame;
         text.textContent = block.text;

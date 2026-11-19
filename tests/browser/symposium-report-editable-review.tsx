@@ -106,6 +106,13 @@ async function main() {
       assert.ok(geometry.inPage, `networking field ${i} must remain visible on its page`);
     }
     assert.deepEqual(await networking.allTextContents(), originalNetworking, "focus must preserve all networking copy");
+    const firstQuote = networking.filter({ hasText: /^“Conversation 1 / });
+    await firstQuote.locator("..").click({ position: { x: 2, y: 2 } });
+    await expect(firstQuote).toBeFocused();
+    await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
+    await expect(page.locator('[data-report-paper] [class*="rosterHeading"]')).toHaveText("Participating industry professionals");
+    await expect(page.locator('[data-report-paper] [class*="rosterNames"]')).toHaveCount(1);
+    await expect(page.locator("#bhn-review-overlay")).toContainText("Use Comment on page to start a thread.");
     const mentor = networking.filter({ hasText: /^Mentor 1 · Professional role 1/ });
     const revisedMentor = (await mentor.innerText()) + " Revised profile.";
     await mentor.fill(revisedMentor);

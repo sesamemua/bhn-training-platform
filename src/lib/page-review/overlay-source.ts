@@ -1036,7 +1036,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var threads = topComments();
       var current = threads.filter(function(comment){ return comment.round === state.review.round; });
       var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
-      if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round ? " Click any page element to start a thread." : "")));
+      if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round ? (editableReportPage(document.querySelector(scopeSelector)) ? " Use Comment on page to start a thread. Click text to edit." : " Click any page element to start a thread.") : "")));
       current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
       body.appendChild(list);
       if (previous.length) {
@@ -1287,6 +1287,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     });
   }
 
+  function editableReportPage(node) {
+    return reportCommentEndpoint && staffSurface === "report" && node &&
+      node.closest(pageSelector)?.querySelector('[contenteditable]:not([contenteditable="false"])');
+  }
+
   function onMove(event) {
     if (inOverlay(event.target)) {
       if (threadHighlight) showHighlight(threadHighlight);
@@ -1294,14 +1299,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       return;
     }
     threadHighlight = null;
+    if (editableReportPage(event.target)) { showHighlight(null); return; }
     showHighlight(event.target);
   }
 
   function onClick(event) {
     if (inOverlay(event.target)) return;
     if (reportCommentEndpoint && (!state.viewer || isLocked())) return;
-    if (reportCommentEndpoint && staffSurface === "report" && event.type !== "bhn-report-comment" &&
-        event.target.closest('[contenteditable]:not([contenteditable="false"])')) return;
+    if (event.type !== "bhn-report-comment" && editableReportPage(event.target)) return;
     event.preventDefault();
     event.stopPropagation();
     var node = reportCommentEndpoint ? (event.target.closest("h1,h2,h3,h4,p,li,blockquote,figcaption,img,td") || event.target.closest(pageSelector)) : event.target;

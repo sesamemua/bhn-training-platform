@@ -408,7 +408,7 @@
 .bullet { font: 16px/1.45 var(--serif); padding-left: 3px; }
 .bullet::marker { color: var(--report-teal); }
 .quote { font: 15px/1.4 var(--serif); background: var(--report-panel); border-left: 2px solid var(--report-teal); padding: 10px 12px; margin-bottom: 12px; break-inside: avoid; }
-.chapter[data-section="structured-networking"] .story > .heading:last-of-type {
+.story > .rosterHeading {
   column-span: all;
   margin-top: 12px;
   padding: 14px 14px 0;
@@ -416,7 +416,7 @@
   border: 1px solid var(--report-rule);
   border-bottom: 0;
 }
-.chapter[data-section="structured-networking"] .story > .paragraph:last-child {
+.story > .rosterNames {
   column-span: all;
   padding: 8px 14px 14px;
   background: var(--report-panel);
@@ -424,6 +424,7 @@
   border-top: 0;
   font: 13px/1.55 var(--sans);
 }
+.chapter[data-section="structured-networking"] .paragraph { break-inside: avoid-column; }
 .paragraph {
   font: 16px/1.48 var(--serif);
   padding-bottom: 12px;
