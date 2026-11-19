@@ -46,7 +46,7 @@ test("the main report editor keeps comments readable and directs new feedback to
     },
   }));
   assert.match(html, /Existing draft feedback/);
-  assert.match(html, /Open full-page review/);
+  assert.match(html, /Start Round 1 review/);
   assert.match(html, /href="\/review\/symposium-2026\/report"[^>]*target="_blank"/);
   assert.doesNotMatch(html, /New comment|aria-label="Review comment"/);
   assert.doesNotMatch(html, />\s*(?:Reply|Add comment|Edit|Delete|Resolve)\s*</);

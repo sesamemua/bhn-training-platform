@@ -75,7 +75,7 @@ export function ReportReviewShare({ round, revision, canInvite }: {
 
   return <section className={styles.reviewShare} aria-label="Share report for review">
     <div className={styles.actions}>
-      <a href={REPORT_REVIEW_PATH} target="_blank" rel="noopener noreferrer" className={`${styles.reviewLaunch} newsletter-review-launch`}><ExternalLink size={18} aria-hidden />Open full-page review</a>
+      <a href={REPORT_REVIEW_PATH} target="_blank" rel="noopener noreferrer" className={`${styles.reviewLaunch} newsletter-review-launch`}><ExternalLink size={18} aria-hidden />Start Round {round} review</a>
       <button type="button" onClick={async () => {
         setError(""); setStatus("");
         try {

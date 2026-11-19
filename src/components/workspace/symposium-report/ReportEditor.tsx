@@ -259,7 +259,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
             </select>
           </label>}
           <div id="report-comments" hidden={tab !== "comments"}>
-            <p className={styles.status}>Choose “Open full-page review” above to add or reply to comments.</p>
+            <p className={styles.status}>Choose “Start Round {review.round} review” above to add or reply to comments.</p>
             <PageReviewClient initialReview={review} meId={meId} isAdmin={isAdmin}
               reportAnchor={{ label, quote: "", readOnly: true, key: `#report-frame-${active.id}-${active.index}`,
                 onLocate: (key) => {

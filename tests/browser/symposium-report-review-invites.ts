@@ -36,6 +36,7 @@ async function main() {
     await page.route("https://report-invites.test/", route => route.fulfill({ contentType: "text/html", body: '<html><body><div id="root"></div><script src="/app.js"></script></body></html>' }));
     await page.route("https://report-invites.test/app.js", route => route.fulfill({ contentType: "application/javascript", body: bundle.outputFiles[0].text }));
     await page.goto("https://report-invites.test/");
+    await expect(page.getByRole("link", { name: "Start Round 2 review", exact: true })).toHaveAttribute("href", "/review/symposium-2026/report");
     await page.getByRole("button", { name: "Copy review link", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("Review link copied.");
     assert.deepEqual(await page.evaluate(() => (window as unknown as { copied: string[] }).copied), ["https://report-invites.test/review/symposium-2026/report"]);
