@@ -277,7 +277,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
                 {strip.map(([key, photo]) => <option key={key} value={key}>{photoLabel(photo)}</option>)}
               </select>
             )}
-            {onComment && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onComment(frame)}>Comment</button>}
+            {onComment && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onComment(frame)}>Comment on page</button>}
           </div>
         </div>
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}

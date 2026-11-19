@@ -22,11 +22,12 @@ type Props = {
   recommendations: Record<string, ReportPhoto[]>;
   meId: string;
   isAdmin: boolean;
+  fullPageReview?: boolean;
 };
 type PhotoEdit = { frame: Frame; initial?: ReportPhoto; automatic: ReportPhoto; height: number; slot?: string };
 const cover: Frame = { id: "cover", index: 0 };
 
-export function ReportEditor({ report: initial, revision, history, review, recommendations, meId, isAdmin }: Props) {
+export function ReportEditor({ report: initial, revision, history, review, recommendations, meId, isAdmin, fullPageReview = false }: Props) {
   const router = useRouter();
   const { confirmDialog, node } = useConfirmDialog();
   const [report, setReport] = useState(initial);
@@ -36,7 +37,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const [active, setActive] = useState<Frame>(cover);
   const [edit, setEdit] = useState<PhotoEdit | null>(null);
   const [typing, setTyping] = useState(false);
-  const [tab, setTab] = useState<"pages" | "comments">("comments");
+  const [tab, setTab] = useState<"pages" | "comments">(fullPageReview ? "pages" : "comments");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -46,10 +47,24 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const editable = past === null && review.status === "open" && !transitioning;
   const approved = review.status === "closed" && (past === null || past === review.round);
   const { layout, ruler } = useReportLayout(document, approved);
+  const ready = !!layout;
   const dirty = report !== saved || typing;
   const chapter = layout?.find(({ page }) => page.id === active.id);
   const count = layout ? 2 + layout.reduce((sum, item) => sum + item.frames.length, 0) : 0;
   const label = chapter?.page.title ?? (active.id === "back" ? "Back cover" : "Cover");
+
+  useEffect(() => {
+    if (!fullPageReview || !ready) return;
+    const script = window.document.createElement("script");
+    script.src = `${REPORT_API}/review?overlay=1`;
+    script.dataset.round = String(past ?? review.round);
+    script.onerror = () => setError("The review panel could not load. Reload the review to try again.");
+    window.document.head.appendChild(script);
+    return () => {
+      script.remove();
+      (window as Window & { __bhnReviewCleanup?: () => void }).__bhnReviewCleanup?.();
+    };
+  }, [fullPageReview, ready, review.round, past]);
 
   useEffect(() => {
     if (!dirty && !edit) return;
@@ -197,7 +212,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · {dirty ? "Unsaved changes" : "Shared draft"}</p>
-          {editable && <p>Click the text to edit it on the page.</p>}
+          {editable && <p>Click text to edit it, then save the draft.{fullPageReview && " Use Comment on page to leave feedback."}</p>}
         </div>
         <div className={styles.actions}>
           {history.length > 0 && (
@@ -216,7 +231,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
           {isAdmin && editable && <button type="button" disabled={controlsDisabled || dirty} onClick={() => write("approve")}>Approve report</button>}
           {approved && layout && <button type="button" className={styles.primary} onClick={() => window.print()}><Printer size={15} /> Print / Save PDF</button>}
         </div>
-        <ReportReviewShare round={review.round} revision={token} canInvite={!controlsDisabled && !dirty} />
+        {!fullPageReview && <ReportReviewShare round={review.round} revision={token} canInvite={!controlsDisabled && !dirty} />}
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
@@ -227,7 +242,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
         <aside className={`${styles.rail} report-screen-only`} aria-label="Report controls">
           <div className={styles.tabs}>
             <button type="button" aria-pressed={tab === "pages"} onClick={() => setTab("pages")}><BookOpen size={15} /> Pages</button>
-            <button type="button" aria-pressed={tab === "comments"} onClick={() => setTab("comments")}><MessageSquare size={15} /> Review</button>
+            {!fullPageReview && <button type="button" aria-pressed={tab === "comments"} onClick={() => setTab("comments")}><MessageSquare size={15} /> Review</button>}
           </div>
           {tab === "pages" && <>
             <nav className={styles.outline} aria-label="Report pages">
@@ -258,7 +273,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
               <option value="back:0">Back cover</option>
             </select>
           </label>}
-          <div id="report-comments" hidden={tab !== "comments"}>
+          {!fullPageReview && <div id="report-comments" hidden={tab !== "comments"}>
             <p className={styles.status}>Choose “Start Round {review.round} review” above to add or reply to comments.</p>
             <PageReviewClient initialReview={review} meId={meId} isAdmin={isAdmin}
               reportAnchor={{ label, quote: "", readOnly: true, key: `#report-frame-${active.id}-${active.index}`,
@@ -266,11 +281,16 @@ export function ReportEditor({ report: initial, revision, history, review, recom
                   const hit = /^#report-frame-(.+)-(\d+)$/.exec(key);
                   if (hit) select({ id: hit[1], index: Number(hit[2]) });
                 } }} />
-          </div>
+          </div>}
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
           onSelect={select} edit={editForm} onTextChange={controlsDisabled ? undefined : applyText} onTyping={setTyping}
-          onPhoto={controlsDisabled ? undefined : startPhoto} />}
+          onPhoto={controlsDisabled ? undefined : startPhoto}
+          onComment={fullPageReview && editable ? (frame) => {
+            select(frame);
+            window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.querySelector("article")
+              ?.dispatchEvent(new CustomEvent("bhn-report-comment", { bubbles: true }));
+          } : undefined} />}
         <ReportRuler ruler={ruler} />
       </div>
       {node}

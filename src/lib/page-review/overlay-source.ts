@@ -1300,6 +1300,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function onClick(event) {
     if (inOverlay(event.target)) return;
     if (reportCommentEndpoint && (!state.viewer || isLocked())) return;
+    if (reportCommentEndpoint && staffSurface === "report" && event.type !== "bhn-report-comment" &&
+        event.target.closest('[contenteditable]:not([contenteditable="false"])')) return;
     event.preventDefault();
     event.stopPropagation();
     var node = reportCommentEndpoint ? (event.target.closest("h1,h2,h3,h4,p,li,blockquote,figcaption,img,td") || event.target.closest(pageSelector)) : event.target;

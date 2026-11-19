@@ -28,7 +28,7 @@ test("the main report editor keeps comments readable and directs new feedback to
   const editorModule = { exports: {} as { ReportEditor: React.ComponentType<Record<string, unknown>> } };
   new Function("require", "module", "exports", bundle.outputFiles[0].text)(createRequire(import.meta.url), editorModule, editorModule.exports);
 
-  const html = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, {
+  const props = {
     report: {
       cover: { title: "Report", theme: "Workforce", date: "October 29" },
       pages: [{ id: "summary", label: "Overview", title: "Summary", text: "Report copy", frames: 1 }],
@@ -44,10 +44,15 @@ test("the main report editor keeps comments readable and directs new feedback to
         editedAt: null, editedByName: null, createdAt: "2026-11-19T12:00:00Z",
       }],
     },
-  }));
+  };
+  const html = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, props));
   assert.match(html, /Existing draft feedback/);
   assert.match(html, /Start Round 1 review/);
   assert.match(html, /href="\/review\/symposium-2026\/report"[^>]*target="_blank"/);
   assert.doesNotMatch(html, /New comment|aria-label="Review comment"/);
   assert.doesNotMatch(html, />\s*(?:Reply|Add comment|Edit|Delete|Resolve)\s*</);
+  const fullPage = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview: true }));
+  assert.match(fullPage, /Click text to edit it, then save the draft/);
+  assert.match(fullPage, /Use Comment on page to leave feedback/);
+  assert.doesNotMatch(fullPage, /Existing draft feedback|Start Round 1 review|id="report-comments"/);
 });
