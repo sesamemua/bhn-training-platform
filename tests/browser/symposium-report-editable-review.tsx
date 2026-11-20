@@ -15,6 +15,10 @@ const networkingText = [
   Array.from({ length: 17 }, (_, i) => `Mentor ${i + 1}`).join(" · "),
 ].join("\n\n");
 
+const ventureFixture = { id: "venturelift", label: "Annual Symposium", title: "VentureLift Spotlight", frames: 1,
+  text: Array.from({ length: 7 }, (_, i) => `## Venture ${i + 1} • Presenter ${i + 1}\n\n${"A trainee-led venture connects scientific research with practical development and validation. ".repeat(3)}\n[[photos:${i + 1}]]`).join("\n\n"),
+  photos: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`workshop-${i + 1}-1`, { file: "cover.jpg", caption: `Venture ${i + 1} · Presenter ${i + 1}`, x: 50, y: 30, fit: "cover" }])) };
+
 async function main() {
   const bundle = await build({
     stdin: {
@@ -23,7 +27,7 @@ async function main() {
         const closed = location.search === "?closed";
         createRoot(document.getElementById("root")).render(<ReportEditor fullPageReview
           report={{cover:{title:"Annual Symposium",theme:"Future workforce",date:"October 29"},
-            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false},{id:"annual-symposium",label:"Opening program",title:"Annual Symposium",text:"The opening program connected research, industry and careers.",frames:1,photos:{"0":{file:"keynote.jpg",caption:"Christopher Procyshyn keynote",x:50,y:40,fit:"cover"},"photo-0-1":{file:"welcome-1.webp",caption:"Molly Shoichet delivers the opening remarks",x:50,y:33,fit:"cover"}}}],
+            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false},{id:"annual-symposium",label:"Opening program",title:"Annual Symposium",text:"The opening program connected research, industry and careers.",frames:1,photos:{"0":{file:"keynote.jpg",caption:"Christopher Procyshyn keynote",x:50,y:40,fit:"cover"},"photo-0-1":{file:"welcome-1.webp",caption:"Molly Shoichet delivers the opening remarks",x:50,y:33,fit:"cover"}}},${JSON.stringify(ventureFixture)}],
             back:{title:"BioHubNet",text:"Connect"}}}
           revision={"a".repeat(64)} history={[{round:1,report:{cover:{title:"Archived title",theme:"Future workforce",date:"October 29"},pages:[{id:"summary",label:"Overview",title:"Summary",text:"Archived passage",frames:1,fillPhotos:false}],back:{title:"BioHubNet",text:"Connect"}}}]} recommendations={{}} meId="staff" isAdmin={false}
           review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:[]}}/>);`,
@@ -41,9 +45,10 @@ async function main() {
   });
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, permissions: ["clipboard-read", "clipboard-write"] });
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
+    let exported = false, exports = 0;
     const comments: unknown[] = [];
     const selections: { anchorPath: string; anchorQuote: string | null; anchorKey: string; body: string }[] = [];
     const saves: { round: number; revision: string; report: { cover: { title: string }; pages: { text: string }[] } }[] = [];
@@ -55,8 +60,13 @@ async function main() {
         body: bundle.outputFiles.find(file => file.path.endsWith(url.pathname))!.text,
       });
       if (url.pathname === REPORT_API + "/review") {
+        if (route.request().method() === "POST") {
+          assert.deepEqual(route.request().postDataJSON(), { action: "export", expectedRound: 2 });
+          exported = true; exports++;
+          return route.fulfill({ json: { ok: true, brief: "Checked Round 2 comments", review: { title: "Report", round: 2, status: "exported" } } });
+        }
         if (url.searchParams.has("overlay")) return route.fulfill({ contentType: "application/javascript", body: overlaySource(REPORT_API + "/review", "Report", true, "/api/workspace/page-review/" + REPORT_ID) });
-        return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : "open" }, viewer: { name: "Staff" }, comments, comparison: null } });
+        return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : exported ? "exported" : "open" }, viewer: { name: "Staff" }, comments, comparison: null } });
       }
       if (url.pathname === REPORT_API && route.request().method() === "POST") {
         saves.push(route.request().postDataJSON());
@@ -87,6 +97,12 @@ async function main() {
     const buildBox = (await build.boundingBox())!;
     assert.ok(buildBox.x < 40 && buildBox.y + buildBox.height > 1000 - 40, "the build SHA sits in the bottom-left corner");
     await expect(page.locator("#bhn-review-overlay")).toContainText("Choose Comment on an element");
+    await expect(page.locator('[id^="report-frame-venturelift-"]')).toHaveCount(1);
+    await expect(page.locator('#report-frame-venturelift-0 img')).toHaveCount(7);
+    assert.equal(await page.locator('#report-frame-venturelift-0 article').evaluate(e => {
+      const frame = e.getBoundingClientRect();
+      return Array.from(e.querySelectorAll('figure')).every(f => f.getBoundingClientRect().bottom <= frame.bottom);
+    }), true);
     const openingPhotos = page.locator('#report-frame-annual-symposium-0 [class*="leadPhotos"] figure img');
     await expect(openingPhotos).toHaveCount(2);
     const rectangles = await openingPhotos.evaluateAll(images => images.map(image => {
@@ -268,6 +284,29 @@ async function main() {
     assert.ok(saves.at(-1)!.report.pages[1].text.includes(revisedMentor));
     assert.ok(saves.at(-1)!.report.pages[1].text.includes("Mentor 17 · Professional role 17"));
     assert.ok(saves.at(-1)!.report.pages[1].text.includes("Conversation 6 connected research experience"));
+    await page.locator('[class*="rosterNames"] [role="textbox"]').fill("");
+    await page.locator('[class*="rosterNames"] [role="textbox"]').blur();
+    await page.locator('[class*="rosterHeading"] [role="textbox"]').fill("");
+    await page.locator('[class*="rosterHeading"] [role="textbox"]').blur();
+    await expect(page.locator('[class*="rosterHeading"],[class*="rosterNames"]')).toHaveCount(0);
+    await expect(networking.filter({ hasText: /^Mentor 17 · Professional role 17/ })).toBeVisible();
+    await expect(page.locator("[data-report-unsaved]")).toHaveAttribute("data-report-unsaved", "false");
+    await page.locator("#report-frame-summary-0 figcaption").click();
+    await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Unsent feedback");
+    await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
+    await expect(page.locator("#bhn-review-overlay")).toContainText("Finish or cancel your comment");
+    assert.equal(exports, 0);
+    await page.locator("#bhn-review-overlay").getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.getByRole("textbox", { name: "Cover theme", exact: true }).fill("A final local edit");
+    await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
+    await expect(page.locator("#bhn-review-overlay")).toContainText("Wait for autosave");
+    assert.equal(exports, 0);
+    await expect(page.locator("[data-report-unsaved]")).toHaveAttribute("data-report-unsaved", "false");
+    await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Comments copied", exact: true })).toBeVisible();
+    await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
+    await expect(page.locator("#bhn-review-overlay")).toContainText("was exported and is locked");
+    assert.equal(exports, 1);
     await page.getByLabel("Report round version").selectOption("1");
     await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Comment on page", exact: true })).toHaveCount(0);

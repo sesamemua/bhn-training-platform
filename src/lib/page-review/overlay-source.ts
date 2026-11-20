@@ -37,6 +37,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     comments: [],
     selected: null,
     pickingElement: false,
+    copiedRound: null,
     draft: "",
     replyTo: null,
     replyDraft: "",
@@ -1029,15 +1030,29 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       setTimeout(function(){ try { nameInput.focus(); } catch (e) {} }, 0);
     } else {
       if (reportCommentEndpoint) {
-        body.appendChild(addButton("Copy review comments", "bhn-rv-btn", async function(){
+        body.appendChild(addButton(state.copiedRound === state.review.round ? "Comments copied" : "Copy review comments", "bhn-rv-btn", async function(){
           try {
-            var response = await fetch(endpoint + "?brief=1");
+            if (reportReview && (state.saving || state.draft.trim() || state.replyTo !== null || state.editingId !== null)) throw new Error("Finish or cancel your comment or reply before copying and locking this round.");
+            if (reportReview && document.querySelector('[data-report-unsaved="true"]')) throw new Error("Wait for autosave, or finish the open photo edit, before copying and locking this round.");
+            this.disabled = true;
+            var response = reportReview
+              ? await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export", expectedRound: state.pageRound }) })
+              : await fetch(endpoint + "?brief=1");
             var data = await response.json();
-            if (!response.ok || !data.ok) throw new Error();
-            await navigator.clipboard.writeText(data.brief);
-            this.textContent = "Comments copied";
-          } catch (_) {
-            state.error = "Could not copy the comments. Try again.";
+            if (!response.ok || !data.ok) throw new Error(data.error || "Could not copy the comments. Try again.");
+            if (reportReview) {
+              state.review = data.review;
+              state.pickingElement = false;
+              window.dispatchEvent(new CustomEvent("bhn-report-review-state", { detail: data.review }));
+            }
+            try { await navigator.clipboard.writeText(data.brief); }
+            catch (_) { throw new Error(reportReview ? "This round is locked, but clipboard access failed. Copy the comments again to retry." : "Could not copy the comments. Try again."); }
+            state.error = "";
+            state.copiedRound = state.review.round;
+            if (reportReview) render();
+            else this.textContent = "Comments copied";
+          } catch (error) {
+            state.error = error.message || "Could not copy the comments. Try again.";
             render();
           }
         }));
@@ -1146,6 +1161,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var changed = roundChanged || state.review.status !== data.review.status || commentsSignature(state.comments) !== commentsSignature(data.comments || []);
       if (roundChanged) { state.historyExpanded = false; state.expandedThreads = {}; }
       state.review = data.review;
+      if (reportReview) window.dispatchEvent(new CustomEvent("bhn-report-review-state", { detail: data.review }));
       if (roundChanged || isLocked()) state.pickingElement = false;
       if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;

@@ -30,8 +30,9 @@ type Props = {
 type PhotoEdit = { frame: Frame; initial?: ReportPhoto; automatic: ReportPhoto; height: number; slot?: string };
 const cover: Frame = { id: "cover", index: 0 };
 
-export function ReportEditor({ report: initial, revision, history, review, recommendations, meId, isAdmin, fullPageReview = false }: Props) {
+export function ReportEditor({ report: initial, revision, history, review: initialReview, recommendations, meId, isAdmin, fullPageReview = false }: Props) {
   const router = useRouter();
+  const [review, setReview] = useState(initialReview);
   const { confirmDialog, node } = useConfirmDialog();
   const [report, setReport] = useState(initial);
   const [saved, setSaved] = useState(initial);
@@ -108,6 +109,17 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   }
 
   useEffect(() => {
+    const syncReview = (event: Event) => {
+      const next = (event as CustomEvent<{ round: number; status: string }>).detail;
+      if (!next || !["open", "exported", "closed"].includes(next.status)) return;
+      if (next.round !== review.round) { setTransitioning(true); return; }
+      setReview((current) => current.status === next.status ? current : { ...current, status: next.status });
+    };
+    window.addEventListener("bhn-report-review-state", syncReview);
+    return () => window.removeEventListener("bhn-report-review-state", syncReview);
+  }, [review.round]);
+
+  useEffect(() => {
     if (!fullPageReview || !ready) return;
     const script = window.document.createElement("script");
     script.src = `${REPORT_API}/review?overlay=1`;
@@ -126,22 +138,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, edit]);
-
-  // Autosave shortly after each finished edit (text commits when you leave the box).
-  useEffect(() => {
-    if (!editable || saving || typing || report === saved || failedOn === report) return;
-    const timer = window.setTimeout(() => void save(), 800);
-    return () => window.clearTimeout(timer);
-  });
-  // Leaving the tab commits the box being typed in, so it autosaves too.
-  useEffect(() => {
-    const commit = () => {
-      const focused = window.document.activeElement;
-      if (window.document.visibilityState === "hidden" && focused instanceof HTMLElement && focused.isContentEditable) focused.blur();
-    };
-    window.document.addEventListener("visibilitychange", commit);
-    return () => window.document.removeEventListener("visibilitychange", commit);
-  }, []);
 
   async function save() {
     const sent = report;
@@ -173,6 +169,22 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     } finally { setSaving(false); }
   }
 
+  // Autosave shortly after each finished edit (text commits when you leave the box).
+  useEffect(() => {
+    if (!editable || saving || typing || report === saved || failedOn === report) return;
+    const timer = window.setTimeout(() => void save(), 800);
+    return () => window.clearTimeout(timer);
+  });
+  // Leaving the tab commits the box being typed in, so it autosaves too.
+  useEffect(() => {
+    const commit = () => {
+      const focused = window.document.activeElement;
+      if (window.document.visibilityState === "hidden" && focused instanceof HTMLElement && focused.isContentEditable) focused.blur();
+    };
+    window.document.addEventListener("visibilitychange", commit);
+    return () => window.document.removeEventListener("visibilitychange", commit);
+  }, []);
+
   function select(frame: Frame, scroll = false) {
     if (edit) return;
     setActive(frame);
@@ -199,7 +211,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     const existingHeight = entry?.photoHeights[frame.index] ?? 0;
     let height = entry ? Math.max(MIN_FILL_PHOTO, existingHeight) : 438;
     if (entry && slot) {
-      height = slot.startsWith("workshop-") ? 684 * workshopTileHeight(entry.page, slot.split("-")[1]) / 337 : hasTrainingPhotoGrid(entry.page, frame.index)
+      height = slot.startsWith("workshop-") ? 684 * workshopTileHeight(entry.page) / 337 : hasTrainingPhotoGrid(entry.page, frame.index)
         ? TRAINING_TILE_PREVIEW_HEIGHT
         : portraitHeight(stripPhotos(entry.page, frame.index).length);
     }
@@ -301,7 +313,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     <>
       <div className={`${styles.toolbar} report-screen-only`}>
         <div className={styles.reviewState}>
-          <span>{review.status === "closed" ? "Approved" : "In review"} · Round {review.round}</span>
+          <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? "Round locked" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
           {editable && <p>Click text or a photo to edit it. Changes save automatically.{fullPageReview && " Click a caption, or choose Comment on an element, to comment."}</p>}
         </div>
@@ -328,13 +340,14 @@ export function ReportEditor({ report: initial, revision, history, review, recom
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
+        {review.status === "exported" && <p className={styles.status} role="status">Round {review.round} is locked after copying comments. Start Round {review.round + 1} to review again.{dirty && " Your unsaved local edits remain in this tab; copy them before reloading."}</p>}
         {past !== null && <p className={styles.status}>Viewing the saved Round {past} snapshot. Switch to Current copy to make edits.</p>}
         {markup && <p className={styles.status} role="status">
           Showing changes since {changes!.since === "round" ? `Round ${changes!.round} started` : "change tracking began"}: <ins className={styles.ins}>added</ins> · <del className={styles.del}>removed</del>. Turn off Show changes to edit.
         </p>}
         {showChanges && changesError && <p className={styles.error} role="alert">{changesError}</p>}
       </div>
-      <div className={styles.workbench}>
+      <div className={styles.workbench} data-report-unsaved={dirty || !!edit || busy}>
         <aside className={`${styles.rail} report-screen-only`} aria-label="Report controls">
           <div className={styles.tabs}>
             <button type="button" aria-pressed={tab === "pages"} onClick={() => setTab("pages")}><BookOpen size={15} /> Pages</button>

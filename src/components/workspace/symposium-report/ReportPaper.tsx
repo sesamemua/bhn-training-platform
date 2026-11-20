@@ -89,7 +89,7 @@ function blockClassName(block: Block, rosterStart: number | undefined) {
 }
 
 function Blocks({ page, blocks, inline, change, tracked }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void; tracked?: Map<number, Mark[]> }) {
-  const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading")?.start : undefined;
+  const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
   return blocks.map((block, index) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p";
     const photos = workshopPhotos(page, block.photoRow);
@@ -103,7 +103,7 @@ function Blocks({ page, blocks, inline, change, tracked }: { page: ReportPage; b
       </span>
     </Tag>;
     if (block.kind === "bullet") return <ul key={index} className={styles.list}>{copy}</ul>;
-    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * workshopTileHeight(page, block.photoRow) / 337} />);
+    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * workshopTileHeight(page) / 337} />);
     if (page.id === "venturelift" && photos.length) return <div key={index} className={styles.ventureProfile}>{copy}<div>{figures}</div></div>;
     return <Fragment key={index}>
       {copy}
@@ -134,7 +134,7 @@ export function useReportLayout(report: Report, approved: boolean) {
       pageNode.dataset.continued = String(index > 0);
       pageNode.dataset.photoStrip = String(hasStrip || hasPairedPhotos(page, index));
       pageNode.dataset.photoPair = String(hasPairedPhotos(page, index));
-      const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading")?.start : undefined;
+      const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
       story.replaceChildren(...blocks.flatMap((block) => {
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p");
         node.className = blockClassName(block, rosterStart);
@@ -149,7 +149,7 @@ export function useReportLayout(report: Report, approved: boolean) {
         const photos = workshopPhotos(page, block.photoRow);
         if (photos.length) {
           const space = document.createElement("div");
-          const height = workshopTileHeight(page, block.photoRow);
+          const height = workshopTileHeight(page);
           if (page.id === "venturelift") {
             const row = document.createElement("div");
             row.className = styles.ventureProfile;

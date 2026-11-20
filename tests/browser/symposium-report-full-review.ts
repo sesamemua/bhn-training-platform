@@ -21,6 +21,8 @@ const fixture = (round: number) => ({
 
 async function main() {
   let authorized = false, reads = 0;
+  let status = "open";
+  let exports = 0;
   const comments = [{
     id: "earlier", parentId: null, round: 2, anchorQuote: "Final keynote passage", anchorKey: "#report-frame-panels-0",
     authorUserId: "other", authorName: "Reviewer", authorKind: "user", body: "Earlier note", status: "resolved",
@@ -33,13 +35,13 @@ async function main() {
       return authorized ? { user: { id: "staff-private", name: "Signed-in staff" } } : null;
     } },
     "@/lib/prisma": { prisma: {
-      pageReview: { findUnique: async ({ where, select }: any) => {
+      pageReview: { findUnique: async ({ where, select }: { where: { id: string; kind: string }; select: Record<string, unknown> }) => {
         assert.deepEqual(where, { id: report.REPORT_ID, kind: "report" });
         reads++;
-        return { title: "Report", round: 4, status: "open", ...(select.comments ? { comments } :
+        return { title: "Report", round: 4, status, ...(select.comments ? { comments } :
           { pastedHtml: JSON.stringify(fixture(4)), versions: archived.map(({ round }) => ({ round })) }) };
-      } },
-      pageReviewVersion: { findMany: async ({ where }: any) => archived.filter(({ round }) => where.round.in.includes(round)) },
+      }, update: async ({ data }: { data: { status: string } }) => { status = data.status; exports++; } },
+      pageReviewVersion: { findMany: async ({ where }: { where: { round: { in: number[] } } }) => archived.filter(({ round }) => where.round.in.includes(round)) },
     } },
     "@/lib/page-review/limits": limits,
     "@/lib/page-review/brief": brief,
@@ -47,10 +49,11 @@ async function main() {
     "@/lib/symposium-report/document": report,
     "@/lib/symposium-report/review-snapshot": snapshot,
   };
+  mocks["@/lib/symposium-report/store"] = { reportTransaction: (run: (db: unknown) => Promise<Response>) => run((mocks["@/lib/prisma"] as { prisma: unknown }).prisma) };
   const compiled = ts.transpileModule(readFileSync(new URL("../../src/app/api/workspace/symposium-2026/report/review/route.ts", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  const handler = {} as { GET: (request: Request) => Promise<Response> };
+  const handler = {} as { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> };
   new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), handler);
   for (const query of ["", "?overlay=1", "?brief=1", "?comparison=1"]) {
     assert.equal((await handler.GET(new Request(endpoint + query))).status, 403);
@@ -76,7 +79,8 @@ async function main() {
       <p style="margin-top:1300px">Final keynote passage</p></article></div></main>
       <script data-round="4" src="${endpoint}?overlay=1"></script>` }));
     await page.route(endpoint + "**", async (route) => {
-      const response = await handler.GET(new Request(route.request().url()));
+      const request = new Request(route.request().url(), { method: route.request().method(), ...(route.request().method() === "POST" ? { headers: { "content-type": "application/json" }, body: route.request().postData() } : {}) });
+      const response = await handler[route.request().method() === "POST" ? "POST" : "GET"](request);
       return route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: await response.text() });
     });
     await page.route(mutation, async (route) => {
@@ -131,14 +135,27 @@ async function main() {
     await thread.getByRole("textbox").fill("Verified the wording.");
     await thread.getByRole("button", { name: "Save", exact: true }).click();
     await expect(thread).toContainText("Verified the wording.");
+    await thread.getByRole("button", { name: "Delete reply by Signed-in staff" }).click();
+    await thread.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.evaluate(() => {
+      const write = navigator.clipboard.writeText.bind(navigator.clipboard);
+      let first = true;
+      navigator.clipboard.writeText = async (text) => { if (first) { first = false; throw new Error("Clipboard denied"); } await write(text); };
+    });
+    await page.getByRole("button", { name: "Copy review comments" }).click();
+    await expect(page.locator("#bhn-review-overlay")).toContainText("This round is locked, but clipboard access failed");
+    assert.equal(status, "exported");
     await page.getByRole("button", { name: "Copy review comments" }).click();
     await expect(page.getByRole("button", { name: "Comments copied" })).toBeVisible();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     assert.match(copied, /Verified the wording/);
     assert.doesNotMatch(copied, /Earlier note/);
-    await thread.getByRole("button", { name: "Delete reply by Signed-in staff" }).click();
-    await thread.getByRole("button", { name: "Delete", exact: true }).click();
-    await expect(thread).not.toContainText("Verified the wording.");
+    assert.equal(status, "exported");
+    assert.equal(exports, 1);
+    await expect(page.locator("#bhn-review-overlay")).toContainText("was exported and is locked");
+    await expect(thread.getByRole("button", { name: "Reply", exact: true })).toHaveCount(0);
+    await page.getByRole("article", { name: "Panel review" }).getByText("Final keynote passage", { exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
     console.log("PASS: staff-only report reads, anchored threads and replies, copy, four-round comparison");
   } finally { await browser.close(); }
 }

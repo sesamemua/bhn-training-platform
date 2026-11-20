@@ -95,8 +95,8 @@ export function workshopPhotos(page: ReportPage, row?: string) {
   return row ? Object.entries(page.photos ?? {}).filter(([key]) => key.startsWith(`workshop-${row}-`)).sort(([a], [b]) => a.localeCompare(b)) : [];
 }
 
-export function workshopTileHeight(page: ReportPage, row?: string) {
-  if (page.id === "venturelift") return Number(row) <= 3 ? 300 : 265;
+export function workshopTileHeight(page: ReportPage) {
+  if (page.id === "venturelift") return 180;
   if (page.id === "professional-development") return 214;
   return 180;
 }

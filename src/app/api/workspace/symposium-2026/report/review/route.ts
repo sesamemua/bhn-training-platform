@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { reportTransaction } from "@/lib/symposium-report/store";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildBrief } from "@/lib/page-review/brief";
@@ -55,9 +57,35 @@ export async function GET(request: Request) {
   if (!row) return json({ error: "The report is not ready." }, 404);
   const { comments, ...review } = row;
   if (searchParams.get("brief") === "1") {
+    if (review.status === "open") return json({ error: "Reload the review and use Copy review comments to lock this round." }, 409);
     return json({ ok: true, brief: buildBrief({ ...review, comments, url: new URL(REPORT_REVIEW_PATH, origin).href }) });
   }
   return json({ ok: true, review, viewer: { name: user.name || "Team member" }, comments: comments.map(({
     id, parentId, round, anchorQuote, anchorKey, anchorPath, anchorBlock, anchorState, authorUserId, authorName, body, status, createdAt, editedAt, editedByName,
   }) => ({ id, parentId, round, anchorQuote, anchorKey, anchorPath, anchorBlock, anchorState, authorName, body, status, createdAt, editedAt, editedByName, isMine: authorUserId === user.id })) });
+}
+
+
+export async function POST(request: Request) {
+  const session = await requireRole("instructor").catch(() => null);
+  if (!(session?.user as { id?: string } | undefined)?.id) return json({ error: "Forbidden." }, 403);
+  if (!request.headers.get("content-type")?.startsWith("application/json")) return json({ error: "Expected JSON." }, 415);
+  const raw = await request.text();
+  if (raw.length > 1024) return json({ error: "The request is too large." }, 413);
+  let body: unknown;
+  try { body = JSON.parse(raw); } catch { return json({ error: "Invalid JSON." }, 400); }
+  const input = z.object({ action: z.literal("export"), expectedRound: z.number().int().positive() }).safeParse(body);
+  if (!input.success) return json({ error: "Check the review round." }, 400);
+  return reportTransaction(async (tx) => {
+    const review = await tx.pageReview.findUnique({ where: { id: REPORT_ID, kind: "report" }, select: {
+      title: true, round: true, status: true,
+      comments: { orderBy: { createdAt: "asc" }, take: PAGE_REVIEW_COMMENT_LIMIT },
+    } });
+    if (!review) return json({ error: "The report is not ready." }, 404);
+    if (review.round !== input.data.expectedRound) return json({ error: "A new round has started. Reload before copying comments." }, 409);
+    const status = review.status === "open" ? "exported" : review.status;
+    if (review.status === "open") await tx.pageReview.update({ where: { id: REPORT_ID }, data: { status } });
+    const brief = buildBrief({ ...review, url: new URL(REPORT_REVIEW_PATH, request.url).href });
+    return json({ ok: true, brief, review: { title: review.title, round: review.round, status } });
+  });
 }

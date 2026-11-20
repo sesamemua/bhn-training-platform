@@ -402,13 +402,15 @@
 .workshopPhotos figcaption { height: 27px; overflow: hidden; overflow-wrap: anywhere; }
 .ventureProfile {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 228px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  gap: 16px;
   align-items: start;
-  padding-bottom: 14px;
+  padding-bottom: 4px;
 }
 .ventureProfile > div { grid-column: 2; }
-.ventureProfile .paragraph { font-size: 14.5px; padding-bottom: 0; }
+.ventureProfile .paragraph { font-size: 14px; line-height: 1.35; padding-bottom: 0; }
+.ventureProfile figcaption { font-size: 9.5px; line-height: 1.1; padding-top: 2px; }
+.chapter[data-section="venturelift"] .heading { font-size: 13px; padding: 0 0 4px; }
 .chapter[data-columns="2"] .story {
   max-inline-size: none;
   column-count: 2;
