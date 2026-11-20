@@ -284,7 +284,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
             Show changes
           </label>
         </div>
-        <ReportPresence endpoint={`${REPORT_API}/presence`} pageName={pageName} onJump={jumpToFrame} unsaved={dirty} />
+        <ReportPresence endpoint={`${REPORT_API}/presence`} pageName={pageName} onJump={jumpToFrame} unsaved={dirty} showVersion={fullPageReview} />
         {!fullPageReview && <ReportReviewShare round={review.round} revision={token} canInvite={!controlsDisabled && !dirty} />}
       </div>
       <div className="report-screen-only">

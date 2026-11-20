@@ -62,8 +62,10 @@ const LOADED_VERSION = (() => {
   try { return process.env.NEXT_PUBLIC_COMMIT_SHA ?? ""; } catch { return ""; } // Next inlines it; harnesses may have no process
 })();
 
-export function ReportPresence({ endpoint, pageName, onJump, unsaved }: {
+export function ReportPresence({ endpoint, pageName, onJump, unsaved, showVersion = false }: {
   endpoint: string;
+  /** Pin the build SHA bottom-left (pages without the sidebar, which already shows it). */
+  showVersion?: boolean;
   /** Unsaved edits on this tab: the new-version pill asks for a save before refreshing. */
   unsaved: boolean;
   /** "Structured Networking, p. 12" for a frame id. */
@@ -71,7 +73,7 @@ export function ReportPresence({ endpoint, pageName, onJump, unsaved }: {
   onJump: (frame: string) => void;
 }) {
   const [peers, setPeers] = useState<ReportPeer[]>([]);
-  const [outdated, setOutdated] = useState(false);
+  const [outdated, setOutdated] = useState<string | null>(null);
   const last = useRef("");
   useEffect(() => {
     let live = true;
@@ -80,7 +82,7 @@ export function ReportPresence({ endpoint, pageName, onJump, unsaved }: {
         const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(myPresence()) });
         const body = await response.json().catch(() => null) as { peers?: ReportPeer[]; version?: string } | null;
         if (!live || !response.ok || !Array.isArray(body?.peers)) return;
-        if (body.version && LOADED_VERSION && body.version !== LOADED_VERSION) setOutdated(true);
+        if (body.version && LOADED_VERSION && body.version !== LOADED_VERSION) setOutdated(body.version);
         const key = JSON.stringify(body.peers);
         if (key !== last.current) { last.current = key; setPeers(body.peers); }
       } catch { /* presence is best-effort */ }
@@ -97,13 +99,16 @@ export function ReportPresence({ endpoint, pageName, onJump, unsaved }: {
     return () => window.clearInterval(timer);
   }, [peers]);
 
+  const tag = showVersion && LOADED_VERSION && <span className={styles.versionTag} title={`Build ${LOADED_VERSION}${outdated ? ` · ${outdated} is live` : ""}`}>
+    {LOADED_VERSION}{outdated && <> → {outdated}</>}
+  </span>;
   const pill = outdated && <div className={styles.versionPill} role="status">
     <span>{unsaved ? "New version of this page. Save your draft, then refresh." : "New version of this page. Refresh to update."}</span>
     <button type="button" disabled={unsaved} onClick={() => window.location.reload()}
       title={unsaved ? "Save your draft first so nothing is lost." : undefined}><RefreshCw size={12} aria-hidden /> Refresh</button>
   </div>;
   // A plain group, not a live region: it updates every few seconds and must not chatter in a screen reader.
-  if (!peers.length) return <><p className={styles.presence}>Only you have the report open.</p>{pill}</>;
+  if (!peers.length) return <><p className={styles.presence}>Only you have the report open.</p>{pill}{tag}</>;
   return <><div className={styles.presence} role="group" aria-label="Who else has the report open">
     <span className={styles.presenceAvatars} aria-hidden="true">
       {peers.slice(0, 6).map((peer) => <i key={peer.userId} style={{ background: peer.color }}>{initials(peer.name)}</i>)}
@@ -117,5 +122,5 @@ export function ReportPresence({ endpoint, pageName, onJump, unsaved }: {
         </button>
       </li>)}
     </ul>
-  </div>{pill}</>;
+  </div>{pill}{tag}</>;
 }

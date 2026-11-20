@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.20a";
+export const TOUR_VERSION = "2026.11.20b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "symposium-report.build-tag",
+    title: "Which version you're on",
+    body: "The bottom-left corner of the full-page review shows the build you have open, and the newer one once it's live.",
+    path: "/review/symposium-2026/report",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.11.20b",
+  },
   {
     id: "symposium-report.track-changes-presence",
     title: "Track changes and who's here",

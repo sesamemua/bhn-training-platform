@@ -29,6 +29,7 @@ async function main() {
           review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:[]}}/>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
+    define: { "process.env.NEXT_PUBLIC_COMMIT_SHA": '"abc1234"' },
     outfile: "/private/tmp/symposium-editable-review/app.js", bundle: true, write: false, format: "iife", jsx: "automatic", external: ["/api/*"],
     plugins: [{ name: "review-server-mocks", setup(builder) {
       builder.onResolve({ filter: /^next\/navigation$/ }, () => ({ path: "router", namespace: "fixture" }));
@@ -78,6 +79,10 @@ async function main() {
     });
     await page.goto(origin);
     await expect(page.locator("#bhn-review-overlay")).toBeVisible();
+    const build = page.getByText("abc1234", { exact: true });
+    await expect(build).toBeVisible();
+    const buildBox = (await build.boundingBox())!;
+    assert.ok(buildBox.x < 40 && buildBox.y + buildBox.height > 1000 - 40, "the build SHA sits in the bottom-left corner");
     await expect(page.locator("#bhn-review-overlay")).toContainText("Choose Comment on an element");
     const openingPhotos = page.locator('#report-frame-annual-symposium-0 [class*="leadPhotos"] figure img');
     await expect(openingPhotos).toHaveCount(2);

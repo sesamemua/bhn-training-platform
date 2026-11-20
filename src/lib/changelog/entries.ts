@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Event Report review: build number in the corner",
+    body: "The full-page Event Report review now shows its build number (the short code also shown in the sidebar) in the bottom-left corner. When a newer version is live it reads *old → new*, next to the save-and-refresh pill.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Event Report: see who else is in the report, and what changed",
     body: "**Who's here.** The Event Report now shows who else has it open: coloured initials in the toolbar and a line such as *Yoo Jin Park editing story text · Structured Networking, p. 12*. Click a name to jump to their page. The text box a colleague is typing in gets an outline in their colour with their name, and a page someone is reading shows *viewing*.\n\n**Track changes.** Every saved text edit is now recorded with who made it. Turn on **Show changes** to mark what changed this round: additions are underlined in green, deletions struck through in red. Turn it off to hide the marks and keep editing. The new **Changes** tab lists each save: who, when, which page, and what changed. Click a page name to jump there. Changes are counted from today for this round, and from the start of each later round.\n\n**New version notice.** When a newer version of the platform goes live while you have the report open, a small pill at the bottom asks you to save your draft and refresh. Its Refresh button waits until your draft is saved, so nothing is lost.",
     kind: "feature",

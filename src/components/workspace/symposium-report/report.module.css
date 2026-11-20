@@ -638,3 +638,5 @@
 .versionPill button:disabled { opacity: .55; cursor: default; }
 .versionPill button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media print { .versionPill { display: none; } }
+.versionTag { position: fixed; left: .75rem; bottom: .75rem; z-index: 59; padding: .15rem .45rem; border: 1px solid var(--line); border-radius: .35rem; background: var(--card); color: var(--muted); font: 600 .68rem/1.4 ui-monospace, Menlo, monospace; }
+@media print { .versionTag { display: none; } }
