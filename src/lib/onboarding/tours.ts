@@ -45,7 +45,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "symposium-report.track-changes-presence",
     title: "Track changes and who's here",
-    body: "The toolbar shows who else has the report open and where. Turn on Show changes to see this round's edits marked; the Changes tab lists who changed what.",
+    body: "The toolbar shows who else has the report open and where. Turn on Show changes to see this round's edits marked; the Changes tab lists who changed what. A small pill tells you when a new version is live.",
     path: "/admin/workspace/symposium-2026/report",
     placement: "center",
     roles: ["instructor", "admin", "superadmin"],

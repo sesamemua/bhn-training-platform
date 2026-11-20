@@ -24,6 +24,7 @@ async function main() {
           review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:"open",round:1,comments:[]}}/>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
+    define: { "process.env.NEXT_PUBLIC_COMMIT_SHA": '"aaaaaaa"' },
     outfile: "/private/tmp/symposium-track-changes/app.js", bundle: true, write: false, format: "iife", jsx: "automatic", external: ["/api/*"],
     plugins: [{ name: "server-mocks", setup(builder) {
       builder.onResolve({ filter: /^next\/navigation$/ }, () => ({ path: "router", namespace: "fixture" }));
@@ -41,6 +42,7 @@ async function main() {
     const beats: { frame: string | null; field: string | null; fieldIndex: number | null }[] = [];
     const saves: { report: { cover: { title: string }; pages: { text: string }[] } }[] = [];
     let changesRequests = 0;
+    let deployed = "aaaaaaa";
     await page.route(origin + "/**", async (route) => {
       const url = new URL(route.request().url());
       const method = route.request().method();
@@ -51,7 +53,7 @@ async function main() {
       });
       if (url.pathname === REPORT_API + "/presence" && method === "POST") {
         beats.push(route.request().postDataJSON());
-        return route.fulfill({ json: { peers: [
+        return route.fulfill({ json: { version: deployed, peers: [
           { userId: "akshita", name: "Akshita Vincent", color: "#8b5cf6", frame: "cover-0", field: null, fieldIndex: null },
           { userId: "yoojin", name: "Yoo Jin Park", color: "#10b981", frame: "summary-0", field: "Story text", fieldIndex: 2 },
         ] } });
@@ -91,6 +93,20 @@ async function main() {
     await presence.getByRole("button", { name: /Yoo Jin Park/ }).click();
     await expect.poll(() => beats.at(-1)?.frame).toBe("summary-0");
 
+    // ── New version pill: appears only when the server reports a newer deployment ──
+    const pill = page.getByRole("status").filter({ hasText: "New version of this page" });
+    await expect(pill).toHaveCount(0);
+    deployed = "bbbbbbb";
+    await expect(pill).toContainText("Refresh to update", { timeout: 8000 });
+    await expect(pill.getByRole("button", { name: "Refresh" })).toBeEnabled();
+    await page.getByRole("textbox", { name: "Cover title", exact: true }).fill("Annual Symposium!");
+    await page.getByRole("textbox", { name: "Cover title", exact: true }).blur();
+    await expect(pill).toContainText("Save your draft, then refresh.");
+    await expect(pill.getByRole("button", { name: "Refresh" })).toBeDisabled();
+    await page.getByRole("button", { name: "Save draft", exact: true }).click();
+    await expect(pill.getByRole("button", { name: "Refresh" })).toBeEnabled();
+    assert.equal(saves[0].report.cover.title, "Annual Symposium!");
+
     // ── Track changes: show, list, hide ──
     const toggle = page.getByRole("switch", { name: "Show changes" });
     await toggle.check();
@@ -98,7 +114,7 @@ async function main() {
     await expect(summary.locator("del")).toHaveText("Original");
     await expect(summary.locator("ins")).toHaveText("Revised");
     await expect(page.locator("#report-frame-cover-0 h1 del")).toHaveText("Meeting");
-    await expect(page.locator("#report-frame-cover-0 h1 ins")).toHaveText("Symposium");
+    await expect(page.locator("#report-frame-cover-0 h1 ins")).toHaveText("Symposium!");
     await expect(page.locator('[data-report-paper] [contenteditable]')).toHaveCount(0);
     await expect(page.locator("#report-frame-long-0 ins, #report-frame-long-0 del")).toHaveCount(0);
     const changes = page.getByRole("region", { name: "Changes this round" });
@@ -115,9 +131,9 @@ async function main() {
     await story.fill("Revised report passage, edited again.");
     await page.getByRole("button", { name: "Save draft", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Draft saved" })).toBeVisible();
-    assert.equal(saves.length, 1);
-    assert.equal(saves[0].report.pages[0].text, "Revised report passage, edited again.", "saved text carries no markup");
-    assert.equal(saves[0].report.cover.title, "Annual Symposium");
+    assert.equal(saves.length, 2);
+    assert.equal(saves[1].report.pages[0].text, "Revised report passage, edited again.", "saved text carries no markup");
+    assert.equal(saves[1].report.cover.title, "Annual Symposium!");
     await toggle.check();
     await expect.poll(() => changesRequests).toBe(2);
     await expect(summary.locator("ins").first()).toBeVisible();
@@ -125,7 +141,7 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways scroll on a phone");
     assert.deepEqual(errors, []);
-    console.log("PASS: presence (who is here, where, editing outline, heartbeat location), Show changes on/off, change list, layout growth, clean saves; mocked requests only");
+    console.log("PASS: presence (who is here, where, editing outline, heartbeat location), new-version pill (save first), Show changes on/off, change list, layout growth, clean saves; mocked requests only");
   } finally {
     await browser.close();
   }

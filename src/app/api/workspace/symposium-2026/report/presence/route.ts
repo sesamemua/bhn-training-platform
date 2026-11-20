@@ -38,5 +38,6 @@ export async function POST(req: Request) {
     orderBy: { userId: "asc" }, // stable order so avatars don't reshuffle
     select: { userId: true, name: true, color: true, frame: true, field: true, fieldIndex: true },
   });
-  return NextResponse.json({ peers });
+  // The deployed version, so open tabs can tell people a new one is live.
+  return NextResponse.json({ peers, version: process.env.NEXT_PUBLIC_COMMIT_SHA ?? "" });
 }

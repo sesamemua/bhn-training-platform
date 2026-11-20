@@ -626,3 +626,15 @@
   padding: 2px 8px; border-radius: 999px; background: var(--report-deep); color: #fff; font: 600 11px/1.5 Arial, sans-serif;
 }
 @media print { .stage [data-peer-edit] { outline: 0; } .stage [data-peer-edit]::after, .stage article[data-peer-view]::after { content: none; } }
+
+/* New deployment: a small pill asking people to save and refresh. */
+.versionPill {
+  position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); z-index: 60; transform: translateX(-50%);
+  display: flex; align-items: center; gap: .6rem; max-width: calc(100vw - 2rem); padding: .35rem .4rem .35rem .85rem;
+  border-radius: 999px; background: var(--report-deep); color: #fff; font-size: .74rem; font-weight: 600;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--report-deep) 35%, transparent);
+}
+.versionPill button { display: inline-flex; align-items: center; gap: .3rem; flex: none; padding: .25rem .6rem; border: 0; border-radius: 999px; background: #fff; color: var(--report-deep); font: inherit; cursor: pointer; }
+.versionPill button:disabled { opacity: .55; cursor: default; }
+.versionPill button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media print { .versionPill { display: none; } }

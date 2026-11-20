@@ -30,7 +30,10 @@ test("a missing logo keeps the picture and actions available", () => {
   assert.match(html, /alt="Social graphic for Alex Chen"/);
   assert.match(html, /max-w-\[555px\]/);
   assert.match(html, /Download graphic/);
-  assert.doesNotMatch(html, /disabled=""[^>]*>.*Approve/);
+  // Look at the Approve button itself: other controls (e.g. "Ask for review" before a colleague is chosen) may rightly be disabled.
+  const approve = /<button\b([^>]*)>(?:(?!<button\b).)*?\bApprove<\/button>/.exec(html);
+  assert.ok(approve, "the Approve button is shown");
+  assert.doesNotMatch(approve[1], /(^|\s)disabled=""/, "a missing logo must not block approval");
 });
 
 test("a speaker post with a logo displays the graphic and permits approval", () => {
