@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { catalogueSchema, isGalleryPhoto } from "../../src/lib/symposium-report/gallery";
-import { pagePhoto, photoPreset } from "../../src/lib/symposium-report/photos";
+import { hasPairedPhotos, pagePhoto, photoPreset, photoRowHeight, portraitHeight } from "../../src/lib/symposium-report/photos";
 import { reportSchema } from "../../src/lib/symposium-report/document";
 import { paginate, replaceReportBlock, reportBlocks } from "../../src/lib/symposium-report/paginate";
 
@@ -127,4 +127,33 @@ test("bullet takeaways and participant quotes stay editable without becoming edi
   assert.deepEqual(document.pages[0].registration, chart);
   assert.equal(document.pages[0].showCaptions, false);
   assert.equal(document.pages[0].fillPhotos, false);
+});
+
+
+test("single and paired photo rows keep landscape proportions instead of narrow strips", () => {
+  assert.equal(portraitHeight(0), 0);
+  for (const count of [1, 2, 3, 4, 5]) {
+    const width = (684 - 10 * (count - 1)) / count;
+    const height = width * portraitHeight(count) / 684;
+    assert.ok(height >= 144);
+    assert.ok(width / height <= 1.50001);
+    assert.ok(Math.abs(height - photoRowHeight(count)) < .001);
+  }
+  const page = { id: "annual-symposium", label: "Symposium", title: "Annual Symposium", text: "Opening remarks", frames: 1,
+    photos: { "photo-0-1": photoPreset("welcome-1.webp") } };
+  assert.equal(hasPairedPhotos(page, 0), true);
+  assert.equal(hasPairedPhotos(page, 1), false);
+});
+
+
+test("four workshop photographs remain valid and swappable with bounded slot IDs", () => {
+  const photo = photoPreset("microbix.jpg");
+  const draft = { cover: { title: "Report", theme: "Training", date: "October" },
+    pages: [{ id: "training-week", label: "Training", title: "Workshops", text: "Workshop\n[[photos:4]]", frames: 1,
+      photos: Object.fromEntries([1, 2, 3, 4].map((n) => [`workshop-4-${n}`, photo])) }],
+    back: { title: "BioHubNet", text: "Connect" } };
+  assert.equal(reportSchema.safeParse(draft).success, true);
+  for (const invalid of ["workshop-4-5", "workshop-8-1", "workshop-0-1", "workshop-4-0"]) {
+    assert.equal(reportSchema.safeParse({ ...draft, pages: [{ ...draft.pages[0], photos: { [invalid]: photo } }] }).success, false);
+  }
 });

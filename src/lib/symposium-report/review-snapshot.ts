@@ -15,7 +15,7 @@ export function reportReviewSnapshot(report: Report, origin: string) {
     body{margin:0;background:#fff;color:#172b35;font:14px/1.5 system-ui,sans-serif;overflow-wrap:anywhere}
     section{padding:18px 20px;border-bottom:1px solid #dce5e8}
     h1,h2,h3{line-height:1.2;font-family:Georgia,serif;margin:0 0 8px}
-    p{white-space:pre-wrap}small,figcaption{color:#415760}figure{margin:12px 0}img{width:100%;height:150px;background:#edf1f2}
+    p{white-space:pre-wrap}small,figcaption{color:#415760}figure{margin:12px 0}img{width:100%;height:auto;aspect-ratio:3/2;background:#edf1f2}
   </style></head><body>
     <section><h1>${escape(report.cover.title)}</h1><p>${escape(report.cover.theme)}</p><p>${escape(report.cover.date)}</p>${figure(report.cover.photo ?? photoPreset("cover.jpg"))}</section>
     ${report.pages.map((page) => `<section><small>${escape(page.label)}</small><h2>${escape(page.title)}</h2>

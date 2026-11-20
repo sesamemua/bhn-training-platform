@@ -3,7 +3,7 @@
 import { Fragment, useLayoutEffect, useRef, useState, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, replaceReportBlock, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
-import { hasLeadPhoto, hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, portraitHeight, portraitPhotos, PORTRAIT_STRIP_SPACE, REPORT_ASSETS, stripPhotos, TRAINING_PHOTO_GRID_SPACE, TRAINING_TILE_PREVIEW_HEIGHT, workshopPhotos, workshopTileHeight } from "@/lib/symposium-report/photos";
+import { hasLeadPhoto, hasPairedPhotos, hasTrainingPhotoGrid, MAX_PHOTO_HEIGHT, MIN_FILL_PHOTO, pagePhoto, photoLabel, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, photoRowHeight, portraitHeight, portraitPhotos, REPORT_ASSETS, stripPhotos, trainingPhotoGridSpace, TRAINING_TILE_PREVIEW_HEIGHT, workshopPhotos, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
 
@@ -124,7 +124,8 @@ export function useReportLayout(report: Report, approved: boolean) {
     const story = measure.firstElementChild as HTMLElement;
     const measureText = (page: ReportPage, blocks: Block[], index: number, hasStrip: boolean) => {
       pageNode.dataset.continued = String(index > 0);
-      pageNode.dataset.photoStrip = String(hasStrip);
+      pageNode.dataset.photoStrip = String(hasStrip || hasPairedPhotos(page, index));
+      pageNode.dataset.photoPair = String(hasPairedPhotos(page, index));
       const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading")?.start : undefined;
       story.replaceChildren(...blocks.flatMap((block) => {
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p");
@@ -149,7 +150,8 @@ export function useReportLayout(report: Report, approved: boolean) {
             row.append(...nodes, space);
             return [row];
           }
-          space.style.height = `${height + (page.showCaptions === false ? 0 : 27) + 13}px`;
+          const rows = Math.ceil(photos.length / 2);
+          space.style.height = `${rows * (height + (page.showCaptions === false ? 0 : 27)) + (rows - 1) * 10 + PHOTO_GAP}px`;
           nodes.push(space);
         }
         return nodes;
@@ -169,8 +171,9 @@ export function useReportLayout(report: Report, approved: boolean) {
       label.textContent = `${folioText(index + 1)} / ${page.label}`;
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
       const stripSpace = (index: number) => {
-        if (hasTrainingPhotoGrid(page, index)) return TRAINING_PHOTO_GRID_SPACE;
-        return stripPhotos(page, index).length ? PORTRAIT_STRIP_SPACE - (page.showCaptions === false ? 34 : 0) : 0;
+        if (hasTrainingPhotoGrid(page, index)) return trainingPhotoGridSpace(page, index);
+        const count = stripPhotos(page, index).length;
+        return count && !hasPairedPhotos(page, index) ? photoRowHeight(count) + (page.showCaptions === false ? 0 : 34) + PHOTO_GAP : 0;
       };
       const hasPortraits = portraitPhotos(page).length > 0;
       pageNode.dataset.portraits = String(hasPortraits);
@@ -185,15 +188,16 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (hasWorkshops && !page.photos?.[String(index)] && !hasLeadPhoto(page, index)) return 0;
         if (index === 0 && !blocks.length && !page.photos?.["0"] && !hasLeadPhoto(page, 0)) return 0;
         if (hasTrainingPhotoGrid(page, index)) return TRAINING_TILE_PREVIEW_HEIGHT;
+        if (hasPairedPhotos(page, index)) return portraitHeight(2);
         const strip = stripSpace(index);
         const freeSpace = measureText(page, blocks, index, strip > 0) - strip;
+        const maximum = page.photos?.[String(index)]?.fit === "whole" ? Infinity : MAX_PHOTO_HEIGHT;
         if (hasLeadPhoto(page, index)) {
-          const minimum = strip && !hasPortraits ? 146 : 174;
-          return minimum + Math.max(0, freeSpace - 3);
+          return Math.min(maximum, MIN_FILL_PHOTO + Math.max(0, freeSpace - 3));
         }
         if (strip && !page.photos?.[String(index)]) return 0;
         const space = freeSpace - (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) - PHOTO_GAP;
-        return space >= MIN_FILL_PHOTO ? space : 0;
+        return space >= MIN_FILL_PHOTO ? Math.min(maximum, space) : 0;
       });
       return { page, columns, frames, photoHeights, hasWorkshops };
     });
@@ -324,6 +328,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         const strip = stripPhotos(page, index);
         const choices = [...strip, ...blocks.flatMap((block) => workshopPhotos(page, block.photoRow))];
         const photoGrid = hasTrainingPhotoGrid(page, index);
+        const paired = hasPairedPhotos(page, index);
         const stripHeight = photoGrid ? TRAINING_TILE_PREVIEW_HEIGHT : portraitHeight(strip.length);
         return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
@@ -334,7 +339,12 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             : <header className={styles.continuationHead}>{folioText(section + 1)} / {page.title} <span> / continued</span></header>}
           {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} showSource={!ready}
             inline={inline} change={(registration) => patchPage(page.id, () => ({ registration }))} />}
-          {hasLeadPhoto(page, index) && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} lead />}
+          {hasLeadPhoto(page, index) && (paired
+            ? <div className={styles.leadPhotos}>
+              <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />
+              <PhotoFigure photo={strip[0][1]} caption={page.showCaptions !== false} height={photoHeights[index]} />
+            </div>
+            : <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} lead />)}
           <div className={styles.copy}>
             <div className={`${styles.story}${hasWorkshops ? ` ${styles.workshopStory}` : ""}`}>
               <Blocks page={page} blocks={blocks} inline={inline}
@@ -343,7 +353,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
                 <p className={`${styles.paragraph} ${styles.emptyStory}`} {...inline("", "Story text", (text) => patchPage(page.id, () => ({ text })), true)} />}
             </div>
             {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />}
-            {strip.length > 0 && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
+            {strip.length > 0 && !paired && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
               role="group" aria-label={photoGrid ? "Training Week photographs" : "Additional photographs"}>
               {photoGrid && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={stripHeight} />}
               {strip.map(([key, photo]) => <PhotoFigure key={key} photo={photo} caption={page.showCaptions !== false} height={stripHeight} />)}

@@ -38,7 +38,7 @@ export function CoverArt({ photo }: { photo: ReportPhoto }) {
 }
 
 function galleryChoice({ file, label }: GalleryEntry): ReportPhoto {
-  return { file, caption: label, x: 50, y: 28, fit: "whole" };
+  return { file, caption: label, x: 50, y: 28, fit: "cover" };
 }
 
 async function photoForUpload(file: File) {

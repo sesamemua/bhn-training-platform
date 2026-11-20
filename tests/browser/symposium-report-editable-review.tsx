@@ -23,7 +23,7 @@ async function main() {
         const closed = location.search === "?closed";
         createRoot(document.getElementById("root")).render(<ReportEditor fullPageReview
           report={{cover:{title:"Annual Symposium",theme:"Future workforce",date:"October 29"},
-            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false}],
+            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false},{id:"annual-symposium",label:"Opening program",title:"Annual Symposium",text:"The opening program connected research, industry and careers.",frames:1,photos:{"0":{file:"keynote.jpg",caption:"Christopher Procyshyn keynote",x:50,y:40,fit:"cover"},"photo-0-1":{file:"welcome-1.webp",caption:"Molly Shoichet delivers the opening remarks",x:50,y:33,fit:"cover"}}}],
             back:{title:"BioHubNet",text:"Connect"}}}
           revision={"a".repeat(64)} history={[{round:1,report:{cover:{title:"Archived title",theme:"Future workforce",date:"October 29"},pages:[{id:"summary",label:"Overview",title:"Summary",text:"Archived passage",frames:1,fillPhotos:false}],back:{title:"BioHubNet",text:"Connect"}}}]} recommendations={{}} meId="staff" isAdmin={false}
           review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:[]}}/>);`,
@@ -79,6 +79,21 @@ async function main() {
     await page.goto(origin);
     await expect(page.locator("#bhn-review-overlay")).toBeVisible();
     await expect(page.locator("#bhn-review-overlay")).toContainText("Choose Comment on an element");
+    const openingPhotos = page.locator('#report-frame-annual-symposium-0 [class*="leadPhotos"] figure img');
+    await expect(openingPhotos).toHaveCount(2);
+    const rectangles = await openingPhotos.evaluateAll(images => images.map(image => {
+      const rect = image.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }));
+    assert.ok(Math.abs(rectangles[0].y - rectangles[1].y) < 1, "opening photos sit together in one row");
+    for (const rect of rectangles) {
+      assert.ok(rect.height >= 220, "Molly and Christopher have proper image height");
+      assert.ok(Math.abs(rect.width / rect.height - 1.5) < .01, "opening photographs use 3:2 frames");
+    }
+    await openingPhotos.last().click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
+    await expect(page.locator("#bhn-review-overlay")).toContainText("Molly Shoichet delivers the opening remarks");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
     await page.getByRole("textbox", { name: "Cover title", exact: true }).fill("Revised Symposium");

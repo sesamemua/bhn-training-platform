@@ -69,8 +69,16 @@ export function stripPhotos(page: ReportPage, index: number) {
   return Object.entries(page.photos ?? {}).filter(([key]) => key.startsWith(`photo-${index}-`)).sort(([a], [b]) => a.localeCompare(b));
 }
 
+export function photoRowHeight(count: number) {
+  return count ? Math.max(144, (684 - 10 * (count - 1)) / count * 2 / 3) : 0;
+}
+
 export function portraitHeight(count: number) {
-  return 684 * 144 * count / (684 - 10 * (count - 1));
+  return count ? 684 * photoRowHeight(count) * count / (684 - 10 * (count - 1)) : 0;
+}
+
+export function hasPairedPhotos(page: ReportPage, index: number) {
+  return index === 0 && stripPhotos(page, index).length === 1;
 }
 
 export function workshopPhotos(page: ReportPage, row?: string) {
@@ -80,9 +88,7 @@ export function workshopPhotos(page: ReportPage, row?: string) {
 export function workshopTileHeight(page: ReportPage, row?: string) {
   if (page.id === "venturelift") return Number(row) <= 3 ? 300 : 265;
   if (page.id === "professional-development") return 214;
-  const count = Object.keys(page.photos ?? {}).filter((key) => key.startsWith("workshop-")).length;
-  if (count <= 4) return 190;
-  return Number(row) <= 3 ? 140 : 175;
+  return 180;
 }
 
 export function hasLeadPhoto(page: ReportPage, index: number) {
@@ -90,14 +96,16 @@ export function hasLeadPhoto(page: ReportPage, index: number) {
 }
 
 export function hasTrainingPhotoGrid(page: ReportPage, index: number) {
-  return page.id === "training-week" && index === 1
-    && Boolean(page.photos?.[String(index)]) && stripPhotos(page, index).length === 5;
+  return page.text.includes("[[photos:") && !hasLeadPhoto(page, index)
+    && Boolean(page.photos?.[String(index)]) && stripPhotos(page, index).length > 0;
 }
 
-export const MIN_FILL_PHOTO = 112;
+export const MIN_FILL_PHOTO = 288;
+export const MAX_PHOTO_HEIGHT = 456;
 export const PHOTO_CAPTION_SPACE = 23;
 export const PHOTO_GAP = 13;
-export const PORTRAIT_STRIP_SPACE = 144 + 34 + PHOTO_GAP;
-const TRAINING_TILE_HEIGHT = 222;
-export const TRAINING_TILE_PREVIEW_HEIGHT = 684 * TRAINING_TILE_HEIGHT / 337;
-export const TRAINING_PHOTO_GRID_SPACE = 3 * (TRAINING_TILE_HEIGHT + 34) + 20 + PHOTO_GAP;
+export const TRAINING_TILE_PREVIEW_HEIGHT = portraitHeight(3);
+export function trainingPhotoGridSpace(page: ReportPage, index: number) {
+  const rows = Math.ceil((stripPhotos(page, index).length + 1) / 3);
+  return rows * (photoRowHeight(3) + (page.showCaptions === false ? 0 : 34)) + (rows - 1) * 10 + PHOTO_GAP;
+}
