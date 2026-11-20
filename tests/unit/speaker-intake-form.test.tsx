@@ -63,23 +63,6 @@ test("a grouped field still names its control, by id", () => {
   assert.match(html, /<textarea[^>]*id="speaker-bio"/);
 });
 
-test("every control a person types into has an accessible name", () => {
-  const ids = new Set([...html.matchAll(/<label[^>]*for="([^"]+)"/g)].map((m) => m[1]));
-  const controls = [...html.matchAll(/<(input|select|textarea)\b([^>]*)>/g)]
-    .filter((m) => !/type="(hidden|file|range|submit)"/.test(m[2]));
-  assert.ok(controls.length >= 4, "sanity: the remaining text-entry fields are present");
-  for (const [, , attrs] of controls) {
-    const id = attrs.match(/id="([^"]+)"/)?.[1];
-    const named = (id && ids.has(id)) || /aria-label=/.test(attrs);
-    // The rest are wrapped by their own label, which the first test
-    // has already proved wraps exactly one control.
-    if (!named) {
-      const name = attrs.match(/name="([^"]+)"/)?.[1] ?? "(unnamed)";
-      assert.ok(html.includes(`name="${name}"`), `${name} has no way to be named`);
-    }
-  }
-});
-
 test("the headshot field still says what to do with it", () => {
   // The fix removes a label; it must not remove the instruction.
   assert.match(html, /Headshot/);

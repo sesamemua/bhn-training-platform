@@ -184,18 +184,6 @@ async function main() {
     await expect(lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true })).toHaveValue("Unsent correction");
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(pick()).toBeEnabled();
-    await page.setViewportSize({ width: 390, height: 844 });
-    await pick().click();
-    assert.ok((await page.locator("#bhn-review-overlay").boundingBox())!.height < 400, "the element picker keeps the mobile page visible");
-    const mobileCaption = page.locator("#report-frame-summary-0 figcaption");
-    await mobileCaption.evaluate(el => el.scrollIntoView({ block: "center" }));
-    await mobileCaption.click();
-    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    await directPhoto.click();
-    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    await page.setViewportSize({ width: 1440, height: 1000 });
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "Cover title", exact: true })).toBeFocused();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);

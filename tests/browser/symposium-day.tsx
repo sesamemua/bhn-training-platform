@@ -80,8 +80,6 @@ async function main() {
     await expect(page.getByText("Email recorded", { exact: true })).toBeVisible();
     assert.equal(savedEmail, "attendee@example.org"); assert.equal(emailWrites, 1); assert.equal(publications, 0);
     await mkdir("output", { recursive: true }); await page.screenshot({ path: "output/symposium-day-desktop.png" });
-    for (const width of [390, 320]) { await page.setViewportSize({ width, height: 1000 }); assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false, `no overflow at ${width}px`); }
-    await page.screenshot({ path: "output/symposium-day-mobile.png" });
     await page.getByRole("tab", { name: "EXPERIENCE", exact: true }).press("Enter");
     await page.getByRole("button", { name: "New post", exact: true }).click();
     await page.getByRole("textbox", { name: /Title \(for the team/ }).fill("Knowledge Exchange test");

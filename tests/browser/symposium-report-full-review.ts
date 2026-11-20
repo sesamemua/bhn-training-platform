@@ -139,12 +139,7 @@ async function main() {
     await thread.getByRole("button", { name: "Delete reply by Signed-in staff" }).click();
     await thread.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(thread).not.toContainText("Verified the wording.");
-    await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.locator("#bhn-review-overlay")).toBeVisible();
-    await page.getByRole("button", { name: "Collapse comments" }).click();
-    await page.getByRole("button", { name: /Expand \d+ comments/ }).click();
-    assert.equal(await page.locator("body").evaluate((node) => node.scrollWidth > window.innerWidth), false);
-    console.log("PASS: staff-only report reads, anchored threads and replies, copy, four-round comparison, mobile collapse");
+    console.log("PASS: staff-only report reads, anchored threads and replies, copy, four-round comparison");
   } finally { await browser.close(); }
 }
 

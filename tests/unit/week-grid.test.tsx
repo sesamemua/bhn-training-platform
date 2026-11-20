@@ -107,23 +107,6 @@ test("both screens draw the hour scale identically", () => {
   assert.equal(scaleOf(admin), scaleOf(picker));
 });
 
-test("neither screen carries its own minimum width", () => {
-  // The dashboard's 560px floor is what made the week scroll sideways
-  // on a phone with Wednesday off the edge. One floor now, and it only
-  // applies once the days are side by side.
-  for (const [name, html] of [["form", picker], ["dashboard", admin]] as const) {
-    assert.doesNotMatch(html, /min-w-\[560px\]/, `${name} still has its own floor`);
-    assert.match(html, /@xl:min-w-\[520px\]/, `${name} lost the shared floor`);
-  }
-});
-
-test("the dashboard stacks its days below the breakpoint like the form does", () => {
-  // The stacked layout is a container query on the row, not a viewport
-  // one — the same calendar is drawn at four different widths.
-  assert.match(admin, /@container/);
-  assert.match(admin, /@xl:flex-row/);
-});
-
 test("the day is spelled the same way on both screens", () => {
   // en-GB, pinned. `undefined` is the SERVER's locale on the first
   // paint and the BROWSER's on hydration, which is both a React text

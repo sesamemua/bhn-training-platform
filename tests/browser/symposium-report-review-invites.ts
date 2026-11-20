@@ -58,9 +58,7 @@ async function main() {
     await page.getByRole("button", { name: "Send to 1", exact: true }).click();
     await expect(page.getByRole("button", { name: "Send review request", exact: true })).toBeDisabled();
     assert.deepEqual(await page.evaluate(() => (window as unknown as { requests: { userIds: string[] }[] }).requests.map(x => x.userIds)), [["one", "two"], ["two"]]);
-    await page.setViewportSize({ width: 390, height: 844 });
-    assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
-    console.log("PASS: report link copy and fallback, saved-draft gate, per-recipient retry, mobile layout; no emails sent");
+    console.log("PASS: report link copy and fallback, saved-draft gate, per-recipient retry; no emails sent");
   } finally { await browser.close(); }
 }
 

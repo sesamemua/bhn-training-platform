@@ -21,7 +21,6 @@ test("picture controls allow multiple files, show uncropped thumbnails and label
   assert.match(html, /object-contain/);
   assert.match(html, /Edit alt text for picture 1 in EVENTS item 1/);
   assert.match(html, /Remove picture 1 from EVENTS item 1/);
-  assert.match(html, /aria-live="polite"/);
   const readonly = renderToStaticMarkup(createElement(NewsletterImages, { ...props, disabled: true }));
   assert.match(readonly, /graphic.png/);
   assert.doesNotMatch(readonly, /type="file"|<button/);

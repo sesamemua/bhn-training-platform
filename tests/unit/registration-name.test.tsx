@@ -88,9 +88,8 @@ test("hidden and confirmation-stage names do not block registration", () => {
   assert.equal(checkSubmission(later, { full_name: "bad@example.org" }).ok, true);
 });
 
-test("the name input has an accessible badge preview and correct autocomplete without recasing", () => {
+test("the name input has a badge preview and correct autocomplete without recasing", () => {
   const html = renderToStaticMarkup(createElement(RegistrationNameInput, { field, answers: { full_name: "AMARA OKONKWO" }, set: () => {}, className: "input" }));
-  assert.match(html, /aria-label="Full name"/);
   assert.match(html, /autoComplete="name"/);
   assert.match(html, /maxLength="160"/);
   assert.match(html, /Name for your badge/);

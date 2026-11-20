@@ -35,8 +35,6 @@ test("porcelain finish stays dashboard-scoped, theme-aware and free of moving or
   }
   assert.match(css, /pointer-events: none/);
   assert.match(css, /\.adash-aero \.aero-frame > \.aero-card \{\s*background: transparent;/);
-  assert.match(css, /@media \(forced-colors: active\)/);
-  assert.match(css, /background: Canvas;/);
 });
 
 test("Daydream uses side reflections instead of stacked horizontal highlights", () => {

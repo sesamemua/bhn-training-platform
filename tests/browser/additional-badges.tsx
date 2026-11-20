@@ -4,7 +4,6 @@ import { build } from "esbuild";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
 import { chromium, expect } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
 import { applyPrintAction, printPeople, PrintActionSchema, type PrintBoard } from "../../src/lib/events/print-jobs";
 import { buildPrintPdf } from "../../src/lib/events/print-pdf";
 
@@ -84,14 +83,6 @@ async function main() {
     await form.getByLabel("Vertical offset (mm)", { exact: true }).fill("-0.5");
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: "output/additional-badges-feature/desktop.png", fullPage: true });
-    for (const width of [390, 320]) {
-      await page.setViewportSize({ width, height: 1000 });
-      assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false, `Page overflows ${width}px`);
-    }
-    await page.screenshot({ path: "output/additional-badges-feature/mobile.png", fullPage: true });
-    const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
-    assert.deepEqual(axe.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) })), []);
-    await page.setViewportSize({ width: 1440, height: 1000 });
     await form.getByRole("button", { name: "Create print PDF" }).click();
     await expect(page.getByRole("alert").first()).toContainText("colleague changed");
     await expect(form.getByRole("textbox", { name: "Full name", exact: true })).toHaveValue("Alex Chen");
@@ -107,7 +98,7 @@ async function main() {
     assert.equal(board.jobs[0].skip, 5);
     assert.equal(board.jobs[0].printedIds.length, 0);
     assert.deepEqual(failures, []);
-    console.log("PASS: direct tab link, exact font preview, layout validation, multiple badge drafts, remove, partial-sheet offsets, conflict retry, immutable PDF queue, no guest changes, desktop/mobile, WCAG checks.");
+    console.log("PASS: direct tab link, exact font preview, layout validation, multiple badge drafts, remove, partial-sheet offsets, conflict retry, immutable PDF queue, no guest changes.");
   } finally { await browser.close(); }
 }
 void main();

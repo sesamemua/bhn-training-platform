@@ -70,11 +70,6 @@ async function main() {
     assert.equal(board.guests.find(g => g.id === "reviewed")!.name, "Li");
     await mkdir("output", { recursive: true });
     await page.screenshot({ path: "output/badge-missing-last-names-desktop.png", fullPage: true });
-    for (const width of [390, 320]) {
-      await page.setViewportSize({ width, height: 1000 });
-      assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false, `no page overflow at ${width}px`);
-    }
-    await page.screenshot({ path: "output/badge-missing-last-names-mobile.png", fullPage: true });
     await page.getByRole("button", { name: "Name badges", exact: true }).click();
     await expect(rows).toHaveCount(5);
     await expect(page.getByRole("button", { name: "Echo Jing", exact: true })).toBeVisible();

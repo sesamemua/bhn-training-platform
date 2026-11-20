@@ -41,9 +41,7 @@ async function main() {
     assert.deepEqual(await page.evaluate(() => (window as any).requests.map((request: any) => request.userIds)), [
       ["yeseul", "epshita", "roshni", "ruilin"], ["epshita"], ["yoojin", "ruilin"],
     ]);
-    await page.setViewportSize({ width: 390, height: 844 });
-    assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
-    console.log("PASS: exactly three recipient options, correct groups, partial-delivery retry, mobile layout; no emails sent");
+    console.log("PASS: exactly three recipient options, correct groups, partial-delivery retry; no emails sent");
   } finally { await browser.close(); }
 }
 

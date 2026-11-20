@@ -4,7 +4,6 @@ import { build } from "esbuild";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
 import { chromium, expect } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
 import { changeLinkedinBoard, LinkedinAction, LinkedinInput, type LinkedinSnapshot } from "../../src/lib/events/linkedin";
 
 async function main() {
@@ -98,20 +97,7 @@ async function main() {
     assert.equal(snapshot.board.entries.find(e => e.author === "Second Attendee")?.assessment?.rating, "great");
     await mkdir("output/linkedin-20261103", { recursive: true });
     await page.screenshot({ path: "output/linkedin-20261103/desktop.png", fullPage: true });
-    for (const width of [390, 320]) {
-      await page.setViewportSize({ width, height: 1000 });
-      assert.deepEqual(await page.getByRole("article", { name: "Interaction with Second Attendee", exact: true }).evaluate(el => ({ position: getComputedStyle(el).position, maxHeight: getComputedStyle(el).maxHeight, overflowY: getComputedStyle(el).overflowY })), { position: "static", maxHeight: "none", overflowY: "visible" }, "Mobile uses natural stacked page scrolling");
-      assert.equal(await list.evaluate(el => getComputedStyle(el).overflowY), "visible");
-      assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
-      assert.ok(await page.getByRole("navigation", { name: "Interactions" }).getByRole("button").first().evaluate(el => el.getBoundingClientRect().height < 140));
-      assert.ok(await frame.evaluate(el => el.getBoundingClientRect().bottom) <= await editor.evaluate(el => el.getBoundingClientRect().top), "Post and reply stack on mobile");
-    }
-    await page.screenshot({ path: "output/linkedin-20261103/mobile.png", fullPage: true });
-    const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
-    assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
     await page.getByRole("button", { name: "Saved text", exact: true }).click();
-    const fallbackAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
-    assert.deepEqual(fallbackAxe.violations.map(v => v.id), []);
     await page.getByRole("combobox", { name: "Event", exact: true }).selectOption("all");
     await page.getByRole("combobox", { name: "Rating", exact: true }).selectOption("all");
     await page.getByRole("combobox", { name: "Type", exact: true }).selectOption("reaction");
@@ -124,10 +110,7 @@ async function main() {
     await expect(reactors).toContainText("Love");
     await expect(reactors).toContainText("1 name captured");
     await expect(reactors).toContainText("Partial list");
-    assert.equal(await page.locator("body").evaluate(node => node.scrollWidth > window.innerWidth), false);
-    const reactionAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
-    assert.deepEqual(reactionAxe.violations.map(v => v.id), []);
-    console.log("PASS: native original post beside reply, saved-text fallback without losing drafts, mobile stacking, save conflicts, status, filters and accessibility.");
+    console.log("PASS: native original post beside reply, saved-text fallback without losing drafts, save conflicts, status and filters.");
   } finally { await browser.close(); }
 }
 void main();

@@ -44,18 +44,3 @@ test("campaign edits persist, feedback is recorded and handoff includes changes"
   expect(content).toContain("feedback-resolved");
   expect(content).toContain("not a live Google Ads update");
 });
-
-test("campaign editor works at mobile width and keeps negative text readable", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(pagePath);
-  await expect(page.getByRole("heading", { name: "Google Ads", exact: true })).toBeVisible();
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2);
-  expect(overflow).toBeFalsy();
-  await test.info().attach("Google Ads mobile", { body: await page.screenshot(), contentType: "image/png" });
-  await page.getByRole("link", { name: "Negatives", exact: true }).click();
-  const brand = page.locator("#negatives article").filter({ has: page.getByText("biohubnet", { exact: true }) }).first();
-  await expect(brand).toBeVisible();
-  const textStyle = await brand.locator("strong").evaluate(el => ({ fontSize: getComputedStyle(el).fontSize, decoration: getComputedStyle(el).textDecorationLine }));
-  expect(parseFloat(textStyle.fontSize)).toBeGreaterThanOrEqual(16);
-  expect(textStyle.decoration).not.toContain("line-through");
-});

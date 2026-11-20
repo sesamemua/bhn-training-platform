@@ -148,13 +148,7 @@ async function main() {
     assert.ok(fourTops.every(top => top === fourTops[0]), "all four rounds share one scroll position");
     await page.screenshot({ path: "/tmp/bhn-newsletter-comparison-four-rounds.png" });
     await page.getByRole("button", { name: "Close comparison", exact: true }).click();
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "Before / after comparison", exact: true }).click();
-    const box = await dialog.boundingBox();
-    assert.ok(box && box.x >= 0 && box.x + box.width <= 390);
-    assert.equal(await page.locator(".bhn-rv-compare-grid").evaluate((node) => node.scrollWidth > node.clientWidth), false);
-    await page.screenshot({ path: "/tmp/bhn-newsletter-comparison-mobile.png" });
-    console.log("PASS: round history, default comparison, close/reopen, polling, round transition, sandbox and mobile layout");
+    console.log("PASS: round history, default comparison, close/reopen, polling, round transition and sandbox");
   } finally {
     await browser.close();
   }

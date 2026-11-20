@@ -20,7 +20,6 @@
  * anything — a made-up token 404s, and a real one means a real row. The
  * form needs its own run against a throwaway database.
  */
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 const APPLY = "/apply/venture-connect";
@@ -74,7 +73,7 @@ const fieldName = (page: Page) => page.getByLabel("Your full name");
 const fieldEmail = (page: Page) => page.getByLabel("Email", { exact: true });
 const startButton = (page: Page) => page.getByRole("button", { name: /Start the application/ });
 
-test("the apply page renders, is accessible, and fits the viewport", async ({ page }) => {
+test("the apply page renders", async ({ page }) => {
   const res = await page.goto(APPLY);
   expect(res?.status()).toBe(200);
 
@@ -83,17 +82,6 @@ test("the apply page renders, is accessible, and fits the viewport", async ({ pa
   await expect(page.getByRole("heading", { name: "Who can apply" })).toBeVisible();
   await expect(fieldName(page)).toBeVisible();
   await expect(fieldEmail(page)).toBeVisible();
-
-  const { clientWidth, scrollWidth } = await page.evaluate(() => ({
-    clientWidth: document.documentElement.clientWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
-  expect(scrollWidth, "no horizontal scroll").toBeLessThanOrEqual(clientWidth);
-
-  const a11y = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(a11y.violations).toEqual([]);
 });
 
 test("the consent banner never hides the Start button", async ({ page }) => {

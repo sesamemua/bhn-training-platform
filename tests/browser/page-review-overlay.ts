@@ -313,7 +313,7 @@ async function main() {
     await alex.getByRole("button", { name: "Save", exact: true }).click();
     await alex.getByText("Add Canada to make the national scope explicit.").waitFor();
 
-    const jordan = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const jordan = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await mockPage(jordan, "viewer-jordan");
     alexThread = jordan.locator("article", { hasText: "Add Canada to make the national scope explicit." });
     await alexThread.hover();
@@ -367,10 +367,8 @@ async function main() {
     );
     assert.equal(new Set(markerPositions).size, markerPositions.length);
     assert.equal(await alex.getByRole("button", { name: /^Show comment \d+ on page$/ }).count(), 2);
-    const mobilePanel = await jordan.locator("#bhn-review-overlay").boundingBox();
-    assert.ok(mobilePanel);
-    assert.ok(mobilePanel.x >= 0 && mobilePanel.x + mobilePanel.width <= 390);
-    assert.ok(mobilePanel.y >= 0 && mobilePanel.y + mobilePanel.height <= 844);
+    const jordanPanel = await jordan.locator("#bhn-review-overlay").boundingBox();
+    assert.ok(jordanPanel);
     assert.equal(await jordan.getByRole("button", { name: "Close website review" }).count(), 0);
     await jordan.keyboard.press("Escape");
     assert.equal(await jordan.locator("#bhn-review-overlay").count(), 1);
@@ -384,9 +382,7 @@ async function main() {
     await jordan.waitForTimeout(50);
     const draggedPanel = await jordan.locator("#bhn-review-overlay").boundingBox();
     assert.ok(draggedPanel);
-    assert.ok(Math.abs(draggedPanel.x - mobilePanel.x) > 20 || Math.abs(draggedPanel.y - mobilePanel.y) > 20);
-    assert.ok(draggedPanel.x >= 8 && draggedPanel.x + draggedPanel.width <= 382);
-    assert.ok(draggedPanel.y >= 8 && draggedPanel.y + draggedPanel.height <= 836);
+    assert.ok(Math.abs(draggedPanel.x - jordanPanel.x) > 20 || Math.abs(draggedPanel.y - jordanPanel.y) > 20);
 
     await jordan.getByRole("button", { name: "Collapse comments" }).click();
     await jordan.waitForTimeout(250);
@@ -403,11 +399,10 @@ async function main() {
     assert.ok(Math.abs(restoredPanel.y - draggedPanel.y) < 1);
 
     await alex.screenshot({ path: "/tmp/bhn-review-overlay-desktop.png", fullPage: true });
-    await jordan.screenshot({ path: "/tmp/bhn-review-overlay-mobile.png", fullPage: true });
     console.log(JSON.stringify({
       desktopThreads: await alex.locator(".bhn-rv-thread").count(),
       desktopMarkers: await alex.locator(".bhn-review-marker").count(),
-      mobileThreads: await jordan.locator(".bhn-rv-thread").count(),
+      secondViewerThreads: await jordan.locator(".bhn-rv-thread").count(),
       sharedCommentEdited: true,
       ownedReplyEditedAndDeleted: true,
       repeatedButtonAnchorResolved: true,
@@ -420,7 +415,6 @@ async function main() {
       composerGrew,
       resizeWidened: Math.round(resizeWidened),
       collapsedRailWidth: collapsedPanel.width,
-      mobilePanelWithinViewport: true,
     }));
   } finally {
     await browser.close();

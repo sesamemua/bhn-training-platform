@@ -23,7 +23,7 @@ test("homepage reuses speaker actions and renders each shared card once in the s
     assert.match(html, /Shared admin layout/);
   }
 });
-test("move controls are accessible, bounded, and disabled before the shared order loads", () => {
+test("move controls are bounded and disabled before the shared order loads", () => {
   const buttons = (html: string) => html.match(/<button\b[^>]*aria-label="Move [^"]+"[^>]*>/g) ?? [];
   const loaded = buttons(render(DEFAULT_CARD_ORDER));
   assert.equal(loaded.length, 12);

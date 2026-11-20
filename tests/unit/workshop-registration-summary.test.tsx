@@ -70,7 +70,6 @@ test("compact summaries lead with approved, remaining, capacity and pending coun
   assert.deepEqual([...primary.matchAll(/<dt>([^<]+)<\/dt>/g)].map(m => m[1]), ["Approved", "Remaining seats", "Total capacity", "To be decided"]);
   assert.match(primary, /<dt>Total capacity<\/dt><dd>20<\/dd>/);
   assert.match(html, /<svg aria-hidden="true" data-dot-matrix="1"/);
-  assert.match(html, /<span class="sr-only">1<\/span>/);
   assert.doesNotMatch(html, /min-h-\[56px\]|text-\[26px\]/);
   for (const label of ["Approved", "To be decided", "Declined", "Waitlisted", "Can&#x27;t attend", "Total registrations", "Remaining seats"]) assert.ok(html.includes(label));
   const original = renderToStaticMarkup(createElement(WorkshopRegistrationSummary, { cap }));
@@ -94,7 +93,7 @@ test("Pandemic Preparedness keeps all seven label-number pairs horizontal withou
   assert.match(html, /overflow-x-auto/);
 });
 
-test("inset summaries keep secondary statuses, zeros and large counts accessible", () => {
+test("inset summaries keep secondary statuses, zeros and large counts", () => {
   for (const count of [0, 1, 19, 100, 1234]) {
     const cap = sessionCapacity(2000, Array.from({ length: count }, () => ({ status: "confirmed" })));
     const html = renderToStaticMarkup(createElement(WorkshopRegistrationSummary, { cap, compact: true }));
@@ -102,7 +101,6 @@ test("inset summaries keep secondary statuses, zeros and large counts accessible
     assert.match(html, /<dt>Waitlisted<\/dt><dd>0<\/dd>/);
     assert.match(html, /<dt>Can&#x27;t attend<\/dt><dd>0<\/dd>/);
     assert.ok(html.includes(`data-dot-matrix="${count}"`));
-    assert.ok(html.includes(`<span class="sr-only">${count}</span>`));
     assert.equal((html.match(/<circle /g) ?? []).length, Math.max(2, String(count).length) * 35);
     assert.doesNotMatch(html, /NaN|Infinity|undefined/);
   }

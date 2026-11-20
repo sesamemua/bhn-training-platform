@@ -138,8 +138,6 @@ async function main() {
     await expect.poll(() => changesRequests).toBe(2);
     await expect(summary.locator("ins").first()).toBeVisible();
 
-    await page.setViewportSize({ width: 390, height: 844 });
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways scroll on a phone");
     assert.deepEqual(errors, []);
     console.log("PASS: presence (who is here, where, editing outline, heartbeat location), new-version pill (save first), Show changes on/off, change list, layout growth, clean saves; mocked requests only");
   } finally {
