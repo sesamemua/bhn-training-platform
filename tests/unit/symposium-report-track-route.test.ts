@@ -63,6 +63,16 @@ test("saving the report logs who changed which text; reading changes is staff-on
   assert.equal((await save(edited)).status, 200, "saving again with no text change");
   assert.equal(audits.length, 1, "writes no change record");
 
+  const stale = await route.POST(new Request("https://x.test", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "save", round: 1, revision: "0".repeat(64), report: base }),
+  }));
+  assert.equal(stale.status, 409, "a save from an older copy is refused");
+  const conflict = await stale.json();
+  assert.equal(conflict.current.pages[0].text, "Revised passage", "and gets the newer copy back so autosave can merge");
+  assert.equal(conflict.revision, reportRevision(stored));
+  assert.equal(JSON.parse(stored).pages[0].text, "Revised passage", "nothing is overwritten");
+
   const body = await (await route.GET()).json();
   assert.equal(auditQuery.where.action, "symposium.report.edit");
   assert.match(auditQuery.where.detail.contains, /"round":1,/);

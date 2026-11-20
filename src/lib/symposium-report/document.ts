@@ -22,6 +22,10 @@ const reportPhoto = z.object({
   x: z.number().int().min(0).max(100),
   y: z.number().int().min(0).max(100),
   fit: z.enum(["cover", "portrait", "whole"]),
+  // Optional, so copies saved before these existed still load.
+  zoom: z.number().int().min(100).max(300).optional(),
+  rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).optional(),
+  flip: z.boolean().optional(),
 });
 export type ReportPhoto = z.infer<typeof reportPhoto>;
 

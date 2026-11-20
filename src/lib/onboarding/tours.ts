@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.20b";
+export const TOUR_VERSION = "2026.11.20c";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "symposium-report.autosave-photos",
+    title: "Edits save themselves",
+    body: "Your edits save automatically, merged with anything a colleague saved. Click a photo to swap, crop, zoom, rotate, flip or recaption it.",
+    path: "/review/symposium-2026/report",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.11.20c",
+  },
   {
     id: "symposium-report.build-tag",
     title: "Which version you're on",

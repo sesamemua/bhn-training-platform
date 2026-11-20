@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Event Report: autosave and photo editing",
+    body: "The Event Report now saves on its own about a second after you finish an edit. There is no Save draft button; the toolbar shows *Saving…* and *All changes saved*. If a colleague saved first, their changes are merged with yours instead of blocking the save. Click any photo to swap, upload, crop, zoom, rotate, flip, recaption or reset it. Captions still open a comment, and the *Comment on page* button is gone.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Event Report review: build number in the corner",
     body: "The full-page Event Report review now shows its build number (the short code also shown in the sidebar) in the bottom-left corner. When a newer version is live it reads *old → new*, next to the save-and-refresh pill.",
     kind: "improvement",

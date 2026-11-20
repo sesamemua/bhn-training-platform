@@ -103,7 +103,7 @@ function Blocks({ page, blocks, inline, change, tracked }: { page: ReportPage; b
       </span>
     </Tag>;
     if (block.kind === "bullet") return <ul key={index} className={styles.list}>{copy}</ul>;
-    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} photo={photo} caption={page.showCaptions !== false} height={684 * workshopTileHeight(page, block.photoRow) / 337} />);
+    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * workshopTileHeight(page, block.photoRow) / 337} />);
     if (page.id === "venturelift" && photos.length) return <div key={index} className={styles.ventureProfile}>{copy}<div>{figures}</div></div>;
     return <Fragment key={index}>
       {copy}
@@ -231,7 +231,7 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
 
 export type Frame = { id: string; index: number };
 
-export function ReportPaper({ report, layout, active, ready, onSelect, edit, onTextChange, onTyping, onComment, onPhoto, recommendations, markup }: {
+export function ReportPaper({ report, layout, active, ready, onSelect, edit, onTextChange, onTyping, onPhoto, recommendations, markup }: {
   report: Report;
   recommendations: Record<string, ReportPhoto[]>;
   layout: LaidOutReport;
@@ -241,7 +241,6 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
   edit: ReactNode;
   onTextChange?: (report: Report) => void;
   onTyping: (typing: boolean) => void;
-  onComment?: (frame: Frame) => void;
   onPhoto?: (frame: Frame, slot?: string) => void;
   /** Show changes: the text each field is compared against (by changes.ts field key). */
   markup?: (key: string) => string;
@@ -317,11 +316,16 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
                 {strip.map(([key, photo]) => <option key={key} value={key}>{photoLabel(photo)}</option>)}
               </select>
             )}
-            {onComment && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onComment(frame)}>Comment on page</button>}
           </div>
         </div>
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
           onFocus={(event) => { if (!isActive && event.target.isContentEditable) onSelect(frame); }}
+          onClick={onPhoto && ((event) => {
+            // Click a photo to swap, crop, zoom, rotate, flip or recaption it.
+            const target = event.target as HTMLElement;
+            const slot = target.closest<HTMLElement>("[data-photo-slot]")?.dataset.photoSlot;
+            if (slot !== undefined && !target.isContentEditable && !target.closest("figcaption")) onPhoto(frame, slot || undefined); // captions are for comments
+          })}
           data-print-page="" data-markup={markup ? "true" : undefined} data-section={frame.id} data-audience={String(!!layout.find(x => x.page.id === frame.id)?.page.registration?.audience)} data-review-draft={!ready} data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
           data-portraits={portraits ? "true" : undefined} data-photo-strip={strip.length ? "true" : undefined}>
           {!ready && <span className={styles.draft}>Review draft</span>}
@@ -333,7 +337,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
   };
 
   return (
-    <div className={styles.stage} ref={stage} data-report-paper="">
+    <div className={styles.stage} ref={stage} data-report-paper="" data-photo-editable={onPhoto ? "" : undefined}>
       {wrap({ id: "cover", index: 0 }, "Cover", <>
         <CoverArt photo={report.cover.photo ?? recommendations.cover?.[0] ?? photoPreset("cover.jpg")} />
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
@@ -362,10 +366,10 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             inline={inline} change={(registration) => patchPage(page.id, () => ({ registration }))} />}
           {hasLeadPhoto(page, index) && (paired
             ? <div className={styles.leadPhotos}>
-              <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />
-              <PhotoFigure photo={strip[0][1]} caption={page.showCaptions !== false} height={photoHeights[index]} />
+              <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />
+              <PhotoFigure slot={strip[0][0]} photo={strip[0][1]} caption={page.showCaptions !== false} height={photoHeights[index]} />
             </div>
-            : <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} lead />)}
+            : <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} lead />)}
           <div className={styles.copy}>
             <div className={`${styles.story}${hasWorkshops ? ` ${styles.workshopStory}` : ""}`}>
               <Blocks page={page} blocks={blocks} inline={inline} tracked={pageMarks}
@@ -373,11 +377,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
               {onTextChange && index === 0 && !page.text.trim() && photoHeights[index] === 0 &&
                 <p className={`${styles.paragraph} ${styles.emptyStory}`} {...inline("", "Story text", (text) => patchPage(page.id, () => ({ text })), true)} />}
             </div>
-            {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />}
+            {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />}
             {strip.length > 0 && !paired && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
               role="group" aria-label={photoGrid ? "Training Week photographs" : "Additional photographs"}>
-              {photoGrid && <PhotoFigure photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={stripHeight} />}
-              {strip.map(([key, photo]) => <PhotoFigure key={key} photo={photo} caption={page.showCaptions !== false} height={stripHeight} />)}
+              {photoGrid && <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={stripHeight} />}
+              {strip.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={stripHeight} />)}
             </div>}
           </div>
           <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>

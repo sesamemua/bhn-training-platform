@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, FilePlus, GitCompare, History, Link2, MessageSquare, Printer, Save, Trash2 } from "lucide-react";
+import { BookOpen, FilePlus, GitCompare, History, Link2, MessageSquare, Printer, Trash2 } from "lucide-react";
 import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { REPORT_API, reportSchema, type Report, type ReportPhoto } from "@/lib/symposium-report/document";
 import { Marked, ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
 import { baselineOf, reportFields, type ReportChanges } from "@/lib/symposium-report/changes";
+import { mergeReports } from "@/lib/symposium-report/merge";
 import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
 import { ReportReviewShare } from "./ReportReviewShare";
@@ -44,16 +45,20 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const [changes, setChanges] = useState<ReportChanges | null>(null);
   const [changesError, setChangesError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [transitioning, setTransitioning] = useState(false);
+  const [saving, setSaving] = useState(false);
+  /** The draft the last autosave failed on; autosave waits for the next edit (or a retry) instead of looping. */
+  const [failedOn, setFailedOn] = useState<Report | null>(null);
+  const latest = useRef({ report, typing });
+  useEffect(() => { latest.current = { report, typing }; });
 
   const document = history.find((version) => version.round === past)?.report ?? report;
   const editable = past === null && review.status === "open" && !transitioning;
   const approved = review.status === "closed" && (past === null || past === review.round);
   const { layout, ruler } = useReportLayout(document, approved);
   const ready = !!layout;
-  const dirty = report !== saved || typing;
+  const dirty = report !== saved || typing || saving;
   const chapter = layout?.find(({ page }) => page.id === active.id);
   const count = layout ? 2 + layout.reduce((sum, item) => sum + item.frames.length, 0) : 0;
   const label = chapter?.page.title ?? (active.id === "back" ? "Back cover" : "Cover");
@@ -122,6 +127,52 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, edit]);
 
+  // Autosave shortly after each finished edit (text commits when you leave the box).
+  useEffect(() => {
+    if (!editable || saving || typing || report === saved || failedOn === report) return;
+    const timer = window.setTimeout(() => void save(), 800);
+    return () => window.clearTimeout(timer);
+  });
+  // Leaving the tab commits the box being typed in, so it autosaves too.
+  useEffect(() => {
+    const commit = () => {
+      const focused = window.document.activeElement;
+      if (window.document.visibilityState === "hidden" && focused instanceof HTMLElement && focused.isContentEditable) focused.blur();
+    };
+    window.document.addEventListener("visibilitychange", commit);
+    return () => window.document.removeEventListener("visibilitychange", commit);
+  }, []);
+
+  async function save() {
+    const sent = report;
+    setSaving(true);
+    try {
+      const result = await fetch(REPORT_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save", round: review.round, revision: token, report: sent }),
+      });
+      const body = await result.json().catch(() => null);
+      if (result.ok) { setToken(body.revision); setSaved(sent); setError(""); return; }
+      const current = result.status === 409 ? reportSchema.safeParse(body?.current) : null;
+      if (current?.success && typeof body?.revision === "string") {
+        // A colleague saved first: merge their copy with this draft, then the next pass saves the result.
+        if (latest.current.typing) return; // merge once the box being typed in is left
+        const merged = reportSchema.safeParse(mergeReports(saved, latest.current.report, current.data));
+        setSaved(current.data);
+        setToken(body.revision);
+        if (merged.success) setReport(JSON.stringify(merged.data) === JSON.stringify(current.data) ? current.data : merged.data);
+        return;
+      }
+      setFailedOn(sent);
+      setError(body?.error ?? "The report could not be saved.");
+    } catch {
+      setFailedOn(sent);
+      setError("Changes couldn’t be saved. Retrying…");
+      window.setTimeout(() => setFailedOn(null), 5000);
+    } finally { setSaving(false); }
+  }
+
   function select(frame: Frame, scroll = false) {
     if (edit) return;
     setActive(frame);
@@ -133,7 +184,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     if (!result.success) { setError(result.error.issues[0]?.message ?? "Check the draft text."); return; }
     if (JSON.stringify(report) !== JSON.stringify(result.data)) setReport(result.data);
     setError("");
-    setMessage("");
   }
 
   function startPhoto(frame: Frame, slot?: string) {
@@ -179,7 +229,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     }) });
     setEdit(null);
     setError("");
-    setMessage("Photo applied. Save the draft to share it.");
   }
 
   function addPage() {
@@ -214,9 +263,9 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     setActive(cover);
   }
 
-  async function write(action: "save" | "advance" | "approve") {
-    if (busy || edit || typing || transitioning || (action === "save" ? !dirty : dirty)) return;
-    if (action !== "save" && !await confirmDialog({
+  async function write(action: "advance" | "approve") {
+    if (busy || edit || dirty || transitioning) return;
+    if (!await confirmDialog({
       title: action === "approve" ? `Approve Round ${review.round}?` : `Start Round ${review.round + 1}?`,
       description: action === "approve"
         ? "The approved copy will be locked and ready for PDF export."
@@ -225,23 +274,16 @@ export function ReportEditor({ report: initial, revision, history, review, recom
     })) return;
     setBusy(true);
     setError("");
-    setMessage("");
     try {
       const result = await fetch(REPORT_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, round: review.round, revision: token, ...(action === "save" ? { report } : {}) }),
+        body: JSON.stringify({ action, round: review.round, revision: token }),
       });
       const body = await result.json().catch(() => null);
       if (!result.ok) throw new Error(body?.error ?? "The report could not be saved. Try again.");
-      if (action === "save") {
-        setToken(body.revision);
-        setSaved(report);
-        setMessage("Draft saved for all reviewers.");
-      } else {
-        setTransitioning(true);
-        router.refresh();
-      }
+      setTransitioning(true);
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "The report could not be saved. Try again.");
     } finally { setBusy(false); }
@@ -260,8 +302,8 @@ export function ReportEditor({ report: initial, revision, history, review, recom
       <div className={`${styles.toolbar} report-screen-only`}>
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : "In review"} · Round {review.round}</span>
-          <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · {dirty ? "Unsaved changes" : "Shared draft"}</p>
-          {editable && <p>Click text to edit it, then save the draft.{fullPageReview && " Click a photo or caption to comment. Choose Comment on an element for text, headers or footers."}</p>}
+          <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
+          {editable && <p>Click text or a photo to edit it. Changes save automatically.{fullPageReview && " Click a caption, or choose Comment on an element, to comment."}</p>}
         </div>
         <div className={styles.actions}>
           {history.length > 0 && (
@@ -271,9 +313,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
               {history.map(({ round }) => <option key={round} value={round}>Round {round} snapshot</option>)}
             </select></label>
           )}
-          {editable && <button type="button" className={styles.primary} disabled={controlsDisabled || !dirty}
-            onPointerDown={() => { if (typing && window.document.activeElement instanceof HTMLElement) window.document.activeElement.blur(); }}
-            onClick={() => write("save")}><Save size={15} /> Save draft</button>}
           {isAdmin && past === null && (
             <button type="button" disabled={!!edit || busy || dirty || transitioning} onClick={() => write("advance")}>Start Round {review.round + 1}</button>
           )}
@@ -289,7 +328,6 @@ export function ReportEditor({ report: initial, revision, history, review, recom
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
-        {message && <p className={styles.status} role="status">{message}</p>}
         {past !== null && <p className={styles.status}>Viewing the saved Round {past} snapshot. Switch to Current copy to make edits.</p>}
         {markup && <p className={styles.status} role="status">
           Showing changes since {changes!.since === "round" ? `Round ${changes!.round} started` : "change tracking began"}: <ins className={styles.ins}>added</ins> · <del className={styles.del}>removed</del>. Turn off Show changes to edit.
@@ -355,12 +393,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
           onSelect={select} edit={editForm} onTextChange={controlsDisabled || markup ? undefined : applyText} onTyping={setTyping}
-          onPhoto={controlsDisabled || markup ? undefined : startPhoto} markup={markup}
-          onComment={fullPageReview && editable ? (frame) => {
-            select(frame);
-            window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.querySelector("article")
-              ?.dispatchEvent(new CustomEvent("bhn-report-comment", { bubbles: true }));
-          } : undefined} />}
+          onPhoto={controlsDisabled || markup ? undefined : startPhoto} markup={markup} />}
         <ReportRuler ruler={ruler} />
       </div>
       {node}

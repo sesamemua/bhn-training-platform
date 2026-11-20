@@ -178,6 +178,7 @@
 }
 .cover::before {
   content: "";
+  pointer-events: none;
   position: absolute;
   inset: 28px;
   z-index: -1;
@@ -304,6 +305,18 @@
 .photoMat img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--photo-focus); min-height: 0; }
 .photoMat[data-fit="portrait"] img { left: 50%; right: auto; transform: translateX(-50%); width: auto; max-width: 100%; aspect-ratio: 5 / 4; }
 .photoMat[data-fit="whole"] img { object-fit: contain; }
+/* A quarter turn swaps the image box so the rotated photo still fills the frame. */
+.photoMat[data-turned] { container-type: size; }
+.photoMat[data-turned] img { inset: auto; left: 50%; top: 50%; width: 100cqh; height: 100cqw; max-width: none; aspect-ratio: auto; transform: none; translate: -50% -50%; }
+.stage[data-photo-editable] [data-photo-slot] { cursor: pointer; }
+.photoDrag { cursor: grab; touch-action: none; user-select: none; }
+.photoDrag:active { cursor: grabbing; }
+.photoDrag img { pointer-events: none; }
+.photoTools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.editForm .photoTools label { flex: 1 0 100%; grid-template-columns: auto 1fr; align-items: center; gap: 10px; }
+.editForm .photoTools input { padding: 0; accent-color: var(--report-blue); }
+.editForm .photoTools button { display: inline-flex; align-items: center; gap: 4px; }
+.editForm .photoTools button[aria-pressed="true"] { background: var(--report-blue); color: var(--report-white); }
 .photo figcaption, .fillPhoto figcaption {
   height: 23px;
   color: var(--report-slate);

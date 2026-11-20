@@ -52,8 +52,9 @@ test("the main report editor keeps comments readable and directs new feedback to
   assert.doesNotMatch(html, /New comment|aria-label="Review comment"/);
   assert.doesNotMatch(html, />\s*(?:Reply|Add comment|Edit|Delete|Resolve)\s*</);
   const fullPage = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview: true }));
-  assert.match(fullPage, /Click text to edit it, then save the draft/);
-  assert.match(fullPage, /Click a photo or caption to comment/);
-  assert.match(fullPage, /Choose Comment on an element for text, headers or footers/);
+  assert.match(fullPage, /Click text or a photo to edit it\. Changes save automatically\./);
+  assert.match(fullPage, /Click a caption, or choose Comment on an element, to comment\./);
+  assert.match(fullPage, /All changes saved/);
+  assert.doesNotMatch(fullPage, /Save draft|Comment on page/);
   assert.doesNotMatch(fullPage, /Existing draft feedback|Start Round 1 review|id="report-comments"/);
 });

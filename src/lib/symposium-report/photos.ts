@@ -55,6 +55,16 @@ export function pagePhoto(page: ReportPage, index: number, recommendations: Reco
   return page.photos?.[String(index)] ?? (choices?.length ? choices[index % choices.length] : photoPreset(original ?? options[index % options.length]));
 }
 
+/** Zoom, mirror and quarter turns as CSS `scale` / `rotate` values (undefined when untouched). */
+export function photoAdjust(photo: ReportPhoto) {
+  const zoom = (photo.zoom ?? 100) / 100;
+  return {
+    scale: zoom === 1 && !photo.flip ? undefined : `${photo.flip ? -zoom : zoom} ${zoom}`,
+    rotate: photo.rotate ? `${photo.rotate}deg` : undefined,
+    turned: photo.rotate === 90 || photo.rotate === 270,
+  };
+}
+
 export function photoLabel(photo: ReportPhoto) {
   return photo.caption ?? (Object.hasOwn(reportPhotos, photo.file) ? reportPhotos[photo.file as ReportPhotoFile].label : "Symposium photograph");
 }

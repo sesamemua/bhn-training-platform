@@ -60,9 +60,12 @@ async function main() {
       }
       if (url.pathname === REPORT_API && route.request().method() === "POST") {
         saves.push(route.request().postDataJSON());
-        return route.fulfill(saves.length === 1
-          ? { status: 409, json: { error: "Someone saved a newer version. Your local edits are still here." } }
-          : { json: { revision: "b".repeat(64) } });
+        if (saves.length > 1) return route.fulfill({ json: { revision: "b".repeat(64) } });
+        // A colleague saved first: hand back their copy (a new back-cover title) for autosave to merge.
+        const current = structuredClone(saves[0].report) as typeof saves[0]["report"] & { back: { title: string } };
+        current.cover.title = "Annual Symposium";
+        current.back.title = "BioHubNet Network";
+        return route.fulfill({ status: 409, json: { error: "Someone saved a newer version.", current, revision: "c".repeat(64) } });
       }
       if (url.pathname === "/api/workspace/page-review/" + REPORT_ID && route.request().method() === "POST") {
         const input = route.request().postDataJSON();
@@ -95,35 +98,72 @@ async function main() {
       assert.ok(rect.height >= 220, "Molly and Christopher have proper image height");
       assert.ok(Math.abs(rect.width / rect.height - 1.5) < .01, "opening photographs use 3:2 frames");
     }
+    // Clicking a photo opens the photo editor (not a comment) on an editable page.
+    const photoEditor = page.locator("form", { has: page.getByRole("heading", { name: "Swap or crop photo" }) });
     await openingPhotos.last().click();
-    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
-    await expect(page.locator("#bhn-review-overlay")).toContainText("Molly Shoichet delivers the opening remarks");
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(photoEditor).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
+    await photoEditor.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Save draft" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Comment on page" })).toHaveCount(0);
+
+    // Autosave: no button; a colleague's newer copy is merged in, then saved.
+    const savedStatus = page.getByRole("status").filter({ hasText: "All changes saved" });
+    await expect(savedStatus).toBeVisible();
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
     await page.getByRole("textbox", { name: "Cover title", exact: true }).fill("Revised Symposium");
-    await page.getByRole("button", { name: "Save draft", exact: true }).click();
-    await expect(page.getByRole("alert")).toContainText("Your local edits are still here");
-    await expect(page.getByRole("textbox", { name: "Cover title", exact: true })).toHaveText("Revised Symposium");
-    await page.getByRole("button", { name: "Save draft", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText("Draft saved for all reviewers.");
-    assert.equal(saves[1].round, 2);
-    assert.equal(saves[1].revision, "a".repeat(64));
+    await expect(page.getByRole("status").filter({ hasText: "Editing" })).toBeVisible();
+    await page.getByRole("textbox", { name: "Cover title", exact: true }).press("Enter");
+    await expect.poll(() => saves.length).toBe(2);
+    await expect(savedStatus).toBeVisible();
+    assert.equal(saves[0].round, 2);
+    assert.equal(saves[0].revision, "a".repeat(64));
+    assert.equal(saves[1].revision, "c".repeat(64), "the retry builds on the colleague's copy");
     assert.equal(saves[1].report.cover.title, "Revised Symposium");
+    assert.equal((saves[1].report as unknown as { back: { title: string } }).back.title, "BioHubNet Network", "their edit is kept");
+    await expect(page.locator("#report-frame-back-0 h2")).toHaveText("BioHubNet Network");
+    await expect(page.getByRole("textbox", { name: "Cover title", exact: true })).toHaveText("Revised Symposium");
     const story = page.locator("#report-frame-summary-0").getByRole("textbox", { name: "Story text", exact: true });
     await story.fill("Revised report passage");
-    await page.getByRole("button", { name: "Save draft", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText("Draft saved for all reviewers.");
+    await story.blur();
+    await expect.poll(() => saves.length).toBe(3);
     assert.equal(saves[2].revision, "b".repeat(64));
     assert.equal(saves[2].report.pages[0].text, "Revised report passage");
-    await page.locator("#report-frame-summary-0").getByRole("button", { name: "Comment on page", exact: true }).click();
-    await expect(page.getByRole("textbox", { name: "New review comment" })).toBeVisible();
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(page.locator("#report-frame-cover-0").getByRole("button", { name: "Swap photo", exact: true })).toBeVisible();
     const directPhoto = page.locator("#report-frame-summary-0 figure img");
     const directCaption = page.locator("#report-frame-summary-0 figcaption");
     await page.getByRole("button", { name: "Collapse comments", exact: true }).click();
+
+    // Photo operations: zoom, rotate, flip, caption, then autosave.
     await directPhoto.click();
+    await expect(photoEditor).toBeVisible();
+    await photoEditor.getByLabel("Zoom").fill("150");
+    await photoEditor.getByRole("button", { name: "Rotate right" }).click();
+    await photoEditor.getByRole("button", { name: "Flip" }).click();
+    await expect(photoEditor.getByRole("button", { name: "Flip" })).toHaveAttribute("aria-pressed", "true");
+    await photoEditor.getByLabel("Caption").fill("Opening reception");
+    if (process.env.SHOT) await photoEditor.screenshot({ path: `${process.env.SHOT}/photo-editor.png` });
+    await photoEditor.getByRole("button", { name: "Apply photo" }).click();
+    await expect.poll(() => saves.length).toBe(4);
+    assert.deepEqual((saves[3].report.pages[0] as unknown as { photos: unknown }).photos, { "0": { file: "cover.jpg", caption: "Opening reception", x: 50, y: 50, fit: "cover", zoom: 150, rotate: 90, flip: true } });
+    await expect(directCaption).toHaveText("Opening reception");
+    const turned = await directPhoto.evaluate((img) => {
+      const mat = img.parentElement!.getBoundingClientRect(), box = img.getBoundingClientRect(), style = getComputedStyle(img);
+      return { rotate: style.rotate, scale: style.scale, covers: box.left <= mat.left + 1 && box.right >= mat.right - 1 && box.top <= mat.top + 1 && box.bottom >= mat.bottom - 1 };
+    });
+    assert.equal(turned.rotate, "90deg");
+    assert.equal(turned.scale, "-1.5 1.5");
+    assert.ok(turned.covers, "a turned photo still fills its frame");
+    if (process.env.SHOT) await page.locator("#report-frame-summary-0").screenshot({ path: `${process.env.SHOT}/photo-turned.png` });
+    await directPhoto.click();
+    await photoEditor.getByRole("button", { name: "Reset" }).click();
+    await photoEditor.getByRole("button", { name: "Apply photo" }).click();
+    await expect.poll(() => saves.length).toBe(5);
+    assert.deepEqual((saves[4].report.pages[0] as unknown as { photos: unknown }).photos, { "0": { file: "cover.jpg", caption: "Opening reception", x: 50, y: 50, fit: "cover" } });
+
+    // Captions still open a comment.
+    await directCaption.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
     await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Keep my photo feedback.");
     await directCaption.click();
@@ -152,7 +192,7 @@ async function main() {
     ];
     for (const { label, target } of targets) {
       console.log("Checking element comment:", label);
-      if (!["picture", "picture caption", "cover picture"].includes(label)) await pick().click();
+      if (label !== "picture caption") await pick().click();
       await target.click();
       await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
       await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
@@ -171,8 +211,8 @@ async function main() {
         return Math.abs(box.left - rect.left) + Math.abs(box.top - rect.top);
       })).toBeLessThan(2);
     }
-    assert.equal(selections[4].anchorQuote, "An event photograph");
-    assert.equal(selections[5].anchorQuote, "An event photograph");
+    assert.equal(selections[4].anchorQuote, "Opening reception");
+    assert.equal(selections[5].anchorQuote, "Opening reception");
     assert.equal(selections[6].anchorQuote, null);
     const lastThread = page.locator('[data-thread-id="element-7"]');
     await lastThread.getByRole("button", { name: "Reply", exact: true }).click();
@@ -181,6 +221,7 @@ async function main() {
     await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
     await expect(lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true })).toHaveValue("Unsent reply");
+    await photoEditor.getByRole("button", { name: "Cancel", exact: true }).click();
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await lastThread.getByRole("button", { name: "Edit comment by Staff", exact: true }).click();
     await lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true }).fill("Unsent correction");
@@ -220,9 +261,10 @@ async function main() {
     await expect(page.locator('[data-report-paper] [class*="rosterNames"]')).toHaveCount(1);
     const mentor = networking.filter({ hasText: /^Mentor 1 · Professional role 1/ });
     const revisedMentor = (await mentor.innerText()) + " Revised profile.";
+    const before = saves.length;
     await mentor.fill(revisedMentor);
-    await page.getByRole("button", { name: "Save draft", exact: true }).click();
-    await expect(page.getByRole("status")).toHaveText("Draft saved for all reviewers.");
+    await mentor.blur();
+    await expect.poll(() => saves.length).toBe(before + 1);
     assert.ok(saves.at(-1)!.report.pages[1].text.includes(revisedMentor));
     assert.ok(saves.at(-1)!.report.pages[1].text.includes("Mentor 17 · Professional role 17"));
     assert.ok(saves.at(-1)!.report.pages[1].text.includes("Conversation 6 connected research experience"));
@@ -241,7 +283,7 @@ async function main() {
     await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
     assert.deepEqual(errors, []);
-    console.log("PASS: full-page text editing, conflict retention, revision-aware save, explicit comments, photo controls, precise element comments and Show me, draft retention, networking text focus and geometry, archived and approved-round locks; mocked writes only");
+    console.log("PASS: full-page text editing, autosave with merge of a colleague's newer copy, photo click opens zoom/rotate/flip/caption/reset editor, explicit comments, photo controls, precise element comments and Show me, draft retention, networking text focus and geometry, archived and approved-round locks; mocked writes only");
   } finally { await browser.close(); }
 }
 

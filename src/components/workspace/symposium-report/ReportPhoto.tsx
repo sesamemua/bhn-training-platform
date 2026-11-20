@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
+import { FlipHorizontal2, RotateCcw, RotateCw, Undo2 } from "lucide-react";
 import type { ReportPhoto } from "@/lib/symposium-report/document";
-import { photoLabel, REPORT_ASSETS } from "@/lib/symposium-report/photos";
+import { photoAdjust, photoLabel, REPORT_ASSETS } from "@/lib/symposium-report/photos";
 import { REPORT_API } from "@/lib/symposium-report/document";
 import { PHOTO_UPLOAD_LIMIT, type GalleryEntry, type GalleryGroup } from "@/lib/symposium-report/gallery";
 import styles from "./report.module.css";
 
-export function PhotoFigure({ photo, height, lead = false, caption = true }: { photo: ReportPhoto; height: number; lead?: boolean; caption?: boolean }) {
+/** The img's zoom, mirror and turn; zooms toward the crop focus. */
+function adjustStyle(photo: ReportPhoto): CSSProperties {
+  const { scale, rotate, turned } = photoAdjust(photo);
+  return { scale, rotate, transformOrigin: turned ? "center" : `${photo.x}% ${photo.y}%` };
+}
+
+export function PhotoFigure({ photo, height, lead = false, caption = true, slot }: {
+  photo: ReportPhoto; height: number; lead?: boolean; caption?: boolean;
+  /** Which saved photo this is ("" for the page's main photo): clicking it opens the photo editor. */
+  slot?: string;
+}) {
   const source = `${REPORT_ASSETS}/${photo.file}`;
   const label = photoLabel(photo);
   const style = {
@@ -16,10 +27,10 @@ export function PhotoFigure({ photo, height, lead = false, caption = true }: { p
     "--photo-focus": `${photo.x}% ${photo.y}%`,
   } as CSSProperties;
   return (
-    <figure className={lead ? styles.photo : styles.fillPhoto} data-report-photo={photo.file}>
-      <div className={styles.photoMat} style={style} data-fit={photo.fit}>
+    <figure className={lead ? styles.photo : styles.fillPhoto} data-report-photo={photo.file} data-photo-slot={slot}>
+      <div className={styles.photoMat} style={style} data-fit={photo.fit} data-turned={photoAdjust(photo).turned || undefined}>
         {/* eslint-disable-next-line @next/next/no-img-element -- same authenticated artwork for preview and print */}
-        <img src={source} alt={label} />
+        <img src={source} alt={label} style={adjustStyle(photo)} />
       </div>
       {caption && <figcaption>{label}</figcaption>}
     </figure>
@@ -32,7 +43,8 @@ export function CoverArt({ photo }: { photo: ReportPhoto }) {
       {/* eslint-disable-next-line @next/next/no-img-element -- original artwork for the print cover */}
       <img className={styles.coverCrystal} src={`${REPORT_ASSETS}/recap-optical-passage.webp`} alt="" />
       {/* eslint-disable-next-line @next/next/no-img-element -- original event photo for the print cover */}
-      <img className={styles.coverEvent} src={`${REPORT_ASSETS}/${photo.file}`} alt="" style={{ objectPosition: `${photo.x}% ${photo.y}%` }} />
+      <img className={styles.coverEvent} src={`${REPORT_ASSETS}/${photo.file}`} alt="" data-photo-slot=""
+        style={{ objectPosition: `${photo.x}% ${photo.y}%`, ...adjustStyle({ ...photo, rotate: undefined }) }} />
     </div>
   );
 }
@@ -119,10 +131,28 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
     finally { setUploading(false); }
   }
   const setCrop = (axis: "x" | "y", value: number) => setSelected({ ...photo, [axis]: value });
+  const adjust = (patch: Partial<ReportPhoto>) => setSelected({ ...photo, ...patch });
+  const turn = (by: 90 | 270) => adjust({ rotate: (((photo.rotate ?? 0) + by) % 360) as ReportPhoto["rotate"] });
+  // Drag the preview to move the crop; the image follows the pointer.
+  const drag = useRef<{ x: number; y: number; px: number; py: number; w: number; h: number } | null>(null);
+  function startDrag(event: PointerEvent<HTMLDivElement>) {
+    if (!fixedCrop && photo.fit === "whole") return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    drag.current = { x: photo.x, y: photo.y, px: event.clientX, py: event.clientY, w: rect.width, h: rect.height };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+  function moveDrag(event: PointerEvent<HTMLDivElement>) {
+    const start = drag.current;
+    if (!start) return;
+    const clamp = (n: number) => Math.round(Math.min(100, Math.max(0, n)));
+    const flip = photo.flip ? -1 : 1;
+    setSelected({ ...photo, x: clamp(start.x - flip * (event.clientX - start.px) / start.w * 100), y: clamp(start.y - (event.clientY - start.py) / start.h * 100) });
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!uploading) onApply(selected && portrait ? { ...selected, fit: "cover" } : selected);
+    const chosen = selected && { ...selected, caption: selected.caption?.trim() || undefined };
+    if (!uploading) onApply(chosen && portrait ? { ...chosen, fit: "cover" } : chosen);
   }
 
   return (
@@ -156,7 +186,24 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </div>
         <div className={styles.photoPreview}>
-          <PhotoFigure photo={fixedCrop ? { ...photo, fit: "cover" } : photo} height={height} />
+          <div className={styles.photoDrag} onPointerDown={startDrag} onPointerMove={moveDrag}
+            onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} title="Drag to move the crop">
+            <PhotoFigure photo={fixedCrop ? { ...photo, fit: "cover" } : photo} height={height} />
+          </div>
+          <div className={styles.photoTools} role="group" aria-label="Adjust photo">
+            <label>Zoom<input type="range" min={100} max={300} step={5} value={photo.zoom ?? 100}
+              onChange={(e) => adjust({ zoom: Number(e.target.value) === 100 ? undefined : Number(e.target.value) })} /></label>
+            {!cover && <>
+              <button type="button" onClick={() => turn(270)} title="Rotate left"><RotateCcw size={14} aria-hidden /> Rotate left</button>
+              <button type="button" onClick={() => turn(90)} title="Rotate right"><RotateCw size={14} aria-hidden /> Rotate right</button>
+            </>}
+            <button type="button" aria-pressed={!!photo.flip} onClick={() => adjust({ flip: photo.flip ? undefined : true })}><FlipHorizontal2 size={14} aria-hidden /> Flip</button>
+            <button type="button" onClick={() => adjust({ x: 50, y: 50, zoom: undefined, rotate: undefined, flip: undefined })}><Undo2 size={14} aria-hidden /> Reset</button>
+          </div>
+          {!cover && <label>Caption
+            <input type="text" maxLength={120} value={photo.caption ?? ""} placeholder={photoLabel({ ...photo, caption: undefined })}
+              onChange={(e) => adjust({ caption: e.target.value.trim() ? e.target.value : undefined })} />
+          </label>}
           <button type="button" onClick={() => setSelected(undefined)}>{secondary ? "Use current photo" : "Use recommended photo"}</button>
           {!fixedCrop && <label>Crop style
             <select value={photo.fit} onChange={(event) => setSelected({ ...photo, fit: event.target.value as ReportPhoto["fit"] })}>

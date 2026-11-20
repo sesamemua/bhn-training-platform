@@ -36,7 +36,12 @@ export async function POST(req: Request) {
     const review = await tx.pageReview.findUnique({ where: { id: REPORT_ID, kind: "report" } });
     if (!review?.pastedHtml) return failure("Report session not found.", 404);
     if (review.round !== data.round || reportRevision(review.pastedHtml) !== data.revision) {
-      return failure("Someone saved a newer version or started another round. Your local edits are still here. Copy them before reloading.", 409);
+      const message = "Someone saved a newer version or started another round. Your local edits are still here. Copy them before reloading.";
+      // Autosave: hand back the newer copy so the editor can merge and retry.
+      const current = review.round === data.round && review.status === "open" ? reportSchema.safeParse(JSON.parse(review.pastedHtml)) : null;
+      return current?.success
+        ? NextResponse.json({ error: message, current: current.data, revision: reportRevision(review.pastedHtml) }, { status: 409 })
+        : failure(message, 409);
     }
     if (data.action !== "advance" && review.status !== "open") return failure("This round is locked.", 409);
 

@@ -100,11 +100,10 @@ async function main() {
     await expect(pill).toContainText("Refresh to update", { timeout: 8000 });
     await expect(pill.getByRole("button", { name: "Refresh" })).toBeEnabled();
     await page.getByRole("textbox", { name: "Cover title", exact: true }).fill("Annual Symposium!");
-    await page.getByRole("textbox", { name: "Cover title", exact: true }).blur();
     await expect(pill).toContainText("Save your draft, then refresh.");
     await expect(pill.getByRole("button", { name: "Refresh" })).toBeDisabled();
-    await page.getByRole("button", { name: "Save draft", exact: true }).click();
-    await expect(pill.getByRole("button", { name: "Refresh" })).toBeEnabled();
+    await page.getByRole("textbox", { name: "Cover title", exact: true }).blur();
+    await expect(pill.getByRole("button", { name: "Refresh" })).toBeEnabled(); // autosaved
     assert.equal(saves[0].report.cover.title, "Annual Symposium!");
 
     // ── Track changes: show, list, hide ──
@@ -129,9 +128,9 @@ async function main() {
     await expect(page.locator("[data-report-paper] ins, [data-report-paper] del")).toHaveCount(0);
     const story = summary.getByRole("textbox", { name: "Story text", exact: true });
     await story.fill("Revised report passage, edited again.");
-    await page.getByRole("button", { name: "Save draft", exact: true }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Draft saved" })).toBeVisible();
-    assert.equal(saves.length, 2);
+    await story.blur();
+    await expect.poll(() => saves.length).toBe(2);
+    await expect(page.getByRole("status").filter({ hasText: "All changes saved" })).toBeVisible();
     assert.equal(saves[1].report.pages[0].text, "Revised report passage, edited again.", "saved text carries no markup");
     assert.equal(saves[1].report.cover.title, "Annual Symposium!");
     await toggle.check();
