@@ -23,7 +23,7 @@ async function main() {
         const closed = location.search === "?closed";
         createRoot(document.getElementById("root")).render(<ReportEditor fullPageReview
           report={{cover:{title:"Annual Symposium",theme:"Future workforce",date:"October 29"},
-            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false}],
+            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false}],
             back:{title:"BioHubNet",text:"Connect"}}}
           revision={"a".repeat(64)} history={[{round:1,report:{cover:{title:"Archived title",theme:"Future workforce",date:"October 29"},pages:[{id:"summary",label:"Overview",title:"Summary",text:"Archived passage",frames:1,fillPhotos:false}],back:{title:"BioHubNet",text:"Connect"}}}]} recommendations={{}} meId="staff" isAdmin={false}
           review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:[]}}/>);`,
@@ -43,6 +43,8 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
+    const comments: unknown[] = [];
+    const selections: { anchorPath: string; anchorQuote: string | null; anchorKey: string; body: string }[] = [];
     const saves: { round: number; revision: string; report: { cover: { title: string }; pages: { text: string }[] } }[] = [];
     await page.route(origin + "/**", async route => {
       const url = new URL(route.request().url());
@@ -53,7 +55,7 @@ async function main() {
       });
       if (url.pathname === REPORT_API + "/review") {
         if (url.searchParams.has("overlay")) return route.fulfill({ contentType: "application/javascript", body: overlaySource(REPORT_API + "/review", "Report", true, "/api/workspace/page-review/" + REPORT_ID) });
-        return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : "open" }, viewer: { name: "Staff" }, comments: [], comparison: null } });
+        return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : "open" }, viewer: { name: "Staff" }, comments, comparison: null } });
       }
       if (url.pathname === REPORT_API && route.request().method() === "POST") {
         saves.push(route.request().postDataJSON());
@@ -61,10 +63,22 @@ async function main() {
           ? { status: 409, json: { error: "Someone saved a newer version. Your local edits are still here." } }
           : { json: { revision: "b".repeat(64) } });
       }
+      if (url.pathname === "/api/workspace/page-review/" + REPORT_ID && route.request().method() === "POST") {
+        const input = route.request().postDataJSON();
+        assert.equal(input.action, "addComment");
+        assert.equal(input.expectedRound, 2);
+        assert.equal(typeof input.anchorPath, "string");
+        selections.push(input);
+        comments.push({ ...input, id: "element-" + selections.length, parentId: null, round: 2, authorName: "Staff",
+          authorKind: "user", status: "open", isMine: true, createdAt: "2026-11-19T12:00:00Z", editedAt: null, editedByName: null });
+        return route.fulfill({ json: { ok: true, review: { comments } } });
+      }
+      if (/\.(png|jpg|webp|svg)$/.test(url.pathname)) return route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="800" height="500" fill="#a9c1c4"/></svg>' });
       return route.fulfill({ status: 404 });
     });
     await page.goto(origin);
     await expect(page.locator("#bhn-review-overlay")).toBeVisible();
+    await expect(page.locator("#bhn-review-overlay")).toContainText("Choose Comment on an element");
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
     await page.getByRole("textbox", { name: "Cover title", exact: true }).fill("Revised Symposium");
@@ -85,7 +99,73 @@ async function main() {
     await page.locator("#report-frame-summary-0").getByRole("button", { name: "Comment on page", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toBeVisible();
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Swap photo", exact: true })).toBeVisible();
+    await expect(page.locator("#report-frame-cover-0").getByRole("button", { name: "Swap photo", exact: true })).toBeVisible();
+    const pick = () => page.getByRole("button", { name: "Comment on an element", exact: true });
+    await pick().click();
+    await expect(page.getByRole("button", { name: "Cancel element selection", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Cancel element selection", exact: true }).press("Escape");
+    await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
+    await pick().click();
+    await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
+    await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Keep this draft while changing its target.");
+    await pick().click();
+    await page.locator("#report-frame-summary-0 figcaption").click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveValue("Keep this draft while changing its target.");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    const targets = [
+      { label: "cover header", target: page.locator("#report-frame-cover-0 h1") },
+      { label: "section header", target: page.locator("#report-frame-summary-0 header > span") },
+      { label: "footer", target: page.locator("#report-frame-summary-0 footer span").first() },
+      { label: "page number", target: page.locator("#report-frame-summary-0 footer span").last() },
+      { label: "picture", target: page.locator("#report-frame-summary-0 figure img") },
+      { label: "picture caption", target: page.locator("#report-frame-summary-0 figcaption") },
+      { label: "cover picture", target: page.locator('#report-frame-cover-0 img[src$="/cover.jpg"]') },
+    ];
+    for (const { label, target } of targets) {
+      console.log("Checking element comment:", label);
+      await pick().click();
+      await target.click();
+      await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
+      await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
+      await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Review the " + label);
+      const selectionNumber = selections.length + 1;
+      await page.getByRole("button", { name: "Add comment", exact: true }).click();
+      await expect(page.locator('[data-thread-id="element-' + selectionNumber + '"]')).toContainText("Review the " + label);
+      const selected = selections.at(-1)!;
+      assert.doesNotMatch(selected.anchorPath, /report_/);
+      assert.equal(await target.evaluate((el, path) => document.querySelector(path) === el, selected.anchorPath), true, label + " keeps its exact element anchor");
+      await page.getByRole("button", { name: "Show comment " + selections.length + " on page", exact: true }).click();
+      await expect(page.locator(".bhn-review-highlight-flash")).toBeVisible();
+      await expect.poll(async () => target.evaluate(el => {
+        const box = document.querySelector(".bhn-review-highlight")!.getBoundingClientRect();
+        const rect = el.getBoundingClientRect();
+        return Math.abs(box.left - rect.left) + Math.abs(box.top - rect.top);
+      })).toBeLessThan(2);
+    }
+    assert.equal(selections[4].anchorQuote, "An event photograph");
+    assert.equal(selections[5].anchorQuote, "An event photograph");
+    assert.equal(selections[6].anchorQuote, null);
+    const lastThread = page.locator('[data-thread-id="element-7"]');
+    await lastThread.getByRole("button", { name: "Reply", exact: true }).click();
+    await lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true }).fill("Unsent reply");
+    await expect(pick()).toBeDisabled();
+    await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
+    await lastThread.getByRole("button", { name: "Edit comment by Staff", exact: true }).click();
+    await expect(pick()).toBeDisabled();
+    await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(pick()).toBeEnabled();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await pick().click();
+    assert.ok((await page.locator("#bhn-review-overlay").boundingBox())!.height < 400, "the element picker keeps the mobile page visible");
+    const mobileCaption = page.locator("#report-frame-summary-0 figcaption");
+    await mobileCaption.evaluate(el => el.scrollIntoView({ block: "center" }));
+    await mobileCaption.click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "Cover title", exact: true })).toBeFocused();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
     const networking = page.locator('[id^="report-frame-structured-networking-"] [role="textbox"]');
     const originalNetworking = await networking.allTextContents();
     assert.ok(originalNetworking.length > 20, "exercise quotes, profiles and full-width headings across linked pages");
@@ -112,7 +192,6 @@ async function main() {
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
     await expect(page.locator('[data-report-paper] [class*="rosterHeading"]')).toHaveText("Participating industry professionals");
     await expect(page.locator('[data-report-paper] [class*="rosterNames"]')).toHaveCount(1);
-    await expect(page.locator("#bhn-review-overlay")).toContainText("Use Comment on page to start a thread.");
     const mentor = networking.filter({ hasText: /^Mentor 1 · Professional role 1/ });
     const revisedMentor = (await mentor.innerText()) + " Revised profile.";
     await mentor.fill(revisedMentor);
@@ -132,8 +211,9 @@ async function main() {
     await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Save draft", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Comment on page", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveCount(0);
     assert.deepEqual(errors, []);
-    console.log("PASS: full-page text editing, conflict retention, revision-aware save, explicit comments, photo controls, networking text focus and geometry, archived and approved-round locks; mocked writes only");
+    console.log("PASS: full-page text editing, conflict retention, revision-aware save, explicit comments, photo controls, precise element comments and Show me, draft retention, networking text focus and geometry, archived and approved-round locks; mocked writes only");
   } finally { await browser.close(); }
 }
 

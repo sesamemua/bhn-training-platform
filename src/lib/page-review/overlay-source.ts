@@ -11,6 +11,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var staffSurface = ${JSON.stringify(staffSurface)};
   var pageSelector = staffSurface === "social" ? "[data-copy-page]" : "[data-print-page]";
   var scopeSelector = (staffSurface === "social" ? "[data-social-review] " : "[data-report-paper] ") + pageSelector;
+  var reportReview = !!reportCommentEndpoint && staffSurface === "report";
+  var reportTargets = "h1,h2,h3,h4,p,li,blockquote,figcaption,img,td,th,dt,dd,svg,figure,header > span,footer > span,aside > strong";
   var credential = script && script.dataset ? (script.dataset.viewer || "") : "";
   var endpoint = ${JSON.stringify(endpoint)};
   // Pasted documents load this overlay directly, without the website loader.
@@ -34,6 +36,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     joining: false,
     comments: [],
     selected: null,
+    pickingElement: false,
     draft: "",
     replyTo: null,
     replyDraft: "",
@@ -86,6 +89,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     ".bhn-rv-locked{border-color:#e2cf9a;background:rgba(255,250,235,.92);color:#6b551f;}.bhn-rv-body{overflow:auto;padding:6px;overscroll-behavior:contain;}.bhn-rv-notice{padding:7px;border:1px solid #d8e0e5;border-radius:5px;background:rgba(255,255,255,.84);color:#4a5864;font-size:11px;}.bhn-rv-error{border-color:#f0b7b7;background:rgba(255,243,243,.9);color:#8c2020;}",
     ".bhn-rv-compose{margin-bottom:6px;padding:7px;border:1px solid #9bc6d2;border-radius:6px;background:rgba(237,248,250,.88);}.bhn-rv-compose-label{font-size:10px;font-weight:800;color:#245866;}.bhn-rv-quote{max-height:132px;overflow:auto;overscroll-behavior:contain;margin:4px 0 6px;padding-left:6px;border-left:2px solid #2c7587;color:#41515c;font-size:10px;line-height:1.3;}.bhn-rv-textarea{display:block;width:100%;min-height:58px;max-height:260px;overflow-y:auto;resize:vertical;border:1px solid #b9c5cc;border-radius:5px;background:rgba(255,255,255,.92);padding:6px;color:#17212b;outline:none;}.bhn-rv-textarea:focus{border-color:#2c7587;box-shadow:0 0 0 2px rgba(44,117,135,.14);}",
     ".bhn-rv-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:5px;}.bhn-rv-btn{min-height:27px;border:1px solid #c6d0d6;border-radius:5px;background:rgba(255,255,255,.88);padding:4px 8px;color:#34434e;font-size:10px;font-weight:750;}.bhn-rv-btn:hover{background:#f0f4f6;}.bhn-rv-btn-primary{border-color:#176879;background:#176879;color:#fff;}.bhn-rv-btn-primary:hover{background:#105565;}.bhn-rv-btn-danger{border-color:#b64a4a;background:#a53b3b;color:#fff;}.bhn-rv-btn-danger:hover{background:#8d2f2f;}.bhn-rv-btn:disabled{cursor:not-allowed;opacity:.55;}",
+    "body:has(#" + ID + "[data-picking-element=true]) [data-report-paper] [data-print-page],body:has(#" + ID + "[data-picking-element=true]) [data-report-paper] [data-print-page] *{cursor:crosshair!important;}body:has(#" + ID + "[data-picking-element=true]) [data-report-paper] [data-print-page] img{pointer-events:auto;}body:has(#" + ID + "[data-picking-element=true]) [data-report-paper] [data-print-page]::before,body:has(#" + ID + "[data-picking-element=true]) [data-report-paper] [data-print-page]::after{pointer-events:none;}.bhn-rv-element-pick{width:100%;margin:6px 0;}.bhn-rv-element-pick[aria-pressed=true]{border-color:#176879;background:#176879;color:#fff;}",
     ".bhn-rv-list{display:grid;gap:5px;}.bhn-rv-empty{padding:11px 7px;text-align:center;color:#667580;font-size:10px;}.bhn-rv-thread{border:1px solid rgba(189,201,209,.85);border-radius:6px;background:rgba(255,255,255,.84);overflow:hidden;}.bhn-rv-thread-active{border-color:#2c7587;box-shadow:0 0 0 2px rgba(44,117,135,.12);}.bhn-rv-thread-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;}.bhn-rv-thread-toggle{display:grid;width:100%;min-width:0;grid-template-columns:20px minmax(0,1fr) auto;align-items:start;gap:6px;border:0;background:transparent;padding:6px;text-align:left;color:#17212b;}.bhn-rv-thread-toggle:hover{background:rgba(227,239,243,.72);}.bhn-rv-thread-locate{min-width:50px;border:0;border-left:1px solid rgba(205,216,222,.82);background:rgba(244,248,249,.74);padding:4px 6px;color:#176879;font-size:9px;font-weight:800;white-space:nowrap;}.bhn-rv-thread-locate:hover,.bhn-rv-thread-locate:focus-visible{background:rgba(218,235,239,.88);outline:0;}.bhn-rv-thread-locate:disabled{color:#8a5e23;cursor:default;}.bhn-rv-number{display:grid;width:20px;height:20px;place-items:center;border-radius:50%;background:#176879;color:#fff;font-size:9px;font-weight:800;}.bhn-rv-thread-main{min-width:0;}.bhn-rv-thread-line{display:flex;min-width:0;align-items:center;gap:5px;}.bhn-rv-author{min-width:0;overflow:hidden;flex:1;color:#1c2b35;font-size:10px;font-weight:800;text-overflow:ellipsis;white-space:nowrap;}.bhn-rv-time{color:#84919a;font-size:8px;font-weight:550;white-space:nowrap;}.bhn-rv-status{border-radius:999px;background:#e9f6ed;padding:1px 4px;color:#2e6f42;font-size:8px;font-weight:800;text-transform:uppercase;}.bhn-rv-status-resolved{background:#eef1f3;color:#64717a;}.bhn-rv-thread-preview{overflow:hidden;margin-top:2px;color:#3b4b55;font-size:10px;text-overflow:ellipsis;white-space:nowrap;}.bhn-rv-disclosure{padding-top:2px;color:#71808a;font-size:12px;}",
     ".bhn-rv-thread-details{border-top:1px solid rgba(220,228,232,.8);padding-top:6px;}.bhn-rv-thread-body{padding:0 7px 6px;white-space:pre-wrap;color:#2f3e48;font-size:11px;}.bhn-rv-thread-quote{max-height:132px;overflow:auto;overscroll-behavior:contain;margin:0 7px 6px;padding:4px 6px;border-left:2px solid #b7c8d1;background:rgba(245,248,249,.82);color:#60707b;font-size:9px;}.bhn-rv-thread-tools{display:flex;justify-content:flex-end;gap:2px;padding:0 7px 5px;}.bhn-rv-link-btn{border:0;background:transparent;padding:2px 4px;color:#176879;font-size:10px;font-weight:800;}.bhn-rv-link-btn:hover{text-decoration:underline;}.bhn-rv-link-btn-danger{color:#9b3030;}.bhn-rv-edit-compose{margin:0 7px 6px;}.bhn-rv-delete-confirm{margin:0 7px 6px;border-top:1px solid #ead4d4;padding-top:5px;}.bhn-rv-delete-copy{color:#7d3030;font-size:10px;}",
     ".bhn-rv-replies{margin:0 7px 6px 28px;border-left:2px solid #dce4e8;padding-left:6px;}.bhn-rv-reply{padding:4px 0;border-top:1px solid #edf0f2;}.bhn-rv-reply:first-child{border-top:0;}.bhn-rv-reply-head{display:flex;align-items:center;gap:4px;}.bhn-rv-reply-meta{min-width:0;flex:1;color:#6c7982;font-size:9px;font-weight:750;}.bhn-rv-reply-tools{display:flex;flex:0 0 auto;}.bhn-rv-reply-body{margin-top:1px;white-space:pre-wrap;color:#34434e;font-size:10px;}.bhn-rv-reply .bhn-rv-edit-compose,.bhn-rv-reply .bhn-rv-delete-confirm{margin:4px 0 0;}.bhn-rv-reply-compose{margin:0 7px 6px 28px;}",
@@ -99,6 +103,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   root.id = ID;
   root.setAttribute("aria-label", reportCommentEndpoint ? (staffSurface === "social" ? "Social post comments" : "Event report comments") : "BioHubNet website review");
   document.body.appendChild(root);
+  root.addEventListener("keydown", function(event){
+    if (state.pickingElement && event.key === "Escape") {
+      event.preventDefault();
+      state.pickingElement = false;
+      render();
+      root.querySelector(".bhn-rv-element-pick")?.focus({ preventScroll: true });
+    }
+  });
 
   style.textContent += "#" + ID + " .bhn-rv-history{margin-top:8px;border-top:1px solid #c6d0d6;padding-top:8px;}#" + ID + " .bhn-rv-history>summary{cursor:pointer;font-weight:750;padding:5px 0;}#" + ID + " .bhn-rv-history .bhn-rv-list{margin-top:5px;}#" + ID + " .bhn-rv-compare-open{width:100%;margin-bottom:8px;}" +
     "#" + ID + "-compare{box-sizing:border-box;width:calc(100vw - 24px);max-width:1600px;height:calc(100vh - 24px);max-height:none;margin:auto;padding:0;border:1px solid #b9c5cc;border-radius:8px;background:#f0f4f6;color:#17212b;font:14px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;}#" + ID + "-compare[open]{display:flex;flex-direction:column;}#" + ID + "-compare::backdrop{background:rgba(7,27,39,.55);}#" + ID + "-compare .bhn-rv-compare-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;}#" + ID + "-compare h2{font:inherit;font-size:16px;font-weight:700;color:#17212b;margin:0;}#" + ID + "-compare button{font:inherit;cursor:pointer;padding:6px 12px;border:1px solid #b9c5cc;border-radius:5px;background:#fff;color:#17212b;}#" + ID + "-compare .bhn-rv-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 12px;flex:1;min-height:0;overflow:auto;}#" + ID + "-compare section{display:flex;flex-direction:column;min-width:0;min-height:0;}#" + ID + "-compare h3{font-size:13px;margin:0 0 8px;}#" + ID + "-compare iframe{width:100%;flex:1;min-height:0;border:1px solid #d8e0e5;background:#fff;}@media(max-width:600px){#" + ID + "-compare .bhn-rv-compare-grid{grid-template-columns:repeat(2,minmax(280px,1fr));}}";
@@ -256,13 +268,13 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     return /^-?[_a-zA-Z]+[_a-zA-Z0-9-]*$/.test(raw) ? raw : "";
   }
 
-  function cssPath(node) {
+  function cssPath(node, structureOnly) {
     var parts = [], guard = 0;
     while (node && node.nodeType === 1 && node !== document.body && guard++ < 9) {
       var segment = node.tagName.toLowerCase();
       var escapedId = cssIdent(node.id);
       if (escapedId) { parts.unshift(segment + "#" + escapedId); break; }
-      var classes = classTokens(node).map(cssIdent).filter(Boolean).slice(0, 2);
+      var classes = structureOnly ? [] : classTokens(node).map(cssIdent).filter(Boolean).slice(0, 2);
       if (classes.length) segment += "." + classes.join(".");
       var siblings = node.parentNode ? Array.prototype.filter.call(node.parentNode.children, function(child){ return child.tagName === node.tagName; }) : [];
       if (siblings.length > 1) segment += ":nth-of-type(" + (siblings.indexOf(node) + 1) + ")";
@@ -302,9 +314,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     if (reportCommentEndpoint) {
       var page = node.closest(pageSelector);
       var selection = window.getSelection();
-      var selected = selection && page.contains(selection.anchorNode) && page.contains(selection.focusNode) ? cleanText(selection.toString()).slice(0, 600) : "";
-      return { anchorQuote: selected || (node === page ? null : quote || node.getAttribute("alt")), anchorKey: "#" + page.parentElement.id,
-        anchorPath: cssPath(node), anchorBlock: (page.getAttribute("aria-label") || "").slice(0, 200) };
+      var selected = selection && node.contains(selection.anchorNode) && node.contains(selection.focusNode) ? cleanText(selection.toString()).slice(0, 600) : "";
+      return { anchorQuote: selected || (node === page ? null : quote || node.getAttribute("alt") || null), anchorKey: "#" + page.parentElement.id,
+        anchorPath: cssPath(node, reportReview), anchorBlock: (page.getAttribute("aria-label") || "").slice(0, 200) };
     }
     return {
       anchorQuote: quote || null,
@@ -316,7 +328,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   function anchorTextMatches(node, quote) {
     if (!quote) return true;
-    var text = cleanText(node.innerText || node.textContent);
+    var text = cleanText(node.innerText || node.textContent || (reportReview && node.getAttribute("alt")));
     return text === quote || (quote.length > 20 && text.indexOf(quote) > -1);
   }
 
@@ -337,10 +349,13 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var reportMatch = safeQuery(comment.anchorPath, quote);
       if (reportMatch && (!comment.anchorKey || reportMatch.closest(pageSelector).parentElement.id === comment.anchorKey.slice(1))) return reportMatch;
       var sheet = comment.anchorKey && document.getElementById(comment.anchorKey.slice(1));
-      var passage = pageSelector + " :is(h1,h2,h3,h4,p,li,blockquote,figcaption,td)";
+      var passage = pageSelector + " :is(" + (reportReview ? reportTargets : "h1,h2,h3,h4,p,li,blockquote,figcaption,td") + ")";
       if (quote) {
         var find = function (root) {
-          return Array.from(root.querySelectorAll(passage)).find(function(node){ return cleanText(node.textContent).includes(quote.slice(0, 40)); });
+          return Array.from(root.querySelectorAll(passage)).find(function(node){
+            var text = cleanText(node.textContent || (reportReview && node.getAttribute("alt")));
+            return text === quote || ((!reportReview || quote.length > 20) && text.includes(quote.slice(0, 40)));
+          });
         };
         var match = (sheet && find(sheet)) || find(document);
         if (match) return match;
@@ -939,6 +954,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function render() {
+    root.setAttribute("data-picking-element", String(reportReview && state.pickingElement && !isLocked()));
     root.textContent = "";
     root.setAttribute("class", (state.panelCollapsed ? "bhn-rv-root-collapsed" : "") + (panelDrag ? " bhn-rv-root-dragging" : ""));
     var shell = make("div", "bhn-rv-shell" + (state.panelCollapsed ? " bhn-rv-shell-collapsed" : ""));
@@ -1025,29 +1041,44 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
           }
         }));
       }
-      if (state.comparison || state.comparisonError) {
+      if (reportReview && !isLocked()) {
+        var pick = addButton(state.pickingElement ? "Cancel element selection" : "Comment on an element", "bhn-rv-btn bhn-rv-element-pick", function(){
+          state.pickingElement = !state.pickingElement;
+          showHighlight(null);
+          render();
+          root.querySelector(".bhn-rv-element-pick")?.focus({ preventScroll: true });
+        });
+        pick.setAttribute("aria-pressed", String(state.pickingElement));
+        pick.disabled = state.saving || state.replyTo !== null || state.editingId !== null;
+        if (state.replyTo !== null || state.editingId !== null) pick.setAttribute("title", "Finish or cancel your current reply or edit first.");
+        body.appendChild(pick);
+        if (state.pickingElement) body.appendChild(make("p", "bhn-rv-notice", "Click any report element: text, header, footer, picture or caption."));
+      }
+      if (!state.pickingElement && (state.comparison || state.comparisonError)) {
         body.appendChild(addButton(state.comparisonError || "Before / after comparison", "bhn-rv-btn bhn-rv-compare-open", function(){
           if (state.comparisonError) { state.comparisonRound = null; loadComparison(); }
           else openComparison();
         }));
       }
-      renderComposer(body);
-      var list = make("div", "bhn-rv-list");
-      var threads = topComments();
-      var current = threads.filter(function(comment){ return comment.round === state.review.round; });
-      var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
-      if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round ? (editableReportPage(document.querySelector(scopeSelector)) ? " Use Comment on page to start a thread. Click text to edit." : " Click any page element to start a thread.") : "")));
-      current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
-      body.appendChild(list);
-      if (previous.length) {
-        var history = make("details", "bhn-rv-history");
-        history.open = state.historyExpanded;
-        history.appendChild(make("summary", "", "Previous rounds · " + previous.length + " threads"));
-        var historyList = make("div", "bhn-rv-list");
-        previous.forEach(function(comment){ historyList.appendChild(renderThread(comment, threads.indexOf(comment))); });
-        history.appendChild(historyList);
-        history.addEventListener("toggle", function(){ if (history.isConnected) { state.historyExpanded = history.open; syncMarkers(); } });
-        body.appendChild(history);
+      if (!state.pickingElement) {
+        renderComposer(body);
+        var list = make("div", "bhn-rv-list");
+        var threads = topComments();
+        var current = threads.filter(function(comment){ return comment.round === state.review.round; });
+        var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
+        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round ? (editableReportPage(document.querySelector(scopeSelector)) ? " Choose Comment on an element to select an item, or Comment on page for general feedback. Click text to edit." : " Click any page element to start a thread.") : "")));
+        current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
+        body.appendChild(list);
+        if (previous.length) {
+          var history = make("details", "bhn-rv-history");
+          history.open = state.historyExpanded;
+          history.appendChild(make("summary", "", "Previous rounds · " + previous.length + " threads"));
+          var historyList = make("div", "bhn-rv-list");
+          previous.forEach(function(comment){ historyList.appendChild(renderThread(comment, threads.indexOf(comment))); });
+          history.appendChild(historyList);
+          history.addEventListener("toggle", function(){ if (history.isConnected) { state.historyExpanded = history.open; syncMarkers(); } });
+          body.appendChild(history);
+        }
       }
     }
     shell.appendChild(body);
@@ -1114,6 +1145,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var changed = roundChanged || state.review.status !== data.review.status || commentsSignature(state.comments) !== commentsSignature(data.comments || []);
       if (roundChanged) { state.historyExpanded = false; state.expandedThreads = {}; }
       state.review = data.review;
+      if (roundChanged || isLocked()) state.pickingElement = false;
       if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;
       state.comments = data.comments || [];
@@ -1287,6 +1319,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     });
   }
 
+  function reportTarget(event) {
+    var page = event.target.closest(pageSelector);
+    if (!page) return null;
+    if (event.type === "bhn-report-comment") return page;
+    var target = event.target.closest(reportTargets) || (state.pickingElement ? event.target : null);
+    return target && page.contains(target) ? target : null;
+  }
+
   function editableReportPage(node) {
     return reportCommentEndpoint && staffSurface === "report" && node &&
       node.closest(pageSelector)?.querySelector('[contenteditable]:not([contenteditable="false"])');
@@ -1299,19 +1339,23 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       return;
     }
     threadHighlight = null;
-    if (editableReportPage(event.target)) { showHighlight(null); return; }
-    showHighlight(event.target);
+    if (editableReportPage(event.target) && !state.pickingElement) { showHighlight(null); return; }
+    showHighlight(reportReview ? reportTarget(event) : event.target);
   }
 
   function onClick(event) {
     if (inOverlay(event.target)) return;
     if (reportCommentEndpoint && (!state.viewer || isLocked())) return;
-    if (event.type !== "bhn-report-comment" && editableReportPage(event.target)) return;
+    if (event.type !== "bhn-report-comment" && editableReportPage(event.target) && !state.pickingElement) return;
+    var node = reportReview ? reportTarget(event) : reportCommentEndpoint
+      ? (event.target.closest("h1,h2,h3,h4,p,li,blockquote,figcaption,img,td") || event.target.closest(pageSelector)) : event.target;
+    if (!node) return;
     event.preventDefault();
     event.stopPropagation();
-    var node = reportCommentEndpoint ? (event.target.closest("h1,h2,h3,h4,p,li,blockquote,figcaption,img,td") || event.target.closest(pageSelector)) : event.target;
+    var pickedElement = state.pickingElement;
+    state.pickingElement = false;
     state.selected = anchorsFor(node);
-    state.draft = "";
+    if (!pickedElement) state.draft = "";
     state.replyTo = null;
     threadHighlight = null;
     showHighlight(node);
