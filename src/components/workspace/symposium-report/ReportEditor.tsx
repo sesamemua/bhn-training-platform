@@ -212,7 +212,7 @@ export function ReportEditor({ report: initial, revision, history, review, recom
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · {dirty ? "Unsaved changes" : "Shared draft"}</p>
-          {editable && <p>Click text to edit it, then save the draft.{fullPageReview && " Choose Comment on an element to comment on any part of the page."}</p>}
+          {editable && <p>Click text to edit it, then save the draft.{fullPageReview && " Click a photo or caption to comment. Choose Comment on an element for text, headers or footers."}</p>}
         </div>
         <div className={styles.actions}>
           {history.length > 0 && (

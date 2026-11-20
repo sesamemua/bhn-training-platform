@@ -100,6 +100,15 @@ async function main() {
     await expect(page.getByRole("textbox", { name: "New review comment" })).toBeVisible();
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(page.locator("#report-frame-cover-0").getByRole("button", { name: "Swap photo", exact: true })).toBeVisible();
+    const directPhoto = page.locator("#report-frame-summary-0 figure img");
+    const directCaption = page.locator("#report-frame-summary-0 figcaption");
+    await page.getByRole("button", { name: "Collapse comments", exact: true }).click();
+    await directPhoto.click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
+    await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Keep my photo feedback.");
+    await directCaption.click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveValue("Keep my photo feedback.");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
     const pick = () => page.getByRole("button", { name: "Comment on an element", exact: true });
     await pick().click();
     await expect(page.getByRole("button", { name: "Cancel element selection", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -123,7 +132,7 @@ async function main() {
     ];
     for (const { label, target } of targets) {
       console.log("Checking element comment:", label);
-      await pick().click();
+      if (!["picture", "picture caption", "cover picture"].includes(label)) await pick().click();
       await target.click();
       await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
       await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
@@ -149,9 +158,15 @@ async function main() {
     await lastThread.getByRole("button", { name: "Reply", exact: true }).click();
     await lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true }).fill("Unsent reply");
     await expect(pick()).toBeDisabled();
+    await directPhoto.click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
+    await expect(lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true })).toHaveValue("Unsent reply");
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await lastThread.getByRole("button", { name: "Edit comment by Staff", exact: true }).click();
+    await lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true }).fill("Unsent correction");
     await expect(pick()).toBeDisabled();
+    await directCaption.click();
+    await expect(lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true })).toHaveValue("Unsent correction");
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(pick()).toBeEnabled();
     await page.setViewportSize({ width: 390, height: 844 });
@@ -160,6 +175,9 @@ async function main() {
     const mobileCaption = page.locator("#report-frame-summary-0 figcaption");
     await mobileCaption.evaluate(el => el.scrollIntoView({ block: "center" }));
     await mobileCaption.click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -212,6 +230,8 @@ async function main() {
     await expect(page.getByRole("button", { name: "Save draft", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Comment on page", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveCount(0);
+    await directPhoto.click();
+    await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
     assert.deepEqual(errors, []);
     console.log("PASS: full-page text editing, conflict retention, revision-aware save, explicit comments, photo controls, precise element comments and Show me, draft retention, networking text focus and geometry, archived and approved-round locks; mocked writes only");
   } finally { await browser.close(); }
