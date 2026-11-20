@@ -4,6 +4,8 @@ import { requireRole } from "@/lib/auth";
 import { REPORT_ID, reportSchema } from "@/lib/symposium-report/document";
 import { reportBlocks } from "@/lib/symposium-report/paginate";
 import { reportTransaction, reportRevision } from "@/lib/symposium-report/store";
+import { fieldChanges, REPORT_EDIT_ACTION, reportChanges } from "@/lib/symposium-report/changes";
+import { prisma } from "@/lib/prisma";
 
 const expected = { revision: z.string().regex(/^[a-f0-9]{64}$/), round: z.number().int().positive() };
 const input = z.discriminatedUnion("action", [
@@ -17,6 +19,7 @@ export async function POST(req: Request) {
   const session = await requireRole("instructor").catch(() => null);
   const user = session?.user as { id?: string; role?: string } | undefined;
   if (!user?.id) return failure("Forbidden.", 403);
+  const actorId = user.id;
   if (!req.headers.get("content-type")?.startsWith("application/json")) return failure("Expected JSON.", 415);
   const raw = await req.text();
   if (raw.length > 550_000) return failure("The report is too large.", 413);
@@ -45,6 +48,13 @@ export async function POST(req: Request) {
       }
       const text = JSON.stringify(data.report);
       await tx.pageReview.update({ where: { id: REPORT_ID }, data: { pastedHtml: text } });
+      // Track changes: who changed which text, before → after, in this round.
+      const previous = reportSchema.safeParse(JSON.parse(review.pastedHtml));
+      const changes = previous.success ? fieldChanges(previous.data, data.report) : [];
+      if (changes.length) await tx.auditLog.create({ data: {
+        actorId, action: REPORT_EDIT_ACTION, targetType: "pageReview", targetId: REPORT_ID,
+        detail: JSON.stringify({ round: review.round, changes }),
+      } });
       return NextResponse.json({ revision: reportRevision(text) });
     }
     if (data.action === "approve") {
@@ -69,4 +79,23 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true });
   });
+}
+
+/** Track changes for the current round: the comparison text per field and who changed what. */
+export async function GET() {
+  const session = await requireRole("instructor").catch(() => null);
+  if (!(session?.user as { id?: string } | undefined)?.id) return failure("Forbidden.", 403);
+  const review = await prisma.pageReview.findUnique({ where: { id: REPORT_ID, kind: "report" }, select: { round: true } });
+  if (!review) return failure("Report session not found.", 404);
+  const [previous, logged] = await Promise.all([
+    prisma.pageReviewVersion.findUnique({ where: { reviewId_round: { reviewId: REPORT_ID, round: review.round - 1 } }, select: { html: true } }),
+    // ponytail: newest 300 saves of the round; page them if a round ever outgrows that.
+    prisma.auditLog.findMany({
+      where: { action: REPORT_EDIT_ACTION, targetType: "pageReview", targetId: REPORT_ID, detail: { contains: `"round":${review.round},` } },
+      orderBy: { createdAt: "desc" }, take: 300,
+      select: { id: true, createdAt: true, detail: true, actor: { select: { name: true, email: true } } },
+    }),
+  ]);
+  const snapshot = previous ? reportSchema.safeParse(JSON.parse(previous.html)) : null;
+  return NextResponse.json(reportChanges(review.round, snapshot?.success ? snapshot.data : null, logged));
 }

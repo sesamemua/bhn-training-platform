@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.17c";
+export const TOUR_VERSION = "2026.11.20a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "symposium-report.track-changes-presence",
+    title: "Track changes and who's here",
+    body: "The toolbar shows who else has the report open and where. Turn on Show changes to see this round's edits marked; the Changes tab lists who changed what.",
+    path: "/admin/workspace/symposium-2026/report",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.11.20a",
+  },
   {
     id: "symposium-report.show-me",
     title: "Show me, on report comments",

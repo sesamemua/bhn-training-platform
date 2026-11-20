@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Event Report: see who else is in the report, and what changed",
+    body: "**Who's here.** The Event Report now shows who else has it open: coloured initials in the toolbar and a line such as *Yoo Jin Park editing story text · Structured Networking, p. 12*. Click a name to jump to their page. The text box a colleague is typing in gets an outline in their colour with their name, and a page someone is reading shows *viewing*.\n\n**Track changes.** Every saved text edit is now recorded with who made it. Turn on **Show changes** to mark what changed this round: additions are underlined in green, deletions struck through in red. Turn it off to hide the marks and keep editing. The new **Changes** tab lists each save: who, when, which page, and what changed. Click a page name to jump there. Changes are counted from today for this round, and from the start of each later round.",
+    kind: "feature",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Event Report comments: Show me",
     body: "Each comment on the 2026 Symposium **Event Report** now has a **Show me** button, as in the newsletter review. It opens that page, scrolls to the quoted text and blinks an amber box over it, as in the newsletter review. If the text has since changed, it blinks over the whole page.",
     kind: "improvement",

@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, FilePlus, History, Link2, MessageSquare, Printer, Save, Trash2 } from "lucide-react";
+import { BookOpen, FilePlus, GitCompare, History, Link2, MessageSquare, Printer, Save, Trash2 } from "lucide-react";
 import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { REPORT_API, reportSchema, type Report, type ReportPhoto } from "@/lib/symposium-report/document";
-import { ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
+import { Marked, ReportPaper, ReportRuler, useReportLayout, type Frame } from "./ReportPaper";
+import { baselineOf, reportFields, type ReportChanges } from "@/lib/symposium-report/changes";
 import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
 import { ReportReviewShare } from "./ReportReviewShare";
+import { ReportPresence } from "./ReportPresence";
 import styles from "./report.module.css";
 import "./report-print.css";
 
@@ -37,7 +39,10 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const [active, setActive] = useState<Frame>(cover);
   const [edit, setEdit] = useState<PhotoEdit | null>(null);
   const [typing, setTyping] = useState(false);
-  const [tab, setTab] = useState<"pages" | "comments">(fullPageReview ? "pages" : "comments");
+  const [tab, setTab] = useState<"pages" | "comments" | "changes">(fullPageReview ? "pages" : "comments");
+  const [showChanges, setShowChanges] = useState(false);
+  const [changes, setChanges] = useState<ReportChanges | null>(null);
+  const [changesError, setChangesError] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -52,6 +57,50 @@ export function ReportEditor({ report: initial, revision, history, review, recom
   const chapter = layout?.find(({ page }) => page.id === active.id);
   const count = layout ? 2 + layout.reduce((sum, item) => sum + item.frames.length, 0) : 0;
   const label = chapter?.page.title ?? (active.id === "back" ? "Back cover" : "Cover");
+  const savedFields = useMemo(() => new Map(reportFields(saved).map((field) => [field.key, field.text])), [saved]);
+  // Show changes: each field is compared with the start of the round; editing pauses while it is on.
+  const markup = showChanges && changes && past === null ? (key: string) => baselineOf(changes, key, savedFields.get(key)) : undefined;
+
+  async function loadChanges() {
+    setChangesError("");
+    try {
+      const response = await fetch(REPORT_API, { cache: "no-store" });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error ?? "Changes could not be loaded. Try again.");
+      setChanges(body as ReportChanges);
+    } catch (err) {
+      setChangesError(err instanceof Error ? err.message : "Changes could not be loaded. Try again.");
+    }
+  }
+
+  function toggleChanges(on: boolean) {
+    if (on && window.document.activeElement instanceof HTMLElement) window.document.activeElement.blur();
+    setShowChanges(on);
+    if (on) { setTab("changes"); void loadChanges(); }
+  }
+
+  /** "Structured Networking, p. 12" for a frame id such as "structured-networking-0". */
+  function pageName(frame: string) {
+    if (frame === "cover-0") return "Cover, p. 1";
+    if (frame === "back-0") return `Back cover, p. ${count}`;
+    const hit = /^(.+)-(\d+)$/.exec(frame);
+    let folio = 1;
+    for (const entry of layout ?? []) {
+      if (entry.page.id === hit?.[1]) return `${entry.page.title}, p. ${folio + 1 + Number(hit[2])}`;
+      folio += entry.frames.length;
+    }
+    return "another page";
+  }
+
+  function jumpToFrame(frame: string) {
+    const hit = /^(.+)-(\d+)$/.exec(frame);
+    if (hit) select({ id: hit[1], index: Number(hit[2]) }, true);
+  }
+
+  function jumpToField(key: string) {
+    const id = key.startsWith("page:") ? key.split(":")[1] : key.split(".")[0];
+    select({ id, index: 0 }, true);
+  }
 
   useEffect(() => {
     if (!fullPageReview || !ready) return;
@@ -230,20 +279,41 @@ export function ReportEditor({ report: initial, revision, history, review, recom
           )}
           {isAdmin && editable && <button type="button" disabled={controlsDisabled || dirty} onClick={() => write("approve")}>Approve report</button>}
           {approved && layout && <button type="button" className={styles.primary} onClick={() => window.print()}><Printer size={15} /> Print / Save PDF</button>}
+          <label className={styles.trackToggle} title={past !== null ? "Switch to Current copy to see changes." : "Mark what changed this round"}>
+            <input type="checkbox" role="switch" checked={showChanges} disabled={past !== null || !!edit} onChange={(event) => toggleChanges(event.target.checked)} />
+            Show changes
+          </label>
         </div>
+        <ReportPresence endpoint={`${REPORT_API}/presence`} pageName={pageName} onJump={jumpToFrame} />
         {!fullPageReview && <ReportReviewShare round={review.round} revision={token} canInvite={!controlsDisabled && !dirty} />}
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
         {message && <p className={styles.status} role="status">{message}</p>}
         {past !== null && <p className={styles.status}>Viewing the saved Round {past} snapshot. Switch to Current copy to make edits.</p>}
+        {markup && <p className={styles.status} role="status">
+          Showing changes since {changes!.since === "round" ? `Round ${changes!.round} started` : "change tracking began"}: <ins className={styles.ins}>added</ins> · <del className={styles.del}>removed</del>. Turn off Show changes to edit.
+        </p>}
+        {showChanges && changesError && <p className={styles.error} role="alert">{changesError}</p>}
       </div>
       <div className={styles.workbench}>
         <aside className={`${styles.rail} report-screen-only`} aria-label="Report controls">
           <div className={styles.tabs}>
             <button type="button" aria-pressed={tab === "pages"} onClick={() => setTab("pages")}><BookOpen size={15} /> Pages</button>
             {!fullPageReview && <button type="button" aria-pressed={tab === "comments"} onClick={() => setTab("comments")}><MessageSquare size={15} /> Review</button>}
+            <button type="button" aria-pressed={tab === "changes"} onClick={() => { setTab("changes"); if (!changes) void loadChanges(); }}><GitCompare size={15} /> Changes</button>
           </div>
+          {tab === "changes" && <section className={styles.changeList} aria-label="Changes this round">
+            {!changes ? <p className={styles.status}>{changesError || "Loading changes…"}</p>
+              : changes.edits.length === 0 ? <p className={styles.status}>No saved text changes in Round {changes.round} yet.</p>
+              : <ol>{changes.edits.map((entry) => <li key={entry.id}>
+                <p><strong>{entry.author}</strong> <time dateTime={entry.at}>{new Date(entry.at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</time></p>
+                {entry.fields.map((field) => <div key={field.key}>
+                  <button type="button" disabled={!!edit} onClick={() => jumpToField(field.key)}>{field.label}</button>
+                  <p className={styles.changeText}><Marked parts={field.marks} /></p>
+                </div>)}
+              </li>)}</ol>}
+          </section>}
           {tab === "pages" && <>
             <nav className={styles.outline} aria-label="Report pages">
               <button type="button" aria-current={active.id === "cover" ? "page" : undefined} disabled={!!edit} onClick={() => select(cover, true)}>Cover</button>
@@ -284,8 +354,8 @@ export function ReportEditor({ report: initial, revision, history, review, recom
           </div>}
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
-          onSelect={select} edit={editForm} onTextChange={controlsDisabled ? undefined : applyText} onTyping={setTyping}
-          onPhoto={controlsDisabled ? undefined : startPhoto}
+          onSelect={select} edit={editForm} onTextChange={controlsDisabled || markup ? undefined : applyText} onTyping={setTyping}
+          onPhoto={controlsDisabled || markup ? undefined : startPhoto} markup={markup}
           onComment={fullPageReview && editable ? (frame) => {
             select(frame);
             window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.querySelector("article")

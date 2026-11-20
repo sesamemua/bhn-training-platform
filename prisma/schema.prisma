@@ -7233,3 +7233,23 @@ model AssetCollection {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
+
+/// Who has a shared page open and where they are (live presence, e.g. the
+/// Event Report). One row per person per page, refreshed by a heartbeat;
+/// rows older than a couple of minutes are swept.
+model PagePresence {
+  id         String   @id @default(cuid())
+  pageKey    String
+  userId     String
+  name       String   @default("Someone")
+  color      String   @default("#3b82f6")
+  /// Report frame id in view, e.g. "summary-0".
+  frame      String?
+  /// Field being edited (aria label) and its index among the frame's text boxes; null when only viewing.
+  field      String?
+  fieldIndex Int?
+  lastSeenAt DateTime @default(now())
+
+  @@unique([pageKey, userId])
+  @@index([pageKey, lastSeenAt])
+}
