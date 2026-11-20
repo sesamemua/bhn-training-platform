@@ -55,7 +55,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
   useEffect(() => { latest.current = { report, typing }; });
 
   const document = history.find((version) => version.round === past)?.report ?? report;
-  const editable = past === null && review.status === "open" && !transitioning;
+  const editable = fullPageReview && past === null && review.status === "open" && !transitioning;
   const approved = review.status === "closed" && (past === null || past === review.round);
   const { layout, ruler } = useReportLayout(document, approved);
   const ready = !!layout;
@@ -316,6 +316,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
           <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? "Round locked" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
           {editable && <p>Click text or a photo to edit it. Changes save automatically.{fullPageReview && " Click a caption, or choose Comment on an element, to comment."}</p>}
+          {!fullPageReview && <p>View only. Use the red “Start Round {review.round} review” button to comment or edit the report.</p>}
         </div>
         <div className={styles.actions}>
           {history.length > 0 && (
@@ -325,7 +326,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
               {history.map(({ round }) => <option key={round} value={round}>Round {round} snapshot</option>)}
             </select></label>
           )}
-          {isAdmin && past === null && (
+          {fullPageReview && isAdmin && past === null && (
             <button type="button" disabled={!!edit || busy || dirty || transitioning} onClick={() => write("advance")}>Start Round {review.round + 1}</button>
           )}
           {isAdmin && editable && <button type="button" disabled={controlsDisabled || dirty} onClick={() => write("approve")}>Approve report</button>}
@@ -336,7 +337,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
           </label>
         </div>
         <ReportPresence endpoint={`${REPORT_API}/presence`} pageName={pageName} onJump={jumpToFrame} unsaved={dirty} showVersion={fullPageReview} />
-        {!fullPageReview && <ReportReviewShare round={review.round} revision={token} canInvite={!controlsDisabled && !dirty} />}
+        {!fullPageReview && <ReportReviewShare round={review.round} revision={token} canInvite={past === null && review.status === "open" && !busy && !dirty && !transitioning} />}
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
@@ -395,7 +396,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
             </select>
           </label>}
           {!fullPageReview && <div id="report-comments" hidden={tab !== "comments"}>
-            <p className={styles.status}>Choose “Start Round {review.round} review” above to add or reply to comments.</p>
+            <p className={styles.status}>Comments are view only here. Use the red “Start Round {review.round} review” button above to add comments, reply or edit the report.</p>
             <PageReviewClient initialReview={review} meId={meId} isAdmin={isAdmin}
               reportAnchor={{ label, quote: "", readOnly: true, key: `#report-frame-${active.id}-${active.index}`,
                 onLocate: (key) => {

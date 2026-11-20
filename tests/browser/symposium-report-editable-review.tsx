@@ -25,12 +25,12 @@ async function main() {
       contents: `import React from "react"; import {createRoot} from "react-dom/client";
         import {ReportEditor} from "./src/components/workspace/symposium-report/ReportEditor";
         const closed = location.search === "?closed";
-        createRoot(document.getElementById("root")).render(<ReportEditor fullPageReview
+        createRoot(document.getElementById("root")).render(<ReportEditor fullPageReview={location.search !== "?workspace"}
           report={{cover:{title:"Annual Symposium",theme:"Future workforce",date:"October 29"},
             pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false},{id:"annual-symposium",label:"Opening program",title:"Annual Symposium",text:"The opening program connected research, industry and careers.",frames:1,photos:{"0":{file:"keynote.jpg",caption:"Christopher Procyshyn keynote",x:50,y:40,fit:"cover"},"photo-0-1":{file:"welcome-1.webp",caption:"Molly Shoichet delivers the opening remarks",x:50,y:33,fit:"cover"}}},${JSON.stringify(ventureFixture)}],
             back:{title:"BioHubNet",text:"Connect"}}}
           revision={"a".repeat(64)} history={[{round:1,report:{cover:{title:"Archived title",theme:"Future workforce",date:"October 29"},pages:[{id:"summary",label:"Overview",title:"Summary",text:"Archived passage",frames:1,fillPhotos:false}],back:{title:"BioHubNet",text:"Connect"}}}]} recommendations={{}} meId="staff" isAdmin={false}
-          review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:[]}}/>);`,
+          review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:location.search === "?workspace" ? [{id:"existing",parentId:null,round:2,anchorQuote:"Original report passage",anchorKey:"#report-frame-summary-0",anchorPath:null,anchorBlock:null,anchorState:"current",authorUserId:"staff",authorName:"Reviewer",authorKind:"user",body:"Existing feedback stays visible",status:"open",editCount:0,editedAt:null,editedByName:null,createdAt:"2026-11-20T12:00:00Z"}] : []}}/>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
     define: { "process.env.NEXT_PUBLIC_COMMIT_SHA": '"abc1234"' },
@@ -90,6 +90,23 @@ async function main() {
       if (/\.(png|jpg|webp|svg)$/.test(url.pathname)) return route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="800" height="500" fill="#a9c1c4"/></svg>' });
       return route.fulfill({ status: 404 });
     });
+    await page.goto(origin + "/?workspace");
+    await expect(page.locator("#report-frame-summary-0 article")).toBeVisible();
+    await expect(page.getByText("Existing feedback stays visible", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Start Round 2 review", exact: true })).toHaveAttribute("href", "/review/symposium-2026/report");
+    await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
+    await expect(page.locator("#bhn-review-overlay")).toHaveCount(0);
+    for (const name of ["Add comment", "Reply", "Resolve", "Edit comment", "Delete comment", "Add page", "Swap photo"]) {
+      await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+    }
+    await page.locator("#report-frame-summary-0 article img").click();
+    await page.locator("#report-frame-summary-0 figcaption").click();
+    await page.getByRole("button", { name: "Pages", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Add page", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Apply photo", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "Review comment", exact: true })).toHaveCount(0);
+    assert.equal(saves.length, 0, "workspace clicks never autosave");
+    assert.equal(selections.length, 0, "workspace clicks never submit comments");
     await page.goto(origin);
     await expect(page.locator("#bhn-review-overlay")).toBeVisible();
     const build = page.getByText("abc1234", { exact: true });
