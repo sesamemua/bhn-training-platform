@@ -243,6 +243,21 @@ export function ReportEditor({ report: initial, revision, history, review: initi
     setError("");
   }
 
+  function removePhoto() {
+    if (!edit || edit.frame.id === "cover") return;
+    const { frame, slot } = edit;
+    setReport({ ...report, pages: report.pages.map((page) => {
+      if (page.id !== frame.id) return page;
+      const photos = { ...page.photos };
+      // Extra photos just go; the main slot keeps a hidden marker so no recommended photo fills it.
+      if (slot) delete photos[slot];
+      else photos[String(frame.index)] = { ...pagePhoto(page, frame.index, recommendations), hidden: true };
+      return { ...page, photos };
+    }) });
+    setEdit(null);
+    setError("");
+  }
+
   function addPage() {
     const id = window.crypto.randomUUID();
     const index = active.id === "cover" ? 0 : active.id === "back"
@@ -306,7 +321,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
   const editForm = edit && (
     <PhotoEditor initial={edit.initial} automatic={edit.automatic} height={edit.height} section={edit.frame.id}
       cover={edit.frame.id === "cover"} secondary={!!edit.slot} portrait={edit.slot?.startsWith("portrait-") ?? false}
-      onApply={applyPhoto} onCancel={() => setEdit(null)} />
+      onApply={applyPhoto} onRemove={edit.frame.id === "cover" ? undefined : removePhoto} onCancel={() => setEdit(null)} />
   );
 
   return (

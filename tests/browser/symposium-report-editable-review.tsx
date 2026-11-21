@@ -301,6 +301,27 @@ async function main() {
     assert.ok(saves.at(-1)!.report.pages[1].text.includes(revisedMentor));
     assert.ok(saves.at(-1)!.report.pages[1].text.includes("Mentor 17 · Professional role 17"));
     assert.ok(saves.at(-1)!.report.pages[1].text.includes("Conversation 6 connected research experience"));
+
+    // Remove photo: an extra photo goes; the main photo stays gone (no recommended fallback) until re-added.
+    const symposium = page.locator("#report-frame-annual-symposium-0");
+    const photosOf = () => (saves.at(-1)!.report.pages[2] as unknown as { photos: Record<string, { hidden?: boolean }> }).photos;
+    await symposium.getByRole("img", { name: "Molly Shoichet delivers the opening remarks" }).click();
+    await photoEditor.getByRole("button", { name: "Remove photo" }).click();
+    await expect(photoEditor).toHaveCount(0);
+    await expect.poll(() => Object.keys(photosOf())).toEqual(["0"]);
+    await expect(symposium.locator("figure img")).toHaveCount(1);
+    await symposium.getByRole("img", { name: "Christopher Procyshyn keynote" }).click();
+    await photoEditor.getByRole("button", { name: "Remove photo" }).click();
+    await expect.poll(() => photosOf()["0"]?.hidden).toBe(true);
+    await expect(symposium.locator("figure")).toHaveCount(0);
+    await symposium.getByRole("button", { name: "Add photo" }).click();
+    await photoEditor.getByRole("button", { name: "Apply photo" }).click();
+    await expect.poll(() => photosOf()["0"]?.hidden).toBeUndefined();
+    await expect(symposium.locator("figure img")).toHaveCount(1);
+    await page.locator("#report-frame-cover-0 [data-photo-slot]").click();
+    await expect(photoEditor.getByRole("button", { name: "Remove photo" })).toHaveCount(0);
+    await photoEditor.getByRole("button", { name: "Cancel" }).click();
+
     await page.locator('[class*="rosterNames"] [role="textbox"]').fill("");
     await page.locator('[class*="rosterNames"] [role="textbox"]').blur();
     await page.locator('[class*="rosterHeading"] [role="textbox"]').fill("");

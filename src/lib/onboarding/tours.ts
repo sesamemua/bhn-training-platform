@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.20c";
+export const TOUR_VERSION = "2026.11.20d";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "symposium-report.remove-photo",
+    title: "Remove a photo",
+    body: "Click a photo and choose Remove photo to take it off the page. Use Add photo on that page to bring one back.",
+    path: "/review/symposium-2026/report",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.11.20d",
+  },
   {
     id: "symposium-report.autosave-photos",
     title: "Edits save themselves",

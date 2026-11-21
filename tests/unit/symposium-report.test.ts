@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { catalogueSchema, isGalleryPhoto } from "../../src/lib/symposium-report/gallery";
-import { hasPairedPhotos, pagePhoto, photoPreset, photoRowHeight, portraitHeight } from "../../src/lib/symposium-report/photos";
+import { hasLeadPhoto, hasPairedPhotos, pagePhoto, photoPreset, photoRowHeight, portraitHeight } from "../../src/lib/symposium-report/photos";
 import { reportSchema } from "../../src/lib/symposium-report/document";
 import { paginate, replaceReportBlock, reportBlocks } from "../../src/lib/symposium-report/paginate";
 
@@ -143,6 +143,11 @@ test("single and paired photo rows keep landscape proportions instead of narrow 
     photos: { "photo-0-1": photoPreset("welcome-1.webp") } };
   assert.equal(hasPairedPhotos(page, 0), true);
   assert.equal(hasPairedPhotos(page, 1), false);
+  const removed = { ...page, photos: { ...page.photos, "0": { ...photoPreset("keynote.jpg"), hidden: true as const } } };
+  assert.equal(reportSchema.safeParse({ cover: { title: "T", theme: "T", date: "D" }, pages: [removed], back: { title: "B", text: "B" } }).success, true);
+  assert.equal(hasPairedPhotos(removed, 0), false, "a removed main photo leaves the extra photo on its own row");
+  assert.equal(hasLeadPhoto(removed, 0), false);
+  assert.equal(hasLeadPhoto(page, 0), true);
 });
 
 

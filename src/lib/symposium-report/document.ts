@@ -26,6 +26,8 @@ const reportPhoto = z.object({
   zoom: z.number().int().min(100).max(300).optional(),
   rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).optional(),
   flip: z.boolean().optional(),
+  /** Removed from the page (the main photo slot would otherwise fall back to a recommended one). */
+  hidden: z.literal(true).optional(),
 });
 export type ReportPhoto = z.infer<typeof reportPhoto>;
 

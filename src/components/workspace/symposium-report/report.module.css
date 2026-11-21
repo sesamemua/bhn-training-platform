@@ -539,6 +539,8 @@
 .editHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .editHeader h2 { font: 400 31px/1.08 var(--serif); }
 .editHeader p, .editForm > p { color: var(--report-slate); font-size: 14px; }
+.editHeader > div:last-child { display: flex; gap: 8px; }
+.editHeader > div:last-child button { display: inline-flex; align-items: center; gap: 6px; }
 .editForm label { display: grid; gap: 5px; font: 700 15px var(--sans); }
 .editForm :is(input, textarea, select) { display: block; width: 100%; padding: 10px 12px; border: 1px solid var(--report-rule); border-radius: 5px; font: 17px/1.4 var(--sans); color: var(--report-ink); background: var(--report-white); }
 .cropControls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

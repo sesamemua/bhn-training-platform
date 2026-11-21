@@ -27,7 +27,7 @@ export function reportReviewSnapshot(report: Report, origin: string) {
         return kind === "bullet" ? `<ul>${content}</ul>` : content;
       }).join("")}
       ${page.registration ? `<p>${page.registration.categories.map(({ label, count }) => `${escape(label)} ${page.registration!.percentagesOnly ? (count / page.registration!.categories.reduce((sum, c) => sum + c.count, 0) * 100).toFixed(1) + "%" : count}`).join(" · ")}</p>${page.registration.audience ? `<p>Trainee / HQP ${(page.registration.audience.trainees / (page.registration.audience.trainees + page.registration.audience.professionals) * 100).toFixed(0)}% · Professional ${(page.registration.audience.professionals / (page.registration.audience.trainees + page.registration.audience.professionals) * 100).toFixed(0)}%</p>` : ""}<p>${escape(page.registration.source)}</p>` : ""}
-      ${Object.entries(page.photos ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([, photo]) => figure(photo, page.showCaptions !== false)).join("")}
+      ${Object.entries(page.photos ?? {}).sort(([a], [b]) => a.localeCompare(b)).filter(([, photo]) => !photo.hidden).map(([, photo]) => figure(photo, page.showCaptions !== false)).join("")}
     </section>`).join("")}
     <section><h2>${escape(report.back.title)}</h2><p>${escape(report.back.text)}</p></section>
   </body></html>`;

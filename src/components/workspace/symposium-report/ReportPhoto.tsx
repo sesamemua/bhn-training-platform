@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
-import { FlipHorizontal2, RotateCcw, RotateCw, Undo2 } from "lucide-react";
+import { FlipHorizontal2, RotateCcw, RotateCw, Trash2, Undo2 } from "lucide-react";
 import type { ReportPhoto } from "@/lib/symposium-report/document";
 import { photoAdjust, photoLabel, REPORT_ASSETS } from "@/lib/symposium-report/photos";
 import { REPORT_API } from "@/lib/symposium-report/document";
@@ -71,7 +71,7 @@ async function photoForUpload(file: File) {
   } finally { image.close(); }
 }
 
-export function PhotoEditor({ initial, automatic, height, section, cover, secondary, portrait, onApply, onCancel }: {
+export function PhotoEditor({ initial, automatic, height, section, cover, secondary, portrait, onApply, onRemove, onCancel }: {
   initial?: ReportPhoto;
   automatic: ReportPhoto;
   height: number;
@@ -80,6 +80,8 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
   secondary: boolean;
   portrait: boolean;
   onApply: (photo: ReportPhoto | undefined) => void;
+  /** Take the photo off the page; absent on the cover. */
+  onRemove?: () => void;
   onCancel: () => void;
 }) {
   const [selected, setSelected] = useState(initial);
@@ -151,7 +153,7 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    const chosen = selected && { ...selected, caption: selected.caption?.trim() || undefined };
+    const chosen = selected && { ...selected, caption: selected.caption?.trim() || undefined, hidden: undefined };
     if (!uploading) onApply(chosen && portrait ? { ...chosen, fit: "cover" } : chosen);
   }
 
@@ -159,7 +161,10 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
     <form className={`${styles.editForm} report-screen-only`} onSubmit={submit} onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}>
       <div className={styles.editHeader}>
         <div><p>{cover ? "Cover photograph" : portrait ? "Panel portrait" : "Page photograph"}</p><h2>Swap or crop photo</h2></div>
-        <button type="button" onClick={onCancel}>Cancel</button>
+        <div>
+          {onRemove && <button type="button" onClick={onRemove}><Trash2 size={14} aria-hidden /> Remove photo</button>}
+          <button type="button" onClick={onCancel}>Cancel</button>
+        </div>
       </div>
       <div className={styles.photoWorkbench}>
         <div className={styles.photoChoices}>

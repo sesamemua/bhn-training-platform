@@ -87,8 +87,13 @@ export function portraitHeight(count: number) {
   return count ? 684 * photoRowHeight(count) * count / (684 - 10 * (count - 1)) : 0;
 }
 
+/** The page's main photo for this frame was removed. */
+export function photoRemoved(page: ReportPage, index: number) {
+  return page.photos?.[String(index)]?.hidden === true;
+}
+
 export function hasPairedPhotos(page: ReportPage, index: number) {
-  return index === 0 && stripPhotos(page, index).length === 1;
+  return index === 0 && !photoRemoved(page, 0) && stripPhotos(page, index).length === 1;
 }
 
 export function workshopPhotos(page: ReportPage, row?: string) {
@@ -102,12 +107,12 @@ export function workshopTileHeight(page: ReportPage) {
 }
 
 export function hasLeadPhoto(page: ReportPage, index: number) {
-  return index === 0 && page.image !== "registration" && (page.id === "panels" || Boolean(page.image) || stripPhotos(page, index).length > 0);
+  return index === 0 && !photoRemoved(page, 0) && page.image !== "registration" && (page.id === "panels" || Boolean(page.image) || stripPhotos(page, index).length > 0);
 }
 
 export function hasTrainingPhotoGrid(page: ReportPage, index: number) {
   return page.text.includes("[[photos:") && !hasLeadPhoto(page, index)
-    && Boolean(page.photos?.[String(index)]) && stripPhotos(page, index).length > 0;
+    && Boolean(page.photos?.[String(index)]) && !photoRemoved(page, index) && stripPhotos(page, index).length > 0;
 }
 
 export const MIN_FILL_PHOTO = 288;
