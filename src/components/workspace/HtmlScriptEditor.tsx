@@ -22,6 +22,7 @@ import {
   Table2, Eye, EyeOff,
 } from "lucide-react";
 import { HIDE_DIRECTIONS_CSS } from "@/lib/scripts/directions";
+import { sanitizeScriptCss, sanitizeScriptHtml } from "@/lib/scripts/sanitize";
 import { cn } from "@/lib/utils";
 import { colorForKey, type PresencePeer } from "@/lib/scripts/presence";
 import { AccountOfferModal } from "./AccountOfferModal";
@@ -489,7 +490,7 @@ export function HtmlScriptEditor({
     const shadow = host.attachShadow({ mode: "open" });
 
     const style = document.createElement("style");
-    style.textContent = `${adaptCss(css)}\n:host{display:block}\n:host main{max-width:100%}`
+    style.textContent = `${adaptCss(sanitizeScriptCss(css))}\n:host{display:block}\n:host main{max-width:100%}`
       + `\n:host .gantt .bar{user-select:none;-webkit-user-select:none;touch-action:none}`
       + `\n:host .gantt .bar.hf-dragging{filter:brightness(1.08);box-shadow:0 0 0 2px rgba(0,0,0,0.18);z-index:6}`;
     const presenceStyle = document.createElement("style");
@@ -500,7 +501,7 @@ export function HtmlScriptEditor({
     directionsStyle.textContent = directionsToggle ? HIDE_DIRECTIONS_CSS : "";
 
     const content = document.createElement("div");
-    content.innerHTML = initialHtml;
+    content.innerHTML = sanitizeScriptHtml(initialHtml);
     content.contentEditable = readOnly ? "false" : "true";
     content.spellcheck = true;
     content.style.outline = "none";
@@ -815,7 +816,7 @@ export function HtmlScriptEditor({
         return;
       }
       if (showSource && contentRef.current) {
-        contentRef.current.innerHTML = sourceHtml;
+        contentRef.current.innerHTML = sanitizeScriptHtml(sourceHtml);
         refreshSections();
         refreshTables();
         setupPhasesRef.current();
@@ -878,7 +879,7 @@ export function HtmlScriptEditor({
     if (!showSource) {
       setSourceHtml(currentHtml());
     } else if (contentRef.current) {
-      contentRef.current.innerHTML = sourceHtml;
+      contentRef.current.innerHTML = sanitizeScriptHtml(sourceHtml);
       refreshSections();
     }
     setShowSource((s) => !s);
@@ -1125,7 +1126,7 @@ export function HtmlScriptEditor({
       const old = new DOMParser().parseFromString(j.html, "text/html")
         .querySelector(`.doc-panel[data-tab="${CSS.escape(docTab)}"]`);
       if (!old) { setError(`That version has no ${label} tab.`); return; }
-      panel.innerHTML = old.innerHTML;
+      panel.innerHTML = sanitizeScriptHtml(old.innerHTML);
       refreshSections();
       refreshTables();
       setupPhasesRef.current();
@@ -1159,7 +1160,7 @@ export function HtmlScriptEditor({
       }
       const html = j.snapshot?.richContent?.html;
       if (typeof html === "string" && contentRef.current) {
-        contentRef.current.innerHTML = html;
+        contentRef.current.innerHTML = sanitizeScriptHtml(html);
         setSourceHtml(html);
         refreshSections();
         refreshTables();

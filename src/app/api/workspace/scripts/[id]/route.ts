@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saveScriptContent, type ScriptFormat, type SnapshotSection } from "@/lib/scripts/content";
+import { parseRichContent } from "@/lib/scripts/sanitize";
 
 export const runtime = "nodejs";
 interface Ctx { params: Promise<{ id: string }> }
@@ -55,6 +56,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     richContent?: unknown;
     summary?: string;
   };
+  const richContent = body.richContent === undefined ? undefined : parseRichContent(body.richContent, body.format);
+  if (body.richContent !== undefined && richContent === undefined) {
+    return NextResponse.json({ error: "Invalid script content." }, { status: 400 });
+  }
 
   // Title-only update (rename) — no content revision.
   if (
@@ -78,7 +83,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     scriptId: id,
     format: body.format,
     sections: body.sections,
-    richContent: body.richContent,
+    richContent,
     author: { userId: uid, name, kind: "user" },
     summary: body.summary,
   });

@@ -119,12 +119,17 @@ export async function saveScriptContent(args: {
   const script = await prisma.script.findUnique({ where: { id: scriptId } });
   if (!script) throw new Error("Script not found");
   const format = (args.format ?? script.format) as ScriptFormat;
+  // Every write lands here, restores included. Loaded on demand to keep jsdom
+  // out of the cold start of read-only routes that import this module.
+  const richContent = args.richContent === undefined
+    ? undefined
+    : (await import("./sanitize-server")).sanitizeRichContent(args.richContent);
 
   await prisma.$transaction(async (tx) => {
     const data: Prisma.ScriptUpdateInput = { format, updatedAt: new Date() };
     // Persist richContent for any rich format (richtext doc, or original HTML).
-    if (args.richContent !== undefined) {
-      data.richContent = (args.richContent ?? Prisma.JsonNull) as Prisma.InputJsonValue;
+    if (richContent !== undefined) {
+      data.richContent = (richContent ?? Prisma.JsonNull) as Prisma.InputJsonValue;
     }
     await tx.script.update({ where: { id: scriptId }, data });
 

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveShareToken, getCollaborator } from "@/lib/scripts/share";
 import { saveScriptContent } from "@/lib/scripts/content";
+import { parseRichContent } from "@/lib/scripts/sanitize";
 
 export const runtime = "nodejs";
 interface Ctx { params: Promise<{ token: string }> }
@@ -26,11 +27,13 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (body.richContent === undefined) {
     return NextResponse.json({ error: "Nothing to save." }, { status: 400 });
   }
+  const richContent = parseRichContent(body.richContent, "html");
+  if (!richContent) return NextResponse.json({ error: "Invalid script content." }, { status: 400 });
 
   const snapshot = await saveScriptContent({
     scriptId: res.script.id,
     format: "html",
-    richContent: body.richContent,
+    richContent,
     author: { userId: null, name: collab.name, kind: "anon" },
     summary: typeof body.summary === "string" ? body.summary.slice(0, 120) : "Edited script",
   });

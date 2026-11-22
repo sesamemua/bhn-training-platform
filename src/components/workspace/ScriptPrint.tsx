@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, FileText, Printer, RefreshCw } from "lucide-react";
 import { HIDE_DIRECTIONS_CSS } from "@/lib/scripts/directions";
+import { sanitizeScriptCss, sanitizeScriptHtml } from "@/lib/scripts/sanitize";
 
 export interface PrintableScript { id: string; title: string; updatedAt: string; html: string; css: string }
 interface Part { key: string; script: string; label: string; html: string }
@@ -26,12 +27,12 @@ function partsOf(s: PrintableScript): Part[] {
   root.querySelectorAll("script, style, button, input, textarea, select, nav, .doc-tabs, [role=tablist]").forEach((n) => n.remove());
   root.querySelectorAll("[contenteditable]").forEach((n) => n.removeAttribute("contenteditable"));
   const panels = [...root.querySelectorAll<HTMLElement>(".doc-panel")];
-  if (!panels.length) return [{ key: s.id, script: s.title, label: s.title, html: root.innerHTML }];
+  if (!panels.length) return [{ key: s.id, script: s.title, label: s.title, html: sanitizeScriptHtml(root.innerHTML) }];
   return panels.flatMap((p, i) => {
     const own = p.cloneNode(true) as HTMLElement;
     own.querySelectorAll(".doc-panel").forEach((n) => n.remove());
     if (!own.textContent?.trim()) return [];
-    return [{ key: `${s.id}:${p.dataset.tab ?? i}`, script: s.title, label: p.dataset.label || p.dataset.tab || `Part ${i + 1}`, html: own.innerHTML }];
+    return [{ key: `${s.id}:${p.dataset.tab ?? i}`, script: s.title, label: p.dataset.label || p.dataset.tab || `Part ${i + 1}`, html: sanitizeScriptHtml(own.innerHTML) }];
   });
 }
 
@@ -80,7 +81,7 @@ export function ScriptPrint({ projectTitle, scripts }: { projectTitle: string; s
   useEffect(() => { setParts(scripts.flatMap(partsOf)); }, [scripts]);
 
   const chosen = parts.filter((p) => !off.has(p.key));
-  const css = scripts.map((s) => s.css).join("\n");
+  const css = scripts.map((s) => sanitizeScriptCss(s.css)).join("\n");
   const preview = useMemo(() => bookHtml(projectTitle, chosen, css, false, directions), [projectTitle, chosen, css, directions]);
   const newest = scripts.map((s) => s.updatedAt).sort().at(-1);
 
@@ -130,7 +131,7 @@ export function ScriptPrint({ projectTitle, scripts }: { projectTitle: string; s
         <p className="text-[11.5px] text-subtle">In the print window, choose <strong>Save as PDF</strong> to make a PDF. {chosen.length} of {parts.length} parts.</p>
       </div>
       <div className="rounded-xl border border-line bg-elevated/40 p-3">
-        <iframe title="Scripts preview" srcDoc={preview} className="h-[720px] w-full rounded bg-white" />
+        <iframe title="Scripts preview" sandbox="" srcDoc={preview} className="h-[720px] w-full rounded bg-white" />
       </div>
     </section>
   );
