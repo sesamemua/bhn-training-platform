@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Event Report: comparison opens only when you ask",
+    body: "The side-by-side round comparison no longer pops up when you open the Event Report review. Use the Before / after comparison button in the review panel when you want it.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Event Report: remove a photo",
     body: "Click a photo in the Event Report and choose Remove photo to take it off the page. Removing a page's main photo leaves the space for text; use Add photo on that page to bring one back.",
     kind: "feature",

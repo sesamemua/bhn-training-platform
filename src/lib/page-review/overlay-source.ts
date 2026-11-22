@@ -633,7 +633,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       render();
       var dismissed = false;
       try { dismissed = sessionStorage.getItem(comparisonKey()) === "1"; } catch (_) {}
-      if (!dismissed) openComparison();
+      // The Event Report opens comparison only from its button.
+      if (!dismissed && !reportReview) openComparison();
     } catch (_) {
       if (state.review.round !== round) return;
       state.comparisonError = "Could not load comparison. Retry";

@@ -100,6 +100,9 @@ async function main() {
     });
     await page.goto(origin);
     const dialog = page.getByRole("dialog");
+    await page.getByRole("button", { name: "Before / after comparison" }).waitFor();
+    await expect(dialog).toHaveCount(0); // never opens by itself on the Event Report
+    await page.getByRole("button", { name: "Before / after comparison" }).click();
     await expect(dialog).toBeVisible();
     const before = page.frameLocator('iframe[title="Before · Round 3"]');
     await expect(before.locator('mark[data-bhn-diff="removed"]').filter({ hasText: "Original" })).toBeVisible();

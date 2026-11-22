@@ -192,7 +192,7 @@ test("comparison loads once per round, respects dismissal, and opens again for t
   const dismissed = new Set<string>();
   const state = { review: { round: 1 }, comparisonRound: null as number | null, comparison: null, comparisonError: "" };
   const context = vm.createContext({
-    state, endpoint: "https://review.test/api/public/page-review/token", credential: "viewer", comparisonDialog: null, comparisonCleanup: null,
+    state, endpoint: "https://review.test/api/public/page-review/token", credential: "viewer", comparisonDialog: null, comparisonCleanup: null, reportReview: false,
     sessionStorage: { getItem: (key: string) => dismissed.has(key) ? "1" : null },
     render() {}, openComparison() { opens++; },
     fetch: async (url: string, options: { headers: Record<string, string> }) => {
@@ -218,6 +218,11 @@ test("comparison loads once per round, respects dismissal, and opens again for t
   state.review.round = 3;
   await load();
   assert.equal(opens, 2, "new round opens its own comparison");
+  vm.runInContext("reportReview = true", context);
+  state.review.round = 4;
+  await load();
+  assert.equal(opens, 2, "the Event Report waits for its button");
+  assert.ok(vm.runInContext("state.comparison", context), "and the comparison is still ready to open");
   assert.match(source, /frame\.setAttribute\("sandbox", "allow-scripts"\)/);
   assert.doesNotMatch(source, /allow-same-origin/);
   assert.match(source, /script-src 'sha256-/);

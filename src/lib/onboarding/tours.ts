@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.20d";
+export const TOUR_VERSION = "2026.11.22a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "symposium-report.comparison-on-demand",
+    title: "Compare rounds when you need to",
+    body: "The Event Report now opens straight to the pages. Use Before / after comparison in the review panel to see rounds side by side.",
+    path: "/review/symposium-2026/report",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.11.22a",
+  },
   {
     id: "symposium-report.remove-photo",
     title: "Remove a photo",
