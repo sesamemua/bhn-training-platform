@@ -389,7 +389,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? "Round locked" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
-          {editable && <p>Comment mode is on by default. Use “Edit text and photos” in the left toolbar to make changes. Edits save automatically.</p>}
+          {editable && <p>Comment mode is on by default. Use “Edit text and photos” in the upper-right toolbar to make changes. Edits save automatically.</p>}
           {!fullPageReview && <p>View only. Use the red “Start Round {review.round} review” button to comment or edit the report.</p>}
         </div>
         <div className={styles.actions}>
@@ -422,7 +422,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         </p>}
         {showChanges && changesError && <p className={styles.error} role="alert">{changesError}</p>}
       </div>
-      <div className={styles.workbench} data-report-unsaved={dirty || !!edit || busy}>
+      <div className={`${styles.workbench} ${fullPageReview ? styles.fullPageReview : ""}`} data-report-unsaved={dirty || !!edit || busy}>
         <aside className={`${styles.rail} report-screen-only`} aria-label="Report controls">
           {fullPageReview && <div data-report-tools-host="" />}
           <div className={styles.tabs}>

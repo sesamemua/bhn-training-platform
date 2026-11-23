@@ -119,6 +119,14 @@ async function main() {
     const buildBox = (await build.boundingBox())!;
     assert.ok(buildBox.x < 40 && buildBox.y + buildBox.height > 1000 - 40, "the build SHA sits in the bottom-left corner");
     await expect(page.getByRole("toolbar", { name: "Report review toolbar" })).toBeVisible();
+    const toolsPosition = await page.locator('[data-report-tools-host]').evaluate(host => {
+      const rail = host.closest('aside')!.getBoundingClientRect();
+      const stage = document.querySelector('[data-report-paper]')!.getBoundingClientRect();
+      return { railLeft: rail.left, railRight: rail.right, stageRight: stage.right, toolsTop: host.getBoundingClientRect().top };
+    });
+    assert.ok(toolsPosition.railLeft >= toolsPosition.stageRight, "review tools occupy the right column without covering the report");
+    assert.ok(toolsPosition.railRight > 1440 - 40, "review tools sit against the right side of the window");
+    assert.ok(toolsPosition.toolsTop < 400, "review toolbar starts at the top of the controls column");
     await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
     await expect(page.locator('[id^="report-frame-venturelift-"]')).toHaveCount(1);
