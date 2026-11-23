@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { reportTransaction } from "@/lib/symposium-report/store";
+import { reportRevision, reportTransaction } from "@/lib/symposium-report/store";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildBrief } from "@/lib/page-review/brief";
@@ -25,6 +25,12 @@ export async function GET(request: Request) {
   }
 
   const where = { id: REPORT_ID, kind: "report" };
+  if (searchParams.get("document") === "1") {
+    const row = await prisma.pageReview.findUnique({ where, select: { pastedHtml: true, round: true, status: true } });
+    if (!row?.pastedHtml) return json({ error: "The report is not ready." }, 404);
+    return json({ ok: true, report: reportSchema.parse(JSON.parse(row.pastedHtml)), revision: reportRevision(row.pastedHtml), review: { round: row.round, status: row.status } });
+  }
+
   if (searchParams.get("comparison") === "1") {
     const row = await prisma.pageReview.findUnique({ where, select: {
       title: true, round: true, status: true, pastedHtml: true, versions: { select: { round: true } },

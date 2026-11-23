@@ -4,7 +4,7 @@ import { Fragment, useLayoutEffect, useRef, useState, type HTMLAttributes, type 
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, replaceReportBlock, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
 import { hasLeadPhoto, hasPairedPhotos, hasTrainingPhotoGrid, MAX_PHOTO_HEIGHT, MIN_FILL_PHOTO, pagePhoto, photoLabel, photoRemoved, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, photoRowHeight, portraitHeight, portraitPhotos, REPORT_ASSETS, stripPhotos, trainingPhotoGridSpace, TRAINING_TILE_PREVIEW_HEIGHT, workshopPhotos, workshopTileHeight } from "@/lib/symposium-report/photos";
-import { marks as diffMarks, marksByRange, type Mark } from "@/lib/symposium-report/changes";
+import { marks as diffMarks, marksByRange, reportFields, type Mark, type ReportChanges } from "@/lib/symposium-report/changes";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
 
@@ -17,6 +17,7 @@ type Inline = (value: string, label: string, apply: (value: string) => void, mul
 function RegistrationChart({ chart, showSource, inline, change }: {
   chart: Registration; showSource: boolean; inline: Inline; change: (chart: Registration) => void;
 }) {
+  const categoryColors = chart.categories.map(({ label }, index) => sectorColors[label.startsWith("Government") ? 3 : label === "Other" ? 2 : index]);
   const total = chart.categories.reduce((sum, item) => sum + item.count, 0);
   const updateCategory = (index: number, patch: Partial<Registration["categories"][number]>) =>
     change({ ...chart, categories: chart.categories.map((item, i) => i === index ? { ...item, ...patch } : item) });
@@ -30,7 +31,7 @@ function RegistrationChart({ chart, showSource, inline, change }: {
           {chart.categories.map(({ count }, index) => {
             const share = count / total * 100;
             const offset = chart.categories.slice(0, index).reduce((sum, sector) => sum + sector.count / total * 100, 0);
-            return <circle key={index} cx="21" cy="21" r="15.9154943" fill="none" stroke={sectorColors[index]} strokeWidth="8"
+            return <circle key={index} cx="21" cy="21" r="15.9154943" fill="none" stroke={categoryColors[index]} strokeWidth="8"
               pathLength="100" strokeDasharray={`${share} ${100 - share}`} strokeDashoffset={-offset} transform="rotate(-90 21 21)" />;
           })}
           {!chart.percentagesOnly && <text x="21" y="23" textAnchor="middle" className={styles.chartTotal}>{total}</text>}
@@ -38,7 +39,7 @@ function RegistrationChart({ chart, showSource, inline, change }: {
         <dl className={styles.chartLegend}>
           {chart.categories.map(({ count, label }, index) => (
             <div key={index}>
-              <dt><i style={{ background: sectorColors[index] }} />
+              <dt><i style={{ background: categoryColors[index] }} />
                 <span {...inline(label, `Category ${index + 1}`, (label) => updateCategory(index, { label }))}>{label}</span>
               </dt>
               <dd>{!chart.percentagesOnly && <><span {...inline(String(count), `Count for ${label}`, (text) => updateCategory(index, { count: text.trim() ? Number(text) : NaN }))}>{count}</span> · </>}{(count / total * 100).toFixed(1)}%</dd>
@@ -55,7 +56,7 @@ function RegistrationChart({ chart, showSource, inline, change }: {
               strokeDasharray={`${chart.audience.trainees / (chart.audience.trainees + chart.audience.professionals) * 100} 100`} transform="rotate(-90 21 21)" />
           </svg>
           <dl className={styles.chartLegend}>
-            <div><dt><i style={{ background: sectorColors[0] }} />Trainee / HQP</dt><dd>{(chart.audience.trainees / (chart.audience.trainees + chart.audience.professionals) * 100).toFixed(0)}%</dd></div>
+            <div><dt><i style={{ background: sectorColors[0] }} />HQP</dt><dd>{(chart.audience.trainees / (chart.audience.trainees + chart.audience.professionals) * 100).toFixed(0)}%</dd></div>
             <div><dt><i style={{ background: sectorColors[1] }} />Professional</dt><dd>{(chart.audience.professionals / (chart.audience.trainees + chart.audience.professionals) * 100).toFixed(0)}%</dd></div>
           </dl>
         </div>
@@ -67,7 +68,7 @@ function RegistrationChart({ chart, showSource, inline, change }: {
           {chart.categories.map(({ label, count }, index) => <label key={index}>{label}{" "}
             <span {...inline(String(count), `Count for ${label}`, (text) => updateCategory(index, { count: text.trim() ? Number(text) : NaN }))}>{count}</span>
           </label>)}
-          {chart.audience && (["trainees", "professionals"] as const).map((key) => <label key={key}>{key === "trainees" ? "Trainee / HQP" : "Professional"}{" "}
+          {chart.audience && (["trainees", "professionals"] as const).map((key) => <label key={key}>{key === "trainees" ? "HQP" : "Professional"}{" "}
             <span {...inline(String(chart.audience![key]), `Count for ${key}`, (text) => change({ ...chart, audience: { ...chart.audience!, [key]: text.trim() ? Number(text) : NaN } }))}>{chart.audience![key]}</span>
           </label>)}
         </div>}
@@ -175,6 +176,9 @@ export function useReportLayout(report: Report, approved: boolean) {
       pageNode.dataset.audience = String(!!page.registration?.audience);
       pageNode.dataset.columns = String(columns);
       title.textContent = page.title;
+      const pageIntro = intro.querySelector<HTMLElement>("[data-measure-page-intro]")!;
+      pageIntro.textContent = page.intro ?? "";
+      pageIntro.hidden = !page.intro;
       continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
       label.textContent = `${folioText(index + 1)} / ${page.label}`;
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
@@ -220,7 +224,7 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
   return (
     <div className={styles.ruler} ref={ruler} aria-hidden="true">
       <div className={`${styles.paper} ${styles.chapter}`}>
-        <header className={styles.chapterHead} data-measure-intro=""><span /><h2 /></header>
+        <header className={styles.chapterHead} data-measure-intro=""><span /><h2 /><p className={styles.pageIntro} data-measure-page-intro="" hidden /></header>
         <div className={styles.continuationHead} data-measure-continuation="">Title <span> / continued</span></div>
         <div className={styles.figureSpacer} />
         <div className={styles.copy} data-measure-copy=""><div className={styles.story} /></div>
@@ -232,7 +236,7 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
 
 export type Frame = { id: string; index: number };
 
-export function ReportPaper({ report, layout, active, ready, onSelect, edit, onTextChange, onTyping, onPhoto, recommendations, markup }: {
+export function ReportPaper({ report, layout, active, ready, onSelect, edit, onTextChange, onTyping, onPhoto, recommendations, markup, reviewTools = false, changes }: {
   report: Report;
   recommendations: Record<string, ReportPhoto[]>;
   layout: LaidOutReport;
@@ -245,9 +249,12 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
   onPhoto?: (frame: Frame, slot?: string) => void;
   /** Show changes: the text each field is compared against (by changes.ts field key). */
   markup?: (key: string) => string;
+  reviewTools?: boolean;
+  changes?: ReportChanges;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [openChanges, setOpenChanges] = useState<string | null>(null);
   useLayoutEffect(() => {
     const element = stage.current;
     if (!element) return;
@@ -297,6 +304,19 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
   const wrap = (frame: Frame, name: string, content: ReactNode, extra: string, hasPhoto = false, columns?: 1 | 2, strip: ReturnType<typeof stripPhotos> = []) => {
     const pageNumber = folio++;
     const isActive = active.id === frame.id && active.index === frame.index;
+    const frameKey = `${frame.id}-${frame.index}`;
+    const edits = changes?.edits.flatMap((entry) => {
+      const fields = entry.fields.filter(({ key }) => frame.id === "cover" || frame.id === "back" ? key.startsWith(`${frame.id}.`) : key.startsWith(`page:${frame.id}:`));
+      return fields.length ? [{ ...entry, fields }] : [];
+    }) ?? [];
+    if (changes) {
+      const logged = new Set(edits.flatMap((entry) => entry.fields.map((field) => field.key)));
+      const unlogged = reportFields(report).filter(({ key, text }) => {
+        const belongs = frame.id === "cover" || frame.id === "back" ? key.startsWith(`${frame.id}.`) : key.startsWith(`page:${frame.id}:`);
+        return belongs && !logged.has(key) && (changes.baseline[key] !== undefined || changes.since === "round") && (changes.baseline[key] ?? "") !== text;
+      }).map(({ key, label, text }) => ({ key, label, marks: diffMarks(changes.baseline[key] ?? "", text) }));
+      if (unlogged.length) edits.push({ id: `round-baseline-${frameKey}`, at: "", author: "Round comparison", fields: unlogged });
+    }
     const portraits = strip[0]?.[0].startsWith("portrait-");
     const hasWorkshopPhotos = strip.some(([key]) => key.startsWith("workshop-"));
     const swapLabel = portraits ? "Swap portrait" : hasWorkshopPhotos
@@ -319,6 +339,18 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             )}
           </div>
         </div>
+        {reviewTools && <aside className={`${styles.pageMargin} report-screen-only`} aria-label={`Page ${pageNumber} review notes`}>
+          <div data-report-page-notes={frameKey} />
+          {edits.length > 0 && <div className={styles.changeBubble}>
+            <button type="button" aria-expanded={openChanges === frameKey} onClick={() => setOpenChanges(openChanges === frameKey ? null : frameKey)}>Text changes · {edits.length}</button>
+            {openChanges === frameKey && <section aria-label={`Tracked changes for page ${pageNumber}`}>
+              {edits.map((entry) => <div key={entry.id}>
+                <p><strong>{entry.author}</strong> {entry.at && <time dateTime={entry.at}>{new Date(entry.at).toLocaleString("en-CA")}</time>}</p>
+                {entry.fields.map((field) => <div key={field.key}><strong>{field.label}</strong><p><Marked parts={field.marks} /></p></div>)}
+              </div>)}
+            </section>}
+          </div>}
+        </aside>}
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
           onFocus={(event) => { if (!isActive && event.target.isContentEditable) onSelect(frame); }}
           onClick={onPhoto && ((event) => {
@@ -338,7 +370,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
   };
 
   return (
-    <div className={styles.stage} ref={stage} data-report-paper="" data-photo-editable={onPhoto ? "" : undefined}>
+    <div className={styles.stage} ref={stage} data-report-paper="" data-review-tools={reviewTools || undefined} data-photo-editable={onPhoto ? "" : undefined}>
       {wrap({ id: "cover", index: 0 }, "Cover", <>
         <CoverArt photo={report.cover.photo ?? recommendations.cover?.[0] ?? photoPreset("cover.jpg")} />
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
@@ -361,6 +393,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             ? <header className={styles.chapterHead}>
               <span><span>{folioText(section + 1)} / <span {...inline(page.label, "Section label", (label) => patchPage(page.id, () => ({ label })))}>{show(`page:${page.id}:label`, page.label)}</span></span></span>
               <h2 {...inline(page.title, "Section title", (title) => patchPage(page.id, () => ({ title })))}>{show(`page:${page.id}:title`, page.title)}</h2>
+              {page.intro && <p className={styles.pageIntro} {...inline(page.intro, "Section introduction", (intro) => patchPage(page.id, () => ({ intro })), true)}>{show(`page:${page.id}:intro`, page.intro)}</p>}
             </header>
             : <header className={styles.continuationHead}>{folioText(section + 1)} / {show(`page:${page.id}:title`, page.title)} <span> / continued</span></header>}
           {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} showSource={!ready}
@@ -385,7 +418,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
               {strip.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={stripHeight} />)}
             </div>}
           </div>
-          <footer className={styles.folio}><span>BioHubNet / 2026 Event Report</span><span>{folioText(folio)}</span></footer>
+          <footer className={styles.folio}><span>2026 Event Report</span><span>{folioText(folio)}</span></footer>
         </>, styles.chapter, photoHeights[index] > 0, columns, choices);
       }); })}
       {wrap({ id: "back", index: 0 }, "Back cover", <>
@@ -399,7 +432,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             <a href="https://www.linkedin.com/company/biohubnet/" className={styles.backQr}>
               {/* eslint-disable-next-line @next/next/no-img-element -- vector QR for print */}
               <img src="/symposium-report-linkedin.svg" width={116} height={116} alt="" />
-              <span>Scan for BioHubNet on LinkedIn</span>
+              <span><svg className={styles.linkedinLogo} aria-label="LinkedIn" role="img" width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="3" fill="#0A66C2" /><path fill="#fff" d="M5 9h3v10H5zM6.5 4a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5M10 9h2.8v1.4c.5-.9 1.5-1.6 3-1.6 3 0 3.7 2 3.7 4.6V19h-3v-5c0-1.4 0-2.7-1.8-2.7S13 12.7 13 14V19h-3z" /></svg>Scan for BioHubNet on LinkedIn</span>
             </a>
           </div>
         </div>

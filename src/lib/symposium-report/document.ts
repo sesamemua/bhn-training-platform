@@ -51,6 +51,7 @@ const page = z.object({
   label: z.string().trim().min(1).max(42),
   title: z.string().trim().min(1).max(100),
   text: z.string().max(16_000),
+  intro: z.string().max(1200).optional(),
   image: z.enum(reportImages).optional(),
   registration: registrationChart.optional(),
   showCaptions: z.boolean().optional(),

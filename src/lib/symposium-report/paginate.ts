@@ -31,9 +31,19 @@ export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[
   for (const [index, original] of blocks.entries()) {
     const next = blocks[index + 1];
     if (current().length && original.kind === "heading" && next) {
-      const keep = next.photoRow && fits([original, next], frames.length)
-        ? next : { ...next, photoRow: undefined, text: Array.from(next.text).slice(0, 35).join("") };
-      if (!fits([...current(), original, keep], frames.length - 1)) frames.push([]);
+      const group = [original];
+      for (const following of blocks.slice(index + 1)) {
+        if (following.kind === "heading") break;
+        group.push(following);
+        if (following.photoRow) break;
+      }
+      if (group.at(-1)?.photoRow && fits(group, frames.length)) {
+        if (!fits([...current(), ...group], frames.length - 1)) frames.push([]);
+      } else {
+        const keep = next.photoRow && fits([original, next], frames.length)
+          ? next : { ...next, photoRow: undefined, text: Array.from(next.text).slice(0, 35).join("") };
+        if (!fits([...current(), original, keep], frames.length - 1)) frames.push([]);
+      }
     } else if (original.photoRow && current().length && !room(original) && fits([original], frames.length)) {
       frames.push([]);
     }

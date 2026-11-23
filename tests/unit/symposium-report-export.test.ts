@@ -55,7 +55,12 @@ test("copying report comments freezes the same round; stale requests and subsequ
   signedIn = false;
   assert.equal((await copy()).status, 403);
   assert.equal(transactions, 0);
+  assert.equal((await route.GET(new Request("https://bhn.test/api/review?document=1"))).status, 403);
   signedIn = true;
+  const synced = await (await route.GET(new Request("https://bhn.test/api/review?document=1"))).json();
+  assert.deepEqual(synced.report, draft);
+  assert.equal(synced.revision, createHash("sha256").update(review.pastedHtml).digest("hex"));
+  assert.equal(synced.review.status, "open");
   assert.equal((await route.GET(new Request("https://bhn.test/api/review?brief=1"))).status, 409, "old copy clients cannot read an unlocked brief");
   assert.equal((await copy(1)).status, 409);
   assert.equal(writes, 0);

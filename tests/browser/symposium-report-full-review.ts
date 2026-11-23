@@ -146,6 +146,7 @@ async function main() {
       navigator.clipboard.writeText = async (text) => { if (first) { first = false; throw new Error("Clipboard denied"); } await write(text); };
     });
     await page.getByRole("button", { name: "Copy review comments" }).click();
+    await page.getByRole("button", { name: "Copy comments and lock round", exact: true }).click();
     await expect(page.locator("#bhn-review-overlay")).toContainText("This round is locked, but clipboard access failed");
     assert.equal(status, "exported");
     await page.getByRole("button", { name: "Copy review comments" }).click();
@@ -155,7 +156,7 @@ async function main() {
     assert.doesNotMatch(copied, /Earlier note/);
     assert.equal(status, "exported");
     assert.equal(exports, 1);
-    await expect(page.locator("#bhn-review-overlay")).toContainText("was exported and is locked");
+    await expect(page.locator("#bhn-review-overlay")).toContainText("is locked while revisions are underway");
     await expect(thread.getByRole("button", { name: "Reply", exact: true })).toHaveCount(0);
     await page.getByRole("article", { name: "Panel review" }).getByText("Final keynote passage", { exact: true }).click();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);

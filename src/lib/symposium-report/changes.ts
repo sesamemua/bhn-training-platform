@@ -24,6 +24,7 @@ export function reportFields(report: Report): ReportField[] {
     ...report.pages.flatMap((page) => [
       { key: `page:${page.id}:label`, label: `${page.title} · label`, text: page.label },
       { key: `page:${page.id}:title`, label: `${page.title} · title`, text: page.title },
+      { key: `page:${page.id}:intro`, label: `${page.title} · introduction`, text: page.intro ?? "" },
       { key: `page:${page.id}:text`, label: `${page.title} · text`, text: page.text },
     ]),
     { key: "back.title", label: "Back cover · title", text: report.back.title },

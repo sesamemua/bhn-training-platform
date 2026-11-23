@@ -162,3 +162,13 @@ test("four workshop photographs remain valid and swappable with bounded slot IDs
     assert.equal(reportSchema.safeParse({ ...draft, pages: [{ ...draft.pages[0], photos: { [invalid]: photo } }] }).success, false);
   }
 });
+
+
+test("a workshop description, participant quote and photo row stay with their heading", () => {
+  const source = "Earlier copy.\n\n## Workshop\n\nWorkshop description.\n\n“Participant reflection.” — Participant\n[[photos:1]]";
+  const blocks = reportBlocks(source);
+  const pages = paginate(blocks, 1, (candidate) => candidate.length <= 3);
+  assert.deepEqual(pages.map((page) => page.map((block) => block.kind)), [["paragraph"], ["heading", "paragraph", "quote"]]);
+  assert.equal(pages[1][2].photoRow, "1");
+  assert.deepEqual(pages.flat().map((block) => block.text), blocks.map((block) => block.text));
+});

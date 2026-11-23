@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { chromium, expect } from "@playwright/test";
 import { overlaySource } from "../../src/lib/page-review/overlay-source";
-import { REPORT_API, REPORT_ID } from "../../src/lib/symposium-report/document";
+import { REPORT_API, REPORT_ID, type Report } from "../../src/lib/symposium-report/document";
 
 const origin = "https://editable-report.test";
 const networkingText = [
@@ -15,7 +15,7 @@ const networkingText = [
   Array.from({ length: 17 }, (_, i) => `Mentor ${i + 1}`).join(" · "),
 ].join("\n\n");
 
-const ventureFixture = { id: "venturelift", label: "Annual Symposium", title: "VentureLift Spotlight", frames: 1,
+const ventureFixture = { id: "venturelift", label: "Annual Symposium", title: "VentureLift Spotlight", frames: 1, showCaptions: false,
   text: Array.from({ length: 7 }, (_, i) => `## Venture ${i + 1} • Presenter ${i + 1}\n\n${"A trainee-led venture connects scientific research with practical development and validation. ".repeat(3)}\n[[photos:${i + 1}]]`).join("\n\n"),
   photos: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`workshop-${i + 1}-1`, { file: "cover.jpg", caption: `Venture ${i + 1} · Presenter ${i + 1}`, x: 50, y: 30, fit: "cover" }])) };
 
@@ -49,8 +49,9 @@ async function main() {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     let exported = false, exports = 0;
+    let remoteSnapshot: Report | null = null, remoteRevision = "e".repeat(64);
     const comments: unknown[] = [];
-    const selections: { anchorPath: string; anchorQuote: string | null; anchorKey: string; body: string }[] = [];
+    const selections: { anchorPath: string; anchorQuote: string | null; anchorKey: string; anchorBlock?: string; body: string }[] = [];
     const saves: { round: number; revision: string; report: { cover: { title: string }; pages: { text: string }[] } }[] = [];
     await page.route(origin + "/**", async route => {
       const url = new URL(route.request().url());
@@ -60,6 +61,7 @@ async function main() {
         body: bundle.outputFiles.find(file => file.path.endsWith(url.pathname))!.text,
       });
       if (url.pathname === REPORT_API + "/review") {
+        if (url.searchParams.has("document") && remoteSnapshot) return route.fulfill({ json: { ok: true, report: remoteSnapshot, revision: remoteRevision, review: { round: 2, status: exported ? "exported" : "open" } } });
         if (route.request().method() === "POST") {
           assert.deepEqual(route.request().postDataJSON(), { action: "export", expectedRound: 2 });
           exported = true; exports++;
@@ -68,8 +70,11 @@ async function main() {
         if (url.searchParams.has("overlay")) return route.fulfill({ contentType: "application/javascript", body: overlaySource(REPORT_API + "/review", "Report", true, "/api/workspace/page-review/" + REPORT_ID) });
         return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : exported ? "exported" : "open" }, viewer: { name: "Staff" }, comments, comparison: null } });
       }
+      if (url.pathname === REPORT_API && route.request().method() === "GET") return route.fulfill({ json: { round: 2, since: "round", baseline: {}, edits: [{id:"change",at:"2026-11-23T15:00:00Z",author:"Colleague",fields:[{key:"page:summary:text",label:"Summary · text",marks:[{kind:"del",text:"Original words"},{kind:"ins",text:"Revised words"}]}]}] } });
       if (url.pathname === REPORT_API && route.request().method() === "POST") {
         saves.push(route.request().postDataJSON());
+        if (remoteSnapshot && saves.at(-1)!.revision !== remoteRevision) return route.fulfill({ status: 409, json: { error: "Newer team copy", current: remoteSnapshot, revision: remoteRevision } });
+        if (remoteSnapshot) { remoteSnapshot = structuredClone(saves.at(-1)!.report) as Report; remoteRevision = "b".repeat(64); }
         if (saves.length > 1) return route.fulfill({ json: { revision: "b".repeat(64) } });
         // A colleague saved first: hand back their copy (a new back-cover title) for autosave to merge.
         const current = structuredClone(saves[0].report) as typeof saves[0]["report"] & { back: { title: string } };
@@ -113,7 +118,9 @@ async function main() {
     await expect(build).toBeVisible();
     const buildBox = (await build.boundingBox())!;
     assert.ok(buildBox.x < 40 && buildBox.y + buildBox.height > 1000 - 40, "the build SHA sits in the bottom-left corner");
-    await expect(page.locator("#bhn-review-overlay")).toContainText("Choose Comment on an element");
+    await expect(page.getByRole("toolbar", { name: "Report review toolbar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
     await expect(page.locator('[id^="report-frame-venturelift-"]')).toHaveCount(1);
     await expect(page.locator('#report-frame-venturelift-0 img')).toHaveCount(7);
     assert.equal(await page.locator('#report-frame-venturelift-0 article').evaluate(e => {
@@ -204,13 +211,12 @@ async function main() {
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     const pick = () => page.getByRole("button", { name: "Comment on an element", exact: true });
     await pick().click();
-    await expect(page.getByRole("button", { name: "Cancel element selection", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await page.getByRole("button", { name: "Cancel element selection", exact: true }).press("Escape");
+    await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Comment on an element", exact: true }).press("Escape");
     await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
     await pick().click();
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Keep this draft while changing its target.");
-    await pick().click();
     await page.locator("#report-frame-summary-0 figcaption").click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveValue("Keep this draft while changing its target.");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -228,7 +234,7 @@ async function main() {
       if (label !== "picture caption") await pick().click();
       await target.click();
       await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
-      await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
+      await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "true");
       await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Review the " + label);
       const selectionNumber = selections.length + 1;
       await page.getByRole("button", { name: "Add comment", exact: true }).click();
@@ -263,6 +269,7 @@ async function main() {
     await expect(lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true })).toHaveValue("Unsent correction");
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(pick()).toBeEnabled();
+    await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "Cover title", exact: true })).toBeFocused();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
@@ -329,6 +336,55 @@ async function main() {
     await expect(page.locator('[class*="rosterHeading"],[class*="rosterNames"]')).toHaveCount(0);
     await expect(networking.filter({ hasText: /^Mentor 17 · Professional role 17/ })).toBeVisible();
     await expect(page.locator("[data-report-unsaved]")).toHaveAttribute("data-report-unsaved", "false");
+    // Per-page feedback, persistent insertion anchors, tracked bubbles and safe live sync.
+    const summarySheet = page.locator("#report-frame-summary-0");
+    await summarySheet.getByRole("button", { name: /^Text changes ·/ }).click();
+    await expect(summarySheet.getByRole("region", { name: "Tracked changes for page 2" }).or(summarySheet.locator('section[aria-label="Tracked changes for page 2"]'))).toContainText("Revised words");
+    await expect(summarySheet.locator("ins").filter({hasText:"Revised words"})).toHaveCount(1);
+    const pageBox = summarySheet.getByRole("textbox", { name: /^Page feedback:/ });
+    await pageBox.fill("Add a follow-up resource on this page.");
+    await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
+    await expect(page.locator("#bhn-review-overlay")).toContainText("page feedback");
+    await summarySheet.getByRole("button", { name: "Add page comment", exact: true }).click();
+    await expect(pageBox).toHaveValue("");
+    assert.equal(selections.at(-1)!.anchorKey, "#report-frame-summary-0");
+    assert.match(selections.at(-1)!.body, /follow-up resource/);
+    await page.getByRole("button", { name: "Add a section", exact: true }).click();
+    const gap = await story.boundingBox();
+    await page.mouse.move(gap!.x + 20, gap!.y - 3);
+    await expect(page.locator(".bhn-report-insertion-line")).toBeVisible();
+    await page.mouse.click(gap!.x + 20, gap!.y - 3);
+    await expect(page.locator("#bhn-review-overlay")).toContainText("Request a section insertion");
+    await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Add a new section about next steps.");
+    await page.getByRole("button", { name: "Add comment", exact: true }).click();
+    await expect(page.locator(".bhn-report-insertion-bubble")).toContainText("next steps");
+    assert.match(selections.at(-1)!.body, /^\[Section insertion request\]/);
+    assert.match((selections.at(-1) as unknown as {anchorBlock:string}).anchorBlock, /Insert section before/);
+    remoteSnapshot = structuredClone(saves.at(-1)!.report) as Report;
+    (remoteSnapshot.back as {text:string}).text = "Colleague's live update";
+    remoteRevision = "e".repeat(64);
+    await expect(page.locator("#report-frame-back-0 p").last()).toHaveText("Colleague's live update", { timeout: 10000 });
+    await pageBox.fill("Protect this unfinished page feedback.");
+    (remoteSnapshot.back as {text:string}).text = "Update while page feedback is unfinished";
+    remoteRevision = "d".repeat(64);
+    await page.waitForTimeout(5200);
+    await expect(pageBox).toHaveValue("Protect this unfinished page feedback.");
+    await expect(page.locator("#report-frame-back-0 p").last()).toHaveText("Colleague's live update");
+    await summarySheet.getByRole("button", { name: "Clear draft", exact: true }).click();
+    await expect(page.locator("#report-frame-back-0 p").last()).toHaveText("Update while page feedback is unfinished", { timeout: 10000 });
+    await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
+    const coverTitle = page.getByRole("textbox", { name: "Cover title", exact: true });
+    await coverTitle.fill("Keep my unfinished typing");
+    (remoteSnapshot.back as {text:string}).text = "A newer colleague update";
+    remoteRevision = "f".repeat(64);
+    await page.waitForTimeout(5200);
+    await expect(coverTitle).toHaveText("Keep my unfinished typing");
+    await expect(page.locator("#report-frame-back-0 p").last()).toHaveText("Update while page feedback is unfinished");
+    await coverTitle.press("Enter");
+    await expect(page.locator("#report-frame-back-0 p").last()).toHaveText("A newer colleague update", { timeout: 10000 });
+    await expect(page.locator("[data-report-unsaved]")).toHaveAttribute("data-report-unsaved", "false");
+    if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/review-toolbar-and-notes.jpg` });
+    remoteSnapshot = null;
     await page.locator("#report-frame-summary-0 figcaption").click();
     await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Unsent feedback");
     await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
@@ -341,6 +397,9 @@ async function main() {
     assert.equal(exports, 0);
     await expect(page.locator("[data-report-unsaved]")).toHaveAttribute("data-report-unsaved", "false");
     await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
+    await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
+    assert.equal(exports, 0, "repeated clicks on the primary copy button never bypass the secondary confirmation");
+    await page.getByRole("button", { name: "Copy comments and lock round", exact: true }).click();
     await expect(page.getByRole("button", { name: "Comments copied", exact: true })).toBeVisible();
     await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
     await expect(page.locator("#bhn-review-overlay")).toContainText("is locked while revisions are underway");

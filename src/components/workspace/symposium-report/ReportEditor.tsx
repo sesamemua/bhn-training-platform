@@ -51,8 +51,10 @@ export function ReportEditor({ report: initial, revision, history, review: initi
   const [saving, setSaving] = useState(false);
   /** The draft the last autosave failed on; autosave waits for the next edit (or a retry) instead of looping. */
   const [failedOn, setFailedOn] = useState<Report | null>(null);
-  const latest = useRef({ report, typing });
-  useEffect(() => { latest.current = { report, typing }; });
+  const [commentDraft, setCommentDraft] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("Checking for team updates…");
+  const latest = useRef({ report, typing, saved, edit, saving, busy, token });
+  useEffect(() => { latest.current = { report, typing, saved, edit, saving, busy, token }; });
 
   const document = history.find((version) => version.round === past)?.report ?? report;
   const editable = fullPageReview && past === null && review.status === "open" && !transitioning;
@@ -78,6 +80,46 @@ export function ReportEditor({ report: initial, revision, history, review: initi
       setChangesError(err instanceof Error ? err.message : "Changes could not be loaded. Try again.");
     }
   }
+
+  useEffect(() => {
+    if (!fullPageReview || !ready || past !== null) return;
+    let live = true, checking = false;
+    const unfinished = () => {
+      const current = latest.current;
+      return (window.document.activeElement instanceof HTMLElement && window.document.activeElement.isContentEditable) || current.typing || current.report !== current.saved || current.edit || current.saving || current.busy ||
+        window.document.querySelector('[data-report-comments-dirty="true"]');
+    };
+    async function check() {
+      if (checking) return;
+      if (unfinished()) { setSyncMessage("Your work is protected. Team updates will load after you finish."); return; }
+      checking = true;
+      try {
+        const response = await fetch(`${REPORT_API}/review?document=1`, { cache: "no-store" });
+        const body = await response.json();
+        if (!live) return;
+        if (!response.ok) throw new Error();
+        if (!body.report || !body.review) return;
+        if (body.review.round !== review.round) { setTransitioning(true); setSyncMessage("A new review round is available. Finish your work, then reload this page."); return; }
+        if (unfinished()) return;
+        setReview((current) => current.status === body.review.status ? current : { ...current, status: body.review.status });
+        if (body.revision !== latest.current.token) {
+          const next = reportSchema.safeParse(body.report);
+          if (!next.success) throw new Error();
+          setReport(next.data); setSaved(next.data); setToken(body.revision);
+          void loadChanges();
+        }
+        setSyncMessage("Live updates connected · checks every 5 seconds");
+      } catch { if (live) setSyncMessage("Team updates are temporarily unavailable. Your local work is protected; retrying…"); }
+      finally { checking = false; }
+    }
+    void check();
+    const initialChanges = window.setTimeout(() => void loadChanges(), 0);
+    const timer = window.setInterval(() => void check(), 5000);
+    const foreground = () => { if (window.document.visibilityState === "visible") void check(); };
+    window.document.addEventListener("visibilitychange", foreground);
+    return () => { live = false; window.clearTimeout(initialChanges); window.clearInterval(timer); window.document.removeEventListener("visibilitychange", foreground); };
+  // The timer reads editing state from latest, without restarting during typing.
+  }, [fullPageReview, ready, past, review.round]);
 
   function toggleChanges(on: boolean) {
     if (on && window.document.activeElement instanceof HTMLElement) window.document.activeElement.blur();
@@ -115,8 +157,10 @@ export function ReportEditor({ report: initial, revision, history, review: initi
       if (next.round !== review.round) { setTransitioning(true); return; }
       setReview((current) => current.status === next.status ? current : { ...current, status: next.status });
     };
+    const draftState = (event: Event) => setCommentDraft(!!(event as CustomEvent<boolean>).detail);
     window.addEventListener("bhn-report-review-state", syncReview);
-    return () => window.removeEventListener("bhn-report-review-state", syncReview);
+    window.addEventListener("bhn-report-comment-draft", draftState);
+    return () => { window.removeEventListener("bhn-report-review-state", syncReview); window.removeEventListener("bhn-report-comment-draft", draftState); };
   }, [review.round]);
 
   useEffect(() => {
@@ -133,11 +177,11 @@ export function ReportEditor({ report: initial, revision, history, review: initi
   }, [fullPageReview, ready, review.round, past]);
 
   useEffect(() => {
-    if (!dirty && !edit) return;
+    if (!dirty && !edit && !commentDraft) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, edit]);
+  }, [dirty, edit, commentDraft]);
 
   async function save() {
     const sent = report;
@@ -149,7 +193,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         body: JSON.stringify({ action: "save", round: review.round, revision: token, report: sent }),
       });
       const body = await result.json().catch(() => null);
-      if (result.ok) { setToken(body.revision); setSaved(sent); setError(""); return; }
+      if (result.ok) { setToken(body.revision); setSaved(sent); setError(""); void loadChanges(); return; }
       const current = result.status === 409 ? reportSchema.safeParse(body?.current) : null;
       if (current?.success && typeof body?.revision === "string") {
         // A colleague saved first: merge their copy with this draft, then the next pass saves the result.
@@ -270,12 +314,14 @@ export function ReportEditor({ report: initial, revision, history, review: initi
   }
 
   function changeFrames(frames: number) {
+    if (commentDraft) { setError("Finish or clear your comment drafts before changing linked pages."); return; }
     if (!chapter) return;
     setReport({ ...report, pages: report.pages.map((p) => p.id === chapter.page.id ? { ...p, frames } : p) });
     setActive({ ...active, index: 0 });
   }
 
   async function removePage() {
+    if (commentDraft) { setError("Finish or clear your comment drafts before removing pages."); return; }
     if (!chapter) return;
     if (active.index > 0) {
       changeFrames(Math.max(1, Math.min(chapter.page.frames - 1, chapter.frames.length - 1)));
@@ -343,28 +389,29 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? "Round locked" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
-          {editable && <p>Click text or a photo to edit it. Changes save automatically.{fullPageReview && " Click a caption, or choose Comment on an element, to comment."}</p>}
+          {editable && <p>Comment mode is on by default. Use “Edit text and photos” in the left toolbar to make changes. Edits save automatically.</p>}
           {!fullPageReview && <p>View only. Use the red “Start Round {review.round} review” button to comment or edit the report.</p>}
         </div>
         <div className={styles.actions}>
           {history.length > 0 && (
-            <label className={styles.history}><History size={15} /><select aria-label="Report round version" value={past ?? ""} disabled={!!edit || busy}
+            <label className={styles.history}><History size={15} /><select aria-label="Report round version" value={past ?? ""} disabled={!!edit || busy || commentDraft}
               onChange={(e) => { setPast(e.target.value ? Number(e.target.value) : null); setActive(cover); }}>
               <option value="">Current copy</option>
               {history.map(({ round }) => <option key={round} value={round}>Round {round} snapshot</option>)}
             </select></label>
           )}
           {fullPageReview && isAdmin && past === null && (
-            <button type="button" disabled={!!edit || busy || dirty || transitioning} onClick={() => write("advance")}>Start Round {review.round + 1}</button>
+            <button type="button" disabled={!!edit || busy || dirty || commentDraft || transitioning} onClick={() => write("advance")}>Start Round {review.round + 1}</button>
           )}
-          {isAdmin && editable && <button type="button" disabled={controlsDisabled || dirty} onClick={() => write("approve")}>Approve report</button>}
+          {isAdmin && editable && <button type="button" disabled={controlsDisabled || dirty || commentDraft} onClick={() => write("approve")}>Approve report</button>}
           {approved && layout && <button type="button" className={styles.primary} onClick={() => window.print()}><Printer size={15} /> Print / Save PDF</button>}
           <label className={styles.trackToggle} title={past !== null ? "Switch to Current copy to see changes." : "Mark what changed this round"}>
-            <input type="checkbox" role="switch" checked={showChanges} disabled={past !== null || !!edit} onChange={(event) => toggleChanges(event.target.checked)} />
+            <input type="checkbox" role="switch" checked={showChanges} disabled={past !== null || !!edit || commentDraft} onChange={(event) => toggleChanges(event.target.checked)} />
             Show changes
           </label>
         </div>
-        <ReportPresence endpoint={`${REPORT_API}/presence`} pageName={pageName} onJump={jumpToFrame} unsaved={dirty} showVersion={fullPageReview} />
+        {fullPageReview && <p className={styles.status} role="status">{syncMessage}</p>}
+        <ReportPresence endpoint={`${REPORT_API}/presence`} pageName={pageName} onJump={jumpToFrame} unsaved={dirty || commentDraft} showVersion={fullPageReview} />
         {!fullPageReview && <ReportReviewShare round={review.round} revision={token} canInvite={past === null && review.status === "open" && !busy && !dirty && !transitioning} />}
       </div>
       <div className="report-screen-only">
@@ -377,6 +424,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
       </div>
       <div className={styles.workbench} data-report-unsaved={dirty || !!edit || busy}>
         <aside className={`${styles.rail} report-screen-only`} aria-label="Report controls">
+          {fullPageReview && <div data-report-tools-host="" />}
           <div className={styles.tabs}>
             <button type="button" aria-pressed={tab === "pages"} onClick={() => setTab("pages")}><BookOpen size={15} /> Pages</button>
             {!fullPageReview && <button type="button" aria-pressed={tab === "comments"} onClick={() => setTab("comments")}><MessageSquare size={15} /> Review</button>}
@@ -434,7 +482,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
           onSelect={select} edit={editForm} onTextChange={controlsDisabled || markup ? undefined : applyText} onTyping={setTyping}
-          onPhoto={controlsDisabled || markup ? undefined : startPhoto} markup={markup} />}
+          onPhoto={controlsDisabled || markup ? undefined : startPhoto} markup={markup} reviewTools={fullPageReview} changes={changes ?? undefined} />}
         <ReportRuler ruler={ruler} />
       </div>
       {node}
