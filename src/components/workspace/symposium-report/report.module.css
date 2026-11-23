@@ -1,3 +1,21 @@
+.lockedRound {
+  display: flex;
+  align-items: flex-start;
+  gap: .85rem;
+  padding: 1.2rem 1.35rem;
+  margin-bottom: 1rem;
+  border: 1px solid #d4a448;
+  border-left: 6px solid #a46b09;
+  border-radius: .85rem;
+  background: #fff5db;
+  color: #51390d;
+}
+.lockedRound > svg { flex-shrink: 0; margin-top: .15rem; }
+.lockedRound h2 { margin: 0 0 .4rem; font-size: 1.3rem; font-weight: 800; line-height: 1.25; }
+.lockedRound p, .lockedRound ol { margin: .35rem 0 0; font-size: .9rem; line-height: 1.55; }
+.lockedRound ol { padding-left: 1.25rem; list-style: decimal; }
+.lockedRound li + li { margin-top: .2rem; }
+
 .toolbar, .actions, .history, .tabs, .pageActions, .sheetBar, .sheetBar > div {
   display: flex;
   gap: .5rem;

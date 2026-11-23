@@ -343,7 +343,11 @@ async function main() {
     await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
     await expect(page.getByRole("button", { name: "Comments copied", exact: true })).toBeVisible();
     await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
-    await expect(page.locator("#bhn-review-overlay")).toContainText("was exported and is locked");
+    await expect(page.locator("#bhn-review-overlay")).toContainText("is locked while revisions are underway");
+    await expect(page.getByRole("status", { name: "Round 2 locked", exact: true })).toContainText("Wait until the revisions for Round 2 are complete.");
+    await expect(page.getByRole("status", { name: "Round 2 locked", exact: true })).toContainText("Then an administrator can start Round 3");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: "/private/tmp/report-locked-round-notice.jpg" });
     assert.equal(exports, 1);
     await page.getByLabel("Report round version").selectOption("1");
     await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);

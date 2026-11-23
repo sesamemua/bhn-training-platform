@@ -697,6 +697,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       container.appendChild(make("div", "bhn-rv-notice bhn-rv-locked",
         state.review.status === "approved" ? "This round was approved. Earlier comments remain available." :
         state.review.status === "closed" ? "This review is closed. Previous comments remain available." :
+        reportReview ? "Round " + state.review.round + " is locked while revisions are underway. Wait until this round’s revisions are complete. Then an administrator can start Round " + (state.review.round + 1) + " to resume editing and commenting." :
           "Round " + state.review.round + " was exported and is locked. It reopens when the next round starts."));
       return;
     }

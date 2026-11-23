@@ -54,6 +54,14 @@ test("the main report editor keeps comments readable and directs new feedback to
   assert.match(html, /View only\. Use the red/);
   assert.doesNotMatch(html, /Click text or a photo to edit|All changes saved|>Start Round 2<|>Approve report</);
   assert.match(html, /<button[^>]*>.*?Email review request<\/button>/);
+  for (const fullPageReview of [false, true]) {
+    const locked = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview, review: { ...props.review, status: "exported" } }));
+    assert.match(locked, /aria-label="Round 1 locked"/);
+    assert.match(locked, /Wait until the revisions for Round 1 are complete/);
+    assert.match(locked, /Then an administrator can start Round 2/);
+    assert.ok(locked.indexOf('aria-label="Round 1 locked"') < locked.indexOf("Shared draft"));
+    assert.doesNotMatch(locked, /Click text or a photo to edit/);
+  }
   const fullPage = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview: true }));
   assert.match(fullPage, /Click text or a photo to edit it\. Changes save automatically\./);
   assert.match(fullPage, /Click a caption, or choose Comment on an element, to comment\./);

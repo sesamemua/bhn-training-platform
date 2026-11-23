@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, FilePlus, GitCompare, History, Link2, MessageSquare, Printer, Trash2 } from "lucide-react";
+import { BookOpen, FilePlus, GitCompare, History, Link2, LockKeyhole, MessageSquare, Printer, Trash2 } from "lucide-react";
 import { PageReviewClient } from "@/components/workspace/PageReviewClient";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { REPORT_API, reportSchema, type Report, type ReportPhoto } from "@/lib/symposium-report/document";
@@ -296,7 +296,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
       title: action === "approve" ? `Approve Round ${review.round}?` : `Start Round ${review.round + 1}?`,
       description: action === "approve"
         ? "The approved copy will be locked and ready for PDF export."
-        : "The saved report is archived, outstanding threads are marked resolved, and the next round opens for edits.",
+        : "Only start the next round once the current round’s revisions are complete. The saved report is archived, outstanding threads are marked resolved, and the next round opens for edits.",
       confirmLabel: action === "approve" ? "Approve report" : "Start round", cancelLabel: "Cancel", tone: "warning",
     })) return;
     setBusy(true);
@@ -326,6 +326,19 @@ export function ReportEditor({ report: initial, revision, history, review: initi
 
   return (
     <>
+      {review.status === "exported" && <section className={`${styles.lockedRound} report-screen-only`} role="status" aria-label={`Round ${review.round} locked`}>
+        <LockKeyhole size={26} aria-hidden="true" />
+        <div>
+          <h2>Round {review.round} is locked</h2>
+          <p>Comments have been copied. Editing and commenting are paused while this round’s revisions are completed.</p>
+          <ol>
+            <li>Wait until the revisions for Round {review.round} are complete.</li>
+            <li>Then an administrator can start Round {review.round + 1} to resume editing and commenting.</li>
+          </ol>
+          {!fullPageReview && <p>Use the red review button to open the full-page review and manage the next round.</p>}
+          {dirty && <p>Your unsaved local edits remain in this tab; copy them before reloading.</p>}
+        </div>
+      </section>}
       <div className={`${styles.toolbar} report-screen-only`}>
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? "Round locked" : "In review"} · Round {review.round}</span>
@@ -356,7 +369,6 @@ export function ReportEditor({ report: initial, revision, history, review: initi
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
-        {review.status === "exported" && <p className={styles.status} role="status">Round {review.round} is locked after copying comments. Start Round {review.round + 1} to review again.{dirty && " Your unsaved local edits remain in this tab; copy them before reloading."}</p>}
         {past !== null && <p className={styles.status}>Viewing the saved Round {past} snapshot. Switch to Current copy to make edits.</p>}
         {markup && <p className={styles.status} role="status">
           Showing changes since {changes!.since === "round" ? `Round ${changes!.round} started` : "change tracking began"}: <ins className={styles.ins}>added</ins> · <del className={styles.del}>removed</del>. Turn off Show changes to edit.
