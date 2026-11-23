@@ -482,7 +482,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         </aside>
         {layout && <ReportPaper report={document} layout={layout} active={active} ready={approved} recommendations={recommendations}
           onSelect={select} edit={editForm} onTextChange={controlsDisabled || markup ? undefined : applyText} onTyping={setTyping}
-          onPhoto={controlsDisabled || markup ? undefined : startPhoto} markup={markup} reviewTools={fullPageReview} changes={changes ?? undefined} />}
+          onPhoto={controlsDisabled || markup ? undefined : startPhoto} markup={markup} reviewTools={fullPageReview} changes={changes ?? undefined} trackChanges={showChanges} onTrackChanges={past === null && !edit && !busy && !commentDraft ? toggleChanges : undefined} />}
         <ReportRuler ruler={ruler} />
       </div>
       {node}

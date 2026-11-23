@@ -102,16 +102,17 @@ export function workshopPhotos(page: ReportPage, row?: string) {
 
 export function workshopTileHeight(page: ReportPage) {
   if (page.id === "venturelift") return 180;
+  if (page.id === "training-week") return 140;
   if (page.id === "professional-development") return 214;
   return 180;
 }
 
 export function hasLeadPhoto(page: ReportPage, index: number) {
-  return index === 0 && !photoRemoved(page, 0) && page.image !== "registration" && (page.id === "panels" || Boolean(page.image) || stripPhotos(page, index).length > 0);
+  return index === 0 && page.id !== "pitch-competition" && !photoRemoved(page, 0) && page.image !== "registration" && (page.id === "panels" || Boolean(page.image) || stripPhotos(page, index).length > 0);
 }
 
 export function hasTrainingPhotoGrid(page: ReportPage, index: number) {
-  return page.text.includes("[[photos:") && !hasLeadPhoto(page, index)
+  return (page.id === "pitch-competition" || page.text.includes("[[photos:")) && !hasLeadPhoto(page, index)
     && Boolean(page.photos?.[String(index)]) && !photoRemoved(page, index) && stripPhotos(page, index).length > 0;
 }
 

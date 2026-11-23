@@ -24,12 +24,13 @@ export function replaceReportBlock(source: string, block: Block, text: string) {
   return source.slice(0, start) + text + source.slice(end);
 }
 
-export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[], index: number) => boolean) {
+export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[], index: number) => boolean, breakBefore?: ReadonlySet<number>) {
   const frames: Block[][] = [[]];
   const current = () => frames.at(-1)!;
   const room = (block: Block) => fits([...current(), block], frames.length - 1);
   for (const [index, original] of blocks.entries()) {
     const next = blocks[index + 1];
+    if (current().length && breakBefore?.has(original.start)) frames.push([]);
     if (current().length && original.kind === "heading" && next) {
       const group = [original];
       for (const following of blocks.slice(index + 1)) {

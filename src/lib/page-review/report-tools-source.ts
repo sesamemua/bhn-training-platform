@@ -1,6 +1,71 @@
 /** Report-only review tools. Uses the overlay's existing comment API and anchor format. */
 export function reportToolsSource(): string {
   return String.raw`
+  var reportDrawMode = null;
+  var reportDrawDrag = null;
+  var reportDrawPreview = null;
+  var reportDrawSuppressClick = false;
+  function reportAnnotationDraft() { return !!(reportDrawDrag || (state.selected && state.selected.drawing)); }
+  function reportDrawingData(comment) {
+    var match = /\[draw:(circle|line):([0-9.,]+)\]/.exec(comment.anchorBlock || '');
+    if (!match) return null;
+    var p = match[2].split(',').map(Number);
+    return p.length === 4 && p.every(function(v){return Number.isFinite(v) && v >= 0 && v <= 1;}) ? { shape: match[1], points:p } : null;
+  }
+  function reportDrawSvg(page, drawing, draft) {
+    var r = page.getBoundingClientRect(), p = drawing.points;
+    var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','bhn-report-drawing' + (draft ? ' bhn-report-drawing-draft' : ''));
+    svg.setAttribute('aria-hidden','true'); svg.style.left=r.left+'px'; svg.style.top=r.top+'px'; svg.style.width=r.width+'px'; svg.style.height=r.height+'px';
+    svg.setAttribute('viewBox','0 0 1000 1000'); svg.setAttribute('preserveAspectRatio','none');
+    var shape = document.createElementNS('http://www.w3.org/2000/svg',drawing.shape === 'circle' ? 'ellipse' : 'line');
+    if (drawing.shape === 'circle') {
+      shape.setAttribute('cx',String((p[0]+p[2])*500)); shape.setAttribute('cy',String((p[1]+p[3])*500));
+      shape.setAttribute('rx',String(Math.abs(p[2]-p[0])*500)); shape.setAttribute('ry',String(Math.abs(p[3]-p[1])*500));
+    } else { ['x1','y1','x2','y2'].forEach(function(key,i){shape.setAttribute(key,String(p[i]*1000));}); }
+    shape.setAttribute('vector-effect','non-scaling-stroke'); svg.appendChild(shape); return svg;
+  }
+  function reportDrawRefresh() {
+    if (reportDrawPreview) { reportDrawPreview.remove(); reportDrawPreview=null; }
+    var selected = state.selected;
+    var drawing = reportDrawDrag || (selected && selected.drawing);
+    var page = reportDrawDrag ? reportDrawDrag.page : selected && selected.anchorKey && document.querySelector(selected.anchorKey + ' article');
+    if (drawing && page) { reportDrawPreview=reportDrawSvg(page,drawing,true); document.body.appendChild(reportDrawPreview); }
+  }
+  function reportDrawPoint(event,page) { var r=page.getBoundingClientRect();return [Math.min(1,Math.max(0,(event.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(event.clientY-r.top)/r.height))]; }
+  function reportDrawStart(event) {
+    if (!reportReview || !reportDrawMode || isLocked() || state.saving || !state.viewer || event.button !== 0) return;
+    var page = event.target.closest && event.target.closest(scopeSelector); if (!page) return;
+    event.preventDefault();event.stopPropagation();
+    var point=reportDrawPoint(event,page); reportDrawDrag={shape:reportDrawMode,page:page,points:point.concat(point)}; reportDrawRefresh();reportDraftStatus();
+  }
+  function reportDrawMove(event) {
+    if (!reportDrawDrag) return;
+    event.preventDefault();event.stopPropagation(); reportDrawDrag.points.splice(2,2,...reportDrawPoint(event,reportDrawDrag.page));reportDrawRefresh();
+  }
+  function reportDrawCancel() { reportDrawDrag=null;reportDrawRefresh();reportDraftStatus(); }
+  function reportDrawEnd(event) {
+    if (!reportDrawDrag) return;
+    event.preventDefault();event.stopPropagation();
+    var drawing=reportDrawDrag; drawing.points.splice(2,2,...reportDrawPoint(event,drawing.page));reportDrawDrag=null;reportDrawSuppressClick=true;
+    var r=drawing.page.getBoundingClientRect();
+    if (Math.hypot((drawing.points[2]-drawing.points[0])*r.width,(drawing.points[3]-drawing.points[1])*r.height)<8) {reportDrawRefresh();reportDraftStatus();return;}
+    var cx=r.left+(drawing.points[0]+drawing.points[2])/2*r.width,cy=r.top+(drawing.points[1]+drawing.points[3])/2*r.height;
+    var target=document.elementsFromPoint(cx,cy).map(function(el){return el.closest(reportTargets);}).find(function(el){return el&&drawing.page.contains(el);});
+    var anchor=anchorsFor(target||drawing.page);
+    anchor.anchorBlock=((drawing.page.getAttribute('aria-label')||'').slice(0,100)+' · [draw:'+drawing.shape+':'+drawing.points.map(function(n){return n.toFixed(4);}).join(',')+']').slice(0,200);
+    anchor.drawing={shape:drawing.shape,points:drawing.points};state.selected=anchor;state.panelCollapsed=false;state.draft='';reportDrawMode=null;state.pickingElement=true;render();
+  }
+  function reportDrawingMarker(marker,comment,anchor) {
+    var drawing=reportDrawingData(comment),page=anchor.closest(pageSelector);if(!drawing||!page)return;
+    var svg=reportDrawSvg(page,drawing,false);document.body.appendChild(svg);markers.push(svg);
+    var r=page.getBoundingClientRect();marker.style.left=(r.left+drawing.points[2]*r.width-12)+'px';marker.style.top=(r.top+drawing.points[3]*r.height-12)+'px';
+  }
+  if (reportReview) {
+    document.addEventListener('pointerdown',reportDrawStart,true);document.addEventListener('pointermove',reportDrawMove,true);document.addEventListener('pointerup',reportDrawEnd,true);
+    document.addEventListener('pointercancel',reportDrawCancel,true);
+  }
+
   var reportPageDrafts = new Map();
   var reportInsertLine = null;
   var reportInsertion = null;
@@ -10,13 +75,14 @@ export function reportToolsSource(): string {
   }
   function reportDraftStatus() {
     if (!reportReview) return;
-    var dirty = !!(state.saving || state.draft.trim() || state.replyDraft.trim() || state.editingId || reportHasPageDrafts());
+    var dirty = !!(state.saving || state.draft.trim() || state.replyDraft.trim() || state.editingId || reportHasPageDrafts() || reportAnnotationDraft());
     if (root.getAttribute("data-report-comments-dirty") !== String(dirty)) {
       root.setAttribute("data-report-comments-dirty", String(dirty));
       window.dispatchEvent(new CustomEvent("bhn-report-comment-draft", { detail: dirty }));
     }
   }
   function reportMode(editing, inserting) {
+    reportDrawMode=null; reportDrawDrag=null;reportDrawSuppressClick=false;
     state.pickingElement = !editing && !inserting;
     state.insertingSection = !!inserting;
     state.selected = null;
@@ -60,7 +126,7 @@ export function reportToolsSource(): string {
       host.querySelector('textarea').setAttribute('aria-label', 'Page feedback: ' + label);
       host.querySelectorAll('textarea,button').forEach(function(el){ el.disabled = !state.viewer || isLocked() || state.saving; });
     });
-    reportDraftStatus();
+    reportDrawRefresh();reportDraftStatus();
   }
   function renderReportTools(body) {
     if (!reportReview) return;
@@ -74,11 +140,16 @@ export function reportToolsSource(): string {
     if (state.viewer && !isLocked()) {
       var edit = addButton('Edit text and photos', 'bhn-rv-btn', function(){ reportMode(true, false); });
       edit.setAttribute('aria-pressed', String(!state.pickingElement && !state.insertingSection));
-      edit.disabled = state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null;
+      edit.disabled = state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null || reportAnnotationDraft();
       var insert = addButton('Add a section', 'bhn-rv-btn', function(){ reportMode(false, !state.insertingSection); });
       insert.setAttribute('aria-pressed', String(!!state.insertingSection));
       insert.disabled = edit.disabled;
       toolbar.appendChild(edit); toolbar.appendChild(insert);
+      ['circle','line'].forEach(function(shape){
+        var button=addButton(shape === 'circle' ? 'Circle comment' : 'Line comment','bhn-rv-btn',function(){
+          var next=reportDrawMode===shape?null:shape;reportMode(false,false);reportDrawMode=next;state.pickingElement=!next;render();
+        });button.setAttribute('aria-pressed',String(reportDrawMode===shape));button.disabled=edit.disabled;toolbar.appendChild(button);
+      });
     }
     Array.from(body.children).filter(function(el){ return el.matches('.bhn-rv-element-pick,.bhn-rv-compare-open'); }).forEach(function(el){ toolbar.appendChild(el); });
     body.prepend(toolbar);
@@ -86,7 +157,8 @@ export function reportToolsSource(): string {
       var tip = make('p', 'bhn-rv-notice', 'Click a gap between items on the report. Describe the new section; it will remain a pinned insertion request until the next revision.');
       toolbar.after(tip);
     }
-    reportPageNotes();
+    if (reportDrawMode) toolbar.after(make('p','bhn-rv-notice','Drag on a report page to draw a '+reportDrawMode+', or focus an item and press Enter. Then add your comment. Escape cancels the drawing.'));
+    reportDrawRefresh();reportPageNotes();
     if (!reportToolsObserver) {
       var stage = document.querySelector('[data-report-paper]');
       if (stage) {
@@ -157,10 +229,27 @@ export function reportToolsSource(): string {
     marker.style.setProperty('--insertion-line-width', Math.max(24,p.left-Math.max(4,p.left-182)-12) + 'px');
   }
   function cleanupReportTools() {
+    document.removeEventListener('keydown',reportDrawEscape,true);
+    document.removeEventListener('pointerdown',reportDrawStart,true);document.removeEventListener('pointermove',reportDrawMove,true);document.removeEventListener('pointerup',reportDrawEnd,true);document.removeEventListener('pointercancel',reportDrawCancel,true);
+    if (reportDrawPreview) reportDrawPreview.remove();
     if (reportToolsObserver) reportToolsObserver.disconnect();
     if (reportInsertLine) reportInsertLine.remove();
     document.querySelectorAll('[data-report-page-notes]').forEach(function(el){ el.textContent = ''; el.removeAttribute('data-notes-round'); });
   }
-  if (reportReview) style.textContent += '\n#bhn-review-overlay[data-report-tools=true]{left:12px;right:auto;top:100px;bottom:auto;}#bhn-review-overlay[data-docked=true]{position:relative!important;inset:auto!important;width:100%!important;max-height:none;z-index:30;margin-bottom:16px;}#bhn-review-overlay[data-docked=true] .bhn-rv-shell{max-height:64vh;box-shadow:none;background:#f8fafb;backdrop-filter:none;-webkit-backdrop-filter:none;}#bhn-review-overlay[data-docked=true] .bhn-rv-head{cursor:default;}#bhn-review-overlay[data-docked=true] .bhn-rv-drag-handle{display:none;}#bhn-review-overlay[data-report-tools=true] .bhn-rv-copy-comments{position:fixed;left:12px;bottom:48px;width:176px;margin:0;min-height:44px;font-size:12px;white-space:normal;box-shadow:0 3px 14px #17212b24;background:#fff;} .bhn-report-toolbar{display:grid;gap:6px;margin-bottom:8px;}.bhn-report-toolbar .bhn-rv-btn{width:100%;min-height:38px;text-align:left;font-size:12px;padding:8px 10px;}.bhn-report-toolbar [aria-pressed=true]{background:#d9eef0;border-color:#176879;color:#134d59;}.bhn-report-insertion-line{position:fixed;z-index:2147483646;border-top:3px dashed #9c3a88;pointer-events:none;font:700 12px Arial,sans-serif;color:#73285f;text-align:center;}.bhn-report-insertion-bubble{width:170px!important;height:auto!important;min-height:46px!important;border-radius:8px!important;padding:8px!important;font:12px/1.35 Arial,sans-serif!important;white-space:normal!important;text-align:left!important;background:#f8e9f4!important;border:1px solid #9c3a88!important;color:#662454!important;}.bhn-report-insertion-bubble::after{content:"";position:absolute;left:100%;top:0;width:var(--insertion-line-width,36px);border-top:2px dashed #9c3a88;}@media print{[data-report-tools],.bhn-report-insertion-line,.bhn-report-insertion-bubble{display:none!important;}}';
+  if (reportReview) document.addEventListener('keydown',reportDrawEscape,true);
+  function reportDrawEscape(event) {
+    if (event.key==='Escape' && (reportDrawMode||reportAnnotationDraft())) { reportDrawMode=null;reportDrawDrag=null;reportDrawSuppressClick=false;state.selected=null;state.draft='';state.pickingElement=true;render();return; }
+    var page=event.target.closest&&event.target.closest(scopeSelector);
+    if (!reportDrawMode||!page||isLocked()) return;
+    if (event.key==='Enter') {
+      event.preventDefault();event.stopPropagation();
+      var target=event.target.closest(reportTargets)||event.target,r=target.getBoundingClientRect(),p=page.getBoundingClientRect();
+      var x=Math.max(p.left,r.left-4),y=reportDrawMode==='line'?Math.min(p.bottom,r.bottom+2):Math.max(p.top,r.top-4),right=Math.min(p.right,r.right+4),bottom=reportDrawMode==='line'?y:Math.min(p.bottom,r.bottom+4);
+      reportDrawDrag={page:page,shape:reportDrawMode,points:reportDrawPoint({clientX:x,clientY:y},page).concat(reportDrawPoint({clientX:right,clientY:bottom},page))};
+      reportDrawEnd({clientX:right,clientY:bottom,preventDefault:function(){},stopPropagation:function(){}});
+    } else if (event.key.length===1&&!event.ctrlKey&&!event.metaKey) {event.preventDefault();event.stopPropagation();}
+  }
+
+  if (reportReview) style.textContent += '\n#bhn-review-overlay[data-report-tools=true]{left:12px;right:auto;top:100px;bottom:auto;}#bhn-review-overlay[data-docked=true]{position:relative!important;inset:auto!important;width:100%!important;max-height:none;z-index:30;margin-bottom:16px;}#bhn-review-overlay[data-docked=true] .bhn-rv-shell{max-height:64vh;box-shadow:none;background:#f8fafb;backdrop-filter:none;-webkit-backdrop-filter:none;}#bhn-review-overlay[data-docked=true] .bhn-rv-head{cursor:default;}#bhn-review-overlay[data-docked=true] .bhn-rv-drag-handle{display:none;}#bhn-review-overlay[data-report-tools=true] .bhn-rv-copy-comments{position:fixed;left:12px;bottom:48px;width:176px;margin:0;min-height:44px;font-size:12px;white-space:normal;box-shadow:0 3px 14px #17212b24;background:#fff;} body:has(#bhn-review-overlay[data-report-draw-mode]:not([data-report-draw-mode=""])) [data-print-page]{cursor:crosshair;touch-action:none;user-select:none;}.bhn-report-drawing{position:fixed;z-index:2147483645;pointer-events:none;overflow:visible;}.bhn-report-drawing>*{fill:transparent;stroke:#a44082;stroke-width:2.5px;}.bhn-report-drawing-draft>*{stroke-dasharray:6 4;} .bhn-report-toolbar{position:sticky;top:-6px;z-index:2;background:#f8fafb;padding-bottom:8px;display:grid;gap:6px;margin-bottom:8px;}.bhn-report-toolbar .bhn-rv-btn{width:100%;min-height:38px;text-align:left;font-size:12px;padding:8px 10px;}.bhn-report-toolbar [aria-pressed=true]{background:#d9eef0;border-color:#176879;color:#134d59;}.bhn-report-insertion-line{position:fixed;z-index:2147483646;border-top:3px dashed #9c3a88;pointer-events:none;font:700 12px Arial,sans-serif;color:#73285f;text-align:center;}.bhn-report-insertion-bubble{width:170px!important;height:auto!important;min-height:46px!important;border-radius:8px!important;padding:8px!important;font:12px/1.35 Arial,sans-serif!important;white-space:normal!important;text-align:left!important;background:#f8e9f4!important;border:1px solid #9c3a88!important;color:#662454!important;}.bhn-report-insertion-bubble::after{content:"";position:absolute;left:100%;top:0;width:var(--insertion-line-width,36px);border-top:2px dashed #9c3a88;}@media print{[data-report-tools],.bhn-report-insertion-line,.bhn-report-insertion-bubble,.bhn-report-drawing{display:none!important;}}';
 `;
 }

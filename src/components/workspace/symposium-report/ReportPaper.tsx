@@ -5,6 +5,8 @@ import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/sympos
 import { paginate, replaceReportBlock, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
 import { hasLeadPhoto, hasPairedPhotos, hasTrainingPhotoGrid, MAX_PHOTO_HEIGHT, MIN_FILL_PHOTO, pagePhoto, photoLabel, photoRemoved, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, photoRowHeight, portraitHeight, portraitPhotos, REPORT_ASSETS, stripPhotos, trainingPhotoGridSpace, TRAINING_TILE_PREVIEW_HEIGHT, workshopPhotos, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { marks as diffMarks, marksByRange, reportFields, type Mark, type ReportChanges } from "@/lib/symposium-report/changes";
+import { changePassages } from "@/lib/symposium-report/change-passages";
+import { ReportChangePopup } from "./ReportChangePopup";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
 
@@ -89,22 +91,23 @@ function blockClassName(block: Block, rosterStart: number | undefined) {
   return `${styles[block.kind]}${roster ? ` ${styles[block.kind === "heading" ? "rosterHeading" : "rosterNames"]}` : ""}`;
 }
 
-function Blocks({ page, blocks, inline, change, tracked }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void; tracked?: Map<number, Mark[]> }) {
+function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void; tracked?: Map<number, Mark[]>; heights?: Record<string, number> }) {
   const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
   return blocks.map((block, index) => {
-    const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p";
+    const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" && !block.continued ? "li" : "p";
     const photos = workshopPhotos(page, block.photoRow);
     // Chromium can mislay columns when a spanning layout block is directly editable.
-    const copy = block.text && <Tag className={blockClassName(block, rosterStart)} onClick={(event: MouseEvent<HTMLElement>) => {
+    const copy = block.text && <Tag className={`${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={page.id === "structured-networking" && block.kind === "quote" ? blockQuoteRole(page, block) : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
       if (event.target === event.currentTarget) event.currentTarget.querySelector<HTMLElement>('[contenteditable]')?.focus();
     }}>
+      {page.id === "structured-networking" && block.kind === "quote" && <small className={styles.quoteRole}>{blockQuoteRole(page, block)}</small>}
       <span className={styles.textFrame}
         {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
         {tracked?.get(block.start) ? <Marked parts={tracked.get(block.start)!} /> : block.text}
       </span>
     </Tag>;
-    if (block.kind === "bullet") return <ul key={index} className={styles.list}>{copy}</ul>;
-    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * workshopTileHeight(page) / 337} />);
+    if (block.kind === "bullet" && !block.continued) return <ul key={index} className={styles.list}>{copy}</ul>;
+    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / 337} />);
     if (page.id === "venturelift" && photos.length) return <div key={index} className={styles.ventureProfile}>{copy}<div>{figures}</div></div>;
     return <Fragment key={index}>
       {copy}
@@ -115,7 +118,11 @@ function Blocks({ page, blocks, inline, change, tracked }: { page: ReportPage; b
 
 const folioText = (number: number) => String(number).padStart(2, "0");
 
-export type LaidOutReport = { page: ReportPage; columns: 1 | 2; frames: Block[][]; photoHeights: number[]; hasWorkshops: boolean }[];
+const quoteRole = (text: string) => /\u2014 (Alex Kamp|Jasmine Hamilton)/.test(text) ? "Mentor" : /\u2014 (Sunny Peiwei|Xunuo Cao|Maidah)/.test(text) ? "HQP" : "Program staff";
+
+const blockQuoteRole = (page: ReportPage, block: Block) => quoteRole(reportBlocks(page.text).find(b => b.kind === "quote" && b.start <= block.start && b.start + b.text.length >= block.start + block.text.length)?.text ?? block.text);
+
+export type LaidOutReport = { workshopHeights?: Record<string, number>[]; page: ReportPage; columns: 1 | 2; frames: Block[][]; photoHeights: number[]; hasWorkshops: boolean }[];
 
 export function useReportLayout(report: Report, approved: boolean) {
   const ruler = useRef<HTMLDivElement>(null);
@@ -137,16 +144,17 @@ export function useReportLayout(report: Report, approved: boolean) {
       pageNode.dataset.photoPair = String(hasPairedPhotos(page, index));
       const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
       story.replaceChildren(...blocks.flatMap((block) => {
-        const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" ? "li" : "p");
-        node.className = blockClassName(block, rosterStart);
+        const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" && !block.continued ? "li" : "p");
+        node.className = `${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`;
+        if (page.id === "structured-networking" && block.kind === "quote") { node.dataset.quoteRole = blockQuoteRole(page, block); const role = document.createElement("small"); role.className = styles.quoteRole; role.textContent = blockQuoteRole(page, block); node.append(role); }
         const text = document.createElement("span");
         text.className = styles.textFrame;
         text.textContent = block.text;
         node.append(text);
         const list = document.createElement("ul");
         list.className = styles.list;
-        if (block.kind === "bullet") list.append(node);
-        const nodes: HTMLElement[] = block.text ? [block.kind === "bullet" ? list : node] : [];
+        if (block.kind === "bullet" && !block.continued) list.append(node);
+        const nodes: HTMLElement[] = block.text ? [block.kind === "bullet" && !block.continued ? list : node] : [];
         const photos = workshopPhotos(page, block.photoRow);
         if (photos.length) {
           const space = document.createElement("div");
@@ -189,12 +197,14 @@ export function useReportLayout(report: Report, approved: boolean) {
       };
       const hasPortraits = portraitPhotos(page).length > 0;
       pageNode.dataset.portraits = String(hasPortraits);
+      const workshopHeads = blocks.filter(b => b.kind === "heading");
+      const breaks = page.id === "training-week" ? new Set(workshopHeads.slice(2).map(b => b.start)) : undefined;
       const frames = paginate(blocks, page.frames, (candidate, index) => {
         const reserve = !hasLeadPhoto(page, index) && !hasTrainingPhotoGrid(page, index) && page.photos?.[String(index)] && !photoRemoved(page, index)
           ? MIN_FILL_PHOTO + (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) + PHOTO_GAP : 0;
         const strip = stripSpace(index);
         return measureText(page, candidate, index, strip > 0) >= reserve + strip;
-      });
+      }, breaks);
       const photoHeights = frames.map((blocks, index) => {
         if (photoRemoved(page, index)) return 0;
         if (page.fillPhotos === false && !hasLeadPhoto(page, index) && !page.photos?.[String(index)]) return 0;
@@ -212,7 +222,14 @@ export function useReportLayout(report: Report, approved: boolean) {
         const space = freeSpace - (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) - PHOTO_GAP;
         return space >= MIN_FILL_PHOTO ? Math.min(maximum, space) : 0;
       });
-      return { page, columns, frames, photoHeights, hasWorkshops };
+      const workshopHeights = frames.map((frame, index) => {
+        if (page.id !== "training-week") return {};
+        const rows = frame.flatMap(b => b.photoRow ? [[b.photoRow, Math.ceil(workshopPhotos(page, b.photoRow).length / 2)] as const] : []);
+        const count = rows.reduce((sum, [, n]) => sum + n, 0);
+        const extra = count ? Math.max(0, Math.min(240, (measureText(page, frame, index, false) - 2) / count)) : 0;
+        return Object.fromEntries(rows.map(([row]) => [row, workshopTileHeight(page) + extra]));
+      });
+      return { page, columns, frames, photoHeights, hasWorkshops, workshopHeights };
     });
     // Pagination uses the browser's actual font and frame measurements.
     setLayout(result);
@@ -236,7 +253,7 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
 
 export type Frame = { id: string; index: number };
 
-export function ReportPaper({ report, layout, active, ready, onSelect, edit, onTextChange, onTyping, onPhoto, recommendations, markup, reviewTools = false, changes }: {
+export function ReportPaper({ report, layout, active, ready, onSelect, edit, onTextChange, onTyping, onPhoto, recommendations, markup, reviewTools = false, changes, trackChanges = false, onTrackChanges }: {
   report: Report;
   recommendations: Record<string, ReportPhoto[]>;
   layout: LaidOutReport;
@@ -251,6 +268,8 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
   markup?: (key: string) => string;
   reviewTools?: boolean;
   changes?: ReportChanges;
+  trackChanges?: boolean;
+  onTrackChanges?: (value: boolean) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -305,18 +324,12 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
     const pageNumber = folio++;
     const isActive = active.id === frame.id && active.index === frame.index;
     const frameKey = `${frame.id}-${frame.index}`;
-    const edits = changes?.edits.flatMap((entry) => {
-      const fields = entry.fields.filter(({ key }) => frame.id === "cover" || frame.id === "back" ? key.startsWith(`${frame.id}.`) : key.startsWith(`page:${frame.id}:`));
-      return fields.length ? [{ ...entry, fields }] : [];
-    }) ?? [];
-    if (changes) {
-      const logged = new Set(edits.flatMap((entry) => entry.fields.map((field) => field.key)));
-      const unlogged = reportFields(report).filter(({ key, text }) => {
-        const belongs = frame.id === "cover" || frame.id === "back" ? key.startsWith(`${frame.id}.`) : key.startsWith(`page:${frame.id}:`);
-        return belongs && !logged.has(key) && (changes.baseline[key] !== undefined || changes.since === "round") && (changes.baseline[key] ?? "") !== text;
-      }).map(({ key, label, text }) => ({ key, label, marks: diffMarks(changes.baseline[key] ?? "", text) }));
-      if (unlogged.length) edits.push({ id: `round-baseline-${frameKey}`, at: "", author: "Round comparison", fields: unlogged });
-    }
+    const frameBlocks = layout.find(p => p.page.id === frame.id)?.frames[frame.index] ?? [];
+    const passages = changes ? reportFields(report).filter(({ key }) => frame.id === "cover" || frame.id === "back" ? key.startsWith(`${frame.id}.`) : key.startsWith(`page:${frame.id}:`)).flatMap(({ key, label, text }) => {
+      const before = changes.baseline[key] ?? (changes.since === "round" ? "" : text);
+      const latest = changes.edits.find(entry => entry.fields.some(field => field.key === key));
+      return changePassages(key, label, before, text).filter(p => p.start === undefined ? frame.index === 0 : frameBlocks.length ? frameBlocks.some(b => p.end === p.start ? p.start! >= b.start && p.start! <= b.start + b.text.length : b.start < p.end! && b.start + b.text.length > p.start!) : frame.index === 0).map(p => ({ ...p, author: latest?.author, at: latest?.at }));
+    }) : [];
     const portraits = strip[0]?.[0].startsWith("portrait-");
     const hasWorkshopPhotos = strip.some(([key]) => key.startsWith("workshop-"));
     const swapLabel = portraits ? "Swap portrait" : hasWorkshopPhotos
@@ -341,15 +354,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         </div>
         {reviewTools && <aside className={`${styles.pageMargin} report-screen-only`} aria-label={`Page ${pageNumber} review notes`}>
           <div data-report-page-notes={frameKey} />
-          {edits.length > 0 && <div className={styles.changeBubble}>
-            <button type="button" aria-expanded={openChanges === frameKey} onClick={() => setOpenChanges(openChanges === frameKey ? null : frameKey)}>Text changes · {edits.length}</button>
-            {openChanges === frameKey && <section aria-label={`Tracked changes for page ${pageNumber}`}>
-              {edits.map((entry) => <div key={entry.id}>
-                <p><strong>{entry.author}</strong> {entry.at && <time dateTime={entry.at}>{new Date(entry.at).toLocaleString("en-CA")}</time>}</p>
-                {entry.fields.map((field) => <div key={field.key}><strong>{field.label}</strong><p><Marked parts={field.marks} /></p></div>)}
-              </div>)}
-            </section>}
+          {passages.length > 0 && <div className={styles.changeBubble}>
+            <button type="button" aria-haspopup="dialog" aria-controls={`report-frame-${frame.id}-${frame.index}-changes`} aria-expanded={openChanges === frameKey} onClick={() => setOpenChanges(openChanges === frameKey ? null : frameKey)}>Text changes · {passages.length}</button>
           </div>}
+          {openChanges === frameKey && passages.length > 0 && <ReportChangePopup frameId={`report-frame-${frame.id}-${frame.index}`} pageNumber={pageNumber} passages={passages} track={trackChanges} onTrack={onTrackChanges} onClose={() => setOpenChanges(null)} />}
+
         </aside>}
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
           onFocus={(event) => { if (!isActive && event.target.isContentEditable) onSelect(frame); }}
@@ -377,12 +386,12 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
         <div className={styles.coverText}>
           <p className={styles.kicker}>2026 Event Report</p>
-          <h1 {...inline(report.cover.title, "Cover title", (title) => onTextChange?.({ ...report, cover: { ...report.cover, title } }))}>{show("cover.title", report.cover.title)}</h1>
-          <p className={styles.coverTheme} {...inline(report.cover.theme, "Cover theme", (theme) => onTextChange?.({ ...report, cover: { ...report.cover, theme } }))}>{show("cover.theme", report.cover.theme)}</p>
-          <p className={styles.coverDate} {...inline(report.cover.date, "Cover date", (date) => onTextChange?.({ ...report, cover: { ...report.cover, date } }))}>{show("cover.date", report.cover.date)}</p>
+          <h1 data-report-field="cover.title" {...inline(report.cover.title, "Cover title", (title) => onTextChange?.({ ...report, cover: { ...report.cover, title } }))}>{show("cover.title", report.cover.title)}</h1>
+          <p data-report-field="cover.theme" className={styles.coverTheme} {...inline(report.cover.theme, "Cover theme", (theme) => onTextChange?.({ ...report, cover: { ...report.cover, theme } }))}>{show("cover.theme", report.cover.theme)}</p>
+          <p data-report-field="cover.date" className={styles.coverDate} {...inline(report.cover.date, "Cover date", (date) => onTextChange?.({ ...report, cover: { ...report.cover, date } }))}>{show("cover.date", report.cover.date)}</p>
         </div>
       </>, styles.cover, true)}
-      {layout.map(({ page, columns, frames, photoHeights, hasWorkshops }, section) => { const pageMarks = tracked(page, frames); return frames.map((blocks, index) => {
+      {layout.map(({ page, columns, frames, photoHeights, hasWorkshops, workshopHeights }, section) => { const pageMarks = tracked(page, frames); return frames.map((blocks, index) => {
         const strip = stripPhotos(page, index);
         const choices = [...strip, ...blocks.flatMap((block) => workshopPhotos(page, block.photoRow))];
         const photoGrid = hasTrainingPhotoGrid(page, index);
@@ -391,9 +400,9 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
             ? <header className={styles.chapterHead}>
-              <span><span>{folioText(section + 1)} / <span {...inline(page.label, "Section label", (label) => patchPage(page.id, () => ({ label })))}>{show(`page:${page.id}:label`, page.label)}</span></span></span>
-              <h2 {...inline(page.title, "Section title", (title) => patchPage(page.id, () => ({ title })))}>{show(`page:${page.id}:title`, page.title)}</h2>
-              {page.intro && <p className={styles.pageIntro} {...inline(page.intro, "Section introduction", (intro) => patchPage(page.id, () => ({ intro })), true)}>{show(`page:${page.id}:intro`, page.intro)}</p>}
+              <span><span>{folioText(section + 1)} / <span data-report-field={`page:${page.id}:label`} {...inline(page.label, "Section label", (label) => patchPage(page.id, () => ({ label })))}>{show(`page:${page.id}:label`, page.label)}</span></span></span>
+              <h2 data-report-field={`page:${page.id}:title`} {...inline(page.title, "Section title", (title) => patchPage(page.id, () => ({ title })))}>{show(`page:${page.id}:title`, page.title)}</h2>
+              {page.intro && <p data-report-field={`page:${page.id}:intro`} className={styles.pageIntro} {...inline(page.intro, "Section introduction", (intro) => patchPage(page.id, () => ({ intro })), true)}>{show(`page:${page.id}:intro`, page.intro)}</p>}
             </header>
             : <header className={styles.continuationHead}>{folioText(section + 1)} / {show(`page:${page.id}:title`, page.title)} <span> / continued</span></header>}
           {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} showSource={!ready}
@@ -406,14 +415,14 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             : <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} lead />)}
           <div className={styles.copy}>
             <div className={`${styles.story}${hasWorkshops ? ` ${styles.workshopStory}` : ""}`}>
-              <Blocks page={page} blocks={blocks} inline={inline} tracked={pageMarks}
+              <Blocks page={page} blocks={blocks} inline={inline} tracked={pageMarks} heights={workshopHeights?.[index]}
                 change={(block, text) => patchPage(page.id, (current) => ({ text: replaceReportBlock(current.text, block, text) }))} />
               {onTextChange && index === 0 && !page.text.trim() && page.image !== "registration" && photoHeights[index] === 0 &&
                 <p className={`${styles.paragraph} ${styles.emptyStory}`} {...inline("", "Story text", (text) => patchPage(page.id, () => ({ text })), true)} />}
             </div>
             {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />}
             {strip.length > 0 && !paired && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
-              role="group" aria-label={photoGrid ? "Training Week photographs" : "Additional photographs"}>
+              role="group" aria-label={photoGrid ? page.id === "pitch-competition" ? "Innovation Ignited photographs" : "Training Week photographs" : "Additional photographs"}>
               {photoGrid && <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={stripHeight} />}
               {strip.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={stripHeight} />)}
             </div>}
@@ -425,8 +434,8 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
         <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
         <div className={styles.backText}>
-          <h2 {...inline(report.back.title, "Back cover title", (title) => onTextChange?.({ ...report, back: { ...report.back, title } }))}>{show("back.title", report.back.title)}</h2>
-          <p {...inline(report.back.text, "Back cover text", (text) => onTextChange?.({ ...report, back: { ...report.back, text } }), true)}>{show("back.text", report.back.text)}</p>
+          <h2 data-report-field="back.title" {...inline(report.back.title, "Back cover title", (title) => onTextChange?.({ ...report, back: { ...report.back, title } }))}>{show("back.title", report.back.title)}</h2>
+          <p data-report-field="back.text" {...inline(report.back.text, "Back cover text", (text) => onTextChange?.({ ...report, back: { ...report.back, text } }), true)}>{show("back.text", report.back.text)}</p>
           <div className={styles.backLinks}>
             <a href="https://biohubnet.ca">biohubnet.ca</a>
             <a href="https://www.linkedin.com/company/biohubnet/" className={styles.backQr}>

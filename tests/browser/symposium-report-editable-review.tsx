@@ -15,6 +15,8 @@ const networkingText = [
   Array.from({ length: 17 }, (_, i) => `Mentor ${i + 1}`).join(" · "),
 ].join("\n\n");
 
+const longBullet = "A single list item keeps its meaning as it flows between linked pages. ".repeat(100);
+
 const ventureFixture = { id: "venturelift", label: "Annual Symposium", title: "VentureLift Spotlight", frames: 1, showCaptions: false,
   text: Array.from({ length: 7 }, (_, i) => `## Venture ${i + 1} • Presenter ${i + 1}\n\n${"A trainee-led venture connects scientific research with practical development and validation. ".repeat(3)}\n[[photos:${i + 1}]]`).join("\n\n"),
   photos: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`workshop-${i + 1}-1`, { file: "cover.jpg", caption: `Venture ${i + 1} · Presenter ${i + 1}`, x: 50, y: 30, fit: "cover" }])) };
@@ -27,7 +29,7 @@ async function main() {
         const closed = location.search === "?closed";
         createRoot(document.getElementById("root")).render(<ReportEditor fullPageReview={location.search !== "?workspace"}
           report={{cover:{title:"Annual Symposium",theme:"Future workforce",date:"October 29"},
-            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false},{id:"annual-symposium",label:"Opening program",title:"Annual Symposium",text:"The opening program connected research, industry and careers.",frames:1,photos:{"0":{file:"keynote.jpg",caption:"Christopher Procyshyn keynote",x:50,y:40,fit:"cover"},"photo-0-1":{file:"welcome-1.webp",caption:"Molly Shoichet delivers the opening remarks",x:50,y:33,fit:"cover"}}},${JSON.stringify(ventureFixture)}],
+            pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false},{id:"annual-symposium",label:"Opening program",title:"Annual Symposium",text:"The opening program connected research, industry and careers.",frames:1,photos:{"0":{file:"keynote.jpg",caption:"Christopher Procyshyn keynote",x:50,y:40,fit:"cover"},"photo-0-1":{file:"welcome-1.webp",caption:"Molly Shoichet delivers the opening remarks",x:50,y:33,fit:"cover"}}},${JSON.stringify(ventureFixture)},{id:"cross-page-list",label:"List flow",title:"A continuing list",text:${JSON.stringify("- "+"A single list item keeps its meaning as it flows between linked pages. ".repeat(100))},frames:1,fillPhotos:false}],
             back:{title:"BioHubNet",text:"Connect"}}}
           revision={"a".repeat(64)} history={[{round:1,report:{cover:{title:"Archived title",theme:"Future workforce",date:"October 29"},pages:[{id:"summary",label:"Overview",title:"Summary",text:"Archived passage",frames:1,fillPhotos:false}],back:{title:"BioHubNet",text:"Connect"}}}]} recommendations={{}} meId="staff" isAdmin={false}
           review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:location.search === "?workspace" ? [{id:"existing",parentId:null,round:2,anchorQuote:"Original report passage",anchorKey:"#report-frame-summary-0",anchorPath:null,anchorBlock:null,anchorState:"current",authorUserId:"staff",authorName:"Reviewer",authorKind:"user",body:"Existing feedback stays visible",status:"open",editCount:0,editedAt:null,editedByName:null,createdAt:"2026-11-20T12:00:00Z"}] : []}}/>);`,
@@ -70,7 +72,7 @@ async function main() {
         if (url.searchParams.has("overlay")) return route.fulfill({ contentType: "application/javascript", body: overlaySource(REPORT_API + "/review", "Report", true, "/api/workspace/page-review/" + REPORT_ID) });
         return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : exported ? "exported" : "open" }, viewer: { name: "Staff" }, comments, comparison: null } });
       }
-      if (url.pathname === REPORT_API && route.request().method() === "GET") return route.fulfill({ json: { round: 2, since: "round", baseline: {}, edits: [{id:"change",at:"2026-11-23T15:00:00Z",author:"Colleague",fields:[{key:"page:summary:text",label:"Summary · text",marks:[{kind:"del",text:"Original words"},{kind:"ins",text:"Revised words"}]}]}] } });
+      if (url.pathname === REPORT_API && route.request().method() === "GET") return route.fulfill({ json: { round: 2, since: "round", baseline: {"page:summary:label":"Overview","page:summary:title":"Summary","page:summary:text":"Original report passage"}, edits: [{id:"change",at:"2026-11-23T15:00:00Z",author:"Colleague",fields:[{key:"page:summary:text",label:"Summary · text",marks:[{kind:"del",text:"Original words"},{kind:"ins",text:"Revised words"}]}]}] } });
       if (url.pathname === REPORT_API && route.request().method() === "POST") {
         saves.push(route.request().postDataJSON());
         if (remoteSnapshot && saves.at(-1)!.revision !== remoteRevision) return route.fulfill({ status: 409, json: { error: "Newer team copy", current: remoteSnapshot, revision: remoteRevision } });
@@ -152,6 +154,12 @@ async function main() {
       assert.ok(rect.height >= 220, "Molly and Christopher have proper image height");
       assert.ok(Math.abs(rect.width / rect.height - 1.5) < .01, "opening photographs use 3:2 frames");
     }
+    const listFrames=page.locator('[id^="report-frame-cross-page-list-"]');
+    assert.ok(await listFrames.count()>=3,"long list item crosses at least three linked pages");
+    await expect(listFrames.locator('li')).toHaveCount(1);
+    const listContinuations=listFrames.locator('[data-list-continuation=true]');
+    assert.ok(await listContinuations.count()>=2);
+    assert.equal(await listFrames.locator('[data-report-field="page:cross-page-list:text"]').allTextContents().then(parts=>parts.join('')),longBullet.trimEnd());
     // Clicking a photo opens the photo editor (not a comment) on an editable page.
     const photoEditor = page.locator("form", { has: page.getByRole("heading", { name: "Swap or crop photo" }) });
     await openingPhotos.last().click();
@@ -353,8 +361,17 @@ async function main() {
     // Per-page feedback, persistent insertion anchors, tracked bubbles and safe live sync.
     const summarySheet = page.locator("#report-frame-summary-0");
     await summarySheet.getByRole("button", { name: /^Text changes ·/ }).click();
-    await expect(summarySheet.getByRole("region", { name: "Tracked changes for page 2" }).or(summarySheet.locator('section[aria-label="Tracked changes for page 2"]'))).toContainText("Revised words");
-    await expect(summarySheet.locator("ins").filter({hasText:"Revised words"})).toHaveCount(1);
+    const changePopup=page.getByRole("dialog",{name:"Text changes for page 2"});
+    await expect(changePopup.getByRole("region",{name:"Before",exact:true})).toContainText("Original report passage");
+    await expect(changePopup.getByRole("region",{name:"After",exact:true})).toContainText("Revised report passage");
+    assert.ok((await changePopup.boundingBox())!.width>=900,"before/after popup uses a readable width");
+    await expect(page.getByLabel("Changed paragraph highlight")).toBeVisible();
+    await expect(page.locator('svg[aria-label="Changed paragraph highlight"] path')).toHaveCount(1);
+    await changePopup.getByRole("checkbox",{name:"Track changes on report"}).check();
+    await expect(changePopup.locator('ins')).not.toHaveCount(0);
+    await changePopup.getByRole("checkbox",{name:"Track changes on report"}).uncheck();
+    await changePopup.getByRole("button",{name:"Close text changes"}).click();
+    await expect(changePopup).toHaveCount(0);
     const pageBox = summarySheet.getByRole("textbox", { name: /^Page feedback:/ });
     await pageBox.fill("Add a follow-up resource on this page.");
     await page.getByRole("button", { name: "Copy review comments", exact: true }).click();
@@ -363,6 +380,31 @@ async function main() {
     await expect(pageBox).toHaveValue("");
     assert.equal(selections.at(-1)!.anchorKey, "#report-frame-summary-0");
     assert.match(selections.at(-1)!.body, /follow-up resource/);
+    for (const shape of ["Circle","Line"]) {
+      await page.getByRole("button",{name:shape+" comment",exact:true}).click();
+      await summarySheet.locator('article').scrollIntoViewIfNeeded();
+      const rect=(await summarySheet.locator('article').boundingBox())!;
+      await page.mouse.move(rect.x+60,rect.y+120);await page.mouse.down();await page.mouse.move(rect.x+180,rect.y+190);await page.mouse.up();
+      await expect(page.locator('#bhn-review-overlay')).toContainText("Comment on drawn "+shape.toLowerCase());
+      await expect(page.locator('#bhn-review-overlay')).toHaveAttribute('data-report-comments-dirty','true');
+      await summarySheet.locator('h2').first().click();
+      await expect(page.locator('#bhn-review-overlay')).toContainText("Comment on drawn "+shape.toLowerCase());
+      await expect(page.locator('.bhn-report-drawing-draft')).toHaveCount(1);
+      await page.getByRole('button',{name:'Copy review comments',exact:true}).click();assert.equal(exports,0);
+      await page.getByRole('textbox',{name:'New review comment',exact:true}).fill(shape+" annotation feedback");
+      await page.getByRole('button',{name:'Add comment',exact:true}).click();
+      assert.match(selections.at(-1)!.anchorBlock as string,new RegExp("\\[draw:"+shape.toLowerCase()+":"));
+      await expect(page.locator('.bhn-report-drawing-draft')).toHaveCount(0);
+    }
+    await expect(page.locator('.bhn-report-drawing')).toHaveCount(2);
+    await page.setViewportSize({width:1280,height:900});
+    await expect.poll(async()=>{const shape=await page.locator('.bhn-report-drawing').first().boundingBox();const paper=await summarySheet.locator('article').boundingBox();return !!shape && !!paper && Math.abs(shape.width-paper.width)<1;}).toBe(true);
+    await page.setViewportSize({width:1440,height:1000});
+    await page.getByRole('button',{name:'Circle comment',exact:true}).click();await page.keyboard.press('Escape');
+    await expect(page.getByRole('button',{name:'Circle comment',exact:true})).toHaveAttribute('aria-pressed','false');
+    await page.getByRole('button',{name:'Circle comment',exact:true}).click();await story.focus();await story.press('Enter');
+    await expect(page.locator('#bhn-review-overlay')).toContainText('Comment on drawn circle');
+    await page.keyboard.press('Escape');await expect(page.locator('.bhn-report-drawing-draft')).toHaveCount(0);
     await page.getByRole("button", { name: "Add a section", exact: true }).click();
     const gap = await story.boundingBox();
     await page.mouse.move(gap!.x + 20, gap!.y - 3);
@@ -430,6 +472,8 @@ async function main() {
     await page.locator("#report-frame-summary-0").getByText("Archived passage", { exact: true }).click();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
     await page.goto(origin + "/?closed");
+    await expect(page.getByRole("button",{name:"Circle comment",exact:true})).toHaveCount(0);
+    await expect(page.locator(".bhn-report-drawing")).toHaveCount(2);
     await expect(page.locator("#bhn-review-overlay")).toBeVisible();
     await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Save draft", exact: true })).toHaveCount(0);

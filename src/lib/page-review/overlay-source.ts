@@ -710,7 +710,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     }
     if (!state.selected) return;
     var box = make("section", "bhn-rv-compose");
-    box.appendChild(make("div", "bhn-rv-compose-label", state.selected.insertion ? "Request a section insertion" : "Comment on selected element"));
+    box.appendChild(make("div", "bhn-rv-compose-label", state.selected.drawing ? "Comment on drawn " + state.selected.drawing.shape : state.selected.insertion ? "Request a section insertion" : "Comment on selected element"));
     if (state.selected.anchorQuote) {
       box.appendChild(make("div", "bhn-rv-quote", state.selected.anchorQuote.slice(0, 180)));
     }
@@ -967,6 +967,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   ${reportToolsSource()}
 
   function render() {
+    root.setAttribute("data-report-draw-mode", reportReview && reportDrawMode ? reportDrawMode : "");
     root.setAttribute("data-report-commenting", String(reportReview && !!state.viewer && !isLocked()));
     root.setAttribute("data-picking-element", String(reportReview && state.pickingElement && !isLocked()));
     root.textContent = "";
@@ -1046,7 +1047,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
           var confirmed = state.confirmedCopy;
           state.confirmedCopy = false;
           try {
-            if (reportReview && (state.saving || state.draft.trim() || state.replyTo !== null || state.editingId !== null)) throw new Error("Finish or cancel your comment or reply before copying and locking this round.");
+            if (reportReview && (reportAnnotationDraft() || state.saving || state.draft.trim() || state.replyTo !== null || state.editingId !== null)) throw new Error("Finish or cancel your comment or reply before copying and locking this round.");
             if (reportReview && document.querySelector('[data-report-unsaved="true"]')) throw new Error("Wait for autosave, or finish the open photo edit, before copying and locking this round.");
             if (reportReview && reportHasPageDrafts()) throw new Error("Finish or cancel your page feedback before copying and locking this round.");
             if (reportReview && !isLocked() && !confirmed) { state.confirmCopy = true; render(); return; }
@@ -1085,7 +1086,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       }
       if (reportReview && !isLocked()) {
         var pick = addButton("Comment on an element", "bhn-rv-btn bhn-rv-element-pick", function(){
-          state.pickingElement = true;
+          reportDrawMode=null; state.pickingElement = true;
           state.insertingSection = false;
           showHighlight(null);
           render();
@@ -1109,7 +1110,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         var threads = topComments();
         var current = threads.filter(function(comment){ return comment.round === state.review.round; });
         var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
-        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round && !isLocked() ? (reportReview ? (state.pickingElement ? " Click any report element to comment. Use Edit text and photos to make changes." : " Edit mode: click text or a photo to make changes. Use Comment on an element to leave feedback.") : " Click any page element to start a thread.") : "")));
+        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round && !isLocked() ? (reportReview ? (reportDrawMode ? " Drag on a report page to draw, then add your comment." : state.pickingElement ? " Click any report element to comment. Use Edit text and photos to make changes." : " Edit mode: click text or a photo to make changes. Use Comment on an element to leave feedback.") : " Click any page element to start a thread.") : "")));
         current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
         body.appendChild(list);
         if (previous.length) {
@@ -1361,7 +1362,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         marker.style.left = Math.max(4, rect.right - 13 - (sharedIndex * 29)) + "px";
         marker.style.top = Math.max(4, rect.top - 13) + "px";
         marker.addEventListener("click", function(event){ event.preventDefault(); event.stopPropagation(); focusThread(comment, anchor); });
-        if (reportReview) reportInsertionMarker(marker, comment, anchor);
+        if (reportReview) { reportInsertionMarker(marker, comment, anchor); reportDrawingMarker(marker, comment, anchor); }
         document.body.appendChild(marker);
         markers.push(marker);
       });
@@ -1382,6 +1383,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function onMove(event) {
+    if (reportReview && (reportDrawMode || reportDrawDrag || (state.selected && state.selected.drawing))) return;
     if (reportInsertionMove(event)) return;
     if (inOverlay(event.target)) {
       if (threadHighlight) showHighlight(threadHighlight);
@@ -1395,6 +1397,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function onClick(event) {
+    if (reportReview && (reportDrawMode || reportDrawSuppressClick || (state.selected && state.selected.drawing)) && event.target.closest(scopeSelector)) { reportDrawSuppressClick=false; event.preventDefault();event.stopPropagation();return; }
     if (inOverlay(event.target)) return;
     if (reportInsertionClick(event)) return;
     if (reportCommentEndpoint && (!state.viewer || isLocked())) return;
