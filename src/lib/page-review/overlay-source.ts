@@ -1084,7 +1084,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         var threads = topComments();
         var current = threads.filter(function(comment){ return comment.round === state.review.round; });
         var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
-        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round ? (editableReportPage(document.querySelector(scopeSelector)) ? " Click a photo or caption to comment. Choose Comment on an element for other items, or Comment on page for general feedback. Click text to edit." : " Click any page element to start a thread.") : "")));
+        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round && !isLocked() ? (editableReportPage(document.querySelector(scopeSelector)) ? " Click a photo or caption to comment. Choose Comment on an element for other items, or Comment on page for general feedback. Click text to edit." : " Click any page element to start a thread.") : "")));
         current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
         body.appendChild(list);
         if (previous.length) {
