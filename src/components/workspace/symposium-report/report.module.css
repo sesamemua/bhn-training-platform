@@ -96,7 +96,10 @@
 
 /* Keep the report tools at the upper right without covering the paper or its margin notes. */
 .fullPageReview { grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem); }
-.fullPageReview > .rail { grid-column: 2; grid-row: 1; }
+.fullPageReview > .rail { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; overflow: hidden; }
+.fullPageReview > .rail > :not(.outline, .changeList) { flex-shrink: 0; }
+.fullPageReview .outline { flex: 1; min-height: 0; max-height: none; }
+.fullPageReview .changeList { min-height: 0; overflow: auto; }
 .fullPageReview > .stage { grid-column: 1; grid-row: 1; }
 
 .rail {
@@ -577,6 +580,7 @@
   .workbench { grid-template-columns: minmax(0, 1fr); }
   .fullPageReview > .rail { grid-column: 1; grid-row: 1; width: min(100%, 20rem); justify-self: end; }
   .fullPageReview > .stage { grid-column: 1; grid-row: 2; }
+  .fullPageReview .outline { max-height: 12rem; }
   .rail { position: static; max-height: none; }
   .outline { max-height: 12rem; }
 }

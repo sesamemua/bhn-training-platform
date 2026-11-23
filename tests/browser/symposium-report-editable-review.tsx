@@ -127,6 +127,9 @@ async function main() {
     assert.ok(toolsPosition.railLeft >= toolsPosition.stageRight, "review tools occupy the right column without covering the report");
     assert.ok(toolsPosition.railRight > 1440 - 40, "review tools sit against the right side of the window");
     assert.ok(toolsPosition.toolsTop < 400, "review toolbar starts at the top of the controls column");
+    await page.getByRole("button", { name: "VentureLift Spotlight", exact: true }).click();
+    const toolsAfterJump = await page.locator('[data-report-tools-host]').evaluate(host => ({top: host.getBoundingClientRect().top, railTop: host.closest('aside')!.getBoundingClientRect().top}));
+    assert.ok(toolsAfterJump.top >= toolsAfterJump.railTop && toolsAfterJump.top < 50, "toolbar stays at the top after jumping to another report page");
     await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
     await expect(page.locator('[id^="report-frame-venturelift-"]')).toHaveCount(1);
