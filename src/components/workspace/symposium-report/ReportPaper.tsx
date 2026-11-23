@@ -160,12 +160,12 @@ export function useReportLayout(report: Report, approved: boolean) {
             return [row];
           }
           const rows = Math.ceil(photos.length / 2);
-          space.style.height = `${rows * (height + (page.showCaptions === false ? 0 : 27)) + (rows - 1) * 10 + PHOTO_GAP}px`;
+          space.style.height = `${rows * (height + (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE)) + (rows - 1) * 10 + PHOTO_GAP}px`;
           nodes.push(space);
         }
         return nodes;
       }));
-      return measure.clientHeight - Math.ceil(story.getBoundingClientRect().height);
+      return measure.clientHeight - parseFloat(getComputedStyle(measure).paddingBottom) - Math.ceil(story.getBoundingClientRect().height);
     };
     const result = report.pages.map((page, index) => {
       const blocks = reportBlocks(page.text);
@@ -408,7 +408,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             <div className={`${styles.story}${hasWorkshops ? ` ${styles.workshopStory}` : ""}`}>
               <Blocks page={page} blocks={blocks} inline={inline} tracked={pageMarks}
                 change={(block, text) => patchPage(page.id, (current) => ({ text: replaceReportBlock(current.text, block, text) }))} />
-              {onTextChange && index === 0 && !page.text.trim() && photoHeights[index] === 0 &&
+              {onTextChange && index === 0 && !page.text.trim() && page.image !== "registration" && photoHeights[index] === 0 &&
                 <p className={`${styles.paragraph} ${styles.emptyStory}`} {...inline("", "Story text", (text) => patchPage(page.id, () => ({ text })), true)} />}
             </div>
             {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />}

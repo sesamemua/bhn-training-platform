@@ -96,7 +96,7 @@
 
 /* Keep the report tools at the upper right without covering the paper or its margin notes. */
 .fullPageReview { grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem); }
-.fullPageReview > .rail { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; overflow: hidden; }
+.fullPageReview > .rail { grid-column: 2; grid-row: 1; z-index: 2147483647; display: flex; flex-direction: column; overflow: hidden; }
 .fullPageReview > .rail > :not(.outline, .changeList) { flex-shrink: 0; }
 .fullPageReview .outline { flex: 1; min-height: 0; max-height: none; }
 .fullPageReview .changeList { min-height: 0; overflow: auto; }
@@ -345,7 +345,12 @@
 .editForm .photoTools button { display: inline-flex; align-items: center; gap: 4px; }
 .editForm .photoTools button[aria-pressed="true"] { background: var(--report-blue); color: var(--report-white); }
 .photo figcaption, .fillPhoto figcaption {
-  height: 23px;
+  height: 34px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   color: var(--report-slate);
   padding-top: 6px;
   font: 11px/1.25 var(--sans);
@@ -410,7 +415,7 @@
 .sourceCounts label { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; }
 .sourceCounts span { font-weight: 700; }
 
-.copy { grid-row: 3; min-height: 0; display: flex; flex-direction: column; }
+.copy { grid-row: 3; min-height: 0; display: flex; flex-direction: column; padding-bottom: 12px; }
 .story {
   display: flow-root;
   flex: none;
@@ -426,7 +431,7 @@
   padding-bottom: 13px;
 }
 .workshopPhotos figure { margin: 0; }
-.workshopPhotos figcaption { height: 27px; overflow: hidden; overflow-wrap: anywhere; }
+.workshopPhotos figcaption { height: 34px; overflow: hidden; overflow-wrap: anywhere; }
 .ventureProfile {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 148px;

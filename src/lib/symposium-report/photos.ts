@@ -117,7 +117,7 @@ export function hasTrainingPhotoGrid(page: ReportPage, index: number) {
 
 export const MIN_FILL_PHOTO = 288;
 export const MAX_PHOTO_HEIGHT = 456;
-export const PHOTO_CAPTION_SPACE = 23;
+export const PHOTO_CAPTION_SPACE = 34;
 export const PHOTO_GAP = 13;
 export const TRAINING_TILE_PREVIEW_HEIGHT = portraitHeight(3);
 export function trainingPhotoGridSpace(page: ReportPage, index: number) {

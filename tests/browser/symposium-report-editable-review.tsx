@@ -127,6 +127,9 @@ async function main() {
     assert.ok(toolsPosition.railLeft >= toolsPosition.stageRight, "review tools occupy the right column without covering the report");
     assert.ok(toolsPosition.railRight > 1440 - 40, "review tools sit against the right side of the window");
     assert.ok(toolsPosition.toolsTop < 400, "review toolbar starts at the top of the controls column");
+    const copyPosition = (await page.getByRole("button", { name: "Copy review comments", exact: true }).boundingBox())!;
+    assert.ok(copyPosition.x < 40, "only the copy-comments button is on the left side");
+    await expect(page.getByRole("toolbar", { name: "Report review toolbar" }).getByRole("button", { name: "Copy review comments", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "VentureLift Spotlight", exact: true }).click();
     const toolsAfterJump = await page.locator('[data-report-tools-host]').evaluate(host => ({top: host.getBoundingClientRect().top, railTop: host.closest('aside')!.getBoundingClientRect().top}));
     assert.ok(toolsAfterJump.top >= toolsAfterJump.railTop && toolsAfterJump.top < 50, "toolbar stays at the top after jumping to another report page");
