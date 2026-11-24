@@ -31,7 +31,7 @@ async function main() {
           report={{cover:{title:"Annual Symposium",theme:"Future workforce",date:"October 29"},
             pages:[{id:"summary",label:"Overview",title:"Summary",text:"Original report passage",frames:1,fillPhotos:false,photos:{"0":{file:"cover.jpg",caption:"An event photograph",x:50,y:50,fit:"cover"}}},{id:"structured-networking",label:"Career conversations",title:"Structured Networking",text:${JSON.stringify(networkingText)},frames:1,fillPhotos:false},{id:"annual-symposium",label:"Opening program",title:"Annual Symposium",text:"The opening program connected research, industry and careers.",frames:1,photos:{"0":{file:"keynote.jpg",caption:"Christopher Procyshyn keynote",x:50,y:40,fit:"cover"},"photo-0-1":{file:"welcome-1.webp",caption:"Molly Shoichet delivers the opening remarks",x:50,y:33,fit:"cover"}}},${JSON.stringify(ventureFixture)},{id:"cross-page-list",label:"List flow",title:"A continuing list",text:${JSON.stringify("- "+"A single list item keeps its meaning as it flows between linked pages. ".repeat(100))},frames:1,fillPhotos:false}],
             back:{title:"BioHubNet",text:"Connect"}}}
-          revision={"a".repeat(64)} history={[{round:1,report:{cover:{title:"Archived title",theme:"Future workforce",date:"October 29"},pages:[{id:"summary",label:"Overview",title:"Summary",text:"Archived passage",frames:1,fillPhotos:false}],back:{title:"BioHubNet",text:"Connect"}}}]} recommendations={{}} meId="staff" isAdmin={false}
+          revision={"a".repeat(64)} history={[{round:1,report:{cover:{title:"Archived title",theme:"Future workforce",date:"October 29"},pages:[{id:"summary",label:"Overview",title:"Summary",text:"Archived passage",frames:1,fillPhotos:false}],back:{title:"BioHubNet",text:"Connect"}}}]} recommendations={{}} meId="staff" isAdmin={location.search === "?ready"}
           review={{id:"${REPORT_ID}",url:"/review/symposium-2026/report",title:"Report",status:closed?"closed":"open",round:2,comments:location.search === "?workspace" ? [{id:"existing",parentId:null,round:2,anchorQuote:"Original report passage",anchorKey:"#report-frame-summary-0",anchorPath:null,anchorBlock:null,anchorState:"current",authorUserId:"staff",authorName:"Reviewer",authorKind:"user",body:"Existing feedback stays visible",status:"open",editCount:0,editedAt:null,editedByName:null,createdAt:"2026-11-20T12:00:00Z"}] : []}}/>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -70,7 +70,7 @@ async function main() {
           return route.fulfill({ json: { ok: true, brief: "Checked Round 2 comments", review: { title: "Report", round: 2, status: "exported" } } });
         }
         if (url.searchParams.has("overlay")) return route.fulfill({ contentType: "application/javascript", body: overlaySource(REPORT_API + "/review", "Report", true, "/api/workspace/page-review/" + REPORT_ID) });
-        return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : exported ? "exported" : "open" }, viewer: { name: "Staff" }, comments, comparison: null } });
+        return route.fulfill({ json: { ok: true, review: { title: "Report", round: 2, status: page.url().endsWith("?closed") ? "closed" : exported ? "exported" : "open" }, viewer: { name: "Staff" }, comments: page.url().endsWith("?ready") ? (comments as Record<string,unknown>[]).map(c=>({...c,status:"resolved"})) : comments, comparison: null } });
       }
       if (url.pathname === REPORT_API && route.request().method() === "GET") return route.fulfill({ json: { round: 2, since: "round", baseline: {"page:summary:label":"Overview","page:summary:title":"Summary","page:summary:text":"Original report passage"}, edits: [{id:"change",at:"2026-11-23T15:00:00Z",author:"Colleague",fields:[{key:"page:summary:text",label:"Summary · text",marks:[{kind:"del",text:"Original words"},{kind:"ins",text:"Revised words"}]}]}] } });
       if (url.pathname === REPORT_API && route.request().method() === "POST") {
@@ -525,6 +525,12 @@ async function main() {
     await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveCount(0);
     await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
+    await page.goto(origin + "/?ready");
+    await expect(page.getByRole("status", {name:"Round 3 ready for review", exact:true})).toContainText("Round 3 is ready for review");
+    await expect(page.getByRole("button",{name:"Start Round 3 review",exact:true})).toBeEnabled();
+    await expect(page.getByRole("status",{name:"Round 2 commenting locked",exact:true})).toContainText("Round 3 is ready for review");
+    assert.equal(await page.locator('.bhn-rv-lock-icon').evaluate(el=>getComputedStyle(el).fontSize),"64px");
+    await expect(page.locator('[contenteditable]')).toHaveCount(0);
     assert.deepEqual(errors, []);
     console.log("PASS: full-page text editing, autosave with merge of a colleague's newer copy, photo click opens zoom/rotate/flip/caption/reset editor, explicit comments, photo controls, precise element comments and Show me, draft retention, networking text focus and geometry, archived and approved-round locks; mocked writes only");
   } finally { await browser.close(); }

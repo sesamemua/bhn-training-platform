@@ -14,10 +14,12 @@ async function main(){
  });
  await page.goto('https://mention-fixture.test/?comment=mentioned');await expect(page.locator('[data-thread-id=mentioned]')).toContainText('Please check @Epshita Islam.');await expect(page.locator('.bhn-review-highlight-flash')).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>{const a=document.querySelector('.bhn-review-highlight')!.getBoundingClientRect(),b=document.querySelector('figure[data-report-photo] > div')!.getBoundingClientRect();return Math.abs(a.width-b.width)+Math.abs(a.height-b.height)+Math.abs(a.left-b.left)+Math.abs(a.top-b.top);})).toBeLessThan(2);
+ assert.equal(await page.locator('.bhn-rv-lock-icon').evaluate(el=>getComputedStyle(el).fontSize),'64px');
+ await expect(page.getByRole('status',{name:'Round 6 commenting locked'})).toContainText('locked while revisions are underway');
  await expect(page.getByRole('textbox',{name:'New review comment'})).toHaveCount(0);assert.equal(posts,0);
  // Old review anchors survive the directory's move and replacement of dot separators with line breaks.
-await page.route('https://mention-fixture.test'+REPORT_API+'/review',route=>route.fulfill({json:{ok:true,review:{title:'Report',round:6,status:'exported'},viewer:{name:'Staff'},comments:[{...comment,id:'profile',anchorKey:'#report-frame-structured-networking-1',anchorPath:'div#report-frame-structured-networking-1 > p',anchorQuote:'Shadan Ashfaie · Enterprise AI Transformation & Applied AI Portfolio Leader | Advisor · Amgen (Consultant)'}],comparison:null}}));
-await page.goto('https://mention-fixture.test/?comment=profile');
+await page.route('https://mention-fixture.test'+REPORT_API+'/review',route=>route.fulfill({json:{ok:true,review:{title:'Report',round:6,status:'exported'},viewer:{name:'Staff'},comments:[{...comment,id:'profile',status:'resolved',anchorKey:'#report-frame-structured-networking-1',anchorPath:'div#report-frame-structured-networking-1 > p',anchorQuote:'Shadan Ashfaie · Enterprise AI Transformation & Applied AI Portfolio Leader | Advisor · Amgen (Consultant)'}],comparison:null}}));
+await page.goto('https://mention-fixture.test/?comment=profile');await expect(page.getByRole('status',{name:'Round 6 commenting locked'})).toContainText('Round 7 is ready for review');
 await page.locator('[data-print-page]').evaluate(el=>{const p=document.createElement('p');p.textContent='Shadan Ashfaie\nEnterprise AI Transformation & Applied AI Portfolio Leader | Advisor\nAmgen (Consultant)';el.append(p);});
 await page.getByRole('button',{name:'Show comment 1 on page',exact:true}).click();await expect(page.locator('.bhn-review-highlight')).toBeVisible();
 await expect.poll(()=>page.evaluate(()=>Math.abs(document.querySelector('.bhn-review-highlight')!.getBoundingClientRect().width-document.querySelector('[data-print-page] p')!.getBoundingClientRect().width))).toBeLessThan(5);

@@ -787,3 +787,6 @@
 .chapter[data-section="discussion"] .bullet { font-size: 13px; line-height: 1.32; }
 .chapter[data-section="discussion"] .list { padding-bottom: 8px; }
 .publicationProfile.noPortrait { grid-template-columns: minmax(0,1fr); min-height: 96px; }
+.lockedRound[data-ready="true"] { border-color: #8eb7a4; border-left-color: #26724c; background: #edf7f1; color: #204c3a; }
+.chapter[data-section="executive-summary"] .paragraph { font-size: 15px; line-height: 1.42; }
+.chapter[data-section="executive-summary"] .story > .paragraph:first-child { font-size: 18px; line-height: 1.35; }

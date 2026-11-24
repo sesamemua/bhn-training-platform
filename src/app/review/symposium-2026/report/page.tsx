@@ -14,13 +14,14 @@ export default async function EventReportReviewPage() {
   if (!user?.id) redirect(await deniedRedirect(REPORT_REVIEW_PATH));
 
   const [data, gallery] = await Promise.all([loadReport(), readReportGallery()]);
+  const nextRoundReady = data?.review.status === "exported" && !data.review.comments.some(c => !c.parentId && c.status === "open");
   return <main className="symposium-report-screen mx-auto max-w-screen-2xl px-3 py-5 sm:px-6">
     <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-xl font-bold">Event Report Review</h1>
-        {data && <p className="text-sm text-muted">Round {data.review.round} · {data.review.status === "closed" ? "Approved" : "In review"}</p>}
+        {data && <p className="text-sm text-muted">{nextRoundReady ? `Round ${data.review.round + 1} is ready for review` : `Round ${data.review.round} · ${data.review.status === "closed" ? "Approved" : data.review.status === "exported" ? "Locked for revisions" : "Open for review"}`}</p>}
       </div>
-      <a href={REPORT_PATH} className="rounded-md border border-line px-3 py-2 text-sm font-semibold">Open report editor</a>
+      <a href={REPORT_PATH} className="rounded-md border border-line px-3 py-2 text-sm font-semibold">Back to report workspace</a>
     </header>
     {data ? <ReportEditor key={`${data.review.round}:${data.review.status}`} {...data} fullPageReview
       meId={user.id} isAdmin={user.role === "admin" || user.role === "superadmin"}

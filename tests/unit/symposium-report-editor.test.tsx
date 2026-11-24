@@ -62,6 +62,14 @@ test("the main report editor keeps comments readable and directs new feedback to
     assert.ok(locked.indexOf('aria-label="Round 1 locked"') < locked.indexOf("Shared draft"));
     assert.doesNotMatch(locked, /Click text or a photo to edit/);
   }
+  for (const fullPageReview of [false, true]) {
+    const ready = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview, review: { ...props.review, status: "exported", comments: props.review.comments.map(c => ({...c,status:"resolved"})) } }));
+    assert.match(ready,/Round 2 is ready for review/);
+    assert.match(ready,/All revision requests are resolved/);
+    assert.match(ready,/An administrator must click/);
+    assert.match(ready,fullPageReview ? />Start Round 2 review<\/button>/ : />Open Round 2 review<\/a>/);
+    assert.doesNotMatch(ready,/All changes saved|>Approve report</);
+  }
   const fullPage = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview: true }));
   assert.match(fullPage, /Comment mode is on by default\./);
   assert.match(fullPage, /Edits save automatically\./);

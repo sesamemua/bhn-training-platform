@@ -33,6 +33,7 @@ const cover: Frame = { id: "cover", index: 0 };
 export function ReportEditor({ report: initial, revision, history, review: initialReview, recommendations, meId, isAdmin, fullPageReview = false }: Props) {
   const router = useRouter();
   const [review, setReview] = useState(initialReview);
+  const [nextRoundReady, setNextRoundReady] = useState(initialReview.status === "exported" && !initialReview.comments.some(c => !c.parentId && c.status === "open"));
   const { confirmDialog, node } = useConfirmDialog();
   const [report, setReport] = useState(initial);
   const [saved, setSaved] = useState(initial);
@@ -152,9 +153,10 @@ export function ReportEditor({ report: initial, revision, history, review: initi
 
   useEffect(() => {
     const syncReview = (event: Event) => {
-      const next = (event as CustomEvent<{ round: number; status: string }>).detail;
+      const next = (event as CustomEvent<{ round: number; status: string; nextRoundReady?: boolean }>).detail;
       if (!next || !["open", "exported", "closed"].includes(next.status)) return;
       if (next.round !== review.round) { setTransitioning(true); return; }
+      if (typeof next.nextRoundReady === "boolean") setNextRoundReady(next.nextRoundReady);
       setReview((current) => current.status === next.status ? current : { ...current, status: next.status });
     };
     const draftState = (event: Event) => setCommentDraft(!!(event as CustomEvent<boolean>).detail);
@@ -372,25 +374,33 @@ export function ReportEditor({ report: initial, revision, history, review: initi
 
   return (
     <>
-      {review.status === "exported" && <section className={`${styles.lockedRound} report-screen-only`} role="status" aria-label={`Round ${review.round} locked`}>
-        <LockKeyhole size={26} aria-hidden="true" />
+      {review.status === "exported" && <section className={`${styles.lockedRound} report-screen-only`} role="status" data-ready={nextRoundReady || undefined} aria-label={nextRoundReady ? `Round ${review.round + 1} ready for review` : `Round ${review.round} locked`}>
+        {nextRoundReady ? <BookOpen size={30} aria-hidden="true" /> : <LockKeyhole size={26} aria-hidden="true" />}
         <div>
-          <h2>Round {review.round} is locked</h2>
-          <p>Comments have been copied. Editing and commenting are paused while this round’s revisions are completed.</p>
-          <ol>
-            <li>Wait until the revisions for Round {review.round} are complete.</li>
-            <li>Then an administrator can start Round {review.round + 1} to resume editing and commenting.</li>
-          </ol>
+          <h2>{nextRoundReady ? `Round ${review.round + 1} is ready for review` : `Round ${review.round} is locked`}</h2>
+          {nextRoundReady ? <>
+            <p>All revision requests are resolved. Round {review.round} remains locked to preserve its review record.</p>
+            <ol>
+              <li>An administrator must click “Start Round {review.round + 1} review” in the full-page review.</li>
+              <li>Once it opens, reviewers can edit text and photos, add comments, and @mention colleagues.</li>
+            </ol>
+          </> : <>
+            <p>Comments have been copied. Editing and commenting are paused while this round’s revisions are completed.</p>
+            <ol>
+              <li>Wait until the revisions for Round {review.round} are complete.</li>
+              <li>Then an administrator can start Round {review.round + 1} to resume editing and commenting.</li>
+            </ol>
+          </>}
           {!fullPageReview && <p>Use the red review button to open the full-page review and manage the next round.</p>}
           {dirty && <p>Your unsaved local edits remain in this tab; copy them before reloading.</p>}
         </div>
       </section>}
       <div className={`${styles.toolbar} report-screen-only`}>
         <div className={styles.reviewState}>
-          <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? "Round locked" : "In review"} · Round {review.round}</span>
+          <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? nextRoundReady ? `Round ${review.round + 1} ready for review` : "Round locked" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
           {editable && <p>Comment mode is on by default. Use “Edit text and photos” in the upper-right toolbar to make changes. Edits save automatically.</p>}
-          {!fullPageReview && <p>View only. Use the red “Start Round {review.round} review” button to comment or edit the report.</p>}
+          {!fullPageReview && <p>{nextRoundReady ? `View only. Open Round ${review.round + 1} review, then an administrator can start it.` : `View only. Use the red “Start Round ${review.round} review” button to comment or edit the report.`}</p>}
         </div>
         <div className={styles.actions}>
           {history.length > 0 && (
@@ -401,7 +411,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
             </select></label>
           )}
           {fullPageReview && isAdmin && past === null && (
-            <button type="button" disabled={!!edit || busy || dirty || commentDraft || transitioning} onClick={() => write("advance")}>Start Round {review.round + 1}</button>
+            <button type="button" disabled={!!edit || busy || dirty || commentDraft || transitioning} className={nextRoundReady ? styles.reviewLaunch : undefined} onClick={() => write("advance")}>Start Round {review.round + 1} review</button>
           )}
           {isAdmin && editable && <button type="button" disabled={controlsDisabled || dirty || commentDraft} onClick={() => write("approve")}>Approve report</button>}
           {approved && layout && <button type="button" className={styles.primary} onClick={() => window.print()}><Printer size={15} /> Print / Save PDF</button>}
@@ -412,7 +422,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         </div>
         {fullPageReview && <p className={styles.status} role="status">{syncMessage}</p>}
         <ReportPresence endpoint={`${REPORT_API}/presence`} pageName={pageName} onJump={jumpToFrame} unsaved={dirty || commentDraft} showVersion={fullPageReview} />
-        {!fullPageReview && <ReportReviewShare round={review.round} revision={token} canInvite={past === null && review.status === "open" && !busy && !dirty && !transitioning} />}
+        {!fullPageReview && <ReportReviewShare round={review.round} nextRoundReady={nextRoundReady} revision={token} canInvite={past === null && review.status === "open" && !busy && !dirty && !transitioning} />}
       </div>
       <div className="report-screen-only">
         {error && !edit && <p className={styles.error} role="alert">{error}</p>}
@@ -473,7 +483,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
             </select>
           </label>}
           {!fullPageReview && <div id="report-comments" hidden={tab !== "comments"}>
-            <p className={styles.status}>Comments are view only here. Use the red “Start Round {review.round} review” button above to add comments, reply or edit the report.</p>
+            <p className={styles.status}>Comments are view only here. Use the red review button above to open the full-page review. Editing and commenting are available only in an open round.</p>
             <PageReviewClient initialReview={review} meId={meId} isAdmin={isAdmin}
               reportAnchor={{ label, quote: "", readOnly: true, key: `#report-frame-${active.id}-${active.index}`,
                 onLocate: (key) => {

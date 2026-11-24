@@ -7,8 +7,8 @@ import { newsletterReviewTeam } from "@/lib/newsletter/review-invites";
 import { reportReviewHistory, reportReviewRecipients, sendReportReviewInvites, type ReportInviteSent } from "@/lib/symposium-report/review-invites";
 import styles from "./report.module.css";
 
-export function ReportReviewShare({ round, revision, canInvite }: {
-  round: number; revision: string; canInvite: boolean;
+export function ReportReviewShare({ round, revision, canInvite, nextRoundReady = false }: {
+  round: number; revision: string; canInvite: boolean; nextRoundReady?: boolean;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -75,7 +75,7 @@ export function ReportReviewShare({ round, revision, canInvite }: {
 
   return <section className={styles.reviewShare} aria-label="Share report for review">
     <div className={styles.actions}>
-      <a href={REPORT_REVIEW_PATH} target="_blank" rel="noopener noreferrer" className={`${styles.reviewLaunch} newsletter-review-launch`}><ExternalLink size={18} aria-hidden />Start Round {round} review</a>
+      <a href={REPORT_REVIEW_PATH} target="_blank" rel="noopener noreferrer" className={`${styles.reviewLaunch} newsletter-review-launch`}><ExternalLink size={18} aria-hidden />{nextRoundReady ? `Open Round ${round + 1} review` : `Start Round ${round} review`}</a>
       <button type="button" onClick={async () => {
         setError(""); setStatus("");
         try {

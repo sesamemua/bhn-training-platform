@@ -711,6 +711,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       return;
     }
     if (isLocked()) {
+      if (reportReview) return; // The prominent lock card explains the report state.
       container.appendChild(make("div", "bhn-rv-notice bhn-rv-locked",
         state.review.status === "approved" ? "This round was approved. Earlier comments remain available." :
         state.review.status === "closed" ? "This review is closed. Previous comments remain available." :
@@ -1163,10 +1164,23 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       root.appendChild(grip);
     }
     if (reportReview) renderReportTools(body);
+    if (reportReview && !state.loading && state.viewer && isLocked()) {
+      var lockCard = make("section", "bhn-rv-lock-state");
+      lockCard.setAttribute("role", "status"); lockCard.setAttribute("aria-label", "Round " + state.review.round + " commenting locked");
+      var lockIcon = make("span", "bhn-rv-lock-icon", "🔒"); lockIcon.setAttribute("aria-hidden", "true"); lockCard.appendChild(lockIcon);
+      lockCard.appendChild(make("strong", "", "Round " + state.review.round + " is locked"));
+      lockCard.appendChild(make("p", "", state.review.nextRoundReady
+        ? "Round " + (state.review.round + 1) + " is ready for review. An administrator must click Start Round " + (state.review.round + 1) + " review to enable comments and edits."
+        : state.review.status === "closed" ? "This report review is closed. Earlier comments remain available."
+        : "Round " + state.review.round + " is locked while revisions are underway. Wait until the revisions are complete; an administrator can then start Round " + (state.review.round + 1) + " review."));
+      body.prepend(lockCard);
+    }
     applyPanelWidth();
     constrainPanel();
     syncMarkers();
   }
+
+  style.textContent += ".bhn-rv-lock-state{text-align:center;padding:20px 16px;margin:0 0 14px;border:2px solid #b7c7d1;border-radius:10px;background:#edf2f6;color:#263f52;}.bhn-rv-lock-icon{display:block;font-size:64px;line-height:1.15;margin-bottom:10px;}.bhn-rv-lock-state strong{display:block;font-size:21px;line-height:1.25;}.bhn-rv-lock-state p{margin:10px 0 0;font-size:13px;line-height:1.5;}";
 
   function commentsSignature(comments) {
     return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt, comment.editedByName].join(":"); }).join("|");
@@ -1211,8 +1225,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var response = await fetch(endpoint, { headers: { "Authorization": "Bearer " + credential } });
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not load team comments.");
+      if (reportReview) data.review.nextRoundReady = data.review.status === "exported" && !(data.comments || []).some(function(c){ return !c.parentId && c.status === "open"; });
       var roundChanged = state.review.round !== data.review.round;
-      var changed = roundChanged || state.review.status !== data.review.status || commentsSignature(state.comments) !== commentsSignature(data.comments || []);
+      var changed = roundChanged || state.review.status !== data.review.status || state.review.nextRoundReady !== data.review.nextRoundReady || commentsSignature(state.comments) !== commentsSignature(data.comments || []);
       if (roundChanged) { state.historyExpanded = false; state.expandedThreads = {}; }
       state.review = data.review;
       if (reportReview) window.dispatchEvent(new CustomEvent("bhn-report-review-state", { detail: data.review }));
