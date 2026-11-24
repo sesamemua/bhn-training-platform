@@ -30,7 +30,7 @@ test("copying report comments freezes the same round; stale requests and subsequ
   };
   const mocks: Record<string, unknown> = {
     "@/lib/auth": { requireRole: async () => signedIn ? { user: { id: "staff", name: "Staff", role: "instructor" } } : null },
-    "@/lib/prisma": { prisma: db },
+    "@/lib/page-review/feedback-memory":{captureReviewFeedback:async()=>{}},"@/lib/prisma": { prisma: db },
     "@/lib/symposium-report/store": { reportRevision: (text: string) => createHash("sha256").update(text).digest("hex"), reportTransaction: async (run: (tx: typeof db) => Promise<Response>) => { transactions++; return run(db); } },
     "@/lib/symposium-report/document": document,
     "@/lib/symposium-report/paginate": paginate,

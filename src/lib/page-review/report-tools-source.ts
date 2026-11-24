@@ -151,6 +151,7 @@ export function reportToolsSource(): string {
       ['circle','line'].forEach(function(shape){var button=addButton(shape==='circle'?'Circle comment':'Line comment','bhn-rv-btn',function(){var next=reportDrawMode===shape?null:shape;reportMode(true,false);reportDrawMode=next;state.pickingElement=!!next;render();});button.setAttribute('aria-pressed',String(reportDrawMode===shape));button.disabled=disabled;drawBody.appendChild(button);});toolbar.appendChild(draw);
     }
     Array.from(body.children).filter(function(el){return el.matches('.bhn-rv-element-pick,.bhn-rv-compare-open');}).forEach(function(el){moreBody.appendChild(el);});
+    var feedbackHistory=make('a','bhn-rv-btn','Feedback history · admin');feedbackHistory.href='/admin/workspace/reviewer-feedback?review=symposium-2026-event-report';feedbackHistory.target='_blank';feedbackHistory.rel='noopener';moreBody.appendChild(feedbackHistory);
     toolbar.appendChild(more);body.prepend(toolbar);renderReportPanelSize(body,moreBody);
     if(state.viewer&&!isLocked()&&!state.insertingSection&&!reportDrawMode){var guide=make('p','bhn-report-guide','Click text or a photo to edit. Use the nearby comment icon for feedback.');toolbar.after(guide);}
     if (state.insertingSection) {

@@ -1,8 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { mailConfigured, sendMail } from '@/lib/mail';
 import { staffReviewRecipients } from '@/lib/workspace-review-invites';
-import { SOCIAL_COPY_REVIEW_PREFIX, socialCopyReviewPath } from '@/lib/social/copy-review';
-import { REPORT_ID, REPORT_REVIEW_PATH } from '@/lib/symposium-report/document';
 
 type Colleague = { id: string; name: string | null; email: string };
 export type ReviewMentionJob = { reviewId: string; commentId: string; round: number; title: string; url: string; body: string; previousBody?: string; actor: { id: string; name: string; email?: string | null } };
@@ -24,7 +21,7 @@ export async function reviewMentionPeople() {
   return people.filter(p => p.name && names.get(normalized(p.name)) === 1).map(p => ({ id: p.id, label: p.name! }));
 }
 
-/** Called after the comment transaction commits; mail failure never loses the comment. */
+/** Persist after the comment commits. Review mentions never send email. */
 export async function notifyReviewMentions(job: ReviewMentionJob) {
   if (!job.body.includes('@')) return { sent: 0 };
   try {
@@ -32,25 +29,62 @@ export async function notifyReviewMentions(job: ReviewMentionJob) {
     const previous = new Set(mentionedColleagues(job.previousBody ?? '', people, job.actor.id).map(p => p.id));
     const recipients = mentionedColleagues(job.body, people, job.actor.id).filter(p => !previous.has(p.id));
     if (!recipients.length) return { sent: 0 };
-    if (!mailConfigured()) return { sent: 0, warning: 'Comment saved. Mention emails are unavailable because email is not configured.' };
-    const path = job.reviewId === REPORT_ID ? REPORT_REVIEW_PATH : job.reviewId.startsWith(SOCIAL_COPY_REVIEW_PREFIX) ? socialCopyReviewPath(job.reviewId.slice(SOCIAL_COPY_REVIEW_PREFIX.length)) : '/admin/workspace/website-review';
-    const link = new URL(path, process.env.NEXTAUTH_URL || 'https://bhn-training-platform.vercel.app');
-    link.searchParams.set('review', job.reviewId); link.searchParams.set('comment', job.commentId);
-    let sent = 0, failed = 0;
-    for (const recipient of recipients) {
-      // Stable receipt prevents reloads, repeated edits and concurrent requests from emailing twice.
-      const receipt = 'review-mention:' + job.commentId + ':' + recipient.id;
-      const detail = { round: job.round, commentId: job.commentId, recipientId: recipient.id, delivery: 'pending' };
-      const claim = await prisma.auditLog.createMany({ data: [{ id: receipt, actorId: job.actor.id, action: 'page.review.mention', targetType: 'pageReview', targetId: job.reviewId, detail: JSON.stringify(detail) }], skipDuplicates: true });
-      if (!claim.count) continue;
-      try {
-        await sendMail({ to: recipient.email, replyTo: job.actor.email ?? undefined,
-          subject: `${job.actor.name} mentioned you: ${job.title}`.replace(/[\r\n]+/g, ' '),
-          text: `Hello ${recipient.name},\n\n${job.actor.name} tagged you in a Round ${job.round} review comment on ${job.title}:\n\n${job.body}\n\nOpen the review:\n${link.href}\n\nSign in with your BioHubNet staff account. If the round is locked, wait until the next round opens to reply.` });
-        sent++; detail.delivery = 'sent';
-      } catch { failed++; detail.delivery = 'failed'; }
-      await prisma.auditLog.update({ where: { id: receipt }, data: { detail: JSON.stringify(detail) } });
-    }
-    return { sent, ...(failed ? { warning: 'Comment saved, but some mention emails could not be delivered.' } : {}) };
-  } catch (error) { console.error('Review mention notification failed', error); return { sent: 0, warning: 'Comment saved, but mention emails could not be delivered.' }; }
+    const result = await prisma.auditLog.createMany({ data: recipients.map(recipient => ({
+      id: 'review-mention:' + job.commentId + ':' + recipient.id,
+      actorId: job.actor.id, action: 'page.review.mention', targetType: 'pageReview', targetId: job.reviewId,
+      detail: JSON.stringify({ round: job.round, commentId: job.commentId, recipientId: recipient.id, recipientName: recipient.name, delivery: 'in_app' }),
+    })), skipDuplicates: true });
+    return { sent: result.count };
+  } catch (error) {
+    console.error('Review mention notification failed', error);
+    return { sent: 0, warning: 'Comment saved, but the in-page notification could not be created.' };
+  }
+}
+
+type MentionReceipt = { commentId: string; recipientId: string; recipientName?: string; readAt?: string };
+function receiptDetail(detail: string | null): MentionReceipt | null {
+  try { const value = JSON.parse(detail ?? ''); return typeof value.commentId === 'string' && typeof value.recipientId === 'string' ? value : null; }
+  catch { return null; }
+}
+const recipientScope = (reviewId: string, userId: string) => ({
+  action: 'page.review.mention', targetType: 'pageReview', targetId: reviewId,
+  detail: { contains: JSON.stringify({ recipientId: userId }).slice(1, -1) },
+});
+
+/** Only the signed-in recipient's unread tags in this review; includes pre-existing receipts. */
+export async function reviewMentionNotifications(reviewId: string, userId: string) {
+  const receipts = await prisma.auditLog.findMany({
+    where: { ...recipientScope(reviewId, userId), NOT: { detail: { contains: '"readAt":' } } },
+    orderBy: { createdAt: 'desc' }, take: 100,
+    select: { id: true, detail: true, createdAt: true, actor: { select: { name: true } } },
+  });
+  const valid = receipts.flatMap(receipt => {
+    const detail = receiptDetail(receipt.detail);
+    return detail && detail.recipientId === userId && !detail.readAt ? [{ ...receipt, parsed: detail }] : [];
+  });
+  if (!valid.length) return [];
+  const comments = await prisma.pageComment.findMany({
+    where: { reviewId, id: { in: valid.map(r => r.parsed.commentId) } },
+    select: { id: true, parentId: true, round: true, body: true },
+  });
+  return valid.flatMap(receipt => {
+    const comment = comments.find(c => c.id === receipt.parsed.commentId);
+    if (!comment) return [];
+    if (receipt.parsed.recipientName && !mentionedColleagues(comment.body, [{ id: userId, name: receipt.parsed.recipientName, email: '' }], '').length) return [];
+    return [{ id: receipt.id, commentId: comment.id, threadId: comment.parentId ?? comment.id, round: comment.round,
+      body: comment.body, authorName: receipt.actor?.name ?? 'A colleague', createdAt: receipt.createdAt }];
+  });
+}
+
+/** Acknowledge only this recipient's own receipt; never alter the comment or round. */
+export async function acknowledgeReviewMentions(reviewId: string, userId: string, ids: string[]) {
+  const receipts = await prisma.auditLog.findMany({ where: { ...recipientScope(reviewId, userId), id: { in: ids } }, select: { id: true, detail: true } });
+  let read = 0;
+  for (const receipt of receipts) {
+    const detail = receiptDetail(receipt.detail);
+    if (!detail || detail.recipientId !== userId || detail.readAt) continue;
+    const result = await prisma.auditLog.updateMany({ where: { ...recipientScope(reviewId, userId), id: receipt.id }, data: { detail: JSON.stringify({ ...detail, readAt: new Date().toISOString() }) } });
+    read += result.count;
+  }
+  return { read };
 }

@@ -3,6 +3,9 @@
  * A signed reviewer credential is scoped to one review and carries the
  * colleague's platform identity; the share token alone grants no read/write.
  */
+import type { Prisma } from "@prisma/client";
+import { reportTransaction } from "@/lib/symposium-report/store";
+import { captureReviewFeedback } from "@/lib/page-review/feedback-memory";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -175,9 +178,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   });
 }
 
-export async function POST(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+async function createFeedbackComment(req: NextRequest, ctx: { params: Promise<{ token: string }> }, db: Prisma.TransactionClient) {
   const { token } = await ctx.params;
-  const review = await prisma.pageReview.findUnique({
+  const review = await db.pageReview.findUnique({
     where: { shareToken: token },
     select: { id: true, round: true, status: true },
   });
@@ -196,14 +199,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   }
   const data = parsed.data;
 
-  const [recentCount, totalCount] = await prisma.$transaction([
-    prisma.pageComment.count({
+  const [recentCount, totalCount] = await Promise.all([
+    db.pageComment.count({
       where: {
         reviewId: review.id,
         createdAt: { gte: new Date(Date.now() - PAGE_REVIEW_RATE_WINDOW_MS) },
       },
     }),
-    prisma.pageComment.count({ where: { reviewId: review.id } }),
+    db.pageComment.count({ where: { reviewId: review.id } }),
   ]);
   if (recentCount >= PAGE_REVIEW_RATE_MAX) {
     return NextResponse.json(
@@ -223,7 +226,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     anchorBlock: data.anchorBlock ?? null,
   };
   if (data.parentId) {
-    const parent = await prisma.pageComment.findFirst({
+    const parent = await db.pageComment.findFirst({
       where: { id: data.parentId, reviewId: review.id },
       select: {
         id: true,
@@ -244,7 +247,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     };
   }
 
-  const comment = await prisma.pageComment.create({
+  const comment = await db.pageComment.create({
     data: {
       reviewId: review.id,
       parentId,
@@ -258,16 +261,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
       authorKind: viewer.kind,
       body: data.body,
     },
-    select: COMMENT_SELECT,
   });
-  await prisma.pageReview.update({ where: { id: review.id }, data: { updatedAt: new Date() } });
+  await captureReviewFeedback(db, review.id, [comment], "created", { id: viewer.userId, name: viewer.name, verified: viewer.kind === "user" });
+  await db.pageReview.update({ where: { id: review.id }, data: { updatedAt: new Date() } });
 
-  return json({ ok: true, comment: commentForViewer(comment, viewer.userId) });
+  return json({ ok: true, comment: commentForViewer(Object.fromEntries(Object.keys(COMMENT_SELECT).map(key => [key, comment[key as keyof typeof comment]])) as unknown as Pick<typeof comment, keyof typeof COMMENT_SELECT>, viewer.userId) });
 }
 
-export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+  return reportTransaction(tx => createFeedbackComment(req.clone() as NextRequest, ctx, tx));
+}
+
+async function editFeedbackComment(req: NextRequest, ctx: { params: Promise<{ token: string }> }, db: Prisma.TransactionClient) {
   const { token } = await ctx.params;
-  const review = await prisma.pageReview.findUnique({
+  const review = await db.pageReview.findUnique({
     where: { shareToken: token },
     select: { id: true, round: true, status: true },
   });
@@ -285,16 +292,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
     return json({ error: parsed.error.issues[0]?.message ?? "Check the comment." }, 400);
   }
 
-  const existing = await prisma.pageComment.findFirst({
+  const existing = await db.pageComment.findFirst({
     where: { id: parsed.data.id, reviewId: review.id },
-    select: { id: true, authorUserId: true },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
   // No ownership check — any reviewer can edit any comment, matching the
   // workspace page. The signed viewer credential is still required, so a
   // bare share token cannot reach this. The editor is recorded because the
   // author's name no longer accounts for the wording.
-  const comment = await prisma.pageComment.update({
+  await captureReviewFeedback(db, review.id, [existing], "baseline", { id: viewer.userId, name: viewer.name, verified: viewer.kind === "user" });
+  const comment = await db.pageComment.update({
     where: { id: existing.id },
     data: {
       body: parsed.data.body,
@@ -303,16 +310,20 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
       editedById: viewer.userId,
       editedByName: viewer.name,
     },
-    select: COMMENT_SELECT,
   });
-  await prisma.pageReview.update({ where: { id: review.id }, data: { updatedAt: new Date() } });
+  await captureReviewFeedback(db, review.id, [comment], "edited", { id: viewer.userId, name: viewer.name, verified: viewer.kind === "user" });
+  await db.pageReview.update({ where: { id: review.id }, data: { updatedAt: new Date() } });
 
-  return json({ ok: true, comment: commentForViewer(comment, viewer.userId) });
+  return json({ ok: true, comment: commentForViewer(Object.fromEntries(Object.keys(COMMENT_SELECT).map(key => [key, comment[key as keyof typeof comment]])) as unknown as Pick<typeof comment, keyof typeof COMMENT_SELECT>, viewer.userId) });
 }
 
-export async function DELETE(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+  return reportTransaction(tx => editFeedbackComment(req.clone() as NextRequest, ctx, tx));
+}
+
+async function deleteFeedbackComment(req: NextRequest, ctx: { params: Promise<{ token: string }> }, db: Prisma.TransactionClient) {
   const { token } = await ctx.params;
-  const review = await prisma.pageReview.findUnique({
+  const review = await db.pageReview.findUnique({
     where: { shareToken: token },
     select: { id: true, round: true, status: true },
   });
@@ -328,7 +339,7 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ token: s
   const parsed = DeleteCommentSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: "Choose a comment to delete." }, 400);
 
-  const existing = await prisma.pageComment.findFirst({
+  const existing = await db.pageComment.findFirst({
     where: { id: parsed.data.id, reviewId: review.id },
     select: { id: true, parentId: true, authorUserId: true },
   });
@@ -339,13 +350,20 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ token: s
   // Editing stays author-only above: tidying up is not the same as rewording
   // someone else's point.
 
-  const deleted = await prisma.pageComment.deleteMany({
+  const history = await db.pageComment.findMany({ where: { reviewId: review.id, OR: [{ id: existing.id }, { parentId: existing.id }] } });
+  await captureReviewFeedback(db, review.id, history, "baseline", { id: viewer.userId, name: viewer.name, verified: viewer.kind === "user" });
+  await captureReviewFeedback(db, review.id, history, "deleted", { id: viewer.userId, name: viewer.name, verified: viewer.kind === "user" });
+  const deleted = await db.pageComment.deleteMany({
     where: {
       reviewId: review.id,
       OR: [{ id: existing.id }, { parentId: existing.id }],
     },
   });
-  await prisma.pageReview.update({ where: { id: review.id }, data: { updatedAt: new Date() } });
+  await db.pageReview.update({ where: { id: review.id }, data: { updatedAt: new Date() } });
 
   return json({ ok: true, deletedCount: deleted.count, deletedThread: existing.parentId === null });
+}
+
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {
+  return reportTransaction(tx => deleteFeedbackComment(req.clone() as NextRequest, ctx, tx));
 }

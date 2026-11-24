@@ -17,6 +17,7 @@
  * separate history table: reviewers care that a comment changed and when,
  * not what every intermediate wording was.
  */
+import { captureReviewFeedback } from "@/lib/page-review/feedback-memory";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
@@ -71,9 +72,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const mentions: ReviewMentionJob[] = [];
   const actor = { id: meId!, name: meName, email: (session.user as { email?: string }).email };
-  const response = id !== REPORT_ID && !social
-    ? await mutate(prisma, id, body, action, meId, meName, isAdmin, mentions, actor)
-    : await reportTransaction((tx) => {
+  const response = await reportTransaction((tx) => {
       // Serializable retries must discard delivery jobs from a rolled-back attempt.
       mentions.length = 0;
       return mutate(tx, id, body, action, meId, meName, isAdmin, mentions, actor);
@@ -171,6 +170,7 @@ async function mutate(
         body: p.data.body,
       },
     });
+    await captureReviewFeedback(db, id, [created], "created", { id: meId, name: meName, verified: true });
     if (p.data.body.includes("@")) mentions.push({ reviewId: id, commentId: created.id, round: review.round, title: review.title, url: review.url, body: p.data.body, actor });
     await touch(id, db);
     return NextResponse.json({ ok: true, ...(await load(id, db)) });
@@ -182,14 +182,14 @@ async function mutate(
     if (!p.success) return NextResponse.json({ error: "Check the comment." }, { status: 400 });
     const c = await db.pageComment.findFirst({
       where: { id: p.data.commentId, reviewId: id },
-      select: { id: true, authorUserId: true, body: true },
     });
     if (!c) return NextResponse.json({ error: "No such comment." }, { status: 404 });
     // Any reviewer can edit any comment — corrections land in place instead
     // of as a reply nobody reads. Because that means the author's name no
     // longer accounts for the wording, the editor is recorded and shown
     // wherever the comment is: the thread, the overlay, and the brief.
-    await db.pageComment.update({
+    await captureReviewFeedback(db, id, [c], "baseline", { id: meId, name: meName, verified: true });
+    const updated = await db.pageComment.update({
       where: { id: c.id },
       data: {
         body: p.data.body,
@@ -199,6 +199,7 @@ async function mutate(
         editedByName: meName,
       },
     });
+    await captureReviewFeedback(db, id, [updated], "edited", { id: meId, name: meName, verified: true });
     if (p.data.body.includes("@")) mentions.push({ reviewId: id, commentId: c.id, round: review.round, title: review.title, url: review.url, body: p.data.body, previousBody: c.body, actor });
     await touch(id, db);
     return NextResponse.json({ ok: true, ...(await load(id, db)) });
@@ -210,7 +211,6 @@ async function mutate(
     if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
     const c = await db.pageComment.findFirst({
       where: { id: p.data.commentId, reviewId: id },
-      select: { id: true, authorUserId: true },
     });
     if (!c) return NextResponse.json({ error: "No such comment." }, { status: 404 });
     // Deliberately no ownership check: a review is a shared workspace, and
@@ -222,11 +222,13 @@ async function mutate(
     // Replies have no FK to their parent (parentId is a plain column), so
     // remove them explicitly or they'd be stranded as orphan threads.
     const remove = async (tx: Prisma.TransactionClient) => {
+      const history = await tx.pageComment.findMany({ where: { reviewId: id, OR: [{ id: c.id }, { parentId: c.id }] } });
+      await captureReviewFeedback(tx, id, history, "baseline", { id: meId, name: meName, verified: true });
+      await captureReviewFeedback(tx, id, history, "deleted", { id: meId, name: meName, verified: true });
       await tx.pageComment.deleteMany({ where: { reviewId: id, parentId: c.id } });
       await tx.pageComment.delete({ where: { id: c.id } });
     };
-    if (id === REPORT_ID) await remove(db);
-    else await prisma.$transaction(remove);
+    await remove(db);
     await touch(id, db);
     return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
@@ -369,24 +371,15 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   });
   if (!review) return NextResponse.json({ error: "No such review." }, { status: 404 });
 
-  await prisma.$transaction([
-    prisma.auditLog.create({
-      data: {
-        actorId,
-        action: "pageReview.delete",
-        targetType: "pageReview",
-        targetId: review.id,
-        detail: JSON.stringify({
-          title: review.title,
-          url: review.url,
-          commentCount: review._count.comments,
-        }),
-      },
-    }),
-    // PageComment.review uses onDelete: Cascade, so the session and every
-    // thread disappear atomically.
-    prisma.pageReview.delete({ where: { id: review.id } }),
-  ]);
+  await reportTransaction(async tx => {
+    const history = await tx.pageComment.findMany({ where: { reviewId: review.id } });
+    const actor = { id: actorId, name: session.user?.name ?? 'Administrator', verified: true };
+    await captureReviewFeedback(tx, review.id, history, "baseline", actor);
+    await captureReviewFeedback(tx, review.id, history, "deleted", actor);
+    await tx.auditLog.create({ data: { actorId, action: "pageReview.delete", targetType: "pageReview", targetId: review.id,
+      detail: JSON.stringify({ title: review.title, url: review.url, commentCount: review._count.comments }) } });
+    await tx.pageReview.delete({ where: { id: review.id } });
+  });
 
   return NextResponse.json({ ok: true });
 }

@@ -1,3 +1,4 @@
+import { mentionNotificationsSource } from "./mention-notifications-source";
 import { mentionToolsSource } from "./mention-tools-source";
 import { reportToolsSource } from "./report-tools-source";
 import { comparisonSource } from "./comparison-source";
@@ -703,6 +704,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   ${mentionToolsSource()}
+  ${mentionNotificationsSource()}
 
   function renderComposer(container) {
     if (state.pageRound !== state.review.round) {
@@ -1247,6 +1249,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;
       state.comments = data.comments || [];
+      loadMentionNotifications();
       var mentionedComment = mentionDeepLink && state.comments.find(function(c){return c.id===mentionDeepLink;});
       if(mentionedComment){mentionDeepLink=null;state.expandedThreads[mentionedComment.parentId||mentionedComment.id]=true;window.requestAnimationFrame(function(){bringCommentIntoView(mentionedComment);});}
       state.error = "";
@@ -1297,7 +1300,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       }));
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not save the comment.");
-      if(data.mentions)state.mentionNotice=data.mentions.warning||(data.mentions.sent?'Notified '+data.mentions.sent+' colleague(s) by email.':'');
+      if(data.mentions)state.mentionNotice=data.mentions.warning||(data.mentions.sent?'Notified '+data.mentions.sent+' colleague(s) on this review page.':'');
       if (parentId) state.expandedThreads[parentId] = true;
       else if (data.comment && data.comment.id) state.expandedThreads[data.comment.id] = true;
       else if (reportCommentEndpoint && data.review && Array.isArray(data.review.comments)) {
@@ -1336,7 +1339,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       }));
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not update the comment.");
-      if(data.mentions)state.mentionNotice=data.mentions.warning||(data.mentions.sent?'Notified '+data.mentions.sent+' colleague(s) by email.':'');
+      if(data.mentions)state.mentionNotice=data.mentions.warning||(data.mentions.sent?'Notified '+data.mentions.sent+' colleague(s) on this review page.':'');
       state.editingId = null;
       state.editDraft = "";
       state.saving = false;
@@ -1487,6 +1490,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function cleanup() {
+    cleanupMentionNotifications();
     if (reportReview) cleanupReportTools();
     stopPanelDrag();
     document.removeEventListener("mousemove", onMove, true);

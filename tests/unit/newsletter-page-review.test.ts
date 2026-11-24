@@ -23,7 +23,7 @@ test("newsletter revisions reuse one review and preserve comments, identity and 
   }).outputText;
   const mocks: Record<string, unknown> = {
     "@/lib/auth": { requireRole: async (role: string) => { assert.equal(role, "admin"); return authorized ? { user: { id: "editor" } } : null; } },
-    "@/lib/prisma": { prisma: {
+    "@/lib/page-review/feedback-memory":{captureReviewFeedback:async()=>{}},"@/lib/prisma": { prisma: {
       $transaction: async (operation: any) => {
         const previous = row && { ...row }, previousWrites = writes, previousHtml = composedHtml;
         try { return await operation((mocks["@/lib/prisma"] as any).prisma); }
@@ -127,7 +127,8 @@ test("starting a round without replacing HTML archives pasted content and refuse
   };
   const mocks: Record<string, unknown> = {
     "@/lib/auth": { requireRole: async () => ({ user: { id: "editor", role } }) },
-    "@/lib/prisma": { prisma: db }, "@/lib/page-review/brief": {},
+    "@/lib/symposium-report/store": { reportTransaction: async (run: (tx: unknown)=>unknown) => run(db) },
+    "@/lib/page-review/feedback-memory":{captureReviewFeedback:async()=>{}},"@/lib/prisma": { prisma: db }, "@/lib/page-review/brief": {},
   };
   const exports: any = {};
   new Function("require", "exports", compiled)((id: string) => mocks[id] ?? require(id), exports);
@@ -242,7 +243,7 @@ test("newsletter reviews never offer name entry or mint guest credentials", asyn
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   const mocks: Record<string, unknown> = {
-    "@/lib/prisma": { prisma: { pageReview: { findUnique: async () => ({ id: "newsletter-issue-1", status: "open", title: "October" }) } } },
+    "@/lib/page-review/feedback-memory":{captureReviewFeedback:async()=>{}},"@/lib/prisma": { prisma: { pageReview: { findUnique: async () => ({ id: "newsletter-issue-1", status: "open", title: "October" }) } } },
     "@/lib/page-review/viewer": { createAnonViewerToken: async () => { minted = true; return "guest"; } },
   };
   const exports: { POST?: (req: Request, ctx: unknown) => Promise<Response> } = {};

@@ -40,7 +40,7 @@ function harness(options: { review?: Review | null; content?: Content | null; ve
           : null;
       },
     },
-    "@/lib/prisma": { prisma: {
+    "@/lib/page-review/feedback-memory":{captureReviewFeedback:async()=>{}},"@/lib/prisma": { prisma: {
       pageReviewVersion: { findMany: async ({ where, select }: any) => {
         assert.equal(where.reviewId, selectedReview!.id);
         return (options.versions ?? []).filter((version) => !where.round || where.round.in.includes(version.round)).map((version) => select.html ? version : { round: version.round });

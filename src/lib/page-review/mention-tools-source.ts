@@ -1,11 +1,11 @@
-/** Staff-only autocomplete. The server validates full-name tags and sends mail only after save. */
+/** Staff-only autocomplete. The server validates full-name tags and creates in-page notifications after save. */
 export function mentionToolsSource() {
   return String.raw`
   var mentionDirectory = null;
   var mentionLoading = null;
   function attachReviewMentions(textarea, host) {
     if (!reportCommentEndpoint) return;
-    var help=make('p','bhn-rv-mention-help','Type @ to tag a colleague. They will be emailed when you post.');host.appendChild(help);
+    var help=make('p','bhn-rv-mention-help','Type @ to tag a colleague. They will see a notification on this review page and can reply in the thread.');host.appendChild(help);
     var menu=make('div','bhn-rv-mention-menu');menu.setAttribute('role','listbox');menu.setAttribute('aria-label','Tag a reviewer');menu.hidden=true;host.appendChild(menu);
     var active=0,options=[],ignoreNext=false;
     function query(){var value=textarea.value.slice(0,textarea.selectionStart);var match=/(?:^|\s)@([^@\n]{0,60})$/.exec(value);return match?{text:match[1],start:textarea.selectionStart-match[1].length-1,end:textarea.selectionStart}:null;}

@@ -7253,3 +7253,17 @@ model PagePresence {
   @@unique([pageKey, userId])
   @@index([pageKey, lastSeenAt])
 }
+
+/// Append-only review evidence, with copied context surviving edits and review deletion.
+/// Separate from operational audit retention; admin-only access, no inferred personality scores.
+model ReviewFeedbackMemory {
+  id         String   @id
+  reviewId   String
+  event      String
+  occurredAt DateTime
+  recordedAt DateTime @default(now())
+  detail     String
+
+  @@index([reviewId, recordedAt])
+  @@index([recordedAt])
+}
