@@ -367,7 +367,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
             var text = cleanText(node.textContent || (reportReview && node.getAttribute("alt")));
             // Editorial line breaks replace the old dot separators in mentor profiles.
             var comparable = function(value){ return value.replace(/[·\\s]+/g, " ").trim().toLocaleLowerCase(); };
-            return text === quote || ((!reportReview || quote.length > 20) && (text.includes(quote.slice(0, 40)) ||
+            return text === quote || (reportReview && comparable(text) === comparable(quote)) || ((!reportReview || quote.length > 20) && (text.includes(quote.slice(0, 40)) ||
               (reportReview && comparable(text).includes(comparable(quote).slice(0, 40)))));
           });
         };

@@ -23,6 +23,9 @@ await page.goto('https://mention-fixture.test/?comment=profile');await expect(pa
 await page.locator('[data-print-page]').evaluate(el=>{const p=document.createElement('p');p.textContent='Shadan Ashfaie\nEnterprise AI Transformation & Applied AI Portfolio Leader | Advisor\nAmgen (Consultant)';el.append(p);});
 await page.getByRole('button',{name:'Show comment 1 on page',exact:true}).click();await expect(page.locator('.bhn-review-highlight')).toBeVisible();
 await expect.poll(()=>page.evaluate(()=>Math.abs(document.querySelector('.bhn-review-highlight')!.getBoundingClientRect().width-document.querySelector('[data-print-page] p')!.getBoundingClientRect().width))).toBeLessThan(5);
+await page.route('https://mention-fixture.test'+REPORT_API+'/review',route=>route.fulfill({json:{ok:true,review:{title:'Report',round:6,status:'exported'},viewer:{name:'Staff'},comments:[{...comment,id:'short-title',status:'resolved',anchorKey:'#report-frame-structured-networking-1',anchorPath:'div#report-frame-structured-networking-1 > h3',anchorQuote:'AI transformation'}],comparison:null}}));
+await page.goto('https://mention-fixture.test/?comment=short-title');await page.locator('[data-print-page]').evaluate(el=>{const h=document.createElement('h3');h.textContent='AI Transformation';el.append(h);});await page.getByRole('button',{name:'Show comment 1 on page',exact:true}).click();await expect(page.locator('.bhn-review-highlight')).toBeVisible();
+await expect.poll(()=>page.evaluate(()=>Math.abs(document.querySelector('.bhn-review-highlight')!.getBoundingClientRect().height-document.querySelector('[data-print-page] h3')!.getBoundingClientRect().height))).toBeLessThan(2);
 console.log('PASS: mention deep link opens the thread and highlights only the visible crop; locked round remains read-only.');
  }finally{await browser.close();}
 }void main();
