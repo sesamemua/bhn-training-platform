@@ -152,8 +152,9 @@ async function main() {
     assert.ok(navPosition.x+navPosition.width<toolsPosition.railLeft,"navigation occupies the separate left sidebar");
     await expect(page.getByRole("complementary",{name:"Report review tools",exact:true}).getByRole("button",{name:"Pages",exact:true})).toHaveCount(0);
     await page.setViewportSize({width:900,height:1000});
-    const narrowRail=await page.locator('[data-report-tools-host]').evaluate(host=>{const r=host.closest('aside')!.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width};});
-    assert.ok(narrowRail.left>=0&&narrowRail.right<=900&&Math.round(narrowRail.width)===640,"wide review tools fit and stack above the report on smaller screens: "+JSON.stringify(narrowRail));
+    await expect.poll(()=>page.locator('#bhn-review-overlay').evaluate(e=>Math.round(e.getBoundingClientRect().width))).toBe(640);
+    const narrowRail=await page.locator('[data-report-tools-host]').evaluate(host=>{const r=host.querySelector('#bhn-review-overlay')!.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width};});
+    assert.ok(narrowRail.left>=0&&narrowRail.right<=900&&Math.round(narrowRail.width)===640,"review drawer fits a smaller viewport: "+JSON.stringify(narrowRail));
     await page.setViewportSize({width:1920,height:1000});
     const copyPosition = (await page.getByRole("button", { name: "Copy review comments", exact: true }).boundingBox())!;
     assert.ok(copyPosition.x < 40, "only the copy-comments button is on the left side");

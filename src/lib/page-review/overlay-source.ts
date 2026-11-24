@@ -741,7 +741,13 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     actions.appendChild(submit);
     box.appendChild(actions);
     container.appendChild(box);
-    window.setTimeout(function(){ textarea.focus(); }, 0);
+    window.setTimeout(function(){
+      if (!reportReview) { textarea.focus(); return; }
+      // Reveal the report composer within its own panel without jumping the report to the top.
+      textarea.focus({preventScroll:true});
+      var scrollBody=textarea.closest('.bhn-rv-body');
+      if(scrollBody)scrollBody.scrollTop=box.offsetTop-scrollBody.offsetTop;
+    }, 0);
   }
 
   function renderReplyComposer(card, thread) {
@@ -763,7 +769,12 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     actions.appendChild(submit);
     wrap.appendChild(actions);
     card.appendChild(wrap);
-    window.setTimeout(function(){ textarea.focus(); }, 0);
+    window.setTimeout(function(){
+      if (!reportReview) { textarea.focus(); return; }
+      textarea.focus({preventScroll:true});
+      var scrollBody=textarea.closest('.bhn-rv-body');
+      if(scrollBody)scrollBody.scrollTop=wrap.offsetTop-scrollBody.offsetTop;
+    }, 0);
   }
 
   function beginEdit(comment) {

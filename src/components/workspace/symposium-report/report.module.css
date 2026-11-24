@@ -585,15 +585,22 @@
 .editForm button:not(.primary) { color: var(--report-ink); background: var(--report-panel); }
 
 @media (max-width: 1700px) {
-  .fullPageReview { grid-template-columns: 11rem minmax(0, 1fr); }
-  .fullPageReview > .reviewRail { grid-column: 2; grid-row: 1; width: min(100%, var(--report-review-width, 50rem)); justify-self: end; position: static; max-height: none; }
-  .fullPageReview > .navigationRail { grid-column: 1; grid-row: 1 / span 2; }
-  .fullPageReview > .stage { grid-column: 2; grid-row: 2; }
+  /* Keep laptop comments beside the paper; the saved width is a preferred maximum. */
+  .fullPageReview { grid-template-columns: 8rem minmax(0, 1fr) minmax(0, min(var(--report-review-width, 50rem), 36vw)); gap: .75rem; }
+  .fullPageReview > .navigationRail { padding: .5rem; }
+  .fullPageReview .stage[data-review-tools="true"] { padding-left: 1rem; }
+  .fullPageReview .pageMargin { position: static; width: 100%; margin-bottom: 12px; }
+}
+@media (max-width: 1100px) and (min-width: 901px) {
+  .fullPageReview { grid-template-columns: minmax(0, 1fr) minmax(20rem, min(var(--report-review-width, 50rem), 36vw)); }
+  .fullPageReview > .navigationRail { grid-column: 1 / -1; grid-row: 1; position: static; max-height: 14rem; }
+  .fullPageReview > .stage { grid-column: 1; grid-row: 2; }
+  .fullPageReview > .reviewRail { grid-column: 2; grid-row: 2; }
 }
 @media (max-width: 900px) {
   .workbench { grid-template-columns: minmax(0, 1fr); }
   .fullPageReview > .navigationRail { grid-column: 1; grid-row: 1; width: 100%; position: static; max-height: none; }
-  .fullPageReview > .reviewRail { grid-column: 1; grid-row: 2; }
+  .fullPageReview > .reviewRail { grid-column: 1; grid-row: 2; height: 0; padding: 0; border: 0; overflow: visible; background: none; }
   .fullPageReview > .stage { grid-column: 1; grid-row: 3; }
   .fullPageReview .outline { max-height: 12rem; }
   .rail { position: static; max-height: none; }
