@@ -1042,15 +1042,20 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       body.appendChild(join);
       setTimeout(function(){ try { nameInput.focus(); } catch (e) {} }, 0);
     } else {
+      var copyFlow = reportReview ? make("div", "bhn-report-copy-flow") : body;
+      if (reportReview) {
+        copyFlow.setAttribute("data-stage", state.confirmCopy && !isLocked() ? "confirm" : state.copiedRound === state.review.round ? "copied" : "ready");
+        body.appendChild(copyFlow);
+      }
       if (reportCommentEndpoint) {
-        body.appendChild(addButton(state.copiedRound === state.review.round ? "Comments copied" : "Copy review comments", "bhn-rv-btn bhn-rv-copy-comments", async function(){
+        copyFlow.appendChild(addButton(state.copiedRound === state.review.round ? "Comments copied" : "Copy review comments", "bhn-rv-btn bhn-rv-copy-comments", async function(){
           var confirmed = state.confirmedCopy;
           state.confirmedCopy = false;
           try {
             if (reportReview && (reportAnnotationDraft() || state.saving || state.draft.trim() || state.replyTo !== null || state.editingId !== null)) throw new Error("Finish or cancel your comment or reply before copying and locking this round.");
             if (reportReview && document.querySelector('[data-report-unsaved="true"]')) throw new Error("Wait for autosave, or finish the open photo edit, before copying and locking this round.");
             if (reportReview && reportHasPageDrafts()) throw new Error("Finish or cancel your page feedback before copying and locking this round.");
-            if (reportReview && !isLocked() && !confirmed) { state.confirmCopy = true; render(); return; }
+            if (reportReview && !isLocked() && !confirmed) { state.confirmCopy = true; render(); root.querySelector('.bhn-rv-copy-confirm button').focus(); return; }
             this.disabled = true;
             var response = reportReview
               ? await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export", expectedRound: state.pageRound }) })
@@ -1076,13 +1081,19 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         }));
       }
       if (reportReview && state.confirmCopy && !isLocked()) {
-        var confirm = make("section", "bhn-rv-notice bhn-rv-locked");
+        var confirm = make("section", "bhn-rv-notice bhn-rv-locked bhn-rv-copy-confirm");
         confirm.setAttribute("role", "group"); confirm.setAttribute("aria-label", "Confirm copy and lock");
         confirm.appendChild(make("strong", "", "Copy comments and lock Round " + state.review.round + "?"));
         confirm.appendChild(make("p", "", "Editing and commenting will pause. Wait until revisions are complete before starting the next round."));
-        confirm.appendChild(addButton("Cancel copy", "bhn-rv-btn", function(){ state.confirmCopy = false; state.confirmedCopy = false; render(); }));
+        confirm.appendChild(addButton("Cancel copy", "bhn-rv-btn", function(){ state.confirmCopy = false; state.confirmedCopy = false; render(); root.querySelector('.bhn-rv-copy-comments').focus(); }));
         confirm.appendChild(addButton("Copy comments and lock round", "bhn-rv-btn bhn-rv-btn-primary", function(){ state.confirmedCopy = true; root.querySelector('.bhn-rv-copy-comments').click(); }));
-        body.appendChild(confirm);
+        copyFlow.appendChild(confirm);
+      }
+      if (reportReview && state.copiedRound === state.review.round) {
+        var copiedNotice = make("p", "bhn-rv-notice", "Round " + state.review.round + " is locked. Wait until revisions are complete; an administrator can then start the next round.");
+        copiedNotice.setAttribute("role", "status");
+        copiedNotice.setAttribute("aria-label", "Review comments copied");
+        copyFlow.appendChild(copiedNotice);
       }
       if (reportReview && !isLocked()) {
         var pick = addButton("Comment on an element", "bhn-rv-btn bhn-rv-element-pick", function(){
