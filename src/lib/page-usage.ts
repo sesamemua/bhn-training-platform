@@ -5,7 +5,7 @@ import { z } from "zod";
  * navigation) and `page_time` (visible-tab milliseconds) events. Pure so
  * the dashboard card and tests share one ranking.
  */
-export type PageUsageRow = { path: string; visits: number; ms: number; last: Date };
+export type PageUsageRow = { path: string; visits: number; ms: number; last: Date; /** Team view: how many people opened it. */ people?: number };
 export type PageUsage = {
   pages: (PageUsageRow & { label: string })[];
   totalMs: number;
@@ -50,16 +50,18 @@ export function formatDuration(ms: number): string {
 }
 
 // ── Personal dashboard shortcuts ─────────────────────────────────────────
-// Pinned shortcuts always show, in the user's order; the most-used pages
-// (2+ visits) fill the row up to `limit` (as many tiles as fit the screen),
-// and the next ones sit behind "See more". Removing an automatic one hides
-// it for good.
+// Pinned shortcuts always show; the most-used pages (2+ visits) fill the row
+// up to `limit` (as many tiles as fit the screen), and the next ones sit
+// behind "See more". Dragging saves `order`, which wins over both. Removing an
+// automatic one hides it for good.
 export const SHORTCUT_MORE = 24;
 const ShortcutPathSchema = z.string().trim().max(300).regex(/^\/(?!\/)[^\s\\]*$/, "Use a page on this platform, starting with /");
 export const ShortcutPrefsSchema = z.object({
   pinned: z.array(z.object({ path: ShortcutPathSchema, label: z.string().trim().min(1).max(40) })).max(20)
     .refine((list) => new Set(list.map((p) => p.path)).size === list.length, "That page is already a shortcut."),
   hidden: z.array(z.string().max(300)).max(200),
+  /** The user's arrangement (paths, first to last); optional so older saves still load. */
+  order: z.array(z.string().max(300)).max(60).optional(),
 });
 export type ShortcutPrefs = z.infer<typeof ShortcutPrefsSchema>;
 export type ShortcutCandidate = { path: string; label: string; visits: number };
@@ -74,8 +76,17 @@ export function buildShortcuts(candidates: ShortcutCandidate[], prefs: ShortcutP
   const auto: Shortcut[] = candidates
     .filter((c) => c.visits >= 2 && !pinnedPaths.has(c.path) && !hidden.has(c.path))
     .map((c) => ({ ...c, pinned: false }));
-  const fill = Math.max(0, limit - pinned.length);
-  return { shown: [...pinned, ...auto.slice(0, fill)], more: auto.slice(fill, fill + SHORTCUT_MORE) };
+  const rank = new Map((prefs.order ?? []).map((path, i) => [path, i]));
+  const at = (s: Shortcut) => rank.get(s.path) ?? Infinity;
+  // Arranged ones first, in the user's order; the rest keep kept-then-most-used order.
+  const all = [...pinned, ...auto].map((s, i) => ({ s, i })).sort((a, b) => at(a.s) - at(b.s) || a.i - b.i).map(({ s }) => s);
+  let room = Math.max(0, limit - pinned.length);
+  const shown: Shortcut[] = [], more: Shortcut[] = [];
+  for (const s of all) {
+    if (s.pinned || room-- > 0) shown.push(s);
+    else if (more.length < SHORTCUT_MORE) more.push(s);
+  }
+  return { shown, more };
 }
 
 /** Accepts "/social", "admin/x" or a pasted full link to this site; returns a path or null. */

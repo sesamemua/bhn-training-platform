@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "A simpler staff dashboard",
+    body: "The staff dashboard now shows only your shortcuts and Most-used pages, with your own figures beside the whole team's totals. The page you opened last is always your first shortcut, and in Edit you can drag shortcuts into any order. The other dashboard cards are put away for now.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "Event Report: comparison opens only when you ask",
     body: "The side-by-side round comparison no longer pops up when you open the Event Report review. Use the Before / after comparison button in the review panel when you want it.",
     kind: "improvement",

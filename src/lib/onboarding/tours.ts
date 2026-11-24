@@ -39,9 +39,18 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.22a";
+export const TOUR_VERSION = "2026.11.24a";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "dashboard.staff-home",
+    title: "Your dashboard, simplified",
+    body: "Your first shortcut is the page you opened last. Choose Edit, then drag shortcuts into any order. Below, Most-used pages shows your own figures beside the team's totals.",
+    path: "/dashboard",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    since: "2026.11.24a",
+  },
   {
     id: "symposium-report.comparison-on-demand",
     title: "Compare rounds when you need to",

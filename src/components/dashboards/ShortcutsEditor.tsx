@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import {
   BookOpen, Bookmark, Briefcase, Calendar, Check, ChevronDown, ClipboardList, Coins, FileText, Gift, GraduationCap,
-  Images, Mail, Megaphone, MessageSquareText, Mic, Palette, Pencil, Pin, PinOff, Plus, Printer, Settings, Speaker,
+  GripVertical, History, Images, Mail, Megaphone, MessageSquareText, Mic, Palette, Pencil, Pin, PinOff, Plus, Printer, Settings, Speaker,
   Users, Video, X, Zap, type LucideIcon,
 } from "lucide-react";
 import { saveShortcuts } from "@/app/(dashboard)/dashboard/shortcut-actions";
@@ -32,12 +32,17 @@ const ICONS: [RegExp, LucideIcon][] = [
 const iconFor = (path: string) => ICONS.find(([re]) => re.test(path))?.[1] ?? Bookmark;
 
 /**
- * Personal shortcut tiles under the dashboard hero. Pinned shortcuts always
- * show; the user's most-used pages fill one row — as many tiles as fit the
- * screen. Edit mode lets them keep, rename / retarget, remove or add
- * shortcuts — saved per user.
+ * Personal shortcut tiles under the dashboard hero. The page the user last
+ * opened always comes first; then pinned shortcuts and the most-used pages
+ * fill one row — as many tiles as fit the screen. Edit mode lets them drag
+ * tiles into any order, keep, rename / retarget, remove or add shortcuts —
+ * saved per user.
  */
-export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: ShortcutCandidate[]; initialPrefs: ShortcutPrefs }) {
+export function ShortcutsEditor({ candidates, initialPrefs, lastOpened = null }: {
+  candidates: ShortcutCandidate[];
+  initialPrefs: ShortcutPrefs;
+  lastOpened?: { path: string; label: string } | null;
+}) {
   const [prefs, setPrefs] = useState(initialPrefs);
   const [editing, setEditing] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -47,6 +52,8 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
   const listId = useId();
   const grid = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(6);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
   useEffect(() => {
     const el = grid.current;
     if (!el) return;
@@ -57,8 +64,17 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
     window.addEventListener("resize", measure);
     return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
   }, []);
-  // Narrow screens get two rows; the last slot is always the Add tile.
-  const { shown, more } = buildShortcuts(candidates, prefs, cols * (cols < 4 ? 2 : 1) - 1);
+  // Narrow screens get two rows; the last slot is always the Add tile, and the first the last-opened page.
+  const { shown, more } = buildShortcuts(candidates, prefs, cols * (cols < 4 ? 2 : 1) - 1 - (lastOpened ? 1 : 0));
+  const visible = showMore ? [...shown, ...more] : shown;
+  /** Drop `path` where `target` sits; everything on screen is saved in its new order. */
+  function move(path: string, target: string) {
+    const list = visible.map((s) => s.path).filter((p) => p !== path);
+    const at = list.indexOf(target);
+    if (path === target || at < 0) return;
+    list.splice(visible.findIndex((s) => s.path === path) < visible.findIndex((s) => s.path === target) ? at + 1 : at, 0, path);
+    save({ ...prefs, order: list.slice(0, 60) });
+  }
 
   function save(next: ShortcutPrefs) {
     const parsed = ShortcutPrefsSchema.safeParse(next);
@@ -72,9 +88,9 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
     });
   }
   const without = (path: string) => prefs.pinned.filter((p) => p.path !== path);
-  const keep = (s: Shortcut) => save({ pinned: [...prefs.pinned, { path: s.path, label: s.label }], hidden: prefs.hidden.filter((h) => h !== s.path) });
+  const keep = (s: Shortcut) => save({ ...prefs, pinned: [...prefs.pinned, { path: s.path, label: s.label }], hidden: prefs.hidden.filter((h) => h !== s.path) });
   const unkeep = (s: Shortcut) => save({ ...prefs, pinned: without(s.path) });
-  const remove = (s: Shortcut) => save({ pinned: without(s.path), hidden: [...prefs.hidden.filter((h) => h !== s.path), s.path].slice(-200) });
+  const remove = (s: Shortcut) => save({ ...prefs, pinned: without(s.path), hidden: [...prefs.hidden.filter((h) => h !== s.path), s.path].slice(-200) });
 
   function submitDraft() {
     if (!draft) return;
@@ -83,7 +99,9 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
     const entry = { path, label: draft.label.trim() || pageLabel(path) };
     const index = draft.from === null ? -1 : prefs.pinned.findIndex((p) => p.path === draft.from);
     const pinned = index >= 0 ? prefs.pinned.map((p, i) => (i === index ? entry : p)) : [...prefs.pinned, entry];
-    save({ pinned, hidden: prefs.hidden.filter((h) => h !== path) });
+    // A renamed page keeps its place in the arrangement.
+    const order = prefs.order?.map((p) => (p === draft.from ? path : p));
+    save({ ...prefs, pinned, hidden: prefs.hidden.filter((h) => h !== path), ...(order ? { order: [...new Set(order)] } : {}) });
     setDraft(null);
   }
 
@@ -96,7 +114,14 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
       </span>
     );
     return editing ? (
-      <div key={s.path} className={TILE}>
+      <div key={s.path} className={`${TILE} cursor-grab active:cursor-grabbing ${over === s.path && dragging !== s.path ? "border-brand-500 bg-brand-50" : ""} ${dragging === s.path ? "opacity-50" : ""}`}
+        draggable data-shortcut={s.path} title="Drag to rearrange"
+        onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", s.path); setDragging(s.path); }}
+        onDragOver={(e) => { if (!dragging) return; e.preventDefault(); setOver(s.path); }}
+        onDragLeave={() => setOver((o) => (o === s.path ? null : o))}
+        onDrop={(e) => { e.preventDefault(); if (dragging) move(dragging, s.path); setDragging(null); setOver(null); }}
+        onDragEnd={() => { setDragging(null); setOver(null); }}>
+        <GripVertical size={14} className="-mx-1 shrink-0 text-fg-subtle" aria-hidden />
         {badge}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-fg">{s.label}</span>
@@ -132,7 +157,8 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
         <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] font-black text-brand-700">
           <Zap size={12} className="text-brand-600" /> Your shortcuts
         </span>
-        {shown.length === 0 && !draft && <span className="text-xs text-fg-muted">Pages you open often show up here.</span>}
+        {editing ? <span className="text-xs text-fg-muted">Drag tiles to rearrange them.</span>
+          : shown.length === 0 && !lastOpened && !draft && <span className="text-xs text-fg-muted">Pages you open often show up here.</span>}
         <span className="ml-auto inline-flex items-center gap-3">
           {pending && <span className="text-[11px] text-fg-subtle">Saving…</span>}
           {more.length > 0 && (
@@ -149,8 +175,19 @@ export function ShortcutsEditor({ candidates, initialPrefs }: { candidates: Shor
       </div>
 
       <div ref={grid} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-        {shown.map(tile)}
-        {showMore && more.map(tile)}
+        {lastOpened && (
+          <Link href={lastOpened.path} title={`${lastOpened.label} — ${lastOpened.path}`}
+            className={`${TILE} hover:border-brand-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500`}>
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] bg-brand-600 text-white" aria-hidden>
+              <History size={18} strokeWidth={1.75} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-fg group-hover:text-brand-700">{lastOpened.label}</span>
+              <span className="block text-[11px] text-fg-subtle">Last opened</span>
+            </span>
+          </Link>
+        )}
+        {visible.map(tile)}
         <button type="button" onClick={() => setDraft({ from: null, label: "", path: "" })}
           className={`${TILE} border-dashed text-fg-muted hover:border-brand-400 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500`}>
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] border border-dashed border-line" aria-hidden><Plus size={16} /></span>

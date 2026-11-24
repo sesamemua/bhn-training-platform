@@ -36,6 +36,16 @@ test("shortcuts: kept ones always show, most-used fill to five, removed stay hid
   assert.deepEqual(buildShortcuts(candidates, { pinned: [], hidden: [] }, 7).shown.map((s) => s.path), ["/a", "/b", "/c", "/d", "/e", "/f", "/g"]);
 });
 
+test("shortcuts: a dragged arrangement wins, and can pull a See-more page into the row", () => {
+  const c = (path: string, visits: number) => ({ path, label: pageLabel(path), visits });
+  const candidates = [c("/a", 30), c("/b", 20), c("/c", 10), c("/d", 9), c("/e", 8)];
+  const prefs = { pinned: [{ path: "/kept", label: "My page" }], hidden: [], order: ["/e", "/kept", "/a"] };
+  const { shown, more } = buildShortcuts(candidates, prefs, 3);
+  assert.deepEqual(shown.map((s) => s.path), ["/e", "/kept", "/a"]);
+  assert.deepEqual(more.map((s) => s.path), ["/b", "/c", "/d"], "pages not yet arranged keep most-used order");
+  assert.equal(ShortcutPrefsSchema.safeParse({ pinned: [], hidden: [] }).success, true, "saves from before arranging still load");
+});
+
 test("shortcut paths stay on this site", () => {
   const o = "https://bhn-training-platform.vercel.app";
   assert.equal(toShortcutPath(`${o}/admin/workspace/marketing/social?tab=queue`, o), "/admin/workspace/marketing/social?tab=queue");

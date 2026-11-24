@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { InstructorDashboard } from "@/components/dashboards/InstructorDashboard";
-import { AdminDashboard } from "@/components/dashboards/AdminDashboard";
 import { TodaysReviewsCard, type ReviewQuestion } from "@/components/adaptive/TodaysReviewsCard";
 import { UpcomingEventBanner } from "@/components/events/UpcomingEventBanner";
 import { ExpiringCreditsBanner } from "@/components/credits/ExpiringCreditsBanner";
@@ -99,22 +97,17 @@ export default async function DashboardPage() {
       </div>
     );
   }
-  if (role === "admin" || role === "superadmin") {
+  // Staff home, trimmed for now: shortcuts and most-used pages only. The full
+  // desks (components/dashboards/AdminDashboard + InstructorDashboard) are
+  // parked, not deleted, so they can come back next year.
+  if (role === "admin" || role === "superadmin" || role === "instructor") {
     return (
-      <AdminDashboard
-        user={{ id: userId, name: session!.user?.name ?? null }}
-        role={role}
-        committeeBadge={<><div className="my-4"><ShortcutBar userId={userId} /></div><CommitteeBadgeStrip userId={userId} /></>}
-        pageUsage={<PageUsageCard userId={userId} />}
-      />
-    );
-  }
-  if (role === "instructor") {
-    return (
-      <InstructorDashboard
-        user={{ id: userId, name: session!.user?.name ?? null }}
-        committeeBadge={<><ShortcutBar userId={userId} /><CommitteeBadgeStrip userId={userId} /><PageUsageCard userId={userId} /></>}
-      />
+      <div className="space-y-6 pb-12">
+        <PageHero eyebrow={role === "instructor" ? "Instructor desk" : "Admin desk"} title={<>Hi, {firstName}.</>}
+          description="Your shortcuts, and the pages you and the team use most." />
+        <ShortcutBar userId={userId} />
+        <PageUsageCard userId={userId} team />
+      </div>
     );
   }
 
