@@ -95,12 +95,15 @@
 }
 
 /* Keep the report tools at the upper right without covering the paper or its margin notes. */
-.fullPageReview { grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem); }
-.fullPageReview > .rail { grid-column: 2; grid-row: 1; z-index: 2147483647; display: flex; flex-direction: column; overflow: hidden; }
+:global(.symposium-report-screen):has(.fullPageReview) { max-width: none; }
+.fullPageReview { grid-template-columns: 11rem minmax(0, 1fr) minmax(30rem, 40rem); }
+.fullPageReview > .rail { box-sizing: border-box; min-width: 0; z-index: 2147483647; display: flex; flex-direction: column; overflow: hidden; }
+.fullPageReview > .reviewRail { grid-column: 3; grid-row: 1; }
+.fullPageReview > .navigationRail { grid-column: 1; grid-row: 1; max-height: calc(100dvh - 8rem); }
 .fullPageReview > .rail > :not(.outline, .changeList) { flex-shrink: 0; }
 .fullPageReview .outline { flex: 1; min-height: 0; max-height: none; }
 .fullPageReview .changeList { min-height: 0; overflow: auto; }
-.fullPageReview > .stage { grid-column: 1; grid-row: 1; }
+.fullPageReview > .stage { grid-column: 2; grid-row: 1; }
 
 .rail {
   position: sticky;
@@ -581,10 +584,17 @@
 .editForm button { align-self: flex-start; font: 700 15px var(--sans); padding: 8px 13px; }
 .editForm button:not(.primary) { color: var(--report-ink); background: var(--report-panel); }
 
+@media (max-width: 1700px) {
+  .fullPageReview { grid-template-columns: 11rem minmax(0, 1fr); }
+  .fullPageReview > .reviewRail { grid-column: 2; grid-row: 1; width: min(100%, 40rem); justify-self: end; position: static; max-height: none; }
+  .fullPageReview > .navigationRail { grid-column: 1; grid-row: 1 / span 2; }
+  .fullPageReview > .stage { grid-column: 2; grid-row: 2; }
+}
 @media (max-width: 900px) {
   .workbench { grid-template-columns: minmax(0, 1fr); }
-  .fullPageReview > .rail { grid-column: 1; grid-row: 1; width: min(100%, 20rem); justify-self: end; }
-  .fullPageReview > .stage { grid-column: 1; grid-row: 2; }
+  .fullPageReview > .navigationRail { grid-column: 1; grid-row: 1; width: 100%; position: static; max-height: none; }
+  .fullPageReview > .reviewRail { grid-column: 1; grid-row: 2; }
+  .fullPageReview > .stage { grid-column: 1; grid-row: 3; }
   .fullPageReview .outline { max-height: 12rem; }
   .rail { position: static; max-height: none; }
   .outline { max-height: 12rem; }

@@ -47,7 +47,7 @@ async function main() {
   });
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, permissions: ["clipboard-read", "clipboard-write"] });
+    const page = await browser.newPage({ viewport: { width: 1920, height: 1000 }, permissions: ["clipboard-read", "clipboard-write"] });
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     let exported = false, exports = 0;
@@ -129,6 +129,17 @@ async function main() {
     assert.ok(toolsPosition.railLeft >= toolsPosition.stageRight, "review tools occupy the right column without covering the report");
     assert.ok(toolsPosition.railRight > 1440 - 40, "review tools sit against the right side of the window");
     assert.ok(toolsPosition.toolsTop < 400, "review toolbar starts at the top of the controls column");
+    assert.equal(Math.round(toolsPosition.railRight-toolsPosition.railLeft),640,"desktop review sidebar is twice its previous 320px width");
+    const nav=page.getByRole("complementary",{name:"Report navigation",exact:true});
+    await expect(nav.getByRole("button",{name:"Pages",exact:true})).toBeVisible();
+    await expect(nav.getByRole("button",{name:"Changes",exact:true})).toBeVisible();
+    const navPosition=(await nav.boundingBox())!;
+    assert.ok(navPosition.x+navPosition.width<toolsPosition.railLeft,"navigation occupies the separate left sidebar");
+    await expect(page.getByRole("complementary",{name:"Report review tools",exact:true}).getByRole("button",{name:"Pages",exact:true})).toHaveCount(0);
+    await page.setViewportSize({width:900,height:1000});
+    const narrowRail=await page.locator('[data-report-tools-host]').evaluate(host=>{const r=host.closest('aside')!.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width};});
+    assert.ok(narrowRail.left>=0&&narrowRail.right<=900&&Math.round(narrowRail.width)===640,"wide review tools fit and stack above the report on smaller screens: "+JSON.stringify(narrowRail));
+    await page.setViewportSize({width:1920,height:1000});
     const copyPosition = (await page.getByRole("button", { name: "Copy review comments", exact: true }).boundingBox())!;
     assert.ok(copyPosition.x < 40, "only the copy-comments button is on the left side");
     await expect(page.getByRole("toolbar", { name: "Report review toolbar" }).getByRole("button", { name: "Copy review comments", exact: true })).toHaveCount(0);
@@ -399,7 +410,7 @@ async function main() {
     await expect(page.locator('.bhn-report-drawing')).toHaveCount(2);
     await page.setViewportSize({width:1280,height:900});
     await expect.poll(async()=>{const shape=await page.locator('.bhn-report-drawing').first().boundingBox();const paper=await summarySheet.locator('article').boundingBox();return !!shape && !!paper && Math.abs(shape.width-paper.width)<1;}).toBe(true);
-    await page.setViewportSize({width:1440,height:1000});
+    await page.setViewportSize({width:1920,height:1000});
     await page.getByRole('button',{name:'Circle comment',exact:true}).click();await page.keyboard.press('Escape');
     await expect(page.getByRole('button',{name:'Circle comment',exact:true})).toHaveAttribute('aria-pressed','false');
     await page.getByRole('button',{name:'Circle comment',exact:true}).click();await story.focus();await story.press('Enter');
@@ -469,7 +480,7 @@ async function main() {
     await page.setViewportSize({width:390,height:844});
     const mobileConfirm=(await copyConfirm.boundingBox())!;
     assert.ok(mobileConfirm.x>=0&&mobileConfirm.x+mobileConfirm.width<=390&&mobileConfirm.y>=0&&mobileConfirm.y+mobileConfirm.height<=844,"confirmation fits a narrow viewport");
-    await page.setViewportSize({width:1440,height:1000});
+    await page.setViewportSize({width:1920,height:1000});
     await page.getByRole("button", { name: "Copy comments and lock round", exact: true }).click();
     await expect(page.getByRole("button", { name: "Comments copied", exact: true })).toBeVisible();
     const copiedPosition=(await page.getByRole("status",{name:"Review comments copied",exact:true}).boundingBox())!;

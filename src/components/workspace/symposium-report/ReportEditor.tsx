@@ -423,8 +423,10 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         {showChanges && changesError && <p className={styles.error} role="alert">{changesError}</p>}
       </div>
       <div className={`${styles.workbench} ${fullPageReview ? styles.fullPageReview : ""}`} data-report-unsaved={dirty || !!edit || busy}>
-        <aside className={`${styles.rail} report-screen-only`} aria-label="Report controls">
-          {fullPageReview && <div data-report-tools-host="" />}
+        {fullPageReview && <aside className={`${styles.rail} ${styles.reviewRail} report-screen-only`} aria-label="Report review tools">
+          <div data-report-tools-host="" />
+        </aside>}
+        <aside className={`${styles.rail} ${fullPageReview ? styles.navigationRail : ""} report-screen-only`} aria-label={fullPageReview ? "Report navigation" : "Report controls"}>
           <div className={styles.tabs}>
             <button type="button" aria-pressed={tab === "pages"} onClick={() => setTab("pages")}><BookOpen size={15} /> Pages</button>
             {!fullPageReview && <button type="button" aria-pressed={tab === "comments"} onClick={() => setTab("comments")}><MessageSquare size={15} /> Review</button>}
