@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
 import { FlipHorizontal2, RotateCcw, RotateCw, Trash2, Undo2 } from "lucide-react";
 import type { ReportPhoto } from "@/lib/symposium-report/document";
 import { photoAdjust, photoLabel, REPORT_ASSETS } from "@/lib/symposium-report/photos";
@@ -84,6 +84,17 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
   onRemove?: () => void;
   onCancel: () => void;
 }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  useEffect(() => {
+    const node = dialog.current;
+    const previous = document.activeElement;
+    node?.showModal();
+    return () => {
+      node?.close();
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, []);
   const [selected, setSelected] = useState(initial);
   const [groups, setGroups] = useState<GalleryGroup[] | null>(null);
   const [groupId, setGroupId] = useState("");
@@ -158,9 +169,11 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
   }
 
   return (
-    <form className={`${styles.editForm} report-screen-only`} onSubmit={submit} onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}>
+    <dialog ref={dialog} className={`${styles.photoDialog} report-screen-only`} aria-labelledby={titleId}
+      onCancel={(event) => { event.preventDefault(); onCancel(); }}>
+    <form className={styles.editForm} onSubmit={submit}>
       <div className={styles.editHeader}>
-        <div><p>{cover ? "Cover photograph" : portrait ? "Panel portrait" : "Page photograph"}</p><h2>Swap or crop photo</h2></div>
+        <div><p>{cover ? "Cover photograph" : portrait ? "Panel portrait" : "Page photograph"}</p><h2 id={titleId}>Swap or crop photo</h2></div>
         <div>
           {onRemove && <button type="button" onClick={onRemove}><Trash2 size={14} aria-hidden /> Remove photo</button>}
           <button type="button" onClick={onCancel}>Cancel</button>
@@ -174,7 +187,7 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
                 {groups.map(({ id, title, photos }) => <option key={id} value={id}>{title} · {photos.length}</option>)}
               </select>
             </label>
-            <div className={styles.photoThumbnails} aria-label={group.title}>
+            <div className={styles.photoThumbnails} role="group" aria-label={group.title}>
               {group.photos.map((item) => <button type="button" key={item.file} aria-pressed={photo.file === item.file}
                 onClick={() => setSelected(galleryChoice(item))}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- private gallery asset */}
@@ -183,7 +196,7 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
               </button>)}
             </div>
           </> : <p>No final session photos are available yet.</p>}
-          <label>Choose a photo from this device
+          <label className={styles.photoUpload}>Choose a photo from this device
             <input aria-label="Choose a photo from this device" data-report-photo-picker={!group ? "" : undefined} type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading}
               onChange={(event) => { void upload(event.target.files?.[0]); event.target.value = ""; }} />
           </label>
@@ -191,9 +204,9 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </div>
         <div className={styles.photoPreview}>
-          <div className={styles.photoDrag} onPointerDown={startDrag} onPointerMove={moveDrag}
+          <div className={styles.photoDrag} style={{ "--photo-preview-ratio": 684 / height } as CSSProperties} onPointerDown={startDrag} onPointerMove={moveDrag}
             onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} title="Drag to move the crop">
-            <PhotoFigure photo={fixedCrop ? { ...photo, fit: "cover" } : photo} height={height} />
+            <PhotoFigure photo={fixedCrop ? { ...photo, fit: "cover" } : photo} height={height} caption={false} />
           </div>
           <div className={styles.photoTools} role="group" aria-label="Adjust photo">
             <label>Zoom<input type="range" min={100} max={300} step={5} value={photo.zoom ?? 100}
@@ -225,5 +238,6 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
       </div>
       <button type="submit" disabled={uploading} className={styles.primary}>Apply photo</button>
     </form>
+    </dialog>
   );
 }

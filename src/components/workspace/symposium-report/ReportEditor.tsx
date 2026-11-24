@@ -432,7 +432,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         </p>}
         {showChanges && changesError && <p className={styles.error} role="alert">{changesError}</p>}
       </div>
-      <div className={`${styles.workbench} ${fullPageReview ? styles.fullPageReview : ""}`} data-report-unsaved={dirty || !!edit || busy}>
+      <div className={`${styles.workbench} ${fullPageReview ? styles.fullPageReview : ""}`} data-report-workbench="" data-report-unsaved={dirty || !!edit || busy}>
         {fullPageReview && <aside className={`${styles.rail} ${styles.reviewRail} report-screen-only`} aria-label="Report review tools">
           <div data-report-tools-host="" />
         </aside>}

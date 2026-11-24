@@ -96,7 +96,7 @@
 
 /* Keep the report tools at the upper right without covering the paper or its margin notes. */
 :global(.symposium-report-screen):has(.fullPageReview) { max-width: none; }
-.fullPageReview { grid-template-columns: 11rem minmax(0, 1fr) minmax(30rem, 40rem); }
+.fullPageReview { grid-template-columns: 11rem minmax(0, 1fr) minmax(0, var(--report-review-width, 50rem)); }
 .fullPageReview > .rail { box-sizing: border-box; min-width: 0; z-index: 2147483647; display: flex; flex-direction: column; overflow: hidden; }
 .fullPageReview > .reviewRail { grid-column: 3; grid-row: 1; }
 .fullPageReview > .navigationRail { grid-column: 1; grid-row: 1; max-height: calc(100dvh - 8rem); }
@@ -586,7 +586,7 @@
 
 @media (max-width: 1700px) {
   .fullPageReview { grid-template-columns: 11rem minmax(0, 1fr); }
-  .fullPageReview > .reviewRail { grid-column: 2; grid-row: 1; width: min(100%, 40rem); justify-self: end; position: static; max-height: none; }
+  .fullPageReview > .reviewRail { grid-column: 2; grid-row: 1; width: min(100%, var(--report-review-width, 50rem)); justify-self: end; position: static; max-height: none; }
   .fullPageReview > .navigationRail { grid-column: 1; grid-row: 1 / span 2; }
   .fullPageReview > .stage { grid-column: 2; grid-row: 2; }
 }
@@ -790,3 +790,32 @@
 .lockedRound[data-ready="true"] { border-color: #8eb7a4; border-left-color: #26724c; background: #edf7f1; color: #204c3a; }
 .chapter[data-section="executive-summary"] .paragraph { font-size: 15px; line-height: 1.42; }
 .chapter[data-section="executive-summary"] .story > .paragraph:first-child { font-size: 18px; line-height: 1.35; }
+
+/* Photo operations use the viewport, with independent gallery/preview scrolling. */
+.photoDialog { position: fixed; inset: 0; margin: auto; width: calc(100vw - 32px); height: calc(100dvh - 32px); max-width: none; max-height: none; padding: 0; overflow: hidden; border: 1px solid var(--report-rule); border-radius: 14px; background: var(--report-paper); color: var(--report-ink); }
+.photoDialog::backdrop { background: rgb(7 22 34 / 65%); }
+.photoDialog .editForm { position: static; inset: auto; width: 100%; height: 100%; max-height: none; min-height: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; display: grid; grid-template-rows: auto minmax(0,1fr) auto; padding: 22px; gap: 18px; overflow: hidden; }
+.photoDialog .editHeader h2 { font: 750 28px/1.2 Arial,sans-serif; }
+.photoDialog .photoWorkbench { min-height: 0; grid-template-columns: minmax(0,1.65fr) minmax(320px,1fr); gap: 24px; }
+.photoDialog .photoChoices { min-height: 0; min-width: 0; grid-template-rows: auto minmax(0,1fr) auto; }
+.photoDialog .photoThumbnails { min-height: 0; max-height: none; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); grid-auto-rows: 148px; gap: 10px; padding: 3px; }
+.photoDialog .photoThumbnails button { font-size: 12px; grid-template-rows: minmax(0,1fr) 22px; border-radius: 6px; }
+.photoDialog .photoPreview { min-height: 0; min-width: 0; overflow: auto; padding: 0 5px 2px 0; gap: 12px; }
+.photoDialog .photoDrag { width: min(100%,calc(42dvh * var(--photo-preview-ratio))); max-width: 100%; margin-inline: auto; }
+.photoDialog .photoTools { gap: 8px; }
+.photoDialog .editForm > .primary { min-height: 46px; min-width: 160px; justify-self: end; }
+.photoDialog .editForm :is(button,input,select) { min-height: 44px; }
+@media(max-width:900px) {
+  .photoDialog .photoWorkbench { grid-template-columns: minmax(0,1fr); overflow: auto; }
+  .photoDialog .photoChoices { min-height: 420px; grid-template-rows: auto 310px auto; }
+  .photoDialog .photoPreview { overflow: visible; }
+}
+@media(max-width:530px) {
+  .photoDialog { width: calc(100vw - 12px); height: calc(100dvh - 12px); }
+  .photoDialog .editForm { padding: 12px; gap: 12px; }
+  .photoDialog .editHeader { align-items: start; }
+  .photoDialog .editHeader h2 { font-size: 21px; }
+  .photoDialog .editHeader > div:last-child { flex-direction: column-reverse; }
+  .photoDialog .photoThumbnails { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+.photoDialog .photoUpload { grid-row: 3; align-self: end; }

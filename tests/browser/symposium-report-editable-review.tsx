@@ -122,6 +122,15 @@ async function main() {
     const buildBox = (await build.boundingBox())!;
     assert.ok(buildBox.x < 40 && buildBox.y + buildBox.height > 1000 - 40, "the build SHA sits in the bottom-left corner");
     await expect(page.getByRole("toolbar", { name: "Report review toolbar" })).toBeVisible();
+    const panelSize = page.getByRole("slider",{name:"Comments panel size",exact:true});
+    await expect(panelSize).toHaveValue("2");
+    for(const [index,width,font] of [[0,480,13],[1,640,14],[2,800,15],[3,960,17]]) {
+      await panelSize.fill(String(index));
+      await expect.poll(()=>page.locator('[data-report-tools-host]').evaluate(h=>Math.round(h.closest('aside')!.getBoundingClientRect().width))).toBe(width);
+      assert.equal(await page.locator('#bhn-review-overlay').evaluate(el=>getComputedStyle(el).getPropertyValue('--report-panel-font').trim()),font+'px');
+    }
+    await page.getByRole("button",{name:"Comfortable",exact:true}).click();
+    await expect(panelSize).toHaveValue("1");
     const toolsPosition = await page.locator('[data-report-tools-host]').evaluate(host => {
       const rail = host.closest('aside')!.getBoundingClientRect();
       const stage = document.querySelector('[data-report-paper]')!.getBoundingClientRect();
@@ -247,6 +256,9 @@ async function main() {
     await expect(mentionDraft).toHaveValue("Please check @Epshita Islam ");
     assert.equal(selections.length,countBeforeTag,"choosing a tag does not submit");
     await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Keep my photo feedback.");
+    await panelSize.fill("3");
+    await expect(mentionDraft).toHaveValue("Keep my photo feedback.");
+    await panelSize.fill("1");
     await directCaption.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveValue("Keep my photo feedback.");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -304,8 +316,9 @@ async function main() {
     await expect(pick()).toBeDisabled();
     await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
-    await expect(lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true })).toHaveValue("Unsent reply");
+    await expect(page.getByRole("dialog",{name:"Swap or crop photo"})).toBeVisible();
     await photoEditor.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true })).toHaveValue("Unsent reply");
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await lastThread.getByRole("button", { name: "Edit comment by Staff", exact: true }).click();
     const mentionEdit=lastThread.getByRole("textbox",{name:"Edit comment by Staff",exact:true});
@@ -526,6 +539,7 @@ async function main() {
     await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
     await page.goto(origin + "/?ready");
+    await expect(page.getByRole("slider",{name:"Comments panel size",exact:true})).toHaveValue("1");
     await expect(page.getByRole("status", {name:"Round 3 ready for review", exact:true})).toContainText("Round 3 is ready for review");
     await expect(page.getByRole("button",{name:"Start Round 3 review",exact:true})).toBeEnabled();
     await expect(page.getByRole("status",{name:"Round 2 commenting locked",exact:true})).toContainText("Round 3 is ready for review");

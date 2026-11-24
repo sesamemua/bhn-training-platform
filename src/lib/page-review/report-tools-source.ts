@@ -1,6 +1,9 @@
+import { reportPanelSizeSource } from "./report-panel-size-source";
+
 /** Report-only review tools. Uses the overlay's existing comment API and anchor format. */
 export function reportToolsSource(): string {
   return String.raw`
+  ${reportPanelSizeSource()}
   var reportDrawMode = null;
   var reportDrawDrag = null;
   var reportDrawPreview = null;
@@ -153,6 +156,7 @@ export function reportToolsSource(): string {
     }
     Array.from(body.children).filter(function(el){ return el.matches('.bhn-rv-element-pick,.bhn-rv-compare-open'); }).forEach(function(el){ toolbar.appendChild(el); });
     body.prepend(toolbar);
+    renderReportPanelSize(body);
     if (state.insertingSection) {
       var tip = make('p', 'bhn-rv-notice', 'Click a gap between items on the report. Describe the new section; it will remain a pinned insertion request until the next revision.');
       toolbar.after(tip);
