@@ -746,3 +746,43 @@
 .changeConnector rect { fill: #ffd78526; stroke: #a74d13; stroke-width: 2; }
 @media(max-width:650px) { .changePopup { right: 12px; bottom: 12px; width: calc(100vw - 24px); max-height: 72vh; } .changeComparison { grid-template-columns: 1fr; } }
 @media print { .changePopup,.changeConnector { display: none!important; } }
+
+/* Round 6 editorial layouts; measurement ruler uses these same section selectors. */
+.chapter[data-section="executive-summary"] .heading { font-size: 17px; background: #eaf3f4; padding: 8px 10px; margin-bottom: 10px; letter-spacing: 0; }
+.chapter[data-section="career-conversations"] .chapterHead h2 { color: #1e3765; }
+.chapter[data-section="career-conversations"] .pageIntro { color: #47616c; padding-bottom: 12px; border-bottom: 1px solid #1494a0; }
+.chapter[data-section="career-conversations"] .story { column-rule: none; column-gap: 32px; }
+.chapter[data-section="career-conversations"] .heading { color: #1494a0; font-size: 17.5px; padding: 8px 0 7px; letter-spacing: 0; }
+.chapter[data-section="career-conversations"] .paragraph { font: 13.5px/1.4 Arial,sans-serif; padding: 0 0 14px; break-inside: avoid-column; }
+.chapter[data-section="career-conversations"] .story > .paragraph:first-child { column-span: none; }
+.profileName { font-size: 15px; font-weight: 750; color: #263c49; }
+.profileTitle { color: #263c49; }
+.profileAffiliation { color: #596b74; }
+.chapter[data-section="structured-networking"] .story { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); column-count: initial; column-rule: none; gap: 12px 20px; }
+.chapter[data-section="structured-networking"] .story > .paragraph,.chapter[data-section="structured-networking"] .story > .heading { grid-column: 1 / -1; }
+.chapter[data-section="structured-networking"] .story > .paragraph { font: 16px/1.45 Arial,sans-serif; padding-bottom: 2px; }
+.chapter[data-section="structured-networking"] .heading { font-size: 17px; padding: 4px 0 2px; }
+.chapter[data-section="structured-networking"] .quote { position: relative; border: 0; border-radius: 12px; padding: 12px 14px; margin: 0; font: italic 14px/1.4 Arial,sans-serif; }
+.chapter[data-section="structured-networking"] .quote::after { content: ""; position: absolute; top: 20px; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); left: -5px; }
+.chapter[data-section="structured-networking"] .quote[data-quote-role="HQP"]::after { left: auto; right: -5px; }
+.quoteName { font-weight: 750; font-style: normal; font-size: 12px; }
+.quoteAttribution { font-style: normal; font-size: 11px; line-height: 1.35; }
+.publicationProfile { grid-template-columns: minmax(0,1fr) 110px; align-items: center; padding: 13px 0; border-bottom: 1px solid #d9e5e8; }
+.publicationProfile .paragraph { font: 16px/1.5 Arial,sans-serif; }
+.publicationProfile .paragraph::first-line { font-weight: 750; color: #1e3765; font-size: 19px; }
+.publicationProfile figure > div { aspect-ratio: 1 / 1 !important; }
+.chapter[data-section="discussion"] .heading { color: #176879; font-size: 15px; font-weight: 750; }
+.chapter[data-section="discussion"] .list { padding-bottom: 10px; }
+.chapter[data-section="discussion"] .bullet { font: 14px/1.4 Arial,sans-serif; }
+.chapter[data-section="discussion"] .paragraph { font-size: 14px; line-height: 1.4; }
+.chapter[data-section="career-conversations"] .paragraph { padding-bottom: 9px; }
+.chapter[data-section="career-conversations"] .heading { padding-top: 5px; }
+.chapter[data-section="structured-networking"] .story { gap: 10px 20px; }
+.chapter[data-section="structured-networking"] .quote { font-size: 13px; line-height: 1.36; padding: 10px 12px; }
+.chapter[data-section="structured-networking"] .story > .paragraph { font-size: 15px; }
+.chapter[data-section="discussion"] .bullet { font-size: 13.5px; line-height: 1.36; }
+.chapter[data-section="discussion"] .story > .paragraph:first-child { font-size: 15px; line-height: 1.4; }
+.chapter[data-section="structured-networking"] .quote { font-size: 12.5px; line-height: 1.34; padding: 9px 11px; }
+.chapter[data-section="structured-networking"] .story { gap: 8px 20px; }
+.chapter[data-section="discussion"] .bullet { font-size: 13px; line-height: 1.32; }
+.chapter[data-section="discussion"] .list { padding-bottom: 8px; }

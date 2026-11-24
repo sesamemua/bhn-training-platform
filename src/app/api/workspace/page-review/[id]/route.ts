@@ -25,6 +25,7 @@ import { prisma } from "@/lib/prisma";
 import { REPORT_ID } from "@/lib/symposium-report/document";
 import { reportTransaction } from "@/lib/symposium-report/store";
 import { buildBrief } from "@/lib/page-review/brief";
+import { notifyReviewMentions, type ReviewMentionJob } from "@/lib/page-review/mentions";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
 import { canReviewSocialCopy, SOCIAL_COPY_REVIEW_PREFIX } from "@/lib/social/copy-review";
 
@@ -63,17 +64,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const session = await requireRole(social ? "admin" : "instructor").catch(() => null);
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const meId = (session.user as { id?: string }).id ?? null;
+  if (!meId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const meName = (session.user as { name?: string }).name ?? "Someone";
   const role = (session.user as { role?: string }).role ?? "";
   const isAdmin = role === "admin" || role === "superadmin";
 
-  if (id !== REPORT_ID && !social) return mutate(prisma, id, body, action, meId, meName, isAdmin);
-  return reportTransaction((tx) => mutate(tx, id, body, action, meId, meName, isAdmin));
+  const mentions: ReviewMentionJob[] = [];
+  const actor = { id: meId!, name: meName, email: (session.user as { email?: string }).email };
+  const response = id !== REPORT_ID && !social
+    ? await mutate(prisma, id, body, action, meId, meName, isAdmin, mentions, actor)
+    : await reportTransaction((tx) => {
+      // Serializable retries must discard delivery jobs from a rolled-back attempt.
+      mentions.length = 0;
+      return mutate(tx, id, body, action, meId, meName, isAdmin, mentions, actor);
+    });
+  if (!response.ok || !mentions.length) return response;
+  const outcomes = await Promise.all(mentions.map(notifyReviewMentions));
+  return NextResponse.json({ ...await response.json(), mentions: { sent: outcomes.reduce((n, r) => n + r.sent, 0), warning: outcomes.find(r => r.warning)?.warning } });
 }
 
 async function mutate(
   db: Prisma.TransactionClient, id: string, body: Record<string, unknown> | null,
   action: string, meId: string | null, meName: string, isAdmin: boolean,
+  mentions: ReviewMentionJob[], actor: ReviewMentionJob["actor"],
 ) {
   const review = await db.pageReview.findUnique({
     where: { id },
@@ -146,7 +159,7 @@ async function mutate(
       if (!parent) return NextResponse.json({ error: "That thread is gone." }, { status: 404 });
       anchors = parent;
     }
-    await db.pageComment.create({
+    const created = await db.pageComment.create({
       data: {
         reviewId: id,
         parentId: p.data.parentId ?? null,
@@ -158,6 +171,7 @@ async function mutate(
         body: p.data.body,
       },
     });
+    if (p.data.body.includes("@")) mentions.push({ reviewId: id, commentId: created.id, round: review.round, title: review.title, url: review.url, body: p.data.body, actor });
     await touch(id, db);
     return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }
@@ -168,7 +182,7 @@ async function mutate(
     if (!p.success) return NextResponse.json({ error: "Check the comment." }, { status: 400 });
     const c = await db.pageComment.findFirst({
       where: { id: p.data.commentId, reviewId: id },
-      select: { id: true, authorUserId: true },
+      select: { id: true, authorUserId: true, body: true },
     });
     if (!c) return NextResponse.json({ error: "No such comment." }, { status: 404 });
     // Any reviewer can edit any comment — corrections land in place instead
@@ -185,6 +199,7 @@ async function mutate(
         editedByName: meName,
       },
     });
+    if (p.data.body.includes("@")) mentions.push({ reviewId: id, commentId: c.id, round: review.round, title: review.title, url: review.url, body: p.data.body, previousBody: c.body, actor });
     await touch(id, db);
     return NextResponse.json({ ok: true, ...(await load(id, db)) });
   }

@@ -9,6 +9,7 @@ import { changePassages } from "@/lib/symposium-report/change-passages";
 import { ReportChangePopup } from "./ReportChangePopup";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
+import { editorialParts, pairedProfile, publicationPage, quotePosition } from "@/lib/symposium-report/editorial";
 
 const sectorColors = [
   "var(--report-sector-academic)", "var(--report-sector-industry)", "var(--report-sector-other)", "var(--report-sector-public)",
@@ -96,19 +97,22 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
   return blocks.map((block, index) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" && !block.continued ? "li" : "p";
     const photos = workshopPhotos(page, block.photoRow);
+    const position = quotePosition(page, block);
+    const editProps = inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading");
+    // Keep the editable DOM as plain text; styled review spans belong to the reading view.
     // Chromium can mislay columns when a spanning layout block is directly editable.
-    const copy = block.text && <Tag className={`${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={page.id === "structured-networking" && block.kind === "quote" ? blockQuoteRole(page, block) : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
-      if (event.target === event.currentTarget) event.currentTarget.querySelector<HTMLElement>('[contenteditable]')?.focus();
+    const copy = block.text && <Tag className={`${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={position?.role} style={position ? { gridColumn: position.column, gridRow: position.row } : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
+      if (!(event.target as HTMLElement).closest('[contenteditable]')) event.currentTarget.querySelector<HTMLElement>('[contenteditable]')?.focus();
     }}>
       {page.id === "structured-networking" && block.kind === "quote" && <small className={styles.quoteRole}>{blockQuoteRole(page, block)}</small>}
       <span className={styles.textFrame}
-        {...inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading")}>
-        {tracked?.get(block.start) ? <Marked parts={tracked.get(block.start)!} /> : block.text}
+        {...editProps}>
+        {tracked?.get(block.start) ? <Marked parts={tracked.get(block.start)!} /> : editProps.contentEditable ? block.text : editorialParts(page, block).map((part, i) => <span key={i} className={part.kind ? styles[part.kind] : undefined}>{part.text}</span>)}
       </span>
     </Tag>;
     if (block.kind === "bullet" && !block.continued) return <ul key={index} className={styles.list}>{copy}</ul>;
     const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / 337} />);
-    if (page.id === "venturelift" && photos.length) return <div key={index} className={styles.ventureProfile}>{copy}<div>{figures}</div></div>;
+    if (pairedProfile(page) && photos.length) return <div key={index} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}`}>{copy}<div>{figures}</div></div>;
     return <Fragment key={index}>
       {copy}
       {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">{figures}</div>}
@@ -118,7 +122,7 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
 
 const folioText = (number: number) => String(number).padStart(2, "0");
 
-const quoteRole = (text: string) => /\u2014 (Alex Kamp|Jasmine Hamilton)/.test(text) ? "Mentor" : /\u2014 (Sunny Peiwei|Xunuo Cao|Maidah)/.test(text) ? "HQP" : "Program staff";
+const quoteRole = (text: string) => /\u2014 (Alex Kamp|Jasmine Hamilton|Morty Soley)/.test(text) ? "Mentor" : /\u2014 (Sunny Peiwei|Xunuo Cao|Maidah)/.test(text) ? "HQP" : "Program staff";
 
 const blockQuoteRole = (page: ReportPage, block: Block) => quoteRole(reportBlocks(page.text).find(b => b.kind === "quote" && b.start <= block.start && b.start + b.text.length >= block.start + block.text.length)?.text ?? block.text);
 
@@ -149,7 +153,9 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (page.id === "structured-networking" && block.kind === "quote") { node.dataset.quoteRole = blockQuoteRole(page, block); const role = document.createElement("small"); role.className = styles.quoteRole; role.textContent = blockQuoteRole(page, block); node.append(role); }
         const text = document.createElement("span");
         text.className = styles.textFrame;
-        text.textContent = block.text;
+        for (const part of editorialParts(page, block)) { const span = document.createElement("span"); span.className = part.kind ? styles[part.kind] : ""; span.textContent = part.text; text.append(span); }
+        const position = quotePosition(page, block);
+        if (position) { node.style.gridColumn = position.column; node.style.gridRow = position.row; }
         node.append(text);
         const list = document.createElement("ul");
         list.className = styles.list;
@@ -159,10 +165,10 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (photos.length) {
           const space = document.createElement("div");
           const height = workshopTileHeight(page);
-          if (page.id === "venturelift") {
+          if (pairedProfile(page)) {
             const row = document.createElement("div");
-            row.className = styles.ventureProfile;
-            space.style.aspectRatio = `337 / ${height * photos.length}`;
+            row.className = `${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}`;
+            space.style.aspectRatio = publicationPage(page) ? "1 / 1" : `337 / ${height * photos.length}`;
             space.style.marginBottom = `${(page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) * photos.length}px`;
             row.append(...nodes, space);
             return [row];
@@ -198,13 +204,14 @@ export function useReportLayout(report: Report, approved: boolean) {
       const hasPortraits = portraitPhotos(page).length > 0;
       pageNode.dataset.portraits = String(hasPortraits);
       const workshopHeads = blocks.filter(b => b.kind === "heading");
-      const breaks = page.id === "training-week" ? new Set(workshopHeads.slice(2).map(b => b.start)) : undefined;
+      const breaks = page.id === "training-week" ? new Set(workshopHeads.slice(2).map(b => b.start)) : page.id === "discussion" ? new Set(workshopHeads.filter(b => !["Challenges", "Opportunities", "Discussion notes"].includes(b.text)).slice(1).map(b => b.start)) : undefined;
+      const keepWhole = ["career-conversations", "structured-networking"].includes(page.id) ? new Set(blocks.filter(b => b.kind !== "heading").map(b => b.start)) : undefined;
       const frames = paginate(blocks, page.frames, (candidate, index) => {
         const reserve = !hasLeadPhoto(page, index) && !hasTrainingPhotoGrid(page, index) && page.photos?.[String(index)] && !photoRemoved(page, index)
           ? MIN_FILL_PHOTO + (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) + PHOTO_GAP : 0;
         const strip = stripSpace(index);
         return measureText(page, candidate, index, strip > 0) >= reserve + strip;
-      }, breaks);
+      }, breaks, keepWhole);
       const photoHeights = frames.map((blocks, index) => {
         if (photoRemoved(page, index)) return 0;
         if (page.fillPhotos === false && !hasLeadPhoto(page, index) && !page.photos?.[String(index)]) return 0;

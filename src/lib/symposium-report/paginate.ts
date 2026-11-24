@@ -24,7 +24,7 @@ export function replaceReportBlock(source: string, block: Block, text: string) {
   return source.slice(0, start) + text + source.slice(end);
 }
 
-export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[], index: number) => boolean, breakBefore?: ReadonlySet<number>) {
+export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[], index: number) => boolean, breakBefore?: ReadonlySet<number>, keepWhole?: ReadonlySet<number>) {
   const frames: Block[][] = [[]];
   const current = () => frames.at(-1)!;
   const room = (block: Block) => fits([...current(), block], frames.length - 1);
@@ -41,11 +41,11 @@ export function paginate(blocks: Block[], minimum: number, fits: (blocks: Block[
       if (group.at(-1)?.photoRow && fits(group, frames.length)) {
         if (!fits([...current(), ...group], frames.length - 1)) frames.push([]);
       } else {
-        const keep = next.photoRow && fits([original, next], frames.length)
+        const keep = (next.photoRow || keepWhole?.has(next.start)) && fits([original, next], frames.length)
           ? next : { ...next, photoRow: undefined, text: Array.from(next.text).slice(0, 35).join("") };
         if (!fits([...current(), original, keep], frames.length - 1)) frames.push([]);
       }
-    } else if (original.photoRow && current().length && !room(original) && fits([original], frames.length)) {
+    } else if ((original.photoRow || keepWhole?.has(original.start)) && current().length && !room(original) && fits([original], frames.length)) {
       frames.push([]);
     }
 

@@ -84,6 +84,7 @@ async function main() {
         current.back.title = "BioHubNet Network";
         return route.fulfill({ status: 409, json: { error: "Someone saved a newer version.", current, revision: "c".repeat(64) } });
       }
+      if (url.pathname === "/api/workspace/page-review/" + REPORT_ID + "/mentions") return route.fulfill({json:{people:[{id:"epshita",label:"Epshita Islam"},{id:"yeseul",label:"Yeseul Lee"}]}});
       if (url.pathname === "/api/workspace/page-review/" + REPORT_ID && route.request().method() === "POST") {
         const input = route.request().postDataJSON();
         assert.equal(input.action, "addComment");
@@ -92,7 +93,7 @@ async function main() {
         selections.push(input);
         comments.push({ ...input, id: "element-" + selections.length, parentId: null, round: 2, authorName: "Staff",
           authorKind: "user", status: "open", isMine: true, createdAt: "2026-11-19T12:00:00Z", editedAt: null, editedByName: null });
-        return route.fulfill({ json: { ok: true, review: { comments } } });
+        return route.fulfill({ json: { ok: true, review: { comments }, mentions: {sent:input.body.includes("@")?1:0} } });
       }
       if (/\.(png|jpg|webp|svg)$/.test(url.pathname)) return route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><rect width="800" height="500" fill="#a9c1c4"/></svg>' });
       return route.fulfill({ status: 404 });
@@ -238,6 +239,13 @@ async function main() {
     // Captions still open a comment.
     await directCaption.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
+    const mentionDraft=page.getByRole("textbox",{name:"New review comment",exact:true});
+    await mentionDraft.fill("Please check @Eps");
+    await expect(page.getByRole("option",{name:"Epshita Islam",exact:true})).toBeVisible();
+    const countBeforeTag=selections.length;
+    await mentionDraft.press("Enter");
+    await expect(mentionDraft).toHaveValue("Please check @Epshita Islam ");
+    assert.equal(selections.length,countBeforeTag,"choosing a tag does not submit");
     await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Keep my photo feedback.");
     await directCaption.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveValue("Keep my photo feedback.");
@@ -268,11 +276,12 @@ async function main() {
       await target.click();
       await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
       await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "true");
-      await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Review the " + label);
+      await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Review the " + label + (label === "cover header" ? " with @Epshita Islam." : ""));
       const selectionNumber = selections.length + 1;
       await page.getByRole("button", { name: "Add comment", exact: true }).click();
       await expect(page.locator('[data-thread-id="element-' + selectionNumber + '"]')).toContainText("Review the " + label);
       const selected = selections.at(-1)!;
+      if(label === "cover header") await expect(page.getByRole("status",{name:"Mention notifications"})).toContainText("Notified 1");
       assert.doesNotMatch(selected.anchorPath, /report_/);
       assert.equal(await target.evaluate((el, path) => document.querySelector(path) === el, selected.anchorPath), true, label + " keeps its exact element anchor");
       await page.getByRole("button", { name: "Show comment " + selections.length + " on page", exact: true }).click();
@@ -288,6 +297,9 @@ async function main() {
     assert.equal(selections[6].anchorQuote, null);
     const lastThread = page.locator('[data-thread-id="element-7"]');
     await lastThread.getByRole("button", { name: "Reply", exact: true }).click();
+    const mentionReply=lastThread.getByRole("textbox",{name:"Reply to Staff",exact:true});
+    await mentionReply.fill("@Yes");await lastThread.getByRole("option",{name:"Yeseul Lee",exact:true}).click();
+    await expect(mentionReply).toHaveValue("@Yeseul Lee ");
     await lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true }).fill("Unsent reply");
     await expect(pick()).toBeDisabled();
     await directPhoto.click();
@@ -296,6 +308,9 @@ async function main() {
     await photoEditor.getByRole("button", { name: "Cancel", exact: true }).click();
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await lastThread.getByRole("button", { name: "Edit comment by Staff", exact: true }).click();
+    const mentionEdit=lastThread.getByRole("textbox",{name:"Edit comment by Staff",exact:true});
+    await mentionEdit.fill("@Eps");await lastThread.getByRole("option",{name:"Epshita Islam",exact:true}).click();
+    await expect(mentionEdit).toHaveValue("@Epshita Islam ");
     await lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true }).fill("Unsent correction");
     await expect(pick()).toBeDisabled();
     await directCaption.click();
@@ -327,7 +342,8 @@ async function main() {
     }
     assert.deepEqual(await networking.allTextContents(), originalNetworking, "focus must preserve all networking copy");
     const firstQuote = networking.filter({ hasText: /^“Conversation 1 / });
-    await firstQuote.locator("..").click({ position: { x: 2, y: 2 } });
+    // Conversation bubbles have rounded corners; click their actual inner padding.
+    await firstQuote.locator("..").click({ position: { x: 16, y: 10 } });
     await expect(firstQuote).toBeFocused();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveCount(0);
     await expect(page.locator('[data-report-paper] [class*="rosterHeading"]')).toHaveText("Participating industry professionals");

@@ -1,3 +1,4 @@
+import { mentionToolsSource } from "./mention-tools-source";
 import { reportToolsSource } from "./report-tools-source";
 import { comparisonSource } from "./comparison-source";
 
@@ -42,6 +43,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     confirmCopy: false,
     confirmedCopy: false,
     copiedRound: null,
+    mentionNotice: "",
     draft: "",
     replyTo: null,
     replyDraft: "",
@@ -61,6 +63,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     pageRound: reportCommentEndpoint ? Number(script.dataset.round) : null,
     expandedThreads: {}
   };
+  var mentionDeepLink = new URLSearchParams(window.location.search).get("comment");
   var markers = [];
   var pollTimer = null;
   var positionFrame = null;
@@ -362,7 +365,10 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         var find = function (root) {
           return Array.from(root.querySelectorAll(passage)).find(function(node){
             var text = cleanText(node.textContent || (reportReview && node.getAttribute("alt")));
-            return text === quote || ((!reportReview || quote.length > 20) && text.includes(quote.slice(0, 40)));
+            // Editorial line breaks replace the old dot separators in mentor profiles.
+            var comparable = function(value){ return value.replace(/[·\\s]+/g, " ").trim().toLocaleLowerCase(); };
+            return text === quote || ((!reportReview || quote.length > 20) && (text.includes(quote.slice(0, 40)) ||
+              (reportReview && comparable(text).includes(comparable(quote).slice(0, 40)))));
           });
         };
         var match = (sheet && find(sheet)) || find(document);
@@ -388,7 +394,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       return;
     }
     highlightedNode = node;
-    var rect = node.getBoundingClientRect();
+    // Scaled photographs are clipped by their mat: highlight the visible crop, not the enlarged bitmap.
+    var photoFrame = node.tagName === "IMG" && node.closest("figure[data-report-photo]");
+    var rect = (photoFrame ? photoFrame.firstElementChild : node).getBoundingClientRect();
     highlight.style.display = "block";
     highlight.style.top = rect.top + "px";
     highlight.style.left = rect.left + "px";
@@ -693,6 +701,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     return (reportCommentEndpoint && state.pageRound !== state.review.round) || (state.review.status && state.review.status !== "open");
   }
 
+  ${mentionToolsSource()}
+
   function renderComposer(container) {
     if (state.pageRound !== state.review.round) {
       var update = make("div", "bhn-rv-notice", "A new round was saved. Reload to comment on the current version.");
@@ -722,6 +732,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     textarea.value = state.draft;
     textarea.addEventListener("input", function(){ state.draft = textarea.value; reportDraftStatus(); });
     box.appendChild(textarea);
+    attachReviewMentions(textarea, box);
     var actions = make("div", "bhn-rv-actions");
     actions.appendChild(addButton("Cancel", "bhn-rv-btn", function(){ state.selected = null; state.draft = ""; render(); }));
     var submit = addButton(state.saving ? "Adding..." : "Add comment", "bhn-rv-btn bhn-rv-btn-primary", function(){ submitComment(textarea.value, null, state.selected); });
@@ -743,6 +754,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     textarea.value = state.replyDraft;
     textarea.addEventListener("input", function(){ state.replyDraft = textarea.value; reportDraftStatus(); });
     wrap.appendChild(textarea);
+    attachReviewMentions(textarea, wrap);
     var actions = make("div", "bhn-rv-actions");
     actions.appendChild(addButton("Cancel", "bhn-rv-btn", function(){ state.replyTo = null; state.replyDraft = ""; render(); }));
     var submit = addButton(state.saving ? "Replying..." : "Reply", "bhn-rv-btn bhn-rv-btn-primary", function(){ submitComment(textarea.value, thread.id, null); });
@@ -795,6 +807,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     textarea.value = state.editDraft;
     textarea.addEventListener("input", function(){ state.editDraft = textarea.value; });
     wrap.appendChild(textarea);
+    attachReviewMentions(textarea, wrap);
     var actions = make("div", "bhn-rv-actions");
     actions.appendChild(addButton("Cancel", "bhn-rv-btn", function(){ state.editingId = null; state.editDraft = ""; render(); }));
     var save = addButton(state.saving ? "Saving..." : "Save", "bhn-rv-btn bhn-rv-btn-primary", function(){ updateComment(comment.id, textarea.value); });
@@ -1000,6 +1013,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
     var body = make("div", "bhn-rv-body");
     if (state.error) body.appendChild(make("div", "bhn-rv-notice bhn-rv-error", state.error));
+    if (state.mentionNotice) { var mentionStatus=make("p","bhn-rv-notice",state.mentionNotice);mentionStatus.setAttribute("role","status");mentionStatus.setAttribute("aria-label","Mention notifications");body.appendChild(mentionStatus); }
     if (state.loading) {
       body.appendChild(make("div", "bhn-rv-notice", "Loading team comments..."));
     } else if (reportCommentEndpoint && !state.viewer) {
@@ -1206,6 +1220,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;
       state.comments = data.comments || [];
+      var mentionedComment = mentionDeepLink && state.comments.find(function(c){return c.id===mentionDeepLink;});
+      if(mentionedComment){mentionDeepLink=null;state.expandedThreads[mentionedComment.parentId||mentionedComment.id]=true;window.requestAnimationFrame(function(){bringCommentIntoView(mentionedComment);});}
       state.error = "";
       state.loading = false;
       loadComparison();
@@ -1254,6 +1270,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       }));
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not save the comment.");
+      if(data.mentions)state.mentionNotice=data.mentions.warning||(data.mentions.sent?'Notified '+data.mentions.sent+' colleague(s) by email.':'');
       if (parentId) state.expandedThreads[parentId] = true;
       else if (data.comment && data.comment.id) state.expandedThreads[data.comment.id] = true;
       else if (reportCommentEndpoint && data.review && Array.isArray(data.review.comments)) {
@@ -1292,6 +1309,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       }));
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not update the comment.");
+      if(data.mentions)state.mentionNotice=data.mentions.warning||(data.mentions.sent?'Notified '+data.mentions.sent+' colleague(s) by email.':'');
       state.editingId = null;
       state.editDraft = "";
       state.saving = false;

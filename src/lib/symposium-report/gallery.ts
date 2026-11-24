@@ -31,6 +31,8 @@ export const chapterGallery: Record<string, string[]> = {
   "panel-3": ["panel-3"],
   venturelift: ["venturelift"],
   discussion: ["discussion", "networking-discussion"],
+  "publication-leadership": ["publication-team"],
+  "publication-team": ["publication-team"],
   "program-impact": ["program-impact"],
   "professional-development": ["communication", "negotiation"],
   "pitch-competition": ["ignited"],
