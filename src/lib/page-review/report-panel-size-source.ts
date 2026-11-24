@@ -5,17 +5,26 @@ export function reportPanelSizeSource(): string {
     {name:'Compact',width:480,font:13}, {name:'Comfortable',width:640,font:14},
     {name:'Large',width:800,font:15}, {name:'Extra large',width:960,font:17}
   ];
-  var reportPanelSize = 2;
-  if (reportReview) { try { var savedSize=localStorage.getItem('bhn-report-panel-size-v1');var parsed=Number(savedSize);if(savedSize!==null&&Number.isInteger(parsed)&&parsed>=0&&parsed<reportPanelPresets.length)reportPanelSize=parsed; } catch(_) {} }
-  function applyReportPanelSize(index) {
+  var reportPanelSize = 800;
+  if (reportReview) { try {
+    var savedWidth=localStorage.getItem('bhn-report-panel-width-v2');var parsedWidth=Number(savedWidth);
+    if(savedWidth!==null&&Number.isFinite(parsedWidth)&&parsedWidth>=480&&parsedWidth<=960)reportPanelSize=Math.round(parsedWidth);
+    else if(savedWidth===null){var oldSize=localStorage.getItem('bhn-report-panel-size-v1');var parsed=Number(oldSize);if(oldSize!==null&&Number.isInteger(parsed)&&reportPanelPresets[parsed])reportPanelSize=reportPanelPresets[parsed].width;}
+  } catch(_) {} }
+  function reportPanelFont(width) {
+    var lower=reportPanelPresets[0],upper=reportPanelPresets[reportPanelPresets.length-1];
+    for(var i=1;i<reportPanelPresets.length;i++){if(width<=reportPanelPresets[i].width){lower=reportPanelPresets[i-1];upper=reportPanelPresets[i];break;}}
+    return Math.round((lower.font+(upper.font-lower.font)*(width-lower.width)/(upper.width-lower.width))*100)/100;
+  }
+  function applyReportPanelSize(width) {
     if (!reportReview) return;
-    reportPanelSize=Math.max(0,Math.min(reportPanelPresets.length-1,Number(index)));
-    var preset=reportPanelPresets[reportPanelSize];
+    var value=Number(width);
+    reportPanelSize=Math.round(Math.max(480,Math.min(960,Number.isFinite(value)?value:800)));
     root.setAttribute('data-panel-size',String(reportPanelSize));
-    root.style.setProperty('--report-panel-font',preset.font+'px');
+    root.style.setProperty('--report-panel-font',reportPanelFont(reportPanelSize)+'px');
     var workbench=root.closest('[data-report-workbench]');
-    if(workbench)workbench.style.setProperty('--report-review-width',preset.width+'px');
-    try{localStorage.setItem('bhn-report-panel-size-v1',String(reportPanelSize));}catch(_){}
+    if(workbench)workbench.style.setProperty('--report-review-width',reportPanelSize+'px');
+    try{localStorage.setItem('bhn-report-panel-width-v2',String(reportPanelSize));}catch(_){}
   }
   function renderReportPanelSize(body) {
     if(!reportReview)return;
@@ -23,10 +32,10 @@ export function reportPanelSizeSource(): string {
     var control=make('fieldset','bhn-rv-panel-size');
     control.appendChild(make('legend','','Comments panel size'));
     var output=make('output','bhn-rv-panel-size-value');output.setAttribute('aria-live','polite');
-    var slider=make('input','');slider.type='range';slider.min='0';slider.max='3';slider.step='1';slider.value=String(reportPanelSize);slider.setAttribute('aria-label','Comments panel size');
+    var slider=make('input','');slider.type='range';slider.min='480';slider.max='960';slider.step='1';slider.value=String(reportPanelSize);slider.setAttribute('aria-label','Comments panel size');
     var buttons=make('div','bhn-rv-panel-size-presets');
-    function update(index){applyReportPanelSize(index);slider.value=String(reportPanelSize);var p=reportPanelPresets[reportPanelSize];slider.setAttribute('aria-valuetext',p.name+', '+p.width+' pixels');output.textContent=p.name;Array.from(buttons.children).forEach(function(b,i){b.setAttribute('aria-pressed',String(i===reportPanelSize));});window.requestAnimationFrame(onPositionChange);}
-    reportPanelPresets.forEach(function(p,i){var b=addButton(p.name,'bhn-rv-btn',function(){update(i);});b.setAttribute('aria-pressed',String(i===reportPanelSize));buttons.appendChild(b);});
+    function update(width){applyReportPanelSize(width);slider.value=String(reportPanelSize);var p=reportPanelPresets.find(function(p){return p.width===reportPanelSize;});slider.setAttribute('aria-valuetext',(p?p.name:'Custom')+', up to '+reportPanelSize+' pixels wide, text '+reportPanelFont(reportPanelSize)+' pixels');output.textContent=(p?p.name:'Custom')+' · '+reportPanelSize+' px';Array.from(buttons.children).forEach(function(b,i){b.setAttribute('aria-pressed',String(reportPanelPresets[i].width===reportPanelSize));});window.requestAnimationFrame(onPositionChange);}
+    reportPanelPresets.forEach(function(p){var b=addButton(p.name,'bhn-rv-btn',function(){update(p.width);});b.setAttribute('aria-pressed',String(p.width===reportPanelSize));buttons.appendChild(b);});
     slider.addEventListener('input',function(){update(slider.value);});
     control.appendChild(output);control.appendChild(slider);control.appendChild(buttons);body.prepend(control);update(reportPanelSize);
   }

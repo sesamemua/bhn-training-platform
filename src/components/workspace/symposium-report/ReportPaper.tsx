@@ -187,7 +187,7 @@ export function useReportLayout(report: Report, approved: boolean) {
       }));
       return measure.clientHeight - parseFloat(getComputedStyle(measure).paddingBottom) - Math.ceil(story.getBoundingClientRect().height);
     };
-    const result = report.pages.map((page, index) => {
+    const result = report.pages.map((page) => {
       const blocks = reportBlocks(page.text);
       const hasWorkshops = blocks.some((block) => !!block.photoRow);
       const columns: 1 | 2 = !hasWorkshops && page.text.length >= 900 ? 2 : 1;
@@ -199,8 +199,8 @@ export function useReportLayout(report: Report, approved: boolean) {
       const pageIntro = intro.querySelector<HTMLElement>("[data-measure-page-intro]")!;
       pageIntro.textContent = page.intro ?? "";
       pageIntro.hidden = !page.intro;
-      continuation.firstChild!.textContent = `${folioText(index + 1)} / ${page.title}`;
-      label.textContent = `${folioText(index + 1)} / ${page.label}`;
+      continuation.firstChild!.textContent = page.title;
+      label.textContent = page.label;
       pageNode.dataset.figure = page.image === "registration" && page.registration ? "chart" : hasLeadPhoto(page, 0) ? "photo" : "none";
       const stripSpace = (index: number) => {
         if (hasTrainingPhotoGrid(page, index)) return trainingPhotoGridSpace(page, index);
@@ -255,7 +255,7 @@ export function ReportRuler({ ruler }: { ruler: React.Ref<HTMLDivElement> }) {
     <div className={styles.ruler} ref={ruler} aria-hidden="true">
       <div className={`${styles.paper} ${styles.chapter}`}>
         <header className={styles.chapterHead} data-measure-intro=""><span /><h2 /><p className={styles.pageIntro} data-measure-page-intro="" hidden /></header>
-        <div className={styles.continuationHead} data-measure-continuation="">Title <span> / continued</span></div>
+        <div className={styles.continuationHead} data-measure-continuation="">Title <span> · continued</span></div>
         <div className={styles.figureSpacer} />
         <div className={styles.copy} data-measure-copy=""><div className={styles.story} /></div>
         <div className={styles.folio} />
@@ -404,7 +404,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
           <p data-report-field="cover.date" className={styles.coverDate} {...inline(report.cover.date, "Cover date", (date) => onTextChange?.({ ...report, cover: { ...report.cover, date } }))}>{show("cover.date", report.cover.date)}</p>
         </div>
       </>, styles.cover, true)}
-      {layout.map(({ page, columns, frames, photoHeights, hasWorkshops, workshopHeights }, section) => { const pageMarks = tracked(page, frames); return frames.map((blocks, index) => {
+      {layout.map(({ page, columns, frames, photoHeights, hasWorkshops, workshopHeights }) => { const pageMarks = tracked(page, frames); return frames.map((blocks, index) => {
         const strip = stripPhotos(page, index);
         const choices = [...strip, ...blocks.flatMap((block) => workshopPhotos(page, block.photoRow))];
         const photoGrid = hasTrainingPhotoGrid(page, index);
@@ -413,11 +413,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
             ? <header className={styles.chapterHead}>
-              <span><span>{folioText(section + 1)} / <span data-report-field={`page:${page.id}:label`} {...inline(page.label, "Section label", (label) => patchPage(page.id, () => ({ label })))}>{show(`page:${page.id}:label`, page.label)}</span></span></span>
+              <span><span><span data-report-field={`page:${page.id}:label`} {...inline(page.label, "Section label", (label) => patchPage(page.id, () => ({ label })))}>{show(`page:${page.id}:label`, page.label)}</span></span></span>
               <h2 data-report-field={`page:${page.id}:title`} {...inline(page.title, "Section title", (title) => patchPage(page.id, () => ({ title })))}>{show(`page:${page.id}:title`, page.title)}</h2>
               {page.intro && <p data-report-field={`page:${page.id}:intro`} className={styles.pageIntro} {...inline(page.intro, "Section introduction", (intro) => patchPage(page.id, () => ({ intro })), true)}>{show(`page:${page.id}:intro`, page.intro)}</p>}
             </header>
-            : <header className={styles.continuationHead}>{folioText(section + 1)} / {show(`page:${page.id}:title`, page.title)} <span> / continued</span></header>}
+            : <header className={styles.continuationHead}>{show(`page:${page.id}:title`, page.title)} <span> · continued</span></header>}
           {index === 0 && page.image === "registration" && page.registration && <RegistrationChart chart={page.registration} showSource={!ready}
             inline={inline} change={(registration) => patchPage(page.id, () => ({ registration }))} />}
           {hasLeadPhoto(page, index) && (paired

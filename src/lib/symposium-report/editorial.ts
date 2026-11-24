@@ -4,6 +4,9 @@ import type { ReportPage } from './document';
 export const publicationPage = (page: ReportPage) => page.id === 'publication-leadership' || page.id === 'publication-team';
 export const pairedProfile = (page: ReportPage) => page.id === 'venturelift' || publicationPage(page);
 export function editorialParts(page: ReportPage, block: Block): { text: string; kind: string }[] {
+  if (/^(Moderator|Panelists):/.test(block.text)) {
+    return block.text.split(/((?:^|\n)(?:Moderator|Panelists):)/).filter(Boolean).map(text => ({ text, kind: /^(Moderator|Panelists):$/.test(text.trim()) ? 'panelLabel' : '' }));
+  }
   if (page.id === 'career-conversations' && block.kind === 'paragraph') {
     return block.text.split(/(?<=\n)/).map((text, i) => ({ text, kind: i === 0 ? 'profileName' : i === 1 ? 'profileTitle' : 'profileAffiliation' }));
   }

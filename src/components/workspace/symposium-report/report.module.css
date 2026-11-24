@@ -819,3 +819,4 @@
   .photoDialog .photoThumbnails { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 .photoDialog .photoUpload { grid-row: 3; align-self: end; }
+.panelLabel { font-weight: 750; }
