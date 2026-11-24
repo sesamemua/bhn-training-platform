@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.24a";
+export const TOUR_VERSION = "2026.11.24b";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "equip.recipient-tracker-moved",
+    title: "Recipient tracker moved to EQUIP",
+    body: "The Recipient tracker now sits in the EQUIP group at the top of the sidebar, beside Deadlines. It has just been rescanned, with two new VentureLift recipients and a project title for every VentureLift company.",
+    path: "/admin/equip/tracker",
+    placement: "center",
+    roles: ["admin", "superadmin"],
+    cta: { label: "Open the recipient tracker", href: "/admin/equip/tracker" },
+    since: "2026.11.24b",
+  },
   {
     id: "dashboard.staff-home",
     title: "Your dashboard, simplified",
@@ -2034,7 +2044,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "equip.tracker-share",
     title: "Share the EQUIP report — no login needed",
-    body: "The “Tracking report” tab on Admin → EQUIP → Recipient tracker now has a “Share externally” panel. Hit “Create link” to mint a public URL anyone can open to read the full dossier — no account required. Label a link, copy or open it, and revoke it anytime (revoked links stop working at once). Shared pages are unlisted, so search engines won't index them.",
+    body: "The “Tracking report” tab on EQUIP → Recipient tracker now has a “Share externally” panel. Hit “Create link” to mint a public URL anyone can open to read the full dossier — no account required. Label a link, copy or open it, and revoke it anytime (revoked links stop working at once). Shared pages are unlisted, so search engines won't index them.",
     path: "/admin/equip/tracker?view=report",
     placement: "center",
     roles: ["admin", "superadmin"],
@@ -2045,7 +2055,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "equip.tracker-recipients",
     title: "A public recipients list for the website",
-    body: "Admin → EQUIP → Recipient tracker now has two tabs. “Recipients” is a simplified list (company, recipient, track, and VentureLift project) that's also published as a public JSON feed for BioHubNet's website — use “Copy JSON” or “Copy Codex prompt” to hand it to Codex. “Tracking report” is the full LinkedIn/web dossier you already had.",
+    body: "EQUIP → Recipient tracker now has two tabs. “Recipients” is a simplified list (company, recipient, track, and VentureLift project) that's also published as a public JSON feed for BioHubNet's website — use “Copy JSON” or “Copy Codex prompt” to hand it to Codex. “Tracking report” is the full LinkedIn/web dossier you already had.",
     path: "/admin/equip/tracker",
     placement: "center",
     roles: ["admin", "superadmin"],
@@ -2141,7 +2151,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "admin.equip-tracker",
     title: "Track who you funded",
-    body: "Admin → EQUIP → Recipient tracker is a post-award dossier of every VentureConnect and VentureLift company, watched across LinkedIn and the open web. Flagged entries mark fresh raises, awards, partnerships and milestones — each linked to its source. Filter by track, search, or show highlights only.",
+    body: "EQUIP → Recipient tracker is a post-award dossier of every VentureConnect and VentureLift company, watched across LinkedIn and the open web. Flagged entries mark fresh raises, awards, partnerships and milestones — each linked to its source. Filter by track, search, or show highlights only.",
     path: "/admin/equip/tracker",
     placement: "center",
     roles: ["admin", "superadmin"],

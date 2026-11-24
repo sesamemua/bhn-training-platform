@@ -67,7 +67,7 @@ export default async function EquipRecipientTrackerPage({
   return (
     <div className="space-y-5">
       <PageHero
-        eyebrow={<><Radar size={11} /> Admin · EQUIP</>}
+        eyebrow={<><Radar size={11} /> EQUIP</>}
         title="Recipient tracker"
         description="Every company funded by a VentureConnect or VentureLift grant. Recipients is a simplified public list (also served as a JSON feed for the BioHubNet website); Tracking report is the full LinkedIn/web intelligence dossier."
       />
@@ -90,6 +90,12 @@ export default async function EquipRecipientTrackerPage({
             </Link>
           );
         })}
+        <span className="ml-auto text-xs text-fg-subtle">
+          Latest scan{" "}
+          <time dateTime={EQUIP_UPDATED} className="font-semibold text-fg">
+            {new Date(`${EQUIP_UPDATED}T12:00:00Z`).toLocaleDateString("en-CA", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}
+          </time>
+        </span>
       </div>
 
       {active === "report" ? (

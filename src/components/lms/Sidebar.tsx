@@ -275,6 +275,15 @@ const equipDeadlinesItem: NavItem = {
   description: "Schedule + manage the funding-window deadlines for VentureConnect (monthly) and VentureLift (quarterly). List + calendar views. Open / close / extend any window, or suggest the next VentureConnect rounds. Late submissions are blocked automatically.",
 };
 
+// Moved up from Administration → EQUIP so it sits with the funding links.
+const equipRecipientTrackerItem: NavItem = {
+  label: "Recipient tracker",
+  href: "/admin/equip/tracker",
+  icon: Radar,
+  minRole: "admin",
+  description: "Post-award intelligence dossier — every company funded by a VentureConnect or VentureLift grant, tracked across LinkedIn and the open web. Flags fresh raises, awards, partnerships and milestones, each linked to its source. Filter by track, search, or show highlights only.",
+};
+
 const equipAdminDashboardItem: NavItem = {
   label: "Admin dashboard",
   href: "/admin/equip",
@@ -810,8 +819,6 @@ const adminEquipItems: NavItem[] = [
     description: "Review queue for the EQUIP funding pillar — VentureConnect (≤$5K) + VentureLift (≤$25K). Claim, approve / reject with a note + amount, mark funded. Mirrors the credit-applications shape." },
   { label: "EQUIP email templates", href: "/admin/equip/email-templates", icon: Mail,        minRole: "admin",
     description: "Every email an EQUIP applicant can receive, for both streams — view, hand-edit, or AI-rewrite the copy. Sending itself always happens from the review page as an explicit reviewer action, never automatically." },
-  { label: "Recipient tracker",    href: "/admin/equip/tracker",       icon: Radar,         minRole: "admin",
-    description: "Post-award intelligence dossier — every company funded by a VentureConnect or VentureLift grant, tracked across LinkedIn and the open web. Flags fresh raises, awards, partnerships and milestones, each linked to its source. Filter by track, search, or show highlights only." },
   { label: "EQUIP Review Committee", href: "/admin/committees/equip-review", icon: Users2, minRole: "admin",
     description: "Manage EQUIP Review Committee membership. Members get queue access without holding an admin role. Roster + a shortcut into the funding review queue." },
 ];
@@ -1885,6 +1892,7 @@ export function Sidebar({
     ...adminSystemItems.map((i) => i.href),
     // Admin links that live in the EQUIP section rather than Administration.
     equipDeadlinesItem.href,
+    equipRecipientTrackerItem.href,
     equipAdminDashboardItem.href,
   ]);
   const visibleCommittees = rawVisibleCommittees
@@ -2368,7 +2376,10 @@ export function Sidebar({
             <NavLink item={innovationFellowshipItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             <NavLink item={ventureConnectDirectItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
             {isAdmin && (
-              <NavLink item={equipDeadlinesItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              <>
+                <NavLink item={equipRecipientTrackerItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+                <NavLink item={equipDeadlinesItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />
+              </>
             )}
             {effectiveRole === "superadmin" && (
               <NavLink item={equipAdminDashboardItem} pathname={pathname} onNavigate={() => setMobileOpen(false)} queueCounts={queueCounts} />

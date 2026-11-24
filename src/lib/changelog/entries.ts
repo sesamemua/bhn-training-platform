@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "EQUIP recipient tracker: moved up, and rescanned",
+    body: "**Recipient tracker** now sits in the **EQUIP** group at the top of the sidebar instead of under Administration. Every VentureLift recipient was rescanned: two new **Round 6** recipients, **ArteraNova Therapeutics** (Kaiwen Liu, U of T) and **mDETECT Inc.** (Keira Frosst, Queen's), plus new VentureConnect awards for **CELLECT** (Round 17) and **ChASE Biotherapeutics** (Round 19). Each VentureLift company now shows its project title. Highlights include **Neuropeutics** and **ArteraNova** each winning $100K at ECHO PITCH 2026 and **NewGen Health** taking the $30K LiONS LAIR prize. Every new item links to its source; outdated or unverifiable entries were removed. The tracker now shows the date of the latest scan beside its tabs.",
+    kind: "improvement",
+    visibleTo: ADMINS,
+    daysAgo: 0,
+  },
+  {
     title: "A simpler staff dashboard",
     body: "The staff dashboard now shows only your shortcuts and Most-used pages, with your own figures beside the whole team's totals. The page you opened last is always your first shortcut, and in Edit you can drag shortcuts into any order. The other dashboard cards are put away for now.",
     kind: "improvement",
