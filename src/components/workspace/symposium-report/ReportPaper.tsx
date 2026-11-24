@@ -112,7 +112,7 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
     </Tag>;
     if (block.kind === "bullet" && !block.continued) return <ul key={index} className={styles.list}>{copy}</ul>;
     const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / 337} />);
-    if (pairedProfile(page) && photos.length) return <div key={index} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}`}>{copy}<div>{figures}</div></div>;
+    if (pairedProfile(page) && (photos.length || publicationPage(page))) return <div key={index} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{copy}{photos.length > 0 && <div>{figures}</div>}</div>;
     return <Fragment key={index}>
       {copy}
       {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">{figures}</div>}
@@ -162,6 +162,12 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (block.kind === "bullet" && !block.continued) list.append(node);
         const nodes: HTMLElement[] = block.text ? [block.kind === "bullet" && !block.continued ? list : node] : [];
         const photos = workshopPhotos(page, block.photoRow);
+        if (publicationPage(page) && !photos.length) {
+          const row = document.createElement("div");
+          row.className = `${styles.ventureProfile} ${styles.publicationProfile} ${styles.noPortrait}`;
+          row.append(...nodes);
+          return [row];
+        }
         if (photos.length) {
           const space = document.createElement("div");
           const height = workshopTileHeight(page);

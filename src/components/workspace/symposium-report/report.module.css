@@ -786,3 +786,4 @@
 .chapter[data-section="structured-networking"] .story { gap: 8px 20px; }
 .chapter[data-section="discussion"] .bullet { font-size: 13px; line-height: 1.32; }
 .chapter[data-section="discussion"] .list { padding-bottom: 8px; }
+.publicationProfile.noPortrait { grid-template-columns: minmax(0,1fr); min-height: 96px; }
