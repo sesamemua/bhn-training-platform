@@ -134,7 +134,9 @@ async function main() {
     assert.equal(await page.locator('#bhn-review-overlay').evaluate(el=>getComputedStyle(el).getPropertyValue('--report-panel-font').trim()),'14.64px');
     await panelSize.press('ArrowRight');await expect(panelSize).toHaveValue('743');
     await page.reload();await expect(page.getByRole('slider',{name:'Comments panel size',exact:true})).toHaveValue('743');
+    await page.getByText("⋯",{exact:true}).click();await page.getByText("Panel size presets",{exact:true}).click();
     await page.getByRole("button",{name:"Comfortable",exact:true}).click();
+    await page.getByText("⋯",{exact:true}).click();
     await expect(panelSize).toHaveValue("640");
     const toolsPosition = await page.locator('[data-report-tools-host]').evaluate(host => {
       const rail = host.closest('aside')!.getBoundingClientRect();
@@ -162,8 +164,8 @@ async function main() {
     await page.getByRole("button", { name: "VentureLift Spotlight", exact: true }).click();
     const toolsAfterJump = await page.locator('[data-report-tools-host]').evaluate(host => ({top: host.getBoundingClientRect().top, railTop: host.closest('aside')!.getBoundingClientRect().top}));
     assert.ok(toolsAfterJump.top >= toolsAfterJump.railTop && toolsAfterJump.top < 50, "toolbar stays at the top after jumping to another report page");
-    await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
+    await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
+    await page.getByRole("button", { name: "Edit & comment", exact: true }).click();
     await expect(page.locator('[id^="report-frame-venturelift-"]')).toHaveCount(1);
     await expect(page.locator('#report-frame-venturelift-0 img')).toHaveCount(7);
     assert.equal(await page.locator('#report-frame-venturelift-0 article').evaluate(e => {
@@ -224,6 +226,7 @@ async function main() {
     const directCaption = page.locator("#report-frame-summary-0 figcaption");
     await page.getByRole("button", { name: "Collapse comments", exact: true }).click();
 
+    async function showDraw(){const menu=page.locator('.bhn-report-menu').filter({hasText:'Circle comment'});if(await menu.getAttribute('open')===null)await menu.locator(':scope > summary').click();}
     // Photo operations: zoom, rotate, flip, caption, then autosave.
     await directPhoto.click();
     await expect(photoEditor).toBeVisible();
@@ -268,12 +271,14 @@ async function main() {
     await directCaption.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveValue("Keep my photo feedback.");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    const pick = () => page.getByRole("button", { name: "Comment on an element", exact: true });
-    await pick().click();
-    await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await page.getByRole("button", { name: "Comment on an element", exact: true }).press("Escape");
+    const pick = () => page.locator(".bhn-rv-element-pick");
+    async function showMore(){const menu=page.locator('.bhn-report-menu').filter({hasText:'Comment on an element'});if(await menu.getAttribute('open')===null)await menu.locator(':scope > summary').click();}
+
+    await showMore();await pick().click();
+    await expect(page.locator(".bhn-rv-element-pick")).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Escape");
     await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "false");
-    await pick().click();
+    await showMore();await pick().click();
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await page.getByRole("textbox", { name: "New review comment", exact: true }).fill("Keep this draft while changing its target.");
     await page.locator("#report-frame-summary-0 figcaption").click();
@@ -290,7 +295,7 @@ async function main() {
     ];
     for (const { label, target } of targets) {
       console.log("Checking element comment:", label);
-      if (label !== "picture caption") await pick().click();
+      if (label !== "picture caption") {await showMore();await pick().click();}
       await target.click();
       await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toBeVisible();
       await expect(page.locator("#bhn-review-overlay")).toHaveAttribute("data-picking-element", "true");
@@ -319,7 +324,7 @@ async function main() {
     await mentionReply.fill("@Yes");await lastThread.getByRole("option",{name:"Yeseul Lee",exact:true}).click();
     await expect(mentionReply).toHaveValue("@Yeseul Lee ");
     await lastThread.getByRole("textbox", { name: "Reply to Staff", exact: true }).fill("Unsent reply");
-    await expect(pick()).toBeDisabled();
+    await showMore();await expect(pick()).toBeDisabled();
     await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
     await expect(page.getByRole("dialog",{name:"Swap or crop photo"})).toBeVisible();
@@ -331,12 +336,12 @@ async function main() {
     await mentionEdit.fill("@Eps");await lastThread.getByRole("option",{name:"Epshita Islam",exact:true}).click();
     await expect(mentionEdit).toHaveValue("@Epshita Islam ");
     await lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true }).fill("Unsent correction");
-    await expect(pick()).toBeDisabled();
+    await showMore();await expect(pick()).toBeDisabled();
     await directCaption.click();
     await expect(lastThread.getByRole("textbox", { name: "Edit comment by Staff", exact: true })).toHaveValue("Unsent correction");
     await lastThread.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(pick()).toBeEnabled();
-    await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
+    await page.getByRole("button", { name: "Edit & comment", exact: true }).click();
     await page.getByRole("textbox", { name: "Cover title", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "Cover title", exact: true })).toBeFocused();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
@@ -427,7 +432,7 @@ async function main() {
     assert.equal(selections.at(-1)!.anchorKey, "#report-frame-summary-0");
     assert.match(selections.at(-1)!.body, /follow-up resource/);
     for (const shape of ["Circle","Line"]) {
-      await page.getByRole("button",{name:shape+" comment",exact:true}).click();
+      await showDraw();await page.getByRole("button",{name:shape+" comment",exact:true}).click();
       await summarySheet.locator('article').scrollIntoViewIfNeeded();
       const rect=(await summarySheet.locator('article').boundingBox())!;
       await page.mouse.move(rect.x+60,rect.y+120);await page.mouse.down();await page.mouse.move(rect.x+180,rect.y+190);await page.mouse.up();
@@ -446,9 +451,9 @@ async function main() {
     await page.setViewportSize({width:1280,height:900});
     await expect.poll(async()=>{const shape=await page.locator('.bhn-report-drawing').first().boundingBox();const paper=await summarySheet.locator('article').boundingBox();return !!shape && !!paper && Math.abs(shape.width-paper.width)<1;}).toBe(true);
     await page.setViewportSize({width:1920,height:1000});
-    await page.getByRole('button',{name:'Circle comment',exact:true}).click();await page.keyboard.press('Escape');
-    await expect(page.getByRole('button',{name:'Circle comment',exact:true})).toHaveAttribute('aria-pressed','false');
-    await page.getByRole('button',{name:'Circle comment',exact:true}).click();await story.focus();await story.press('Enter');
+    await showDraw();await page.getByRole('button',{name:'Circle comment',exact:true}).click();await page.keyboard.press('Escape');
+    await expect(page.getByRole('button',{name:'Circle comment',exact:true,includeHidden:true})).toHaveAttribute('aria-pressed','false');
+    await showDraw();await page.getByRole('button',{name:'Circle comment',exact:true}).click();await story.focus();await story.press('Enter');
     await expect(page.locator('#bhn-review-overlay')).toContainText('Comment on drawn circle');
     await page.keyboard.press('Escape');await expect(page.locator('.bhn-report-drawing-draft')).toHaveCount(0);
     await page.getByRole("button", { name: "Add a section", exact: true }).click();
@@ -474,7 +479,7 @@ async function main() {
     await expect(page.locator("#report-frame-back-0 p").last()).toHaveText("Colleague's live update");
     await summarySheet.getByRole("button", { name: "Clear draft", exact: true }).click();
     await expect(page.locator("#report-frame-back-0 p").last()).toHaveText("Update while page feedback is unfinished", { timeout: 10000 });
-    await page.getByRole("button", { name: "Edit text and photos", exact: true }).click();
+    await page.getByRole("button", { name: "Edit & comment", exact: true }).click();
     const coverTitle = page.getByRole("textbox", { name: "Cover title", exact: true });
     await coverTitle.fill("Keep my unfinished typing");
     (remoteSnapshot.back as {text:string}).text = "A newer colleague update";
@@ -541,7 +546,7 @@ async function main() {
     await expect(page.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Save draft", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Comment on page", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Comment on an element", exact: true })).toHaveCount(0);
+    await expect(page.locator(".bhn-rv-element-pick")).toHaveCount(0);
     await directPhoto.click();
     await expect(page.getByRole("textbox", { name: "New review comment", exact: true })).toHaveCount(0);
     await page.goto(origin + "/?ready");

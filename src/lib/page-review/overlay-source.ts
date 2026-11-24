@@ -38,7 +38,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     joining: false,
     comments: [],
     selected: null,
-    pickingElement: reportReview,
+    pickingElement: false,
     insertingSection: false,
     confirmCopy: false,
     confirmedCopy: false,
@@ -360,6 +360,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var reportMatch = safeQuery(comment.anchorPath, quote);
       if (reportMatch && (!comment.anchorKey || reportMatch.closest(pageSelector).parentElement.id === comment.anchorKey.slice(1))) return reportMatch;
       var sheet = comment.anchorKey && document.getElementById(comment.anchorKey.slice(1));
+      if(!sheet&&reportReview&&/^#report-frame-publication-team-/.test(comment.anchorKey||''))sheet=document.getElementById('report-frame-publication-leadership-0');
       var passage = pageSelector + " :is(" + (reportReview ? reportTargets : "h1,h2,h3,h4,p,li,blockquote,figcaption,td") + ")";
       if (quote) {
         var find = function (root) {
@@ -1133,7 +1134,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         pick.disabled = state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null;
         if (state.replyTo !== null || state.editingId !== null) pick.setAttribute("title", "Finish or cancel your current reply or edit first.");
         body.appendChild(pick);
-        if (state.pickingElement) body.appendChild(make("p", "bhn-rv-notice", "Click any report element: text, header, footer, picture or caption."));
+
       }
       if ((!state.pickingElement || reportReview) && (state.comparison || state.comparisonError)) {
         body.appendChild(addButton(state.comparisonError || "Before / after comparison", "bhn-rv-btn bhn-rv-compare-open", function(){
@@ -1147,7 +1148,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         var threads = topComments();
         var current = threads.filter(function(comment){ return comment.round === state.review.round; });
         var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
-        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round && !isLocked() ? (reportReview ? (reportDrawMode ? " Drag on a report page to draw, then add your comment." : state.pickingElement ? " Click any report element to comment. Use Edit text and photos to make changes." : " Edit mode: click text or a photo to make changes. Use Comment on an element to leave feedback.") : " Click any page element to start a thread.") : "")));
+        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round && !isLocked() ? (reportReview ? (reportDrawMode ? " Drag on a report page to draw, then add your comment." : state.pickingElement ? " Choose an element to comment." : " Click text or a photo to edit. Use the nearby comment icon for feedback.") : " Click any page element to start a thread.") : "")));
         current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
         body.appendChild(list);
         if (previous.length) {
@@ -1440,6 +1441,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function onMove(event) {
     if (reportReview && (reportDrawMode || reportDrawDrag || (state.selected && state.selected.drawing))) return;
     if (reportInsertionMove(event)) return;
+    if (reportReview && event.target.closest(".bhn-report-inline-comment")) return;
     if (inOverlay(event.target)) {
       if (threadHighlight) showHighlight(threadHighlight);
       else showHighlight(null);
@@ -1447,6 +1449,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     }
     threadHighlight = null;
     var node = reportReview ? reportTarget(event) : event.target;
+    if (reportReview && !state.pickingElement) { reportInlineComment(node); showHighlight(null); return; }
     if (editableReportPage(event.target) && !state.pickingElement && !node?.matches("figcaption")) { showHighlight(null); return; }
     showHighlight(node);
   }
@@ -1477,6 +1480,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   function onPositionChange() {
     constrainPanel();
+    if (reportReview) { reportCommentPosition(); reportMenuPosition(); }
     if (highlightedNode) showHighlight(highlightedNode);
     syncMarkers();
     if (reportReview) reportPageNotes();

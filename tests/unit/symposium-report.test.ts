@@ -158,7 +158,11 @@ test("six workshop photographs remain valid and swappable with bounded slot IDs"
       photos: Object.fromEntries([1, 2, 3, 4, 5, 6].map((n) => [`workshop-4-${n}`, photo])) }],
     back: { title: "BioHubNet", text: "Connect" } };
   assert.equal(reportSchema.safeParse(draft).success, true);
-  for (const invalid of ["workshop-4-7", "workshop-8-1", "workshop-0-1", "workshop-4-0"]) {
+  for (const row of [8, 9]) {
+    assert.equal(reportSchema.safeParse({ ...draft, pages: [{ ...draft.pages[0], text: `Team member\n[[photos:${row}]]`, photos: { [`workshop-${row}-1`]: photo } }] }).success, true);
+    assert.equal(reportBlocks(`Team member\n[[photos:${row}]]`)[0].photoRow, String(row));
+  }
+  for (const invalid of ["workshop-4-7", "workshop-10-1", "workshop-0-1", "workshop-4-0"]) {
     assert.equal(reportSchema.safeParse({ ...draft, pages: [{ ...draft.pages[0], photos: { [invalid]: photo } }] }).success, false);
   }
 });

@@ -827,3 +827,43 @@
 }
 .photoDialog .photoUpload { grid-row: 3; align-self: end; }
 .panelLabel { font-weight: 750; }
+
+/* Round 7 editorial revisions; the ruler uses the same section rules. */
+.folio { font-size: 11px; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .chapterHead { padding-bottom:18px; display:flex;flex-direction:column; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .chapterHead h2 { order:-1;margin:0 0 10px;font-size:37px;font-weight:750;color:#1e3765; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .chapterHead>span { color:#1494a0;font-size:13px;letter-spacing:.03em;text-transform:none;padding-bottom:10px;border-bottom:1px solid #1494a0; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .chapterHead>span::after { display:none; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .pageIntro { margin-top:12px;font-size:14px;line-height:1.45; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .story { max-inline-size:none;display:grid;grid-template-columns:repeat(20,minmax(0,1fr));column-count:initial;gap:14px 14px; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .heading { grid-column:1/-1;font-size:18px;font-weight:750;color:#1494a0;padding:7px 0 0; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile { display:flex;flex-direction:column;align-items:stretch;gap:10px;grid-column:span 5;border:0;padding:0;break-inside:avoid; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile[data-team-group="program"] { grid-column:span 4; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile>div { order:-1;width:100%; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile .paragraph { font:12px/1.45 Arial,sans-serif;padding:0; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile .paragraph::first-line { font-size:15px;font-weight:750; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile.noPortrait { min-height:0;justify-content:center; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile[data-team-group="partners"] { grid-column:1/-1;display:grid;grid-template-columns:74px 1fr;align-items:center;gap:16px; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile[data-team-group="partners"]>div { grid-column:1;grid-row:1; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile[data-team-group="partners"]>.paragraph { grid-column:2;grid-row:1; }
+.chapter[data-section="career-conversations"] .chapterHead h2 { font-size:38px;font-weight:750; }
+.chapter[data-section="career-conversations"] .story { column-count:3;column-gap:18px;column-rule:none; }
+.chapter[data-section="career-conversations"] .heading { font-size:13px;line-height:1.15;padding:6px 0 5px;font-weight:750; }
+.chapter[data-section="career-conversations"] .paragraph { font:12px/1.32 Arial,sans-serif;padding-bottom:7px; }
+.chapter[data-section="career-conversations"] .profileName { font-size:13px; }
+.chapter[data-section="program-impact"] .ventureProfile { grid-template-columns:minmax(0,1fr) 150px;gap:12px;break-inside:avoid;padding-bottom:10px; }
+.chapter[data-section="program-impact"] .ventureProfile .paragraph { font-size:13px;line-height:1.4; }
+.chapter[data-section="program-impact"] .copy { padding-bottom:132px; }
+.chapter[data-section="program-impact"] .quote { position:absolute;left:66px;right:66px;bottom:76px;text-align:center;background:transparent;border:0;color:#1494a0;font:italic 17px/1.4 Arial,sans-serif;margin:0;padding:10px 0; }
+.backText>.logo { position:static;margin:0 0 30px;width:220px;height:auto; }
+.backWebLinks { display:grid;gap:15px; }
+
+.chapter[data-section="program-impact"][data-photo-pair="true"]:not([data-continued="true"]) { --figure-height:137px; }
+.chapter[data-section="program-impact"] .chapterHead h2 { font-size:36px; }
+.chapter[data-section="program-impact"] .paragraph { font-size:13.5px;line-height:1.4;padding-bottom:8px; }
+.chapter[data-section="program-impact"] .heading { font-size:18px;padding:8px 0 8px; }
+
+.chapter[data-section="program-impact"] .ventureProfile .photoMat { aspect-ratio:1.75 / 1 !important;background:transparent; }
+.chapter[data-section="program-impact"] .ventureProfile .photoMat::before { display:none; }
+
+.chapter[data-section="publication-leadership"][data-team-spread="true"] { background:#fff; }

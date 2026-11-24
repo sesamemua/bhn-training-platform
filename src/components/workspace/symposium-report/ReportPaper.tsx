@@ -9,7 +9,7 @@ import { changePassages } from "@/lib/symposium-report/change-passages";
 import { ReportChangePopup } from "./ReportChangePopup";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
-import { editorialParts, pairedProfile, publicationPage, quotePosition } from "@/lib/symposium-report/editorial";
+import { editorialParts, pairedProfile, publicationPage, quotePosition, teamGroup } from "@/lib/symposium-report/editorial";
 
 const sectorColors = [
   "var(--report-sector-academic)", "var(--report-sector-industry)", "var(--report-sector-other)", "var(--report-sector-public)",
@@ -112,7 +112,7 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
     </Tag>;
     if (block.kind === "bullet" && !block.continued) return <ul key={index} className={styles.list}>{copy}</ul>;
     const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / 337} />);
-    if (pairedProfile(page) && (photos.length || publicationPage(page))) return <div key={index} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{copy}{photos.length > 0 && <div>{figures}</div>}</div>;
+    if (block.kind !== "heading" && pairedProfile(page) && (photos.length || publicationPage(page))) return <div key={index} data-team-group={teamGroup(page,block)} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{copy}{photos.length > 0 && <div>{figures}</div>}</div>;
     return <Fragment key={index}>
       {copy}
       {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">{figures}</div>}
@@ -122,7 +122,7 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
 
 const folioText = (number: number) => String(number).padStart(2, "0");
 
-const quoteRole = (text: string) => /\u2014 (Alex Kamp|Jasmine Hamilton|Morty Soley)/.test(text) ? "Mentor" : /\u2014 (Sunny Peiwei|Xunuo Cao|Maidah)/.test(text) ? "HQP" : "Program staff";
+const quoteRole = (text: string) => /\u2014 (Alex Kamp|Jasmine Hamilton|Morty Soley)/.test(text) ? "Mentor" : /\u2014 (Sunny Peiwei|Xunuo Cao|Maidah)/.test(text) ? "HQP" : "Participant";
 
 const blockQuoteRole = (page: ReportPage, block: Block) => quoteRole(reportBlocks(page.text).find(b => b.kind === "quote" && b.start <= block.start && b.start + b.text.length >= block.start + block.text.length)?.text ?? block.text);
 
@@ -144,6 +144,7 @@ export function useReportLayout(report: Report, approved: boolean) {
     const story = measure.firstElementChild as HTMLElement;
     const measureText = (page: ReportPage, blocks: Block[], index: number, hasStrip: boolean) => {
       pageNode.dataset.continued = String(index > 0);
+      pageNode.dataset.teamSpread = String(page.id === "publication-leadership" && page.text.startsWith("## Leadership Team"));
       pageNode.dataset.photoStrip = String(hasStrip || hasPairedPhotos(page, index));
       pageNode.dataset.photoPair = String(hasPairedPhotos(page, index));
       const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
@@ -162,9 +163,10 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (block.kind === "bullet" && !block.continued) list.append(node);
         const nodes: HTMLElement[] = block.text ? [block.kind === "bullet" && !block.continued ? list : node] : [];
         const photos = workshopPhotos(page, block.photoRow);
-        if (publicationPage(page) && !photos.length) {
+        if (publicationPage(page) && block.kind !== "heading" && !photos.length) {
           const row = document.createElement("div");
           row.className = `${styles.ventureProfile} ${styles.publicationProfile} ${styles.noPortrait}`;
+          if(teamGroup(page,block))row.dataset.teamGroup=teamGroup(page,block);
           row.append(...nodes);
           return [row];
         }
@@ -176,6 +178,7 @@ export function useReportLayout(report: Report, approved: boolean) {
             row.className = `${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}`;
             space.style.aspectRatio = publicationPage(page) ? "1 / 1" : `337 / ${height * photos.length}`;
             space.style.marginBottom = `${(page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) * photos.length}px`;
+            if(teamGroup(page,block))row.dataset.teamGroup=teamGroup(page,block);
             row.append(...nodes, space);
             return [row];
           }
@@ -224,7 +227,7 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (hasWorkshops && !page.photos?.[String(index)] && !hasLeadPhoto(page, index)) return 0;
         if (index === 0 && !blocks.length && !page.photos?.["0"] && !hasLeadPhoto(page, 0)) return 0;
         if (hasTrainingPhotoGrid(page, index)) return TRAINING_TILE_PREVIEW_HEIGHT;
-        if (hasPairedPhotos(page, index)) return portraitHeight(2);
+        if (hasPairedPhotos(page, index)) return page.id === "program-impact" ? 240 : portraitHeight(2);
         const strip = stripSpace(index);
         const freeSpace = measureText(page, blocks, index, strip > 0) - strip;
         const maximum = page.photos?.[String(index)]?.fit === "whole" ? Infinity : MAX_PHOTO_HEIGHT;
@@ -381,7 +384,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
             const slot = target.closest<HTMLElement>("[data-photo-slot]")?.dataset.photoSlot;
             if (slot !== undefined && !target.isContentEditable && !target.closest("figcaption")) onPhoto(frame, slot || undefined); // captions are for comments
           })}
-          data-print-page="" data-markup={markup ? "true" : undefined} data-section={frame.id} data-audience={String(!!layout.find(x => x.page.id === frame.id)?.page.registration?.audience)} data-review-draft={!ready} data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
+          data-print-page="" data-team-spread={frame.id === "publication-leadership" && String(!!layout.find(x => x.page.id === frame.id)?.page.text.startsWith("## Leadership Team"))} data-markup={markup ? "true" : undefined} data-section={frame.id} data-audience={String(!!layout.find(x => x.page.id === frame.id)?.page.registration?.audience)} data-review-draft={!ready} data-columns={columns} data-continued={frame.index > 0 ? "true" : undefined}
           data-portraits={portraits ? "true" : undefined} data-photo-strip={strip.length ? "true" : undefined}>
           {!ready && <span className={styles.draft}>Review draft</span>}
           {content}
@@ -444,17 +447,17 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         </>, styles.chapter, photoHeights[index] > 0, columns, choices);
       }); })}
       {wrap({ id: "back", index: 0 }, "Back cover", <>
-        {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
-        <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
         <div className={styles.backText}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- original print artwork */}
+          <img className={styles.logo} src={`${REPORT_ASSETS}/biohubnet-logo-white.png`} alt="BioHubNet" />
           <h2 data-report-field="back.title" {...inline(report.back.title, "Back cover title", (title) => onTextChange?.({ ...report, back: { ...report.back, title } }))}>{show("back.title", report.back.title)}</h2>
           <p data-report-field="back.text" {...inline(report.back.text, "Back cover text", (text) => onTextChange?.({ ...report, back: { ...report.back, text } }), true)}>{show("back.text", report.back.text)}</p>
           <div className={styles.backLinks}>
-            <a href="https://biohubnet.ca">biohubnet.ca</a>
-            <a href="https://www.linkedin.com/company/biohubnet/" className={styles.backQr}>
+            <div className={styles.backWebLinks}><a href="https://biohubnet.ca">biohubnet.ca</a><a href="https://www.linkedin.com/company/biohubnet/" aria-label="BioHubNet on LinkedIn"><svg className={styles.linkedinLogo} aria-label="LinkedIn" role="img" width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="3" fill="#0A66C2" /><path fill="#fff" d="M5 9h3v10H5zM6.5 4a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5M10 9h2.8v1.4c.5-.9 1.5-1.6 3-1.6 3 0 3.7 2 3.7 4.6V19h-3v-5c0-1.4 0-2.7-1.8-2.7S13 12.7 13 14V19h-3z" /></svg>LinkedIn ↗</a></div>
+            <a href="https://biohubnet.ca" className={styles.backQr}>
               {/* eslint-disable-next-line @next/next/no-img-element -- vector QR for print */}
-              <img src="/symposium-report-linkedin.svg" width={116} height={116} alt="" />
-              <span><svg className={styles.linkedinLogo} aria-label="LinkedIn" role="img" width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="3" fill="#0A66C2" /><path fill="#fff" d="M5 9h3v10H5zM6.5 4a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5M10 9h2.8v1.4c.5-.9 1.5-1.6 3-1.6 3 0 3.7 2 3.7 4.6V19h-3v-5c0-1.4 0-2.7-1.8-2.7S13 12.7 13 14V19h-3z" /></svg>Scan for BioHubNet on LinkedIn</span>
+              <img src="/symposium-report-website.svg" width={116} height={116} alt="" />
+              <span>Scan to visit biohubnet.ca</span>
             </a>
           </div>
         </div>

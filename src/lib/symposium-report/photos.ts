@@ -3,6 +3,8 @@ import type { ReportPage, ReportPhoto } from "./document";
 type PhotoPreset = { label: string; x: number; y: number; fit: "cover" | "portrait" | "whole" };
 
 export const reportPhotos = {
+  "program-venturelift-accelerate.webp": { label: "VentureLift Accelerate program logo", x: 50, y: 50, fit: "whole" },
+  "program-innovation-fellowship.webp": { label: "Innovation Fellowship program logo", x: 50, y: 50, fit: "whole" },
   "cover.jpg": { label: "Symposium audience", x: 50, y: 50, fit: "cover" },
   "microbix.jpg": { label: "Inside the Microbix facility", x: 50, y: 26, fit: "cover" },
   "keynote.jpg": { label: "Christopher Procyshyn · keynote", x: 53, y: 19, fit: "portrait" },
@@ -102,6 +104,7 @@ export function workshopPhotos(page: ReportPage, row?: string) {
 
 export function workshopTileHeight(page: ReportPage) {
   if (page.id === "venturelift") return 180;
+  if (page.id === "program-impact") return 72;
   if (page.id === "training-week") return 140;
   if (page.id === "professional-development") return 214;
   return 180;

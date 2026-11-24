@@ -1,9 +1,11 @@
+import { reportUnifiedSource } from "./report-unified-source";
 import { reportPanelSizeSource } from "./report-panel-size-source";
 
 /** Report-only review tools. Uses the overlay's existing comment API and anchor format. */
 export function reportToolsSource(): string {
   return String.raw`
   ${reportPanelSizeSource()}
+  ${reportUnifiedSource()}
   var reportDrawMode = null;
   var reportDrawDrag = null;
   var reportDrawPreview = null;
@@ -57,7 +59,7 @@ export function reportToolsSource(): string {
     var target=document.elementsFromPoint(cx,cy).map(function(el){return el.closest(reportTargets);}).find(function(el){return el&&drawing.page.contains(el);});
     var anchor=anchorsFor(target||drawing.page);
     anchor.anchorBlock=((drawing.page.getAttribute('aria-label')||'').slice(0,100)+' · [draw:'+drawing.shape+':'+drawing.points.map(function(n){return n.toFixed(4);}).join(',')+']').slice(0,200);
-    anchor.drawing={shape:drawing.shape,points:drawing.points};state.selected=anchor;state.panelCollapsed=false;state.draft='';reportDrawMode=null;state.pickingElement=true;render();
+    anchor.drawing={shape:drawing.shape,points:drawing.points};state.selected=anchor;state.panelCollapsed=false;state.draft='';reportDrawMode=null;state.pickingElement=false;render();
   }
   function reportDrawingMarker(marker,comment,anchor) {
     var drawing=reportDrawingData(comment),page=anchor.closest(pageSelector);if(!drawing||!page)return;
@@ -140,23 +142,17 @@ export function reportToolsSource(): string {
     var toolbar = make('div', 'bhn-report-toolbar');
     toolbar.setAttribute('role', 'toolbar');
     toolbar.setAttribute('aria-label', 'Report review toolbar');
+    var more=make('details','bhn-report-menu');var moreSummary=make('summary','','⋯');moreSummary.setAttribute('aria-label','More review tools');more.appendChild(moreSummary);var moreBody=make('div','bhn-report-menu-content');more.appendChild(moreBody);
     if (state.viewer && !isLocked()) {
-      var edit = addButton('Edit text and photos', 'bhn-rv-btn', function(){ reportMode(true, false); });
-      edit.setAttribute('aria-pressed', String(!state.pickingElement && !state.insertingSection));
-      edit.disabled = state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null || reportAnnotationDraft();
-      var insert = addButton('Add a section', 'bhn-rv-btn', function(){ reportMode(false, !state.insertingSection); });
-      insert.setAttribute('aria-pressed', String(!!state.insertingSection));
-      insert.disabled = edit.disabled;
-      toolbar.appendChild(edit); toolbar.appendChild(insert);
-      ['circle','line'].forEach(function(shape){
-        var button=addButton(shape === 'circle' ? 'Circle comment' : 'Line comment','bhn-rv-btn',function(){
-          var next=reportDrawMode===shape?null:shape;reportMode(false,false);reportDrawMode=next;state.pickingElement=!next;render();
-        });button.setAttribute('aria-pressed',String(reportDrawMode===shape));button.disabled=edit.disabled;toolbar.appendChild(button);
-      });
+      var disabled=state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null||reportAnnotationDraft();
+      var edit=addButton('Edit & comment','bhn-rv-btn bhn-report-unified',function(){reportMode(true,false);});edit.setAttribute('aria-pressed',String(!state.pickingElement&&!state.insertingSection&&!reportDrawMode));edit.disabled=disabled;toolbar.appendChild(edit);
+      var insert=addButton('+ Section','bhn-rv-btn',function(){reportMode(false,!state.insertingSection);});insert.setAttribute('aria-label','Add a section');insert.setAttribute('aria-pressed',String(!!state.insertingSection));insert.disabled=disabled;toolbar.appendChild(insert);
+      var draw=make('details','bhn-report-menu');draw.appendChild(make('summary','','Draw'));var drawBody=make('div','bhn-report-menu-content');draw.appendChild(drawBody);
+      ['circle','line'].forEach(function(shape){var button=addButton(shape==='circle'?'Circle comment':'Line comment','bhn-rv-btn',function(){var next=reportDrawMode===shape?null:shape;reportMode(true,false);reportDrawMode=next;state.pickingElement=!!next;render();});button.setAttribute('aria-pressed',String(reportDrawMode===shape));button.disabled=disabled;drawBody.appendChild(button);});toolbar.appendChild(draw);
     }
-    Array.from(body.children).filter(function(el){ return el.matches('.bhn-rv-element-pick,.bhn-rv-compare-open'); }).forEach(function(el){ toolbar.appendChild(el); });
-    body.prepend(toolbar);
-    renderReportPanelSize(body);
+    Array.from(body.children).filter(function(el){return el.matches('.bhn-rv-element-pick,.bhn-rv-compare-open');}).forEach(function(el){moreBody.appendChild(el);});
+    toolbar.appendChild(more);body.prepend(toolbar);renderReportPanelSize(body,moreBody);
+    if(state.viewer&&!isLocked()&&!state.insertingSection&&!reportDrawMode){var guide=make('p','bhn-report-guide','Click text or a photo to edit. Use the nearby comment icon for feedback.');toolbar.after(guide);}
     if (state.insertingSection) {
       var tip = make('p', 'bhn-rv-notice', 'Click a gap between items on the report. Describe the new section; it will remain a pinned insertion request until the next revision.');
       toolbar.after(tip);
@@ -215,7 +211,7 @@ export function reportToolsSource(): string {
     anchors.anchorBlock = ((gap.page.getAttribute('aria-label') || '') + ' · Insert section ' + anchors.insertion + ' this element').slice(0,200);
     state.selected = anchors;
     state.insertingSection = false;
-    state.pickingElement = true;
+    state.pickingElement = false;
     state.panelCollapsed = false;
     if (reportInsertLine) reportInsertLine.hidden = true;
     render();
@@ -234,6 +230,10 @@ export function reportToolsSource(): string {
   }
   function cleanupReportTools() {
     document.removeEventListener('keydown',reportDrawEscape,true);
+    document.removeEventListener('focusin',reportFocusComment);
+    if(reportCommentButton)reportCommentButton.remove();
+    root.removeEventListener('toggle',reportMenuPosition,true);
+    document.removeEventListener('keydown',reportMenuEscape);
     document.removeEventListener('pointerdown',reportDrawStart,true);document.removeEventListener('pointermove',reportDrawMove,true);document.removeEventListener('pointerup',reportDrawEnd,true);document.removeEventListener('pointercancel',reportDrawCancel,true);
     if (reportDrawPreview) reportDrawPreview.remove();
     if (reportToolsObserver) reportToolsObserver.disconnect();
@@ -242,7 +242,8 @@ export function reportToolsSource(): string {
   }
   if (reportReview) document.addEventListener('keydown',reportDrawEscape,true);
   function reportDrawEscape(event) {
-    if (event.key==='Escape' && (reportDrawMode||reportAnnotationDraft())) { reportDrawMode=null;reportDrawDrag=null;reportDrawSuppressClick=false;state.selected=null;state.draft='';state.pickingElement=true;render();return; }
+    if(event.key==='Escape'&&state.pickingElement&&!reportDrawMode&&!state.selected&&!state.insertingSection){state.pickingElement=false;render();return;}
+    if (event.key==='Escape' && (reportDrawMode||reportAnnotationDraft())) { reportDrawMode=null;reportDrawDrag=null;reportDrawSuppressClick=false;state.selected=null;state.draft='';state.pickingElement=false;render();return; }
     var page=event.target.closest&&event.target.closest(scopeSelector);
     if (!reportDrawMode||!page||isLocked()) return;
     if (event.key==='Enter') {

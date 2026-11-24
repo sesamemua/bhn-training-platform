@@ -56,7 +56,7 @@ const page = z.object({
   registration: registrationChart.optional(),
   showCaptions: z.boolean().optional(),
   fillPhotos: z.boolean().optional(),
-  photos: z.record(z.string().regex(/^(0|[1-9]\d?|portrait-[1-5]|photo-(?:0|[1-9]\d?)-[1-5]|workshop-[1-7]-[1-6])$/), reportPhoto).optional(),
+  photos: z.record(z.string().regex(/^(0|[1-9]\d?|portrait-[1-5]|photo-(?:0|[1-9]\d?)-[1-5]|workshop-[1-9]-[1-6])$/), reportPhoto).optional(),
   frames: z.number().int().min(1).max(20),
 });
 export const reportSchema = z.object({

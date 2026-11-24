@@ -399,7 +399,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         <div className={styles.reviewState}>
           <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? nextRoundReady ? `Round ${review.round + 1} ready for review` : "Round locked" : "In review"} · Round {review.round}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
-          {editable && <p>Comment mode is on by default. Use “Edit text and photos” in the upper-right toolbar to make changes. Edits save automatically.</p>}
+          {editable && <p>Click text to edit, click a photo for photo tools, or use the nearby comment icon to leave feedback. Edits save automatically.</p>}
           {!fullPageReview && <p>{nextRoundReady ? `View only. Open Round ${review.round + 1} review, then an administrator can start it.` : `View only. Use the red “Start Round ${review.round} review” button to comment or edit the report.`}</p>}
         </div>
         <div className={styles.actions}>

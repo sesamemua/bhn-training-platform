@@ -399,6 +399,7 @@ test("every class the overlay styles is its own, so a reviewed page cannot be re
     .filter((cls) => !cls.startsWith(".bhn-rv-") && !cls.startsWith(".bhn-review-") && ![
       // Owned report review controls added by the existing report workflow.
       ".bhn-report-copy-flow", ".bhn-report-drawing", ".bhn-report-drawing-draft",
+      ".bhn-report-inline-comment", ".bhn-report-menu", ".bhn-report-menu-content", ".bhn-report-unified", ".bhn-report-guide",
       ".bhn-report-toolbar", ".bhn-report-insertion-line", ".bhn-report-insertion-bubble",
     ].includes(cls));
   assert.deepEqual([...new Set(stray)], [], "these class names are not scoped to the overlay");
