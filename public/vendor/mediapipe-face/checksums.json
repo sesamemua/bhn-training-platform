@@ -1,0 +1,9 @@
+{
+  "LICENSE": "8707eef0533987efc5b155d64761eeb6e20793f50b9bd1a68dad1cf4719d0ed8",
+  "SOURCE.md": "1adb1b1c1e4206a4671b4581f7434d2a2d75e7bb9af24a4b9c4a00de2fa48958",
+  "README.md": "8326ed0beb1983b69cccb190937c2e368388969cb3ade06010fe51e0d5339308",
+  "blaze_face_short_range.tflite": "b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f",
+  "vision_bundle.mjs": "fb0c02c296f44ce0cc324ba16bd646d8773eb4a7847db4019cc4d0430db7a9b5",
+  "wasm/vision_wasm_internal.wasm": "225bc06c0f51a9cf31fea0e9e0b0243e9e01fb5ef332cc1a7fa6656dbdfdaabf",
+  "wasm/vision_wasm_internal.js": "2aa5fd3fdd3d8208cd7587df0bb19fb6925c4ea16a76dd025aedc1f64d6a6309"
+}

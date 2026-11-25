@@ -3,6 +3,7 @@ import type { ReportPage, ReportPhoto } from "./document";
 type PhotoPreset = { label: string; x: number; y: number; fit: "cover" | "portrait" | "whole" };
 
 export const reportPhotos = {
+  "team-placeholder.webp": { label: "Profile placeholder", x: 50, y: 50, fit: "cover" },
   "program-venturelift-accelerate.webp": { label: "VentureLift Accelerate program logo", x: 50, y: 50, fit: "whole" },
   "program-innovation-fellowship.webp": { label: "Innovation Fellowship program logo", x: 50, y: 50, fit: "whole" },
   "cover.jpg": { label: "Symposium audience", x: 50, y: 50, fit: "cover" },

@@ -333,7 +333,7 @@
   filter: blur(28px) brightness(.38);
 }
 .photoMat img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: var(--photo-focus); min-height: 0; }
-.photoMat[data-fit="portrait"] img { left: 50%; right: auto; transform: translateX(-50%); width: auto; max-width: 100%; aspect-ratio: 5 / 4; }
+.photoMat[data-fit="portrait"] img { object-fit: cover; }
 .photoMat[data-fit="whole"] img { object-fit: contain; }
 /* A quarter turn swaps the image box so the rotated photo still fills the frame. */
 .photoMat[data-turned] { container-type: size; }
@@ -886,6 +886,73 @@
 .mentorPhotoStrip .photoMat { aspect-ratio:3 / 2!important; }
 .chapter[data-section="career-conversations"]:has(.mentorPhotoStrip) { --figure-height:auto; }
 .chapter[data-section="career-conversations"] .copy { grid-row:3; }
+
+/* The editor previews the measured print frame and protects only its selected main subject. */
+.photoPreviewLabel { margin:0;font-size:12px;font-weight:750;color:var(--report-teal); }
+.sourcePreview { position:relative;max-height:28dvh;width:fit-content;max-width:100%;margin-inline:auto;touch-action:auto; }
+.sourcePreview>img { display:block;max-width:100%;max-height:28dvh;width:auto;height:auto; }
+.sourcePreview[data-mark-head] { cursor:crosshair;touch-action:none; }
+.protectedHead { position:absolute;box-sizing:border-box;border:2px solid #29a56a;background:#29a56a18;pointer-events:none; }
+.subjectTools { display:flex;flex-wrap:wrap;align-items:center;gap:8px; }
+.subjectTools label { min-width:170px; }
+.subjectTools button,.photoTools button { min-height:44px; }
+.detectionNote { font-size:12px;line-height:1.4;margin:0;color:var(--report-slate); }
+.cropRisk,.cropSafe { display:grid;gap:8px;padding:10px 12px;border-radius:5px;font-size:13px;line-height:1.4; }
+.cropRisk { background:#fff1d6;border:1px solid #b67716;color:#694010; }
+.cropSafe { background:#eaf6ee;border:1px solid #88ad95;color:#245236; }
+.cropRisk p { margin:0; }
+.headWarning { position:absolute;left:6px;bottom:6px;z-index:2;background:#fff1d6;color:#694010;border:1px solid #b67716;padding:4px 6px;font:700 10px/1.3 Arial,sans-serif;pointer-events:none; }
+.cropControls input[type="number"] { max-width:80px; }
+.subjectCoordinates { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border:1px solid var(--report-rule);padding:10px; }
+.subjectCoordinates legend { font-size:12px; }
+.subjectCoordinates input { width:100%;min-height:44px; }
+.cropAudit { margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;line-height:1.4; }
+.cropAudit>button { display:flex;align-items:center;gap:6px;min-height:44px; }
+.cropAudit p { margin:8px 0; }
+.cropAudit summary { cursor:pointer;font-weight:700; }
+.cropAudit ul { display:grid;gap:10px;max-height:260px;overflow:auto;padding-left:16px; }
+.cropAudit li { display:grid;gap:3px; }
+.cropAudit li strong { font-size:11px; }
+
+/* Program overview: taller paired photos, optically balanced logos. */
+.chapter[data-section="program-impact"][data-photo-pair="true"]:not([data-continued="true"]) { --figure-height:190px; }
+.chapter[data-section="program-impact"] .copy { padding-bottom:0; }
+.chapter[data-section="program-impact"] .paragraph { font-size:13px;line-height:1.36;padding-bottom:7px; }
+.chapter[data-section="program-impact"] .heading { font-size:17px;padding-block:7px; }
+.chapter[data-section="program-impact"] .quote { position:static;font-size:14px;line-height:1.35;margin-top:6px;padding:10px 12px; }
+.chapter[data-section="program-impact"] .ventureProfile .photoMat { height:72px; }
+
+/* Venture rows remain one editable story, distributed evenly over the page. */
+.chapter[data-section="venturelift"] .story { display:grid;gap:8px; }
+.stage .chapter[data-section="venturelift"] .story { height:100%;grid-template-rows:repeat(7,minmax(0,1fr)); }
+.chapter[data-section="venturelift"] .ventureProfile { padding:10px 12px;align-items:center;border:0;border-radius:5px;background:rgb(23 104 121 / 6%); }
+.chapter[data-section="venturelift"] .ventureProfile:nth-child(even) { background:rgb(30 55 101 / 5%); }
+.chapter[data-section="venturelift"] .ventureProfile .paragraph { font-size:13px;line-height:1.34; }
+
+/* Expertise cards keep all written profiles, with aligned colored groups. */
+.chapter[data-section="career-conversations"] .story { column-count:initial; }
+.mentorGroups { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px; }
+.mentorGroup { min-width:0;background:rgb(23 104 121 / 6%);padding:10px 11px;border-radius:5px; }
+.mentorGroup:nth-child(3n+2) { background:rgb(30 55 101 / 6%); }
+.mentorGroup:nth-child(3n) { background:rgb(103 117 157 / 9%); }
+.chapter[data-section="career-conversations"] .mentorGroup .heading { padding-top:0;margin-bottom:6px; }
+.chapter[data-section="career-conversations"] .mentorGroup .paragraph { font-size:12px;line-height:1.34;padding-bottom:8px; }
+.chapter[data-section="career-conversations"] .mentorGroup .paragraph::first-line { font-weight:750; }
+.stage .chapter[data-section="career-conversations"] .story { height:100%; }
+.stage .chapter[data-section="career-conversations"] .mentorGroups { height:100%;grid-template-rows:repeat(3,minmax(0,1fr)); }
+
+/* Short discussion continuations use the available space for readable notes and larger pictures. */
+.chapter[data-section="discussion"]:is([data-frame-index="1"],[data-frame-index="3"]) .list { padding:6px 10px 6px 24px;background:rgb(23 104 121 / 5%);border-radius:4px;margin-bottom:6px; }
+.chapter[data-section="discussion"]:is([data-frame-index="1"],[data-frame-index="3"]) .bullet { font-size:13.5px;line-height:1.38; }
+
+/* Strategy portrait uses the same physical frame as leadership; program placeholder aligns with its peers. */
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile[data-team-group="partners"] { grid-template-columns:calc((100% - 42px)/4) 1fr; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .chapterHead { padding-bottom:12px; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .chapterHead h2 { font-size:34px;margin-bottom:6px; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .chapterHead>span { padding-bottom:6px; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .pageIntro { margin-top:8px;font-size:13px;line-height:1.36; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .story { row-gap:9px; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile { gap:7px; }
 
 /* Report navigation keeps Pages, Changes and Mentions together. */
 .navigationRail .tabs { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;align-items:stretch; }

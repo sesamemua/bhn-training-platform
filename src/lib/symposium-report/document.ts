@@ -23,9 +23,11 @@ const reportPhoto = z.object({
   y: z.number().int().min(0).max(100),
   fit: z.enum(["cover", "portrait", "whole"]),
   // Optional, so copies saved before these existed still load.
-  zoom: z.number().int().min(100).max(300).optional(),
+  zoom: z.number().int().min(50).max(300).optional(),
   rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).optional(),
   flip: z.boolean().optional(),
+  subject: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), width: z.number().positive().max(1), height: z.number().positive().max(1), source: z.enum(["detected", "manual"]).optional() })
+    .refine(r => r.x + r.width <= 1.001 && r.y + r.height <= 1.001, "Keep the protected head within the source photo").optional(),
   /** Removed from the page (the main photo slot would otherwise fall back to a recommended one). */
   hidden: z.literal(true).optional(),
 });
@@ -56,7 +58,7 @@ const page = z.object({
   registration: registrationChart.optional(),
   showCaptions: z.boolean().optional(),
   fillPhotos: z.boolean().optional(),
-  photos: z.record(z.string().regex(/^(0|[1-9]\d?|portrait-[1-5]|photo-(?:0|[1-9]\d?)-[1-5]|workshop-[1-9]-[1-6])$/), reportPhoto).optional(),
+  photos: z.record(z.string().regex(/^(0|[1-9]\d?|portrait-[1-5]|photo-(?:0|[1-9]\d?)-[1-5]|workshop-[1-9]\d?-[1-6])$/), reportPhoto).optional(),
   frames: z.number().int().min(1).max(20),
 });
 export const reportSchema = z.object({

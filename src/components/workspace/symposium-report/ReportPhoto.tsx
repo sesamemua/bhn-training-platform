@@ -6,6 +6,8 @@ import type { ReportPhoto } from "@/lib/symposium-report/document";
 import { photoAdjust, photoLabel, REPORT_ASSETS } from "@/lib/symposium-report/photos";
 import { REPORT_API } from "@/lib/symposium-report/document";
 import { PHOTO_UPLOAD_LIMIT, type GalleryEntry, type GalleryGroup } from "@/lib/symposium-report/gallery";
+import { headCropRisk, headSafeCrop, primaryHead, clamp, type HeadRegion, type ImageSize } from "@/lib/images/head-crop";
+import { detectHeads } from "@/lib/images/detect-heads";
 import styles from "./report.module.css";
 
 /** The img's zoom, mirror and turn; zooms toward the crop focus. */
@@ -21,16 +23,27 @@ export function PhotoFigure({ photo, height, lead = false, caption = true, slot 
 }) {
   const source = `${REPORT_ASSETS}/${photo.file}`;
   const label = photoLabel(photo);
+  const mat = useRef<HTMLDivElement>(null);
+  const [clipped, setClipped] = useState(false);
+  const [size, setSize] = useState<ImageSize | null>(null);
+  useEffect(() => {
+    const node = mat.current;
+    if (!node || !photo.subject || !size) return;
+    const update = () => setClipped(headCropRisk(photo.subject!, size, { width: node.clientWidth, height: node.clientHeight }, photo).clipped);
+    const observer = new ResizeObserver(update); observer.observe(node); update();
+    return () => observer.disconnect();
+  }, [photo, size]);
   const style = {
     aspectRatio: `684 / ${height}`,
     "--photo-background": `url("${source}")`,
     "--photo-focus": `${photo.x}% ${photo.y}%`,
   } as CSSProperties;
   return (
-    <figure className={lead ? styles.photo : styles.fillPhoto} data-report-photo={photo.file} data-photo-slot={slot}>
-      <div className={styles.photoMat} style={style} data-fit={photo.fit} data-turned={photoAdjust(photo).turned || undefined}>
+    <figure className={lead ? styles.photo : styles.fillPhoto} data-report-photo={photo.file} data-photo-slot={slot} data-head-clipped={photo.subject && clipped || undefined}>
+      <div ref={mat} className={styles.photoMat} style={style} data-fit={photo.fit} data-turned={photoAdjust(photo).turned || undefined}>
         {/* eslint-disable-next-line @next/next/no-img-element -- same authenticated artwork for preview and print */}
-        <img src={source} alt={label} style={adjustStyle(photo)} />
+        <img src={source} alt={label} style={adjustStyle(photo)} onLoad={event => { const img = event.currentTarget; setSize({ width: img.naturalWidth, height: img.naturalHeight }); }} />
+        {photo.subject && clipped && <span className={`${styles.headWarning} report-screen-only`}>Main head is cropped · adjust photo</span>}
       </div>
       {caption && <figcaption>{label}</figcaption>}
     </figure>
@@ -105,6 +118,36 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
     ?? groups?.[0];
   const photo = selected ?? automatic;
   const fixedCrop = cover || portrait;
+  const original = useRef<HTMLImageElement>(null);
+  const [heads, setHeads] = useState<HeadRegion[]>([]);
+  const [checking, setChecking] = useState(false);
+  const [detectionNote, setDetectionNote] = useState("");
+  const [imageSize, setImageSize] = useState<ImageSize | null>(null);
+  const [manual, setManual] = useState(false);
+  const regionDrag = useRef<{ x: number; y: number } | null>(null);
+  const frameSize = { width: 684, height };
+  const risk = photo.subject && imageSize ? headCropRisk(photo.subject, imageSize, frameSize, fixedCrop ? { ...photo, fit: "cover" } : photo) : null;
+  const safe = photo.subject && imageSize && risk?.clipped ? headSafeCrop(photo.subject, imageSize, frameSize, photo) : null;
+  async function analyze() {
+    const image = original.current;
+    if (!image?.complete || !image.naturalWidth) return;
+    const file = photo.file;
+    setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
+    setChecking(true); setDetectionNote(""); setHeads([]);
+    try {
+      const candidates = await detectHeads(image);
+      if (original.current !== image || image.getAttribute("src") !== `${REPORT_ASSETS}/${file}`) return;
+      setHeads(candidates);
+      const suggested = primaryHead(candidates);
+      setDetectionNote(candidates.length ? `${candidates.length} head candidate${candidates.length === 1 ? "" : "s"}. Only the selected main subject is checked.` : "No clear face detected. You can mark the main head manually, including a face on a screen.");
+      if (suggested) setSelected(current => { const value = current ?? automatic; return value.file === file && !value.subject ? { ...value, subject: suggested } : current; });
+    } catch { setDetectionNote("Automatic detection is unavailable. Mark the main head manually to check this crop."); }
+    finally { setChecking(false); }
+  }
+  function markPoint(event: PointerEvent<HTMLDivElement>) {
+    const box = event.currentTarget.getBoundingClientRect();
+    return { x: clamp((event.clientX - box.left) / box.width), y: clamp((event.clientY - box.top) / box.height) };
+  }
 
   useEffect(() => {
     const abort = new AbortController();
@@ -204,12 +247,39 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </div>
         <div className={styles.photoPreview}>
+          <p className={styles.photoPreviewLabel}>Full source · choose the main subject</p>
+          <div className={styles.sourcePreview} data-mark-head={manual || undefined}
+            onPointerDown={event => { if (!manual) return; regionDrag.current = markPoint(event); event.currentTarget.setPointerCapture(event.pointerId); }}
+            onPointerUp={event => { const from = regionDrag.current; regionDrag.current = null; if (!manual || !from) return; const to = markPoint(event); const width = Math.abs(to.x - from.x), headHeight = Math.abs(to.y - from.y); if (width > .01 && headHeight > .01) adjust({ subject: { x: Math.min(from.x, to.x), y: Math.min(from.y, to.y), width, height: headHeight, source: "manual" } }); setManual(false); }} onPointerCancel={() => { regionDrag.current = null; }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- same-origin source analyzed entirely in the browser */}
+            <img ref={original} src={`${REPORT_ASSETS}/${photo.file}`} alt="Full uncropped source" onLoad={() => void analyze()} draggable={false} />
+            {photo.subject && <span className={styles.protectedHead} style={{ left: `${photo.subject.x * 100}%`, top: `${photo.subject.y * 100}%`, width: `${photo.subject.width * 100}%`, height: `${photo.subject.height * 100}%` }} />}
+          </div>
+          <div className={styles.subjectTools}>
+            {heads.length > 0 && <label>Main subject<select aria-label="Main subject" value={heads.findIndex(h => h === photo.subject || JSON.stringify(h) === JSON.stringify(photo.subject))} onChange={event => { const head = heads[Number(event.target.value)]; if (head) adjust({ subject: head }); }}><option value={-1}>Manual or saved selection</option>{heads.map((_, i) => <option key={i} value={i}>Head {i + 1}</option>)}</select></label>}
+            <button type="button" aria-pressed={manual} onClick={() => { setManual(!manual); if (!photo.subject) adjust({ subject: { x: .35, y: .15, width: .3, height: .3, source: "manual" } }); }}>Mark main head</button>
+            <button type="button" disabled={checking} onClick={() => void analyze()}>Check heads again</button>
+            {photo.subject && <button type="button" onClick={() => adjust({ subject: undefined })}>Clear head protection</button>}
+          </div>
+          {manual && <p>Drag a box around the main person’s full head, including hair. Side and bottom bystanders are not checked. Alternatively choose a detected head above.</p>}
+          {manual && photo.subject && <fieldset className={styles.subjectCoordinates}><legend>Protected head box · source image percent</legend>{(["x", "y", "width", "height"] as const).map(key => <label key={key}>{({ x: "Left", y: "Top", width: "Width", height: "Height" })[key]}<input type="number" min={key === "width" || key === "height" ? 1 : 0} max={100} step={.1} value={Math.round(photo.subject![key] * 1000) / 10} onChange={event => {
+            const head = { ...photo.subject!, source: "manual" as const };
+            const maximum = key === "x" ? 1 - head.width : key === "y" ? 1 - head.height : key === "width" ? 1 - head.x : 1 - head.y;
+            head[key] = clamp(Number(event.target.value) / 100, key === "width" || key === "height" ? .01 : 0, maximum); adjust({ subject: head });
+          }} /></label>)}</fieldset>}
+          <p role="status" className={styles.detectionNote}>{checking ? "Checking source faces locally…" : detectionNote}</p>
+          <p className={styles.photoPreviewLabel}>Actual report frame · {Math.round(684 / height * 100) / 100}:1</p>
           <div className={styles.photoDrag} style={{ "--photo-preview-ratio": 684 / height } as CSSProperties} onPointerDown={startDrag} onPointerMove={moveDrag}
             onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} title="Drag to move the crop">
             <PhotoFigure photo={fixedCrop ? { ...photo, fit: "cover" } : photo} height={height} caption={false} />
           </div>
+          {risk && <div role="status" className={risk.clipped ? styles.cropRisk : styles.cropSafe}>
+            {risk.clipped ? "The selected main head is cut off in the report frame." : "The selected main head fits inside the report frame."}
+            {safe && <button type="button" onClick={() => adjust(safe)}>Protect head · adjust crop</button>}
+            {risk.clipped && !safe && <p>Use Show full photograph, a taller frame or a different photo.</p>}
+          </div>}
           <div className={styles.photoTools} role="group" aria-label="Adjust photo">
-            <label>Zoom<input type="range" min={100} max={300} step={5} value={photo.zoom ?? 100}
+            <label>Zoom · {photo.zoom ?? 100}%<input type="range" min={50} max={300} step={1} value={photo.zoom ?? 100}
               onChange={(e) => adjust({ zoom: Number(e.target.value) === 100 ? undefined : Number(e.target.value) })} /></label>
             {!cover && <>
               <button type="button" onClick={() => turn(270)} title="Rotate left"><RotateCcw size={14} aria-hidden /> Rotate left</button>
@@ -231,8 +301,8 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
             </select>
           </label>}
           {(fixedCrop || photo.fit !== "whole") && <div className={styles.cropControls}>
-            <label>Horizontal crop<input type="range" min={0} max={100} value={photo.x} onChange={(e) => setCrop("x", Number(e.target.value))} /></label>
-            <label>Vertical crop<input type="range" min={0} max={100} value={photo.y} onChange={(e) => setCrop("y", Number(e.target.value))} /></label>
+            <label>Horizontal crop · {photo.x}%<input type="range" min={0} max={100} value={photo.x} onChange={(e) => setCrop("x", Number(e.target.value))} /><input type="number" aria-label="Horizontal crop percent" min={0} max={100} value={photo.x} onChange={e => setCrop("x", Math.round(clamp(Number(e.target.value), 0, 100)))} /></label>
+            <label>Vertical crop · {photo.y}%<input type="range" min={0} max={100} value={photo.y} onChange={(e) => setCrop("y", Number(e.target.value))} /><input type="number" aria-label="Vertical crop percent" min={0} max={100} value={photo.y} onChange={e => setCrop("y", Math.round(clamp(Number(e.target.value), 0, 100)))} /></label>
           </div>}
         </div>
       </div>

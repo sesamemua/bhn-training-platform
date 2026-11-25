@@ -11,6 +11,7 @@ import { baselineOf, reportFields, type ReportChanges } from "@/lib/symposium-re
 import { mergeReports } from "@/lib/symposium-report/merge";
 import { hasTrainingPhotoGrid, MIN_FILL_PHOTO, pagePhoto, photoPreset, portraitHeight, stripPhotos, TRAINING_TILE_PREVIEW_HEIGHT, workshopTileHeight } from "@/lib/symposium-report/photos";
 import { PhotoEditor } from "./ReportPhoto";
+import { ReportCropCheck } from "./ReportCropCheck";
 import { ReportReviewShare } from "./ReportReviewShare";
 import { ReportPresence } from "./ReportPresence";
 import styles from "./report.module.css";
@@ -261,6 +262,12 @@ export function ReportEditor({ report: initial, revision, history, review: initi
         ? TRAINING_TILE_PREVIEW_HEIGHT
         : portraitHeight(stripPhotos(entry.page, frame.index).length);
     }
+    // The printed CSS can override a nominal figure height (pairs, logos, portraits).
+    // Preview exactly the clicked frame rather than a generic gallery aspect ratio.
+    const clicked = Array.from(window.document.getElementById(`report-frame-${frame.id}-${frame.index}`)?.querySelectorAll<HTMLElement>("[data-photo-slot]") ?? []).find(node => node.dataset.photoSlot === (slot ?? ""));
+    const actualFrame = clicked?.querySelector<HTMLElement>("[data-fit]") ?? (clicked?.tagName === "IMG" ? clicked : null);
+    const actual = actualFrame?.getBoundingClientRect();
+    if (actual && actual.width > 0 && actual.height > 0) height = 684 * actual.height / actual.width;
     setEdit({
       frame, automatic, slot,
       initial: entry ? current ?? (existingHeight ? undefined : automatic) : report.cover.photo,
@@ -471,6 +478,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
               {removable && <button type="button" disabled={controlsDisabled} onClick={removePage}><Trash2 size={15} /> {active.index === 0 ? "Remove section" : "Remove linked page"}</button>}
               <p>Linked pages share one story. Extra pages appear as the text grows.</p>
             </div>}
+            <ReportCropCheck report={document} disabled={!!edit || busy} onPhoto={editable ? startPhoto : undefined} />
           </>}
           {tab === "comments" && <label className={styles.reviewJump}>Jump to page
             <select aria-label="Jump to page" value={`${active.id}:${active.index}`} disabled={!!edit} onChange={(e) => {

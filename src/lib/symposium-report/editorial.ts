@@ -32,7 +32,8 @@ export function teamGroup(page: ReportPage, block: Block) {
 }
 
 /** Only the requested platform call to action; report text stays the editable source. */
-export const editorialAction = (page: ReportPage, block: Block) => page.id === 'program-impact' && block.text.trim() === 'BioHubNet Online Training Platform' ? 'https://app.biohubnet.ca/userlogin/' : undefined;
+export const editorialAction = (page: ReportPage, block: Block) => page.id === 'program-impact' && block.text.trim() === 'BioHubNet Online Training Platform' ? 'https://app.biohubnet.ca/userlogin/'
+  : page.id === 'symposium-feedback' && block.text.trim() === 'Complete the Annual Symposium feedback form' ? 'https://docs.google.com/forms/d/e/1FAIpQLSeDtLSMZESQ849RL-pA4NU5TihYwxojHrdW5jMnSyVCfUdZKg/viewform' : undefined;
 
 /** Venture titles belong to the same row as their description and swappable photo. */
 export const ventureHeading = (page: ReportPage, blocks: Block[], index: number) => page.id === 'venturelift' && blocks[index]?.photoRow && blocks[index - 1]?.kind === 'heading' ? blocks[index - 1] : undefined;
