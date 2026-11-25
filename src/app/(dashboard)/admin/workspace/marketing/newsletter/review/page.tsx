@@ -14,6 +14,8 @@ import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
 import { NewsletterReviewClient, SignOff } from "@/components/workspace/NewsletterReviewClient";
 import { NewsletterPageReview } from "@/components/workspace/NewsletterPageReview";
+import { NewsletterArchive } from "@/components/workspace/NewsletterArchive";
+import { newsletterArchiveKey, parseNewsletterArchiveMetadata } from "@/lib/newsletter/archive";
 import { PastedNewsletterReview } from "@/components/workspace/PastedNewsletterReview";
 import { renderIssue } from "@/lib/newsletter/render";
 import { getNewsletterMedia } from "@/lib/newsletter/media";
@@ -32,6 +34,26 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
   const requestedIssue = typeof query.issue === "string" && query.issue.trim() ? query.issue : null;
   const session = await requireRole("instructor").catch(() => null);
   if (!session) redirect(await deniedRedirect(`/admin/workspace/marketing/newsletter/review${requestedIssue ? `?issue=${encodeURIComponent(requestedIssue)}` : ""}`));
+
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+  const resolved = requestedIssue ? null : await resolveCurrentIssue(today);
+  const issue = await prisma.newsletterIssue.findUnique({
+    where: { id: requestedIssue ?? resolved!.issueId },
+    include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
+  });
+  if (requestedIssue && !issue) notFound();
+
+  // A sent issue is an archive, never a draft/review source. In particular,
+  // do not replace it with a same-month paste or open any review/cycle state.
+  if (issue?.status === "sent") {
+    const key = newsletterArchiveKey(issue.id);
+    const row = key ? await prisma.platformSetting.findUnique({ where: { key }, select: { value: true } }) : null;
+    return <div className="space-y-6">
+      <PageHero eyebrow={<><Mail size={11} /> Workspace · Marketing</>} title={issue.title} description="Sent newsletter archive" />
+      <NewsletterNav />
+      <NewsletterArchive title={issue.title} dateline={issue.dateline} html={issue.renderedHtml} metadata={parseNewsletterArchiveMetadata(row?.value, issue.id)} />
+    </div>;
+  }
 
   // The most recently touched paste, so the section reopens on what
   // somebody was last reviewing rather than an empty box.
@@ -55,16 +77,7 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
       }
     : null;
 
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
-  const [resolved, config] = await Promise.all([
-    requestedIssue ? Promise.resolve(null) : resolveCurrentIssue(today),
-    getNewsletterConfig(),
-  ]);
-  const issue = await prisma.newsletterIssue.findUnique({
-    where: { id: requestedIssue ?? resolved!.issueId },
-    include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
-  });
-  if (requestedIssue && !issue) notFound();
+  const config = await getNewsletterConfig();
   const selectedCycle = requestedIssue ? await prisma.newsletterCycle.findFirst({ where: { issueId: requestedIssue } }) : null;
 
   const hero = (

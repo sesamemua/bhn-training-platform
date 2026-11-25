@@ -147,7 +147,8 @@ test("past issues exclude current and future drafts but keep sent issues, withou
   assert.deepEqual(query.where.id.notIn, ["current", "future"]);
   assert.match(html, /September newsletter/);
   assert.match(html, /review\?issue=september/);
-  assert.match(html, /4 contributions/);
+  assert.doesNotMatch(html, /4 contributions/, "sent archives do not present editorial contribution counts");
+  assert.match(html, /Read-only/);
   assert.match(html, /sent/);
   currentSent = true;
   await Page();
@@ -191,7 +192,7 @@ test("newsletter has an issue-specific sharing control and chameleon is no longe
   assert.doesNotMatch(icon, /lucide-messages-square/);
 });
 
-test("shared issue links retain their issue and sign-off after login, without resolving or creating a current issue", async () => {
+test("sent issue links retain their exact archive after login without resolving, opening review or showing sign-off", async () => {
   let authorized = true, found = true, returnTo = "";
   const Page = loadModule("src/app/(dashboard)/admin/workspace/marketing/newsletter/review/page.tsx", {
     "next/navigation": { redirect: () => { throw new Error("login"); }, notFound: () => { throw new Error("not found"); } },
@@ -200,24 +201,25 @@ test("shared issue links retain their issue and sign-off after login, without re
     "@/lib/newsletter/config": { getNewsletterConfig: async () => ({ approver: { name: "Approver" } }), isApprover: () => false },
     "@/lib/newsletter/render": { renderIssue: () => { throw new Error("sent issues must use their saved HTML"); } },
     "@/lib/newsletter/media": { getNewsletterMedia: () => { throw new Error("sent issues must keep their saved pictures"); } },
-    "@/components/ui/PageHero": { PageHero: ({ description }: any) => createElement("h1", null, description) },
+    "@/components/ui/PageHero": { PageHero: ({ title }: any) => createElement("h1", null, title) },
     "@/components/workspace/NewsletterNav": { NewsletterNav: () => null },
-    "@/components/workspace/NewsletterPageReview": { NewsletterPageReview: ({ issueId, html }: any) => createElement("div", null, issueId, html) },
-    "@/components/workspace/NewsletterReviewClient": { SignOff: ({ signOff }: any) => createElement("p", null, signOff.cycleId) },
+    "@/components/workspace/NewsletterArchive": { NewsletterArchive: ({ html }: any) => createElement("div", null, html) },
+    "@/components/workspace/NewsletterPageReview": { NewsletterPageReview: () => { throw new Error("sent archives must not open reviews"); } },
+    "@/components/workspace/NewsletterReviewClient": { SignOff: () => { throw new Error("sent archives must not show sign-off"); } },
     "@/components/workspace/PastedNewsletterReview": { PastedNewsletterReview: () => null },
     "@/lib/prisma": { prisma: {
-      codeReview: { findFirst: async () => null },
+      codeReview: { findFirst: async () => { throw new Error("sent archives must not fall back to a paste"); } },
       newsletterIssue: { findUnique: async ({ where }: any) => { assert.equal(where.id, "september"); return found ? { id: "september", title: "September Newsletter", dateline: "September 2026", pieces: [], status: "sent", renderedHtml: "Saved published HTML" } : null; } },
-      newsletterCycle: { findFirst: async ({ where }: any) => { assert.equal(where.issueId, "september"); return { id: "september-cycle", sendDate: "2026-09-23" }; } },
+      newsletterCycle: { findFirst: async () => { throw new Error("sent archives must not access review cycles"); } },
       newsletterComment: { findMany: async ({ where }: any) => { assert.equal(where.issueId, "september"); return []; } },
-      pageReview: { findUnique: async ({ where }: any) => { assert.equal(where.id, "newsletter-september"); return null; } },
+      pageReview: { findUnique: async () => { throw new Error("sent archives must not access review state"); } },
     } },
   }).default;
   const props = { searchParams: Promise.resolve({ issue: "september" }) };
   const html = renderToStaticMarkup(await Page(props));
   assert.match(html, /September Newsletter/);
   assert.match(html, /Saved published HTML/);
-  assert.match(html, /september-cycle/);
+  assert.doesNotMatch(html, /september-cycle/);
   found = false;
   await assert.rejects(Page(props), /not found/);
   authorized = false;
