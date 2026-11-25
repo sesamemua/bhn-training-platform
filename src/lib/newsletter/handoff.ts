@@ -32,10 +32,15 @@ export interface HandoffPiece {
  * different order, with the ids dropped, has produced something nobody
  * can apply.
  */
-export function buildAiBrief(pieces: HandoffPiece[], dateline: string): string {
+export function buildAiBrief(
+  pieces: HandoffPiece[],
+  dateline: string,
+  preserveWording: Partial<Record<Section, boolean>> = {},
+): string {
+  const protectedSections = SECTIONS.filter((s) => preserveWording[s] === true);
   const bySection = SECTIONS.map((s) => ({
     section: s,
-    items: pieces.filter((p) => p.section === s),
+    items: preserveWording[s] === true ? [] : pieces.filter((p) => p.section === s),
   })).filter((g) => g.items.length > 0);
 
   const submissions = bySection
@@ -96,7 +101,10 @@ Most pieces need only headline + body.
   Keep it light: a headline, one or two short paragraphs, the key dates.
 
 Rules:
-- Return one entry for EVERY piece below, with its id copied exactly.
+${protectedSections.length > 0
+    ? `- ${protectedSections.map((s) => s.toUpperCase()).join(", ")} wording is kept exactly by the platform. Those submissions are excluded from this task; do not create or rewrite them.
+- Return one entry for every listed piece below, with its id copied exactly. Return only the listed IDs. If no pieces are listed, return { "pieces": [] }.`
+    : "- Return one entry for EVERY piece below, with its id copied exactly."}
 - Keep the contributor's facts and tone. Tighten wording; invent nothing.
 - No dates, names, numbers or URLs that are not in the submission.
 - Do not repeat a headline across pieces.
@@ -118,6 +126,9 @@ export interface ParseReport {
   ok: boolean;
   /** Layouts that validated and belong to a piece in this issue. */
   applied: ParsedPiece[];
+  /** Protected contributions stay in their original wording, regardless
+   *  of whether the AI omitted them or returned a replacement. */
+  preserved?: { id: string; section: Section }[];
   /** Pieces in the issue that the paste said nothing about. */
   missing: { id: string; section: Section }[];
   /** Ids in the paste that are not in this issue. */
@@ -232,8 +243,18 @@ function readLayout(raw: unknown, where: string): { layout?: PieceLayout; proble
  * malformed would send the editor back to a chat window to redo work
  * that was already right.
  */
-export function parseAiReturn(text: string, pieces: HandoffPiece[]): ParseReport {
-  const empty: ParseReport = { ok: false, applied: [], missing: [], unknown: [], problems: [] };
+export function parseAiReturn(
+  text: string,
+  pieces: HandoffPiece[],
+  preserveWording: Partial<Record<Section, boolean>> = {},
+): ParseReport {
+  const preserved = pieces
+    .filter((p) => preserveWording[p.section] === true)
+    .map((p) => ({ id: p.id, section: p.section }));
+  const empty: ParseReport = {
+    ok: false, applied: [], missing: [], unknown: [], problems: [],
+    ...(preserved.length > 0 ? { preserved } : {}),
+  };
 
   const json = extractJson(text);
   if (!json) {
@@ -275,6 +296,9 @@ export function parseAiReturn(text: string, pieces: HandoffPiece[]): ParseReport
       unknown.push(id);
       continue;
     }
+    // The saved section policy, not an AI's answer or prompt compliance,
+    // controls whether this contribution can be replaced.
+    if (preserveWording[piece.section] === true) continue;
     if (seen.has(id)) {
       problems.push(`Two layouts came back for the same piece (${id}); the first was used.`);
       continue;
@@ -288,8 +312,11 @@ export function parseAiReturn(text: string, pieces: HandoffPiece[]): ParseReport
   }
 
   const missing = pieces
-    .filter((p) => !seen.has(p.id))
+    .filter((p) => preserveWording[p.section] !== true && !seen.has(p.id))
     .map((p) => ({ id: p.id, section: p.section }));
 
-  return { ok: applied.length > 0, applied, missing, unknown, problems };
+  return {
+    ok: applied.length > 0 || preserved.length > 0, applied, missing, unknown, problems,
+    ...(preserved.length > 0 ? { preserved } : {}),
+  };
 }

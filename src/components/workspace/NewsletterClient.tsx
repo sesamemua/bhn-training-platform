@@ -27,6 +27,7 @@ interface Issue {
   renderedHtml: string | null; renderedAt: string | null; pieces: Piece[];
   sectionImages?: Partial<Record<Section, NewsletterImage[]>>;
   imagesByPieceId?: Record<string, NewsletterImage[]>;
+  preserveWording?: Partial<Record<Section, boolean>>;
 }
 
 export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issue; canEdit: boolean }) {
@@ -41,7 +42,9 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
   const [copied, setCopied] = useState(false);
   /** Pieces shown in full; the rest are clamped to three lines. */
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const mediaChanged = !!issue.renderedHtml && !issue.renderedAt;
+  const layoutIsStale = !!issue.renderedHtml && (!issue.renderedAt
+    || issue.pieces.some((p) => p.status !== "normalised" && p.status !== "excluded"
+      && issue.preserveWording?.[p.section as Section] !== true));
   const hasContent = issue.pieces.length > 0 || Object.values(issue.sectionImages ?? {}).some((images) => images?.length);
 
   function updateImages(targetType: "section" | "piece", targetId: string, images: NewsletterImage[]) {
@@ -65,6 +68,9 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
       if (!r.ok || !j?.ok) { setError(j?.error ?? "That didn't work."); return null; }
       if (j.issue) setIssue(j.issue as Issue);
       return j;
+    } catch {
+      setError("Could not confirm the change. Reload to check the issue before trying again.");
+      return null;
     } finally { setBusy(null); }
   }
 
@@ -93,6 +99,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
     missing: { id: string; section: string }[];
     unknown: string[];
     problems: string[];
+    preserved?: { id: string; section: string }[];
   } | null>(null);
 
   async function copyBrief() {
@@ -120,7 +127,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
         body: JSON.stringify({ action: "aiApply", text: paste }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
+      if (!r.ok || !j?.ok) {
         setError(j?.error ?? "That didn't work.");
         if (j?.report) setReport(j.report);
         return;
@@ -134,7 +141,7 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
   }
 
   async function copyHtml() {
-    if (!issue.renderedHtml) return;
+    if (!issue.renderedHtml || layoutIsStale || busy) return;
     try {
       await navigator.clipboard.writeText(issue.renderedHtml);
       setCopied(true);
@@ -142,14 +149,10 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
     } catch { setError("Couldn't reach the clipboard — select the code and copy manually."); }
   }
 
-  const staleSince = issue.renderedAt
-    ? issue.pieces.some((p) => p.status !== "normalised")
-    : false;
-
   return (
     <div className="space-y-5">
       {error && (
-        <div className="rounded-lg bg-rose-50 ring-1 ring-rose-200 px-3 py-2 text-sm text-rose-900">{error}</div>
+        <div role="alert" className="rounded-lg bg-rose-50 ring-1 ring-rose-200 px-3 py-2 text-sm text-rose-900">{error}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -176,6 +179,31 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 </header>
 
                 <div className="p-3 space-y-2">
+                  {canEdit && (
+                    <div className="border-b border-line pb-3 mb-3" aria-busy={busy === `wording-${s}`}>
+                      <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-fg">
+                        <input
+                          type="checkbox"
+                          checked={issue.preserveWording?.[s] === true}
+                          disabled={issue.status === "sent" || !!busy}
+                          aria-label={`Keep wording as-is for ${t.label}`}
+                          aria-describedby={`wording-help-${issue.id}-${s}`}
+                          onChange={(e) => {
+                            if (issue.status === "sent" || busy) return;
+                            return post({ action: "setPreserveWording", section: s, preserveWording: e.currentTarget.checked }, `wording-${s}`);
+                          }}
+                          className="h-4 w-4 shrink-0 accent-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-50"
+                        />
+                        Keep wording as-is
+                      </label>
+                      <span role="status" className="ml-2 inline-flex items-center gap-1 text-[11px] text-muted">
+                        {busy === `wording-${s}` && <><Loader2 size={11} className="animate-spin" aria-hidden="true" />Saving…</>}
+                      </span>
+                      <p id={`wording-help-${issue.id}-${s}`} className="mt-1 text-[11px] leading-relaxed text-subtle">
+                        Saved text in this section is used exactly as submitted; AI will not rewrite it.
+                      </p>
+                    </div>
+                  )}
                   <NewsletterImages issueId={issue.id} targetType="section" targetId={s} label={`${t.label} section`}
                     images={issue.sectionImages?.[s] ?? []} disabled={issue.status === "sent" || !!busy}
                     onChange={(images) => updateImages("section", s, images)}
@@ -306,9 +334,9 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
               <span>{issue.pieces.length} {issue.pieces.length === 1 ? "item" : "items"}</span>
               <span aria-hidden>·</span>
               <span>{issue.renderedAt ? `laid out ${new Date(issue.renderedAt).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "not laid out"}</span>
-              {(staleSince || mediaChanged) && (
+              {layoutIsStale && (
                 <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
-                  title={mediaChanged ? "Pictures changed since the last layout. Review rounds already sent stay as they were." : "New items since the last layout."}>
+                  title="Text, pictures, or wording preferences changed since the last layout. Review rounds already sent stay as they were.">
                   {canEdit ? "Lay out again" : "Needs a new layout"}
                 </span>
               )}
@@ -333,9 +361,9 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 </button>
                 {issue.renderedHtml && (
                   <button
-                    title="Copy the HTML for a Mailchimp Code block"
+                    title={layoutIsStale ? "Lay out again before copying the updated HTML" : "Copy the HTML for a Mailchimp Code block"}
                     onClick={copyHtml}
-                    disabled={!!busy || mediaChanged || !issue.renderedHtml}
+                    disabled={!!busy || layoutIsStale || !issue.renderedHtml}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-50"
                   >
                     {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
@@ -399,6 +427,12 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                         {report.applied.length === 1 ? "piece" : "pieces"}.
                       </p>
                     )}
+                    {!!report.preserved?.length && (
+                      <p className="text-emerald-700">
+                        Kept submitted wording for {report.preserved.length}{" "}
+                        protected {report.preserved.length === 1 ? "piece" : "pieces"}.
+                      </p>
+                    )}
                     {report.missing.length > 0 && (
                       <p className="text-amber-700">
                         {report.missing.length} not mentioned in the reply — left as{" "}
@@ -424,7 +458,15 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
           {issue.renderedHtml && (
             <section className="rounded-2xl border border-line bg-card overflow-hidden">
               <header className="px-4 py-2.5 border-b border-line/70">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-subtle">Preview</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-subtle">
+                  {layoutIsStale ? "Saved preview — needs a new layout" : "Preview"}
+                </h4>
+                {layoutIsStale && (
+                  <p className="mt-1 text-[11px] leading-relaxed text-amber-800">
+                    Text, pictures, or wording preferences have changed. Lay out again before copying HTML.
+                    Review rounds already sent stay as they were.
+                  </p>
+                )}
               </header>
               <iframe
                 title="Newsletter preview"

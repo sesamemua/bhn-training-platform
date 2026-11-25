@@ -47,6 +47,29 @@ test("empty sections are left out rather than shown empty", () => {
   assert.ok(!b.includes("SECTION: equip"));
 });
 
+test("protected sections are kept out of the external AI brief", () => {
+  const brief = buildAiBrief(PIECES, "November 2026", { engage: true });
+  assert.match(brief, /ENGAGE wording is kept exactly by the platform/);
+  assert.match(brief, /Return only the listed IDs/);
+  assert.ok(!brief.includes("SECTION: engage"));
+  assert.ok(!brief.includes(PIECES[0].rawBody));
+  assert.ok(!brief.includes(`PIECE id: ${PIECES[0].id}`));
+  assert.ok(brief.includes(PIECES[1].rawBody));
+  assert.ok(brief.includes(`PIECE id: ${PIECES[1].id}`));
+});
+
+test("an all-protected brief requests no replacement layouts", () => {
+  const brief = buildAiBrief(PIECES, "November 2026", { engage: true, equip: true });
+  assert.match(brief, /ENGAGE, EQUIP wording is kept exactly/);
+  assert.match(brief, /If no pieces are listed, return \{ "pieces": \[\] \}/);
+  assert.ok(!brief.includes("--- PIECE id:"));
+});
+
+test("an absent or false protection setting leaves the brief unchanged", () => {
+  assert.equal(buildAiBrief(PIECES, "X", {}), buildAiBrief(PIECES, "X"));
+  assert.equal(buildAiBrief(PIECES, "X", { engage: false }), buildAiBrief(PIECES, "X"));
+});
+
 /* ── Finding the JSON in a chat reply ────────────────────────────── */
 
 test("a fenced block", () => {
@@ -150,4 +173,68 @@ test("junk in, a sentence out — never a crash", () => {
     assert.equal(r.applied.length, 0);
     assert.ok(r.problems.length > 0, `${JSON.stringify(junk)} produced no explanation`);
   }
+});
+
+test("a replacement for protected wording is ignored before layout validation", () => {
+  const reply = JSON.stringify({ pieces: [
+    { id: "p1", layout: { body: ["Rewritten without a headline."] } },
+    { id: "p1", layout: { headline: "A second attempt", body: ["Still rewritten."] } },
+    JSON.parse(good).pieces[1],
+  ] });
+  const report = parseAiReturn(reply, PIECES, { engage: true });
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.applied.map((p) => p.id), ["p2"]);
+  assert.deepEqual(report.preserved, [{ id: "p1", section: "engage" }]);
+  assert.deepEqual(report.missing, []);
+  assert.deepEqual(report.unknown, []);
+  assert.deepEqual(report.problems, []);
+});
+
+test("omitted protected contributions are preserved, not reported missing", () => {
+  const reply = JSON.stringify({ pieces: [JSON.parse(good).pieces[1]] });
+  const report = parseAiReturn(reply, PIECES, { engage: true });
+  assert.deepEqual(report.preserved, [{ id: "p1", section: "engage" }]);
+  assert.deepEqual(report.missing, []);
+  assert.deepEqual(report.applied.map((p) => p.id), ["p2"]);
+});
+
+test("protection applies to every contribution in the section", () => {
+  const later: HandoffPiece = { id: "later", section: "engage", rawBody: "This contribution was added later." };
+  const report = parseAiReturn('{"pieces":[]}', [...PIECES, later], { engage: true });
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.preserved, [{ id: "p1", section: "engage" }, { id: "later", section: "engage" }]);
+  assert.deepEqual(report.missing, [{ id: "p2", section: "equip" }]);
+  assert.deepEqual(report.applied, []);
+});
+
+test("a valid reply containing only protected pieces is a successful no-op", () => {
+  for (const reply of [good, '{"pieces":[]}', "[]"]) {
+    const report = parseAiReturn(reply, PIECES, { engage: true, equip: true });
+    assert.equal(report.ok, true);
+    assert.equal(report.preserved?.length, 2);
+    assert.deepEqual(report.applied, []);
+    assert.deepEqual(report.missing, []);
+  }
+});
+
+test("protection does not make empty, malformed, or wrong-shaped JSON valid", () => {
+  for (const reply of ["", "not JSON", "{", '{"pieces":"not a list"}', "{}"]) {
+    const report = parseAiReturn(reply, PIECES, { engage: true, equip: true });
+    assert.equal(report.ok, false, reply);
+    assert.deepEqual(report.applied, []);
+    assert.ok(report.problems.length > 0, reply);
+  }
+});
+
+test("unknown IDs stay unknown when another section is protected", () => {
+  const report = parseAiReturn('{"pieces":[{"id":"other-issue"}]}', PIECES, { engage: true });
+  assert.deepEqual(report.unknown, ["other-issue"]);
+  assert.deepEqual(report.missing, [{ id: "p2", section: "equip" }]);
+  assert.deepEqual(report.preserved, [{ id: "p1", section: "engage" }]);
+  assert.deepEqual(report.applied, []);
+});
+
+test("turning protection off restores the existing handoff result", () => {
+  assert.deepEqual(parseAiReturn(good, PIECES, { engage: false }), parseAiReturn(good, PIECES));
+  assert.equal(parseAiReturn(good, PIECES).preserved, undefined);
 });

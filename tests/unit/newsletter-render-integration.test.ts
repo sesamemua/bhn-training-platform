@@ -17,17 +17,20 @@ test("generation and AI hand-off keep attached media, return a flat issue, and r
     imagesByPieceId: { piece: [{ id: "piece-picture", assetId: "asset-2", url: "https://images.example/2.png", alt: "Event" }] },
   };
   let concurrentChange = false, renderInput: any, saved = 0, normalised = 0;
+  class WordingError extends Error { constructor(message: string, public status = 400) { super(message); } }
   const db = {
     newsletterIssue: {
       findUnique: async () => issue,
       updateMany: async ({ where, data }: any) => {
         assert.equal(where.updatedAt, updatedAt);
         if (concurrentChange) return { count: 0 };
-        saved++; assert.equal(data.renderedHtml, "Rendered with pictures"); return { count: 1 };
+        if (data.renderedHtml) { saved++; assert.equal(data.renderedHtml, "Rendered with pictures"); }
+        else assert.equal(data.renderedAt, null);
+        return { count: 1 };
       },
     },
-    newsletterPiece: { update: async () => ({}) },
-    $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
+    newsletterPiece: { updateMany: async () => ({ count: 1 }) },
+    $transaction: async (operation: (tx: unknown) => Promise<unknown>) => operation(db),
   };
   const mocks: Record<string, unknown> = {
     "@/lib/auth": { requireRole: async () => ({ user: { id: "editor" } }) },
@@ -35,6 +38,7 @@ test("generation and AI hand-off keep attached media, return a flat issue, and r
     "@/lib/newsletter/ai": { normalisePiece: async () => { normalised++; return layout; } },
     "@/lib/newsletter/render": { renderIssue: (input: any) => { renderInput = input; return "Rendered with pictures"; } },
     "@/lib/newsletter/media": { getNewsletterMedia: async () => media },
+    "@/lib/newsletter/wording-settings": { getPreserveWording: async () => ({}), NewsletterWordingError: WordingError },
     "@/lib/newsletter/handoff": { parseAiReturn: () => ({ ok: true, applied: [{ id: "piece", layout }] }) },
   };
   const exports: { POST?: (request: Request, context: unknown) => Promise<Response> } = {};

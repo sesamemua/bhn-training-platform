@@ -24,6 +24,8 @@ import { SECTIONS, isSection } from "@/lib/newsletter/types";
 import type { Section, PieceLayout } from "@/lib/newsletter/types";
 import { buildAiBrief, parseAiReturn } from "@/lib/newsletter/handoff";
 import { getNewsletterMedia, removeNewsletterPieceImages } from "@/lib/newsletter/media";
+import { getPreserveWording, setPreserveWording, NewsletterWordingError } from "@/lib/newsletter/wording-settings";
+import { verbatimLayout } from "@/lib/newsletter/wording";
 
 export const dynamic = "force-dynamic";
 
@@ -47,11 +49,30 @@ const UpdateSchema = z.object({
   sourceUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
 });
 const GenerateSchema = z.object({ action: z.literal("generate") });
+const WordingSchema = z.object({ action: z.literal("setPreserveWording"), section: z.enum(SECTIONS), preserveWording: z.boolean() });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const body = await req.json().catch(() => ({}));
   const action = typeof body?.action === "string" ? body.action : "";
+
+  if (action === "setPreserveWording") {
+    const session = await requireRole("admin").catch(() => null);
+    if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const origin = req.headers.get("origin");
+    if (req.headers.get("sec-fetch-site") === "cross-site" || (origin && origin !== new URL(req.url).origin)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const parsed = WordingSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Choose a section and a valid wording option." }, { status: 400 });
+    try {
+      await setPreserveWording(id, parsed.data.section, parsed.data.preserveWording);
+      return NextResponse.json({ ok: true, ...(await loadIssue(id)) });
+    } catch (error) {
+      if (error instanceof NewsletterWordingError) return NextResponse.json({ error: error.message }, { status: error.status });
+      throw error;
+    }
+  }
 
   // ── contribute ───────────────────────────────────────────────
   if (action === "addPiece") {
@@ -64,24 +85,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { status: 400 },
       );
     }
-    const issue = await prisma.newsletterIssue.findUnique({ where: { id }, select: { id: true } });
+    const issue = await prisma.newsletterIssue.findUnique({ where: { id }, select: { id: true, status: true } });
     if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
+    if (issue.status === "sent") return NextResponse.json({ error: "Sent newsletters cannot be changed." }, { status: 409 });
 
     const last = await prisma.newsletterPiece.findFirst({
       where: { issueId: id, section: parsed.data.section },
       orderBy: { position: "desc" },
       select: { position: true },
     });
-    await prisma.newsletterPiece.create({
-      data: {
-        issueId: id,
-        section: parsed.data.section,
-        position: (last?.position ?? -1) + 1,
-        rawBody: parsed.data.rawBody,
-        sourceUrl: parsed.data.sourceUrl || null,
-        authorId: (session.user as { id?: string }).id ?? null,
-        authorName: (session.user as { name?: string }).name ?? null,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.newsletterIssue.update({ where: { id, status: { not: "sent" } }, data: { renderedAt: null } });
+      await tx.newsletterPiece.create({
+        data: {
+          issueId: id,
+          section: parsed.data.section,
+          position: (last?.position ?? -1) + 1,
+          rawBody: parsed.data.rawBody,
+          sourceUrl: parsed.data.sourceUrl || null,
+          authorId: (session.user as { id?: string }).id ?? null,
+          authorName: (session.user as { name?: string }).name ?? null,
+        },
+      });
     });
     return NextResponse.json({ ok: true, ...(await loadIssue(id)) });
   }
@@ -98,17 +123,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { status: 400 },
       );
     }
+    const issue = await prisma.newsletterIssue.findUnique({ where: { id }, select: { status: true } });
+    if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
+    if (issue.status === "sent") return NextResponse.json({ error: "Sent newsletters cannot be changed." }, { status: 409 });
     const piece = await prisma.newsletterPiece.findFirst({
       where: { id: parsed.data.pieceId, issueId: id },
       select: { id: true },
     });
     if (!piece) return NextResponse.json({ error: "No such piece." }, { status: 404 });
-    await prisma.newsletterPiece.update({
-      where: { id: piece.id },
-      data: {
-        rawBody: parsed.data.rawBody,
-        sourceUrl: parsed.data.sourceUrl?.trim() || null,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.newsletterIssue.update({ where: { id, status: { not: "sent" } }, data: { renderedAt: null } });
+      await tx.newsletterPiece.update({
+        where: { id: piece.id },
+        data: {
+          rawBody: parsed.data.rawBody,
+          sourceUrl: parsed.data.sourceUrl?.trim() || null,
+        },
+      });
     });
     return NextResponse.json({ ok: true, ...(await loadIssue(id)) });
   }
@@ -118,6 +149,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const parsed = IdSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
+    const issue = await prisma.newsletterIssue.findUnique({ where: { id }, select: { status: true } });
+    if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
+    if (issue.status === "sent") return NextResponse.json({ error: "Sent newsletters cannot be changed." }, { status: 409 });
 
     const piece = await prisma.newsletterPiece.findFirst({
       where: { id: parsed.data.pieceId, issueId: id },
@@ -127,6 +161,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     if (parsed.data.action === "deletePiece") {
       await prisma.$transaction(async (tx) => {
+        await tx.newsletterIssue.update({ where: { id, status: { not: "sent" } }, data: { renderedAt: null } });
         await removeNewsletterPieceImages(tx, id, piece.id);
         await tx.newsletterPiece.delete({ where: { id: piece.id } });
       }, { isolationLevel: "Serializable" });
@@ -140,6 +175,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       });
       if (neighbour) {
         await prisma.$transaction([
+          prisma.newsletterIssue.update({ where: { id, status: { not: "sent" } }, data: { renderedAt: null } }),
           prisma.newsletterPiece.update({ where: { id: piece.id }, data: { position: neighbour.position } }),
           prisma.newsletterPiece.update({ where: { id: neighbour.id }, data: { position: piece.position } }),
         ]);
@@ -176,7 +212,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (pieces.length === 0) {
       return NextResponse.json({ error: "Nothing to send out yet — add a piece first." }, { status: 400 });
     }
-    return NextResponse.json({ ok: true, brief: buildAiBrief(pieces, issue.dateline), count: pieces.length });
+    return NextResponse.json({ ok: true, brief: buildAiBrief(pieces, issue.dateline, await getPreserveWording(id)), count: pieces.length });
   }
 
   /*
@@ -198,31 +234,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
     });
     if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
+    if (issue.status === "sent") return NextResponse.json({ error: "Sent newsletters cannot be changed." }, { status: 409 });
 
     const pieces = issue.pieces
       .filter((p) => p.status !== "excluded" && isSection(p.section))
       .map((p) => ({ id: p.id, section: p.section as Section, rawBody: p.rawBody }));
 
-    const report = parseAiReturn(text, pieces);
+    const report = parseAiReturn(text, pieces, await getPreserveWording(id));
     if (!report.ok) {
       return NextResponse.json({ error: report.problems[0] ?? "Nothing usable in that paste.", report }, { status: 400 });
     }
 
-    const rawById = new Map(issue.pieces.map((p) => [p.id, p.rawBody]));
-    await prisma.$transaction(
-      report.applied.map((a) =>
-        prisma.newsletterPiece.update({
-          where: { id: a.id },
-          // _src is stamped the way the in-app generator stamps it, so
-          // "unchanged since last run" stays true of a hand-laid piece
-          // and Generate does not quietly overwrite this work.
-          data: {
-            layout: { ...a.layout, _src: rawById.get(a.id) ?? "" } as object,
-            status: "normalised",
-          },
-        }),
-      ),
-    );
+    try {
+      await commitLayouts(id, issue.updatedAt, issue.pieces, report.applied, { renderedAt: null });
+    } catch (error) {
+      if (error instanceof NewsletterWordingError) return NextResponse.json({ error: error.message }, { status: error.status });
+      throw error;
+    }
 
     const fresh = await loadIssue(id);
     return NextResponse.json({ ok: true, ...fresh, report });
@@ -241,7 +269,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
     });
     if (!issue) return NextResponse.json({ error: "No such issue." }, { status: 404 });
+    if (issue.status === "sent") return NextResponse.json({ error: "Sent newsletters cannot be changed." }, { status: 409 });
     const media = await getNewsletterMedia(id);
+    const preserveWording = await getPreserveWording(id);
     if (issue.pieces.length === 0 && !Object.values(media.sectionImages).some((images) => images.length)) {
       return NextResponse.json({ error: "Nothing to lay out yet — add a contribution or picture first." }, { status: 400 });
     }
@@ -249,28 +279,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const headlines: string[] = [];
     const bySection = emptyBuckets();
     const idsBySection: Partial<Record<Section, string[]>> = {};
+    const changes: { id: string; layout: PieceLayout }[] = [];
 
     for (const p of issue.pieces) {
       if (p.status === "excluded" || !isSection(p.section)) continue;
       const cached = p.layout as (PieceLayout & { _src?: string }) | null;
       let layout: PieceLayout;
 
-      if (cached?._src === p.rawBody && cached.headline) {
+      if (preserveWording[p.section]) {
+        layout = verbatimLayout(p.rawBody, p.sourceUrl);
+      } else if (cached?._src === p.rawBody && cached.headline) {
         layout = cached; // unchanged since last run — skip the model
       } else {
         layout = await normalisePiece(
           { section: p.section, rawBody: p.rawBody, sourceUrl: p.sourceUrl, siblingHeadlines: headlines },
           meId,
         );
-        await prisma.newsletterPiece.update({
-          where: { id: p.id },
-          data: {
-            // `_src` stamps the rawBody this layout came from, so a later
-            // re-render can skip pieces nobody edited.
-            layout: toJson({ ...layout, _src: p.rawBody }),
-            status: "normalised",
-          },
-        });
+        changes.push({ id: p.id, layout });
       }
       headlines.push(layout.headline);
       bySection[p.section].push(layout);
@@ -284,11 +309,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       idsBySection,
       ...media,
     });
-    const saved = await prisma.newsletterIssue.updateMany({
-      where: { id, updatedAt: issue.updatedAt },
-      data: { renderedHtml: html, renderedAt: new Date(), status: "generated" },
-    });
-    if (!saved.count) return NextResponse.json({ error: "Pictures changed while laying out. Please run layout again." }, { status: 409 });
+    try {
+      await commitLayouts(id, issue.updatedAt, issue.pieces, changes, { renderedHtml: html, renderedAt: new Date(), status: "generated" });
+    } catch (error) {
+      if (error instanceof NewsletterWordingError) return NextResponse.json({ error: error.message }, { status: error.status });
+      throw error;
+    }
     return NextResponse.json({ ok: true, html, ...(await loadIssue(id)) });
   }
 
@@ -316,5 +342,28 @@ async function loadIssue(id: string) {
     where: { id },
     include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
   });
-  return { issue: issue ? { ...issue, ...(await getNewsletterMedia(id)) } : null };
+  return { issue: issue ? { ...issue, ...(await getNewsletterMedia(id)), preserveWording: await getPreserveWording(id) } : null };
+}
+
+/** Commit only after every model call completes. A toggle/source change wins
+ * over an in-flight AI request; failed guards roll back ALL layout writes. */
+async function commitLayouts(
+  id: string,
+  updatedAt: Date,
+  pieces: { id: string; rawBody: string; sourceUrl: string | null; status: string }[],
+  changes: { id: string; layout: PieceLayout }[],
+  data: Prisma.NewsletterIssueUpdateManyMutationInput,
+) {
+  await prisma.$transaction(async (tx) => {
+    const saved = await tx.newsletterIssue.updateMany({ where: { id, updatedAt, status: { not: "sent" } }, data });
+    if (!saved.count) throw new NewsletterWordingError("This issue changed while laying out. Reload and try again.", 409);
+    for (const change of changes) {
+      const source = pieces.find((p) => p.id === change.id)!;
+      const savedPiece = await tx.newsletterPiece.updateMany({
+        where: { id: source.id, issueId: id, rawBody: source.rawBody, sourceUrl: source.sourceUrl, status: source.status },
+        data: { layout: toJson({ ...change.layout, _src: source.rawBody }), status: "normalised" },
+      });
+      if (!savedPiece.count) throw new NewsletterWordingError("A contribution changed while laying out. Reload and try again.", 409);
+    }
+  });
 }

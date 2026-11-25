@@ -125,6 +125,14 @@ function renderPiece(l: PieceLayout, s: Section, isLast: boolean, pieceId?: stri
   // caller asks for anchors.
   const a = (label: string) =>
     pieceId ? ` data-nl-piece="${esc(pieceId)}" data-nl-part="${esc(label)}"` : "";
+  if (typeof l.verbatimBody === "string") {
+    if (images.length) out.push(imageList(images, pieceId ?? s, l.ctaUrl));
+    out.push(`<div${a("Original wording")} style="margin:0 0 16px 0; font-family:${FONT}; font-size:15px; line-height:24px; color:#3a4a5c; white-space:pre-wrap; overflow-wrap:anywhere;">${verbatimText(l.verbatimBody)}</div>`);
+    const source = safeUrl(l.ctaUrl);
+    if (source && !l.verbatimBody.includes(l.ctaUrl!)) out.push(`<p style="margin:0 0 16px 0; overflow-wrap:anywhere;"><a href="${source}" target="_blank" style="font-family:${FONT}; font-size:15px; color:${t.accent};">${esc(l.ctaUrl!)}</a></p>`);
+    if (!isLast) out.push(divider(t.rule));
+    return out.join("\n");
+  }
   out.push(
     `<h2${a("Headline")} style="margin:0 0 ${l.subhead ? 4 : 14}px 0; font-family:${FONT}; font-size:24px; line-height:30px; color:#0b3558; font-weight:600; letter-spacing:-0.3px;">${esc(l.headline)}</h2>`,
   );
@@ -145,6 +153,15 @@ function renderPiece(l: PieceLayout, s: Section, isLast: boolean, pieceId?: stri
   if (url && l.ctaLabel) out.push(button(l.ctaLabel, url, t.solid));
   if (!isLast) out.push(divider(t.rule));
   return out.join("\n");
+}
+
+/** Link literal web addresses without replacing, trimming or rewriting their text. */
+function verbatimText(text: string): string {
+  return text.split(/(https?:\/\/[^\s<>"']+)/gi).map((part) => {
+    if (!/^https?:\/\//i.test(part)) return esc(part);
+    const url = part.replace(/[.,;:!?\])}]+$/, "");
+    return `<a href="${esc(url)}" target="_blank" style="color:inherit;text-decoration:underline;">${esc(url)}</a>${esc(part.slice(url.length))}`;
+  }).join("");
 }
 
 export interface RenderIssueInput {

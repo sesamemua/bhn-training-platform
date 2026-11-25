@@ -121,6 +121,8 @@ export interface LinkRow {
 
 export interface PieceLayout {
   headline: string;
+  /** Server-only exact-copy overlay; never accepted from an AI response. */
+  verbatimBody?: string;
   subhead?: string;
   /** Paragraphs, already plain text. Rendered in order. */
   body: string[];

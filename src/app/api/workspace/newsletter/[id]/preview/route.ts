@@ -19,6 +19,8 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { renderIssue } from "@/lib/newsletter/render";
 import { getNewsletterMedia } from "@/lib/newsletter/media";
+import { getPreserveWording } from "@/lib/newsletter/wording-settings";
+import { verbatimLayout } from "@/lib/newsletter/wording";
 import { EMPTY_LAYOUT, SECTIONS, isSection, type PieceLayout, type Section } from "@/lib/newsletter/types";
 
 export const runtime = "nodejs";
@@ -34,6 +36,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
   });
   if (!issue) return NextResponse.json({ error: "Issue not found" }, { status: 404 });
+  const preserveWording = await getPreserveWording(id);
 
   const bySection = {} as Record<Section, PieceLayout[]>;
   const idsBySection = {} as Record<Section, string[]>;
@@ -48,12 +51,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     // A piece with no layout yet has never been through the AI pass. Show
     // it as a placeholder rather than dropping it, so a reviewer can see
     // that a contribution exists and is not yet laid out.
-    const layout = (p.layout as PieceLayout | null) ?? {
+    const layout = preserveWording[p.section] ? verbatimLayout(p.rawBody, p.sourceUrl) : (p.layout as PieceLayout | null) ?? {
       ...EMPTY_LAYOUT,
       headline: "Not yet laid out",
       body: [p.rawBody.slice(0, 400)],
     };
-    if (!p.layout) unrendered++;
+    if (!p.layout && !preserveWording[p.section]) unrendered++;
     bySection[p.section].push(layout);
     idsBySection[p.section].push(p.id);
   }

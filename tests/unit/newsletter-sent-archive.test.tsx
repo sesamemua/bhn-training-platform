@@ -109,6 +109,7 @@ test("imported sent route reads only the saved issue and provenance, never paste
     "@/lib/newsletter/archive": archive,
     "@/lib/newsletter/render": { renderIssue: () => { throw new Error("must not regenerate original"); } },
     "@/lib/newsletter/media": {},
+    "@/lib/newsletter/wording-settings": { getPreserveWording: () => { throw new Error("must not read draft wording policy for sent archive"); } },
     "@/components/ui/PageHero": { PageHero: ({ title }: any) => createElement("h1", null, title) },
     "@/components/workspace/NewsletterNav": { NewsletterNav: () => null },
     "@/components/workspace/NewsletterArchive": { NewsletterArchive },
