@@ -1,0 +1,12 @@
+.scene { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.flakes { position: absolute; inset: 0; color: #e1f3ff; mask-image: linear-gradient(90deg, transparent, #000 60%); }
+.lane { position: absolute; top: -24px; bottom: -24px; animation: snowfall linear infinite; }
+.lane svg { display: block; width: 100%; }
+.dot { display: block; aspect-ratio: 1; width: 100%; border-radius: 50%; background: currentColor; }
+.scene[data-paused="true"] .lane { animation-play-state: paused; }
+.pause { position: absolute; right: 20px; bottom: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 4px 9px; border: 1px solid #ffffff30; border-radius: 20px; background: #101a25d9; color: #e1edf7; font-size: 11px; pointer-events: auto; touch-action: manipulation; }
+.pause:hover { background: #233b50; }
+.pause:focus-visible { outline: 2px solid #c3eaff; outline-offset: 3px; }
+@keyframes snowfall { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(var(--drift), 100%, 0); } }
+@media (prefers-reduced-motion: reduce) { .lane { animation: none; top: 20%; bottom: auto; } .lane:nth-child(3n) { top: 65%; } .lane:nth-child(4n) { top: 38%; } .pause { display: none; } }
+@media print { .scene { display: none; } }

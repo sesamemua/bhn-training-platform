@@ -461,6 +461,12 @@
     },
     "src/app/review-paste/[token]/route.ts": {
       "workflow": "page"
+    },
+    "src/app/(dashboard)/dashboard/page.tsx": {
+      "workflow": "newsletter"
+    },
+    "src/app/api/workspace/newsletter/dashboard-review/route.ts": {
+      "workflow": "newsletter"
     }
   }
 }

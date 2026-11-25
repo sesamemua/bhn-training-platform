@@ -3,13 +3,10 @@
  * Page header primitive. Adapts to the active design system.
  *
  *   Classic     — title + eyebrow + description stacked, no chrome
- *   Cinematic   — full-bleed GRAPHITE stage with a microfluidic chip
- *                 etched into it (channels, mixers, chambers, a
- *                 droplet generator). Eyebrow + title + description
- *                 render directly over it, in white. The same on
- *                 every theme: the header paints its own ground, and
- *                 only the fluid in the channels takes the brand
- *                 colour.
+ *   Cinematic   — full-bleed GRAPHITE stage with seasonal snowfall.
+ *                 Eyebrow + title + description
+ *                 render directly over it, in white. The header paints
+ *                 its own ground consistently across themes.
  *   Studio      — full-bleed gradient-mesh hero with two drifting
  *                 blob shapes + a curve-down divider. Eyebrow on
  *                 brand-light text, gradient-text accent on the
@@ -29,7 +26,7 @@
 import type { ReactNode } from "react";
 import { useDesignSystem } from "@/components/ui/DesignSystemProvider";
 import { DSEyebrow } from "./DSEyebrow";
-import { MicrofluidicEtching } from "./MicrofluidicEtching";
+import { WinterSnowfall } from "./WinterSnowfall";
 import { LayoutBannersSlot } from "@/components/layout/LayoutBanners";
 
 interface Props {
@@ -146,13 +143,13 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
 
     return (
       <>
-      {/* GRAPHITE STAGE — a slab of graphite with a microfluidic chip
-          etched into it. The same header on every theme: it paints its
+      {/* GRAPHITE STAGE — seasonal snowfall over a dark, legible ground.
+          The same header on every theme: it paints its
           own ground and sets its own title gradient, so it does not
           take the theme's hero colours (and needs none of the
           per-theme text overrides that go with them). */}
       <header
-        className="full-bleed relative overflow-hidden -mt-8 mb-10 text-white"
+        className="full-bleed relative overflow-hidden -mt-8 mb-10 pb-8 text-white"
         style={{
           backgroundColor: "#1b1d20",
           backgroundImage: "linear-gradient(118deg, #15171a 0%, #26292e 42%, #1d1f23 68%, #131517 100%)",
@@ -176,11 +173,6 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
             }}
           />
 
-          {/* (3) The microfluidic chip, with fluid moving through it — channels, serpentine mixers,
-                  chambers, a T-junction and a droplet generator, etched
-                  as one repeating tile. It fades out toward the left so
-                  it never sits behind the title and description. */}
-          <MicrofluidicEtching />
 
           {/* (4) Edge vignette — the slab darkens toward its edges. */}
           <div
@@ -206,6 +198,8 @@ export function DSPageHeader({ eyebrow, title, description, icon, aside, actions
           {/* (6) A hairline at the foot — the cut edge of the slab. */}
           <div className="absolute inset-x-0 bottom-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22) 30%, rgba(255,255,255,0.22) 70%, transparent)" }} />
         </div>
+
+        <WinterSnowfall />
 
         {/* CONTENT — compact banner. `min-h` is small (10/11/12rem)
             so the gradient never eats the viewport; content takes

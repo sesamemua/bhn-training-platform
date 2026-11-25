@@ -19,6 +19,8 @@ import { getDisplayName } from "@/lib/user/display-name";
 import { PreferredNameEditor } from "@/components/profile/PreferredNameEditor";
 import { isPausedPath, withoutPaused } from "@/lib/deploy/paused";
 import { PageHero } from "@/components/ui/PageHero";
+import { NewsletterReviewCard } from "@/components/dashboards/NewsletterReviewCard";
+import { loadNewsletterDashboardReview } from "@/lib/newsletter/dashboard-review";
 
 interface EnrollmentWithCourse {
   id: string;
@@ -101,10 +103,12 @@ export default async function DashboardPage() {
   // desks (components/dashboards/AdminDashboard + InstructorDashboard) are
   // parked, not deleted, so they can come back next year.
   if (role === "admin" || role === "superadmin" || role === "instructor") {
+    const newsletter = await loadNewsletterDashboardReview().catch(() => null);
     return (
       <div className="space-y-6 pb-12">
         <PageHero eyebrow={role === "instructor" ? "Instructor desk" : "Admin desk"} title={<>Hi, {firstName}.</>}
           description="Your shortcuts, and the pages you and the team use most." />
+        <NewsletterReviewCard initial={newsletter} />
         <ShortcutBar userId={userId} />
         <PageUsageCard userId={userId} team />
       </div>
