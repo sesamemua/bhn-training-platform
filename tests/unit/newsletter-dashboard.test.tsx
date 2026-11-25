@@ -140,6 +140,7 @@ test("newsletter draft controls explain readiness, preserve editing and keep inv
   assert.doesNotMatch(html, /Open full-page review|Send review request|Copy review link/);
   const readonly = renderToStaticMarkup(createElement(NewsletterPageReview, { issueId: "november", html: "saved draft", initialReview: { id: "newsletter-november", round: 2, status: "pending" }, canEdit: false }));
   assert.doesNotMatch(readonly, /<button[^>]*>Open team review/);
+  assert.match(readonly, /An editor will open team review/); assert.doesNotMatch(readonly, /Save your changes/);
   let sent = 0;
   const fixture = mockedModule("src/lib/newsletter/review-invites.ts", {
     "@/lib/auth": { requireRole: async () => ({ user: { id: "editor" } }) },

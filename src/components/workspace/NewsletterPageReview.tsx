@@ -60,7 +60,7 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
 
   return <section className="min-w-0 space-y-3" aria-label="Newsletter review">
     <div className="flex flex-wrap items-center gap-3">
-      <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Current review round"><MessageSquareText size={16} />{review ? `Round ${review.round}` : "Newsletter review"}</h2>
+      <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Current review round"><MessageSquareText size={16} />{review ? `${review.status === "pending" ? "Draft · " : ""}Round ${review.round}` : "Newsletter review"}</h2>
       {launch && review?.status !== "pending" && <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>}
       <button type="button" onClick={copyComments} disabled={copyingComments} title="Copy open review comments and replies" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50">
         {copyingComments ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}{copied === "comments" ? "Comments copied" : "Copy review comments"}
@@ -70,7 +70,7 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
         <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
       </>}
     </div>
-    {review?.status === "pending" && <p role="status" className="rounded-lg border border-line bg-elevated px-4 py-3 text-sm">Draft only — team review is not open yet. Save your changes, then choose Open team review when it is ready.</p>}
+    {review?.status === "pending" && <p role="status" className="rounded-lg border border-line bg-elevated px-4 py-3 text-sm">Draft only — team review is not open yet. {canEdit ? "Save your changes, then choose Open team review when it is ready." : "An editor will open team review when this draft is ready."}</p>}
     {review && review.status !== "closed" && review.status !== "pending" && <NewsletterReviewInvite issueId={issueId} />}
     {canEdit && review?.status !== "closed" && <div className="flex flex-wrap items-start gap-2">
       <label className="flex items-center gap-2 text-xs text-muted">Revision source
