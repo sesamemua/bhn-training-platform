@@ -127,7 +127,7 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
   const regionDrag = useRef<{ x: number; y: number } | null>(null);
   const frameSize = { width: 684, height };
   const risk = photo.subject && imageSize ? headCropRisk(photo.subject, imageSize, frameSize, fixedCrop ? { ...photo, fit: "cover" } : photo) : null;
-  const safe = photo.subject && imageSize && risk?.clipped ? headSafeCrop(photo.subject, imageSize, frameSize, photo) : null;
+  const safe = photo.subject && imageSize && risk?.clipped ? headSafeCrop(photo.subject, imageSize, frameSize, fixedCrop ? { ...photo, fit: "cover" } : photo) : null;
   async function analyze() {
     const image = original.current;
     if (!image?.complete || !image.naturalWidth) return;
