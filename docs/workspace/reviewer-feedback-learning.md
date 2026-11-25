@@ -51,3 +51,16 @@ python3 tests/integration/review-feedback-storage.py --socket /path/to/private/s
 The script creates/removes only its own temporary database. Unrelated vector columns are substituted in the test schema when pgvector is unavailable; review-source column definitions stay unchanged.
 
 The workflow is inspired by evaluation-and-refinement patterns described in [Anthropic’s Building effective agents](https://www.anthropic.com/research/building-effective-agents).
+
+## Mandatory integration for future features
+
+`config/review-feedback-sources.json` is the source/workflow registry. `npm run check:review-feedback` runs before production builds and in the blocking Review feedback integration CI job.
+
+- New review/comment/feedback/note/approval pages and API routes must declare their workflow in the registry. A feature reusing registered storage inherits automatic capture.
+- Every new Prisma model must be classified. New content-review storage needs a source entry with an evidence type; other models need a specific `excludedModels` reason. The current non-content baseline is frozen and checksum-protected.
+- Put new capture DDL in a dedicated migration and add it to `captureMigrations`. Add its adapter and trigger without modifying already-applied migrations. CI compares the registry and capture migrations with the pre-push or PR base commit and rejects rewriting/removing previously registered capture migrations.
+- Add a source fixture and evidence assertion to the shared PostgreSQL regression. CI compares the installed trigger set with the registry and requires a real history record for every registered source. The registry drives the test source count; a source cannot be added without extending coverage.
+- Preserve context/identity, prior versions, deletion and rollback behavior. Keep review activities separate from inferred style preferences, and expose each project's history through the shared history viewer.
+- The guard classifies detected review surfaces and all schema models. Semantic classification remains a development responsibility; new review storage must be registered even if its model or route name does not include “review”.
+
+Completion checks: `npm run check:review-feedback`, `npm run test:review-feedback`, and the real PostgreSQL integration job. These are development/build requirements; no new reviewer-facing controls are introduced.

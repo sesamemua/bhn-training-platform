@@ -86,3 +86,44 @@ jobs:
         env:
           MIGRATION_BASE_REF: ${{ github.event_name == 'push' && github.event.before || '' }}
         run: npm run check:migrations
+
+  review-feedback:
+    name: Review feedback integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        volumes:
+          - /tmp/bhn-review-feedback-pg:/var/run/postgresql
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://unused:unused@localhost:5432/unused
+      DIRECT_URL: postgresql://unused:unused@localhost:5432/unused
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install deps
+        run: npm ci
+      - name: Check future model and review surface registration
+        env:
+          REVIEW_FEEDBACK_BASE_REF: ${{ github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
+        run: npm run check:review-feedback
+      - name: Test the coverage guard and feedback contract
+        run: npm run test:review-feedback
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Generate an isolated test schema
+        run: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/bhn-review-feedback-schema.sql
+      - name: Verify every registered capture source against PostgreSQL
+        run: python3 tests/integration/review-feedback-storage.py --socket /tmp/bhn-review-feedback-pg --port 5432 --user postgres --schema /tmp/bhn-review-feedback-schema.sql

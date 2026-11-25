@@ -1,0 +1,466 @@
+{
+  "version": 1,
+  "baselineDate": "2026-11-24",
+  "knownNonContentModels": [
+    "AIInteraction",
+    "AccessRequest",
+    "Account",
+    "AgentRun",
+    "Announcement",
+    "ApplicantTeamComment",
+    "ApplicationComment",
+    "ApplicationDemographics",
+    "ApplicationStatus",
+    "ApplicationStatusHistory",
+    "Assessment",
+    "AssessmentAttempt",
+    "Asset",
+    "AssetCollection",
+    "AssetUsage",
+    "AssetVersion",
+    "AssistDailyRollup",
+    "AssistEvent",
+    "AssistHint",
+    "AssistHintFeedback",
+    "AssistPreferences",
+    "AssistWeeklySummary",
+    "AuditLog",
+    "BhnEvent",
+    "BrainPick",
+    "BrainProfile",
+    "BuddyMessage",
+    "BuddyPair",
+    "CallSheet",
+    "Certificate",
+    "CertificationCredential",
+    "CertificationLevel",
+    "CertificationProgram",
+    "ChangeLog",
+    "CodeReview",
+    "CommitteeMembership",
+    "Company",
+    "CompanyInvite",
+    "CompanyJoinRequest",
+    "CompanyMember",
+    "Course",
+    "CourseFavorite",
+    "CourseFilterOption",
+    "CourseSkill",
+    "CreditApplication",
+    "CreditTransaction",
+    "CustomRegAnswer",
+    "CustomRegQuestion",
+    "DataSubjectRequest",
+    "DesignProject",
+    "EditableCopy",
+    "ElectronicSignature",
+    "EligibilityEntry",
+    "EligibilityImport",
+    "EmailTemplate",
+    "EmployerActivityLog",
+    "EmployerInvite",
+    "EmployerPresencePing",
+    "Enrollment",
+    "EquipApplication",
+    "EquipApplicationMessage",
+    "EquipDeadline",
+    "EquipDocumentNote",
+    "EquipReportShareToken",
+    "EvalRun",
+    "Event",
+    "EventBroadcast",
+    "EventForm",
+    "EventFormSubmission",
+    "EventHost",
+    "EventReminder",
+    "Facility",
+    "FeedbackInvitation",
+    "FilmingBlock",
+    "FilmingPerson",
+    "FilmingSchedule",
+    "FlowChart",
+    "Group",
+    "GroupCourse",
+    "GroupMembership",
+    "HiringTarget",
+    "HqpActionItem",
+    "HqpApplicationWindow",
+    "HqpCoiDisclosure",
+    "HqpFeedbackResponse",
+    "HqpFeedbackRound",
+    "HqpMeeting",
+    "HqpMeetingAttendance",
+    "HqpMemberApplication",
+    "InternshipPosting",
+    "Interview",
+    "InterviewScore",
+    "InterviewScorecard",
+    "JobFolder",
+    "JobFolderEvent",
+    "JobFolderShareToken",
+    "KnowledgeExchangeAwardee",
+    "LaunchChecklistState",
+    "LoginCode",
+    "LogoVote",
+    "LtiConfig",
+    "MailLog",
+    "MasterBullet",
+    "MasterBulletRevision",
+    "MasterResume",
+    "MasterSnapshot",
+    "MerchCard",
+    "MerchPick",
+    "MerchReward",
+    "MockInterview",
+    "MockInterviewAnswer",
+    "Module",
+    "ModuleCheckpoint",
+    "ModuleProgress",
+    "NewsletterIssue",
+    "NewsletterPiece",
+    "NewsletterReminder",
+    "NewsletterSendLog",
+    "Notification",
+    "NotificationPreference",
+    "NotifyContact",
+    "NotifyLog",
+    "Offer",
+    "OpportunityDeadline",
+    "OutreachCampaign",
+    "OutreachCollaborator",
+    "OutreachContact",
+    "OutreachDeal",
+    "OutreachEnrollment",
+    "OutreachLink",
+    "OutreachList",
+    "OutreachMembership",
+    "OutreachPerson",
+    "OutreachSend",
+    "OutreachSequence",
+    "OutreachShareToken",
+    "OutreachTask",
+    "OutreachTouch",
+    "Page",
+    "PagePresence",
+    "PageReviewVersion",
+    "Pathway",
+    "PathwayCohort",
+    "PathwayCourse",
+    "PathwayEnrollment",
+    "PersonalAgendaEntry",
+    "PlatformSetting",
+    "Poll",
+    "PollResponse",
+    "PoolExitFeedback",
+    "PostingSkill",
+    "PostingTeamMember",
+    "PrepSession",
+    "Question",
+    "RecruitingCost",
+    "Registration",
+    "ResearchInsight",
+    "Resume",
+    "ResumeComment",
+    "ResumeRevision",
+    "ReviewBookmark",
+    "ReviewFeedbackMemory",
+    "RoleChangeRequest",
+    "ScorecardSubmission",
+    "ScormPackage",
+    "ScormSession",
+    "Script",
+    "ScriptCollaborator",
+    "ScriptPresence",
+    "ScriptRevision",
+    "ScriptSection",
+    "ScriptShareToken",
+    "Session",
+    "SharedFile",
+    "ShowcaseGroup",
+    "ShowcaseMembership",
+    "ShowcasePathway",
+    "ShowcaseSubmission",
+    "Simulation",
+    "SimulationAttempt",
+    "SimulationComment",
+    "SimulationRequest",
+    "SimulationShareToken",
+    "Skill",
+    "SkillAlias",
+    "Speaker",
+    "Sponsor",
+    "StarStory",
+    "StarStorySkill",
+    "SymposiumQuestion",
+    "SymposiumQuestionVote",
+    "SymposiumReportAsset",
+    "SymposiumSession",
+    "SymposiumSessionSpeaker",
+    "TailoringCorrection",
+    "TailoringJob",
+    "TailoringRule",
+    "TailoringRun",
+    "ThemeProposal",
+    "ThemeVote",
+    "TicketType",
+    "Translation",
+    "User",
+    "UserSavedPosting",
+    "UserSkill",
+    "VerificationToken",
+    "VideoProject",
+    "Workshop",
+    "WorkshopBooking",
+    "XapiStatement"
+  ],
+  "excludedModels": {},
+  "sources": {
+    "PageReview": {
+      "evidence": "activity"
+    },
+    "PageComment": {
+      "evidence": "mixed"
+    },
+    "NewsletterComment": {
+      "evidence": "mixed"
+    },
+    "CodeReviewNote": {
+      "evidence": "mixed"
+    },
+    "DesignPin": {
+      "evidence": "mixed"
+    },
+    "DesignAnswer": {
+      "evidence": "comment"
+    },
+    "DesignQuestion": {
+      "evidence": "activity"
+    },
+    "DesignArtwork": {
+      "evidence": "mixed"
+    },
+    "DesignReview": {
+      "evidence": "activity"
+    },
+    "SocialPost": {
+      "evidence": "activity"
+    },
+    "NewsletterCycle": {
+      "evidence": "mixed"
+    },
+    "ScriptComment": {
+      "evidence": "mixed"
+    }
+  },
+  "captureMigrations": [
+    "prisma/migrations/20261124234500_review_feedback_all_content_sources/migration.sql"
+  ],
+  "integrationTest": "tests/integration/review-feedback-storage.py",
+  "workflows": {
+    "page": {
+      "sources": [
+        "PageReview",
+        "PageComment"
+      ]
+    },
+    "report": {
+      "sources": [
+        "PageReview",
+        "PageComment"
+      ]
+    },
+    "social": {
+      "sources": [
+        "PageReview",
+        "PageComment",
+        "SocialPost"
+      ]
+    },
+    "newsletter": {
+      "sources": [
+        "PageReview",
+        "PageComment",
+        "NewsletterComment",
+        "NewsletterCycle"
+      ]
+    },
+    "design": {
+      "sources": [
+        "DesignPin",
+        "DesignAnswer",
+        "DesignQuestion",
+        "DesignArtwork",
+        "DesignReview"
+      ]
+    },
+    "paste": {
+      "sources": [
+        "CodeReviewNote"
+      ]
+    },
+    "script": {
+      "sources": [
+        "ScriptComment"
+      ]
+    },
+    "history": {
+      "sources": [],
+      "infrastructure": true
+    }
+  },
+  "surfaces": {
+    "src/app/(dashboard)/admin/ai-review/page.tsx": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/(dashboard)/admin/committees/equip-review/page.tsx": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/(dashboard)/admin/feedback/[id]/page.tsx": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/(dashboard)/admin/feedback/page.tsx": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/(dashboard)/admin/workspace/design-review/page.tsx": {
+      "workflow": "design"
+    },
+    "src/app/(dashboard)/admin/workspace/marketing/newsletter/review/page.tsx": {
+      "workflow": "newsletter"
+    },
+    "src/app/(dashboard)/admin/workspace/reviewer-feedback/page.tsx": {
+      "workflow": "history"
+    },
+    "src/app/(dashboard)/admin/workspace/website-review/design/page.tsx": {
+      "workflow": "page"
+    },
+    "src/app/(dashboard)/admin/workspace/website-review/page.tsx": {
+      "workflow": "page"
+    },
+    "src/app/(dashboard)/committee/hqp/feedback/[id]/page.tsx": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/adaptive/bookmarks/[id]/review/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/admin/enrollments/[id]/review/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/admin/equip/applications/[id]/notes/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/admin/events/[slug]/registrations/[rid]/approve/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/admin/feedback-invitations/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/admin/forms/[slug]/submissions/[sid]/review/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/ai/feedback/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/ai/review/[id]/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/assist/hints/feedback/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/employer/applicants/[submissionId]/comments/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/employer/companies/[id]/join-requests/[reqId]/approve/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/feedback/[token]/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/public/page-review/[token]/join/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/public/page-review/[token]/overlay.js/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/public/page-review/[token]/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/public/page-review/loader.js/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/resume/[userId]/comments/[id]/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/resume/[userId]/comments/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/scripts/shared/[token]/comments/route.ts": {
+      "workflow": "script"
+    },
+    "src/app/api/share/sim/[token]/comments/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/talent-pool/[sid]/comments/[cid]/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/talent-pool/[sid]/comments/route.ts": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/api/workspace/code-review/route.ts": {
+      "workflow": "paste"
+    },
+    "src/app/api/workspace/design-review/upload/route.ts": {
+      "workflow": "design"
+    },
+    "src/app/api/workspace/newsletter/[id]/comments/route.ts": {
+      "workflow": "newsletter"
+    },
+    "src/app/api/workspace/newsletter/[id]/review/route.ts": {
+      "workflow": "newsletter"
+    },
+    "src/app/api/workspace/page-review/[id]/launch/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/workspace/page-review/[id]/mentions/notifications/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/workspace/page-review/[id]/mentions/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/workspace/page-review/[id]/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/workspace/page-review/feedback-memory/route.ts": {
+      "workflow": "history"
+    },
+    "src/app/api/workspace/page-review/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/workspace/scripts/[id]/comments/route.ts": {
+      "workflow": "script"
+    },
+    "src/app/api/workspace/social-review/[id]/route.ts": {
+      "workflow": "social"
+    },
+    "src/app/api/workspace/symposium-2026/report/review/route.ts": {
+      "workflow": "report"
+    },
+    "src/app/events/2026-annual-symposium/feedback/page.tsx": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/feedback/[token]/page.tsx": {
+      "excluded": "Existing assessment, applicant, learner, access-approval or AI-feedback surface; outside editorial content-style learning."
+    },
+    "src/app/review/design/[id]/page.tsx": {
+      "workflow": "design"
+    },
+    "src/app/review/social/[id]/page.tsx": {
+      "workflow": "social"
+    },
+    "src/app/review/symposium-2026/report/page.tsx": {
+      "workflow": "report"
+    },
+    "src/app/review-paste/[token]/route.ts": {
+      "workflow": "page"
+    }
+  }
+}

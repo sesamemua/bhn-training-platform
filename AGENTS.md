@@ -47,3 +47,14 @@ This project is indexed by GitNexus as **bhn-training-platform** (4770 symbols, 
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+# Mandatory integration for future content-review features
+
+Every new or changed content-review feature must use the shared reviewer feedback history. This includes comments, replies, corrections, decisions, questions, review rounds and approval/OK actions.
+
+- Read `docs/workspace/reviewer-feedback-learning.md` and `config/review-feedback-sources.json` before implementing a review feature.
+- Reuse registered storage and review services where possible; its history is captured automatically. Register the feature's review surfaces and workflow in the source registry.
+- New storage requires an explicit source registration, a dedicated capture migration/adapter, and a fixture in `tests/integration/review-feedback-storage.py`. Include create/edit/delete, context, actor uncertainty and rollback coverage.
+- Every new Prisma model must be classified. For models outside editorial review, add a specific reason to `excludedModels`; do not enlarge the frozen non-content baseline. Keep applicant/personnel/learner assessments outside editorial preference learning unless explicitly authorized.
+- Preserve exact source evidence and older versions. Separate review actions from style evidence, keep preferences scoped by project, and retain unknown attribution explicitly. Review @mentions use in-page notifications and existing replies.
+- Run `npm run check:review-feedback` and `npm run test:review-feedback`; the production build and blocking CI gate enforce registration and PostgreSQL fixture coverage. A new review feature is incomplete until these pass.

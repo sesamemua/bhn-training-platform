@@ -4,10 +4,12 @@ The unrelated vector columns in the generated test schema use TEXT when pgvector
 """
 import argparse, hashlib, json, os, re, subprocess, uuid
 from pathlib import Path
-parser=argparse.ArgumentParser();parser.add_argument('--socket',required=True);parser.add_argument('--port',default='55439');parser.add_argument('--schema',required=True);args=parser.parse_args()
+parser=argparse.ArgumentParser();parser.add_argument('--socket',required=True);parser.add_argument('--port',default='55439');parser.add_argument('--schema',required=True);parser.add_argument('--user');args=parser.parse_args()
 assert Path(args.socket).is_dir(), 'Use an isolated local PostgreSQL socket.'
 database='bhn_feedback_test_'+uuid.uuid4().hex[:12]
-base=['psql','-X','-q','-v','ON_ERROR_STOP=1','-h',args.socket,'-p',args.port,'-tA']
+registry=json.loads(Path('config/review-feedback-sources.json').read_text())
+expected_sources=set(registry['sources'])
+base=['psql','-X','-q','-v','ON_ERROR_STOP=1','-h',args.socket,'-p',args.port,'-tA']+(['-U',args.user] if args.user else [])
 def run(sql,db=database):
  r=subprocess.run([*base,'-d',db],input=sql,text=True,capture_output=True)
  if r.returncode:raise RuntimeError(r.stderr)
@@ -49,7 +51,9 @@ try:
  seed('DesignQuestion',{'id':'question','artworkId':'art','text':'Which layout works best?','options':['Wide','Narrow']})
  seed('SocialPost',{'id':'social','stream':'equip','kind':'launch','deadlineId':'cycle','key':'fixture-social','body':'Public copy','assetSpec':{'title':'Social proof'},'scheduledFor':'2026-12-01T15:00:00Z'})
  seed('NewsletterCycle',{'id':'cycle','month':'2026-11-01','draftOpen':'2026-11-01','draftDue':'2026-11-02','buildStart':'2026-11-03','approvalDue':'2026-11-04','sendDate':'2026-11-05','issueId':'issue'})
- migration=Path('prisma/migrations/20261124234500_review_feedback_all_content_sources/migration.sql').read_text();run(migration)
+ for migration_path in registry['captureMigrations']:run(Path(migration_path).read_text())
+ installed={row['table_name'] for row in query("SELECT c.relname AS table_name FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE t.tgname='bhn_feedback_history' AND NOT t.tgisinternal")}
+ assert installed==expected_sources, 'Capture registry and installed triggers differ: '+str(installed^expected_sources)
  assert run('SELECT detail FROM "ReviewFeedbackMemory" WHERE id='+q(legacy_id))=='{"existing":"must survive"}'
  for model,id in [('DesignPin','pin'),('CodeReviewNote','code-note'),('NewsletterComment','nl-note'),('ScriptComment','script-note')]:assert len(events(model,id))==1,(model,events(model,id))
  assert events('ScriptComment','script-note')[0]['detail']['source']['context']['scriptTitle']=='Opening script'
@@ -82,6 +86,7 @@ try:
  before=int(run('SELECT count(*) FROM "ReviewFeedbackMemory";'));run('BEGIN;UPDATE "DesignPin" SET body=\'Never commit\',"updatedAt"=now() WHERE id=\'pin\';ROLLBACK;');assert int(run('SELECT count(*) FROM "ReviewFeedbackMemory";'))==before
  run('DELETE FROM "CodeReviewNote" WHERE id=\'code-note\';');assert events('CodeReviewNote','code-note')[-1]['detail']['event']=='deleted'
  run('DELETE FROM "DesignProject" WHERE id=\'project\';');deleted=events('DesignPin','pin')[-1]['detail'];assert deleted['event']=='deleted';assert deleted['review']['title']=='Symposium print assets';assert deleted['source']['context']['artworkTitle']=='Poster'
- print(json.dumps({'postgresql':'real','triggerSources':12,'baseline':True,'beforeAfter':True,'editorUncertainty':True,'artworkContext':True,'questionContext':True,'scriptContext':True,'roundActions':True,'decisionsSeparate':True,'viewsDeduplicated':True,'publishingExcluded':True,'legacyRowsPreserved':True,'rollbackAtomic':True,'cascadeContextPreserved':True,'urlSecretsRemoved':True,'directSqlReversionsPreserved':True}))
+ for model in expected_sources:assert query("SELECT count(*)::int AS records FROM \"ReviewFeedbackMemory\" WHERE detail::jsonb->'source'->>'model'="+q(model))[0]['records']>0, 'Add a capture fixture/assertion for '+model
+ print(json.dumps({'postgresql':'real','triggerSources':len(expected_sources),'baseline':True,'beforeAfter':True,'editorUncertainty':True,'artworkContext':True,'questionContext':True,'scriptContext':True,'roundActions':True,'decisionsSeparate':True,'viewsDeduplicated':True,'publishingExcluded':True,'legacyRowsPreserved':True,'rollbackAtomic':True,'cascadeContextPreserved':True,'urlSecretsRemoved':True,'directSqlReversionsPreserved':True}))
 finally:
  run('DROP DATABASE IF EXISTS '+database+';','postgres')
