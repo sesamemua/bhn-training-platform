@@ -76,3 +76,10 @@ test('history download rejects non-admin access before reading any evidence',asy
  assert.equal((await exports.GET(new Request('https://test/api?review=report'))).status,403);assert.equal(reads,0);allowed=true;
  const r=await exports.GET(new Request('https://test/api?review=report'));assert.equal(r.status,200);assert.equal(r.headers.get('Cache-Control'),'private, no-store');assert.equal((await r.json()).scope,'report');
 });
+test('review actions stay in the timeline without becoming preferences or hiding the source request',async()=>{
+ const f=fixture();await captureReviewFeedback(f.db,'report',[original] as any,'created',actor);
+ const evidence=[...f.records.values()][0];
+ const action={...evidence,event:'edited' as const,signal:'activity' as const,recordedAt:'2026-11-04T12:00:00Z',occurredAt:'2026-11-04T12:00:00Z',comment:{...evidence.comment,body:'Review action: resolved',status:'resolved'}};
+ const project=reviewerPreferenceHistory([evidence,action])[0].projects[0];assert.equal(project.timeline.length,2);assert.equal(project.evidenceCount,1);assert.equal(project.themes.find(t=>t.name==='Voices & quotations')?.count,1);
+ const activitiesOnly=reviewerPreferenceHistory([action])[0].projects[0];assert.equal(activitiesOnly.evidenceCount,0);assert.equal(activitiesOnly.themes.length,0);
+});

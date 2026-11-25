@@ -15,3 +15,18 @@ export async function loadFeedbackHistory(reviewId?: string) {
   }
   return { events, reviewers: reviewerPreferenceHistory(events) };
 }
+
+/** Include native review projects and retained histories of deleted reviews in the filter. */
+export async function loadFeedbackProjects() {
+  const [active, stored] = await Promise.all([
+    prisma.pageReview.findMany({ select: { id: true, title: true }, orderBy: { updatedAt: 'desc' } }),
+    prisma.$queryRaw<{ id: string; title: string }[]>(Prisma.sql`
+      SELECT DISTINCT ON ("reviewId") "reviewId" AS id, detail::jsonb->'review'->>'title' AS title
+      FROM "ReviewFeedbackMemory"
+      WHERE detail::jsonb->>'schema'='1' AND jsonb_typeof(detail::jsonb->'review'->'title')='string'
+      ORDER BY "reviewId", "recordedAt" DESC, "ReviewFeedbackMemory".id DESC`),
+  ]);
+  const projects = new Map(stored.map(row=>[row.id,row]));
+  for (const row of active) projects.set(row.id,row);
+  return [...projects.values()].sort((a,b)=>a.title.localeCompare(b.title));
+}

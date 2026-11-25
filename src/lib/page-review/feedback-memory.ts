@@ -10,6 +10,8 @@ export type FeedbackEvent = {
   review: { id: string; title: string; url: string; kind: string; round: number; revision: string | null };
   comment: Omit<FeedbackComment, 'createdAt' | 'editedAt'> & { createdAt: string; editedAt: string | null };
   writer: FeedbackActor; actor: FeedbackActor;
+  signal?: 'comment' | 'activity';
+  source?: { model: string; id: string; action: string | null; context: Record<string, unknown> };
 };
 const iso = (value: Date | string) => new Date(value).toISOString();
 const contextUrl = (value: string) => {
@@ -65,7 +67,7 @@ const themes = [
 /** Evidence summaries, not personality scores. Project boundaries and dated source requests stay visible. */
 export function reviewerPreferenceHistory(events: FeedbackEvent[]) {
   const ordered = [...events].sort((a,b)=>a.occurredAt.localeCompare(b.occurredAt)||a.recordedAt.localeCompare(b.recordedAt)||a.comment.editCount-b.comment.editCount);
-  const deleted = new Set(ordered.filter(e=>e.event==='deleted').map(e=>e.comment.id));
+  const deleted = new Set(ordered.filter(e=>e.event==='deleted'&&e.signal!=='activity').map(e=>e.comment.id));
   const people = new Map<string, { id: string; name: string; verified: boolean; timeline: FeedbackEvent[] }>();
   for (const event of ordered) {
     const key = event.writer.verified && event.writer.id ? event.writer.id : 'unverified:' + event.review.id + ':' + event.comment.id + ':' + event.writer.name;
@@ -76,8 +78,8 @@ export function reviewerPreferenceHistory(events: FeedbackEvent[]) {
   return [...people.values()].map(person=>{
     const projects = [...new Set(person.timeline.map(e=>e.review.id))].map(reviewId=>{
       const timeline=person.timeline.filter(e=>e.review.id===reviewId);
-      const latest=new Map<string,FeedbackEvent>();for(const e of timeline)latest.set(e.comment.id,e);
-      const evidence=[...latest.values()].filter(e=>e.event!=='deleted'&&!deleted.has(e.comment.id));
+      const latest=new Map<string,FeedbackEvent>();for(const e of timeline)if(e.signal!=='activity')latest.set(e.comment.id,e);
+      const evidence=[...latest.values()].filter(e=>e.event!=='deleted'&&!deleted.has(e.comment.id)&&e.signal!=='activity');
       return {reviewId,title:timeline.at(-1)!.review.title,evidenceCount:evidence.length,
         themes:person.verified?themes.map(([name,pattern])=>{const examples=evidence.filter(e=>pattern.test(e.comment.body));return{name,count:examples.length,strength:examples.length>=3?'Repeated pattern':'Limited evidence',examples};}).filter(t=>t.count):[],
         timeline:[...timeline].reverse()};
