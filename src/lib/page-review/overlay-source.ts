@@ -1190,6 +1190,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       root.appendChild(grip);
     }
     if (reportReview) renderReportTools(body);
+    if (reportReview && !state.loading && state.viewer && !isLocked()) {
+      var openCard = make("section", "bhn-rv-open-state");
+      openCard.setAttribute("role", "status");
+      openCard.setAttribute("aria-label", "Round " + state.review.round + " open for review");
+      openCard.appendChild(make("strong", "", "Round " + state.review.round + " is open for review"));
+      openCard.appendChild(make("p", "", "Edit text and photos, add comments, and @mention colleagues."));
+      body.prepend(openCard);
+    }
     if (reportReview && !state.loading && state.viewer && isLocked()) {
       var lockCard = make("section", "bhn-rv-lock-state");
       lockCard.setAttribute("role", "status"); lockCard.setAttribute("aria-label", "Round " + state.review.round + " commenting locked");
@@ -1209,6 +1217,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   style.textContent += ".bhn-rv-head{flex-shrink:0;}.bhn-rv-body{flex:1 1 auto;min-height:0;overscroll-behavior:auto;} .bhn-rv-lock-state{text-align:center;padding:20px 16px;margin:0 0 14px;border:2px solid #b7c7d1;border-radius:10px;background:#edf2f6;color:#263f52;}.bhn-rv-lock-icon{display:block;font-size:64px;line-height:1.15;margin-bottom:10px;}.bhn-rv-lock-state strong{display:block;font-size:21px;line-height:1.25;}.bhn-rv-lock-state p{margin:10px 0 0;font-size:13px;line-height:1.5;}";
+
+  style.textContent += ".bhn-rv-open-state{padding:12px 14px;margin:0 0 12px;border:1px solid #8eb7a4;border-left:4px solid #26724c;border-radius:8px;background:#edf7f1;color:#204c3a;}.bhn-rv-open-state strong{display:block;font-size:16px;line-height:1.3;}.bhn-rv-open-state p{margin:5px 0 0;font-size:12px;line-height:1.5;}";
 
   function commentsSignature(comments) {
     return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt, comment.editedByName, comment.anchorQuote, comment.anchorKey, comment.anchorPath, JSON.stringify(comment.anchorTarget)].join(":"); }).join("|");

@@ -381,6 +381,13 @@ export function ReportEditor({ report: initial, revision, history, review: initi
 
   return (
     <>
+      {review.status === "open" && past === null && <section className={`${styles.lockedRound} report-screen-only`} data-ready="true" role="status" aria-label={`Round ${review.round} open for review`}>
+        <BookOpen size={30} aria-hidden="true" />
+        <div>
+          <h2>Round {review.round} is open for review</h2>
+          <p>{fullPageReview ? "You can edit text and photos, add comments, and @mention colleagues. Changes save automatically." : `Use the red “Start Round ${review.round} review” button to open the report and make comments or edits.`}</p>
+        </div>
+      </section>}
       {review.status === "exported" && <section className={`${styles.lockedRound} report-screen-only`} role="status" data-ready={nextRoundReady || undefined} aria-label={nextRoundReady ? `Round ${review.round + 1} ready for review` : `Round ${review.round} locked`}>
         {nextRoundReady ? <BookOpen size={30} aria-hidden="true" /> : <LockKeyhole size={26} aria-hidden="true" />}
         <div>
@@ -404,7 +411,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
       </section>}
       <div className={`${styles.toolbar} report-screen-only`}>
         <div className={styles.reviewState}>
-          <span>{review.status === "closed" ? "Approved" : review.status === "exported" ? nextRoundReady ? `Round ${review.round + 1} ready for review` : "Round locked" : "In review"} · Round {review.round}</span>
+          <span>{past !== null ? `Round ${past} snapshot` : review.status === "open" ? `Round ${review.round} is open for review` : review.status === "closed" ? `Round ${review.round} · Approved` : nextRoundReady ? `Round ${review.round + 1} is ready for review` : `Round ${review.round} · Locked for revisions`}</span>
           <p>{count ? `${count} pages` : "Laying out pages"} · US Letter · <span role="status">{saving ? "Saving…" : dirty ? "Editing" : editable ? "All changes saved" : "Shared draft"}</span></p>
           {editable && <p>Click text to edit, click a photo for photo tools, or use the nearby comment icon to leave feedback. Edits save automatically.</p>}
           {!fullPageReview && <p>{nextRoundReady ? `View only. Open Round ${review.round + 1} review, then an administrator can start it.` : `View only. Use the red “Start Round ${review.round} review” button to comment or edit the report.`}</p>}

@@ -19,7 +19,7 @@ export default async function EventReportReviewPage() {
     <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-xl font-bold">Event Report Review</h1>
-        {data && <p className="text-sm text-muted">{nextRoundReady ? `Round ${data.review.round + 1} is ready for review` : `Round ${data.review.round} · ${data.review.status === "closed" ? "Approved" : data.review.status === "exported" ? "Locked for revisions" : "Open for review"}`}</p>}
+        {data && <p className="text-sm text-muted">{nextRoundReady ? `Round ${data.review.round + 1} is ready for review` : data.review.status === "open" ? `Round ${data.review.round} is open for review` : `Round ${data.review.round} · ${data.review.status === "closed" ? "Approved" : "Locked for revisions"}`}</p>}
       </div>
       <a href={REPORT_PATH} className="rounded-md border border-line px-3 py-2 text-sm font-semibold">Back to report workspace</a>
     </header>

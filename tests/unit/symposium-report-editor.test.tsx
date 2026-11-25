@@ -46,6 +46,7 @@ test("the main report editor keeps comments readable and directs new feedback to
     },
   };
   const html = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, props));
+  assert.match(html, /Round 1 is open for review/);
   assert.match(html, /Existing draft feedback/);
   assert.match(html, /Start Round 1 review/);
   assert.match(html, /href="\/review\/symposium-2026\/report"[^>]*target="_blank"/);
@@ -57,6 +58,7 @@ test("the main report editor keeps comments readable and directs new feedback to
   for (const fullPageReview of [false, true]) {
     const locked = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview, review: { ...props.review, status: "exported" } }));
     assert.match(locked, /aria-label="Round 1 locked"/);
+    assert.doesNotMatch(locked, /is open for review/);
     assert.match(locked, /Wait until the revisions for Round 1 are complete/);
     assert.match(locked, /Then an administrator can start Round 2/);
     assert.ok(locked.indexOf('aria-label="Round 1 locked"') < locked.indexOf("Shared draft"));
@@ -65,15 +67,20 @@ test("the main report editor keeps comments readable and directs new feedback to
   for (const fullPageReview of [false, true]) {
     const ready = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview, review: { ...props.review, status: "exported", comments: props.review.comments.map(c => ({...c,status:"resolved"})) } }));
     assert.match(ready,/Round 2 is ready for review/);
+    assert.doesNotMatch(ready,/is open for review/);
     assert.match(ready,/All revision requests are resolved/);
     assert.match(ready,/An administrator must click/);
     assert.match(ready,fullPageReview ? />Start Round 2 review<\/button>/ : />Open Round 2 review<\/a>/);
     assert.doesNotMatch(ready,/All changes saved|>Approve report</);
   }
   const fullPage = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview: true }));
-  assert.match(fullPage, /Comment mode is on by default\./);
+  assert.match(fullPage, /Round 1 is open for review/);
+  assert.match(fullPage, /Click text to edit, click a photo for photo tools/);
   assert.match(fullPage, /Edits save automatically\./);
   assert.match(fullPage, /All changes saved/);
   assert.doesNotMatch(fullPage, /Save draft|Comment on page/);
   assert.doesNotMatch(fullPage, /Existing draft feedback|Start Round 1 review|id="report-comments"/);
+  const closed = renderToStaticMarkup(React.createElement(editorModule.exports.ReportEditor, { ...props, fullPageReview: true, review: { ...props.review, status: "closed" } }));
+  assert.doesNotMatch(closed, /is open for review/);
+  assert.match(closed, /Round 1 · Approved/);
 });
