@@ -867,3 +867,22 @@
 .chapter[data-section="program-impact"] .ventureProfile .photoMat::before { display:none; }
 
 .chapter[data-section="publication-leadership"][data-team-spread="true"] { background:#fff; }
+
+/* Round 8: requested element refinements shared with the pagination ruler. */
+.chapter[data-section="program-impact"] .ventureProfile { grid-template-columns:150px minmax(0,1fr);align-items:center; }
+.chapter[data-section="program-impact"] .ventureProfile>div { grid-column:1;grid-row:1; }
+.chapter[data-section="program-impact"] .ventureProfile>.paragraph { grid-column:2;grid-row:1; }
+.chapter[data-section="program-impact"] .ventureProfile .photoMat { width:150px;height:86px;aspect-ratio:auto!important; }
+.chapter[data-section="program-impact"] .quote { background:rgb(20 148 160 / 9%);border:1px solid rgb(20 148 160 / 28%);border-radius:8px;padding:12px 14px;font-weight:700; }
+.trainingLink { display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:8px 14px;border-radius:5px;background:#176879;color:#fff;text-decoration:none;font:700 13px/1.4 Arial,sans-serif;min-height:36px; }
+.trainingLink:focus-visible { outline:3px solid #a74d13;outline-offset:3px; }
+.ventureProfile>.ventureText { grid-column:1;min-width:0; }
+.chapter[data-section="venturelift"] .ventureProfile { padding-bottom:8px; }
+.chapter[data-section="venturelift"] .ventureProfile .heading { padding-bottom:5px; }
+.chapter[data-section="discussion"] .story .paragraph { font:13px/1.32 Arial,sans-serif; }
+.registration[data-dual="true"]>figcaption,.audienceChart h3 { text-align:center;justify-content:center; }
+.mentorPhotoStrip { grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 13px; }
+.mentorPhotoStrip figure { margin:0; }
+.mentorPhotoStrip .photoMat { aspect-ratio:3 / 2!important; }
+.chapter[data-section="career-conversations"]:has(.mentorPhotoStrip) { --figure-height:auto; }
+.chapter[data-section="career-conversations"] .copy { grid-row:3; }

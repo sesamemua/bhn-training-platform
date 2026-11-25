@@ -9,7 +9,7 @@ import { changePassages } from "@/lib/symposium-report/change-passages";
 import { ReportChangePopup } from "./ReportChangePopup";
 import { CoverArt, PhotoFigure } from "./ReportPhoto";
 import styles from "./report.module.css";
-import { editorialParts, pairedProfile, publicationPage, quotePosition, teamGroup } from "@/lib/symposium-report/editorial";
+import { editorialAction, ventureHeading, editorialParts, pairedProfile, publicationPage, quotePosition, teamGroup } from "@/lib/symposium-report/editorial";
 
 const sectorColors = [
   "var(--report-sector-academic)", "var(--report-sector-industry)", "var(--report-sector-other)", "var(--report-sector-public)",
@@ -45,7 +45,7 @@ function RegistrationChart({ chart, showSource, inline, change }: {
               <dt><i style={{ background: categoryColors[index] }} />
                 <span {...inline(label, `Category ${index + 1}`, (label) => updateCategory(index, { label }))}>{label}</span>
               </dt>
-              <dd>{!chart.percentagesOnly && <><span {...inline(String(count), `Count for ${label}`, (text) => updateCategory(index, { count: text.trim() ? Number(text) : NaN }))}>{count}</span> · </>}{(count / total * 100).toFixed(1)}%</dd>
+              <dd>{!chart.percentagesOnly && <><span {...inline(String(count), `Count for ${label}`, (text) => updateCategory(index, { count: text.trim() ? Number(text) : NaN }))}>{count}</span> · </>}{(count / total * 100).toFixed(0)}%</dd>
             </div>
           ))}
         </dl>
@@ -94,25 +94,33 @@ function blockClassName(block: Block, rosterStart: number | undefined) {
 
 function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void; tracked?: Map<number, Mark[]>; heights?: Record<string, number> }) {
   const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
-  return blocks.map((block, index) => {
+  const renderCopy = (block: Block) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" && !block.continued ? "li" : "p";
-    const photos = workshopPhotos(page, block.photoRow);
     const position = quotePosition(page, block);
     const editProps = inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading");
     // Keep the editable DOM as plain text; styled review spans belong to the reading view.
     // Chromium can mislay columns when a spanning layout block is directly editable.
-    const copy = block.text && <Tag className={`${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={position?.role} style={position ? { gridColumn: position.column, gridRow: position.row } : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
+    const action = editorialAction(page, block);
+    const parts = editorialParts(page, block);
+    const panelLabels = parts.some(part => part.kind === "panelLabel");
+    return block.text && <Tag className={`${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={position?.role} style={position ? { gridColumn: position.column, gridRow: position.row } : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
       if (!(event.target as HTMLElement).closest('[contenteditable]')) event.currentTarget.querySelector<HTMLElement>('[contenteditable]')?.focus();
     }}>
       {page.id === "structured-networking" && block.kind === "quote" && <small className={styles.quoteRole}>{blockQuoteRole(page, block)}</small>}
-      <span className={styles.textFrame}
+      {panelLabels && editProps.contentEditable ? <span className={styles.textFrame}>{parts.map((part, i) => <span key={i} className={part.kind ? styles[part.kind] : undefined} {...inline(part.text, part.kind === "panelLabel" ? "Panel label" : "Panel participants", (text) => change(block, parts.map((value, at) => at === i ? text : value.text).join("")), true)}>{part.text}</span>)}</span> : action ? <a href={action} className={styles.trainingLink} onClick={(event) => { if ((event.target as HTMLElement).closest("[contenteditable]")) event.preventDefault(); }}><span {...editProps}>{block.text}</span><span aria-hidden="true"> ↗</span></a> : <span className={styles.textFrame}
         {...editProps}>
         {tracked?.get(block.start) ? <Marked parts={tracked.get(block.start)!} /> : editProps.contentEditable ? block.text : editorialParts(page, block).map((part, i) => <span key={i} className={part.kind ? styles[part.kind] : undefined}>{part.text}</span>)}
-      </span>
+      </span>}
     </Tag>;
+  };
+  return blocks.map((block, index) => {
+    if (page.id === "venturelift" && block.kind === "heading" && blocks[index + 1]?.photoRow) return null;
+    const photos = workshopPhotos(page, block.photoRow);
+    const copy = renderCopy(block);
+    const heading = ventureHeading(page, blocks, index);
     if (block.kind === "bullet" && !block.continued) return <ul key={index} className={styles.list}>{copy}</ul>;
     const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / 337} />);
-    if (block.kind !== "heading" && pairedProfile(page) && (photos.length || publicationPage(page))) return <div key={index} data-team-group={teamGroup(page,block)} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{copy}{photos.length > 0 && <div>{figures}</div>}</div>;
+    if (block.kind !== "heading" && pairedProfile(page) && (photos.length || publicationPage(page))) return <div key={index} data-team-group={teamGroup(page,block)} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{heading ? <div className={styles.ventureText}>{renderCopy(heading)}{copy}</div> : copy}{photos.length > 0 && <div>{figures}</div>}</div>;
     return <Fragment key={index}>
       {copy}
       {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">{figures}</div>}
@@ -148,7 +156,8 @@ export function useReportLayout(report: Report, approved: boolean) {
       pageNode.dataset.photoStrip = String(hasStrip || hasPairedPhotos(page, index));
       pageNode.dataset.photoPair = String(hasPairedPhotos(page, index));
       const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
-      story.replaceChildren(...blocks.flatMap((block) => {
+      story.replaceChildren(...blocks.flatMap((block, blockIndex) => {
+        if (page.id === "venturelift" && block.kind === "heading" && blocks[blockIndex + 1]?.photoRow) return [];
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" && !block.continued ? "li" : "p");
         node.className = `${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`;
         if (page.id === "structured-networking" && block.kind === "quote") { node.dataset.quoteRole = blockQuoteRole(page, block); const role = document.createElement("small"); role.className = styles.quoteRole; role.textContent = blockQuoteRole(page, block); node.append(role); }
@@ -157,6 +166,7 @@ export function useReportLayout(report: Report, approved: boolean) {
         for (const part of editorialParts(page, block)) { const span = document.createElement("span"); span.className = part.kind ? styles[part.kind] : ""; span.textContent = part.text; text.append(span); }
         const position = quotePosition(page, block);
         if (position) { node.style.gridColumn = position.column; node.style.gridRow = position.row; }
+        if (editorialAction(page, block)) text.className = styles.trainingLink;
         node.append(text);
         const list = document.createElement("ul");
         list.className = styles.list;
@@ -179,7 +189,12 @@ export function useReportLayout(report: Report, approved: boolean) {
             space.style.aspectRatio = publicationPage(page) ? "1 / 1" : `337 / ${height * photos.length}`;
             space.style.marginBottom = `${(page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE) * photos.length}px`;
             if(teamGroup(page,block))row.dataset.teamGroup=teamGroup(page,block);
-            row.append(...nodes, space);
+            const heading = ventureHeading(page, blocks, blockIndex);
+            if (heading) {
+              const group = document.createElement("div"); group.className = styles.ventureText;
+              const title = document.createElement("h3"); title.className = styles.heading; title.textContent = heading.text;
+              group.append(title, ...nodes); row.append(group, space);
+            } else row.append(...nodes, space);
             return [row];
           }
           const rows = Math.ceil(photos.length / 2);
@@ -429,6 +444,9 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
               <PhotoFigure slot={strip[0][0]} photo={strip[0][1]} caption={page.showCaptions !== false} height={photoHeights[index]} />
             </div>
             : <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} lead />)}
+          {page.id === "career-conversations" && strip.length > 0 && <div className={styles.mentorPhotoStrip} role="group" aria-label="Structured Networking photographs">
+            {strip.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={portraitHeight(strip.length)} />)}
+          </div>}
           <div className={styles.copy}>
             <div className={`${styles.story}${hasWorkshops ? ` ${styles.workshopStory}` : ""}`}>
               <Blocks page={page} blocks={blocks} inline={inline} tracked={pageMarks} heights={workshopHeights?.[index]}
@@ -437,7 +455,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
                 <p className={`${styles.paragraph} ${styles.emptyStory}`} {...inline("", "Story text", (text) => patchPage(page.id, () => ({ text })), true)} />}
             </div>
             {!photoGrid && !hasLeadPhoto(page, index) && photoHeights[index] > 0 && <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={photoHeights[index]} />}
-            {strip.length > 0 && !paired && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
+            {strip.length > 0 && !paired && page.id !== "career-conversations" && <div className={`${styles.portraitStrip}${photoGrid ? ` ${styles.trainingPhotoGrid}` : ""}`}
               role="group" aria-label={photoGrid ? page.id === "pitch-competition" ? "Innovation Ignited photographs" : "Training Week photographs" : "Additional photographs"}>
               {photoGrid && <PhotoFigure slot="" photo={pagePhoto(page, index, recommendations)} caption={page.showCaptions !== false} height={stripHeight} />}
               {strip.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={stripHeight} />)}

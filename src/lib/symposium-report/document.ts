@@ -37,7 +37,7 @@ const registrationChart = z.object({
   categories: z.array(z.object({
     label: z.string().trim().min(1).max(72),
     count: z.number().int().min(0).max(100_000),
-  })).length(4).refine((items) => items.some((item) => item.count > 0), "The registration chart needs at least one positive count"),
+  })).min(1).max(8).refine((items) => items.some((item) => item.count > 0), "The registration chart needs at least one positive count"),
   audience: z.object({
     trainees: z.number().int().min(0).max(100_000),
     professionals: z.number().int().min(0).max(100_000),

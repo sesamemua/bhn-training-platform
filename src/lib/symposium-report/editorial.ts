@@ -30,3 +30,9 @@ export function teamGroup(page: ReportPage, block: Block) {
   const heading=reportBlocks(page.text).findLast(b=>b.kind==='heading'&&b.start<block.start)?.text;
   return heading==='Leadership Team'?'leadership':heading==='Program Team'?'program':'partners';
 }
+
+/** Only the requested platform call to action; report text stays the editable source. */
+export const editorialAction = (page: ReportPage, block: Block) => page.id === 'program-impact' && block.text.trim() === 'BioHubNet Online Training Platform' ? 'https://app.biohubnet.ca/userlogin/' : undefined;
+
+/** Venture titles belong to the same row as their description and swappable photo. */
+export const ventureHeading = (page: ReportPage, blocks: Block[], index: number) => page.id === 'venturelift' && blocks[index]?.photoRow && blocks[index - 1]?.kind === 'heading' ? blocks[index - 1] : undefined;
