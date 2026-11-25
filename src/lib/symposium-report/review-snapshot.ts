@@ -1,6 +1,6 @@
 import type { Report, ReportPhoto } from "./document";
 import { reportBlocks } from "./paginate";
-import { photoAdjust, photoLabel, photoPreset, REPORT_ASSETS } from "./photos";
+import { photoAdjust, photoCaption, photoLabel, photoPreset, REPORT_ASSETS } from "./photos";
 
 function escape(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
@@ -11,7 +11,7 @@ export function reportReviewSnapshot(report: Report, origin: string) {
     const source = new URL(`${REPORT_ASSETS}/${encodeURIComponent(photo.file)}`, origin).href;
     const { scale, rotate } = photoAdjust(photo);
     const adjust = `${scale ? `;scale:${scale}` : ""}${rotate ? `;rotate:${rotate}` : ""}`;
-    return `<figure style="overflow:hidden"><img src="${escape(source)}" alt="${escape(photoLabel(photo))}" style="object-position:${photo.x}% ${photo.y}%;object-fit:${photo.fit === "whole" ? "contain" : "cover"}${adjust}">${showCaption ? `<figcaption>${escape(photoLabel(photo))} · ${photo.fit} · ${photo.x}% / ${photo.y}%</figcaption>` : ""}</figure>`;
+    return `<figure style="overflow:hidden"><img src="${escape(source)}" alt="${escape(photoLabel(photo))}" style="object-position:${photo.x}% ${photo.y}%;object-fit:${photo.fit === "whole" ? "contain" : "cover"}${adjust}">${showCaption && photoCaption(photo) ? `<figcaption>${escape(photoCaption(photo))} · ${photo.fit} · ${photo.x}% / ${photo.y}%</figcaption>` : ""}</figure>`;
   }
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     body{margin:0;background:#fff;color:#172b35;font:14px/1.5 system-ui,sans-serif;overflow-wrap:anywhere}

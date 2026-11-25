@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from "react";
 import { FlipHorizontal2, RotateCcw, RotateCw, Trash2, Undo2 } from "lucide-react";
 import type { ReportPhoto } from "@/lib/symposium-report/document";
-import { photoAdjust, photoLabel, REPORT_ASSETS } from "@/lib/symposium-report/photos";
+import { photoAdjust, photoCaption, photoLabel, REPORT_ASSETS } from "@/lib/symposium-report/photos";
 import { REPORT_API } from "@/lib/symposium-report/document";
 import { PHOTO_UPLOAD_LIMIT, type GalleryEntry, type GalleryGroup } from "@/lib/symposium-report/gallery";
 import { headCropRisk, headSafeCrop, primaryHead, clamp, type HeadRegion, type ImageSize } from "@/lib/images/head-crop";
@@ -45,7 +45,7 @@ export function PhotoFigure({ photo, height, lead = false, caption = true, slot 
         <img src={source} alt={label} style={adjustStyle(photo)} onLoad={event => { const img = event.currentTarget; setSize({ width: img.naturalWidth, height: img.naturalHeight }); }} />
         {photo.subject && clipped && <span className={`${styles.headWarning} report-screen-only`}>Main head is cropped · adjust photo</span>}
       </div>
-      {caption && <figcaption>{label}</figcaption>}
+      {caption && <figcaption>{photoCaption(photo)}</figcaption>}
     </figure>
   );
 }
@@ -207,7 +207,7 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    const chosen = selected && { ...selected, caption: selected.caption?.trim() || undefined, hidden: undefined };
+    const chosen = selected && { ...selected, caption: selected.caption?.trim(), hidden: undefined };
     if (!uploading) onApply(chosen && portrait ? { ...chosen, fit: "cover" } : chosen);
   }
 
@@ -289,8 +289,8 @@ export function PhotoEditor({ initial, automatic, height, section, cover, second
             <button type="button" onClick={() => adjust({ x: 50, y: 50, zoom: undefined, rotate: undefined, flip: undefined })}><Undo2 size={14} aria-hidden /> Reset</button>
           </div>
           {!cover && <label>Caption
-            <input type="text" maxLength={120} value={photo.caption ?? ""} placeholder={photoLabel({ ...photo, caption: undefined })}
-              onChange={(e) => adjust({ caption: e.target.value.trim() ? e.target.value : undefined })} />
+            <input type="text" maxLength={120} value={photo.caption ?? ""} placeholder="Optional caption"
+              onChange={(e) => adjust({ caption: e.target.value })} />
           </label>}
           <button type="button" onClick={() => setSelected(undefined)}>{secondary ? "Use current photo" : "Use recommended photo"}</button>
           {!fixedCrop && <label>Crop style

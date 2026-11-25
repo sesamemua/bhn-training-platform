@@ -18,7 +18,8 @@ export const reportAssetTypes: Readonly<Record<string, string>> = {
 
 const reportPhoto = z.object({
   file: z.string().refine((file) => Object.hasOwn(reportPhotos, file) || isGalleryPhoto(file), "Choose a report photograph"),
-  caption: z.string().trim().min(1).max(120).optional(),
+  // Empty is intentional: deleting a caption must survive saving and reloading.
+  caption: z.string().trim().max(120).optional(),
   x: z.number().int().min(0).max(100),
   y: z.number().int().min(0).max(100),
   fit: z.enum(["cover", "portrait", "whole"]),

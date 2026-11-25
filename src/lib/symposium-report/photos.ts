@@ -68,8 +68,14 @@ export function photoAdjust(photo: ReportPhoto) {
   };
 }
 
+/** Printed caption only; missing or deliberately cleared captions stay blank. */
+export function photoCaption(photo: ReportPhoto) {
+  return photo.caption?.trim() ?? "";
+}
+
+/** Accessible image/picker label, independent of the optional printed caption. */
 export function photoLabel(photo: ReportPhoto) {
-  return photo.caption ?? (Object.hasOwn(reportPhotos, photo.file) ? reportPhotos[photo.file as ReportPhotoFile].label : "Symposium photograph");
+  return photoCaption(photo) || (Object.hasOwn(reportPhotos, photo.file) ? reportPhotos[photo.file as ReportPhotoFile].label : "Symposium photograph");
 }
 
 export function portraitPhotos(page: ReportPage) {
