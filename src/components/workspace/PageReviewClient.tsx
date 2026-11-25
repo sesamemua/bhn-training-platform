@@ -12,11 +12,13 @@ import {
   Loader2, Plus, MessageSquarePlus, Check, Trash2, Pencil, Copy, Lock, RotateCcw,
   FileDown, ExternalLink, AlertTriangle, ArrowRight, CornerDownRight, X, Crosshair,
 } from "lucide-react";
+import { findReportTarget, type ReportAnchorTarget } from "@/lib/symposium-report/comment-anchors";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Comment {
   id: string; parentId: string | null; round: number;
   anchorQuote: string | null; anchorKey: string | null;
+  anchorTarget?: ReportAnchorTarget | null;
   anchorPath: string | null; anchorBlock: string | null; anchorState: string;
   authorUserId: string | null; authorName: string; authorKind: string; body: string;
   status: string; editCount: number; editedAt: string | null;
@@ -58,18 +60,21 @@ function editedLabel(c: Comment): string {
 
 /**
  * Scroll a report comment's page into view and flash the quoted passage
- * (or the whole page when the quote is gone). False when the page is gone.
+ * (or a verified relocated passage after a rewrite). Never guess when the quote is gone.
  * Same feel as the page-review overlay: once the scroll settles, a box is
  * drawn over the target and blinks amber — drawn on top, so the page's own
  * clipping, zoom and background can't hide it.
  */
-export function showReportAnchor(key: string, quote: string | null): boolean {
+export function showReportAnchor(key: string, quote: string | null, target?: ReportAnchorTarget | null): boolean {
   const sheet = document.getElementById(key.replace(/^#/, ""));
-  if (!sheet) return false;
+  if (!sheet && !target) return false;
   const squash = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
-  const needle = squash(quote).slice(0, 40);
-  const blocks = needle ? Array.from(sheet.querySelectorAll("h1, h2, h3, h4, p, li, blockquote, figcaption, td")) : [];
-  const hit = blocks.find((el) => squash(el.textContent).includes(needle)) ?? sheet.querySelector("article") ?? sheet;
+  const needle = squash(quote);
+  const blocks = needle ? Array.from(document.querySelectorAll("[data-report-paper] h1, [data-report-paper] h2, [data-report-paper] h3, [data-report-paper] h4, [data-report-paper] p, [data-report-paper] li, [data-report-paper] blockquote, [data-report-paper] figcaption, [data-report-paper] td")) : [];
+  const section = /^#report-frame-(.+)-\d+$/.exec(key)?.[1].replace(/^publication-team$/, 'publication-leadership');
+  const candidates = section ? blocks.filter(el => el.closest('article')?.getAttribute('data-section') === section) : blocks;
+  const hit = findReportTarget(document, target) ?? candidates.find((el) => squash(el.textContent) === needle || (needle.length > 20 && squash(el.textContent).includes(needle))) ?? (needle ? null : sheet?.querySelector("article") ?? sheet);
+  if (!hit) return false;
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // A long trip jumps; only a short one glides (a 12,000px glide outlasts the flash).
   const far = Math.abs(hit.getBoundingClientRect().top) > window.innerHeight * 1.5;
@@ -430,7 +435,7 @@ export function PageReviewClient({
                               onClick={() => {
                                 const key = c.anchorKey!;
                                 reportAnchor.onLocate?.(key);
-                                setMissing(showReportAnchor(key, c.anchorQuote) ? null : c.id);
+                                setMissing(showReportAnchor(key, c.anchorQuote, c.anchorTarget) ? null : c.id);
                               }}
                               title={`Show me where on ${c.anchorBlock || "the report"}`}
                               className="inline-flex items-center gap-1 rounded-md border border-brand-200 bg-card px-2 py-0.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-500">

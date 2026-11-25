@@ -6,6 +6,7 @@ import { buildBrief } from "@/lib/page-review/brief";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
 import { overlaySource } from "@/lib/page-review/overlay-source";
 import { REPORT_API, REPORT_ID, REPORT_REVIEW_PATH, REPORT_TITLE, reportSchema } from "@/lib/symposium-report/document";
+import { commentsWithReportTargets } from "@/lib/symposium-report/comment-anchor-store";
 import { reportReviewSnapshot } from "@/lib/symposium-report/review-snapshot";
 
 export const dynamic = "force-dynamic";
@@ -57,18 +58,19 @@ export async function GET(request: Request) {
   }
 
   const row = await prisma.pageReview.findUnique({ where, select: {
-    title: true, round: true, status: true,
+    title: true, round: true, status: true, pastedHtml: true, versions: { select: { round: true, html: true } },
     comments: { orderBy: { createdAt: "asc" }, take: PAGE_REVIEW_COMMENT_LIMIT },
   } });
   if (!row) return json({ error: "The report is not ready." }, 404);
-  const { comments, ...review } = row;
+  const { comments, pastedHtml, versions, ...review } = row;
   if (searchParams.get("brief") === "1") {
     if (review.status === "open") return json({ error: "Reload the review and use Copy review comments to lock this round." }, 409);
     return json({ ok: true, brief: buildBrief({ ...review, comments, url: new URL(REPORT_REVIEW_PATH, origin).href }) });
   }
-  return json({ ok: true, review, viewer: { name: user.name || "Team member" }, comments: comments.map(({
-    id, parentId, round, anchorQuote, anchorKey, anchorPath, anchorBlock, anchorState, authorUserId, authorName, body, status, createdAt, editedAt, editedByName,
-  }) => ({ id, parentId, round, anchorQuote, anchorKey, anchorPath, anchorBlock, anchorState, authorName, body, status, createdAt, editedAt, editedByName, isMine: authorUserId === user.id })) });
+  const anchored = pastedHtml ? await commentsWithReportTargets(comments, reportSchema.parse(JSON.parse(pastedHtml)), review.round, versions) : comments.map(comment => ({ ...comment, anchorTarget: null }));
+  return json({ ok: true, review, viewer: { name: user.name || "Team member" }, comments: anchored.map(({
+    id, parentId, round, anchorQuote, anchorKey, anchorPath, anchorBlock, anchorState, anchorTarget, authorUserId, authorName, body, status, createdAt, editedAt, editedByName,
+  }) => ({ id, parentId, round, anchorQuote, anchorKey, anchorPath, anchorBlock, anchorState, anchorTarget, authorName, body, status, createdAt, editedAt, editedByName, isMine: authorUserId === user.id })) });
 }
 
 

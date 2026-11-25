@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
+import { commentsWithReportTargets } from "./comment-anchor-store";
 import { REPORT_ID, reportSchema } from "./document";
 
 export const reportRevision = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -28,13 +29,15 @@ export async function loadReport() {
   if (!review) return null;
   const { id, url, title, round, status, comments, pastedHtml, versions } = review;
   if (!pastedHtml) throw new Error("The symposium report has no saved document.");
+  const report = reportSchema.parse(JSON.parse(pastedHtml));
+  const anchored = await commentsWithReportTargets(comments, report, round, versions);
   return {
-    report: reportSchema.parse(JSON.parse(pastedHtml)),
+    report,
     revision: reportRevision(pastedHtml),
     history: versions.map(({ round, html }) => ({ round, report: reportSchema.parse(JSON.parse(html)) })),
     review: {
       id, url, title, round, status,
-      comments: comments.map(({ editedAt, createdAt, ...comment }) => ({
+      comments: anchored.map(({ editedAt, createdAt, ...comment }) => ({
         ...comment, editedAt: editedAt?.toISOString() ?? null, createdAt: createdAt.toISOString(),
       })),
     },

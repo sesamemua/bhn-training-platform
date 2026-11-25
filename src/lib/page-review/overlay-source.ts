@@ -1,6 +1,7 @@
 import { mentionNotificationsSource } from "./mention-notifications-source";
 import { mentionToolsSource } from "./mention-tools-source";
 import { reportToolsSource } from "./report-tools-source";
+import { findReportTarget } from "../symposium-report/comment-anchors";
 import { comparisonSource } from "./comparison-source";
 
 /** JavaScript source for the live-page review overlay. */
@@ -355,9 +356,12 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     } catch (_) { return null; }
   }
 
+  var findReportTarget = ${findReportTarget.toString()};
   function findAnchor(comment) {
     var quote = cleanText(comment.anchorQuote);
     if (reportCommentEndpoint) {
+      var verifiedTarget = reportReview && findReportTarget(document, comment.anchorTarget);
+      if (verifiedTarget) return verifiedTarget;
       var reportMatch = safeQuery(comment.anchorPath, quote);
       if (reportMatch && (!comment.anchorKey || reportMatch.closest(pageSelector).parentElement.id === comment.anchorKey.slice(1))) return reportMatch;
       var sheet = comment.anchorKey && document.getElementById(comment.anchorKey.slice(1));
@@ -366,17 +370,21 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if (quote) {
         var find = function (root) {
           return Array.from(root.querySelectorAll(passage)).find(function(node){
+            if (reportReview && comment.anchorKey) {
+              var section = /^#report-frame-(.+)-\\d+$/.exec(comment.anchorKey);
+              var frame = node.closest(pageSelector).parentElement.id;
+              if (section && !frame.startsWith('report-frame-' + section[1].replace(/^publication-team$/, 'publication-leadership') + '-')) return false;
+            }
             var text = cleanText(node.textContent || (reportReview && node.getAttribute("alt")));
             // Editorial line breaks replace the old dot separators in mentor profiles.
             var comparable = function(value){ return value.replace(/[·\\s]+/g, " ").trim().toLocaleLowerCase(); };
-            return text === quote || (reportReview && comparable(text) === comparable(quote)) || ((!reportReview || quote.length > 20) && (text.includes(quote.slice(0, 40)) ||
-              (reportReview && comparable(text).includes(comparable(quote).slice(0, 40)))));
+            return text === quote || (reportReview && comparable(text) === comparable(quote)) || (quote.length > 20 && (text.includes(quote) || (reportReview && comparable(text).includes(comparable(quote)))));
           });
         };
         var match = (sheet && find(sheet)) || find(document);
         if (match) return match;
       }
-      return safeQuery(comment.anchorPath, "") || (sheet && sheet.querySelector(pageSelector));
+      return quote ? null : safeQuery(comment.anchorPath, "") || (sheet && sheet.querySelector(pageSelector));
     }
     var node = safeQuery(comment.anchorPath, quote) || safeQuery(comment.anchorKey, quote);
     if (node) return node;
@@ -386,7 +394,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         if (!inOverlay(candidates[i]) && anchorTextMatches(candidates[i], quote)) return candidates[i];
       }
     }
-    return safeQuery(comment.anchorPath, "") || safeQuery(comment.anchorKey, "");
+    return quote ? null : safeQuery(comment.anchorPath, "") || safeQuery(comment.anchorKey, "");
   }
 
   function showHighlight(node) {
@@ -918,6 +926,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var details = make("div", "bhn-rv-thread-details");
       if (state.editingId === comment.id) renderEditComposer(details, comment);
       else details.appendChild(make("div", "bhn-rv-thread-body", comment.body));
+      if (reportReview && comment.anchorTarget && findReportTarget(document, comment.anchorTarget) && !cleanText(comment.anchorTarget.quote).includes(cleanText(comment.anchorQuote))) details.appendChild(make("p", "bhn-rv-notice", "This passage has been revised. Showing its current location; the original quoted text is preserved below."));
       if (comment.anchorQuote) details.appendChild(make("div", "bhn-rv-thread-quote", comment.anchorQuote.slice(0, 180)));
 
       var replies = repliesFor(comment.id);
@@ -1202,7 +1211,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   style.textContent += ".bhn-rv-head{flex-shrink:0;}.bhn-rv-body{flex:1 1 auto;min-height:0;overscroll-behavior:auto;} .bhn-rv-lock-state{text-align:center;padding:20px 16px;margin:0 0 14px;border:2px solid #b7c7d1;border-radius:10px;background:#edf2f6;color:#263f52;}.bhn-rv-lock-icon{display:block;font-size:64px;line-height:1.15;margin-bottom:10px;}.bhn-rv-lock-state strong{display:block;font-size:21px;line-height:1.25;}.bhn-rv-lock-state p{margin:10px 0 0;font-size:13px;line-height:1.5;}";
 
   function commentsSignature(comments) {
-    return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt, comment.editedByName].join(":"); }).join("|");
+    return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt, comment.editedByName, comment.anchorQuote, comment.anchorKey, comment.anchorPath, JSON.stringify(comment.anchorTarget)].join(":"); }).join("|");
   }
 
   function endpointKey() {
@@ -1434,8 +1443,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var plans = [], placedAnchors = new Map(), wanted = new Set();
       topComments().forEach(function(comment, index){
         if (comment.round < state.review.round && !state.historyExpanded) return;
-        var anchor = markerAnchorCache.get(comment.id);
-        if (!anchor || !anchor.isConnected) { anchor = findAnchor(comment); if (anchor) markerAnchorCache.set(comment.id, anchor); }
+        var cached = markerAnchorCache.has(comment.id), anchor = markerAnchorCache.get(comment.id);
+        if (anchor && !reportReview && !anchorTextMatches(anchor, cleanText(comment.anchorQuote))) { anchor = null; cached = false; }
+        // Missing passages are cached too; rescanning the full report on every scroll is expensive.
+        // Report content changes and fresh comment targets invalidate both hits and misses.
+        if ((!cached || (!reportReview && !anchor)) || (anchor && !anchor.isConnected)) { anchor = findAnchor(comment); markerAnchorCache.set(comment.id, anchor || null); }
         if (!anchor) return;
         var rect = anchor.getBoundingClientRect();
         if ((!rect.width && !rect.height) || rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) return;

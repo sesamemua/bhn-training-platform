@@ -175,21 +175,22 @@ export function reportToolsSource(): string {
         var notesChanged=false,contentChanged=false;
         reportToolsObserver = new MutationObserver(function(records){
           records.forEach(function(record){
-            if(record.type==='attributes'){if(record.target.matches(pageSelector))notesChanged=true;return;}
+            if(record.type==='attributes'){if(record.target.matches(pageSelector))notesChanged=true;else if(record.target.closest('[data-report-field],figure[data-report-photo]'))contentChanged=true;return;}
             var target=record.target.nodeType===3?record.target.parentElement:record.target;
             if(!target||target.closest('[data-report-page-notes]'))return;
-            if(record.type==='characterData'){if(target.closest('[data-report-field]'))contentChanged=true;return;}
+            if(record.type==='characterData'){if(target.closest('[data-report-field],figure[data-report-photo]'))contentChanged=true;return;}
             Array.from(record.addedNodes).concat(Array.from(record.removedNodes)).forEach(function(node){
-              if(node.nodeType===3){if(target.closest('[data-report-field]'))contentChanged=true;return;}
+              if(node.nodeType===3){if(target.closest('[data-report-field],figure[data-report-photo]'))contentChanged=true;return;}
+              if(node.nodeType===1&&(node.matches('[data-report-field]')||node.querySelector('[data-report-field]')))contentChanged=true;
               if(node.nodeType===1&&(node.matches('[data-print-page],[data-report-page-notes]')||node.querySelector('[data-print-page],[data-report-page-notes]')))notesChanged=true;
             });
           });
           if((!notesChanged&&!contentChanged)||reportNotesFrame)return;
           reportNotesFrame=window.requestAnimationFrame(function(){
-            reportNotesFrame=null;if(notesChanged)reportPageNotes();notesChanged=false;contentChanged=false;syncMarkers();drawTagLauncher();
+            reportNotesFrame=null;markerAnchorCache.clear();if(notesChanged)reportPageNotes();notesChanged=false;contentChanged=false;syncMarkers();drawTagLauncher();
           });
         });
-        reportToolsObserver.observe(stage, { childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['aria-label'] });
+        reportToolsObserver.observe(stage, { childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['aria-label','alt','src','data-report-field','data-report-text-start','data-report-text-end'] });
       }
     }
   }
