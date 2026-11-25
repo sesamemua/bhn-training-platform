@@ -113,6 +113,13 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
       </span>}
     </Tag>;
   };
+  if (page.id === "symposium-feedback") {
+    return blocks.map((block, index) => {
+      if (blocks[index - 1]?.kind === "heading" && block.kind === "paragraph") return null;
+      if (block.kind === "heading" && blocks[index + 1]?.kind === "paragraph") return <section key={block.start} className={styles.feedbackPrompt}>{renderCopy(block)}{renderCopy(blocks[index + 1])}</section>;
+      return <Fragment key={block.start}>{renderCopy(block)}</Fragment>;
+    });
+  }
   if (page.id === "career-conversations") {
     const groups: Block[][] = [];
     for (const block of blocks) { if (block.kind === "heading" || !groups.length) groups.push([]); groups[groups.length - 1].push(block); }
@@ -124,11 +131,11 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
     const copy = renderCopy(block);
     const heading = ventureHeading(page, blocks, index);
     if (block.kind === "bullet" && !block.continued) return <ul key={index} className={styles.list}>{copy}</ul>;
-    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / 337} />);
+    const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / (page.id === "training-week" && block.photoRow === "2" && photos.length === 2 ? 684 : 337)} />);
     if (block.kind !== "heading" && pairedProfile(page) && (photos.length || publicationPage(page))) return <div key={index} data-team-group={teamGroup(page,block)} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{heading ? <div className={styles.ventureText}>{renderCopy(heading)}{copy}</div> : copy}{photos.length > 0 && <div>{figures}</div>}</div>;
     return <Fragment key={index}>
       {copy}
-      {photos.length > 0 && <div className={styles.workshopPhotos} role="group" aria-label="Workshop photographs">{figures}</div>}
+      {photos.length > 0 && <div className={styles.workshopPhotos} data-layout={page.id === "training-week" && block.photoRow === "2" && photos.length === 2 ? "stacked" : undefined} role="group" aria-label="Workshop photographs">{figures}</div>}
     </Fragment>;
   });
 }
@@ -203,12 +210,19 @@ export function useReportLayout(report: Report, approved: boolean) {
             } else row.append(...nodes, space);
             return [row];
           }
-          const rows = Math.ceil(photos.length / 2);
+          const rows = page.id === "training-week" && block.photoRow === "2" && photos.length === 2 ? 2 : Math.ceil(photos.length / 2);
           space.style.height = `${rows * (height + (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE)) + (rows - 1) * 10 + PHOTO_GAP}px`;
           nodes.push(space);
         }
         return nodes;
       }));
+      if (page.id === "symposium-feedback") {
+        for (const node of Array.from(story.children)) {
+          if (node.tagName !== "H3" || node.nextElementSibling?.tagName !== "P") continue;
+          const prompt = document.createElement("section"); prompt.className = styles.feedbackPrompt;
+          node.before(prompt); const paragraph = node.nextElementSibling!; prompt.append(node, paragraph);
+        }
+      }
       if (page.id === "career-conversations") {
         const grouped = document.createElement("div"); grouped.className = styles.mentorGroups;
         let card: HTMLElement | undefined;
@@ -238,7 +252,7 @@ export function useReportLayout(report: Report, approved: boolean) {
       const stripSpace = (index: number) => {
         if (hasTrainingPhotoGrid(page, index)) return trainingPhotoGridSpace(page, index);
         const count = stripPhotos(page, index).length;
-        return count && !hasPairedPhotos(page, index) ? (page.id === "discussion" && [1, 3].includes(index) ? 280 : photoRowHeight(count)) + (page.showCaptions === false ? 0 : 34) + PHOTO_GAP : 0;
+        return count && !hasPairedPhotos(page, index) ? (page.id === "discussion" && [1, 3].includes(index) ? 320 : page.id === "discussion" && index === 2 ? 270 : photoRowHeight(count)) + (page.showCaptions === false ? 0 : 34) + PHOTO_GAP : 0;
       };
       const hasPortraits = portraitPhotos(page).length > 0;
       pageNode.dataset.portraits = String(hasPortraits);
@@ -257,7 +271,7 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (hasWorkshops && !page.photos?.[String(index)] && !hasLeadPhoto(page, index)) return 0;
         if (index === 0 && !blocks.length && !page.photos?.["0"] && !hasLeadPhoto(page, 0)) return 0;
         if (hasTrainingPhotoGrid(page, index)) return TRAINING_TILE_PREVIEW_HEIGHT;
-        if (hasPairedPhotos(page, index)) return page.id === "program-impact" ? 350 : portraitHeight(2);
+        if (hasPairedPhotos(page, index)) return page.id === "program-impact" ? 350 : page.id === "annual-symposium" ? 740 : portraitHeight(2);
         const strip = stripSpace(index);
         const freeSpace = measureText(page, blocks, index, strip > 0) - strip;
         const maximum = page.photos?.[String(index)]?.fit === "whole" ? Infinity : MAX_PHOTO_HEIGHT;
@@ -270,7 +284,7 @@ export function useReportLayout(report: Report, approved: boolean) {
       });
       const workshopHeights = frames.map((frame, index) => {
         if (page.id !== "training-week") return {};
-        const rows = frame.flatMap(b => b.photoRow ? [[b.photoRow, Math.ceil(workshopPhotos(page, b.photoRow).length / 2)] as const] : []);
+        const rows = frame.flatMap(b => b.photoRow ? [[b.photoRow, b.photoRow === "2" && workshopPhotos(page, b.photoRow).length === 2 ? 2 : Math.ceil(workshopPhotos(page, b.photoRow).length / 2)] as const] : []);
         const count = rows.reduce((sum, [, n]) => sum + n, 0);
         const extra = count ? Math.max(0, Math.min(240, (measureText(page, frame, index, false) - 2) / count)) : 0;
         return Object.fromEntries(rows.map(([row]) => [row, workshopTileHeight(page) + extra]));
@@ -442,7 +456,7 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
         const choices = [...strip, ...blocks.flatMap((block) => workshopPhotos(page, block.photoRow))];
         const photoGrid = hasTrainingPhotoGrid(page, index);
         const paired = hasPairedPhotos(page, index);
-        const stripHeight = page.id === "discussion" && [1, 3].includes(index) ? 684 * 280 / 337 : photoGrid ? TRAINING_TILE_PREVIEW_HEIGHT : portraitHeight(strip.length);
+        const stripHeight = page.id === "discussion" && [1, 3].includes(index) ? 684 * 320 / 337 : page.id === "discussion" && index === 2 ? 684 * 270 / 337 : photoGrid ? TRAINING_TILE_PREVIEW_HEIGHT : portraitHeight(strip.length);
         return wrap({ id: page.id, index }, index === 0 ? page.title : `${page.title} · continued`, <>
           {index === 0
             ? <header className={styles.chapterHead}>

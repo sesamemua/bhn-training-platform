@@ -959,3 +959,18 @@
 .navigationRail .tabs>button { flex-direction:column;gap:4px;min-width:0;min-height:52px;padding:6px 2px;font-size:10.5px;line-height:1.25; }
 .mentionsHost { display:flex;min-width:0; }
 @media (min-width:901px) and (max-width:1700px) { .fullPageReview .navigationRail .tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }.fullPageReview .mentionsHost { grid-column:1/-1; } }
+
+/* Page balance: two-image workshops use landscape frames rather than tall crops. */
+.chapter[data-section="training-week"] .workshopPhotos[data-layout="stacked"] { grid-template-columns:minmax(0,1fr); }
+.chapter[data-section="training-week"] .story > .paragraph { padding:10px 12px;margin-bottom:8px;background:rgb(23 104 121 / 5%);border-radius:4px; }
+.chapter[data-section="annual-symposium"][data-photo-pair="true"] { --figure-height:416px; }
+.chapter[data-section="annual-symposium"] .heading { padding:8px 10px;margin-bottom:8px;background:rgb(23 104 121 / 7%);border-radius:3px; }
+.chapter[data-section="executive-summary"] .story > .paragraph:first-child { padding:12px 14px;margin-bottom:12px;background:rgb(23 104 121 / 6%);border-left:3px solid var(--report-teal); }
+.chapter[data-section="symposium-feedback"] .story { display:grid;gap:12px;max-inline-size:none; }
+.stage .chapter[data-section="symposium-feedback"] .story { height:100%;grid-template-rows:auto repeat(3,minmax(min-content,1fr)) auto auto; }
+.feedbackPrompt { display:flex;flex-direction:column;justify-content:center;padding:16px 20px;background:rgb(23 104 121 / 7%);border-left:4px solid var(--report-teal);border-radius:4px; }
+.feedbackPrompt:nth-of-type(2) { background:rgb(30 55 101 / 6%);border-left-color:#365a97; }
+.feedbackPrompt:nth-of-type(3) { background:rgb(103 117 157 / 9%);border-left-color:#65749d; }
+.chapter[data-section="symposium-feedback"] .feedbackPrompt .heading { font-size:20px;line-height:1.25;padding:0 0 8px; }
+.chapter[data-section="symposium-feedback"] .feedbackPrompt .paragraph { padding:0;font-size:16px;line-height:1.45; }
+.chapter[data-section="symposium-feedback"] .story > .paragraph { padding-bottom:0; }
