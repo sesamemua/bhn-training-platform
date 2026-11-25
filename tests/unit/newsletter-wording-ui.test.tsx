@@ -60,6 +60,7 @@ function mount(fetch: Fetch, overrides: Partial<Issue> = {}) {
     },
     "@/lib/newsletter/types": { SECTIONS, SECTION_THEME },
     "./NewsletterImages": { NewsletterImages: () => null },
+    "./NewsletterExperiments": { NewsletterExperiments: () => null },
   };
   new Function("require", "exports", "fetch", "navigator", "window", source)(
     (id: string) => mocks[id] ?? require(id), exports, fetch,

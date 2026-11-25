@@ -12,11 +12,12 @@ import { useState } from "react";
 import {
   Loader2, Plus, Sparkles, Trash2, ArrowUp, ArrowDown, Copy, Check, Pencil,
   ClipboardPaste, X,
-  Link2, Mail,
+  ChevronDown, FlaskConical, Link2, Mail,
 } from "lucide-react";
 import { SECTIONS, SECTION_THEME } from "@/lib/newsletter/types";
 import type { NewsletterImage, Section } from "@/lib/newsletter/types";
 import { NewsletterImages } from "./NewsletterImages";
+import { NewsletterExperiments } from "./NewsletterExperiments";
 
 interface Piece {
   id: string; section: string; position: number; rawBody: string;
@@ -341,117 +342,126 @@ export function NewsletterClient({ initialIssue, canEdit }: { initialIssue: Issu
                 </span>
               )}
             </p>
-            {canEdit && (
-              <div className="flex gap-2 mt-4 flex-wrap">
-                <button
-                  onClick={generate}
-                  disabled={!!busy || !hasContent}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-700 disabled:opacity-60 shadow-md shadow-brand-600/25"
-                >
-                  {busy === "gen" ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                  {busy === "gen" ? "Laying out…" : "Lay out with AI"}
-                </button>
-                <button
-                  onClick={() => setHandoff((v) => !v)}
-                  disabled={!!busy || issue.pieces.length === 0}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-60"
-                >
-                  <ClipboardPaste size={14} />
-                  Own AI
-                </button>
-                {issue.renderedHtml && (
-                  <button
-                    title={layoutIsStale ? "Lay out again before copying the updated HTML" : "Copy the HTML for a Mailchimp Code block"}
-                    onClick={copyHtml}
-                    disabled={!!busy || layoutIsStale || !issue.renderedHtml}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-50"
-                  >
-                    {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                    {copied ? "Copied" : "Copy HTML"}
-                  </button>
-                )}
-              </div>
+            {canEdit && issue.renderedHtml && (
+              <button
+                title={layoutIsStale ? "Lay out again before copying the updated HTML" : "Copy the HTML for a Mailchimp Code block"}
+                onClick={copyHtml}
+                disabled={!!busy || layoutIsStale}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-card ring-1 ring-inset ring-line text-fg font-bold text-sm hover:bg-elevated disabled:opacity-50"
+              >
+                {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                {copied ? "Copied" : "Copy HTML"}
+              </button>
             )}
-
-            {canEdit && handoff && (
-              <section className="mt-4 rounded-xl border border-line bg-elevated/40 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-bold text-fg">Lay out with your own AI</h3>
+            {canEdit && (
+              <details className="group mt-4 border-t border-line pt-2">
+                <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-2 rounded px-1.5 text-xs font-semibold text-muted hover:bg-elevated hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 [&::-webkit-details-marker]:hidden">
+                  <FlaskConical size={14} aria-hidden="true" />
+                  Experimental features
+                  <ChevronDown size={13} aria-hidden="true" className="group-open:rotate-180" />
+                </summary>
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button
-                    onClick={() => setHandoff(false)}
-                    aria-label="Close"
-                    className="shrink-0 text-muted hover:text-fg"
+                    onClick={generate}
+                    disabled={!!busy || !hasContent}
+                    className="inline-flex items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm font-semibold text-fg ring-1 ring-inset ring-line hover:bg-elevated disabled:opacity-60"
                   >
-                    <X size={16} />
+                    {busy === "gen" ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {busy === "gen" ? "Laying out…" : "Lay out with AI"}
+                  </button>
+                  <button
+                    onClick={() => setHandoff((v) => !v)}
+                    disabled={!!busy || issue.pieces.length === 0}
+                    aria-expanded={handoff}
+                    className="inline-flex items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm font-semibold text-fg ring-1 ring-inset ring-line hover:bg-elevated disabled:opacity-60"
+                  >
+                    <ClipboardPaste size={14} />
+                    Own AI
                   </button>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={copyBrief}
-                    disabled={!!busy}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white font-bold text-[12.5px] hover:bg-brand-700 disabled:opacity-60"
-                  >
-                    {busy === "brief" ? <Loader2 size={13} className="animate-spin" />
-                      : briefCopied ? <Check size={13} /> : <Copy size={13} />}
-                    {busy === "brief" ? "Building…" : briefCopied ? "Copied" : "1 · Copy prompt"}
-                  </button>
-                </div>
-
-                <label className="mt-3 block">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
-                    2 · Paste the reply
-                  </span>
-                  <textarea
-                    value={paste}
-                    onChange={(e) => setPaste(e.target.value)}
-                    rows={5}
-                    placeholder="Paste the whole reply"
-                    className="mt-1.5 w-full rounded-lg border border-line bg-card px-3 py-2 font-mono text-[12px] leading-relaxed text-fg outline-none focus:border-brand-500"
-                  />
-                </label>
-
-                <button
-                  onClick={applyPaste}
-                  disabled={!!busy || !paste.trim()}
-                  className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card ring-1 ring-inset ring-line text-fg font-bold text-[12.5px] hover:bg-elevated disabled:opacity-50"
-                >
-                  <ClipboardPaste size={13} /> 3 · Apply
-                </button>
-
-                {report && (
-                  <div className="mt-3 space-y-1 text-[12px]">
-                    {report.applied.length > 0 && (
-                      <p className="text-emerald-700">
-                        Applied to {report.applied.length}{" "}
-                        {report.applied.length === 1 ? "piece" : "pieces"}.
-                      </p>
-                    )}
-                    {!!report.preserved?.length && (
-                      <p className="text-emerald-700">
-                        Kept submitted wording for {report.preserved.length}{" "}
-                        protected {report.preserved.length === 1 ? "piece" : "pieces"}.
-                      </p>
-                    )}
-                    {report.missing.length > 0 && (
-                      <p className="text-amber-700">
-                        {report.missing.length} not mentioned in the reply — left as{" "}
-                        {report.missing.length === 1 ? "it was" : "they were"} (
-                        {report.missing.map((m) => m.section).join(", ")}).
-                      </p>
-                    )}
-                    {report.unknown.length > 0 && (
-                      <p className="text-amber-700">
-                        {report.unknown.length} id{report.unknown.length === 1 ? "" : "s"} in the
-                        reply {report.unknown.length === 1 ? "is" : "are"} not in this issue.
-                      </p>
-                    )}
-                    {report.problems.map((pr, i) => (
-                      <p key={i} className="text-red-600">{pr}</p>
-                    ))}
+              {handoff && (
+                <section className="mt-4 rounded-xl border border-line bg-elevated/40 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-sm font-bold text-fg">Lay out with your own AI</h3>
+                    <button
+                      onClick={() => setHandoff(false)}
+                      aria-label="Close"
+                      className="shrink-0 text-muted hover:text-fg"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
-                )}
-              </section>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={copyBrief}
+                      disabled={!!busy}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white font-bold text-[12.5px] hover:bg-brand-700 disabled:opacity-60"
+                    >
+                      {busy === "brief" ? <Loader2 size={13} className="animate-spin" />
+                        : briefCopied ? <Check size={13} /> : <Copy size={13} />}
+                      {busy === "brief" ? "Building…" : briefCopied ? "Copied" : "1 · Copy prompt"}
+                    </button>
+                  </div>
+
+                  <label className="mt-3 block">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-muted">
+                      2 · Paste the reply
+                    </span>
+                    <textarea
+                      value={paste}
+                      onChange={(e) => setPaste(e.target.value)}
+                      rows={5}
+                      placeholder="Paste the whole reply"
+                      className="mt-1.5 w-full rounded-lg border border-line bg-card px-3 py-2 font-mono text-[12px] leading-relaxed text-fg outline-none focus:border-brand-500"
+                    />
+                  </label>
+
+                  <button
+                    onClick={applyPaste}
+                    disabled={!!busy || !paste.trim()}
+                    className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card ring-1 ring-inset ring-line text-fg font-bold text-[12.5px] hover:bg-elevated disabled:opacity-50"
+                  >
+                    <ClipboardPaste size={13} /> 3 · Apply
+                  </button>
+
+                  {report && (
+                    <div className="mt-3 space-y-1 text-[12px]">
+                      {report.applied.length > 0 && (
+                        <p className="text-emerald-700">
+                          Applied to {report.applied.length}{" "}
+                          {report.applied.length === 1 ? "piece" : "pieces"}.
+                        </p>
+                      )}
+                      {!!report.preserved?.length && (
+                        <p className="text-emerald-700">
+                          Kept submitted wording for {report.preserved.length}{" "}
+                          protected {report.preserved.length === 1 ? "piece" : "pieces"}.
+                        </p>
+                      )}
+                      {report.missing.length > 0 && (
+                        <p className="text-amber-700">
+                          {report.missing.length} not mentioned in the reply — left as{" "}
+                          {report.missing.length === 1 ? "it was" : "they were"} (
+                          {report.missing.map((m) => m.section).join(", ")}).
+                        </p>
+                      )}
+                      {report.unknown.length > 0 && (
+                        <p className="text-amber-700">
+                          {report.unknown.length} id{report.unknown.length === 1 ? "" : "s"} in the
+                          reply {report.unknown.length === 1 ? "is" : "are"} not in this issue.
+                        </p>
+                      )}
+                      {report.problems.map((pr, i) => (
+                        <p key={i} className="text-red-600">{pr}</p>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+                <NewsletterExperiments key={issue.id} title={issue.title} html={layoutIsStale ? null : issue.renderedHtml} />
+              </details>
             )}
           </section>
 
