@@ -441,6 +441,7 @@ export function ReportEditor({ report: initial, revision, history, review: initi
             <button type="button" aria-pressed={tab === "pages"} onClick={() => setTab("pages")}><BookOpen size={15} /> Pages</button>
             {!fullPageReview && <button type="button" aria-pressed={tab === "comments"} onClick={() => setTab("comments")}><MessageSquare size={15} /> Review</button>}
             <button type="button" aria-pressed={tab === "changes"} onClick={() => { setTab("changes"); if (!changes) void loadChanges(); }}><GitCompare size={15} /> Changes</button>
+            {fullPageReview && <span data-report-mentions-host="" className={styles.mentionsHost} />}
           </div>
           {tab === "changes" && <section className={styles.changeList} aria-label="Changes this round">
             {!changes ? <p className={styles.status}>{changesError || "Loading changes…"}</p>

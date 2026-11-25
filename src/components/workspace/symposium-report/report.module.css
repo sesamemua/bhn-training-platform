@@ -886,3 +886,9 @@
 .mentorPhotoStrip .photoMat { aspect-ratio:3 / 2!important; }
 .chapter[data-section="career-conversations"]:has(.mentorPhotoStrip) { --figure-height:auto; }
 .chapter[data-section="career-conversations"] .copy { grid-row:3; }
+
+/* Report navigation keeps Pages, Changes and Mentions together. */
+.navigationRail .tabs { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;align-items:stretch; }
+.navigationRail .tabs>button { flex-direction:column;gap:4px;min-width:0;min-height:52px;padding:6px 2px;font-size:10.5px;line-height:1.25; }
+.mentionsHost { display:flex;min-width:0; }
+@media (min-width:901px) and (max-width:1700px) { .fullPageReview .navigationRail .tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }.fullPageReview .mentionsHost { grid-column:1/-1; } }

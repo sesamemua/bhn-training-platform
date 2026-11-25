@@ -1384,6 +1384,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function removeMarkers() {
     markers.forEach(function(marker){ marker.remove(); });
     markers = [];
+    markerRecords.clear();
   }
 
   function writeReportComment(action, payload) {
@@ -1400,7 +1401,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     var top = Math.max(12, root.getBoundingClientRect().top);
     var available = Math.max(120, window.innerHeight - top - 12);
     var cap = window.innerWidth <= 900 ? window.innerHeight * .72 : window.innerHeight - 56;
-    shell.style.maxHeight = Math.floor(Math.min(available, cap)) + "px";
+    var height = Math.floor(Math.min(available, cap)) + "px";
+    if(shell.style.maxHeight !== height) shell.style.maxHeight = height;
   }
 
   function focusThread(comment, anchor) {
@@ -1422,11 +1424,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   var markerAnchorCache = new Map();
+  var markerRecords = new Map();
+  var viewportFrame = null;
   function syncMarkers() {
-    if (positionFrame) window.cancelAnimationFrame(positionFrame);
+    // Scroll/resize bursts share one frame. Measure all anchors before changing the DOM.
+    if (positionFrame) return;
     positionFrame = window.requestAnimationFrame(function(){
-      removeMarkers();
-      var placedAnchors = [];
+      positionFrame = null;
+      var plans = [], placedAnchors = new Map(), wanted = new Set();
       topComments().forEach(function(comment, index){
         if (comment.round < state.review.round && !state.historyExpanded) return;
         var anchor = markerAnchorCache.get(comment.id);
@@ -1434,18 +1439,34 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         if (!anchor) return;
         var rect = anchor.getBoundingClientRect();
         if ((!rect.width && !rect.height) || rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) return;
-        var sharedIndex = placedAnchors.filter(function(placed){ return placed === anchor; }).length;
-        placedAnchors.push(anchor);
-        var marker = make("button", "bhn-review-marker" + (comment.status === "open" ? "" : " bhn-review-marker-resolved"), String(index + 1));
-        marker.setAttribute("type", "button");
-        marker.setAttribute("aria-label", "Open comment " + (index + 1) + " by " + comment.authorName);
-        marker.style.left = Math.max(4, rect.right - 13 - (sharedIndex * 29)) + "px";
-        marker.style.top = Math.max(4, rect.top - 13) + "px";
-        marker.addEventListener("click", function(event){ event.preventDefault(); event.stopPropagation(); focusThread(comment, anchor); });
-        if (reportReview) { reportInsertionMarker(marker, comment, anchor); reportDrawingMarker(marker, comment, anchor); }
-        document.body.appendChild(marker);
-        markers.push(marker);
+        var sharedIndex = placedAnchors.get(anchor) || 0; placedAnchors.set(anchor, sharedIndex + 1);
+        var page = reportReview && anchor.closest(pageSelector);
+        var pageRect = page && (reportDrawingData(comment) || comment.body.startsWith('[Section insertion request]')) ? page.getBoundingClientRect() : null;
+        plans.push({comment:comment,index:index,anchor:anchor,rect:rect,pageRect:pageRect,sharedIndex:sharedIndex});wanted.add(comment.id);
       });
+      markerRecords.forEach(function(record,id){if(!wanted.has(id)){record.marker.remove();if(record.drawing)record.drawing.remove();markerRecords.delete(id);}});
+      plans.forEach(function(plan){
+        var comment=plan.comment,record=markerRecords.get(comment.id),marker=record&&record.marker;
+        if(!marker){
+          marker=make('button','bhn-review-marker');marker.type='button';
+          record={marker:marker,drawing:null,comment:comment,anchor:plan.anchor};markerRecords.set(comment.id,record);
+          marker.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();focusThread(record.comment,record.anchor);});
+          document.body.appendChild(marker);
+        }
+        record.comment=comment;record.anchor=plan.anchor;
+        var markerClass='bhn-review-marker'+(comment.status==='open'?'':' bhn-review-marker-resolved')+(comment.body.startsWith('[Section insertion request]')?' bhn-report-insertion-bubble':'');
+        var markerText=String(plan.index+1),markerLabel='Open comment '+(plan.index+1)+' by '+comment.authorName;
+        if(marker.getAttribute('class')!==markerClass)marker.setAttribute('class',markerClass);
+        if(marker.textContent!==markerText&&!comment.body.startsWith('[Section insertion request]'))marker.textContent=markerText;
+        if(marker.getAttribute('aria-label')!==markerLabel)marker.setAttribute('aria-label',markerLabel);
+        var left=Math.max(4,plan.rect.right-13-plan.sharedIndex*29)+'px',top=Math.max(4,plan.rect.top-13)+'px';
+        if(marker.style.left!==left)marker.style.left=left;if(marker.style.top!==top)marker.style.top=top;
+        if(reportReview){
+          reportInsertionMarker(marker,comment,plan.anchor,plan.rect,plan.pageRect);
+          record.drawing=reportDrawingMarker(marker,comment,plan.anchor,plan.pageRect,record.drawing);
+        }
+      });
+      markers=[];markerRecords.forEach(function(record){markers.push(record.marker);if(record.drawing)markers.push(record.drawing);});
     });
   }
 
@@ -1503,13 +1524,15 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function onPositionChange(event) {
-    if (event && event.type === "scroll" && event.target instanceof Element && (root.contains(event.target) || event.target.closest(".bhn-rv-tag-history,.bhn-rv-mention-popup"))) return;
-    constrainPanel();
-    fitReviewPanel();
-    if (reportReview) { reportCommentPosition(); reportMenuPosition(); }
-    if (highlightedNode) showHighlight(highlightedNode);
-    syncMarkers();
-    if (reportReview) reportPageNotes();
+    if (event && event.type === 'scroll' && event.target instanceof Element && (root.contains(event.target) || event.target.closest('.bhn-rv-tag-history,.bhn-rv-mention-popup'))) return;
+    if (viewportFrame) return;
+    viewportFrame=window.requestAnimationFrame(function(){
+      viewportFrame=null;
+      constrainPanel();fitReviewPanel();
+      if(reportReview){reportCommentPosition();reportMenuPosition();reportDrawRefresh();}
+      if(highlightedNode)showHighlight(highlightedNode);
+      positionTagHistory();syncMarkers();
+    });
   }
 
   function cleanup() {
@@ -1523,6 +1546,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     window.removeEventListener("resize", onPositionChange);
     if (pollTimer) window.clearInterval(pollTimer);
     if (positionFrame) window.cancelAnimationFrame(positionFrame);
+    if (viewportFrame) window.cancelAnimationFrame(viewportFrame);
     removeMarkers();
     if (comparisonCleanup) comparisonCleanup();
     if (comparisonDialog) comparisonDialog.remove();
@@ -1536,7 +1560,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);
   if (reportCommentEndpoint) document.addEventListener("bhn-report-comment", onClick);
-  window.addEventListener("scroll", onPositionChange, true);
+  window.addEventListener("scroll", onPositionChange, {capture:true,passive:true});
   window.addEventListener("resize", onPositionChange);
   pollTimer = window.setInterval(function(){ loadComments(true); }, 5000);
   render();

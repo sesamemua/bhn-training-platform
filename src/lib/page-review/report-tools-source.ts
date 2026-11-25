@@ -17,8 +17,8 @@ export function reportToolsSource(): string {
     var p = match[2].split(',').map(Number);
     return p.length === 4 && p.every(function(v){return Number.isFinite(v) && v >= 0 && v <= 1;}) ? { shape: match[1], points:p } : null;
   }
-  function reportDrawSvg(page, drawing, draft) {
-    var r = page.getBoundingClientRect(), p = drawing.points;
+  function reportDrawSvg(page, drawing, draft, rect) {
+    var r = rect || page.getBoundingClientRect(), p = drawing.points;
     var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('class','bhn-report-drawing' + (draft ? ' bhn-report-drawing-draft' : ''));
     svg.setAttribute('aria-hidden','true'); svg.style.left=r.left+'px'; svg.style.top=r.top+'px'; svg.style.width=r.width+'px'; svg.style.height=r.height+'px';
@@ -61,11 +61,17 @@ export function reportToolsSource(): string {
     anchor.anchorBlock=((drawing.page.getAttribute('aria-label')||'').slice(0,100)+' · [draw:'+drawing.shape+':'+drawing.points.map(function(n){return n.toFixed(4);}).join(',')+']').slice(0,200);
     anchor.drawing={shape:drawing.shape,points:drawing.points};state.selected=anchor;state.panelCollapsed=false;state.draft='';reportDrawMode=null;state.pickingElement=false;render();
   }
-  function reportDrawingMarker(marker,comment,anchor) {
-    var drawing=reportDrawingData(comment),page=anchor.closest(pageSelector);if(!drawing||!page)return;
-    var svg=reportDrawSvg(page,drawing,false);document.body.appendChild(svg);markers.push(svg);
-    var r=page.getBoundingClientRect();marker.style.left=(r.left+drawing.points[2]*r.width-12)+'px';marker.style.top=(r.top+drawing.points[3]*r.height-12)+'px';
+  function reportDrawingMarker(marker,comment,anchor,rect,existing) {
+    var drawing=reportDrawingData(comment),page=anchor.closest(pageSelector);
+    if(!drawing||!page){if(existing)existing.remove();return null;}
+    var r=rect||page.getBoundingClientRect(),svg=existing;
+    var signature=JSON.stringify(drawing);
+    if(!svg||svg.dataset.drawing!==signature){if(svg)svg.remove();svg=reportDrawSvg(page,drawing,false,r);svg.dataset.drawing=signature;document.body.appendChild(svg);}
+    else{svg.style.left=r.left+'px';svg.style.top=r.top+'px';svg.style.width=r.width+'px';svg.style.height=r.height+'px';}
+    marker.style.left=(r.left+drawing.points[2]*r.width-12)+'px';marker.style.top=(r.top+drawing.points[3]*r.height-12)+'px';
+    return svg;
   }
+
   if (reportReview) {
     document.addEventListener('pointerdown',reportDrawStart,true);document.addEventListener('pointermove',reportDrawMove,true);document.addEventListener('pointerup',reportDrawEnd,true);
     document.addEventListener('pointercancel',reportDrawCancel,true);
@@ -75,6 +81,7 @@ export function reportToolsSource(): string {
   var reportInsertLine = null;
   var reportInsertion = null;
   var reportToolsObserver = null;
+  var reportNotesFrame = null;
   function reportHasPageDrafts() {
     return Array.from(reportPageDrafts.values()).some(function(value){ return value.trim(); });
   }
@@ -128,8 +135,10 @@ export function reportToolsSource(): string {
         var cancel = addButton('Clear draft', '', function(){ box.value = ''; reportPageDrafts.delete(frame); reportDraftStatus(); });
         host.appendChild(title); host.appendChild(box); host.appendChild(save); host.appendChild(cancel);
       }
-      host.querySelector('textarea').setAttribute('aria-label', 'Page feedback: ' + label);
-      host.querySelectorAll('textarea,button').forEach(function(el){ el.disabled = !state.viewer || isLocked() || state.saving; });
+      var textarea=host.querySelector('textarea'),ariaLabel='Page feedback: '+label;
+      if(textarea.getAttribute('aria-label')!==ariaLabel)textarea.setAttribute('aria-label',ariaLabel);
+      var disabled=!state.viewer||isLocked()||state.saving;
+      host.querySelectorAll('textarea,button').forEach(function(el){if(el.disabled!==disabled)el.disabled=disabled;});
     });
     reportDrawRefresh();reportDraftStatus();
   }
@@ -163,8 +172,24 @@ export function reportToolsSource(): string {
     if (!reportToolsObserver) {
       var stage = document.querySelector('[data-report-paper]');
       if (stage) {
-        reportToolsObserver = new MutationObserver(function(){ reportPageNotes(); });
-        reportToolsObserver.observe(stage, { childList: true, subtree: true });
+        var notesChanged=false,contentChanged=false;
+        reportToolsObserver = new MutationObserver(function(records){
+          records.forEach(function(record){
+            if(record.type==='attributes'){if(record.target.matches(pageSelector))notesChanged=true;return;}
+            var target=record.target.nodeType===3?record.target.parentElement:record.target;
+            if(!target||target.closest('[data-report-page-notes]'))return;
+            if(record.type==='characterData'){if(target.closest('[data-report-field]'))contentChanged=true;return;}
+            Array.from(record.addedNodes).concat(Array.from(record.removedNodes)).forEach(function(node){
+              if(node.nodeType===3){if(target.closest('[data-report-field]'))contentChanged=true;return;}
+              if(node.nodeType===1&&(node.matches('[data-print-page],[data-report-page-notes]')||node.querySelector('[data-print-page],[data-report-page-notes]')))notesChanged=true;
+            });
+          });
+          if((!notesChanged&&!contentChanged)||reportNotesFrame)return;
+          reportNotesFrame=window.requestAnimationFrame(function(){
+            reportNotesFrame=null;if(notesChanged)reportPageNotes();notesChanged=false;contentChanged=false;syncMarkers();drawTagLauncher();
+          });
+        });
+        reportToolsObserver.observe(stage, { childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['aria-label'] });
       }
     }
   }
@@ -218,11 +243,11 @@ export function reportToolsSource(): string {
     render();
     return true;
   }
-  function reportInsertionMarker(marker, comment, anchor) {
+  function reportInsertionMarker(marker, comment, anchor, anchorRect, pageRect) {
     if (!reportReview || !comment.body.startsWith('[Section insertion request]')) return;
     var page = anchor.closest(pageSelector);
     if (!page) return;
-    var p = page.getBoundingClientRect(), r = anchor.getBoundingClientRect();
+    var p = pageRect || page.getBoundingClientRect(), r = anchorRect || anchor.getBoundingClientRect();
     marker.classList.add('bhn-report-insertion-bubble');
     marker.textContent = comment.body.replace(/^\[Section insertion request\]\s*/, '').slice(0,160);
     marker.style.left = Math.max(4,p.left-182) + 'px';
@@ -238,6 +263,7 @@ export function reportToolsSource(): string {
     document.removeEventListener('pointerdown',reportDrawStart,true);document.removeEventListener('pointermove',reportDrawMove,true);document.removeEventListener('pointerup',reportDrawEnd,true);document.removeEventListener('pointercancel',reportDrawCancel,true);
     if (reportDrawPreview) reportDrawPreview.remove();
     if (reportToolsObserver) reportToolsObserver.disconnect();
+    if (reportNotesFrame) window.cancelAnimationFrame(reportNotesFrame);
     if (reportInsertLine) reportInsertLine.remove();
     document.querySelectorAll('[data-report-page-notes]').forEach(function(el){ el.textContent = ''; el.removeAttribute('data-notes-round'); });
   }
