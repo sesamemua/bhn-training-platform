@@ -131,7 +131,7 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
     idsBySection[p.section].push(p.id);
   }
 
-  const html = (issue.status === "sent" ? issue.renderedHtml : null) ?? renderIssue({
+  const html = renderIssue({
     dateline: issue.dateline,
     preheader: issue.preheader,
     bySection,
@@ -146,8 +146,20 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
 
   const review = await prisma.pageReview.findUnique({
     where: { id: `newsletter-${issue.id}` },
-    select: { id: true, round: true, status: true, pastedHtml: true, _count: { select: { comments: { where: { status: "open", parentId: null } } } } },
+    select: { id: true, round: true, status: true, pastedHtml: true, snapshotHtml: true, snapshotAt: true,
+      versions: { select: { round: true, createdAt: true }, orderBy: { round: "desc" } },
+      _count: { select: { comments: { where: { status: "open", parentId: null } } } } },
   });
+  const rounds: { round: number; savedAt: string | null }[] = (review?.versions ?? []).map((v) => ({ round: v.round, savedAt: v.createdAt.toISOString() }));
+  const savedReviewHtml = review?.pastedHtml?.trim() ? review.pastedHtml : null;
+  const savedIssueHtml = issue.renderedHtml?.trim() ? issue.renderedHtml : null;
+  if (review && review.round > 1 && review.snapshotHtml?.trim() && !rounds.some((r) => r.round === review.round - 1)) {
+    rounds.push({ round: review.round - 1, savedAt: review.snapshotAt?.toISOString() ?? null });
+  }
+  const issues = await prisma.newsletterIssue.findMany({
+    where: { status: { not: "sent" } }, select: { id: true, title: true, dateline: true }, orderBy: { createdAt: "desc" }, take: 36,
+  });
+  if (!issues.some((i) => i.id === issue.id)) issues.push({ id: issue.id, title: issue.title, dateline: issue.dateline });
   const role = (session.user as { role?: string }).role;
   const signOff = {
     cycleId: selectedCycle?.id ?? resolved?.cycleId ?? null,
@@ -166,10 +178,16 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
       <NewsletterPageReview
         key={issue.id}
         issueId={issue.id}
+        issueTitle={issue.title}
+        issueNumber={(selectedCycle?.month ?? resolved?.month)?.slice(0, 7) ?? issue.dateline}
+        initialRounds={rounds}
+        issues={issues}
+        initialHasSavedPreview={!!(savedReviewHtml || savedIssueHtml)}
+        initialHasReviewHtml={!!savedReviewHtml}
         html={html}
         initialReview={review ? { id: review.id, round: review.round, status: review.status } : null}
         canEdit={role === "admin" || role === "superadmin"}
-        initialPaste={review?.pastedHtml ?? (pastedReview?.title.toLowerCase().includes(issue.dateline.toLowerCase()) ? pastedReview.code : "")}
+        initialPaste={savedReviewHtml ?? savedIssueHtml ?? (pastedReview?.title.toLowerCase().includes(issue.dateline.toLowerCase()) ? pastedReview.code : "")}
       />
       <SignOff signOff={signOff} openCount={(review?._count.comments ?? 0) + comments.filter((comment) => comment.status === "open").length} />
       {comments.length > 0 && <details>

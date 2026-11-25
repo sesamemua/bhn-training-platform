@@ -417,6 +417,9 @@
     "src/app/api/workspace/newsletter/[id]/review/route.ts": {
       "workflow": "newsletter"
     },
+    "src/app/api/workspace/newsletter/[id]/review-preview/route.ts": {
+      "workflow": "newsletter"
+    },
     "src/app/api/workspace/page-review/[id]/launch/route.ts": {
       "workflow": "page"
     },

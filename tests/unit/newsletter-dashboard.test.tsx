@@ -137,7 +137,9 @@ test("opening team review is explicit and guarded; saving a draft never makes it
 test("newsletter draft controls explain readiness, preserve editing and keep invitations unavailable until opened", async () => {
   const html = renderToStaticMarkup(createElement(NewsletterPageReview, { issueId: "november", html: "saved draft", initialReview: { id: "newsletter-november", round: 2, status: "pending" }, canEdit: true }));
   assert.match(html, /team review is not open yet/); assert.match(html, />Save draft</); assert.match(html, />Open team review</);
-  assert.doesNotMatch(html, /Open full-page review|Send review request|Copy review link/);
+  assert.match(html, /class="newsletter-review-launch"/);
+  assert.match(html, /href="\/api\/workspace\/newsletter\/november\/review-preview"/);
+  assert.doesNotMatch(html, /\/api\/workspace\/page-review\/[^" ]+\/launch|Send review request|Copy review link/);
   const readonly = renderToStaticMarkup(createElement(NewsletterPageReview, { issueId: "november", html: "saved draft", initialReview: { id: "newsletter-november", round: 2, status: "pending" }, canEdit: false }));
   assert.doesNotMatch(readonly, /<button[^>]*>Open team review/);
   assert.match(readonly, /An editor will open team review/); assert.doesNotMatch(readonly, /Save your changes/);

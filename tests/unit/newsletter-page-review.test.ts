@@ -158,12 +158,14 @@ test("newsletter uses the existing overlay and revision endpoint while retaining
   assert.match(page, /Earlier newsletter notes/);
   assert.match(page, /<PastedNewsletterReview/);
   assert.match(page, /pastedReview\?\.title.toLowerCase\(\).includes\(issue.dateline.toLowerCase\(\)\)/);
-  assert.match(page, /initialPaste=\{review\?\.pastedHtml \?\?/);
+  assert.match(page, /const savedReviewHtml = review\?\.pastedHtml\?\.trim\(\) \? review.pastedHtml : null/);
+  assert.match(page, /initialPaste=\{savedReviewHtml \?\? savedIssueHtml \?\?/);
+  assert.match(page, /initialHasSavedPreview=\{!!\(savedReviewHtml \|\| savedIssueHtml\)\}/);
   assert.match(page, /pastedReview && pastedReview.notes.length > 0/);
   assert.match(client, /useState\(initialPaste\)/);
 });
 
-test("newsletter code is hidden by default and review opens as a full page, not an embed", () => {
+test("newsletter code is hidden by default and only a noninteractive sandboxed thumbnail is embedded", () => {
   for (const canEdit of [true, false]) {
     const markup = renderToStaticMarkup(createElement(NewsletterPageReview, {
       issueId: "october", html: "<p>Generated version</p>", initialPaste: "<p>Latest saved newsletter</p>",
@@ -175,7 +177,10 @@ test("newsletter code is hidden by default and review opens as a full page, not 
     assert.match(markup, /View code/);
     assert.match(markup, /Copy Mailchimp code/);
     assert.match(markup, /aria-expanded="false" aria-controls="newsletter-code-october"/);
-    assert.doesNotMatch(markup, /<iframe|<textarea|Latest saved newsletter|Generated version|Your name/);
+    assert.match(markup, /<iframe[^>]+src="\/api\/workspace\/newsletter\/october\/review-preview\?round=9"[^>]+sandbox=""[^>]+referrerPolicy="no-referrer"[^>]+tabindex="-1"/);
+    assert.match(markup, /class="pointer-events-none [^"]+" aria-hidden="true"/);
+    assert.equal((markup.match(/<iframe/g) ?? []).length, 1);
+    assert.doesNotMatch(markup, /<textarea|Latest saved newsletter|Generated version|Your name|srcDoc=|allow-scripts|allow-same-origin/);
     assert.equal(markup.includes("Save revision"), canEdit);
   }
 });
@@ -255,7 +260,7 @@ test("newsletter reviews never offer name entry or mint guest credentials", asyn
 
 test("the review launch CTA is prominent and has finite motion", () => {
   const html = renderToStaticMarkup(createElement(NewsletterPageReview, {
-    issueId: "october", html: "", initialReview: { id: "newsletter-october", round: 1, status: "open" }, canEdit: true,
+    issueId: "october", html: "<h1>Saved</h1>", initialReview: { id: "newsletter-october", round: 1, status: "open" }, canEdit: true,
   }));
   assert.match(html, /class="newsletter-review-launch"/);
   const css = readFileSync("src/app/globals.css", "utf8");

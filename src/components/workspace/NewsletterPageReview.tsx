@@ -1,16 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Code2, Copy, ExternalLink, Loader2, MessageSquareText, Save } from "lucide-react";
+import { Code2, Copy, Loader2, Save } from "lucide-react";
 import { NewsletterReviewInvite } from "./NewsletterReviewInvite";
 import { getNewsletterReviewComments } from "@/lib/newsletter/review-comments";
+import { NewsletterReviewOverview, type NewsletterRoundSummary, type NewsletterIssueChoice } from "./NewsletterReviewOverview";
 
 interface Review { id: string; round: number; status: string }
 
-export function NewsletterPageReview({ issueId, html, initialReview, canEdit, initialPaste = "" }: {
+export function NewsletterPageReview({ issueId, html, initialReview, canEdit, initialPaste = "", issueTitle = "Newsletter", issueNumber, initialRounds = [], issues = [], initialHasSavedPreview, initialHasReviewHtml }: {
   issueId: string; html: string; initialReview: Review | null; canEdit: boolean; initialPaste?: string;
+  issueTitle?: string; issueNumber?: string; initialRounds?: NewsletterRoundSummary[]; issues?: NewsletterIssueChoice[];
+  initialHasSavedPreview?: boolean;
+  initialHasReviewHtml?: boolean;
 }) {
   const [review, setReview] = useState(initialReview);
+  const [rounds, setRounds] = useState(initialRounds);
+  const [hasSavedPreview, setHasSavedPreview] = useState(initialHasSavedPreview ?? !!(initialPaste || html).trim());
+  const [hasReviewHtml, setHasReviewHtml] = useState(initialHasReviewHtml ?? !!initialReview);
   const [source, setSource] = useState<"issue" | "paste">(initialPaste ? "paste" : "issue");
   const [paste, setPaste] = useState(initialPaste);
   const [busy, setBusy] = useState(false);
@@ -20,7 +27,10 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
   const [commentBrief, setCommentBrief] = useState<string | null>(null);
   const [showCode, setShowCode] = useState(false);
   const code = source === "paste" ? paste : html;
-  const launch = review ? `/api/workspace/page-review/${encodeURIComponent(review.id)}/launch` : null;
+  const launch = hasSavedPreview ? review && hasReviewHtml && !["pending", "closed"].includes(review.status)
+    ? `/api/workspace/page-review/${encodeURIComponent(review.id)}/launch`
+    : `/api/workspace/newsletter/${encodeURIComponent(issueId)}/review-preview`
+    : null;
 
   async function save(action: "save" | "release" = "save") {
     setBusy(true); setError(null);
@@ -31,7 +41,14 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
       });
       const result = await response.json();
       if (!response.ok || !result.review) throw new Error(result.error ?? "Could not save the review.");
+      if (review && result.review.round > review.round) {
+        setRounds((current) => current.some((r) => r.round === review.round) ? current : [...current, { round: review.round, savedAt: new Date().toISOString() }]);
+      }
+      setHasSavedPreview(true);
+      setHasReviewHtml(true);
       setReview(result.review);
+      // Another editor may have saved intervening rounds; reload their actual history.
+      if (review && ((result.unchanged && result.review.round !== review.round) || result.review.round > review.round + 1)) window.location.reload();
     } catch (err) { setError(err instanceof Error ? err.message : "Could not save the review."); }
     finally { setBusy(false); }
   }
@@ -59,13 +76,12 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
   }
 
   return <section className="min-w-0 space-y-3" aria-label="Newsletter review">
+    <NewsletterReviewOverview issueId={issueId} issueTitle={issueTitle} issueNumber={issueNumber ?? issueId} currentRound={review?.round ?? null} status={review?.status ?? "unsaved"} hasPreview={hasSavedPreview} hasCurrentReviewHtml={hasReviewHtml} launch={launch} rounds={rounds} issues={issues} />
     <div className="flex flex-wrap items-center gap-3">
-      <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Current review round"><MessageSquareText size={16} />{review ? `${review.status === "pending" ? "Draft · " : ""}Round ${review.round}` : "Newsletter review"}</h2>
-      {launch && review?.status !== "pending" && <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>}
       <button type="button" onClick={copyComments} disabled={copyingComments} title="Copy open review comments and replies" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50">
         {copyingComments ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}{copied === "comments" ? "Comments copied" : "Copy review comments"}
       </button>
-      {launch && review?.status !== "pending" && <>
+      {launch && review && !["pending", "closed"].includes(review.status) && <>
         <button onClick={() => copy("link")} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Copy size={14} />{copied === "link" ? "Link copied" : "Copy review link"}</button>
         <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
       </>}
