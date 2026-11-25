@@ -6539,7 +6539,7 @@ model PageReview {
   pastedHtml   String?
   /// Human label — "ENGAGE · Regulatory Affairs".
   title        String
-  /// open | exported | closed
+  /// pending (newsletter draft only) | open | exported | closed
   status       String    @default("open")
   /// Current round. Bumped on export; comments record the round they
   /// were filed under.

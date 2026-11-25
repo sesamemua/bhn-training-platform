@@ -36,6 +36,8 @@ Improvement happens through saved guidance, retrieved examples and quality check
 
 Approvals, views, resolution and other state changes have `signal: activity`. They stay in the history and are excluded from preference-topic counts. If a workflow has no recorded round number, the UI labels the record as version context.
 
+Newsletter reviews may remain `pending` while their saved draft is being prepared. The dashboard hides these drafts; only an editor's explicit Open team review action changes them to `open`. Saving a pending draft preserves that state. Opening preserves the saved content and round, and its state transition is captured by the existing PageReview activity trigger. No invitations are sent by opening a round.
+
 Existing shared comment IDs remain compatible with application-level capture and are not overwritten. Direct SQL body changes and reversions receive distinct records when version metadata was not incremented. URL credentials/query/fragments and raw document/image bytes are not copied into the ledger; document revisions are hashed.
 
 Source comments available at activation form a baseline. Wording already overwritten or deleted before activation may not be recoverable. New workflows must register an adapter and a trigger plus a regression covering before/after, deletion, rollback and identity attribution. Exclude unrelated applicant, personnel and trainee-assessment data from content-style learning.

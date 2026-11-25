@@ -22,12 +22,12 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
   const code = source === "paste" ? paste : html;
   const launch = review ? `/api/workspace/page-review/${encodeURIComponent(review.id)}/launch` : null;
 
-  async function save() {
+  async function save(action: "save" | "release" = "save") {
     setBusy(true); setError(null);
     try {
       const response = await fetch(`/api/workspace/newsletter/${encodeURIComponent(issueId)}/review`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: review ? "revise" : "open", html: source === "paste" ? paste : html, round: review?.round }),
+        body: JSON.stringify({ action: action === "release" ? "release" : review ? "revise" : "open", html: source === "paste" ? paste : html, round: review?.round }),
       });
       const result = await response.json();
       if (!response.ok || !result.review) throw new Error(result.error ?? "Could not save the review.");
@@ -61,25 +61,27 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
   return <section className="min-w-0 space-y-3" aria-label="Newsletter review">
     <div className="flex flex-wrap items-center gap-3">
       <h2 className="mr-auto flex items-center gap-2 text-sm font-bold" title="Current review round"><MessageSquareText size={16} />{review ? `Round ${review.round}` : "Newsletter review"}</h2>
-      {launch && <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>}
+      {launch && review?.status !== "pending" && <a href={launch} target="_blank" rel="noopener noreferrer" className="newsletter-review-launch"><ExternalLink size={20} aria-hidden="true" />Open full-page review</a>}
       <button type="button" onClick={copyComments} disabled={copyingComments} title="Copy open review comments and replies" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50">
         {copyingComments ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}{copied === "comments" ? "Comments copied" : "Copy review comments"}
       </button>
-      {launch && <>
+      {launch && review?.status !== "pending" && <>
         <button onClick={() => copy("link")} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Copy size={14} />{copied === "link" ? "Link copied" : "Copy review link"}</button>
         <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Threads &amp; revision rounds</a>
       </>}
     </div>
-    {review && review.status !== "closed" && <NewsletterReviewInvite issueId={issueId} />}
+    {review?.status === "pending" && <p role="status" className="rounded-lg border border-line bg-elevated px-4 py-3 text-sm">Draft only — team review is not open yet. Save your changes, then choose Open team review when it is ready.</p>}
+    {review && review.status !== "closed" && review.status !== "pending" && <NewsletterReviewInvite issueId={issueId} />}
     {canEdit && review?.status !== "closed" && <div className="flex flex-wrap items-start gap-2">
       <label className="flex items-center gap-2 text-xs text-muted">Revision source
         <select value={source} onChange={(event) => setSource(event.target.value as "issue" | "paste")} className="rounded-md border border-line bg-card p-2 text-fg">
           <option value="issue">Current issue</option><option value="paste">Mailchimp HTML</option>
         </select>
       </label>
-      <button onClick={save} disabled={busy || (source === "paste" && !paste.trim())} className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{review ? "Save revision" : "Start review"}
+      <button onClick={() => save()} disabled={busy || (source === "paste" && !paste.trim())} className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{review?.status === "pending" ? "Save draft" : review ? "Save revision" : "Start review"}
       </button>
+      {review?.status === "pending" && <button type="button" onClick={() => save("release")} disabled={busy || !code.trim()} className="rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Open team review</button>}
     </div>}
     <div className="flex flex-wrap items-center gap-3">
       <button onClick={() => setShowCode(!showCode)} aria-expanded={showCode} aria-controls={`newsletter-code-${issueId}`} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Code2 size={14} />{showCode ? "Hide code" : "View code"}</button>

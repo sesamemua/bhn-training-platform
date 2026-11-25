@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const Schema = z.object({
-  action: z.enum(["open", "revise"]),
+  action: z.enum(["open", "revise", "release"]),
   html: z.string().trim().min(1).max(1_000_000),
   round: z.number().int().positive().optional(),
 });
@@ -50,17 +50,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const current = await prisma.pageReview.findUnique({ where: { id: reviewId } });
   if (!current) return NextResponse.json({ error: "Open the review first." }, { status: 404 });
   if (current.status === "closed") return NextResponse.json({ error: "This review is closed." }, { status: 409 });
+  if (parsed.data.action === "release") {
+    if (issue.status === "sent") return NextResponse.json({ error: "This newsletter has already been sent." }, { status: 409 });
+    if (parsed.data.round !== current.round || current.pastedHtml !== parsed.data.html) return NextResponse.json({ error: "Save your draft changes and reload before opening team review." }, { status: 409 });
+    if (current.status === "open") return NextResponse.json({ ok: true, review: { id: current.id, round: current.round, status: "open" } });
+    if (current.status !== "pending") return NextResponse.json({ error: "Finish the current revision before opening another round." }, { status: 409 });
+    const opened = await prisma.pageReview.updateMany({ where: { id: reviewId, round: current.round, status: "pending" }, data: { status: "open" } });
+    if (!opened.count) return NextResponse.json({ error: "The review changed. Reload before opening team review." }, { status: 409 });
+    return NextResponse.json({ ok: true, review: { id: current.id, round: current.round, status: "open" } });
+  }
   if (current.pastedHtml === parsed.data.html) {
     return NextResponse.json({ ok: true, unchanged: true, review: { id: current.id, round: current.round, status: current.status } });
   }
   if (parsed.data.round !== current.round) return NextResponse.json({ error: "Another editor updated this review. Reload before saving." }, { status: 409 });
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.pageReview.updateMany({
-      where: { id: reviewId, round: current.round, status: { not: "closed" } },
+      where: { id: reviewId, round: current.round, status: current.status },
       data: {
         title: issue.title, pastedHtml: parsed.data.html,
         snapshotHtml: current.pastedHtml, snapshotAt: new Date(),
-        round: { increment: 1 }, status: "open",
+        round: { increment: 1 }, status: current.status === "pending" ? "pending" : "open",
       },
     });
     if (result.count && current.pastedHtml) {
@@ -78,5 +87,5 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
   if (!updated.count) return NextResponse.json({ error: "Another editor updated this review. Reload before saving." }, { status: 409 });
   // Open threads carry forward; a new version does not mean the feedback was addressed.
-  return NextResponse.json({ ok: true, review: { id: reviewId, round: current.round + 1, status: "open" } });
+  return NextResponse.json({ ok: true, review: { id: reviewId, round: current.round + 1, status: current.status === "pending" ? "pending" : "open" } });
 }

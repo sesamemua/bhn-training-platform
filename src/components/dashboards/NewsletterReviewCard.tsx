@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowUpRight, LockKeyhole, Mail, MessageSquareText } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { ArrowUpRight, LockKeyhole, MailOpen, MessageSquareText } from "lucide-react";
 import type { NewsletterDashboardReview } from "@/lib/newsletter/dashboard-review";
 
 export function NewsletterReviewCard({ initial }: { initial: NewsletterDashboardReview | null }) {
   const [newsletter, setNewsletter] = useState(initial);
   const [unavailable, setUnavailable] = useState(!initial);
+  const descriptionId = useId();
   useEffect(() => {
     let disposed = false;
     let pending: AbortController | null = null;
@@ -43,15 +44,17 @@ export function NewsletterReviewCard({ initial }: { initial: NewsletterDashboard
   const action = ready ? "Start reviewing" : locked ? "View locked round" : "Open newsletter desk";
   const Icon = locked || closed ? LockKeyhole : MessageSquareText;
 
-  return <section aria-label="Newsletter review" className="mx-4 sm:mx-6">
-    <a href={href} className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-line bg-card-solid p-5 text-fg shadow-sm transition-colors hover:border-brand-500 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-500 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-      <div className="min-w-0 space-y-2">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted"><Mail size={15} aria-hidden="true" />Newsletter review</p>
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{newsletter?.title ?? "Newsletter"}</h2>
-        <p role="status" aria-live="polite" className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${ready ? "border-emerald-500/35 bg-emerald-500/10" : locked ? "border-amber-500/40 bg-amber-500/10" : "border-line bg-elevated"}`}><Icon size={15} aria-hidden="true" />{status}</p>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">{unavailable ? "The latest status could not be loaded. Open the newsletter desk to check, or wait for the card to reconnect." : ready ? "The latest version is ready for your comments and edits. Open the full-page review to get started." : locked ? "Revisions are underway. Wait until they are complete and the next round opens to add comments or edits." : newsletter?.sent ? "This issue has been sent. Its saved review remains available in the newsletter desk." : closed ? "This review is closed. Open the newsletter desk to see the saved issue and review history." : "The next review round will appear here when it opens."}</p>
-      </div>
-      <span className="flex shrink-0 items-center gap-2 self-start rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white sm:self-center">{action}<ArrowUpRight size={17} aria-hidden="true" /></span>
+  // A saved draft is not an invitation to review. Keep polling so explicit opening reveals the tile.
+  if (!review || review.status === "pending" || newsletter?.sent) return null;
+
+  const detail = unavailable ? "The latest status could not be loaded. Open the newsletter desk to check." : locked ? "Revisions are underway. Wait until they are complete and the next round opens to add comments or edits." : ready ? "Open the full-page review to add comments and edits." : "The next review round will appear here when it opens.";
+  return <section aria-label="Newsletter review" className="mx-4 flex items-start sm:mx-6">
+    <a href={href} title={detail} aria-describedby={descriptionId} data-newsletter-review-tile className="group relative flex min-h-56 w-56 max-w-full flex-col items-center gap-3 rounded-2xl border border-line bg-card-solid px-4 py-5 text-center text-fg shadow-sm transition-colors hover:border-brand-500 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-500">
+      <span className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-700"><MailOpen size={52} strokeWidth={1.4} aria-hidden="true" /></span>
+      <h2 className="max-w-full text-sm font-semibold leading-snug">{newsletter?.title ?? "Newsletter review"}</h2>
+      <p role="status" aria-live="polite" className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold ${ready ? "border-emerald-500/35 bg-emerald-500/10" : locked ? "border-amber-500/40 bg-amber-500/10" : "border-line bg-elevated"}`}><Icon size={13} aria-hidden="true" />{status}</p>
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700">{action}<ArrowUpRight size={13} aria-hidden="true" /></span>
     </a>
+    <p id={descriptionId} className="sr-only">{detail}</p>
   </section>;
 }

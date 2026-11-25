@@ -59,6 +59,10 @@ try:
  assert events('ScriptComment','script-note')[0]['detail']['source']['context']['scriptTitle']=='Opening script'
  assert events('DesignQuestion','question')[0]['detail']['signal']=='activity'
  run('UPDATE "PageReview" SET status=\'exported\',"updatedAt"=now() WHERE id=\'r-page\';');assert events('PageReview','r-page')[-1]['detail']['signal']=='activity'
+ seed('PageReview',{'id':'r-newsletter-draft','title':'Newsletter draft','url':'/review-paste/newsletter-fixture','kind':'paste','round':2,'status':'pending','pastedHtml':'<p>Saved draft</p>'})
+ before=events('PageReview','r-newsletter-draft');assert before[-1]['detail']['signal']=='activity';assert 'pending' in before[-1]['detail']['comment']['body']
+ run('UPDATE "PageReview" SET status=\'open\',"updatedAt"=now() WHERE id=\'r-newsletter-draft\' AND round=2 AND status=\'pending\';')
+ opened=events('PageReview','r-newsletter-draft');assert len(opened)==len(before)+1;assert opened[-1]['detail']['signal']=='activity';assert 'open' in opened[-1]['detail']['comment']['body'];assert run('SELECT round FROM "PageReview" WHERE id=\'r-newsletter-draft\'')=='2'
  pin=events('DesignPin','pin')[0]['detail'];assert pin['source']['context']['x']==0.2;assert pin['source']['context']['artworkTitle']=='Poster';assert pin['writer']['verified']
  run('UPDATE "DesignPin" SET body=\'Use a wider group photo\',"updatedAt"=now() WHERE id=\'pin\';')
  es=events('DesignPin','pin');assert len(es)==2;assert es[-1]['detail']['writer']['verified'] is False;assert es[-1]['detail']['writer']['name']=='Editor not recorded'

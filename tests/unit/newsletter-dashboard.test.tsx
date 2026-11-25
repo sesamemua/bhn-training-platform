@@ -9,6 +9,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createRoot } from "react-dom/client";
 import { JSDOM } from "jsdom";
 import { NewsletterReviewCard } from "../../src/components/dashboards/NewsletterReviewCard";
+import { NewsletterPageReview } from "../../src/components/workspace/NewsletterPageReview";
 
 function mockedModule(file: string, mocks: Record<string, unknown>) {
   const require = createRequire(import.meta.url);
@@ -66,8 +67,87 @@ test("card links directly to the open reviewer and distinguishes locked, closed,
   assert.match(markup("open"), /Round 2 is open/); assert.match(markup("open"), /href="\/api\/workspace\/page-review\/newsletter-november\/launch"/);
   assert.match(markup("exported"), /Round 2 is locked/); assert.match(markup("exported"), /Wait until they are complete and the next round opens/); assert.doesNotMatch(markup("exported"), /Start reviewing/);
   assert.match(markup("closed"), /Round 2 is closed/); assert.doesNotMatch(markup("closed"), /\/launch/);
-  const sent = renderToStaticMarkup(createElement(NewsletterReviewCard, { initial: { ...initial, sent: true } })); assert.match(sent, /Newsletter sent/); assert.doesNotMatch(sent, /Start reviewing|\/launch/);
-  assert.match(renderToStaticMarkup(createElement(NewsletterReviewCard, { initial: { ...initial, review: null } })), /Review not open yet/);
+  assert.equal(renderToStaticMarkup(createElement(NewsletterReviewCard, { initial: { ...initial, sent: true } })), "");
+  assert.equal(renderToStaticMarkup(createElement(NewsletterReviewCard, { initial: { ...initial, review: null } })), "");
+  assert.equal(markup("pending"), "");
+  assert.match(markup("open"), /data-newsletter-review-tile/); assert.match(markup("open"), /w-56 max-w-full/); assert.doesNotMatch(markup("open"), /sm:flex-row/);
+});
+
+test("draft review stays hidden while mounted, then explicit opening reveals the compact tile", async () => {
+  const dom = new JSDOM("<div id='root'></div>", { url: "https://example.test", pretendToBeVisual: true });
+  const keys = ["window", "document", "fetch", "IS_REACT_ACT_ENVIRONMENT"];
+  const previous = Object.fromEntries(keys.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  let data = { ...initial, review: { ...initial.review, status: "pending" } };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true,
+    fetch: async () => ({ ok: true, json: async () => ({ newsletter: data }) }),
+  });
+  const root = createRoot(dom.window.document.querySelector("#root")!);
+  try {
+    await act(async () => root.render(createElement(NewsletterReviewCard, { initial: data })));
+    assert.equal(dom.window.document.querySelector('[data-newsletter-review-tile]'), null);
+    data = { ...initial, review: { ...initial.review, status: "open" } };
+    await act(async () => { dom.window.dispatchEvent(new dom.window.Event("focus")); });
+    assert.match(dom.window.document.body.textContent!, /Round 2 is open/);
+    assert.ok(dom.window.document.querySelector('[data-newsletter-review-tile]'));
+  } finally {
+    await act(async () => root.unmount()); dom.window.close();
+    for (const [key, descriptor] of Object.entries(previous)) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); }
+  }
+});
+
+test("opening team review is explicit and guarded; saving a draft never makes it ready", async () => {
+  let authorized = true, sent = false, racing = false;
+  let row: any = { id: "newsletter-november", round: 2, status: "pending", pastedHtml: "saved draft", shareToken: "same-token" };
+  const archives: any[] = [];
+  const db: any = {
+    newsletterIssue: { findUnique: async () => ({ title: "November", status: sent ? "sent" : "generated" }), update: async () => {} },
+    pageReviewVersion: { upsert: async (input: any) => archives.push(input) },
+    pageReview: {
+      findUnique: async () => ({ ...row }),
+      updateMany: async ({ where, data }: any) => {
+        assert.equal(where.status, row.status); assert.equal(where.round, row.round);
+        if (racing) return { count: 0 };
+        row = { ...row, ...data, round: data.round ? row.round + data.round.increment : row.round };
+        return { count: 1 };
+      },
+    },
+    $transaction: async (fn: any) => fn(db),
+  };
+  const fixture = mockedModule("src/app/api/workspace/newsletter/[id]/review/route.ts", {
+    "@/lib/auth": { requireRole: async () => authorized ? { user: { id: "editor" } } : null },
+    "@/lib/prisma": { prisma: db },
+  });
+  const call = (body: any) => fixture.POST(new Request("https://example.test/api/workspace/newsletter/november/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), { params: Promise.resolve({ id: "november" }) });
+  const open = () => call({ action: "release", html: row.pastedHtml, round: row.round });
+  authorized = false; assert.equal((await open()).status, 403); authorized = true;
+  assert.equal((await call({ action: "release", html: "unsaved changes", round: 2 })).status, 409);
+  assert.equal((await call({ action: "release", html: "saved draft", round: 1 })).status, 409);
+  sent = true; assert.equal((await open()).status, 409); sent = false;
+  const saved = await (await call({ action: "revise", html: "revised draft", round: 2 })).json();
+  assert.equal(saved.review.status, "pending"); assert.equal(row.status, "pending"); assert.equal(archives.length, 1);
+  racing = true; assert.equal((await open()).status, 409); racing = false;
+  const before = { ...row };
+  const opened = await (await open()).json(); assert.equal(opened.review.status, "open");
+  assert.equal(row.round, before.round); assert.equal(row.pastedHtml, before.pastedHtml); assert.equal(row.shareToken, "same-token"); assert.equal(archives.length, 1);
+  assert.equal((await open()).status, 200);
+  row.status = "exported"; assert.equal((await open()).status, 409);
+  row.status = "closed"; assert.equal((await open()).status, 409);
+});
+
+test("newsletter draft controls explain readiness, preserve editing and keep invitations unavailable until opened", async () => {
+  const html = renderToStaticMarkup(createElement(NewsletterPageReview, { issueId: "november", html: "saved draft", initialReview: { id: "newsletter-november", round: 2, status: "pending" }, canEdit: true }));
+  assert.match(html, /team review is not open yet/); assert.match(html, />Save draft</); assert.match(html, />Open team review</);
+  assert.doesNotMatch(html, /Open full-page review|Send review request|Copy review link/);
+  const readonly = renderToStaticMarkup(createElement(NewsletterPageReview, { issueId: "november", html: "saved draft", initialReview: { id: "newsletter-november", round: 2, status: "pending" }, canEdit: false }));
+  assert.doesNotMatch(readonly, /<button[^>]*>Open team review/);
+  let sent = 0;
+  const fixture = mockedModule("src/lib/newsletter/review-invites.ts", {
+    "@/lib/auth": { requireRole: async () => ({ user: { id: "editor" } }) },
+    "@/lib/prisma": { prisma: { newsletterIssue: { findUnique: async () => ({ title: "November" }) }, pageReview: { findUnique: async () => ({ status: "pending" }) } } },
+    "@/lib/workspace-review-invites": { sendStaffReviewInvites: async () => { sent++; } },
+  });
+  const result = await fixture.sendNewsletterReviewInvites({ issueId: "november", userIds: ["colleague"] });
+  assert.match(result.error, /Open team review/); assert.equal(sent, 0);
 });
 
 test("card refreshes rounds and locks on focus, rejects stale status after failure and cancels work on unmount", async () => {

@@ -38,6 +38,7 @@ export async function sendNewsletterReviewInvites(input: unknown) {
   const review = await prisma.pageReview.findUnique({ where: { id: `newsletter-${issueId}` }, select: { status: true } });
   if (!issue || !review) return { error: "Start this issue's review before sending a link.", sent: [] as string[] };
   if (review.status === "closed") return { error: "This review is closed.", sent: [] as string[] };
+  if (review.status === "pending") return { error: "Open team review before sending a review request.", sent: [] as string[] };
   return sendStaffReviewInvites({
     actor: { ...actor, id: actor.id }, userIds, title: issue.title,
     path: `/admin/workspace/marketing/newsletter/review?issue=${encodeURIComponent(issueId)}`,
