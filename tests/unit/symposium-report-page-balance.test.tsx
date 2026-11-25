@@ -24,6 +24,29 @@ test('feedback panels preserve every editable passage and comment offset', async
     assert.equal(doc.querySelectorAll('.feedback-prompt').length, 3);
     assert.equal(doc.querySelectorAll('.feedback-prompt [contenteditable]').length, editing ? 6 : 0);
     assert.equal(doc.querySelector('a')?.href, 'https://docs.google.com/forms/d/e/1FAIpQLSeDtLSMZESQ849RL-pA4NU5TihYwxojHrdW5jMnSyVCfUdZKg/viewform');
+    const qr = doc.querySelector('img[src="/symposium-report-feedback.svg"]');
+    assert(qr, 'printed copies need the respondent survey QR');
+    assert.equal(qr.closest('a')?.href, doc.querySelector('a')?.href);
     assert.equal(doc.querySelectorAll('footer').length, 1);
   }
+});
+
+test('team funding stays editable outside profile cards and back cover has one website label', async () => {
+  const bundle = await build({ stdin: { contents: 'export {ReportPaper} from "./src/components/workspace/symposium-report/ReportPaper";', resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'node', format: 'cjs', jsx: 'automatic', external: ['react', 'react-dom', 'react-dom/*'], plugins: [{ name: 'styles', setup(b) { b.onResolve({ filter: /\.css$/ }, () => ({ path: 'styles', namespace: 'mock' })); b.onLoad({ filter: /.*/, namespace: 'mock' }, () => ({ contents: 'export default {publicationProfile:"profile",fundingAcknowledgement:"funding",backLinks:"back-links"}' })); } }] });
+  const mod = { exports: {} as { ReportPaper: typeof ReportPaper } };
+  new Function('require', 'module', 'exports', bundle.outputFiles[0].text)(createRequire(import.meta.url), mod, mod.exports);
+  const funding = 'BioHubNet is funded by the Canada Biomedical Research Fund (CBRF). Find out more.';
+  const text = '## Leadership Team\n\nLeadership Person\nScientific Director\n\n## Program Team\n\nProgram Person\nProgram Lead\n\n' + funding;
+  const page: ReportPage = { id: 'publication-leadership', title: 'Team', label: 'People', text, frames: 1 };
+  const report: Report = { cover: { title: 'Report', theme: 'Theme', date: 'October' }, pages: [page], back: { title: 'Connect', text: 'Community' } };
+  const doc = new JSDOM(renderToStaticMarkup(React.createElement(mod.exports.ReportPaper, { report, layout: [{ page, columns: 1, frames: [reportBlocks(text)], photoHeights: [0], hasWorkshops: false }], active: { id: page.id, index: 0 }, ready: false, edit: null, recommendations: {}, onSelect() {}, onTyping() {}, onTextChange() {} }))).window.document;
+  assert.equal(doc.querySelectorAll('.profile').length, 2);
+  const acknowledgement = doc.querySelector('.funding')!;
+  assert.equal(acknowledgement.closest('.profile'), null);
+  assert.equal(acknowledgement.querySelector('[contenteditable]')?.textContent, funding);
+  assert.equal(acknowledgement.querySelector('a')?.href, 'https://sshrc-crsh.canada.ca/funding-financement/cbrf-frbc/index-eng.aspx');
+  const links = doc.querySelector('.back-links')!;
+  assert.equal(links.querySelectorAll('a[href="https://biohubnet.ca"]').length, 1);
+  assert.equal(links.querySelector('a[href="https://biohubnet.ca"] span')?.textContent, 'biohubnet.ca');
+  assert(links.querySelector('a[href="https://www.linkedin.com/company/biohubnet/"]'));
 });

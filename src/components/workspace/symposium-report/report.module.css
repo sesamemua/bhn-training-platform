@@ -837,7 +837,7 @@
 .chapter[data-section="publication-leadership"][data-team-spread="true"] .pageIntro { margin-top:12px;font-size:14px;line-height:1.45; }
 .chapter[data-section="publication-leadership"][data-team-spread="true"] .story { max-inline-size:none;display:grid;grid-template-columns:repeat(20,minmax(0,1fr));column-count:initial;gap:14px 14px; }
 .chapter[data-section="publication-leadership"][data-team-spread="true"] .heading { grid-column:1/-1;font-size:18px;font-weight:750;color:#1494a0;padding:7px 0 0; }
-.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile { display:flex;flex-direction:column;align-items:stretch;gap:10px;grid-column:span 5;border:0;padding:0;break-inside:avoid; }
+.chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile { display:flex;flex-direction:column;align-items:stretch;gap:10px;grid-column:span 4;border:0;padding:0;break-inside:avoid; }
 .chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile[data-team-group="program"] { grid-column:span 4; }
 .chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile>div { order:-1;width:100%; }
 .chapter[data-section="publication-leadership"][data-team-spread="true"] .publicationProfile .paragraph { font:12px/1.45 Arial,sans-serif;padding:0; }
@@ -974,3 +974,12 @@
 .chapter[data-section="symposium-feedback"] .feedbackPrompt .heading { font-size:20px;line-height:1.25;padding:0 0 8px; }
 .chapter[data-section="symposium-feedback"] .feedbackPrompt .paragraph { padding:0;font-size:16px;line-height:1.45; }
 .chapter[data-section="symposium-feedback"] .story > .paragraph { padding-bottom:0; }
+
+/* Round 9: publication refinements also used by the pagination ruler. */
+.chapter[data-section="symposium-at-a-glance"] .pageIntro::first-line { font-weight:750; }
+.chapter[data-section="discussion"][data-frame-index="1"] .list { background:transparent;border-radius:0;padding:6px 0 6px 20px; }
+.fundingAcknowledgement { grid-column:1/-1;margin-top:14px;padding-top:14px;border-top:1px solid var(--report-rule);font:13px/1.5 Arial,sans-serif; }
+.fundingAcknowledgement .trainingLink { display:inline;background:none;color:var(--report-teal);padding:0;border:0; }
+.feedbackAction { display:grid;grid-template-columns:minmax(0,1fr) 148px;align-items:center;gap:20px;break-inside:avoid; }
+.feedbackAction>a,.feedbackAction img { display:block;width:148px;height:148px; }
+.backQr { flex-direction:column;align-items:center;gap:12px;margin-left:auto;max-width:none; }

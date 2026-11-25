@@ -29,3 +29,14 @@ test('all printed heading variants omit number/slash prefixes while folios and e
   assert.equal(doc.querySelectorAll('[contenteditable]').length>0,editing);if(editing){assert.deepEqual([...doc.querySelectorAll('[aria-label="Panel label"]')].map(n=>n.textContent?.trim()),['Moderator:','Panelists:']);assert([...doc.querySelectorAll('[aria-label="Panel label"]')].every(n=>n.getAttribute('contenteditable')==='plaintext-only'));}assert.match(doc.querySelector('[data-report-text-start]')!.textContent!,/Moderator: A Name\nPanelists: B Name and C Name/);
  }
 });
+
+test('singular and plural discussion lead labels stay bold with exact editable source', () => {
+  for (const label of ['Discussion Lead:', 'Discussion Leads:']) {
+    const text = `${label} First Person (Organization), Second Person (Institute).`;
+    const page: ReportPage = { id: 'discussion', label: 'Discussion', title: 'Discussion', text, frames: 1 };
+    const parts = editorialParts(page, reportBlocks(text)[0]);
+    assert.equal(parts.map(part => part.text).join(''), text);
+    assert.deepEqual(parts.filter(part => part.kind === 'panelLabel').map(part => part.text), [label]);
+    assert.equal(parts[1].kind, '');
+  }
+});

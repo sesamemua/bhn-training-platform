@@ -4,8 +4,8 @@ import type { ReportPage } from './document';
 export const publicationPage = (page: ReportPage) => page.id === 'publication-leadership' || page.id === 'publication-team';
 export const pairedProfile = (page: ReportPage) => page.id === 'venturelift' || page.id === 'program-impact' || publicationPage(page);
 export function editorialParts(page: ReportPage, block: Block): { text: string; kind: string }[] {
-  if (/^(Moderator|Panelists):/.test(block.text)) {
-    return block.text.split(/((?:^|\n)(?:Moderator|Panelists):)/).filter(Boolean).map(text => ({ text, kind: /^(Moderator|Panelists):$/.test(text.trim()) ? 'panelLabel' : '' }));
+  if (/^(Moderator|Panelists|Discussion Leads?):/.test(block.text)) {
+    return block.text.split(/((?:^|\n)(?:Moderator|Panelists|Discussion Leads?):)/).filter(Boolean).map(text => ({ text, kind: /^(Moderator|Panelists|Discussion Leads?):$/.test(text.trim()) ? 'panelLabel' : '' }));
   }
   if (page.id === 'career-conversations' && block.kind === 'paragraph') {
     return block.text.split(/(?<=\n)/).map((text, i) => ({ text, kind: i === 0 ? 'profileName' : i === 1 ? 'profileTitle' : 'profileAffiliation' }));
@@ -31,9 +31,10 @@ export function teamGroup(page: ReportPage, block: Block) {
   return heading==='Leadership Team'?'leadership':heading==='Program Team'?'program':'partners';
 }
 
-/** Only the requested platform call to action; report text stays the editable source. */
+/** Requested publication links; report text stays the editable source. */
 export const editorialAction = (page: ReportPage, block: Block) => page.id === 'program-impact' && block.text.trim() === 'BioHubNet Online Training Platform' ? 'https://app.biohubnet.ca/userlogin/'
-  : page.id === 'symposium-feedback' && block.text.trim() === 'Complete the Annual Symposium feedback form' ? 'https://docs.google.com/forms/d/e/1FAIpQLSeDtLSMZESQ849RL-pA4NU5TihYwxojHrdW5jMnSyVCfUdZKg/viewform' : undefined;
+  : page.id === 'symposium-feedback' && block.text.trim() === 'Complete the Annual Symposium feedback form' ? 'https://docs.google.com/forms/d/e/1FAIpQLSeDtLSMZESQ849RL-pA4NU5TihYwxojHrdW5jMnSyVCfUdZKg/viewform'
+  : publicationPage(page) && block.text.startsWith('BioHubNet is funded by the Canada Biomedical Research Fund (CBRF).') ? 'https://sshrc-crsh.canada.ca/funding-financement/cbrf-frbc/index-eng.aspx' : undefined;
 
 /** Venture titles belong to the same row as their description and swappable photo. */
 export const ventureHeading = (page: ReportPage, blocks: Block[], index: number) => page.id === 'venturelift' && blocks[index]?.photoRow && blocks[index - 1]?.kind === 'heading' ? blocks[index - 1] : undefined;

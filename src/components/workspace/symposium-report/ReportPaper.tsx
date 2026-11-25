@@ -103,7 +103,7 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
     const action = editorialAction(page, block);
     const parts = editorialParts(page, block);
     const panelLabels = parts.some(part => part.kind === "panelLabel");
-    return block.text && <Tag className={`${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={position?.role} style={position ? { gridColumn: position.column, gridRow: position.row } : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
+    return block.text && <Tag className={`${blockClassName(block, rosterStart)}${publicationPage(page) && action ? ` ${styles.fundingAcknowledgement}` : ""}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={position?.role} style={position ? { gridColumn: position.column, gridRow: position.row } : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
       if (!(event.target as HTMLElement).closest('[contenteditable]')) event.currentTarget.querySelector<HTMLElement>('[contenteditable]')?.focus();
     }}>
       {page.id === "structured-networking" && block.kind === "quote" && <small className={styles.quoteRole}>{blockQuoteRole(page, block)}</small>}
@@ -117,6 +117,10 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
     return blocks.map((block, index) => {
       if (blocks[index - 1]?.kind === "heading" && block.kind === "paragraph") return null;
       if (block.kind === "heading" && blocks[index + 1]?.kind === "paragraph") return <section key={block.start} className={styles.feedbackPrompt}>{renderCopy(block)}{renderCopy(blocks[index + 1])}</section>;
+      if (editorialAction(page, block)) return <div key={block.start} className={styles.feedbackAction}>{renderCopy(block)}<a href={editorialAction(page, block)} aria-label="Scan the Annual Symposium feedback form QR code">
+        {/* eslint-disable-next-line @next/next/no-img-element -- vector QR for printed copies */}
+        <img src="/symposium-report-feedback.svg" width={148} height={148} alt="QR code for the Annual Symposium feedback form" />
+      </a></div>;
       return <Fragment key={block.start}>{renderCopy(block)}</Fragment>;
     });
   }
@@ -132,7 +136,7 @@ function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page:
     const heading = ventureHeading(page, blocks, index);
     if (block.kind === "bullet" && !block.continued) return <ul key={index} className={styles.list}>{copy}</ul>;
     const figures = photos.map(([key, photo]) => <PhotoFigure key={key} slot={key} photo={photo} caption={page.showCaptions !== false} height={684 * (heights[block.photoRow ?? ""] ?? workshopTileHeight(page)) / (page.id === "training-week" && block.photoRow === "2" && photos.length === 2 ? 684 : 337)} />);
-    if (block.kind !== "heading" && pairedProfile(page) && (photos.length || publicationPage(page))) return <div key={index} data-team-group={teamGroup(page,block)} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{heading ? <div className={styles.ventureText}>{renderCopy(heading)}{copy}</div> : copy}{photos.length > 0 && <div>{figures}</div>}</div>;
+    if (block.kind !== "heading" && pairedProfile(page) && !editorialAction(page, block) && (photos.length || publicationPage(page))) return <div key={index} data-team-group={teamGroup(page,block)} className={`${styles.ventureProfile}${publicationPage(page) ? ` ${styles.publicationProfile}` : ""}${!photos.length ? ` ${styles.noPortrait}` : ""}`}>{heading ? <div className={styles.ventureText}>{renderCopy(heading)}{copy}</div> : copy}{photos.length > 0 && <div>{figures}</div>}</div>;
     return <Fragment key={index}>
       {copy}
       {photos.length > 0 && <div className={styles.workshopPhotos} data-layout={page.id === "training-week" && block.photoRow === "2" && photos.length === 2 ? "stacked" : undefined} role="group" aria-label="Workshop photographs">{figures}</div>}
@@ -172,7 +176,7 @@ export function useReportLayout(report: Report, approved: boolean) {
       story.replaceChildren(...blocks.flatMap((block, blockIndex) => {
         if (page.id === "venturelift" && block.kind === "heading" && blocks[blockIndex + 1]?.photoRow) return [];
         const node = document.createElement(block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" && !block.continued ? "li" : "p");
-        node.className = `${blockClassName(block, rosterStart)}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`;
+        node.className = `${blockClassName(block, rosterStart)}${publicationPage(page) && editorialAction(page, block) ? ` ${styles.fundingAcknowledgement}` : ""}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`;
         if (page.id === "structured-networking" && block.kind === "quote") { node.dataset.quoteRole = blockQuoteRole(page, block); const role = document.createElement("small"); role.className = styles.quoteRole; role.textContent = blockQuoteRole(page, block); node.append(role); }
         const text = document.createElement("span");
         text.className = styles.textFrame;
@@ -186,7 +190,7 @@ export function useReportLayout(report: Report, approved: boolean) {
         if (block.kind === "bullet" && !block.continued) list.append(node);
         const nodes: HTMLElement[] = block.text ? [block.kind === "bullet" && !block.continued ? list : node] : [];
         const photos = workshopPhotos(page, block.photoRow);
-        if (publicationPage(page) && block.kind !== "heading" && !photos.length) {
+        if (publicationPage(page) && block.kind !== "heading" && !photos.length && !editorialAction(page, block)) {
           const row = document.createElement("div");
           row.className = `${styles.ventureProfile} ${styles.publicationProfile} ${styles.noPortrait}`;
           if(teamGroup(page,block))row.dataset.teamGroup=teamGroup(page,block);
@@ -213,6 +217,11 @@ export function useReportLayout(report: Report, approved: boolean) {
           const rows = page.id === "training-week" && block.photoRow === "2" && photos.length === 2 ? 2 : Math.ceil(photos.length / 2);
           space.style.height = `${rows * (height + (page.showCaptions === false ? 0 : PHOTO_CAPTION_SPACE)) + (rows - 1) * 10 + PHOTO_GAP}px`;
           nodes.push(space);
+        }
+        if (page.id === "symposium-feedback" && editorialAction(page, block)) {
+          const action = document.createElement("div"); action.className = styles.feedbackAction;
+          const qr = document.createElement("div"); qr.style.width = "148px"; qr.style.height = "148px";
+          action.append(...nodes, qr); return [action];
         }
         return nodes;
       }));
@@ -500,11 +509,11 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
           <h2 data-report-field="back.title" {...inline(report.back.title, "Back cover title", (title) => onTextChange?.({ ...report, back: { ...report.back, title } }))}>{show("back.title", report.back.title)}</h2>
           <p data-report-field="back.text" {...inline(report.back.text, "Back cover text", (text) => onTextChange?.({ ...report, back: { ...report.back, text } }), true)}>{show("back.text", report.back.text)}</p>
           <div className={styles.backLinks}>
-            <div className={styles.backWebLinks}><a href="https://biohubnet.ca">biohubnet.ca</a><a href="https://www.linkedin.com/company/biohubnet/" aria-label="BioHubNet on LinkedIn"><svg className={styles.linkedinLogo} aria-label="LinkedIn" role="img" width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="3" fill="#0A66C2" /><path fill="#fff" d="M5 9h3v10H5zM6.5 4a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5M10 9h2.8v1.4c.5-.9 1.5-1.6 3-1.6 3 0 3.7 2 3.7 4.6V19h-3v-5c0-1.4 0-2.7-1.8-2.7S13 12.7 13 14V19h-3z" /></svg>LinkedIn ↗</a></div>
+            <div className={styles.backWebLinks}><a href="https://www.linkedin.com/company/biohubnet/" aria-label="BioHubNet on LinkedIn"><svg className={styles.linkedinLogo} aria-label="LinkedIn" role="img" width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="3" fill="#0A66C2" /><path fill="#fff" d="M5 9h3v10H5zM6.5 4a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5M10 9h2.8v1.4c.5-.9 1.5-1.6 3-1.6 3 0 3.7 2 3.7 4.6V19h-3v-5c0-1.4 0-2.7-1.8-2.7S13 12.7 13 14V19h-3z" /></svg>LinkedIn ↗</a></div>
             <a href="https://biohubnet.ca" className={styles.backQr}>
               {/* eslint-disable-next-line @next/next/no-img-element -- vector QR for print */}
               <img src="/symposium-report-website.svg" width={116} height={116} alt="" />
-              <span>Scan to visit biohubnet.ca</span>
+              <span>biohubnet.ca</span>
             </a>
           </div>
         </div>
