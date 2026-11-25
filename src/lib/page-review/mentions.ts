@@ -88,3 +88,39 @@ export async function acknowledgeReviewMentions(reviewId: string, userId: string
   }
   return { read };
 }
+
+/** Read and dismissed tags remain revisit-able; receipts and sources stay scoped to the recipient/review. */
+export async function reviewMentionHistory(reviewId: string, userId: string, cursor?: string) {
+  const scope = recipientScope(reviewId, userId);
+  if (cursor) {
+    const own = await prisma.auditLog.findMany({ where: { ...scope, id: cursor }, take: 1, select: { id: true } });
+    if (!own.length) return { items: [], nextCursor: null };
+  }
+  const receipts = await prisma.auditLog.findMany({
+    where: scope, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 26,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    select: { id: true, detail: true, createdAt: true, actor: { select: { name: true } } },
+  });
+  const batch = receipts.slice(0, 25);
+  const valid = batch.flatMap(receipt => {
+    const parsed = receiptDetail(receipt.detail);
+    return parsed && parsed.recipientId === userId ? [{ ...receipt, parsed }] : [];
+  });
+  const comments = valid.length ? await prisma.pageComment.findMany({
+    where: { reviewId, id: { in: valid.map(r => r.parsed.commentId) } },
+    select: { id: true, parentId: true, round: true, body: true, anchorQuote: true, anchorBlock: true, status: true },
+  }) : [];
+  return {
+    items: valid.map(receipt => {
+      const comment = comments.find(c => c.id === receipt.parsed.commentId);
+      const stillTagged = comment && (!receipt.parsed.recipientName || mentionedColleagues(comment.body, [{ id: userId, name: receipt.parsed.recipientName, email: '' }], '').length > 0);
+      const raw = JSON.parse(receipt.detail ?? '{}') as { round?: number };
+      return { id: receipt.id, commentId: receipt.parsed.commentId, threadId: comment?.parentId ?? comment?.id ?? null,
+        round: comment?.round ?? raw.round ?? null, body: comment?.body ?? '', authorName: receipt.actor?.name ?? 'A colleague',
+        createdAt: receipt.createdAt, readAt: receipt.parsed.readAt ?? null,
+        anchorQuote: comment?.anchorQuote ?? null, anchorBlock: comment?.anchorBlock ?? null,
+        status: comment?.status ?? null, available: !!comment, tagRemoved: !!comment && !stillTagged };
+    }),
+    nextCursor: receipts.length > 25 ? batch.at(-1)!.id : null,
+  };
+}

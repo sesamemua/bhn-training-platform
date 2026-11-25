@@ -318,7 +318,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function inOverlay(node) {
-    return !node || (reportCommentEndpoint && !node.closest?.(scopeSelector)) || root.contains(node) || (comparisonDialog && comparisonDialog.contains(node)) || node === highlight || (node.closest && node.closest(".bhn-review-marker"));
+    return !node || (reportCommentEndpoint && !node.closest?.(scopeSelector)) || root.contains(node) || node.closest?.(".bhn-rv-mention-popup,.bhn-rv-tag-history,.bhn-rv-tag-launcher") || (comparisonDialog && comparisonDialog.contains(node)) || node === highlight || (node.closest && node.closest(".bhn-review-marker"));
   }
 
   function anchorsFor(node) {
@@ -995,6 +995,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   ${reportToolsSource()}
 
   function render() {
+    var previousBody = root.querySelector(".bhn-rv-body");
+    var previousScroll = previousBody ? previousBody.scrollTop : 0;
     root.setAttribute("data-report-draw-mode", reportReview && reportDrawMode ? reportDrawMode : "");
     root.setAttribute("data-report-commenting", String(reportReview && !!state.viewer && !isLocked()));
     root.setAttribute("data-picking-element", String(reportReview && state.pickingElement && !isLocked()));
@@ -1027,6 +1029,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     shell.appendChild(head);
 
     var body = make("div", "bhn-rv-body");
+    body.tabIndex = 0; body.setAttribute("aria-label", "Review comments");
     if (state.error) body.appendChild(make("div", "bhn-rv-notice bhn-rv-error", state.error));
     if (state.mentionNotice) { var mentionStatus=make("p","bhn-rv-notice",state.mentionNotice);mentionStatus.setAttribute("role","status");mentionStatus.setAttribute("aria-label","Mention notifications");body.appendChild(mentionStatus); }
     if (state.loading) {
@@ -1191,10 +1194,12 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     }
     applyPanelWidth();
     constrainPanel();
+    fitReviewPanel();
+    body.scrollTop = previousScroll;
     syncMarkers();
   }
 
-  style.textContent += ".bhn-rv-lock-state{text-align:center;padding:20px 16px;margin:0 0 14px;border:2px solid #b7c7d1;border-radius:10px;background:#edf2f6;color:#263f52;}.bhn-rv-lock-icon{display:block;font-size:64px;line-height:1.15;margin-bottom:10px;}.bhn-rv-lock-state strong{display:block;font-size:21px;line-height:1.25;}.bhn-rv-lock-state p{margin:10px 0 0;font-size:13px;line-height:1.5;}";
+  style.textContent += ".bhn-rv-head{flex-shrink:0;}.bhn-rv-body{flex:1 1 auto;min-height:0;overscroll-behavior:auto;} .bhn-rv-lock-state{text-align:center;padding:20px 16px;margin:0 0 14px;border:2px solid #b7c7d1;border-radius:10px;background:#edf2f6;color:#263f52;}.bhn-rv-lock-icon{display:block;font-size:64px;line-height:1.15;margin-bottom:10px;}.bhn-rv-lock-state strong{display:block;font-size:21px;line-height:1.25;}.bhn-rv-lock-state p{margin:10px 0 0;font-size:13px;line-height:1.5;}";
 
   function commentsSignature(comments) {
     return comments.map(function(comment){ return [comment.id, comment.body, comment.status, comment.editedAt, comment.editedByName].join(":"); }).join("|");
@@ -1249,6 +1254,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;
       state.comments = data.comments || [];
+      if (changed) markerAnchorCache.clear();
       loadMentionNotifications();
       var mentionedComment = mentionDeepLink && state.comments.find(function(c){return c.id===mentionDeepLink;});
       if(mentionedComment){mentionDeepLink=null;state.expandedThreads[mentionedComment.parentId||mentionedComment.id]=true;window.requestAnimationFrame(function(){bringCommentIntoView(mentionedComment);});}
@@ -1388,6 +1394,15 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     });
   }
 
+  function fitReviewPanel() {
+    if (!reportReview || !root.hasAttribute("data-docked")) return;
+    var shell = root.querySelector(".bhn-rv-shell"); if (!shell) return;
+    var top = Math.max(12, root.getBoundingClientRect().top);
+    var available = Math.max(120, window.innerHeight - top - 12);
+    var cap = window.innerWidth <= 900 ? window.innerHeight * .72 : window.innerHeight - 56;
+    shell.style.maxHeight = Math.floor(Math.min(available, cap)) + "px";
+  }
+
   function focusThread(comment, anchor) {
     showHighlight(anchor);
     if (!state.expandedThreads[comment.id]) {
@@ -1397,11 +1412,16 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     var card = root.querySelector('[data-thread-id="' + comment.id + '"]');
     if (card) {
       card.setAttribute("class", "bhn-rv-thread bhn-rv-thread-active");
-      card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      var body = card.closest(".bhn-rv-body");
+      if (body) {
+        var cardRect = card.getBoundingClientRect(), bodyRect = body.getBoundingClientRect();
+        if (cardRect.top < bodyRect.top || cardRect.bottom > bodyRect.bottom) body.scrollTop += cardRect.top - bodyRect.top - 12;
+      }
       window.setTimeout(function(){ card.setAttribute("class", "bhn-rv-thread"); }, 1400);
     }
   }
 
+  var markerAnchorCache = new Map();
   function syncMarkers() {
     if (positionFrame) window.cancelAnimationFrame(positionFrame);
     positionFrame = window.requestAnimationFrame(function(){
@@ -1409,10 +1429,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var placedAnchors = [];
       topComments().forEach(function(comment, index){
         if (comment.round < state.review.round && !state.historyExpanded) return;
-        var anchor = findAnchor(comment);
+        var anchor = markerAnchorCache.get(comment.id);
+        if (!anchor || !anchor.isConnected) { anchor = findAnchor(comment); if (anchor) markerAnchorCache.set(comment.id, anchor); }
         if (!anchor) return;
         var rect = anchor.getBoundingClientRect();
-        if (!rect.width && !rect.height) return;
+        if ((!rect.width && !rect.height) || rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) return;
         var sharedIndex = placedAnchors.filter(function(placed){ return placed === anchor; }).length;
         placedAnchors.push(anchor);
         var marker = make("button", "bhn-review-marker" + (comment.status === "open" ? "" : " bhn-review-marker-resolved"), String(index + 1));
@@ -1481,8 +1502,10 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     render();
   }
 
-  function onPositionChange() {
+  function onPositionChange(event) {
+    if (event && event.type === "scroll" && event.target instanceof Element && (root.contains(event.target) || event.target.closest(".bhn-rv-tag-history,.bhn-rv-mention-popup"))) return;
     constrainPanel();
+    fitReviewPanel();
     if (reportReview) { reportCommentPosition(); reportMenuPosition(); }
     if (highlightedNode) showHighlight(highlightedNode);
     syncMarkers();

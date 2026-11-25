@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { acknowledgeReviewMentions, reviewMentionNotifications } from '@/lib/page-review/mentions';
+import { acknowledgeReviewMentions, reviewMentionHistory, reviewMentionNotifications } from '@/lib/page-review/mentions';
 import { SOCIAL_COPY_REVIEW_PREFIX } from '@/lib/social/copy-review';
 
 export const dynamic = 'force-dynamic';
@@ -14,9 +14,15 @@ async function recipient(context: Context) {
   if (!await prisma.pageReview.findUnique({ where: { id }, select: { id: true } })) return Response.json({ error: 'No such review.' }, { status: 404 });
   return { id, userId };
 }
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
   const viewer = await recipient(context);
   if (viewer instanceof Response) return viewer;
+  const params = new URL(request.url).searchParams;
+  if (params.get('history') === '1') {
+    const cursor = params.get('cursor') ?? undefined;
+    if (cursor && cursor.length > 400) return Response.json({ error: 'Invalid history cursor.' }, { status: 400 });
+    return Response.json(await reviewMentionHistory(viewer.id, viewer.userId, cursor), { headers: { 'Cache-Control': 'private, no-store' } });
+  }
   return Response.json({ notifications: await reviewMentionNotifications(viewer.id, viewer.userId) }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 const acknowledgement = z.object({ ids: z.array(z.string().min(1).max(400)).min(1).max(100) }).strict();
