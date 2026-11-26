@@ -10,12 +10,14 @@ export function contextualSource(): string {
     }
     var r=reportCommentTarget.getBoundingClientRect();
     reportCommentButton.hidden=!r.width||!r.height||r.bottom<0||r.top>window.innerHeight;
-    reportCommentButton.style.left=Math.max(4,Math.min(window.innerWidth-44,r.right-52))+'px';
-    reportCommentButton.style.top=Math.max(4,Math.min(window.innerHeight-44,r.top-14))+'px';
+    var left=htmlReview?r.right+6:r.right-52,top=htmlReview?r.top:r.top-14;
+    if(htmlReview&&left>window.innerWidth-44){left=r.right-40;top=r.top>=48?r.top-44:r.bottom+4;}
+    reportCommentButton.style.left=Math.max(4,Math.min(window.innerWidth-44,left))+'px';
+    reportCommentButton.style.top=Math.max(4,Math.min(window.innerHeight-44,top))+'px';
   }
   function reportInlineComment(node) {
     if(!contextualReview)return;
-    if(isLocked()||!state.viewer||state.saving||state.insertingSection||reportDrawMode||state.replyTo!==null||state.editingId!==null||state.selected){if(reportCommentButton)reportCommentButton.hidden=true;return;}
+    if(isLocked()||inlineDirty()||!state.viewer||state.saving||state.insertingSection||reportDrawMode||state.replyTo!==null||state.editingId!==null||state.selected){if(reportCommentButton)reportCommentButton.hidden=true;return;}
     reportCommentTarget=node;
     if(!node){if(reportCommentButton)reportCommentButton.hidden=true;return;}
     if(!reportCommentButton){

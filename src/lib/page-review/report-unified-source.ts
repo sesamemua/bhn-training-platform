@@ -5,7 +5,8 @@ export function reportUnifiedSource(): string {
     root.querySelectorAll('.bhn-report-menu[open]').forEach(function(menu){var content=menu.querySelector('.bhn-report-menu-content'),r=menu.querySelector('summary').getBoundingClientRect();content.style.top=(r.bottom+4)+'px';content.style.right=Math.max(8,window.innerWidth-r.right)+'px';content.style.maxHeight=Math.max(100,window.innerHeight-r.bottom-16)+'px';});
   }
   function reportMenuEscape(event){if(event.key!=='Escape')return;var open=root.querySelector('.bhn-report-menu[open]');if(open){open.open=false;open.querySelector('summary').focus({preventScroll:true});}}
-  if(reportReview){root.addEventListener('toggle',reportMenuPosition,true);document.addEventListener('keydown',reportMenuEscape);}
+  function reportMenuCommand(event){if(event.target.closest('.bhn-report-menu-content button,.bhn-report-menu-content a'))root.querySelectorAll('.bhn-report-menu[open]').forEach(function(menu){menu.open=false;});}
+  if(reportReview){root.addEventListener('toggle',reportMenuPosition,true);root.addEventListener('click',reportMenuCommand);document.addEventListener('keydown',reportMenuEscape);}
 
   if(reportReview)style.textContent += [
     '#bhn-review-overlay[data-report-tools=true] .bhn-rv-shell:has(.bhn-report-menu[open]){backdrop-filter:none;-webkit-backdrop-filter:none;}',

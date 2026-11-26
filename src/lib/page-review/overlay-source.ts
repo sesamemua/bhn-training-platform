@@ -6,9 +6,13 @@ import { comparisonSource } from "./comparison-source";
 import { contextualSource } from "./contextual-source";
 import { createHtmlReviewTargets } from "./html-targets";
 import { commentCopySource } from "./comment-copy-source";
+import { inlineTextSource } from "./inline-text-source";
+import { editableTextNodes } from "./editable-text";
+import type { ReviewMediaTools } from "./media-tools";
 
 /** JavaScript source for the live-page review overlay. */
 export function overlaySource(endpoint: string, title: string, accountRequired = false, reportCommentEndpoint: string | null = null, staffSurface: "report" | "social" = "report", options: { contextualHtml?: boolean } = {}): string {
+  const mediaTools: ReviewMediaTools = {};
   return `(function(){
   var ID = "bhn-review-overlay";
   if (window.__bhnReviewCleanup) window.__bhnReviewCleanup();
@@ -21,7 +25,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var reportReview = !!reportCommentEndpoint && staffSurface === "report";
   var htmlReview = ${JSON.stringify(!!options.contextualHtml)};
   var contextualReview = reportReview || htmlReview;
+  var reviewMediaTools = ${JSON.stringify(mediaTools)};
   var htmlTargets = (function(__name){return (${createHtmlReviewTargets.toString()})(document);})(function(value){return value;});
+  var editableTextNodes = ${editableTextNodes.toString()};
   var reportTargets = "h1,h2,h3,h4,p,li,blockquote,figcaption,img,td,th,dt,dd,svg,figure,header > span,footer > span,aside > strong";
   var credential = script && script.dataset ? (script.dataset.viewer || "") : "";
   var endpoint = ${JSON.stringify(endpoint)};
@@ -326,7 +332,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function inOverlay(node) {
-    return !node || (reportCommentEndpoint && !node.closest?.(scopeSelector)) || root.contains(node) || node.closest?.(".bhn-rv-mention-popup,.bhn-rv-tag-history,.bhn-rv-tag-launcher") || (comparisonDialog && comparisonDialog.contains(node)) || node === highlight || (node.closest && node.closest(".bhn-review-marker"));
+    return !node || (reportCommentEndpoint && !node.closest?.(scopeSelector)) || root.contains(node) || node.closest?.("[data-bhn-review-ui],.bhn-rv-mention-popup,.bhn-rv-tag-history,.bhn-rv-tag-launcher") || (comparisonDialog && comparisonDialog.contains(node)) || node === highlight || (node.closest && node.closest(".bhn-review-marker"));
   }
 
   function anchorsFor(node) {
@@ -1097,7 +1103,6 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       body.appendChild(join);
       setTimeout(function(){ try { nameInput.focus(); } catch (e) {} }, 0);
     } else {
-      renderCommentCopy(body);
       var copyFlow = reportReview ? make("div", "bhn-report-copy-flow") : body;
       if (reportReview) {
         copyFlow.setAttribute("data-stage", state.confirmCopy && !isLocked() ? "confirm" : state.copiedRound === state.review.round ? "copied" : "ready");
@@ -1111,7 +1116,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
             if (reportReview && (reportAnnotationDraft() || state.saving || state.draft.trim() || state.replyTo !== null || state.editingId !== null)) throw new Error("Finish or cancel your comment or reply before copying and locking this round.");
             if (reportReview && document.querySelector('[data-report-unsaved="true"]')) throw new Error("Wait for autosave, or finish the open photo edit, before copying and locking this round.");
             if (reportReview && reportHasPageDrafts()) throw new Error("Finish or cancel your page feedback before copying and locking this round.");
-            if (reportReview && !isLocked() && !confirmed) { state.confirmCopy = true; render(); root.querySelector('.bhn-rv-copy-confirm button').focus(); return; }
+            if (reportReview && !isLocked() && !confirmed) { state.confirmCopy = true; render(); commentActionDock.querySelector('.bhn-rv-copy-confirm button').focus(); return; }
             this.disabled = true;
             var response = reportReview
               ? await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "export", expectedRound: state.pageRound }) })
@@ -1141,8 +1146,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         confirm.setAttribute("role", "group"); confirm.setAttribute("aria-label", "Confirm copy and lock");
         confirm.appendChild(make("strong", "", "Copy comments and lock Round " + state.review.round + "?"));
         confirm.appendChild(make("p", "", "Editing and commenting will pause. Wait until revisions are complete before starting the next round."));
-        confirm.appendChild(addButton("Cancel copy", "bhn-rv-btn", function(){ state.confirmCopy = false; state.confirmedCopy = false; render(); root.querySelector('.bhn-rv-copy-comments').focus(); }));
-        confirm.appendChild(addButton("Copy comments and lock round", "bhn-rv-btn bhn-rv-btn-primary", function(){ state.confirmedCopy = true; root.querySelector('.bhn-rv-copy-comments').click(); }));
+        confirm.appendChild(addButton("Cancel copy", "bhn-rv-btn", function(){ state.confirmCopy = false; state.confirmedCopy = false; render(); commentActionDock.querySelector('.bhn-rv-copy-comments').focus(); }));
+        confirm.appendChild(addButton("Copy comments and lock round", "bhn-rv-btn bhn-rv-btn-primary", function(){ state.confirmedCopy = true; commentActionDock.querySelector('.bhn-rv-copy-comments').click(); }));
         copyFlow.appendChild(confirm);
       }
       if (reportReview && state.copiedRound === state.review.round) {
@@ -1161,12 +1166,12 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
           if(htmlReview)document.querySelectorAll("h1,h2,h3,h4,h5,p,a,li,img").forEach(function(node){if(!inOverlay(node)&&!node.hasAttribute("tabindex")){node.setAttribute("tabindex","0");node.setAttribute("data-bhn-review-focus","");}});
         });
         pick.setAttribute("aria-pressed", String(state.pickingElement));
-        pick.disabled = state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null;
+        pick.disabled = inlineDirty() || state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null;
         if (state.replyTo !== null || state.editingId !== null) pick.setAttribute("title", "Finish or cancel your current reply or edit first.");
         body.appendChild(pick);
         if(htmlReview){
           var general=addButton("General comment","bhn-rv-btn",function(){state.selected={general:true};state.pickingElement=false;state.panelCollapsed=false;render();});
-          general.disabled=state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null;
+          general.disabled=inlineDirty()||state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null;
           body.appendChild(general);
         }
 
@@ -1234,6 +1239,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     constrainPanel();
     fitReviewPanel();
     body.scrollTop = previousScroll;
+    renderCommentCopy();
+    if(reportReview && copyFlow){commentActionDock.querySelector('.bhn-report-copy-flow')?.remove();commentActionDock.appendChild(copyFlow);}
+    syncInlineText();
     syncMarkers();
   }
 
@@ -1293,6 +1301,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if ((roundChanged && !state.loading) || isLocked()) state.pickingElement = false;
       if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;
+      loadInlineText();
       state.comments = data.comments || [];
       if (changed) markerAnchorCache.clear();
       loadMentionNotifications();
@@ -1320,6 +1329,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   async function submitComment(value, parentId, anchors) {
+    if(htmlReview && inlineDirty()){state.error="Save or discard your text edits before adding feedback.";render();return false;}
     if ((!parentId || htmlReview) && state.pageRound !== state.review.round) {
       state.error = "Reload the current version before adding a new comment.";
       render();
@@ -1537,6 +1547,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     }
     threadHighlight = null;
     var node = reportReview ? reportTarget(event) : htmlReview ? htmlTargets.pick(event.target) : event.target;
+    if(htmlReview&&!node){showHighlight(null);return;}
     if (contextualReview && !state.pickingElement) { reportInlineComment(node); showHighlight(null); return; }
     if (editableReportPage(event.target) && !state.pickingElement && !node?.matches("figcaption")) { showHighlight(null); return; }
     showHighlight(node);
@@ -1581,6 +1592,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function cleanup() {
+    window.removeEventListener('beforeunload',beforeInlineUnload);
+    if(commentActionDock)commentActionDock.remove();
+    if(htmlReview)inlineEdit.fields.forEach(function(field){if(field.span.isConnected)field.span.replaceWith(document.createTextNode(field.span.textContent));});
     document.removeEventListener('focusin',reportFocusComment);
     document.removeEventListener('keydown',contextualKey,true);
     if(reportCommentButton)reportCommentButton.remove();
@@ -1606,6 +1620,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   window.__bhnReviewCleanup = cleanup;
+  ${inlineTextSource()}
   ${contextualSource()}
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);

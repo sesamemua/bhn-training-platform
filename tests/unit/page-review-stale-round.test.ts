@@ -40,6 +40,7 @@ function harness(pageRound = 3) {
   const events = { renders: 0, reloads: 0, refreshes: 0 };
   const context = vm.createContext({
     state, endpoint, credential: "signed-viewer", reportCommentEndpoint: null, htmlReview: true,
+    inlineDirty: () => false,
     render() { events.renders++; },
     make(_tag: string, _className: string, text: string) { return element(text); },
     addButton(label: string, _className: string, click: () => void) { return { ...element(label), click }; },

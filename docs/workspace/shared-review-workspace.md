@@ -2,6 +2,8 @@
 
 Implemented as an extension of Page Review, not a separate reviewer. This release enables shared contextual commenting for newsletter HTML and keeps the report's direct editing and specialist tools intact. The remaining Social/Email/Website/Design adapter rollout is a later milestone, not included here.
 
+Follow-up correction: Copy/export controls now live in the lower-left action dock, not the comment panel. Newsletter wording can be edited directly on the page and saved with **Save revision**. A batch save archives the previous round and updates the saved newsletter/export; staff identity and the edits are audited. Stale, sent and locked content cannot be overwritten. The raw contributed copy remains unchanged. See [tool contracts](review-tool-contracts.md) for the separation between tool purpose, common UI and media-specific implementation.
+
 ## Boundaries
 
 - `overlay-source.ts` owns the panel, threads, identity, history, comparison, and write destinations.

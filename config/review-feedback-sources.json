@@ -384,6 +384,9 @@
     "src/app/api/public/page-review/[token]/route.ts": {
       "workflow": "page"
     },
+    "src/app/api/public/page-review/[token]/document/route.ts": {
+      "workflow": "newsletter"
+    },
     "src/app/api/public/page-review/loader.js/route.ts": {
       "workflow": "page"
     },
