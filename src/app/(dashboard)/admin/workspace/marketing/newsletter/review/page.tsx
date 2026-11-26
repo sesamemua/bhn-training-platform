@@ -19,6 +19,7 @@ import { NewsletterPageReview } from "@/components/workspace/NewsletterPageRevie
 import { NewsletterArchive } from "@/components/workspace/NewsletterArchive";
 import { newsletterArchiveKey, parseNewsletterArchiveMetadata } from "@/lib/newsletter/archive";
 import { PastedNewsletterReview } from "@/components/workspace/PastedNewsletterReview";
+import { INLINE_EDIT_ACTIONS, inlineEditRounds, versionRows } from "@/lib/page-review/inline-edit-versions";
 import { renderIssue } from "@/lib/newsletter/render";
 import { getNewsletterMedia } from "@/lib/newsletter/media";
 import { getPreserveWording } from "@/lib/newsletter/wording-settings";
@@ -149,16 +150,20 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
 
   const review = await prisma.pageReview.findUnique({
     where: { id: `newsletter-${issue.id}` },
-    select: { id: true, round: true, teamRound: true, status: true, pastedHtml: true, snapshotHtml: true, snapshotAt: true,
+    select: { id: true, round: true, teamRound: true, status: true, pastedHtml: true, snapshotHtml: true, snapshotAt: true, createdAt: true,
       versions: { select: { round: true, createdAt: true }, orderBy: { round: "desc" } },
       _count: { select: { comments: { where: { status: "open", parentId: null } } } } },
   });
-  const rounds: { round: number; savedAt: string | null }[] = (review?.versions ?? []).map((v) => ({ round: v.round, savedAt: v.createdAt.toISOString() }));
+  const archivedAt = new Map((review?.versions ?? []).map((v) => [v.round, v.createdAt.toISOString()]));
+  if (review && review.round > 1 && review.snapshotHtml?.trim() && !archivedAt.has(review.round - 1)) {
+    archivedAt.set(review.round - 1, review.snapshotAt?.toISOString() ?? review.createdAt.toISOString());
+  }
+  const inlineAudit = review ? await prisma.auditLog.findMany({
+    where: { targetType: "PageReview", targetId: review.id, action: { in: INLINE_EDIT_ACTIONS } }, select: { detail: true },
+  }) : [];
+  const rounds = review ? versionRows(archivedAt, review.round, review.createdAt.toISOString(), inlineEditRounds(inlineAudit.map((a) => a.detail))) : [];
   const savedReviewHtml = review?.pastedHtml?.trim() ? review.pastedHtml : null;
   const savedIssueHtml = issue.renderedHtml?.trim() ? issue.renderedHtml : null;
-  if (review && review.round > 1 && review.snapshotHtml?.trim() && !rounds.some((r) => r.round === review.round - 1)) {
-    rounds.push({ round: review.round - 1, savedAt: review.snapshotAt?.toISOString() ?? null });
-  }
   const issues = await prisma.newsletterIssue.findMany({
     where: { status: { not: "sent" } }, select: { id: true, title: true, dateline: true }, orderBy: { createdAt: "desc" }, take: 36,
   });
@@ -191,9 +196,10 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
         initialReview={review ? { id: review.id, round: review.round, teamRound: visibleTeamRound(review), status: review.status } : null}
         canEdit={role === "admin" || role === "superadmin"}
         initialPaste={savedReviewHtml ?? savedIssueHtml ?? (pastedReview?.title.toLowerCase().includes(issue.dateline.toLowerCase()) ? pastedReview.code : "")}
-      />
-      <SignOff signOff={signOff} openCount={(review?._count.comments ?? 0) + comments.filter((comment) => comment.status === "open").length} />
-      {comments.length > 0 && <details>
+      >
+        <SignOff signOff={signOff} openCount={(review?._count.comments ?? 0) + comments.filter((comment) => comment.status === "open").length} />
+      </NewsletterPageReview>
+      {comments.length > 0 && <details className="rounded-xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer text-sm font-semibold text-muted">Earlier newsletter notes ({comments.length})</summary>
       <NewsletterReviewClient
         issueId={issue.id}
@@ -205,7 +211,7 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
         hideSignOff
       />
       </details>}
-      {pastedReview && pastedReview.notes.length > 0 && <details>
+      {pastedReview && pastedReview.notes.length > 0 && <details className="rounded-xl border border-line bg-card px-4 py-3">
         <summary className="cursor-pointer text-sm font-semibold text-muted">Earlier pasted review</summary>
         <PastedNewsletterReview initial={pastedReview} />
       </details>}

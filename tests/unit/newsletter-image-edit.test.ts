@@ -138,7 +138,7 @@ test("image-only saves and uploads enforce permissions, current revisions and at
     user: { findUnique: async () => ({ id: "staff", role, isActive: true }) },
     pageReview: { findUnique: async () => row, updateMany: async ({ data }: any) => { row = { ...row, ...data, round: row.round + 1 }; return { count: 1 }; } },
     newsletterIssue: { findUnique: async () => ({ status: sent ? "sent" : "draft", updatedAt: new Date(payload.issueRevision) }), updateMany: async ({ data }: any) => { if (sent) return { count: 0 }; issueHtml = data.renderedHtml; return { count: 1 }; } },
-    pageReviewVersion: { create: async ({ data }: any) => snapshots.push(data) }, auditLog: { create: async ({ data }: any) => audit.push(data) },
+    pageReviewVersion: { create: async ({ data }: any) => snapshots.push(data) }, auditLog: { create: async ({ data }: any) => audit.push(data), findFirst: async () => null },
     newsletterPiece: { update: async () => { throw new Error("Original contributions must not change"); } },
   };
   const route = load("src/app/api/public/page-review/[token]/document/route.ts", {

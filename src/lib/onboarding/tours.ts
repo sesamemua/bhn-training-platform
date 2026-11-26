@@ -39,9 +39,19 @@ export interface TourStep {
 
 /** Bump this whenever a new step is added below — used to re-trigger
  *  the tour for returning users with a friendlier "what's new" hint. */
-export const TOUR_VERSION = "2026.11.24b";
+export const TOUR_VERSION = "2026.11.26";
 
 export const TOUR_STEPS: TourStep[] = [
+  {
+    id: "newsletter.review-redesign",
+    title: "Newsletter review, tidied up",
+    body: "Version history is now a short dated list. Autosaved edits from the full-page reviewer are added to one version instead of creating a new one each time. Share, Revise and Mailchimp tools sit in one card below.",
+    path: "/admin/workspace/marketing/newsletter/review",
+    placement: "center",
+    roles: ["instructor", "admin", "superadmin"],
+    cta: { label: "Open newsletter review", href: "/admin/workspace/marketing/newsletter/review" },
+    since: "2026.11.26",
+  },
   {
     id: "equip.recipient-tracker-moved",
     title: "Recipient tracker moved to EQUIP",

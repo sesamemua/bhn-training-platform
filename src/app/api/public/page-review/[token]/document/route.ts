@@ -5,6 +5,7 @@ import { reportTransaction } from "@/lib/symposium-report/store";
 import { verifyPageReviewViewerToken } from "@/lib/page-review/viewer";
 import { editReviewHtml, htmlRevision } from "@/lib/page-review/edit-html";
 import { editReviewImages, imageEditSchema } from "@/lib/page-review/edit-images";
+import { INLINE_EDIT_ACTIONS, producedByInlineEdit } from "@/lib/page-review/inline-edit-versions";
 import { imageTransformSchema, newsletterReviewImages, resolveReviewImageEdits, ReviewImageError, saveReviewImageReferences, uploadReviewPicture } from "@/lib/newsletter/review-images";
 
 export const runtime = "nodejs";
@@ -100,13 +101,24 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
       });
       if (!issue.count) throw new Conflict("The newsletter changed or was sent. Your edits have not been overwritten; copy them before reloading.");
       await saveReviewImageReferences(db, review.id.slice(11), changed.changes);
+      const action = changed.changes.length ? "newsletter.review.image-edit" : "newsletter.review.text-edit";
+      // Already an inline-edit version in this team round: fold into it instead of minting another.
+      const fold = await db.auditLog.findFirst({ where: { targetType: "PageReview", targetId: review.id, action: { in: INLINE_EDIT_ACTIONS },
+        detail: { contains: producedByInlineEdit(review.round) }, ...(review.teamRoundStartedAt ? { createdAt: { gte: review.teamRoundStartedAt } } : {}) }, select: { id: true } });
+      if (fold) {
+        const saved = await db.pageReview.updateMany({ where: { id: review.id, round: review.round, status: "open", pastedHtml: review.pastedHtml }, data: { pastedHtml: html } });
+        if (!saved.count) throw new Conflict("A colleague saved first. Your edits are still on the page; copy them before reloading.");
+        await db.auditLog.create({ data: { actorId: source.viewer.userId, action, targetType: "PageReview", targetId: review.id,
+          detail: JSON.stringify({ round: review.round, nextRound: review.round, folded: true, edits, ...(changed.changes.length ? { images: changed.changes } : {}) }) } });
+        return json({ ok: true, round: review.round });
+      }
       await db.pageReviewVersion.create({ data: { reviewId: review.id, round: review.round, html: review.pastedHtml } });
       const saved = await db.pageReview.updateMany({
         where: { id: review.id, round: review.round, status: "open", pastedHtml: review.pastedHtml },
         data: { pastedHtml: html, snapshotHtml: review.pastedHtml, snapshotAt: new Date(), round: { increment: 1 } },
       });
       if (!saved.count) throw new Conflict("A colleague saved first. Your edits are still on the page; copy them before reloading.");
-      await db.auditLog.create({ data: { actorId: source.viewer.userId, action: changed.changes.length ? "newsletter.review.image-edit" : "newsletter.review.text-edit", targetType: "PageReview", targetId: review.id,
+      await db.auditLog.create({ data: { actorId: source.viewer.userId, action, targetType: "PageReview", targetId: review.id,
         detail: JSON.stringify({ round: review.round, nextRound: review.round + 1, edits, ...(changed.changes.length ? { images: changed.changes } : {}) }) } });
       return json({ ok: true, round: review.round + 1 });
     });

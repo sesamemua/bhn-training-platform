@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    title: "Newsletter review: a cleaner panel and a short version history",
+    body: "The newsletter Review tab has been redesigned. The issue status, **Open full-page review** and **Send review request** now sit together, and **Version history** is a dated list beside them instead of a wall of buttons.\n\n**Fewer versions.** Edits made directly in the full-page reviewer autosave every few seconds, and each autosave used to create a new version. That is how one issue reached 17 versions. Now only the first edit after a save starts a new version; later autosaves are added to it. Earlier runs of autosaves show as one row, for example \"v6–16 · 11 inline edits\".\n\n**One tools card.** Share, Revise and Mailchimp actions now sit in one card with matching buttons, with the sign-off line at the bottom. Opening the next team review asks for confirmation beside the button, not in a browser pop-up.",
+    kind: "improvement",
+    visibleTo: STAFF,
+    daysAgo: 0,
+  },
+  {
     title: "EQUIP recipient tracker: moved up, and rescanned",
     body: "**Recipient tracker** now sits in the **EQUIP** group at the top of the sidebar instead of under Administration. Every VentureLift recipient was rescanned: two new **Round 6** recipients, **ArteraNova Therapeutics** (Kaiwen Liu, U of T) and **mDETECT Inc.** (Keira Frosst, Queen's), plus new VentureConnect awards for **CELLECT** (Round 17) and **ChASE Biotherapeutics** (Round 19). Each VentureLift company now shows its project title. Highlights include **Neuropeutics** and **ArteraNova** each winning $100K at ECHO PITCH 2026 and **NewGen Health** taking the $30K LiONS LAIR prize. Every new item links to its source; outdated or unverifiable entries were removed. The tracker now shows the date of the latest scan beside its tabs.",
     kind: "improvement",

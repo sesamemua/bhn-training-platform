@@ -1,18 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Code2, Copy, Loader2, Save } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Code2, Copy, Link2, Loader2, MessagesSquare, Save } from "lucide-react";
+import { ConfirmPopover } from "@/components/ui/ConfirmPopover";
 import { NewsletterReviewInvite } from "./NewsletterReviewInvite";
 import { getNewsletterReviewComments } from "@/lib/newsletter/review-comments";
 import { NewsletterReviewOverview, type NewsletterRoundSummary, type NewsletterIssueChoice } from "./NewsletterReviewOverview";
 
 interface Review { id: string; round: number; status: string; teamRound?: number | null }
 
-export function NewsletterPageReview({ issueId, html, initialReview, canEdit, initialPaste = "", issueTitle = "Newsletter", issueNumber, initialRounds = [], issues = [], initialHasSavedPreview, initialHasReviewHtml }: {
+export function NewsletterPageReview({ issueId, html, initialReview, canEdit, initialPaste = "", issueTitle = "Newsletter", issueNumber, initialRounds = [], issues = [], initialHasSavedPreview, initialHasReviewHtml, children }: {
   issueId: string; html: string; initialReview: Review | null; canEdit: boolean; initialPaste?: string;
   issueTitle?: string; issueNumber?: string; initialRounds?: NewsletterRoundSummary[]; issues?: NewsletterIssueChoice[];
   initialHasSavedPreview?: boolean;
   initialHasReviewHtml?: boolean;
+  /** Footer row inside the tools card (sign-off). */
+  children?: ReactNode;
 }) {
   const [review, setReview] = useState(initialReview);
   const [rounds, setRounds] = useState(initialRounds);
@@ -33,7 +36,6 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
     : null;
 
   async function save(action: "save" | "release" | "next" = "save") {
-    if (action === "next" && !window.confirm("Open the saved version for the next team review? No invitations will be sent.")) return;
     setBusy(true); setError(null);
     try {
       const response = await fetch(`/api/workspace/newsletter/${encodeURIComponent(issueId)}/review`, {
@@ -43,7 +45,8 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
       const result = await response.json();
       if (!response.ok || !result.review) throw new Error(result.error ?? "Could not save the review.");
       if (review && result.review.round > review.round) {
-        setRounds((current) => current.some((r) => r.round === review.round) ? current : [...current, { round: review.round, savedAt: new Date().toISOString() }]);
+        const now = new Date().toISOString();
+        setRounds((current) => [...(current.some((r) => r.round === review.round) ? current : [...current, { round: review.round, savedAt: null }]), { round: result.review.round, savedAt: now }]);
       }
       setHasSavedPreview(true);
       setHasReviewHtml(true);
@@ -76,38 +79,49 @@ export function NewsletterPageReview({ issueId, html, initialReview, canEdit, in
     finally { setCopyingComments(false); }
   }
 
-  return <section className="min-w-0 space-y-3" aria-label="Newsletter review">
-    <NewsletterReviewOverview issueId={issueId} issueTitle={issueTitle} issueNumber={issueNumber ?? issueId} currentRound={review?.round ?? null} teamRound={review?.teamRound ?? (review && review.status !== "pending" ? 1 : null)} status={review?.status ?? "unsaved"} hasPreview={hasSavedPreview} hasCurrentReviewHtml={hasReviewHtml} launch={launch} rounds={rounds} issues={issues} />
-    <div className="flex flex-wrap items-center gap-3">
-      <button type="button" onClick={copyComments} disabled={copyingComments} title="Copy open review comments and replies" className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-xs font-semibold disabled:opacity-50">
-        {copyingComments ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}{copied === "comments" ? "Comments copied" : "Copy review comments"}
-      </button>
-      {launch && review && !["pending", "closed"].includes(review.status) && <>
-        <button onClick={() => copy("link")} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Copy size={14} />{copied === "link" ? "Link copied" : "Copy review link"}</button>
-        <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className="text-xs font-semibold text-brand-700">Review threads</a>
-      </>}
-    </div>
+  const btn = "inline-flex h-9 items-center gap-1.5 rounded-md border border-line bg-card px-3 text-xs font-semibold text-fg transition-colors hover:bg-elevated disabled:opacity-50";
+  const primary = "inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-600 px-3 text-xs font-bold text-white transition-colors hover:bg-brand-700 disabled:opacity-50";
+  const active = !!review && !["pending", "closed"].includes(review.status);
+  const row = (label: string, body: ReactNode) => <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+    <span className="w-24 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</span>
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{body}</div>
+  </div>;
+
+  return <section className="min-w-0 space-y-5" aria-label="Newsletter review">
+    <NewsletterReviewOverview issueId={issueId} issueTitle={issueTitle} issueNumber={issueNumber ?? issueId} currentRound={review?.round ?? null} teamRound={review?.teamRound ?? (review && review.status !== "pending" ? 1 : null)} status={review?.status ?? "unsaved"} hasPreview={hasSavedPreview} hasCurrentReviewHtml={hasReviewHtml} launch={launch} rounds={rounds} issues={issues}
+      actions={active ? <NewsletterReviewInvite issueId={issueId} /> : null} />
     {review?.status === "pending" && <p role="status" className="rounded-lg border border-line bg-elevated px-4 py-3 text-sm">Draft only — team review is not open yet. {canEdit ? "Save your changes, then choose Open team review when it is ready." : "An editor will open team review when this draft is ready."}</p>}
-    {review && review.status !== "closed" && review.status !== "pending" && <NewsletterReviewInvite issueId={issueId} />}
-    {canEdit && review?.status !== "closed" && <div className="flex flex-wrap items-start gap-2">
-      <label className="flex items-center gap-2 text-xs text-muted">Revision source
-        <select value={source} onChange={(event) => setSource(event.target.value as "issue" | "paste")} className="rounded-md border border-line bg-card p-2 text-fg">
-          <option value="issue">Current issue</option><option value="paste">Mailchimp HTML</option>
-        </select>
-      </label>
-      <button onClick={() => save()} disabled={busy || (source === "paste" && !paste.trim())} className="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{!review || review.status === "pending" ? "Save draft" : "Save version"}
-      </button>
-      {review?.status === "pending" && <button type="button" onClick={() => save("release")} disabled={busy || !code.trim()} className="rounded-md bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Open team review</button>}
-      {review && ["open", "exported"].includes(review.status) && <button type="button" onClick={() => save("next")} disabled={busy || !code.trim() || !hasReviewHtml} className="rounded-md border border-line px-3 py-2 text-xs font-bold disabled:opacity-50">Open next team review</button>}
-    </div>}
-    <div className="flex flex-wrap items-center gap-3">
-      <button onClick={() => setShowCode(!showCode)} aria-expanded={showCode} aria-controls={`newsletter-code-${issueId}`} className="inline-flex items-center gap-1.5 text-xs font-semibold"><Code2 size={14} />{showCode ? "Hide code" : "View code"}</button>
-      <button onClick={() => copy("code")} disabled={!code.trim()} className="inline-flex items-center gap-1.5 text-xs font-semibold disabled:opacity-50"><Copy size={14} />{copied === "code" ? "Code copied" : "Copy Mailchimp code"}</button>
+    <div className="divide-y divide-line rounded-xl border border-line bg-card">
+      {row("Share", <>
+        {active && <button type="button" onClick={() => copy("link")} className={btn}><Link2 size={14} />{copied === "link" ? "Link copied" : "Copy review link"}</button>}
+        <button type="button" onClick={copyComments} disabled={copyingComments} title="Copy open review comments and replies" className={btn}>
+          {copyingComments ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}{copied === "comments" ? "Comments copied" : "Copy review comments"}
+        </button>
+        {active && <a href={`/admin/workspace/website-review?r=${encodeURIComponent(review!.id)}`} className={btn}><MessagesSquare size={14} />Review threads</a>}
+      </>)}
+      {commentBrief && <details className="px-4 py-3"><summary className="cursor-pointer text-xs font-semibold">Review comments</summary><textarea aria-label="Review comments to copy" value={commentBrief} readOnly rows={8} spellCheck={false} className="mt-2 w-full rounded-md border border-line bg-card p-3 font-mono text-xs" /></details>}
+      {canEdit && review?.status !== "closed" && row("Revise", <>
+        <label className="flex items-center gap-2 text-xs text-muted">Source
+          <select value={source} onChange={(event) => setSource(event.target.value as "issue" | "paste")} className="h-9 rounded-md border border-line bg-card px-2 text-xs text-fg">
+            <option value="issue">Current issue</option><option value="paste">Mailchimp HTML</option>
+          </select>
+        </label>
+        <button type="button" onClick={() => save()} disabled={busy || (source === "paste" && !paste.trim())} className={primary}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{!review || review.status === "pending" ? "Save draft" : "Save version"}
+        </button>
+        {review?.status === "pending" && <button type="button" onClick={() => save("release")} disabled={busy || !code.trim()} className={btn}>Open team review</button>}
+        {review && ["open", "exported"].includes(review.status) && <ConfirmPopover align="start" message="Open the saved version for the next team review?" detail="No invitations are sent." confirmLabel="Open next round" onConfirm={() => void save("next")}>
+          {(open) => <button type="button" onClick={open} disabled={busy || !code.trim() || !hasReviewHtml} className={btn}>Open next team review</button>}
+        </ConfirmPopover>}
+      </>)}
+      {row("Mailchimp", <>
+        <button type="button" onClick={() => setShowCode(!showCode)} aria-expanded={showCode} aria-controls={`newsletter-code-${issueId}`} className={btn}><Code2 size={14} />{showCode ? "Hide code" : "View code"}</button>
+        <button type="button" onClick={() => copy("code")} disabled={!code.trim()} className={btn}><Copy size={14} />{copied === "code" ? "Code copied" : "Copy Mailchimp code"}</button>
+      </>)}
+      {showCode && <div className="px-4 py-3"><textarea id={`newsletter-code-${issueId}`} aria-label="Mailchimp HTML" value={code} readOnly={!canEdit || source !== "paste"} onChange={(event) => setPaste(event.target.value)} rows={8} maxLength={1_000_000} spellCheck={false} className="w-full rounded-md border border-line bg-card p-3 font-mono text-xs" /></div>}
+      {error && <p role="alert" className="px-4 py-3 text-sm text-red-600">{error}</p>}
+      {!launch && <p className="px-4 py-3 text-sm text-muted">{canEdit ? "Ready for review." : "An editor has not opened this issue for review yet."}</p>}
+      {children && <div className="px-4 py-3 empty:hidden [&>*]:border-0 [&>*]:pt-0">{children}</div>}
     </div>
-    {showCode && <textarea id={`newsletter-code-${issueId}`} aria-label="Mailchimp HTML" value={code} readOnly={!canEdit || source !== "paste"} onChange={(event) => setPaste(event.target.value)} rows={6} maxLength={1_000_000} spellCheck={false} className="w-full rounded-md border border-line bg-card p-3 font-mono text-xs" />}
-    {commentBrief && <details className="space-y-2"><summary className="cursor-pointer text-xs font-semibold">Review comments</summary><textarea aria-label="Review comments to copy" value={commentBrief} readOnly rows={8} spellCheck={false} className="w-full rounded-md border border-line bg-card p-3 font-mono text-xs" /></details>}
-    {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-    {!launch && <p className="py-4 text-sm text-muted">{canEdit ? "Ready for review." : "An editor has not opened this issue for review yet."}</p>}
   </section>;
 }

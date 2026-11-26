@@ -38,8 +38,8 @@ export function NewsletterReviewInvite({ issueId }: { issueId: string }) {
   const recipients = group?.available ? group.userIds.filter((id) => !delivered.includes(id)) : [];
 
   return <div className="space-y-3">
-    <button type="button" onClick={() => open ? setOpen(false) : void show()} aria-expanded={open} aria-controls={`newsletter-invite-${issueId}`} className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-brand-600 px-6 py-3 text-base font-bold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"><Mail size={22} />Send review request</button>
-    {open && <section id={`newsletter-invite-${issueId}`} aria-label="Send newsletter review link" className="max-w-lg space-y-3 rounded-lg bg-elevated/60 p-4">
+    <button type="button" onClick={() => open ? setOpen(false) : void show()} aria-expanded={open} aria-controls={`newsletter-invite-${issueId}`} className="inline-flex min-h-12 h-[52px] items-center justify-center gap-2.5 rounded-[8px] border border-line bg-card px-5 py-3 text-[15px] font-bold text-fg transition-colors hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"><Mail size={18} />Send review request</button>
+    {open && <section id={`newsletter-invite-${issueId}`} aria-label="Send newsletter review link" className="w-full max-w-md space-y-3 rounded-lg border border-line bg-card p-4">
       <div className="flex items-center gap-3"><h3 className="mr-auto text-sm font-semibold">Send review request</h3><button type="button" disabled={busy} onClick={() => setOpen(false)} aria-label="Close invitations" className="p-1"><X size={16} /></button></div>
       <fieldset disabled={busy} className="space-y-2">
         <legend className="sr-only">Review recipients</legend>

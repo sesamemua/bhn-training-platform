@@ -95,11 +95,12 @@ function fixture(options: { role?: string; active?: boolean; guest?: boolean; se
   const snapshots: any[] = [], audit: any[] = [];
   const db: any = {
     user: { findUnique: async () => ({ id: "staff", role: options.role ?? "instructor", isActive: options.active !== false }) },
-    pageReview: { findUnique: async () => review, updateMany: async ({ data }: any) => { review = { ...review, ...data, round: 5 }; return { count: 1 }; } },
+    pageReview: { findUnique: async () => review, updateMany: async ({ data }: any) => { review = { ...review, ...data, round: data.round ? review.round + 1 : review.round }; return { count: 1 }; } },
     newsletterIssue: { findUnique: async () => ({ status: options.sent ? "sent" : "generated", updatedAt: new Date("2026-11-25T15:00:00Z") }),
       updateMany: async ({ data }: any) => { if (options.sent || options.conflict) return { count: 0 }; issueHtml = data.renderedHtml; return { count: 1 }; } },
     pageReviewVersion: { create: async ({ data }: any) => snapshots.push(data) },
-    auditLog: { create: async ({ data }: any) => audit.push(data) },
+    auditLog: { create: async ({ data }: any) => audit.push(data),
+      findFirst: async ({ where }: any) => audit.find((row) => where.action.in.includes(row.action) && row.detail.includes(where.detail.contains)) ?? null },
   };
   const mocks: any = {
     "@/lib/prisma": { prisma: db }, "@/lib/page-review/edit-html": { editReviewHtml, htmlRevision },
@@ -131,6 +132,18 @@ test("saving one batch produces one archived round, updated export, and an attri
   assert.equal(f.snapshots[0].html, html);
   assert.match(f.issue(), /Edited title/);
   assert.equal(f.audit[0].actorId, "staff");
+});
+test("later autosaves fold into the inline-edit version instead of minting one per checkpoint", async () => {
+  const f = fixture();
+  assert.equal((await f.call("PATCH")).status, 200);
+  const second = { ...f.payload, expectedRound: 5, revision: htmlRevision(f.review().pastedHtml), edits: [{ index: 0, before: "Edited title", after: "Edited twice" }] };
+  const response = await f.call("PATCH", second);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).round, 5);
+  assert.equal(f.review().round, 5, "the second autosave stays in Version 5");
+  assert.equal(f.snapshots.length, 1, "only the explicit Version 4 is archived");
+  assert.match(f.issue(), /Edited twice/);
+  assert.equal(JSON.parse(f.audit[1].detail).folded, true);
 });
 test("format-only saves archive an exact prior round and preserve the link; only valid bold and italic ranges are accepted", async () => {
   const f = fixture();

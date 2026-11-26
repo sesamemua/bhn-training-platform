@@ -225,11 +225,12 @@ test("explicitly opening the next team review leaves the current version and all
     Response.json({ review: { id: "newsletter-november", round: 4, status: "open", teamRound: 2 } }));
   try {
     const thumbnailBefore = thumbnail(app.document);
-    app.confirm(false);
     await app.click("Open next team review");
+    await app.click("Cancel");
     assert.equal(app.requests.length, 0);
-    app.confirm(true);
     await app.click("Open next team review");
+    assert.equal(app.requests.length, 0, "the inline confirmation asks before opening a round");
+    await app.click("Open next round");
     assert.deepEqual(JSON.parse(app.requests[0].init!.body as string), { action: "next", html: props.html, round: 4, teamRound: 1 });
     assert.match(app.document.body.textContent!, /Team review · Round 2/);
     assert.equal(thumbnail(app.document), thumbnailBefore);
