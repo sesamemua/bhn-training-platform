@@ -1578,13 +1578,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if(htmlReviewDialog)return;
       if(!state.viewer&&!htmlReview)return;
       if(event.target.closest?.('input,textarea,select,[data-bhn-review-ui]')||(websiteReview&&event.target.closest?.('form,button')&&!state.pickingElement))return;
-      if(reviewTextSession?.inPlace&&!reviewTextSession.draftDirty)reviewTextSession.close(false);
+      if(reviewTextSession?.inPlace){
+        if(!reviewTextSession.finish(false)||state.saving||inlineEdit.saving||state.selected){event.preventDefault();event.stopPropagation();return;}
+      }
       if(reviewTextSession){event.preventDefault();event.stopPropagation();return;}
       var target=reviewElement(event);if(!target){closeHtmlActions(false);return;}
       if(!state.pickingElement){
-        // Native report fields retain direct keyboard edits; the menu is the pointer entry point.
         event.preventDefault();event.stopPropagation();
-        if(htmlReview&&target.tagName==='P'&&!event.target.closest('a,button')&&openHtmlTextEditor(target,true,event))return;
+        if(!event.target.closest('a,button')&&reviewActionAdapter(target,event.target).text?.(true,event))return;
         openHtmlActions(target,event);return;
       }
       event.preventDefault();event.stopPropagation();

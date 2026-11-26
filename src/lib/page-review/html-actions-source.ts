@@ -6,7 +6,8 @@ export function htmlActionsSource(): string {
     closeHtmlActions(false);if(htmlReviewDialog)htmlReviewDialog.close();
     var previous=document.activeElement,node=make('dialog','bhn-rv-html-review-dialog'),heading=make('h2','',title),body=make('div','bhn-rv-html-review-body'),footer=make('div','bhn-rv-html-review-footer'),head=make('header','bhn-rv-html-review-head');
     heading.id='bhn-rv-html-dialog-title-'+(++htmlDialogSequence);node.setAttribute('aria-labelledby',heading.id);node.setAttribute('aria-modal','true');node.setAttribute('data-bhn-review-ui','');node.tabIndex=-1;
-    var closed=false,backdrop=null,dialog={node:node,body:body,footer:footer,onClose:null,close:close};htmlReviewDialog=dialog;
+    var closed=false,backdrop=null,dialog={node:node,body:body,footer:footer,onClose:null,onDismiss:null,close:close};htmlReviewDialog=dialog;
+    function dismissDialog(){if(dialog.onDismiss)dialog.onDismiss();else close();}
     function close(){
       if(closed)return;closed=true;
       document.removeEventListener('keydown',keys,true);document.removeEventListener('focusin',containFocus,true);
@@ -17,13 +18,13 @@ export function htmlActionsSource(): string {
     function focusable(){return Array.from(node.querySelectorAll('button,input,select,textarea,a[href],[tabindex]')).filter(function(item){return !item.matches(':disabled')&&item.tabIndex>=0&&!item.closest('[hidden]');});}
     function containFocus(event){if(!closed&&!node.contains(event.target)){var items=focusable();(items[0]||node).focus();}}
     function keys(event){
-      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close();return;}
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();dismissDialog();return;}
       if(event.key!=='Tab')return;
       var items=focusable(),first=items[0]||node,last=items[items.length-1]||node;
       if(!items.length||event.shiftKey&&(document.activeElement===first||!node.contains(document.activeElement))||!event.shiftKey&&(document.activeElement===last||!node.contains(document.activeElement))){event.preventDefault();(event.shiftKey?last:first).focus();}
     }
-    var dismiss=addButton('Close','bhn-rv-btn',close);dismiss.setAttribute('aria-label','Close '+title.toLowerCase());head.append(heading,dismiss);node.append(head,body,footer);document.body.appendChild(node);
-    node.addEventListener('cancel',function(event){event.preventDefault();close();});node.addEventListener('close',close);
+    var dismiss=addButton('Close','bhn-rv-btn',dismissDialog);dismiss.setAttribute('aria-label','Close '+title.toLowerCase());head.append(heading,dismiss);node.append(head,body,footer);document.body.appendChild(node);
+    node.addEventListener('cancel',function(event){event.preventDefault();dismissDialog();});node.addEventListener('close',close);
     try{if(typeof node.showModal!=='function')throw new Error('fallback');node.showModal();}catch(_){node.setAttribute('open','');node.setAttribute('role','dialog');backdrop=make('div','bhn-rv-html-review-backdrop');backdrop.setAttribute('data-bhn-review-ui','');node.before(backdrop);}
     document.addEventListener('keydown',keys,true);document.addEventListener('focusin',containFocus,true);
     setTimeout(function(){if(!closed&&!node.contains(document.activeElement)){var items=focusable();(items[0]||node).focus();}},0);

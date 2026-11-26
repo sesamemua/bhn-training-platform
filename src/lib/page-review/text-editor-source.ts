@@ -70,8 +70,11 @@ export function textEditorSource(): string {
       try{
         var items=list?rows():null;
         if(items&&(!items.length||items.length>30))throw new Error('Enter between 1 and 30 bullet items.');
-        if(input.value!==options.value||items||marks.length)options.apply(input.value,items,marks);
+        var changed=input.value!==options.value||items||marks.length;
+        var after=changed?options.apply(input.value,items,marks):null;
         close();if(contextualReview)renderCommentCopy();
+        if(typeof after==='function')after();
+        if(changed&&options.afterApply)options.afterApply();
       }catch(problem){error.textContent=problem.message||'Could not apply this edit.';error.hidden=false;input.focus();}
     }
     input.addEventListener('input',function(){
@@ -93,8 +96,9 @@ export function textEditorSource(): string {
       if(event.key==='Escape'){event.preventDefault();close();}
       if(event.key==='Enter'&&!event.shiftKey&&event.target===input){event.preventDefault();apply();}
     });
-    actions.appendChild(addButton('Cancel','bhn-rv-btn',close));
-    actions.appendChild(addButton(options.applyLabel||'Apply changes','bhn-rv-btn bhn-rv-btn-primary',apply));
+    if(options.autosave&&dialog)dialog.onDismiss=apply;
+    actions.appendChild(addButton(options.autosave?'Discard draft':'Cancel','bhn-rv-btn',close));
+    actions.appendChild(addButton(options.autosave?'Done':options.applyLabel||'Apply changes','bhn-rv-btn bhn-rv-btn-primary',apply));
     refresh();input.focus();
     if(options.selection)input.setSelectionRange(options.selection[0],options.selection[1]);
   }

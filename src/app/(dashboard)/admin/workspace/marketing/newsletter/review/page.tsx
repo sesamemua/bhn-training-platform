@@ -8,6 +8,7 @@ import { notFound, redirect } from "next/navigation";
 import { Mail } from "lucide-react";
 import { requireRole, deniedRedirect } from "@/lib/auth";
 import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
+import { activeNewsletterReviewIssue } from "@/lib/newsletter/active-review-issue";
 import { getNewsletterConfig, isApprover } from "@/lib/newsletter/config";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
@@ -38,9 +39,10 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
   if (!session) redirect(await deniedRedirect(`/admin/workspace/marketing/newsletter/review${requestedIssue ? `?issue=${encodeURIComponent(requestedIssue)}` : ""}`));
 
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
-  const resolved = requestedIssue ? null : await resolveCurrentIssue(today);
+  const selectedIssue = requestedIssue ?? await activeNewsletterReviewIssue();
+  const resolved = selectedIssue ? null : await resolveCurrentIssue(today);
   const issue = await prisma.newsletterIssue.findUnique({
-    where: { id: requestedIssue ?? resolved!.issueId },
+    where: { id: selectedIssue ?? resolved!.issueId },
     include: { pieces: { orderBy: [{ section: "asc" }, { position: "asc" }] } },
   });
   if (requestedIssue && !issue) notFound();
@@ -80,7 +82,7 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
     : null;
 
   const config = await getNewsletterConfig();
-  const selectedCycle = requestedIssue ? await prisma.newsletterCycle.findFirst({ where: { issueId: requestedIssue } }) : null;
+  const selectedCycle = selectedIssue ? await prisma.newsletterCycle.findFirst({ where: { issueId: selectedIssue } }) : null;
 
   const hero = (
     <PageHero

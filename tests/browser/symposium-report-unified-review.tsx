@@ -111,6 +111,15 @@ async function main() {
     await title.click();await page.getByRole('menuitem',{name:'Edit text',exact:true}).click();
     await expect(page.getByRole('dialog',{name:'Edit text',exact:true}).getByRole('textbox')).toHaveValue('Direct edit without a mode switch');
     await page.getByRole('button',{name:'Cancel',exact:true}).click();
+    const passage=page.locator('#report-frame-summary-0 p').filter({hasText:'Original report passage'});
+    await passage.click();
+    const direct=page.locator('[data-bhn-rv-inline-text]');
+    await expect(direct).toBeFocused();
+    await expect(page.getByRole('group',{name:'Paragraph actions'}).getByRole('button',{name:'More text tools'})).toBeVisible();
+    await direct.fill('Automatically saved report passage');
+    await toolbar.getByRole('button',{name:'Edit & comment',exact:true}).click();
+    await expect.poll(()=>saves.length).toBe(3);
+    await expect(page.getByText('Automatically saved report passage',{exact:true})).toBeVisible();
     const targets=[page.locator('#report-frame-cover-0 h1'),page.locator('#report-frame-summary-0 header>span'),page.locator('#report-frame-summary-0 footer span').first(),page.locator('#report-frame-summary-0 figure img'),page.locator('#report-frame-summary-0 figcaption'),page.locator('#report-frame-cover-0 img[src$="cover.jpg"]')];
     for(const [i,target] of targets.entries()){
       await target.hover();const button=page.getByRole('button',{name:'Comment on selected report element',exact:true});await expect(button).toBeVisible();await button.click();
@@ -122,7 +131,7 @@ async function main() {
     const summary=page.getByLabel('More review tools');const more=summary.locator('..');await summary.click();await more.getByText('Panel size presets',{exact:true}).click();await more.getByRole('button',{name:'Comfortable',exact:true}).click();await expect(slider).toHaveValue('640');await page.keyboard.press('Escape');assert.equal(await more.getAttribute('open'),null,'Escape closes compact menu');
     await picture.hover();await page.getByRole('button',{name:'Comment on selected report element',exact:true}).click();await page.getByRole('textbox',{name:'New review comment',exact:true}).fill('Keep this unfinished note');await slider.fill('780');await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toHaveValue('Keep this unfinished note');await page.getByRole('button',{name:'Cancel',exact:true}).click();
     await page.setViewportSize({width:1366,height:800});await page.getByRole('button',{name:'Back cover',exact:true}).click();const last=page.locator('#report-frame-back-0 [data-report-field="back.text"]');await last.hover();const before=await page.evaluate(()=>scrollY);await page.getByRole('button',{name:'Comment on selected report element',exact:true}).click();await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toBeFocused();assert(Math.abs((await page.evaluate(()=>scrollY))-before)<4);await page.getByRole('button',{name:'Cancel',exact:true}).click();
-    await page.setViewportSize({width:390,height:844});await page.reload();await expect(page.getByRole('button',{name:/^Expand .* comments$/})).toBeVisible();await last.click();await page.getByRole('menuitem',{name:'Comment on element'}).click();await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toBeFocused();
+    await page.setViewportSize({width:390,height:844});await page.reload();await expect(page.getByRole('button',{name:/^Expand .* comments$/})).toBeVisible();await last.click();await page.getByRole('group',{name:'Paragraph actions'}).getByRole('button',{name:'Comment on element',exact:true}).click();await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toBeFocused();
     assert.deepEqual(errors,[]);console.log('PASS: compact toolbar, header slider/presets, direct edits/autosave, precise comments on text/header/footer/photos/captions, native photo tools, unsent draft retention, laptop/mobile access. Mocked writes only.');
   }finally{await browser.close();}
 }

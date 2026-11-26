@@ -14,14 +14,25 @@ async function main() {
     const mutate = root + "/api/workspace/page-review/social-copy-demo";
     const review = { title: "Event post", round: 2, status: "open" };
     const threads: Record<string, unknown>[] = [];
+    let copy = "Updated workshop copy", version = 6, attempts = 0;
     const snapshots = [{ round: 1, body: "Original workshop copy" }, { round: 2, body: "Updated workshop copy" }]
       .map(({ round, body }) => ({ round, html: socialCopySnapshotHtml(JSON.stringify({ title: review.title, body })) }));
     await page.route(root + "/social", (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: `<!doctype html><body>
-      <a href="#editor">Open post editor</a><div data-social-review><div id="social-copy-draft"><article data-copy-page data-copy-editable="true" data-copy-version="6" aria-label="Event post"><p data-copy-part="0">Updated workshop copy</p></article></div></div>
-      <script data-round="2">${overlaySource(endpoint, "Social Post Review", true, mutate, "social")}</script></body>` }));
-    await page.route(endpoint + "**", (route) => route.fulfill({ json: route.request().url().includes("comparison=1")
+      <a href="#editor">Open post editor</a><button id="outside">Leave editor</button><div data-social-review><div id="social-copy-draft"><article data-copy-page data-copy-editable="true" data-copy-version="${version}" aria-label="Event post"><p data-copy-part="0">${copy}</p></article></div></div>
+      <script data-round="${review.round}">${overlaySource(endpoint, "Social Post Review", true, mutate, "social")}</script></body>` }));
+    await page.route(endpoint + "**", (route) => {
+      if (route.request().method() === "PATCH") {
+        const body = route.request().postDataJSON();
+        assert.equal(body.round, 2); assert.equal(body.version, 6);
+        assert.equal(body.edits[0].before, "Updated workshop copy");
+        if (++attempts === 1) return route.fulfill({ status: 409, json: { error: "Conflict: draft retained." } });
+        copy = body.edits[0].after; version++; review.round++;
+        return route.fulfill({ json: { ok: true, round: review.round } });
+      }
+      return route.fulfill({ json: route.request().url().includes("comparison=1")
       ? { ok: true, review, comparison: { versions: snapshots, beforeHtml: snapshots[0].html, afterHtml: snapshots[1].html, availableRounds: [1, 2] } }
-      : { ok: true, review, comments: threads, viewer: { name: "Signed-in reviewer" } } }));
+      : { ok: true, review, comments: threads, viewer: { name: "Signed-in reviewer" } } });
+    });
     await page.route(mutate, async (route) => {
       const input = route.request().postDataJSON();
       assert.equal(input.expectedRound, 2);
@@ -41,7 +52,8 @@ async function main() {
     await page.getByRole("link", { name: "Open post editor" }).click();
     assert.match(page.url(), /#editor$/);
     await page.getByText("Updated workshop copy", { exact: true }).click();
-    await page.getByRole("menuitem", { name: "Comment on element" }).click();
+    const paragraphTools = page.getByRole("group", { name: "Paragraph actions" });
+    await paragraphTools.getByRole("button", { name: "Comment on element" }).click();
     await page.getByRole("textbox", { name: "New review comment" }).fill("Verify the workshop wording.");
     await page.getByRole("button", { name: "Add comment" }).click();
     await expect(page.locator('[data-thread-id="comment"]')).toContainText("Verify the workshop wording.");
@@ -51,16 +63,27 @@ async function main() {
     await expect(page.getByRole("button", { name: "Reopen", exact: true })).toBeVisible();
     const paragraph = page.locator("[data-copy-part]");
     await paragraph.click();
-    await page.getByRole("menuitem", { name: "Quick edit", exact: true }).click();
-    const quick = page.getByRole("group", { name: "Quick edit" }).getByRole("textbox");
-    await quick.fill("Polished workshop copy"); await quick.press("Enter");
-    await expect(paragraph).toHaveText("Polished workshop copy");
+    const quick = page.locator("[data-bhn-rv-inline-text]");
+    await expect(quick).toBeFocused();
+    await quick.fill("Conflicting copy"); await page.getByRole("button", { name: "Leave editor" }).click();
+    await expect(page.getByText("Conflict: draft retained.")).toBeVisible();
+    await expect(paragraph).toHaveText("Conflicting copy");
     await page.getByRole("button", { name: "Discard edits" }).click();
     await expect(paragraph).toHaveText("Updated workshop copy");
+    await paragraph.click();
+    await quick.fill("Polished workshop copy");
+    await paragraphTools.getByRole("button", { name: "More text tools" }).click();
+    await expect(page.getByRole("dialog", { name: "Edit text" }).getByRole("textbox")).toHaveValue("Polished workshop copy");
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await expect.poll(() => attempts).toBe(2);
+    await expect(page.locator("[data-copy-version]")).toHaveAttribute("data-copy-version", "7");
+    await expect(paragraph).toHaveText("Polished workshop copy");
+    assert.equal(threads[0].body, "Verify the workshop wording.");
+    assert.equal(threads[0].round, 2);
 
     const site = root + "/website", siteApi = root + "/website-comments";
     const siteWrites: unknown[] = [];
-    await page.route(site, route => route.fulfill({ contentType: "text/html", body: `<!doctype html><body><main><p>Learn about <a href="/workshops">Workshops</a>.</p><form><button type="button" onclick="this.textContent='Form still works'">Test form button</button></form></main><script data-viewer="signed">${overlaySource(siteApi, "Website review", false, null, "report", { website: true })}</script></body>` }));
+    await page.route(site, route => route.fulfill({ contentType: "text/html; charset=utf-8", body: `<!doctype html><body><main><p>Learn about <a href="/workshops">Workshops</a>.</p><p id="site-copy">Read more in the training guide.</p><form><button type="button" onclick="this.textContent='Form still works'">Test form button</button></form></main><script data-viewer="signed">${overlaySource(siteApi, "Website review", false, null, "report", { website: true })}</script></body>` }));
     await page.route(siteApi + "**", route => {
       if (route.request().method() !== "GET") siteWrites.push(route.request().postDataJSON());
       return route.fulfill({ json: { ok: true, review, comments: [], viewer: { name: "Reviewer", canResolve: false } } });
@@ -75,6 +98,14 @@ async function main() {
     await suggestion.getByRole("textbox").fill("Explore our training workshops.");
     await suggestion.getByRole("button", { name: "Continue to comment" }).click();
     await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveValue("Suggested replacement:\nExplore our training workshops.");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.locator("#site-copy").click();
+    await expect(quick).toBeFocused();
+    await expect(paragraphTools.getByRole("button", { name: "More text tools" })).toBeVisible();
+    await quick.fill("Read the workshop training guide.");
+    await page.locator("main").click({ position: { x: 650, y: 6 } });
+    await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveValue("Suggested replacement:\nRead the workshop training guide.");
+    await expect(page.locator("#site-copy")).toHaveText("Read more in the training guide.");
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(page.getByRole("link", { name: "Workshops" })).toBeVisible();
     await page.getByRole("button", { name: "Test form button" }).click();

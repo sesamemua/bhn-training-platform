@@ -180,7 +180,8 @@ async function main() {
     await expect(format.getByRole("button")).toHaveText(["Bold", "Italic"]);
     await format.getByRole("button", { name: "Bold" }).click();
     await format.getByRole("button", { name: "Italic" }).click();
-    await page.getByRole("button", { name: "Apply changes", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    assert.equal(documentWrites.length, 0, "text does not autosave pending picture edits");
     await page.getByRole("button", { name: "Save revision", exact: true }).click();
     await expect.poll(() => documentWrites.length).toBe(1);
     await expect(page.getByRole("button", { name: "Save revision", exact: true })).toBeDisabled();
@@ -243,6 +244,15 @@ async function main() {
       await expect(page.locator("#learning")).toBeFocused();
     }
     assert.equal(documentWrites.length, 1, "opening or cancelling controls creates no revision");
+    await page.setViewportSize({ width: 1360, height: 1000 });
+    await page.locator("#learning").click({ position: { x: 15, y: 10 } });
+    await expect(direct).toBeFocused();
+    await page.keyboard.insertText("Quick ");
+    await page.locator("h1").click();
+    await expect.poll(() => documentWrites.length).toBe(2);
+    assert.equal(documentWrites[1].expectedRound, 5);
+    assert.deepEqual(documentWrites[1].images, []);
+    assert.equal(comments.length, 1, "autosave preserves historical comments too");
     assert.deepEqual(pageErrors, []);
     console.log("PASS: semantic paragraph/list-item edits, explicit link actions, image comments and crop controls, batch save, preserved links/round comments, mobile bounds and keyboard focus.");
   } catch (error) {

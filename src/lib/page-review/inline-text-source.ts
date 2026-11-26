@@ -34,7 +34,9 @@ export function inlineTextSource(): string {
     var allowList=node.tagName==='P'&&parts.length===1&&parts[0].index!==null&&node.childNodes.length===1;
     var options={title:quick?'Quick edit':node.tagName==='LI'?'Edit list item':'Edit text',
       value:before,label:'Text for this '+(node.tagName==='LI'?'list item':'paragraph'),list:allowList,marks:node.matches('p,li'),
-      help:'Existing links and emphasis are preserved. Apply changes, then Save revision to keep them.',
+      help:event?'Closing the editor saves a new draft revision. Existing links and emphasis are preserved.':'Existing links and emphasis are preserved. Apply changes, then Save revision to keep them.',
+      exitHint:htmlImageDirty()?'Text will stage with picture edits':null,
+      afterApply:event?function(){if(!htmlImageDirty())void saveInlineText();}:null,
       comment:function(){beginHtmlComment(node);},
       apply:function(value,items,marks){
         if(!htmlTextEditingAllowed(node))throw new Error('This revision is no longer editable.');
@@ -70,9 +72,7 @@ export function inlineTextSource(): string {
         }
         inlineEdit.error='';showHighlight(null);
       }};
-    if(quick&&event&&node.tagName==='P')openInPlaceText(node,options,event);
-    else openReviewText(node,options,quick);
-    return true;
+    return openSurfaceText(node,options,quick,event);
   }
   async function loadInlineText(){
     if(!htmlReview||!state.viewer||inlineEdit.loaded)return;

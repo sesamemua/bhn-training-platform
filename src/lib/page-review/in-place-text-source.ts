@@ -29,11 +29,12 @@ export function inPlaceTextSource(): string {
     target.before(editor);target.setAttribute('data-bhn-rv-original-paragraph','');
     tools.setAttribute('data-bhn-review-ui','');tools.setAttribute('role','group');tools.setAttribute('aria-label','Paragraph actions');
     error.setAttribute('role','alert');error.hidden=true;
-    var session={close:close,position:position,inPlace:true,draftDirty:false};reviewTextSession=session;
+    var leaveTimer=null,composing=false;
+    var session={close:close,finish:finish,position:position,inPlace:true,draftDirty:false};reviewTextSession=session;
     function value(){return editor.textContent||'';}
     function close(refocus){
       if(reviewTextSession!==session)return;
-      reviewTextSession=null;editor.remove();tools.remove();
+      reviewTextSession=null;clearTimeout(leaveTimer);editor.remove();tools.remove();
       target.removeAttribute('data-bhn-rv-original-paragraph');
       if(identifier!==null)target.setAttribute('id',identifier);
       if(refocus!==false&&target.isConnected)focusPageElement(target);
@@ -53,38 +54,57 @@ export function inPlaceTextSource(): string {
       tools.style.top=Math.max(4,Math.min(window.innerHeight-height-4,y))+'px';
     }
     function problem(message){error.textContent=message;error.hidden=false;position();editor.focus({preventScroll:true});}
-    function apply(){
+    function finish(refocus){
+      if(reviewTextSession!==session||composing)return false;
       try{
         var text=value();if(text.length>(options.max||30000))throw new Error('This paragraph is too long. Shorten it before applying.');
-        if(text!==options.value)options.apply(text,null,[]);close();renderCommentCopy();
+        var changed=text!==options.value,after=changed?options.apply(text,null,[]):null;
+        close(refocus);renderCommentCopy();
+        if(typeof after==='function')after();
+        if(changed&&options.afterApply)options.afterApply();
+        return true;
       }
-      catch(err){problem(err.message||'Could not apply this edit.');}
+      catch(err){problem(err.message||'Could not save this edit.');return false;}
     }
     function more(){
+      if(value().length>(options.max||30000)){problem('This paragraph is too long. Shorten it before opening more tools.');return;}
       var chosen=window.getSelection(),start=0,finish=0;
       if(chosen?.rangeCount&&editor.contains(chosen.anchorNode)&&editor.contains(chosen.focusNode)){
         var selected=chosen.getRangeAt(0),prefix=document.createRange();
         prefix.selectNodeContents(editor);prefix.setEnd(selected.startContainer,selected.startOffset);
         start=prefix.toString().length;finish=start+selected.toString().length;
       }
-      var draft=value();close();openReviewText(target,Object.assign({},options,{title:'Edit text',draft:draft,selection:[start,finish]}),false);
+      var draft=value();close();openReviewText(target,Object.assign({},options,{title:options.moreTitle||'Edit text',draft:draft,selection:[start,finish]}),false);
     }
     var comment=addButton('Comment on element','bhn-rv-btn',function(){
+      if(options.moreTitle==='Suggest text'&&session.draftDirty){finish(false);return;}
       if(reviewChangesPending()){problem('Save or discard your edits before commenting.');return;}
-      close(false);options.comment();
+      close(false);if(options.comment)options.comment();else beginHtmlComment(target);
     });
     var moreTools=addButton('More text tools','bhn-rv-btn',more);
     moreTools.setAttribute('aria-haspopup','dialog');
     moreTools.addEventListener('pointerdown',function(e){e.preventDefault();});
-    tools.append(comment,moreTools,addButton('Apply changes','bhn-rv-btn bhn-rv-btn-primary',apply),addButton('Cancel','bhn-rv-btn',function(){close();renderCommentCopy();}),error);
+    var hint=make('span','bhn-rv-inline-text-status',options.exitHint||'Saves when you leave');
+    tools.append(comment,moreTools,addButton('Cancel','bhn-rv-btn',function(){close();renderCommentCopy();}),hint,error);
     editor.after(tools);position();
     editor.addEventListener('click',function(e){if(e.target.closest('a'))e.preventDefault();});
     editor.addEventListener('beforeinput',function(e){if(e.inputType==='insertParagraph'||e.inputType==='insertLineBreak')e.preventDefault();});
     editor.addEventListener('input',function(){session.draftDirty=value()!==options.value;error.hidden=true;position();});
+    editor.addEventListener('compositionstart',function(){composing=true;});
+    editor.addEventListener('compositionend',function(){composing=false;});
+    function leave(e){
+      if(e.relatedTarget instanceof Node&&(editor.contains(e.relatedTarget)||tools.contains(e.relatedTarget)))return;
+      clearTimeout(leaveTimer);
+      leaveTimer=setTimeout(function(){
+        var focused=document.activeElement;
+        if(!editor.contains(focused)&&!tools.contains(focused))finish(false);
+      },0);
+    }
+    editor.addEventListener('focusout',leave);tools.addEventListener('focusout',leave);
     function keys(e){
       if(e.isComposing)return;
       if(e.key==='Escape'){e.preventDefault();close();renderCommentCopy();}
-      if(e.target===editor&&e.key==='Enter'){e.preventDefault();apply();}
+      if(e.target===editor&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish();}
     }
     editor.addEventListener('keydown',keys);tools.addEventListener('keydown',keys);
     editor.focus({preventScroll:true});
@@ -97,11 +117,11 @@ export function inPlaceTextSource(): string {
     }
     if(selection&&left&&right){var active=document.createRange();active.setStart(left[0],left[1]);active.setEnd(right[0],right[1]);selection.removeAllRanges();selection.addRange(active);}
   }
-  if(htmlReview)style.textContent+=[
+  if(contextualReview)style.textContent+=[
     '[data-bhn-rv-original-paragraph]{display:none!important;}[data-bhn-rv-inline-text]{outline:2px solid #176879;outline-offset:3px;cursor:text;overflow-wrap:anywhere;}',
     '.bhn-rv-inline-text-tools{box-sizing:border-box;position:fixed;z-index:2147483647;display:grid;gap:4px;width:168px;max-width:calc(100vw - 8px);padding:6px;background:#fff;color:#173c4d;border:1px solid #b9cbd0;border-radius:5px;box-shadow:0 3px 12px #17304722;font:13px/1.35 system-ui,sans-serif;}.bhn-rv-inline-text-tools[hidden]{display:none;}',
     '.bhn-rv-inline-text-tools .bhn-rv-btn{min-height:34px;margin:0;padding:4px 8px;border:0;border-radius:3px;background:#edf6f7;color:#173c4d;text-align:left;font:inherit;font-weight:650;cursor:pointer;}.bhn-rv-inline-text-tools .bhn-rv-btn-primary{background:#176879;color:#fff;}.bhn-rv-inline-text-tools .bhn-rv-btn:focus-visible{outline:2px solid #176879;outline-offset:1px;}',
-    '@media(max-width:540px){.bhn-rv-inline-text-tools{width:max-content;grid-template-columns:auto auto;}.bhn-rv-inline-text-tools [role=alert]{grid-column:1/-1;}}@media print{[data-bhn-rv-original-paragraph]{display:revert!important;}[data-bhn-rv-inline-text],.bhn-rv-inline-text-tools{display:none!important;}}'
+    '.bhn-rv-inline-text-status{font-size:11px;color:#536570;padding:1px 3px;}@media(max-width:540px){.bhn-rv-inline-text-tools{width:max-content;grid-template-columns:auto auto;}.bhn-rv-inline-text-tools [role=alert]{grid-column:1/-1;}}@media print{[data-bhn-rv-original-paragraph]{display:revert!important;}[data-bhn-rv-inline-text],.bhn-rv-inline-text-tools{display:none!important;}}'
   ].join('');
 `;
 }

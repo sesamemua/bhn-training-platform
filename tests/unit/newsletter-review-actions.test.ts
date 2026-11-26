@@ -98,18 +98,20 @@ test("quick edit stages inline and the pop-up previews a limited semantic bullet
     assert.equal(f.doc.activeElement, quick);
     quick.textContent = "A quick change.";
     quick.dispatchEvent(new f.window.Event("input", { bubbles: true }));
-    f.click(f.button("Apply changes"));
+    quick.dispatchEvent(new f.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
     assert.equal(paragraph.textContent, "A quick change.");
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(f.requests.length, 1, "the direct editor automatically attempts a revision save");
     f.click(paragraph); f.click(f.button("More text tools"));
     const dialog = f.doc.querySelector("dialog")!;
     dialog.querySelector("textarea")!.value = "First bullet\nSecond <b>bullet</b>";
     f.click(f.button("Bulleted list", dialog));
     assert.equal(dialog.querySelectorAll("ul li").length, 2);
-    f.click(f.button("Apply changes", dialog));
+    f.click(f.button("Done", dialog));
     assert.equal(f.doc.querySelector("#plain")!.tagName, "UL");
     assert.equal(f.doc.querySelector("#plain b"), null);
-    f.click(f.button("Save revision")); await new Promise(resolve => setTimeout(resolve, 0));
-    assert.deepEqual(JSON.parse(f.requests[0].body).edits.map(({ before, after, list }: { before: string; after: string; list: boolean }) => ({ before, after, list })),
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(JSON.parse(f.requests[1].body).edits.map(({ before, after, list }: { before: string; after: string; list: boolean }) => ({ before, after, list })),
       [{ before: "A plain paragraph.", after: "First bullet\nSecond <b>bullet</b>", list: true }]);
     f.click(f.button("Discard edits"));
     assert.equal(f.doc.querySelector("#plain"), paragraph);
@@ -132,9 +134,9 @@ test("selected formatting stages without overwriting links and discards back to 
     field.setSelectionRange(start, start + "BioZone".length);
     f.click(f.button("Italic", dialog));
     assert.equal(dialog.querySelector("[aria-label='Formatting preview'] em")?.textContent, "BioZone");
-    f.click(f.button("Apply changes", dialog));
+    f.click(f.button("Done", dialog));
     assert.equal(paragraph.querySelector('a[href="https://biozone.example"] em')?.textContent, "BioZone");
-    f.click(f.button("Save revision")); await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
     const [patch] = JSON.parse(f.requests[0].body).edits;
     assert.equal(patch.after, patch.before, "formatting-only edits still save");
     assert.deepEqual(patch.marks, [{ kind: "italic", start: 0, end: 7 }]);
