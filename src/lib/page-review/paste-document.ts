@@ -38,7 +38,7 @@ export function isWholeDocument(html: string): boolean {
   return /^\s*(?:<!--[\s\S]*?-->\s*)*(?:<!doctype\b|<html[\s>])/i.test(html);
 }
 
-const overlayTag = (src: string) => `<script src="${src}" defer></script>`;
+const overlayTag = (src: string, round?: number) => `<script src="${src}"${Number.isSafeInteger(round) && round! > 0 ? ` data-round="${round}"` : ""} defer></script>`;
 
 /**
  * The page a reviewer opens: the paste, plus the overlay script.
@@ -46,9 +46,9 @@ const overlayTag = (src: string) => `<script src="${src}" defer></script>`;
  * `title` is only used for the wrapper — a whole document brought its
  * own, and replacing it would mean rewriting a head we were handed.
  */
-export function pasteDocument(pastedHtml: string, overlayUrl: string, title: string): string {
+export function pasteDocument(pastedHtml: string, overlayUrl: string, title: string, round?: number): string {
   const body = stripScripts(pastedHtml);
-  const script = overlayTag(overlayUrl);
+  const script = overlayTag(overlayUrl, round);
 
   if (isWholeDocument(body)) {
     // Before </body> so the overlay runs against a finished document,

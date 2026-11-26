@@ -3,9 +3,12 @@ import { mentionToolsSource } from "./mention-tools-source";
 import { reportToolsSource } from "./report-tools-source";
 import { findReportTarget } from "../symposium-report/comment-anchors";
 import { comparisonSource } from "./comparison-source";
+import { contextualSource } from "./contextual-source";
+import { createHtmlReviewTargets } from "./html-targets";
+import { commentCopySource } from "./comment-copy-source";
 
 /** JavaScript source for the live-page review overlay. */
-export function overlaySource(endpoint: string, title: string, accountRequired = false, reportCommentEndpoint: string | null = null, staffSurface: "report" | "social" = "report"): string {
+export function overlaySource(endpoint: string, title: string, accountRequired = false, reportCommentEndpoint: string | null = null, staffSurface: "report" | "social" = "report", options: { contextualHtml?: boolean } = {}): string {
   return `(function(){
   var ID = "bhn-review-overlay";
   if (window.__bhnReviewCleanup) window.__bhnReviewCleanup();
@@ -16,6 +19,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var pageSelector = staffSurface === "social" ? "[data-copy-page]" : "[data-print-page]";
   var scopeSelector = (staffSurface === "social" ? "[data-social-review] " : "[data-report-paper] ") + pageSelector;
   var reportReview = !!reportCommentEndpoint && staffSurface === "report";
+  var htmlReview = ${JSON.stringify(!!options.contextualHtml)};
+  var contextualReview = reportReview || htmlReview;
+  var htmlTargets = (function(__name){return (${createHtmlReviewTargets.toString()})(document);})(function(value){return value;});
   var reportTargets = "h1,h2,h3,h4,p,li,blockquote,figcaption,img,td,th,dt,dd,svg,figure,header > span,footer > span,aside > strong";
   var credential = script && script.dataset ? (script.dataset.viewer || "") : "";
   var endpoint = ${JSON.stringify(endpoint)};
@@ -62,7 +68,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     comparison: null,
     comparisonRound: null,
     comparisonError: "",
-    pageRound: reportCommentEndpoint ? Number(script.dataset.round) : null,
+    pageRound: script && script.dataset.round ? Number(script.dataset.round) : reportCommentEndpoint || htmlReview ? 0 : null,
+    copyText: "",
     expandedThreads: {}
   };
   var mentionDeepLink = new URLSearchParams(window.location.search).get("comment");
@@ -323,6 +330,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function anchorsFor(node) {
+    if (htmlReview) return htmlTargets.capture(node);
     var quote = cleanText(node.innerText || node.textContent).slice(0, 600);
     if (reportCommentEndpoint) {
       var page = node.closest(pageSelector);
@@ -358,6 +366,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   var findReportTarget = ${findReportTarget.toString()};
   function findAnchor(comment) {
+    if (htmlReview) return comment.anchorKey && comment.anchorKey.startsWith("bhn-html:")
+      ? htmlTargets.find(comment) : htmlTargets.findLegacy(comment, comment.round === state.pageRound);
     var quote = cleanText(comment.anchorQuote);
     if (reportCommentEndpoint) {
       var verifiedTarget = reportReview && findReportTarget(document, comment.anchorTarget);
@@ -659,7 +669,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var dismissed = false;
       try { dismissed = sessionStorage.getItem(comparisonKey()) === "1"; } catch (_) {}
       // The Event Report opens comparison only from its button.
-      if (!dismissed && !reportReview) openComparison();
+      if (!dismissed && !contextualReview) openComparison();
     } catch (_) {
       if (state.review.round !== round) return;
       state.comparisonError = "Could not load comparison. Retry";
@@ -708,17 +718,21 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   /** A round stops accepting writes the moment it is exported. */
   function isLocked() {
-    return (reportCommentEndpoint && state.pageRound !== state.review.round) || (state.review.status && state.review.status !== "open");
+    return ((reportCommentEndpoint || htmlReview) && state.pageRound !== state.review.round) || (state.review.status && state.review.status !== "open");
   }
 
   ${mentionToolsSource()}
   ${mentionNotificationsSource()}
+  ${commentCopySource()}
 
   function renderComposer(container) {
     if (state.pageRound !== state.review.round) {
       var update = make("div", "bhn-rv-notice", "A new round was saved. Reload to comment on the current version.");
       update.appendChild(addButton("Reload current version", "bhn-rv-btn", function(){ window.location.reload(); }));
       container.appendChild(update);
+      if(htmlReview && (state.draft || state.replyDraft || state.editDraft)){
+        var retained=make("textarea","bhn-rv-textarea");retained.readOnly=true;retained.value=state.draft||state.replyDraft||state.editDraft;retained.setAttribute("aria-label","Unsaved feedback to copy before reloading");container.appendChild(retained);
+      }
       return;
     }
     if (isLocked()) {
@@ -732,7 +746,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     }
     if (!state.selected) return;
     var box = make("section", "bhn-rv-compose");
-    box.appendChild(make("div", "bhn-rv-compose-label", state.selected.drawing ? "Comment on drawn " + state.selected.drawing.shape : state.selected.insertion ? "Request a section insertion" : "Comment on selected element"));
+    box.appendChild(make("div", "bhn-rv-compose-label", state.selected.general ? "Comment on the newsletter" : state.selected.drawing ? "Comment on drawn " + state.selected.drawing.shape : state.selected.insertion ? "Request a section insertion" : "Comment on selected element"));
     if (state.selected.anchorQuote) {
       box.appendChild(make("div", "bhn-rv-quote", state.selected.anchorQuote.slice(0, 180)));
     }
@@ -740,13 +754,13 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     textarea.addEventListener("input", function(){ autoGrow(textarea); });
     textarea.setAttribute("placeholder", "What should change?");
     textarea.setAttribute("aria-label", "New review comment");
-    textarea.maxLength = state.selected.insertion ? 7800 : 8000;
+    textarea.maxLength = htmlReview ? 4000 : state.selected.insertion ? 7800 : 8000;
     textarea.value = state.draft;
     textarea.addEventListener("input", function(){ state.draft = textarea.value; reportDraftStatus(); });
     box.appendChild(textarea);
     attachReviewMentions(textarea, box);
     var actions = make("div", "bhn-rv-actions");
-    actions.appendChild(addButton("Cancel", "bhn-rv-btn", function(){ state.selected = null; state.draft = ""; render(); }));
+    actions.appendChild(addButton("Cancel", "bhn-rv-btn", function(){ state.selected = null; state.draft = ""; render(); if(contextualReview&&reportCommentTarget)focusPageElement(reportCommentTarget); }));
     var submit = addButton(state.saving ? "Adding..." : "Add comment", "bhn-rv-btn bhn-rv-btn-primary", function(){ submitComment(textarea.value, null, state.selected); });
     submit.disabled = state.saving;
     actions.appendChild(submit);
@@ -762,7 +776,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function renderReplyComposer(card, thread) {
-    if (isLocked()) return;
+    if (isLocked() || (htmlReview && thread.round !== state.pageRound)) return;
     if (state.replyTo !== thread.id) return;
     var wrap = make("div", "bhn-rv-reply-compose");
     var textarea = make("textarea", "bhn-rv-textarea");
@@ -812,7 +826,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   // comment, so a correction lands in the text itself rather than as a reply
   // nobody reads. Whoever edits is recorded and shown next to the comment.
   function appendCommentTools(container, comment) {
-    if (isLocked()) return;
+    if (isLocked() || (htmlReview && comment.round !== state.pageRound)) return;
     var edit = addButton("Edit", "bhn-rv-link-btn", function(){ beginEdit(comment); });
     edit.setAttribute("aria-label", "Edit " + (comment.parentId ? "reply" : "comment") + " by " + comment.authorName);
     container.appendChild(edit);
@@ -919,7 +933,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     locate.setAttribute("title", missing
       ? "The commented element is no longer on this page"
       : "Bring the commented element into view");
-    if (!(staffSurface === "social" && !comment.anchorKey && !comment.anchorPath && !comment.anchorQuote)) summary.appendChild(locate);
+    if (!((staffSurface === "social" || htmlReview) && !comment.anchorKey && !comment.anchorPath && !comment.anchorQuote)) summary.appendChild(locate);
     card.appendChild(summary);
 
     if (expanded) {
@@ -950,18 +964,18 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
       // Reply is appended here rather than inside appendCommentTools, so it
       // needs the lock check of its own.
-      if (!isLocked()) {
+      if (!isLocked() && (!htmlReview || comment.round === state.pageRound)) {
         var tools = make("div", "bhn-rv-thread-tools");
-        if (staffSurface === "social") tools.appendChild(addButton(comment.status === "open" ? "Resolve" : "Reopen", "bhn-rv-link-btn", async function(){
+        if (staffSurface === "social" || htmlReview) tools.appendChild(addButton(comment.status === "open" ? "Resolve" : "Reopen", "bhn-rv-link-btn", async function(){
           if (state.saving) return;
           state.saving = true;
           try {
-            var response = await writeReportComment(comment.status === "open" ? "setStatus" : "reopenComment", { commentId: comment.id, status: "resolved" });
+            var response = htmlReview ? await fetch(endpoint,{method:"PATCH",headers:{"Authorization":"Bearer "+credential,"Content-Type":"application/json"},body:JSON.stringify({id:comment.id,expectedRound:state.pageRound,status:comment.status==="open"?"resolved":"open"})}) : await writeReportComment(comment.status === "open" ? "setStatus" : "reopenComment", { commentId: comment.id, status: "resolved" });
             var data = await response.json();
             if (!response.ok || !data.ok) throw new Error(data.error || "Could not update this thread.");
             await loadComments(false);
           } catch (error) { state.error = error.message || "Could not update this thread."; render(); }
-          finally { state.saving = false; }
+          finally { state.saving = false; render(); }
         }));
         tools.appendChild(addButton("Reply", "bhn-rv-link-btn", function(){
           state.replyTo = comment.id;
@@ -1083,13 +1097,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       body.appendChild(join);
       setTimeout(function(){ try { nameInput.focus(); } catch (e) {} }, 0);
     } else {
+      renderCommentCopy(body);
       var copyFlow = reportReview ? make("div", "bhn-report-copy-flow") : body;
       if (reportReview) {
         copyFlow.setAttribute("data-stage", state.confirmCopy && !isLocked() ? "confirm" : state.copiedRound === state.review.round ? "copied" : "ready");
         body.appendChild(copyFlow);
       }
       if (reportCommentEndpoint) {
-        copyFlow.appendChild(addButton(state.copiedRound === state.review.round ? "Comments copied" : "Copy review comments", "bhn-rv-btn bhn-rv-copy-comments", async function(){
+        copyFlow.appendChild(addButton(state.copiedRound === state.review.round ? "Comments copied" : reportReview ? "Copy comments and lock round" : "Copy review comments", "bhn-rv-btn bhn-rv-copy-comments", async function(){
           var confirmed = state.confirmedCopy;
           state.confirmedCopy = false;
           try {
@@ -1136,27 +1151,33 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         copiedNotice.setAttribute("aria-label", "Review comments copied");
         copyFlow.appendChild(copiedNotice);
       }
-      if (reportReview && !isLocked()) {
+      if (contextualReview && !isLocked()) {
         var pick = addButton("Comment on an element", "bhn-rv-btn bhn-rv-element-pick", function(){
           reportDrawMode=null; state.pickingElement = true;
           state.insertingSection = false;
           showHighlight(null);
           render();
           root.querySelector(".bhn-rv-element-pick")?.focus({ preventScroll: true });
+          if(htmlReview)document.querySelectorAll("h1,h2,h3,h4,h5,p,a,li,img").forEach(function(node){if(!inOverlay(node)&&!node.hasAttribute("tabindex")){node.setAttribute("tabindex","0");node.setAttribute("data-bhn-review-focus","");}});
         });
         pick.setAttribute("aria-pressed", String(state.pickingElement));
         pick.disabled = state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null;
         if (state.replyTo !== null || state.editingId !== null) pick.setAttribute("title", "Finish or cancel your current reply or edit first.");
         body.appendChild(pick);
+        if(htmlReview){
+          var general=addButton("General comment","bhn-rv-btn",function(){state.selected={general:true};state.pickingElement=false;state.panelCollapsed=false;render();});
+          general.disabled=state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null;
+          body.appendChild(general);
+        }
 
       }
-      if ((!state.pickingElement || reportReview) && (state.comparison || state.comparisonError)) {
+      if ((!state.pickingElement || contextualReview) && (state.comparison || state.comparisonError)) {
         body.appendChild(addButton(state.comparisonError || "Before / after comparison", "bhn-rv-btn bhn-rv-compare-open", function(){
           if (state.comparisonError) { state.comparisonRound = null; loadComparison(); }
           else openComparison();
         }));
       }
-      if (!state.pickingElement || reportReview) {
+      if (!state.pickingElement || contextualReview) {
         renderComposer(body);
         var list = make("div", "bhn-rv-list");
         var threads = topComments();
@@ -1299,7 +1320,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   async function submitComment(value, parentId, anchors) {
-    if (!parentId && state.pageRound !== state.review.round) {
+    if ((!parentId || htmlReview) && state.pageRound !== state.review.round) {
       state.error = "Reload the current version before adding a new comment.";
       render();
       return;
@@ -1311,7 +1332,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     state.error = "";
     render();
     try {
-      var payload = { body: body, parentId: parentId || null };
+      var payload = { body: body, parentId: parentId || null, expectedRound: state.pageRound };
       if (anchors) {
         payload.anchorQuote = anchors.anchorQuote;
         payload.anchorKey = anchors.anchorKey;
@@ -1360,7 +1381,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var response = await (reportCommentEndpoint ? writeReportComment("editComment", { commentId: commentId, body: body }) : fetch(endpoint, {
         method: "PATCH",
         headers: { "Authorization": "Bearer " + credential, "Content-Type": "application/json" },
-        body: JSON.stringify({ id: commentId, body: body })
+        body: JSON.stringify({ id: commentId, body: body, expectedRound: state.pageRound })
       }));
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not update the comment.");
@@ -1385,7 +1406,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var response = await (reportCommentEndpoint ? writeReportComment("deleteComment", { commentId: comment.id }) : fetch(endpoint, {
         method: "DELETE",
         headers: { "Authorization": "Bearer " + credential, "Content-Type": "application/json" },
-        body: JSON.stringify({ id: comment.id })
+        body: JSON.stringify({ id: comment.id, expectedRound: state.pageRound })
       }));
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not delete the comment.");
@@ -1508,15 +1529,15 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function onMove(event) {
     if (reportReview && (reportDrawMode || reportDrawDrag || (state.selected && state.selected.drawing))) return;
     if (reportInsertionMove(event)) return;
-    if (reportReview && event.target.closest(".bhn-report-inline-comment")) return;
+    if (contextualReview && event.target.closest(".bhn-report-inline-comment")) return;
     if (inOverlay(event.target)) {
       if (threadHighlight) showHighlight(threadHighlight);
       else showHighlight(null);
       return;
     }
     threadHighlight = null;
-    var node = reportReview ? reportTarget(event) : event.target;
-    if (reportReview && !state.pickingElement) { reportInlineComment(node); showHighlight(null); return; }
+    var node = reportReview ? reportTarget(event) : htmlReview ? htmlTargets.pick(event.target) : event.target;
+    if (contextualReview && !state.pickingElement) { reportInlineComment(node); showHighlight(null); return; }
     if (editableReportPage(event.target) && !state.pickingElement && !node?.matches("figcaption")) { showHighlight(null); return; }
     showHighlight(node);
   }
@@ -1524,10 +1545,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function onClick(event) {
     if (reportReview && (reportDrawMode || reportDrawSuppressClick || (state.selected && state.selected.drawing)) && event.target.closest(scopeSelector)) { reportDrawSuppressClick=false; event.preventDefault();event.stopPropagation();return; }
     if (inOverlay(event.target)) return;
+    if (htmlReview && (!state.pickingElement || isLocked() || !state.viewer || state.selected || state.replyTo !== null || state.editingId !== null)) return;
     if (reportInsertionClick(event)) return;
     if (reportCommentEndpoint && (!state.viewer || isLocked())) return;
     if (reportReview && (state.saving || state.replyTo !== null || state.editingId !== null)) return;
-    var node = reportReview ? reportTarget(event) : reportCommentEndpoint
+    var node = htmlReview ? htmlTargets.pick(event.target) : reportReview ? reportTarget(event) : reportCommentEndpoint
       ? (event.target.closest("h1,h2,h3,h4,p,li,blockquote,figcaption,img,td") || event.target.closest(pageSelector)) : event.target;
     if (!node) return;
     // Editable pages: text and photos are edited in place (a photo click opens the photo editor); captions still comment.
@@ -1538,7 +1560,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     if (!reportReview) state.pickingElement = false;
     state.selected = anchorsFor(node);
     if (!pickedElement && !reportReview) state.draft = "";
-    if (reportReview) state.panelCollapsed = false;
+    if (contextualReview) state.panelCollapsed = false;
     state.replyTo = null;
     threadHighlight = null;
     showHighlight(node);
@@ -1551,13 +1573,18 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     viewportFrame=window.requestAnimationFrame(function(){
       viewportFrame=null;
       constrainPanel();fitReviewPanel();
-      if(reportReview){reportCommentPosition();reportMenuPosition();reportDrawRefresh();}
+      if(contextualReview)reportCommentPosition();
+      if(reportReview){reportMenuPosition();reportDrawRefresh();}
       if(highlightedNode)showHighlight(highlightedNode);
       positionTagHistory();syncMarkers();
     });
   }
 
   function cleanup() {
+    document.removeEventListener('focusin',reportFocusComment);
+    document.removeEventListener('keydown',contextualKey,true);
+    if(reportCommentButton)reportCommentButton.remove();
+    document.querySelectorAll('[data-bhn-review-focus]').forEach(function(node){node.removeAttribute('tabindex');node.removeAttribute('data-bhn-review-focus');});
     cleanupMentionNotifications();
     if (reportReview) cleanupReportTools();
     stopPanelDrag();
@@ -1579,6 +1606,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   window.__bhnReviewCleanup = cleanup;
+  ${contextualSource()}
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);
   if (reportCommentEndpoint) document.addEventListener("bhn-report-comment", onClick);

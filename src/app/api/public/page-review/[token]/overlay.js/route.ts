@@ -28,7 +28,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
 
   const origin = new URL(req.url).origin;
   const endpoint = `${origin}/api/public/page-review/${encodeURIComponent(token)}`;
-  return new NextResponse(overlaySource(endpoint, review.title, review.id.startsWith("newsletter-") || review.id.startsWith("training-week-emails-")), { headers: HEADERS });
+  const newsletter = review.id.startsWith("newsletter-");
+  return new NextResponse(overlaySource(endpoint, review.title, newsletter || review.id.startsWith("training-week-emails-"), null, "report", {
+    contextualHtml: newsletter && process.env.NEWSLETTER_CONTEXTUAL_REVIEW !== "off",
+  }), { headers: HEADERS });
 }
 
 function inactiveOverlaySource(message: string) {

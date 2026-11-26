@@ -38,7 +38,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
 
   const review = await prisma.pageReview.findFirst({
     where: { shareToken: token, kind: "paste" },
-    select: { id: true, title: true, pastedHtml: true, status: true },
+    select: { id: true, title: true, pastedHtml: true, status: true, round: true },
   });
   if (!review?.pastedHtml) {
     return new NextResponse("No such review.", { status: 404 });
@@ -56,7 +56,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
    * out in front of it. A forty-table newsletter came out 1,800px wide
    * with its sections side by side — a page with nothing to scroll.
    */
-  const doc = pasteDocument(review.pastedHtml, overlay, review.title);
+  const doc = pasteDocument(review.pastedHtml, overlay, review.title, review.round);
 
   return new NextResponse(doc, {
     headers: {

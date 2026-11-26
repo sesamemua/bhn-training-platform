@@ -21,10 +21,11 @@ type ElementStub = {
   children: ElementStub[];
   click?: () => void;
   appendChild: (child: ElementStub) => void;
+  setAttribute: (name: string, value: string) => void;
 };
 function element(text = ""): ElementStub {
   const children: ElementStub[] = [];
-  return { textContent: text, children, appendChild: (child) => { children.push(child); } };
+  return { textContent: text, children, appendChild: (child) => { children.push(child); }, setAttribute() {} };
 }
 
 function harness(pageRound = 3) {
@@ -38,7 +39,7 @@ function harness(pageRound = 3) {
   const posted: Array<Record<string, unknown>> = [];
   const events = { renders: 0, reloads: 0, refreshes: 0 };
   const context = vm.createContext({
-    state, endpoint, credential: "signed-viewer", reportCommentEndpoint: null,
+    state, endpoint, credential: "signed-viewer", reportCommentEndpoint: null, htmlReview: true,
     render() { events.renders++; },
     make(_tag: string, _className: string, text: string) { return element(text); },
     addButton(label: string, _className: string, click: () => void) { return { ...element(label), click }; },
@@ -82,7 +83,7 @@ for (const comparisonState of ["missing", "pending", "failed"] as const) {
     assert.match(fixture.state.error, /Reload the current version/);
     assert.equal(fixture.events.refreshes, 0);
     const container = fixture.renderComposer();
-    assert.equal(container.children.length, 1);
+    assert.equal(container.children.length, 2, "keep unsaved feedback accessible before reload");
     assert.match(container.children[0].textContent, /new round was saved.*Reload to comment/i);
     const reload = container.children[0].children[0];
     assert.equal(reload.textContent, "Reload current version");
@@ -96,7 +97,7 @@ test("matching-round pages still post new anchored comments and refresh the list
   const fixture = harness(4);
   await fixture.submit();
   assert.deepEqual(fixture.posted, [{
-    body: "Review comment", parentId: null,
+    body: "Review comment", parentId: null, expectedRound: 4,
     anchorQuote: "Displayed headline", anchorKey: "headline", anchorPath: "h1", anchorBlock: "main",
   }]);
   assert.equal(fixture.state.error, "");
@@ -105,11 +106,10 @@ test("matching-round pages still post new anchored comments and refresh the list
   assert.equal(fixture.events.refreshes, 1);
 });
 
-test("stale pages still allow replies to an existing thread without new page anchors", async () => {
+test("stale newsletter pages cannot file replies into a newer round", async () => {
   const fixture = harness();
   await fixture.submit("existing-thread");
-  assert.deepEqual(fixture.posted, [{ body: "Review comment", parentId: "existing-thread" }]);
-  assert.equal(fixture.state.error, "");
-  assert.equal(fixture.state.expandedThreads["existing-thread"], true);
-  assert.equal(fixture.events.refreshes, 1);
+  assert.deepEqual(fixture.posted, []);
+  assert.match(fixture.state.error, /Reload/);
+  assert.equal(fixture.events.refreshes, 0);
 });

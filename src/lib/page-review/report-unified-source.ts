@@ -7,39 +7,6 @@ export function reportUnifiedSource(): string {
   function reportMenuEscape(event){if(event.key!=='Escape')return;var open=root.querySelector('.bhn-report-menu[open]');if(open){open.open=false;open.querySelector('summary').focus({preventScroll:true});}}
   if(reportReview){root.addEventListener('toggle',reportMenuPosition,true);document.addEventListener('keydown',reportMenuEscape);}
 
-  var reportCommentTarget = null;
-  var reportCommentButton = null;
-  function reportCommentPosition() {
-    if (!reportCommentButton || !reportCommentTarget || !reportCommentTarget.isConnected || isLocked() || state.pageRound !== state.review.round) {
-      if(reportCommentButton)reportCommentButton.hidden=true;
-      return;
-    }
-    var r=reportCommentTarget.getBoundingClientRect();
-    reportCommentButton.hidden=!r.width||!r.height||r.bottom<0||r.top>window.innerHeight;
-    reportCommentButton.style.left=Math.max(4,Math.min(window.innerWidth-44,r.right-52))+'px';
-    reportCommentButton.style.top=Math.max(4,Math.min(window.innerHeight-44,r.top-14))+'px';
-  }
-  function reportInlineComment(node) {
-    if(!reportReview)return;
-    if(isLocked()||!state.viewer||state.saving||state.insertingSection||reportDrawMode||state.replyTo!==null||state.editingId!==null){if(reportCommentButton)reportCommentButton.hidden=true;return;}
-    reportCommentTarget=node;
-    if(!node){if(reportCommentButton)reportCommentButton.hidden=true;return;}
-    if(!reportCommentButton){
-      reportCommentButton=make('button','bhn-report-inline-comment');reportCommentButton.type='button';
-      reportCommentButton.setAttribute('aria-label','Comment on selected report element');reportCommentButton.title='Add a comment on this element';
-      var icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');var path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M4 4h16v12H9l-5 4V4zM8 8h8M8 12h5');icon.appendChild(path);reportCommentButton.appendChild(icon);
-      reportCommentButton.addEventListener('pointerdown',function(e){e.preventDefault();});
-      reportCommentButton.addEventListener('click',function(e){
-        e.preventDefault();e.stopPropagation();
-        if(!reportCommentTarget||!reportCommentTarget.isConnected||isLocked()||state.saving||state.replyTo!==null||state.editingId!==null)return;
-        state.selected=anchorsFor(reportCommentTarget);state.panelCollapsed=false;state.pickingElement=false;threadHighlight=null;
-        showHighlight(reportCommentTarget);render();
-      });document.body.appendChild(reportCommentButton);
-    }
-    reportCommentPosition();
-  }
-  function reportFocusComment(event){if(!event.target.closest('.bhn-report-inline-comment')&&!inOverlay(event.target))reportInlineComment(reportTarget(event));}
-  if(reportReview)document.addEventListener('focusin',reportFocusComment);
   if(reportReview)style.textContent += [
     '#bhn-review-overlay[data-report-tools=true] .bhn-report-toolbar{display:flex;align-items:center;gap:5px;position:sticky;top:-6px;min-height:46px;padding:6px 0;margin-bottom:7px;border-bottom:1px solid #d5e0e4;}',
     '#bhn-review-overlay[data-report-tools=true] .bhn-report-toolbar>.bhn-rv-btn,#bhn-review-overlay[data-report-tools=true] .bhn-report-menu>summary{width:auto;min-height:34px;padding:6px 8px;font-size:12px;white-space:nowrap;}',

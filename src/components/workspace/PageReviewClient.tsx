@@ -148,7 +148,7 @@ export function PageReviewClient({
     try {
       const r = await fetch(`/api/workspace/page-review/${review.id}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(reportAnchor ? { ...payload, expectedRound: review.round } : payload),
+        body: JSON.stringify({ ...payload, expectedRound: review.round }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) { setError(j?.error ?? "That didn't work."); return null; }

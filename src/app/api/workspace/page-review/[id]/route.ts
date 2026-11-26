@@ -118,6 +118,14 @@ async function mutate(
   // Export itself stays available while locked — re-copying the same brief
   // changes nothing — and startNextRound is the way out.
   const WRITE_ACTIONS = ["addComment", "editComment", "deleteComment", "setStatus", "reopenComment", "reopenRound"];
+  if (id.startsWith("newsletter-") && WRITE_ACTIONS.includes(action)) {
+    if (body?.expectedRound !== review.round) return NextResponse.json({ error: "This review changed. Reload the current round before saving feedback." }, { status: 409 });
+    const targetId = body?.commentId || body?.parentId;
+    if (typeof targetId === "string") {
+      const target = await db.pageComment.findFirst({ where: { id: targetId, reviewId: id }, select: { round: true } });
+      if (!target || target.round !== review.round) return NextResponse.json({ error: "Earlier feedback is read-only. Add feedback to the current round." }, { status: 409 });
+    }
+  }
   if (review.status !== "open" && WRITE_ACTIONS.includes(action)) {
     return NextResponse.json(
       {

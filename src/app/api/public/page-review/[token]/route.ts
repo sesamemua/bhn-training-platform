@@ -39,6 +39,7 @@ const oneLine = (max: number) =>
     );
 
 const CommentSchema = z.object({
+  expectedRound: z.number().int().positive().optional(),
   body: z.string().trim().min(2, "Say a little more.").max(4000),
   parentId: z.string().min(1).max(64).optional().nullable(),
   anchorQuote: oneLine(600).optional().nullable(),
@@ -48,11 +49,14 @@ const CommentSchema = z.object({
 });
 
 const UpdateCommentSchema = z.object({
+  expectedRound: z.number().int().positive().optional(),
   id: z.string().min(1).max(64),
-  body: z.string().trim().min(2, "Say a little more.").max(4000),
-});
+  body: z.string().trim().min(2, "Say a little more.").max(4000).optional(),
+  status: z.enum(["open", "resolved"]).optional(),
+}).refine(value => (value.body !== undefined) !== (value.status !== undefined), "Choose a text edit or a status change.");
 
 const DeleteCommentSchema = z.object({
+  expectedRound: z.number().int().positive().optional(),
   id: z.string().min(1).max(64),
 });
 
@@ -198,6 +202,9 @@ async function createFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
     return json({ error: parsed.error.issues[0]?.message ?? "Check the comment." }, 400);
   }
   const data = parsed.data;
+  if ((review.id.startsWith("newsletter-") || data.expectedRound !== undefined) && data.expectedRound !== review.round) {
+    return json({ error: "This review changed. Your text has not been saved. Reload the current version before commenting." }, 409);
+  }
 
   const [recentCount, totalCount] = await Promise.all([
     db.pageComment.count({
@@ -231,6 +238,7 @@ async function createFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
       select: {
         id: true,
         parentId: true,
+        round: true,
         anchorQuote: true,
         anchorKey: true,
         anchorPath: true,
@@ -238,6 +246,7 @@ async function createFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
       },
     });
     if (!parent) return json({ error: "That thread is gone." }, 404);
+    if (review.id.startsWith("newsletter-") && parent.round !== review.round) return json({ error: "View the current round before replying. Earlier feedback is read-only." }, 409);
     parentId = parent.parentId ?? parent.id;
     anchors = {
       anchorQuote: parent.anchorQuote,
@@ -296,6 +305,10 @@ async function editFeedbackComment(req: NextRequest, ctx: { params: Promise<{ to
     where: { id: parsed.data.id, reviewId: review.id },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
+  if (parsed.data.status && !review.id.startsWith("newsletter-")) return json({ error: "Manage thread status from its workspace." }, 400);
+  if (review.id.startsWith("newsletter-") && (parsed.data.expectedRound !== review.round || existing.round !== review.round)) {
+    return json({ error: "Reload the current round before editing. Earlier feedback is read-only." }, 409);
+  }
   // No ownership check — any reviewer can edit any comment, matching the
   // workspace page. The signed viewer credential is still required, so a
   // bare share token cannot reach this. The editor is recorded because the
@@ -303,7 +316,7 @@ async function editFeedbackComment(req: NextRequest, ctx: { params: Promise<{ to
   await captureReviewFeedback(db, review.id, [existing], "baseline", { id: viewer.userId, name: viewer.name, verified: viewer.kind === "user" });
   const comment = await db.pageComment.update({
     where: { id: existing.id },
-    data: {
+    data: parsed.data.status ? { status: parsed.data.status } : {
       body: parsed.data.body,
       editCount: { increment: 1 },
       editedAt: new Date(),
@@ -341,9 +354,12 @@ async function deleteFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
 
   const existing = await db.pageComment.findFirst({
     where: { id: parsed.data.id, reviewId: review.id },
-    select: { id: true, parentId: true, authorUserId: true },
+    select: { id: true, parentId: true, authorUserId: true, round: true },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
+  if (review.id.startsWith("newsletter-") && (parsed.data.expectedRound !== review.round || existing.round !== review.round)) {
+    return json({ error: "Reload the current round before deleting. Earlier feedback is read-only." }, 409);
+  }
   // No ownership check — a review is a shared workspace and any reviewer can
   // clear out any comment, matching the platform page. The signed viewer
   // credential is still required, so this is not open to a bare share token.
