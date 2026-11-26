@@ -3,13 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { openTeamRound } from "@/lib/page-review/open-team-round";
+import { visibleTeamRound } from "@/lib/page-review/team-round";
 
 export const dynamic = "force-dynamic";
 
 const Schema = z.object({
-  action: z.enum(["open", "revise", "release"]),
+  action: z.enum(["open", "revise", "release", "next"]),
   html: z.string().trim().min(1).max(1_000_000),
   round: z.number().int().positive().optional(),
+  teamRound: z.number().int().nonnegative().optional(),
 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -32,17 +35,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         update: {},
         create: {
           id: reviewId, kind: "paste", title: issue.title,
-          pastedHtml: parsed.data.html, url: `/review-paste/${token}`, shareToken: token,
+          pastedHtml: parsed.data.html, url: `/review-paste/${token}`, shareToken: token, status: "pending",
           createdById: (session.user as { id?: string }).id ?? null,
         },
-        select: { id: true, round: true, status: true, pastedHtml: true },
+        select: { id: true, round: true, teamRound: true, status: true, pastedHtml: true },
       });
       if (!existing && issue.status !== "sent") {
         await tx.newsletterIssue.update({
           where: { id }, data: { renderedHtml: saved.pastedHtml, renderedAt: new Date() },
         });
       }
-      return { id: saved.id, round: saved.round, status: saved.status };
+      return { id: saved.id, round: saved.round, teamRound: visibleTeamRound(saved), status: saved.status };
     });
     return NextResponse.json({ ok: true, review });
   }
@@ -50,17 +53,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const current = await prisma.pageReview.findUnique({ where: { id: reviewId } });
   if (!current) return NextResponse.json({ error: "Open the review first." }, { status: 404 });
   if (current.status === "closed") return NextResponse.json({ error: "This review is closed." }, { status: 409 });
-  if (parsed.data.action === "release") {
+  if (parsed.data.action === "next" || parsed.data.action === "release") {
+    const actor = session.user as { id?: string; name?: string };
+    if (!actor.id) return NextResponse.json({ error: "Staff sign-in is required." }, { status: 403 });
     if (issue.status === "sent") return NextResponse.json({ error: "This newsletter has already been sent." }, { status: 409 });
     if (parsed.data.round !== current.round || current.pastedHtml !== parsed.data.html) return NextResponse.json({ error: "Save your draft changes and reload before opening team review." }, { status: 409 });
-    if (current.status === "open") return NextResponse.json({ ok: true, review: { id: current.id, round: current.round, status: "open" } });
-    if (current.status !== "pending") return NextResponse.json({ error: "Finish the current revision before opening another round." }, { status: 409 });
-    const opened = await prisma.pageReview.updateMany({ where: { id: reviewId, round: current.round, status: "pending" }, data: { status: "open" } });
-    if (!opened.count) return NextResponse.json({ error: "The review changed. Reload before opening team review." }, { status: 409 });
-    return NextResponse.json({ ok: true, review: { id: current.id, round: current.round, status: "open" } });
+    if (parsed.data.action === "release" && current.status === "open") return NextResponse.json({ ok: true, review: { id: current.id, round: current.round, teamRound: visibleTeamRound(current), status: "open" } });
+    if (parsed.data.action === "release" && current.status !== "pending" || parsed.data.action === "next" && !["open", "exported"].includes(current.status)) return NextResponse.json({ error: "Open the current draft for team review first." }, { status: 409 });
+    const review = await prisma.$transaction(tx => openTeamRound(tx, current, { id: actor.id!, name: actor.name ?? "Staff editor" }, current.round, parsed.data.teamRound ?? (parsed.data.action === "release" ? 0 : -1)));
+    if (!review) return NextResponse.json({ error: "The review changed. Reload before opening team review." }, { status: 409 });
+    return NextResponse.json({ ok: true, review });
   }
   if (current.pastedHtml === parsed.data.html) {
-    return NextResponse.json({ ok: true, unchanged: true, review: { id: current.id, round: current.round, status: current.status } });
+    return NextResponse.json({ ok: true, unchanged: true, review: { id: current.id, round: current.round, teamRound: visibleTeamRound(current), status: current.status } });
   }
   if (parsed.data.round !== current.round) return NextResponse.json({ error: "Another editor updated this review. Reload before saving." }, { status: 409 });
   const updated = await prisma.$transaction(async (tx) => {
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       data: {
         title: issue.title, pastedHtml: parsed.data.html,
         snapshotHtml: current.pastedHtml, snapshotAt: new Date(),
-        round: { increment: 1 }, status: current.status === "pending" ? "pending" : "open",
+        round: { increment: 1 }, status: current.status,
       },
     });
     if (result.count && current.pastedHtml) {
@@ -87,5 +92,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
   if (!updated.count) return NextResponse.json({ error: "Another editor updated this review. Reload before saving." }, { status: 409 });
   // Open threads carry forward; a new version does not mean the feedback was addressed.
-  return NextResponse.json({ ok: true, review: { id: reviewId, round: current.round + 1, status: current.status === "pending" ? "pending" : "open" } });
+  const status = current.status;
+  return NextResponse.json({ ok: true, review: { id: reviewId, round: current.round + 1, teamRound: visibleTeamRound(current), status } });
 }

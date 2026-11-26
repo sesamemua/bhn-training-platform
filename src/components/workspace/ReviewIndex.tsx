@@ -22,6 +22,7 @@ export interface ReviewSummary {
   title: string;
   status: string;
   round: number;
+  teamRound?: number | null;
   updatedAt: string;
   /** Open items in the CURRENT round — what an export would pick up. */
   openCount: number;
@@ -146,11 +147,11 @@ export function ReviewIndex({
                         className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 shrink-0"
                         title="Exported — comments reopen when the next round starts"
                       >
-                        <Lock size={9} /> R{r.round} locked
+                        <Lock size={9} /> {r.teamRound == null ? `R${r.round}` : `Team round ${r.teamRound}`} locked
                       </span>
                     ) : (
                       <span className="rounded-full bg-elevated px-2 py-0.5 font-mono text-[10px] font-semibold text-muted shrink-0">
-                        Round {r.round}
+                        {r.teamRound == null ? `Round ${r.round}` : `Team round ${r.teamRound}`}
                       </span>
                     )}
                   </div>

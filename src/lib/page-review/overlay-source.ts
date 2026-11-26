@@ -516,7 +516,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     dialog.id = ID + "-compare";
     dialog.setAttribute("aria-labelledby", ID + "-compare-title");
     var head = make("div", "bhn-rv-compare-head");
-    var title = make("h2", "", "Round " + state.review.round + " · Before / after");
+    var title = make("h2", "", savedVersionLabel(state.review.round) + " · Before / after");
     title.id = ID + "-compare-title";
     head.appendChild(title);
     head.appendChild(addButton("Close comparison", "", function(){ dialog.close(); }));
@@ -534,7 +534,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var label = make("label");
       var input = make("input"); input.type = "checkbox"; input.value = String(round);
       input.checked = selectedVersions.some(function(version){ return version.round === round; });
-      label.appendChild(input); label.appendChild(document.createTextNode("Round " + round));
+      label.appendChild(input); label.appendChild(document.createTextNode(savedVersionLabel(round)));
       picker.appendChild(label); inputs.push(input);
     });
     controls.appendChild(picker);
@@ -610,7 +610,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       return "<!doctype html>" + doc.documentElement.outerHTML;
     }
     selectedVersions.forEach(function(version, index){
-      var label = (index === 0 ? "Before" : "After") + " · Round " + version.round;
+      var label = (index === 0 ? "Before" : "After") + " · " + savedVersionLabel(version.round);
       var pane = make("section");
       pane.appendChild(make("h3", "", label));
       var frame = make("iframe");
@@ -737,6 +737,15 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     return button;
   }
 
+  function hasTeamRounds(){return typeof state.review.teamRound!=="undefined";}
+  function teamRoundLabel(){return hasTeamRounds() ? (state.review.teamRound ? "Team review · Round "+state.review.teamRound : "Team review not open") : "Round "+state.review.round;}
+  function savedVersionLabel(version){return (hasTeamRounds()?"Version ":"Round ")+version;}
+  function isCurrentTeamComment(comment){
+    return hasTeamRounds() && state.review.teamRoundStartedAt
+      ? Date.parse(comment.createdAt)>=Date.parse(state.review.teamRoundStartedAt)
+      : comment.round===state.review.round;
+  }
+
   /** A round stops accepting writes the moment it is exported. */
   function isLocked() {
     return ((reportCommentEndpoint || htmlReview || websiteReview) && state.pageRound !== state.review.round) || (state.review.status && state.review.status !== "open");
@@ -748,7 +757,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   function renderComposer(container) {
     if (state.pageRound !== state.review.round) {
-      var update = make("div", "bhn-rv-notice", "A new round was saved. Reload to comment on the current version.");
+      var update = make("div", "bhn-rv-notice", "A new version was saved. Reload to comment on the current version.");
       update.appendChild(addButton("Reload current version", "bhn-rv-btn", function(){ window.location.reload(); }));
       container.appendChild(update);
       if(htmlReview && (state.draft || state.replyDraft || state.editDraft)){
@@ -762,7 +771,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         state.review.status === "approved" ? "This round was approved. Earlier comments remain available." :
         state.review.status === "closed" ? "This review is closed. Previous comments remain available." :
         reportReview ? "Round " + state.review.round + " is locked while revisions are underway. Wait until this round’s revisions are complete. Then an administrator can start Round " + (state.review.round + 1) + " to resume editing and commenting." :
-          "Round " + state.review.round + " was exported and is locked. It reopens when the next round starts."));
+          teamRoundLabel() + " was exported and is locked. It reopens when the next round starts."));
       return;
     }
     if (!state.selected) return;
@@ -797,7 +806,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   function renderReplyComposer(card, thread) {
-    if (isLocked() || (htmlReview && thread.round !== state.pageRound)) return;
+    if (isLocked() || (htmlReview && !isCurrentTeamComment(thread))) return;
     if (state.replyTo !== thread.id) return;
     var wrap = make("div", "bhn-rv-reply-compose");
     var textarea = make("textarea", "bhn-rv-textarea");
@@ -847,7 +856,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   // comment, so a correction lands in the text itself rather than as a reply
   // nobody reads. Whoever edits is recorded and shown next to the comment.
   function appendCommentTools(container, comment) {
-    if (isLocked() || (htmlReview && comment.round !== state.pageRound)) return;
+    if (isLocked() || (htmlReview && !isCurrentTeamComment(comment))) return;
     var edit = addButton("Edit", "bhn-rv-link-btn", function(){ beginEdit(comment); });
     edit.setAttribute("aria-label", "Edit " + (comment.parentId ? "reply" : "comment") + " by " + comment.authorName);
     container.appendChild(edit);
@@ -908,7 +917,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     var main = make("span", "bhn-rv-thread-main");
     var line = make("span", "bhn-rv-thread-line");
     line.appendChild(make("span", "bhn-rv-author", comment.authorName));
-    line.appendChild(make("span", "bhn-rv-time", "R" + comment.round + " · " + formatTime(comment.createdAt) + editedSuffix(comment)));
+    line.appendChild(make("span", "bhn-rv-time", (hasTeamRounds() ? "v" : "R") + comment.round + " · " + formatTime(comment.createdAt) + editedSuffix(comment)));
     line.appendChild(make("span", "bhn-rv-status" + (comment.status === "open" ? "" : " bhn-rv-status-resolved"), comment.status));
     main.appendChild(line);
     if (!expanded) main.appendChild(make("span", "bhn-rv-thread-preview", cleanText(comment.body).slice(0, 100)));
@@ -985,7 +994,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
       // Reply is appended here rather than inside appendCommentTools, so it
       // needs the lock check of its own.
-      if (!isLocked() && (!htmlReview || comment.round === state.pageRound)) {
+      if (!isLocked() && (!htmlReview || isCurrentTeamComment(comment))) {
         var tools = make("div", "bhn-rv-thread-tools");
         if (reportCommentEndpoint || htmlReview || (websiteReview && state.viewer?.canResolve && comment.round === state.pageRound)) tools.appendChild(addButton(comment.status === "open" ? "Resolve" : "Reopen", "bhn-rv-link-btn", async function(){
           if (state.saving) return;
@@ -1057,11 +1066,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     copy.appendChild(make("div", "bhn-rv-kicker", "BioHubNet review"));
     copy.appendChild(make("div", "bhn-rv-title", state.review.title || initialTitle));
     var identity = state.viewer ? state.viewer.name : "Training Platform account required";
-    copy.appendChild(make("div", "bhn-rv-meta", "Round " + state.review.round + " · " + identity));
+    copy.appendChild(make("div", "bhn-rv-meta", teamRoundLabel() + (hasTeamRounds() ? " · Version " + state.review.round : "") + " · " + identity));
     head.appendChild(copy);
-    var commentCount = topComments().filter(function(comment){ return comment.round === state.review.round; }).length;
+    var commentCount = topComments().filter(isCurrentTeamComment).length;
     var collapseLabel = state.panelCollapsed ? "Expand " + commentCount + " comments" : "Collapse comments";
-    var collapse = addButton(state.panelCollapsed ? "R" + state.review.round + " · ☰ " + commentCount : "−", "bhn-rv-icon-btn bhn-rv-collapse", function(){
+    var collapse = addButton(state.panelCollapsed ? "R" + (state.review.teamRound ?? state.review.round) + " · ☰ " + commentCount : "−", "bhn-rv-icon-btn bhn-rv-collapse", function(){
       state.panelCollapsed = !state.panelCollapsed;
       threadHighlight = null;
       showHighlight(null);
@@ -1204,15 +1213,15 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         renderComposer(body);
         var list = make("div", "bhn-rv-list");
         var threads = topComments();
-        var current = threads.filter(function(comment){ return comment.round === state.review.round; });
-        var previous = threads.filter(function(comment){ return comment.round < state.review.round; });
-        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", "No comments in Round " + state.review.round + " yet." + (state.pageRound === state.review.round && !isLocked() ? (reportReview ? (reportDrawMode ? " Drag on a report page to draw, then add your comment." : state.pickingElement ? " Choose an element to comment." : " Click text or a photo to edit. Use the nearby comment icon for feedback.") : " Click any page element to start a thread.") : "")));
+        var current = threads.filter(isCurrentTeamComment);
+        var previous = threads.filter(function(comment){ return !isCurrentTeamComment(comment); });
+        if (!current.length) list.appendChild(make("div", "bhn-rv-empty", (hasTeamRounds() ? "No new comments on this review yet." : "No comments in Round " + state.review.round + " yet.") + (state.pageRound === state.review.round && !isLocked() ? (reportReview ? (reportDrawMode ? " Drag on a report page to draw, then add your comment." : state.pickingElement ? " Choose an element to comment." : " Click text or a photo to edit. Use the nearby comment icon for feedback.") : " Click any page element to start a thread.") : "")));
         current.forEach(function(comment){ list.appendChild(renderThread(comment, threads.indexOf(comment))); });
         body.appendChild(list);
         if (previous.length) {
           var history = make("details", "bhn-rv-history");
           history.open = state.historyExpanded;
-          history.appendChild(make("summary", "", "Previous rounds · " + previous.length + " threads"));
+          history.appendChild(make("summary", "", (hasTeamRounds()?"Earlier feedback":"Previous rounds")+" · " + previous.length + " threads"));
           var historyList = make("div", "bhn-rv-list");
           previous.forEach(function(comment){ historyList.appendChild(renderThread(comment, threads.indexOf(comment))); });
           history.appendChild(historyList);
@@ -1312,8 +1321,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not load team comments.");
       if (reportReview) data.review.nextRoundReady = data.review.status === "exported" && !(data.comments || []).some(function(c){ return !c.parentId && c.status === "open"; });
       var roundChanged = state.review.round !== data.review.round;
-      var changed = roundChanged || state.review.status !== data.review.status || state.review.nextRoundReady !== data.review.nextRoundReady || commentsSignature(state.comments) !== commentsSignature(data.comments || []);
-      if (roundChanged) { state.historyExpanded = false; state.expandedThreads = {}; }
+      var teamChanged = state.review.teamRound !== data.review.teamRound;
+      var changed = roundChanged || teamChanged || state.review.status !== data.review.status || state.review.nextRoundReady !== data.review.nextRoundReady || commentsSignature(state.comments) !== commentsSignature(data.comments || []);
+      if (teamChanged || roundChanged && !hasTeamRounds()) { state.historyExpanded = false; state.expandedThreads = {}; }
       state.review = data.review;
       if (reportReview) window.dispatchEvent(new CustomEvent("bhn-report-review-state", { detail: data.review }));
       if ((roundChanged && !state.loading) || isLocked()) state.pickingElement = false;
@@ -1503,7 +1513,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       positionFrame = null;
       var plans = [], placedAnchors = new Map(), wanted = new Set();
       topComments().forEach(function(comment, index){
-        if (comment.round < state.review.round && !state.historyExpanded) return;
+        if (!isCurrentTeamComment(comment) && !state.historyExpanded) return;
         var cached = markerAnchorCache.has(comment.id), anchor = markerAnchorCache.get(comment.id);
         if (anchor && !reportReview && !anchorTextMatches(anchor, cleanText(comment.anchorQuote))) { anchor = null; cached = false; }
         // Missing passages are cached too; rescanning the full report on every scroll is expensive.

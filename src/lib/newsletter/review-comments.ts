@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildBrief } from "@/lib/page-review/brief";
+import { visibleTeamRound } from "@/lib/page-review/team-round";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
 
 export async function getNewsletterReviewComments(input: unknown) {
@@ -15,7 +16,7 @@ export async function getNewsletterReviewComments(input: unknown) {
   if (!issue) return { ok: false, error: "Issue not found." } as const;
   const [review, earlier] = await Promise.all([
     prisma.pageReview.findUnique({ where: { id: `newsletter-${id}` }, select: {
-      round: true, comments: { orderBy: { createdAt: "asc" }, take: PAGE_REVIEW_COMMENT_LIMIT },
+      id: true, status: true, teamRound: true, round: true, comments: { orderBy: { createdAt: "asc" }, take: PAGE_REVIEW_COMMENT_LIMIT },
     } }),
     prisma.newsletterComment.findMany({ where: { issueId: id, status: "open" }, orderBy: { createdAt: "asc" } }),
   ]);
@@ -28,7 +29,7 @@ export async function getNewsletterReviewComments(input: unknown) {
   }))];
   // Copy is read-only: exporting a website brief would lock the review.
   return { ok: true, brief: buildBrief({
-    title: issue.title, round, comments,
+    title: issue.title, round, teamRound: review ? visibleTeamRound(review) : null, comments,
     url: `${(process.env.NEXTAUTH_URL ?? "https://bhn-training-platform.vercel.app").replace(/\/$/, "")}/admin/workspace/marketing/newsletter/review?issue=${encodeURIComponent(id)}`,
   }) } as const;
 }

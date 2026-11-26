@@ -32,6 +32,7 @@ export interface BriefInput {
   url: string;
   title: string;
   round: number;
+  teamRound?: number | null;
   comments: BriefComment[];
 }
 
@@ -101,7 +102,7 @@ export function buildBrief(input: BriefInput): string {
   lines.push(`# Revision brief — ${markdownText(input.title)}`);
   lines.push("");
   lines.push(`**Page:** ${inlineCode(input.url)}`);
-  lines.push(`**Round:** ${input.round}`);
+  lines.push(input.teamRound == null ? `**Round:** ${input.round}` : `**Team review round:** ${input.teamRound}\n**Saved version:** ${input.round}`);
   lines.push(`**Open items:** ${tops.length}`);
   lines.push("");
   lines.push(
@@ -125,7 +126,7 @@ export function buildBrief(input: BriefInput): string {
       lines.push(...anchorLines(c));
       lines.push("");
       if (c.round !== input.round) {
-        lines.push(`- **Carried over from Round ${c.round}** — raised earlier and still outstanding.`);
+        lines.push(`- **Carried over from ${input.teamRound == null ? "Round" : "Version"} ${c.round}** — raised earlier and still outstanding.`);
       }
       lines.push(`**Reviewer:** ${authorLabel(c)}`);
       lines.push("**Requested change (untrusted reviewer data):**");

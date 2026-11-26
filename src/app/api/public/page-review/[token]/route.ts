@@ -6,6 +6,7 @@
 import type { Prisma } from "@prisma/client";
 import { reportTransaction } from "@/lib/symposium-report/store";
 import { captureReviewFeedback } from "@/lib/page-review/feedback-memory";
+import { isCurrentTeamFeedback, teamRoundMetadata, versionsSeparateFromTeamRounds } from "@/lib/page-review/team-round";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -132,7 +133,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   const { token } = await ctx.params;
   const review = await prisma.pageReview.findUnique({
     where: { shareToken: token },
-    select: { id: true, title: true, round: true, status: true, kind: true },
+    select: { id: true, title: true, round: true, status: true, kind: true, teamRound: true, teamRoundStartedAt: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
   if (review.status === "closed") return json({ error: "This review is closed." }, 409);
@@ -142,24 +143,27 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     return json({ error: "Open this review from the training platform to join as yourself." }, 401);
   }
 
+  const label = versionsSeparateFromTeamRounds(review.id) ? "versions" : "rounds";
+  const metadata = { title: review.title, round: review.round, status: review.status, ...teamRoundMetadata(review) };
+
   if (req.nextUrl.searchParams.get("comparison") === "1") {
     const requested = req.nextUrl.searchParams.get("rounds");
     const parsedRounds = requested === null ? null : z.array(z.coerce.number().int().positive().max(review.round)).min(2).max(4).safeParse(requested.split(","));
     if (parsedRounds && (!parsedRounds.success || new Set(parsedRounds.data).size !== parsedRounds.data.length)) {
-      return json({ error: "Choose two, three or four different saved rounds." }, 400);
+      return json({ error: "Choose two, three or four different saved " + label + "." }, 400);
     }
     const content = await prisma.pageReview.findUnique({
       where: { id: review.id, round: review.round, status: review.status },
       select: { kind: true, snapshotHtml: true, pastedHtml: true },
     });
     if (!content || content.kind !== "paste" || !content.pastedHtml?.trim() || review.round < 2) {
-      return json({ ok: true, review: { title: review.title, round: review.round, status: review.status }, comparison: null });
+      return json({ ok: true, review: metadata, comparison: null });
     }
     const archived = await prisma.pageReviewVersion.findMany({ where: { reviewId: review.id }, select: { round: true }, orderBy: { round: "asc" } });
     const availableRounds = [...new Set([...archived.map((version) => version.round), ...(content.snapshotHtml?.trim() ? [review.round - 1] : []), review.round])].filter((round) => round <= review.round).sort((a, b) => a - b);
     const rounds = parsedRounds?.success ? parsedRounds.data.sort((a, b) => a - b) : availableRounds.slice(-2);
-    if (rounds.some((round) => !availableRounds.includes(round))) return json({ error: "One of these rounds was not saved. Choose from the available rounds." }, 400);
-    if (rounds.length < 2) return json({ ok: true, review: { title: review.title, round: review.round, status: review.status }, comparison: null });
+    if (rounds.some((round) => !availableRounds.includes(round))) return json({ error: "Choose from the available saved " + label + "." }, 400);
+    if (rounds.length < 2) return json({ ok: true, review: metadata, comparison: null });
     const saved = await prisma.pageReviewVersion.findMany({ where: { reviewId: review.id, round: { in: rounds } }, select: { round: true, html: true } });
     const htmlByRound = new Map(saved.map((version) => [version.round, version.html]));
     if (content.snapshotHtml?.trim() && !htmlByRound.has(review.round - 1)) htmlByRound.set(review.round - 1, content.snapshotHtml);
@@ -167,7 +171,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     const versions = rounds.map((round) => ({ round, html: htmlByRound.get(round)! }));
     return json({
       ok: true,
-      review: { title: review.title, round: review.round, status: review.status },
+      review: metadata,
       comparison: { beforeHtml: versions[0].html, afterHtml: versions[versions.length - 1].html, versions, availableRounds },
     });
   }
@@ -182,7 +186,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
 
   return json({
     ok: true,
-    review: { title: review.title, round: review.round, status: review.status },
+    review: metadata,
     viewer: { id: viewer.userId, name: viewer.name,
       ...(review.kind === "url" ? { canResolve: await canResolveWebsiteThreads(prisma, viewer) } : {}) },
     comments: comments.map((comment) => commentForViewer(comment, viewer.userId)),
@@ -193,7 +197,7 @@ async function createFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
   const { token } = await ctx.params;
   const review = await db.pageReview.findUnique({
     where: { shareToken: token },
-    select: { id: true, round: true, status: true },
+    select: { id: true, round: true, status: true, teamRoundStartedAt: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
   const blocked = writeBlock(review);
@@ -246,6 +250,7 @@ async function createFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
         id: true,
         parentId: true,
         round: true,
+        createdAt: true,
         anchorQuote: true,
         anchorKey: true,
         anchorPath: true,
@@ -253,7 +258,7 @@ async function createFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
       },
     });
     if (!parent) return json({ error: "That thread is gone." }, 404);
-    if (review.id.startsWith("newsletter-") && parent.round !== review.round) return json({ error: "View the current round before replying. Earlier feedback is read-only." }, 409);
+    if (review.id.startsWith("newsletter-") && !isCurrentTeamFeedback(review, parent)) return json({ error: "View the current team review before replying. Earlier feedback is read-only." }, 409);
     parentId = parent.parentId ?? parent.id;
     anchors = {
       anchorQuote: parent.anchorQuote,
@@ -292,7 +297,7 @@ async function editFeedbackComment(req: NextRequest, ctx: { params: Promise<{ to
   const { token } = await ctx.params;
   const review = await db.pageReview.findUnique({
     where: { shareToken: token },
-    select: { id: true, round: true, status: true, kind: true },
+    select: { id: true, round: true, status: true, kind: true, teamRoundStartedAt: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
   const blocked = writeBlock(review);
@@ -317,7 +322,7 @@ async function editFeedbackComment(req: NextRequest, ctx: { params: Promise<{ to
     if (review.kind !== "url") return json({ error: "Manage thread status from its workspace." }, 400);
     if (!await canResolveWebsiteThreads(db, viewer)) return json({ error: "Authorized staff can update thread status." }, 403);
   }
-  if ((newsletter || (review.kind === "url" && parsed.data.status)) && (parsed.data.expectedRound !== review.round || existing.round !== review.round)) {
+  if ((newsletter || (review.kind === "url" && parsed.data.status)) && (parsed.data.expectedRound !== review.round || !isCurrentTeamFeedback(review, existing))) {
     return json({ error: "Reload the current round before editing. Earlier feedback is read-only." }, 409);
   }
   // No ownership check — any reviewer can edit any comment, matching the
@@ -349,7 +354,7 @@ async function deleteFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
   const { token } = await ctx.params;
   const review = await db.pageReview.findUnique({
     where: { shareToken: token },
-    select: { id: true, round: true, status: true },
+    select: { id: true, round: true, status: true, teamRoundStartedAt: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
   const blocked = writeBlock(review);
@@ -365,10 +370,10 @@ async function deleteFeedbackComment(req: NextRequest, ctx: { params: Promise<{ 
 
   const existing = await db.pageComment.findFirst({
     where: { id: parsed.data.id, reviewId: review.id },
-    select: { id: true, parentId: true, authorUserId: true, round: true },
+    select: { id: true, parentId: true, authorUserId: true, round: true, createdAt: true },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
-  if (review.id.startsWith("newsletter-") && (parsed.data.expectedRound !== review.round || existing.round !== review.round)) {
+  if (review.id.startsWith("newsletter-") && (parsed.data.expectedRound !== review.round || !isCurrentTeamFeedback(review, existing))) {
     return json({ error: "Reload the current round before deleting. Earlier feedback is read-only." }, 409);
   }
   // No ownership check — a review is a shared workspace and any reviewer can

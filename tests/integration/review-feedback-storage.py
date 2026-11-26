@@ -32,6 +32,9 @@ try:
  run('CREATE DATABASE '+database+';','postgres')
  schema=Path(args.schema).read_text();schema=re.sub(r'\bvector\(\d+\)', 'TEXT', schema)
  run(schema)
+ team_ddl,team_backfill=Path('prisma/migrations/20261126210000_explicit_team_review_round/migration.sql').read_text().split('WITH states AS',1)
+ if run('SELECT count(*) FROM information_schema.columns WHERE table_schema=\'public\' AND table_name=\'PageReview\' AND column_name=\'teamRound\'')=='0':
+  run(team_ddl)
  seed('User',{'id':'u-one','email':'reviewer@example.test','name':'Reviewer One'})
  seed('PageReview',{'id':'r-page','title':'Page proof','url':'https://name:secret@example.test/review?token=hidden#hash','kind':'paste','pastedHtml':'<p>original page</p>'})
  seed('PageComment',{'id':'page-note','reviewId':'r-page','authorUserId':'u-one','authorName':'Reviewer One','authorKind':'user','body':'Use larger headings','round':1,'anchorQuote':'Original paragraph','anchorBlock':'Page 2'})
@@ -83,6 +86,23 @@ try:
  before=events('PageReview','r-newsletter-draft');assert before[-1]['detail']['signal']=='activity';assert 'pending' in before[-1]['detail']['comment']['body']
  run('UPDATE "PageReview" SET status=\'open\',"updatedAt"=now() WHERE id=\'r-newsletter-draft\' AND round=2 AND status=\'pending\';')
  opened=events('PageReview','r-newsletter-draft');assert len(opened)==len(before)+1;assert opened[-1]['detail']['signal']=='activity';assert 'open' in opened[-1]['detail']['comment']['body'];assert run('SELECT round FROM "PageReview" WHERE id=\'r-newsletter-draft\'')=='2'
+ seed('PageReview',{'id':'newsletter-legacy','title':'Legacy issue','url':'/review-paste/legacy','kind':'paste','round':2,'status':'open','pastedHtml':'<p>Version 2</p>'})
+ run("""
+ UPDATE "PageReview" SET status='pending',"updatedAt"='2026-11-25 04:00:00' WHERE id='newsletter-legacy';
+ UPDATE "PageReview" SET round=4,"updatedAt"='2026-11-25 05:00:00' WHERE id='newsletter-legacy';
+ UPDATE "PageReview" SET status='open',"updatedAt"='2026-11-25 08:00:00' WHERE id='newsletter-legacy';
+ UPDATE "PageReview" SET round=17,"updatedAt"='2026-11-25 09:00:00',"pastedHtml"='<p>Version 17</p>' WHERE id='newsletter-legacy';
+ """)
+ seed('PageReviewVersion',{'reviewId':'newsletter-legacy','round':16,'html':'<p>Version 16</p>'})
+ seed('PageComment',{'id':'old-thread','reviewId':'newsletter-legacy','authorUserId':'u-one','authorName':'Reviewer One','body':'Original comment','round':12})
+ run('WITH states AS'+team_backfill)
+ assert run('SELECT round||\':\'||"teamRound" FROM "PageReview" WHERE id=\'newsletter-legacy\'')=='17:2'
+ run('UPDATE "PageReview" SET "teamRound"=3,"teamRoundStartedAt"=now() WHERE id=\'newsletter-legacy\' AND round=17 AND "teamRound"=2;')
+ assert run('SELECT round||\':\'||"teamRound" FROM "PageReview" WHERE id=\'newsletter-legacy\'')=='17:3'
+ run('UPDATE "PageReview" SET round=18,"pastedHtml"=\'<p>Version 18</p>\' WHERE id=\'newsletter-legacy\';')
+ assert run('SELECT round||\':\'||"teamRound" FROM "PageReview" WHERE id=\'newsletter-legacy\'')=='18:3'
+ assert run('SELECT html FROM "PageReviewVersion" WHERE "reviewId"=\'newsletter-legacy\' AND round=16')=='<p>Version 16</p>'
+ assert run('SELECT body FROM "PageComment" WHERE id=\'old-thread\' AND round=12')=='Original comment'
  pin=events('DesignPin','pin')[0]['detail'];assert pin['source']['context']['x']==0.2;assert pin['source']['context']['artworkTitle']=='Poster';assert pin['writer']['verified']
  run('UPDATE "DesignPin" SET body=\'Use a wider group photo\',"updatedAt"=now() WHERE id=\'pin\';')
  es=events('DesignPin','pin');assert len(es)==2;assert es[-1]['detail']['writer']['verified'] is False;assert es[-1]['detail']['writer']['name']=='Editor not recorded'

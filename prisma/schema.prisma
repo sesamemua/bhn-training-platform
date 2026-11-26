@@ -6545,6 +6545,10 @@ model PageReview {
   /// Current round. Bumped on export; comments record the round they
   /// were filed under.
   round        Int       @default(1)
+  /// Explicit review passes for surfaces whose edits also produce saved versions.
+  /// Legacy versions and comment anchors remain keyed by round.
+  teamRound    Int?
+  teamRoundStartedAt DateTime?
   /// Optional HTML snapshot captured when the review opened — the
   /// "before" for diffing a later revision.
   snapshotHtml String?

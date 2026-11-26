@@ -26,6 +26,7 @@ interface Comment {
 }
 interface Review {
   id: string; url: string; title: string; status: string; round: number;
+  teamRound?: number | null;
   comments: Comment[];
 }
 
@@ -142,6 +143,9 @@ export function PageReviewClient({
    * brings the two surfaces into line. Earlier rounds stay reachable.
    */
   const [roundView, setRoundView] = useState<number | "all">(initialReview.round);
+  const newsletter = review.id.startsWith("newsletter-");
+  const versionLabel = newsletter ? "Version" : "Round";
+  const currentLabel = newsletter ? review.status === "pending" ? "Team review not yet open" : `Team review · Round ${review.teamRound ?? 1} · Version ${review.round}` : `Round ${review.round}`;
 
   async function post(payload: Record<string, unknown>, key: string) {
     setBusy(key); setError(null);
@@ -266,10 +270,10 @@ export function PageReviewClient({
    */
   async function reopenRound(round: number, count: number) {
     const ok = await confirmDialog({
-      title: `Reopen Round ${round}?`,
+      title: `Reopen feedback from ${versionLabel} ${round}?`,
       description:
-        `${count} settled ${count === 1 ? "item" : "items"} from Round ${round} will be marked outstanding again and will appear in the next brief. ` +
-        `They stay recorded as Round ${round} — this changes their state, not their history.`,
+        `${count} settled ${count === 1 ? "item" : "items"} from ${versionLabel} ${round} will be marked outstanding again and will appear in the next brief. ` +
+        `They stay recorded under ${versionLabel} ${round} — this changes their state, not their history.`,
       confirmLabel: `Reopen ${count}`,
       cancelLabel: "Leave settled",
       tone: "warning",
@@ -310,12 +314,12 @@ export function PageReviewClient({
       {locked && !reportAnchor?.readOnly && (
         <div className="rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3">
           <p className="text-sm font-bold text-amber-900 inline-flex items-center gap-1.5">
-            <Lock size={13} /> Round {review.round} is locked
+            <Lock size={13} /> {currentLabel} · locked
           </p>
           <p className="text-xs text-amber-800 mt-1 leading-relaxed">
             {review.status === "closed"
               ? "This review is closed. Its comments are kept for reference."
-              : `It was exported, so the brief someone is working from stays exactly what you signed off. Comments reopen when you start Round ${review.round + 1}.`}
+              : newsletter ? "Open the next team review from the Newsletter Review tab." : `It was exported, so the brief someone is working from stays exactly what you signed off. Comments reopen when you start Round ${review.round + 1}.`}
           </p>
         </div>
       )}
@@ -373,7 +377,7 @@ export function PageReviewClient({
                     roundView === "all" ? "bg-card text-fg shadow-sm" : "text-muted hover:text-fg"
                   }`}
                 >
-                  All rounds ({tops.length})
+                  {newsletter ? "All versions" : "All rounds"} ({tops.length})
                 </button>
               </div>
               <span className="text-[11px] text-subtle">
@@ -400,7 +404,7 @@ export function PageReviewClient({
                       className="inline-flex items-center gap-1 rounded-lg bg-card px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-inset ring-amber-200 hover:bg-amber-50 disabled:opacity-50"
                     >
                       {busy === `reopen-${rd}` ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />}
-                      Reopen Round {rd} ({settled})
+                      Reopen {versionLabel} {rd} ({settled})
                     </button>
                   );
                 })}
@@ -561,7 +565,7 @@ export function PageReviewClient({
                         title={
                           c.round === review.round
                             ? "Mark this outstanding again"
-                            : `Raised in Round ${c.round}. Reopening puts it back in the brief without moving it out of that round.`
+                            : `Raised in ${versionLabel} ${c.round}. Reopening puts it back in the brief without changing its history.`
                         }
                         className="text-xs font-semibold text-amber-700 hover:text-amber-900 inline-flex items-center gap-1"
                       >
@@ -597,7 +601,7 @@ export function PageReviewClient({
               {review.url} <ExternalLink size={10} className="shrink-0" />
             </a>
             <p className="text-sm text-muted mt-2">
-              Round {review.round} · {openTops.length} open · {tops.length} total
+              {currentLabel} · {openTops.length} open · {tops.length} total
             </p>
             {isAdmin && (
               <div className="flex gap-2 mt-4 flex-wrap">
@@ -614,7 +618,7 @@ export function PageReviewClient({
                     {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}
                   </button>
                 )}
-                <button
+                {newsletter ? <a className="inline-flex items-center gap-2 rounded-xl bg-elevated px-3 py-2.5 text-sm font-semibold" href={`/admin/workspace/marketing/newsletter/review?issue=${encodeURIComponent(review.id.slice(11))}`}>Manage team review in Newsletter</a> : <button
                   type="button"
                   onClick={startNextRound}
                   disabled={busy !== null || currentRoundCommentCount === 0}
@@ -622,7 +626,7 @@ export function PageReviewClient({
                 >
                   {busy === "next-round" ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
                   Start Round {review.round + 1}
-                </button>
+                </button>}
                 <button
                   type="button"
                   onClick={deleteReview}

@@ -5,13 +5,15 @@ import { prisma } from "@/lib/prisma";
 import { reportTransaction } from "@/lib/symposium-report/store";
 import { reviewInviteUserIds, sendStaffReviewInvites, staffReviewRecipients } from "@/lib/workspace-review-invites";
 import { reviewSentHistory } from "@/lib/page-review/staff-history";
+import { openTeamRound } from "@/lib/page-review/open-team-round";
 import { SocialCommentDetail } from "./review";
 import { canReviewSocialCopy, socialCopyReviewId, socialCopyReviewPath, socialCopySnapshot } from "./copy-review";
 
 const INVITE = "social.copy_review.invite";
 
-export async function saveSocialCopyReview(postId: string, expectedRound: number, expectedVersion: number) {
+export async function saveSocialCopyReview(postId: string, expectedRound: number, expectedVersion: number, openNext?: number) {
   const session = await requireRole("admin").catch(() => null);
+  const actorName = session?.user?.name || "Staff editor";
   const actorId = (session?.user as { id?: string } | undefined)?.id;
   if (!actorId) return { ok: false, error: "Admin access required." };
   const id = socialCopyReviewId(postId);
@@ -21,10 +23,10 @@ export async function saveSocialCopyReview(postId: string, expectedRound: number
     if (post.editVersion !== expectedVersion) return { ok: false, error: "The draft changed. Refresh before saving a revision." };
     const snapshot = socialCopySnapshot(post.body, post.assetSpec);
     const serialized = JSON.stringify(snapshot);
-    const current = await tx.pageReview.findUnique({ where: { id }, select: { kind: true, round: true, status: true, pastedHtml: true } });
+    const current = await tx.pageReview.findUnique({ where: { id }, select: { id: true, title: true, kind: true, round: true, teamRound: true, status: true, pastedHtml: true } });
     if (!current) {
-      if (expectedRound !== 0) return { ok: false, error: "This review changed. Reload before saving." };
-      await tx.pageReview.create({ data: { id, kind: "social", url: socialCopyReviewPath(postId), title: snapshot.title, pastedHtml: serialized, createdById: actorId } });
+      if (expectedRound !== 0 || openNext !== undefined) return { ok: false, error: "This review changed. Reload before saving." };
+      await tx.pageReview.create({ data: { id, kind: "social", url: socialCopyReviewPath(postId), title: snapshot.title, pastedHtml: serialized, createdById: actorId, teamRound: 1 } });
       const legacy = await tx.auditLog.findMany({
         where: { action: "social.post.comment", targetType: "socialPost", targetId: postId },
         select: { id: true, detail: true, createdAt: true, actorId: true, actor: { select: { name: true } } },
@@ -41,9 +43,14 @@ export async function saveSocialCopyReview(postId: string, expectedRound: number
       return { ok: true };
     }
     if (current.kind !== "social" || current.status === "closed" || current.round !== expectedRound) return { ok: false, error: "This review changed. Reload before saving." };
+    if (openNext !== undefined) {
+      if (current.pastedHtml !== serialized) return { ok: false, error: "Save the current draft before opening the next team review." };
+      const opened = await openTeamRound(tx, current, { id: actorId, name: actorName }, expectedRound, openNext);
+      return opened ? { ok: true } : { ok: false, error: "The review changed. Reload before opening the next team review." };
+    }
     if (current.pastedHtml === serialized) return { ok: true };
     if (current.pastedHtml) await tx.pageReviewVersion.create({ data: { reviewId: id, round: current.round, html: current.pastedHtml } });
-    await tx.pageReview.update({ where: { id }, data: { round: { increment: 1 }, title: snapshot.title, status: "open", pastedHtml: serialized } });
+    await tx.pageReview.update({ where: { id }, data: { round: { increment: 1 }, title: snapshot.title, pastedHtml: serialized } });
     return { ok: true };
   });
 }

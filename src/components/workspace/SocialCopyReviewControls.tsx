@@ -9,8 +9,8 @@ import { socialCopyReviewApi, socialCopyReviewPath } from "@/lib/social/copy-rev
 import { ReviewGroupInvite } from "./ReviewGroupInvite";
 import { ReviewSentHistory } from "./ReviewSentHistory";
 
-export function SocialCopyReviewControls({ postId, round, editVersion, stale, open }: {
-  postId: string; round: number; editVersion: number; stale: boolean; open: boolean;
+export function SocialCopyReviewControls({ postId, round, teamRound, editVersion, stale, open }: {
+  postId: string; round: number; teamRound?: number; editVersion: number; stale: boolean; open: boolean;
 }) {
   const router = useRouter();
   const [busy, start] = useTransition();
@@ -29,8 +29,19 @@ export function SocialCopyReviewControls({ postId, round, editVersion, stale, op
             else window.location.reload();
           } catch { setError("Could not save the review. Reload and try again."); }
         });
-      }}><Save size={15} />{busy ? "Saving..." : round ? "Save revision" : "Start review"}</button>}
+      }}><Save size={15} />{busy ? "Saving..." : round ? "Save version" : "Open team review"}</button>}
       {round > 0 && <>
+        {open && !stale && <button type="button" disabled={busy} className="rounded-md border border-line px-3 py-2 text-xs font-semibold" onClick={() => {
+          if (!window.confirm("Open the saved version for the next team review? No invitations will be sent.")) return;
+          start(async () => {
+            setError("");
+            try {
+              const result = await saveSocialCopyReview(postId, round, editVersion, teamRound ?? 1);
+              if (result.ok) window.location.reload();
+              else setError(result.error ?? "Could not open team review.");
+            } catch { setError("Could not open team review. Reload and try again."); }
+          });
+        }}>Open next team review</button>}
         {open && <button type="button" className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-xs font-semibold" onClick={() => {
           document.querySelector("[data-copy-page]")?.dispatchEvent(new CustomEvent("bhn-report-comment", { bubbles: true }));
         }}><MessageSquarePlus size={14} />Comment on post</button>}

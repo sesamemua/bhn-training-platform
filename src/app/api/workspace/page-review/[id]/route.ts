@@ -18,6 +18,7 @@
  * not what every intermediate wording was.
  */
 import { captureReviewFeedback } from "@/lib/page-review/feedback-memory";
+import { isCurrentTeamFeedback, visibleTeamRound } from "@/lib/page-review/team-round";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
@@ -89,7 +90,7 @@ async function mutate(
 ) {
   const review = await db.pageReview.findUnique({
     where: { id },
-    select: { id: true, url: true, title: true, round: true, status: true },
+    select: { id: true, url: true, title: true, round: true, teamRound: true, teamRoundStartedAt: true, status: true },
   });
   if (!review) return NextResponse.json({ error: "No such review." }, { status: 404 });
 
@@ -122,8 +123,8 @@ async function mutate(
     if (body?.expectedRound !== review.round) return NextResponse.json({ error: "This review changed. Reload the current round before saving feedback." }, { status: 409 });
     const targetId = body?.commentId || body?.parentId;
     if (typeof targetId === "string") {
-      const target = await db.pageComment.findFirst({ where: { id: targetId, reviewId: id }, select: { round: true } });
-      if (!target || target.round !== review.round) return NextResponse.json({ error: "Earlier feedback is read-only. Add feedback to the current round." }, { status: 409 });
+      const target = await db.pageComment.findFirst({ where: { id: targetId, reviewId: id }, select: { round: true, createdAt: true } });
+      if (!target || !isCurrentTeamFeedback(review, target)) return NextResponse.json({ error: "Earlier feedback is read-only. Add feedback to the current review." }, { status: 409 });
     }
   }
   if (review.status !== "open" && WRITE_ACTIONS.includes(action)) {
@@ -297,6 +298,7 @@ async function mutate(
   // ── start the next revision round ────────────────────────────
   if (action === "startNextRound") {
     if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (id.startsWith("newsletter-")) return NextResponse.json({ error: "Use Open next team review in Newsletter Review." }, { status: 409 });
     const p = NextRoundSchema.safeParse(body);
     if (!p.success) return NextResponse.json({ error: "Bad request." }, { status: 400 });
 
@@ -347,7 +349,7 @@ async function mutate(
       take: PAGE_REVIEW_COMMENT_LIMIT,
     });
     const brief = buildBrief({
-      url: review.url, title: review.title, round: review.round, comments,
+      url: review.url, title: review.title, round: review.round, teamRound: visibleTeamRound(review), comments,
     });
     await db.pageReview.update({
       where: { id },

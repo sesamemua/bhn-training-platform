@@ -38,7 +38,7 @@ function thumbnail(document: Document): HTMLIFrameElement {
 }
 
 function historyLabels(document: Document): (string | null)[] {
-  return [...document.querySelectorAll('[aria-label="Revision history"] button')].map((element) => element.textContent);
+  return [...document.querySelectorAll('[aria-label="Version history"] button')].map((element) => element.textContent);
 }
 
 function parse(element: ReactElement) {
@@ -63,6 +63,7 @@ async function mount(element: ReactElement, fetch: (request: FetchRequest) => Pr
   await act(async () => root.render(element));
   return {
     document: dom.window.document, requests,
+    confirm: (approved: boolean) => { dom.window.confirm = () => approved; },
     async click(text: string) { await act(async () => button(dom.window.document, text).click()); },
     async dispose() {
       await act(async () => root.unmount());
@@ -85,19 +86,19 @@ test("overview initially identifies the issue, shows the saved thumbnail and ord
     const { document } = dom.window;
     assert.match(document.body.textContent!, /Issue 2026-11/);
     assert.equal(document.querySelector("h2")?.textContent, "November 2026 Newsletter");
-    assert.match(document.body.textContent!, /Revision Round 4/);
-    assert.deepEqual(historyLabels(document), ["Round 4 · Current", "Round 3", "Round 2", "Round 1"]);
-    assert.equal(button(document, "Round 4 · Current").getAttribute("aria-pressed"), "true");
+    assert.match(document.body.textContent!, /Saved version 4/);
+    assert.deepEqual(historyLabels(document), ["Version 4 · Current", "Version 3", "Version 2", "Version 1"]);
+    assert.equal(button(document, "Version 4 · Current").getAttribute("aria-pressed"), "true");
     const frame = thumbnail(document);
     assert.equal(frame.getAttribute("src"), `${preview}?round=4`);
-    assert.equal(frame.title, "November 2026 Newsletter — Round 4 thumbnail");
+    assert.equal(frame.title, "November 2026 Newsletter — Version 4 thumbnail");
     assert.equal(frame.getAttribute("sandbox"), "");
     assert.equal(frame.getAttribute("referrerpolicy"), "no-referrer");
     assert.equal(frame.tabIndex, -1);
     assert.equal(frame.hasAttribute("srcdoc"), false);
     assert.equal(frame.parentElement?.getAttribute("aria-hidden"), "true");
     assert.ok(frame.parentElement?.classList.contains("pointer-events-none"));
-    assert.equal(frame.closest("a")?.getAttribute("aria-label"), "Open November 2026 Newsletter, Round 4");
+    assert.equal(frame.closest("a")?.getAttribute("aria-label"), "Open November 2026 Newsletter, Version 4");
     assert.equal(frame.closest("a")?.getAttribute("target"), "_blank");
     assert.equal(frame.closest("a")?.getAttribute("rel"), "noopener noreferrer");
     assert.equal(document.querySelectorAll("iframe").length, 1);
@@ -121,7 +122,7 @@ test("pending and closed previews stay authenticated and read-only; open and exp
       assert.equal(document.body.textContent!.includes("Copy review link"), activeReview);
       assert.equal(document.querySelector('[href*="/api/public/"]'), null);
       if (!activeReview) assert.equal(document.querySelector('[href$="/launch"]'), null);
-      if (status === "closed") assert.doesNotMatch(document.body.textContent!, /Save revision|Open team review/);
+      if (status === "closed") assert.doesNotMatch(document.body.textContent!, /Save version|Open team review/);
     } finally { dom.window.close(); }
   }
 });
@@ -143,8 +144,8 @@ test("unsaved issues never imply a saved preview, even when an editable draft st
   const dom = parse(createElement(NewsletterPageReview, { ...props, initialReview: null, initialRounds: [] }));
   try {
     assert.equal(thumbnail(dom.window.document).getAttribute("src"), preview);
-    assert.match(dom.window.document.body.textContent!, /Ready for a first revision/);
-    assert.match(dom.window.document.body.textContent!, /No earlier rounds saved yet/);
+    assert.match(dom.window.document.body.textContent!, /Team review not yet open/);
+    assert.match(dom.window.document.body.textContent!, /No earlier versions saved yet/);
   } finally { dom.window.close(); }
 });
 
@@ -157,7 +158,7 @@ test("an open review without saved review HTML uses the private issue preview un
     assert.equal(thumbnail(app.document).closest("a")?.getAttribute("href"), preview);
     assert.equal(thumbnail(app.document).getAttribute("src"), preview, "A saved issue without saved review HTML cannot claim an unavailable numbered revision");
     assert.equal(app.document.querySelector('[href$="/launch"]'), null);
-    await app.click("Save revision");
+    await app.click("Save version");
     assert.equal(app.document.querySelector("a.newsletter-review-launch")?.getAttribute("href"), launch);
     assert.equal(thumbnail(app.document).getAttribute("src"), `${preview}?round=5`);
     assert.equal(app.requests.length, 1);
@@ -170,51 +171,69 @@ test("historical buttons show the exact read-only round without fetching or chan
     assert.doesNotMatch(app.document.body.textContent!, /Save draft|Open team review/);
     const latestFrame = thumbnail(app.document);
     for (const round of [3, 1, 2]) {
-      await app.click(`Round ${round}`);
+      await app.click(`Version ${round}`);
       const frame = thumbnail(app.document);
       assert.notEqual(frame, latestFrame, "Changing a round remounts its isolated thumbnail");
       assert.equal(frame.getAttribute("src"), `${preview}?round=${round}`);
       assert.equal(frame.closest("a")?.getAttribute("href"), `${preview}?round=${round}`);
-      assert.equal(frame.title, `November 2026 Newsletter — Round ${round} thumbnail`);
-      assert.equal(button(app.document, `Round ${round}`).getAttribute("aria-pressed"), "true");
-      assert.equal(button(app.document, "Round 4 · Current").getAttribute("aria-pressed"), "false");
-      const historical = [...app.document.querySelectorAll("a")].find((link) => link.textContent === "Open this round full-page");
+      assert.equal(frame.title, `November 2026 Newsletter — Version ${round} thumbnail`);
+      assert.equal(button(app.document, `Version ${round}`).getAttribute("aria-pressed"), "true");
+      assert.equal(button(app.document, "Version 4 · Current").getAttribute("aria-pressed"), "false");
+      const historical = [...app.document.querySelectorAll("a")].find((link) => link.textContent === "Open this version full-page");
       assert.equal(historical?.getAttribute("href"), `${preview}?round=${round}`);
-      assert.match(app.document.body.textContent!, new RegExp(`Previewing Round ${round} · read-only`));
-      assert.match(app.document.body.textContent!, /Revision Round 4/);
+      assert.match(app.document.body.textContent!, new RegExp(`Previewing Version ${round} · read-only`));
+      assert.match(app.document.body.textContent!, /Saved version 4/);
       assert.equal(app.document.querySelector("a.newsletter-review-launch")?.getAttribute("href"), preview);
     }
-    await app.click("Round 4 · Current");
+    await app.click("Version 4 · Current");
     assert.equal(thumbnail(app.document).getAttribute("src"), `${preview}?round=4`);
-    assert.equal(button(app.document, "Round 4 · Current").getAttribute("aria-pressed"), "true");
-    assert.doesNotMatch(app.document.body.textContent!, /Previewing Round|Open this round full-page/);
+    assert.equal(button(app.document, "Version 4 · Current").getAttribute("aria-pressed"), "true");
+    assert.doesNotMatch(app.document.body.textContent!, /Previewing Version|Open this version full-page/);
     assert.deepEqual(app.requests, [], "Preview selection is local; it does not mutate review state or send invitations");
   } finally { await app.dispose(); }
 });
 
-test("saving a revision advances its round, history and thumbnail only after the server confirms success", async () => {
+test("saving a revision advances the version, history and thumbnail only after the server confirms success", async () => {
   let complete: (response: Response) => void = () => { throw new Error("No save started"); };
   const app = await mount(createElement(NewsletterPageReview, { ...props, initialReview: { ...props.initialReview!, status: "open" } }), async () => new Promise<Response>((resolve) => { complete = resolve; }));
   try {
     const before = thumbnail(app.document);
-    await app.click("Save revision");
+    await app.click("Save version");
     assert.equal(app.requests.length, 1);
     assert.equal(app.requests[0].url, "/api/workspace/newsletter/november/review");
     assert.equal(app.requests[0].init?.method, "POST");
     assert.deepEqual(JSON.parse(app.requests[0].init!.body as string), { action: "revise", html: props.html, round: 4 });
-    assert.equal(button(app.document, "Save revision").disabled, true);
+    assert.equal(button(app.document, "Save version").disabled, true);
     assert.equal(thumbnail(app.document), before);
-    assert.deepEqual(historyLabels(app.document), ["Round 4 · Current", "Round 3", "Round 2", "Round 1"]);
+    assert.deepEqual(historyLabels(app.document), ["Version 4 · Current", "Version 3", "Version 2", "Version 1"]);
     await act(async () => { complete(reply(5, "open")); });
-    assert.equal(button(app.document, "Save revision").disabled, false);
-    assert.match(app.document.body.textContent!, /Revision Round 5/);
-    assert.deepEqual(historyLabels(app.document), ["Round 5 · Current", "Round 4", "Round 3", "Round 2", "Round 1"]);
+    assert.equal(button(app.document, "Save version").disabled, false);
+    assert.match(app.document.body.textContent!, /Saved version 5/);
+    assert.match(app.document.body.textContent!, /Team review · Round 1/);
+    assert.deepEqual(historyLabels(app.document), ["Version 5 · Current", "Version 4", "Version 3", "Version 2", "Version 1"]);
     assert.equal(thumbnail(app.document).getAttribute("src"), `${preview}?round=5`);
     assert.notEqual(thumbnail(app.document), before);
     assert.equal(app.document.querySelector("a.newsletter-review-launch")?.getAttribute("href"), launch);
-    await app.click("Round 4");
+    await app.click("Version 4");
     assert.equal(thumbnail(app.document).getAttribute("src"), `${preview}?round=4`);
     assert.equal(app.requests.length, 1);
+  } finally { await app.dispose(); }
+});
+
+test("explicitly opening the next team review leaves the current version and all earlier snapshots in place", async () => {
+  const app = await mount(createElement(NewsletterPageReview, { ...props, initialReview: { ...props.initialReview!, status: "open", teamRound: 1 } }), async () =>
+    Response.json({ review: { id: "newsletter-november", round: 4, status: "open", teamRound: 2 } }));
+  try {
+    const thumbnailBefore = thumbnail(app.document);
+    app.confirm(false);
+    await app.click("Open next team review");
+    assert.equal(app.requests.length, 0);
+    app.confirm(true);
+    await app.click("Open next team review");
+    assert.deepEqual(JSON.parse(app.requests[0].init!.body as string), { action: "next", html: props.html, round: 4, teamRound: 1 });
+    assert.match(app.document.body.textContent!, /Team review · Round 2/);
+    assert.equal(thumbnail(app.document), thumbnailBefore);
+    assert.deepEqual(historyLabels(app.document), ["Version 4 · Current", "Version 3", "Version 2", "Version 1"]);
   } finally { await app.dispose(); }
 });
 
@@ -223,7 +242,7 @@ test("saving a pending draft does not open team review, and an unchanged save do
   try {
     await app.click("Save draft");
     assert.deepEqual(JSON.parse(app.requests[0].init!.body as string), { action: "revise", html: props.html, round: 4 });
-    assert.deepEqual(historyLabels(app.document), ["Round 4 · Current", "Round 3", "Round 2", "Round 1"]);
+    assert.deepEqual(historyLabels(app.document), ["Version 4 · Current", "Version 3", "Version 2", "Version 1"]);
     assert.equal(thumbnail(app.document).getAttribute("src"), `${preview}?round=4`);
     assert.equal(app.document.querySelector("a.newsletter-review-launch")?.getAttribute("href"), preview);
     assert.doesNotMatch(app.document.body.textContent!, /Send review request|Copy review link/);
@@ -233,15 +252,16 @@ test("saving a pending draft does not open team review, and an unchanged save do
 });
 
 test("a first successful save enables the saved-round thumbnail and does not invent historical versions", async () => {
-  const app = await mount(createElement(NewsletterPageReview, { ...props, initialReview: null, initialHasSavedPreview: false, initialRounds: [] }), async () => reply(1, "open"));
+  const app = await mount(createElement(NewsletterPageReview, { ...props, initialReview: null, initialHasSavedPreview: false, initialRounds: [] }), async () => reply(1));
   try {
     assert.equal(app.document.querySelector("iframe"), null);
-    await app.click("Start review");
+    await app.click("Save draft");
     assert.deepEqual(JSON.parse(app.requests[0].init!.body as string), { action: "open", html: props.html });
     assert.equal(thumbnail(app.document).getAttribute("src"), `${preview}?round=1`);
-    assert.deepEqual(historyLabels(app.document), ["Round 1 · Current"]);
-    assert.match(app.document.body.textContent!, /No earlier rounds saved yet/);
-    assert.equal(app.document.querySelector("a.newsletter-review-launch")?.getAttribute("href"), launch);
+    assert.deepEqual(historyLabels(app.document), ["Version 1 · Current"]);
+    assert.match(app.document.body.textContent!, /No earlier versions saved yet/);
+    assert.equal(app.document.querySelector("a.newsletter-review-launch")?.getAttribute("href"), preview);
+    assert.match(app.document.body.textContent!, /Team review not yet open/);
   } finally { await app.dispose(); }
 });
 
@@ -253,15 +273,15 @@ test("failed saves announce the error and retain the previous round, historical 
       return Response.json({ error: "This issue changed. Reload before saving." }, { status: 409 });
     });
     try {
-      await app.click("Round 2");
+      await app.click("Version 2");
       const before = thumbnail(app.document);
       await app.click("Save draft");
       assert.equal(app.document.querySelector('[role="alert"]')?.textContent, mode === "network" ? "Connection lost" : mode === "missing review" ? "Could not save the review." : "This issue changed. Reload before saving.");
       assert.equal(button(app.document, "Save draft").disabled, false);
       assert.equal(thumbnail(app.document), before);
       assert.equal(thumbnail(app.document).getAttribute("src"), `${preview}?round=2`);
-      assert.deepEqual(historyLabels(app.document), ["Round 4 · Current", "Round 3", "Round 2", "Round 1"]);
-      assert.match(app.document.body.textContent!, /Revision Round 4/);
+      assert.deepEqual(historyLabels(app.document), ["Version 4 · Current", "Version 3", "Version 2", "Version 1"]);
+      assert.match(app.document.body.textContent!, /Saved version 4/);
       assert.match(app.document.body.textContent!, /Draft only — team review is not open yet/);
       assert.equal(app.requests.length, 1);
     } finally { await app.dispose(); }

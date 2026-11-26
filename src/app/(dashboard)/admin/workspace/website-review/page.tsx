@@ -16,6 +16,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageReviewClient } from "@/components/workspace/PageReviewClient";
+import { visibleTeamRound } from "@/lib/page-review/team-round";
 import { NewPageReviewForm } from "@/components/workspace/NewPageReviewForm";
 import { BookmarkletPanel } from "@/components/workspace/BookmarkletPanel";
 import { ReviewIndex, ReviewIndexEmpty, type ReviewSummary } from "@/components/workspace/ReviewIndex";
@@ -58,7 +59,7 @@ export default async function WebsiteReviewPage({
     orderBy: { updatedAt: "desc" },
     take: 50,
     select: {
-      id: true, url: true, title: true, status: true, round: true, updatedAt: true,
+      id: true, url: true, title: true, status: true, round: true, teamRound: true, updatedAt: true,
       _count: { select: { comments: true } },
     },
   });
@@ -88,7 +89,7 @@ export default async function WebsiteReviewPage({
       else if (g.round === rv.round) settledCount += g._count._all;
     }
     return {
-      id: rv.id, url: rv.url, title: rv.title, status: rv.status, round: rv.round,
+      id: rv.id, url: rv.url, title: rv.title, status: rv.status, round: rv.round, teamRound: visibleTeamRound(rv),
       updatedAt: rv.updatedAt.toISOString(),
       openCount, settledCount, totalComments: rv._count.comments,
     };
@@ -151,7 +152,7 @@ export default async function WebsiteReviewPage({
           <PageReviewClient
             initialReview={{
               id: active.id, url: active.url, title: active.title,
-              status: active.status, round: active.round,
+              status: active.status, round: active.round, teamRound: active.teamRound,
               comments: active.comments.map((c) => ({
                 id: c.id, parentId: c.parentId, round: c.round,
                 anchorQuote: c.anchorQuote, anchorKey: c.anchorKey,

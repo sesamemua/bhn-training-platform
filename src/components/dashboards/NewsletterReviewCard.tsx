@@ -40,7 +40,8 @@ export function NewsletterReviewCard({ initial }: { initial: NewsletterDashboard
   const desk = `/admin/workspace/marketing/newsletter/review${newsletter?.issueId ? `?issue=${encodeURIComponent(newsletter.issueId)}` : ""}`;
   const href = !unavailable && !newsletter?.sent && review && (ready || locked)
     ? `/api/workspace/page-review/${encodeURIComponent(review.id)}/launch` : desk;
-  const status = unavailable ? "Status unavailable" : newsletter?.sent ? "Newsletter sent" : ready ? `Round ${review!.round} is open` : locked ? `Round ${review!.round} is locked` : closed ? `Round ${review!.round} is closed` : "Review not open yet";
+  const teamRound = review?.teamRound ?? 1;
+  const status = unavailable ? "Status unavailable" : newsletter?.sent ? "Newsletter sent" : ready ? `Team review round ${teamRound} is open` : locked ? `Team review round ${teamRound} is locked` : closed ? `Team review round ${teamRound} is closed` : "Review not open yet";
   const action = ready ? "Start reviewing" : locked ? "View locked round" : "Open newsletter desk";
   const Icon = locked || closed ? LockKeyhole : MessageSquareText;
 

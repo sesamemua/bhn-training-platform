@@ -32,7 +32,7 @@ test("dashboard lookup follows the calendar issue and reads only public status f
         findUnique: async ({ where }: any) => { reads++; assert.equal(where.id, "november"); return issue; },
         findFirst: async ({ where, orderBy }: any) => { assert.equal(where.status.not, "sent"); assert.deepEqual(orderBy, { createdAt: "desc" }); return issue; },
       },
-      pageReview: { findUnique: async ({ where, select }: any) => { assert.equal(where.id, "newsletter-november"); assert.deepEqual(select, { id: true, round: true, status: true }); return { id: where.id, round: 2, status: "open" }; } },
+      pageReview: { findUnique: async ({ where, select }: any) => { assert.equal(where.id, "newsletter-november"); assert.deepEqual(select, { id: true, round: true, teamRound: true, status: true }); return { id: where.id, round: 2, status: "open" }; } },
     } },
   });
   assert.equal((await fixture.loadNewsletterDashboardReview()).review.round, 2);
@@ -64,9 +64,9 @@ test("dashboard status endpoint requires staff, avoids caching and fails without
 const initial = { issueId: "november", title: "November 2026 Newsletter", sent: false, review: { id: "newsletter-november", round: 2, status: "open" } };
 test("card links directly to the open reviewer and distinguishes locked, closed, sent and not-yet-open states", () => {
   const markup = (status: string) => renderToStaticMarkup(createElement(NewsletterReviewCard, { initial: { ...initial, review: { ...initial.review, status } } }));
-  assert.match(markup("open"), /Round 2 is open/); assert.match(markup("open"), /href="\/api\/workspace\/page-review\/newsletter-november\/launch"/);
-  assert.match(markup("exported"), /Round 2 is locked/); assert.match(markup("exported"), /Wait until they are complete and the next round opens/); assert.doesNotMatch(markup("exported"), /Start reviewing/);
-  assert.match(markup("closed"), /Round 2 is closed/); assert.doesNotMatch(markup("closed"), /\/launch/);
+  assert.match(markup("open"), /Team review round 1 is open/); assert.match(markup("open"), /href="\/api\/workspace\/page-review\/newsletter-november\/launch"/);
+  assert.match(markup("exported"), /Team review round 1 is locked/); assert.match(markup("exported"), /Wait until they are complete and the next round opens/); assert.doesNotMatch(markup("exported"), /Start reviewing/);
+  assert.match(markup("closed"), /Team review round 1 is closed/); assert.doesNotMatch(markup("closed"), /\/launch/);
   assert.equal(renderToStaticMarkup(createElement(NewsletterReviewCard, { initial: { ...initial, sent: true } })), "");
   assert.equal(renderToStaticMarkup(createElement(NewsletterReviewCard, { initial: { ...initial, review: null } })), "");
   assert.equal(markup("pending"), "");
@@ -87,7 +87,7 @@ test("draft review stays hidden while mounted, then explicit opening reveals the
     assert.equal(dom.window.document.querySelector('[data-newsletter-review-tile]'), null);
     data = { ...initial, review: { ...initial.review, status: "open" } };
     await act(async () => { dom.window.dispatchEvent(new dom.window.Event("focus")); });
-    assert.match(dom.window.document.body.textContent!, /Round 2 is open/);
+    assert.match(dom.window.document.body.textContent!, /Team review round 1 is open/);
     assert.ok(dom.window.document.querySelector('[data-newsletter-review-tile]'));
   } finally {
     await act(async () => root.unmount()); dom.window.close();
@@ -99,9 +99,11 @@ test("opening team review is explicit and guarded; saving a draft never makes it
   let authorized = true, sent = false, racing = false;
   let row: any = { id: "newsletter-november", round: 2, status: "pending", pastedHtml: "saved draft", shareToken: "same-token" };
   const archives: any[] = [];
+  const activities: any[] = [];
   const db: any = {
     newsletterIssue: { findUnique: async () => ({ title: "November", status: sent ? "sent" : "generated" }), update: async () => {} },
     pageReviewVersion: { upsert: async (input: any) => archives.push(input) },
+    reviewFeedbackMemory: { create: async (input: any) => activities.push(input.data) },
     pageReview: {
       findUnique: async () => ({ ...row }),
       updateMany: async ({ where, data }: any) => {
@@ -128,8 +130,17 @@ test("opening team review is explicit and guarded; saving a draft never makes it
   racing = true; assert.equal((await open()).status, 409); racing = false;
   const before = { ...row };
   const opened = await (await open()).json(); assert.equal(opened.review.status, "open");
+  assert.equal(opened.review.teamRound, 1);
   assert.equal(row.round, before.round); assert.equal(row.pastedHtml, before.pastedHtml); assert.equal(row.shareToken, "same-token"); assert.equal(archives.length, 1);
   assert.equal((await open()).status, 200);
+  assert.equal(activities.length, 1);
+  const edited = await (await call({ action: "revise", html: "team draft with a correction", round: row.round })).json();
+  assert.equal(edited.review.round, before.round + 1); assert.equal(edited.review.teamRound, 1);
+  const next = () => call({ action: "next", html: row.pastedHtml, round: row.round, teamRound: 1 });
+  assert.equal((await next()).status, 200);
+  assert.equal(row.round, edited.review.round); assert.equal(row.teamRound, 2); assert.equal(archives.length, 2);
+  assert.equal((await next()).status, 409);
+  assert.deepEqual(activities.map(a => JSON.parse(a.detail).source.context), [{ teamRound: 1, savedVersion: before.round }, { teamRound: 2, savedVersion: edited.review.round }]);
   row.status = "exported"; assert.equal((await open()).status, 409);
   row.status = "closed"; assert.equal((await open()).status, 409);
 });
@@ -165,10 +176,12 @@ test("card refreshes rounds and locks on focus, rejects stale status after failu
   try {
     await act(async () => root.render(createElement(NewsletterReviewCard, { initial })));
     data = { ...initial, review: { ...initial.review, status: "exported" } }; await focus();
-    assert.match(dom.window.document.body.textContent!, /Round 2 is locked/);
+    assert.match(dom.window.document.body.textContent!, /Team review round 1 is locked/);
     data = { ...initial, review: { ...initial.review, round: 3 } }; await focus();
-    assert.match(dom.window.document.body.textContent!, /Round 3 is open/);
-    fail = true; await focus(); assert.match(dom.window.document.body.textContent!, /Status unavailable/); assert.doesNotMatch(dom.window.document.body.textContent!, /Round 3 is open/);
+    assert.match(dom.window.document.body.textContent!, /Team review round 1 is open/);
+    data = { ...data, review: { ...data.review, teamRound: 2 } }; await focus();
+    assert.match(dom.window.document.body.textContent!, /Team review round 2 is open/);
+    fail = true; await focus(); assert.match(dom.window.document.body.textContent!, /Status unavailable/); assert.doesNotMatch(dom.window.document.body.textContent!, /Team review round 2 is open/);
     pending = true; await focus(); const before = calls; await focus(); assert.equal(calls, before);
     await act(async () => root.unmount()); assert.equal(signal!.aborted, true);
   } finally {

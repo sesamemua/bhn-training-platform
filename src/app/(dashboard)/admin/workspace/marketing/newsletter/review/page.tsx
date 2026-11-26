@@ -10,6 +10,7 @@ import { requireRole, deniedRedirect } from "@/lib/auth";
 import { resolveCurrentIssue } from "@/lib/newsletter/currentIssue";
 import { activeNewsletterReviewIssue } from "@/lib/newsletter/active-review-issue";
 import { getNewsletterConfig, isApprover } from "@/lib/newsletter/config";
+import { visibleTeamRound } from "@/lib/page-review/team-round";
 import { prisma } from "@/lib/prisma";
 import { PageHero } from "@/components/ui/PageHero";
 import { NewsletterNav } from "@/components/workspace/NewsletterNav";
@@ -148,7 +149,7 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
 
   const review = await prisma.pageReview.findUnique({
     where: { id: `newsletter-${issue.id}` },
-    select: { id: true, round: true, status: true, pastedHtml: true, snapshotHtml: true, snapshotAt: true,
+    select: { id: true, round: true, teamRound: true, status: true, pastedHtml: true, snapshotHtml: true, snapshotAt: true,
       versions: { select: { round: true, createdAt: true }, orderBy: { round: "desc" } },
       _count: { select: { comments: { where: { status: "open", parentId: null } } } } },
   });
@@ -187,7 +188,7 @@ export default async function NewsletterReviewPage({ searchParams }: { searchPar
         initialHasSavedPreview={!!(savedReviewHtml || savedIssueHtml)}
         initialHasReviewHtml={!!savedReviewHtml}
         html={html}
-        initialReview={review ? { id: review.id, round: review.round, status: review.status } : null}
+        initialReview={review ? { id: review.id, round: review.round, teamRound: visibleTeamRound(review), status: review.status } : null}
         canEdit={role === "admin" || role === "superadmin"}
         initialPaste={savedReviewHtml ?? savedIssueHtml ?? (pastedReview?.title.toLowerCase().includes(issue.dateline.toLowerCase()) ? pastedReview.code : "")}
       />

@@ -19,6 +19,9 @@ async function main() {
     for (const surface of ["newsletter", "social", "report", "website", "guest"] as const) {
       const htmlReview = surface === "newsletter", site = surface === "website" || surface === "guest";
       const social = surface === "social", staff = surface === "report" || social;
+      const versioned = htmlReview || social;
+      let savedVersion = 5;
+      const label = () => versioned ? `Team review · Round 2 · Version ${savedVersion} · Reviewer` : "Round 5 · Reviewer";
       const endpoint = origin + "/api/review/" + surface, staffPath = staff ? origin + "/api/staff/" + surface : null;
       let draft: Draft | null = null, puts = 0, deletes = 0, posted = 0, sharedSaves = 0;
       const copyTag = htmlReview ? "div" : "p";
@@ -32,7 +35,7 @@ async function main() {
         ${staff ? "</article></div></div>" : ""}
         <button id="outside" style="position:fixed;top:110px;left:12px">Leave editing</button>
         <div style="height:1400px" aria-hidden="true"></div>
-        <script data-viewer="fixture" data-round="5">${overlaySource(endpoint, "Test Review", true, staffPath, social ? "social" : "report", { contextualHtml: htmlReview, website: site })}</script>
+        <script data-viewer="fixture" data-round="${savedVersion}">${overlaySource(endpoint, "Test Review", true, staffPath, social ? "social" : "report", { contextualHtml: htmlReview, website: site })}</script>
         </body></html>`;
       const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, PUT, POST, PATCH, DELETE, OPTIONS" };
       await page.route(origin + "/source/" + surface, route => route.fulfill({ contentType: "text/html; charset=utf-8",
@@ -40,10 +43,10 @@ async function main() {
       await page.route(endpoint + "**", async route => {
         const { pathname } = new URL(route.request().url()), method = route.request().method();
         if (method === "OPTIONS") return route.fulfill({ headers: cors, status: 204 });
-        if (pathname.endsWith("/document") && method === "GET") return route.fulfill({ headers: cors, json: { ok: true, editable: true, round: 5 } });
+        if (pathname.endsWith("/document") && method === "GET") return route.fulfill({ headers: cors, json: { ok: true, editable: true, round: savedVersion } });
         if (method === "POST") posted++;
         if (method === "PATCH") {
-          sharedSaves++;
+          sharedSaves++; savedVersion++;
           const { edits } = route.request().postDataJSON();
           assert.equal(edits[0].after, htmlReview ? "Original\n" : "Original\n paragraph.");
           if (htmlReview) {
@@ -51,7 +54,7 @@ async function main() {
               .trim().replace(/^<div[^>]*>|<\/div>$/g, "");
           } else copy = edits[0].after;
         }
-        return route.fulfill({ headers: cors, json: { ok: true, viewer: { name: "Reviewer", id: surface === "guest" ? "" : "fixture" }, review: { title: "Test", round: 5, status: "open" }, comments: [] } });
+        return route.fulfill({ headers: cors, json: { ok: true, viewer: { name: "Reviewer", id: surface === "guest" ? "" : "fixture" }, review: { title: "Test", round: savedVersion, status: "open", ...(versioned ? { teamRound: 2, teamRoundStartedAt: "2026-11-26T13:00:00Z" } : {}) }, comments: [] } });
       });
       if (surface === "report") {
         await page.addInitScript(() => document.addEventListener("bhn-review-replace-text", e => {
@@ -76,8 +79,8 @@ async function main() {
         return route.fulfill({ headers: cors, json: { ok: true, etag } });
       });
       await page.goto(origin + "/source/" + surface + "#review-notes");
-      if (htmlReview) await expect(page.getByRole("button", { name: "Save revision" })).toBeVisible();
-      await expect(page.getByText("Round 5 · Reviewer")).toBeVisible();
+      if (htmlReview) await expect(page.getByRole("button", { name: "Save version" })).toBeVisible();
+      await expect(page.getByText(label())).toBeVisible();
       await page.locator("#paragraph").click();
       const editor = page.locator("[data-bhn-rv-inline-text]"), tools = page.getByRole("group", { name: "Paragraph actions" });
       await expect(editor).toBeFocused();
@@ -103,7 +106,7 @@ async function main() {
       await expect(editor).toBeFocused();
       assert.equal(sharedSaves, 0);
       assert.equal(posted, 0);
-      await expect(page.getByText("Round 5 · Reviewer")).toBeVisible();
+      await expect(page.getByText(label())).toBeVisible();
       if (surface !== "guest") {
         await editor.fill("An intermediate draft.");
         await page.clock.runFor(8000);
@@ -117,8 +120,8 @@ async function main() {
         assert.equal(puts, 2, "no more writes while idle");
       }
       await page.reload();
-      if (htmlReview) await expect(page.getByRole("button", { name: "Save revision" })).toBeVisible();
-      await expect(page.getByText("Round 5 · Reviewer")).toBeVisible();
+      if (htmlReview) await expect(page.getByRole("button", { name: "Save version" })).toBeVisible();
+      await expect(page.getByText(label())).toBeVisible();
       await page.locator("#paragraph").click();
       await tools.getByRole("button", { name: "Restore saved draft" }).click();
       await expect(editor).toBeFocused();
@@ -155,11 +158,12 @@ async function main() {
           assert.equal(await page.locator("html").getAttribute("data-report-replacement"), "Original\n paragraph.");
         } else {
           await expect.poll(() => sharedSaves).toBe(1);
+          await expect(page.getByText("Team review · Round 2 · Version 6 · Reviewer")).toBeVisible();
           await expect.poll(() => page.evaluate(() => ({ y: window.scrollY, hash: location.hash })))
             .toEqual({ y: originalY, hash: "#review-notes" });
           if (htmlReview) {
             await expect(page.locator("#paragraph strong br")).toHaveCount(1);
-            await expect(page.getByRole("button", { name: "Save revision" })).toBeVisible();
+            await expect(page.getByRole("button", { name: "Save version" })).toBeVisible();
             await page.locator("#paragraph").click();
             assert.equal(await editor.evaluate(node => node.textContent), "Original\n paragraph.");
             await editor.press("Escape");
