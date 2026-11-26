@@ -11,6 +11,8 @@ import { editableTextNodes, planTextBlockEdits } from "./editable-text";
 import { htmlActionsSource } from "./html-actions-source";
 import { htmlImageSource } from "./html-image-source";
 import { textEditorSource } from "./text-editor-source";
+import { inPlaceTextSource } from "./in-place-text-source";
+import { renderTextMarks } from "./text-marks";
 import { surfaceAdaptersSource } from "./surface-adapters-source";
 import type { ReviewMediaTools } from "./media-tools";
 
@@ -34,6 +36,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var htmlTargets = (function(__name){return (${createHtmlReviewTargets.toString()})(document);})(function(value){return value;});
   var editableTextNodes = ${editableTextNodes.toString()};
   var planTextBlockEdits = (function(__name){return (${planTextBlockEdits.toString()});})(function(value){return value;});
+  var renderTextMarks = ${renderTextMarks.toString()};
   var originalTextNodes=htmlReview?editableTextNodes(document):[];
   var originalTextValues=originalTextNodes.map(function(node){return node.data;});
   var originalReviewImages=htmlReview?Array.from(document.querySelectorAll('img')).filter(function(node){return !node.closest('[data-bhn-review-ui],#bhn-review-overlay');}):[];
@@ -1575,11 +1578,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if(htmlReviewDialog)return;
       if(!state.viewer&&!htmlReview)return;
       if(event.target.closest?.('input,textarea,select,[data-bhn-review-ui]')||(websiteReview&&event.target.closest?.('form,button')&&!state.pickingElement))return;
+      if(reviewTextSession?.inPlace&&!reviewTextSession.draftDirty)reviewTextSession.close(false);
       if(reviewTextSession){event.preventDefault();event.stopPropagation();return;}
       var target=reviewElement(event);if(!target){closeHtmlActions(false);return;}
       if(!state.pickingElement){
         // Native report fields retain direct keyboard edits; the menu is the pointer entry point.
-        event.preventDefault();event.stopPropagation();openHtmlActions(target,event);return;
+        event.preventDefault();event.stopPropagation();
+        if(htmlReview&&target.tagName==='P'&&!event.target.closest('a,button')&&openHtmlTextEditor(target,true,event))return;
+        openHtmlActions(target,event);return;
       }
       event.preventDefault();event.stopPropagation();
       if(isLocked()||!state.viewer||reviewChangesPending()||htmlImageSaving()||state.saving||state.selected||state.replyTo!==null||state.editingId!==null)return;
@@ -1612,6 +1618,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       viewportFrame=null;
       constrainPanel();fitReviewPanel();
       if(contextualReview)reportCommentPosition();
+      if(reviewTextSession?.position)reviewTextSession.position();
       if(reportReview){reportMenuPosition();reportDrawRefresh();}
       if(highlightedNode)showHighlight(highlightedNode);
       positionTagHistory();syncMarkers();
@@ -1654,6 +1661,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   ${htmlImageSource()}
   ${surfaceAdaptersSource()}
   ${textEditorSource()}
+  ${inPlaceTextSource()}
   ${contextualSource()}
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);

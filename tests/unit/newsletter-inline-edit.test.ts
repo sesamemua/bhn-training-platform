@@ -116,6 +116,24 @@ test("saving one batch produces one archived round, updated export, and an attri
   assert.match(f.issue(), /Edited title/);
   assert.equal(f.audit[0].actorId, "staff");
 });
+test("format-only saves archive an exact prior round and preserve the link; only valid bold and italic ranges are accepted", async () => {
+  const f = fixture();
+  const patch = { index: 2, before: "Register", after: "Register",
+    marks: [{ kind: "bold", start: 0, end: 8 }, { kind: "italic", start: 0, end: 8 }] };
+  for (const extra of [
+    { ...patch, marks: [{ kind: "size", start: 0, end: 8 }] },
+    { ...patch, marks: [{ kind: "bold", start: 0, end: 20 }] },
+    { ...patch, list: true },
+  ]) assert.equal((await f.call("PATCH", { ...f.payload, edits: [extra] })).status, 400);
+  assert.equal(f.snapshots.length, 0);
+  assert.equal((await f.call("PATCH", { ...f.payload, edits: [patch] })).status, 200);
+  assert.equal(f.review().round, 5);
+  assert.equal(f.snapshots[0].html, html);
+  const doc = new JSDOM(f.issue()).window.document;
+  assert.equal(doc.querySelector("a strong em")?.textContent, "Register");
+  assert.equal(doc.querySelector("a")?.href, "https://example.test/register");
+  assert.equal(f.audit[0].actorId, "staff");
+});
 test("guests, inactive and non-staff accounts cannot edit", async () => {
   for (const opts of [{ guest: true }, { active: false }, { role: "trainee" }]) {
     const f = fixture(opts);

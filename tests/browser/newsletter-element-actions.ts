@@ -72,6 +72,20 @@ async function main() {
     const originalParagraphMarkup = await page.locator("#learning").innerHTML();
     const originalListMarkup = await page.locator("#funding").innerHTML();
     const originalImageMarkup = await page.locator("#story-picture").evaluate(image => image.outerHTML);
+    const paragraphActions = page.getByRole("group", { name: "Paragraph actions" });
+    await page.locator("#learning").click({ position: { x: 42, y: 10 } });
+    const direct = page.locator("[data-bhn-rv-inline-text]");
+    await expect(direct).toBeFocused();
+    assert.ok(await direct.evaluate(el => {
+      const selection = el.ownerDocument.getSelection()!;
+      const offset = selection.anchorOffset;
+      return el.contains(selection.anchorNode) && offset > 0 && offset < (selection.anchorNode?.textContent?.length || 0);
+    }), "click positions the caret in the clicked line");
+    await expect(paragraphActions.getByRole("button", { name: "More text tools" })).toBeVisible();
+    await paragraphActions.getByRole("button", { name: "Comment on element" }).click();
+    await expect(page.getByRole("textbox", { name: "New review comment" })).toBeFocused();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(direct).toHaveCount(0);
     await page.locator("#learning a").first().click();
     await expect(page.getByRole("menu", { name: "Review element actions" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Open link", exact: true })).toBeVisible();
@@ -148,8 +162,24 @@ async function main() {
     await expect(page.locator("#story-picture").locator("..")).toHaveAttribute("href", "https://destinations.test/report");
 
     await page.locator("#learning").click({ position: { x: 15, y: 10 } });
-    await page.getByRole("menuitem", { name: "Edit text", exact: true }).click();
-    await paragraphEditor.fill(initialParagraph.replace("upcoming cohorts", "next cohorts"));
+    // Use the native editing selection without replacing the underlying linked markup.
+    await direct.evaluate(el => {
+      const text = Array.from(el.childNodes).find(n => n.textContent?.includes("upcoming cohorts"))!;
+      const start = text.textContent!.indexOf("upcoming cohorts");
+      const range = document.createRange(); range.setStart(text, start); range.setEnd(text, start + "upcoming cohorts".length);
+      const selected = window.getSelection()!; selected.removeAllRanges(); selected.addRange(range);
+    });
+    await page.keyboard.insertText("next cohorts");
+    await paragraphActions.getByRole("button", { name: "More text tools" }).click();
+    await expect(paragraphEditor).toHaveValue(initialParagraph.replace("upcoming cohorts", "next cohorts"));
+    await paragraphEditor.evaluate(el => {
+      const field = el as HTMLTextAreaElement, start = field.value.indexOf("next cohorts");
+      field.setSelectionRange(start, start + "next cohorts".length);
+    });
+    const format = page.getByRole("group", { name: "Text formatting" });
+    await expect(format.getByRole("button")).toHaveText(["Bold", "Italic"]);
+    await format.getByRole("button", { name: "Bold" }).click();
+    await format.getByRole("button", { name: "Italic" }).click();
     await page.getByRole("button", { name: "Apply changes", exact: true }).click();
     await page.getByRole("button", { name: "Save revision", exact: true }).click();
     await expect.poll(() => documentWrites.length).toBe(1);
@@ -157,6 +187,9 @@ async function main() {
     await expect(page.locator("#learning")).toHaveText(initialParagraph.replace("upcoming cohorts", "next cohorts"));
     assert.equal(documentWrites[0].expectedRound, 4);
     assert.equal(documentWrites[0].edits.length, 1);
+    assert.equal(documentWrites[0].edits[0].marks?.length, 2);
+    await expect(page.locator("#learning strong em")).toHaveText("next cohorts");
+    await expect(page.locator("#learning a").first()).toHaveAttribute("href", "https://destinations.test/castl");
     assert.equal(documentWrites[0].images.length, 1);
     assert.equal(documentWrites[0].images[0].assetId, "asset-1");
     assert.equal(round, 5);
@@ -197,6 +230,17 @@ async function main() {
       if (width === 320) await page.screenshot({ path: "/private/tmp/newsletter-review-interactions-picture-mobile-controls.png" });
       await page.keyboard.press("Escape");
       await expect(page.locator("#story-picture")).toBeFocused();
+    }
+    for (const width of [320, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.locator("#learning").focus();
+      await page.keyboard.press("F2");
+      await expect(direct).toBeFocused();
+      await expect(paragraphActions).toBeVisible();
+      const bounds = await paragraphActions.boundingBox();
+      assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.y >= 0 && bounds.y + bounds.height <= 900);
+      await direct.press("Escape");
+      await expect(page.locator("#learning")).toBeFocused();
     }
     assert.equal(documentWrites.length, 1, "opening or cancelling controls creates no revision");
     assert.deepEqual(pageErrors, []);

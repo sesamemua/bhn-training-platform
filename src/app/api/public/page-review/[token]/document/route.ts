@@ -18,7 +18,9 @@ const revisionSchema = z.object({
   issueRevision: z.string().datetime(),
 });
 const schema = revisionSchema.extend({
-  edits: z.array(z.object({ index: z.number().int().nonnegative(), before: z.string().max(30000), after: z.string().max(30000), list: z.literal(true).optional() }).strict()).max(200).default([]),
+  edits: z.array(z.object({ index: z.number().int().nonnegative(), before: z.string().max(30000), after: z.string().max(30000), list: z.literal(true).optional(),
+    marks: z.array(z.object({ kind: z.enum(["bold", "italic"]), start: z.number().int().nonnegative(), end: z.number().int().positive() }).strict()).min(1).max(40).optional(),
+  }).strict().refine(edit => !edit.marks || !edit.list && edit.marks.every(mark => mark.start < mark.end && mark.end <= edit.after.length))).max(200).default([]),
   images: z.array(imageEditSchema).max(50).default([]),
 }).refine(input => input.edits.length + input.images.length > 0);
 class Conflict extends Error {}
@@ -86,7 +88,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ token: st
       if (!review?.pastedHtml || review.status !== "open" || review.round !== input.data.expectedRound || htmlRevision(review.pastedHtml) !== input.data.revision) {
         return json({ error: "A colleague changed this review. Your unsaved edits are still on this page; copy them before reloading." }, 409);
       }
-      const edits = input.data.edits.filter(edit => edit.list || edit.before !== edit.after);
+      const edits = input.data.edits.filter(edit => edit.list || edit.marks || edit.before !== edit.after);
       const pictures = await resolveReviewImageEdits(db, input.data.images);
       const changed = editReviewImages(edits.length ? editReviewHtml(review.pastedHtml, edits) : review.pastedHtml, pictures);
       if (!edits.length && !changed.changes.length) return json({ ok: true, unchanged: true });

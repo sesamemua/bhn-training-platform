@@ -92,13 +92,15 @@ test("quick edit stages inline and the pop-up previews a limited semantic bullet
   const f = await fixture();
   try {
     const paragraph = f.doc.querySelector("#plain")!;
-    f.click(paragraph); f.click(f.button("Quick edit"));
-    const quick = f.doc.querySelector('[role=group][aria-label="Quick edit"]')!;
+    f.click(paragraph);
+    const quick = f.doc.querySelector('[data-bhn-rv-inline-text]')!;
     assert.equal(f.doc.querySelector("dialog"), null);
-    quick.querySelector("textarea")!.value = "A quick change.";
-    f.click(f.button("Apply changes", quick));
+    assert.equal(f.doc.activeElement, quick);
+    quick.textContent = "A quick change.";
+    quick.dispatchEvent(new f.window.Event("input", { bubbles: true }));
+    f.click(f.button("Apply changes"));
     assert.equal(paragraph.textContent, "A quick change.");
-    f.click(paragraph); f.click(f.button("Edit text"));
+    f.click(paragraph); f.click(f.button("More text tools"));
     const dialog = f.doc.querySelector("dialog")!;
     dialog.querySelector("textarea")!.value = "First bullet\nSecond <b>bullet</b>";
     f.click(f.button("Bulleted list", dialog));
@@ -112,8 +114,32 @@ test("quick edit stages inline and the pop-up previews a limited semantic bullet
     f.click(f.button("Discard edits"));
     assert.equal(f.doc.querySelector("#plain"), paragraph);
     assert.equal(paragraph.textContent, "A plain paragraph.");
-    f.click(f.doc.querySelector("#training")!); f.click(f.button("Edit text"));
-    assert.equal(f.doc.querySelector("dialog [aria-label='Text formatting']"), null, "existing linked copy never loses its markup");
+    f.click(f.doc.querySelector("#training")!); f.click(f.button("More text tools"));
+    const formatting = f.doc.querySelector("dialog [aria-label='Text formatting']")!;
+    assert.deepEqual(Array.from(formatting.querySelectorAll("button")).map(button => button.textContent), ["Bold", "Italic"],
+      "linked copy keeps its markup; only plain paragraphs can become lists");
+    assert.deepEqual(f.errors, []);
+  } finally { f.close(); }
+});
+
+test("selected formatting stages without overwriting links and discards back to original markup", async () => {
+  const f = await fixture();
+  try {
+    const paragraph = f.doc.querySelector("#training")!, before = paragraph.innerHTML;
+    f.click(paragraph); f.click(f.button("More text tools"));
+    const dialog = f.doc.querySelector("dialog")!, field = dialog.querySelector("textarea")!;
+    const start = field.value.indexOf("BioZone");
+    field.setSelectionRange(start, start + "BioZone".length);
+    f.click(f.button("Italic", dialog));
+    assert.equal(dialog.querySelector("[aria-label='Formatting preview'] em")?.textContent, "BioZone");
+    f.click(f.button("Apply changes", dialog));
+    assert.equal(paragraph.querySelector('a[href="https://biozone.example"] em')?.textContent, "BioZone");
+    f.click(f.button("Save revision")); await new Promise(resolve => setTimeout(resolve, 0));
+    const [patch] = JSON.parse(f.requests[0].body).edits;
+    assert.equal(patch.after, patch.before, "formatting-only edits still save");
+    assert.deepEqual(patch.marks, [{ kind: "italic", start: 0, end: 7 }]);
+    f.click(f.button("Discard edits"));
+    assert.equal(paragraph.innerHTML, before);
     assert.deepEqual(f.errors, []);
   } finally { f.close(); }
 });
