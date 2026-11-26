@@ -5,13 +5,13 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
-import { editableTextNodes, planTextBlockEdits } from "../../src/lib/page-review/editable-text";
+import { editableTextNodes, planTextBlockEdits, reviewTextValue } from "../../src/lib/page-review/editable-text";
 import { editReviewHtml, htmlRevision } from "../../src/lib/page-review/edit-html";
 
 const html = '<style>p{color:teal}</style><h2>Title</h2><p>Hello <a href="https://example.test/register">Register</a> today.</p><p>Last line</p>';
 test("plain-text patches preserve links, tables and styles and escape pasted markup", () => {
   const nodes = editableTextNodes(new JSDOM("<body>" + html + "</body>").window.document);
-  assert.deepEqual(nodes.map(n => n.data), ["Title", "Hello ", "Register", " today.", "Last line"]);
+  assert.deepEqual(nodes.map(reviewTextValue), ["Title", "Hello ", "Register", " today.", "Last line"]);
   const result = editReviewHtml(html, [{ index: 2, before: "Register", after: '<img src=x onerror="alert(1)">' }]);
   const doc = new JSDOM("<body>" + result + "</body>").window.document;
   assert.equal(doc.querySelector("a")?.href, "https://example.test/register");
@@ -23,7 +23,7 @@ test("plain-text patches preserve links, tables and styles and escape pasted mar
 });
 test("text-node collection ignores review UI and scripts; full documents retain their head", () => {
   const full = '<!doctype html><html><head><style>body{color:black}</style></head><body><h1>Heading</h1><div id="bhn-review-overlay"><p>Private tools</p></div><aside data-bhn-review-ui><span>Copy</span></aside><script>bad()</script></body></html>';
-  assert.deepEqual(editableTextNodes(new JSDOM(full).window.document).map(n => n.data), ["Heading"]);
+  assert.deepEqual(editableTextNodes(new JSDOM(full).window.document).map(reviewTextValue), ["Heading"]);
   const result = editReviewHtml(full, [{ index: 0, before: "Heading", after: "Edited heading" }]);
   assert.match(result, /<head><style>body\{color:black\}<\/style><\/head>/);
   assert.doesNotMatch(result, /<script/);
@@ -41,7 +41,7 @@ test("one paragraph edit preserves CASTL and BioZone links and surrounding prose
   const source = '<p>Build practical skills with <a href="https://castl.example">CASTL</a> and <a href="https://biozone.example"><strong>BioZone</strong></a> this fall.</p>';
   const doc = new JSDOM(source).window.document;
   const nodes = editableTextNodes(doc);
-  const edits = planTextBlockEdits(nodes.map((node, index) => ({ index, before: node.data })), "Strengthen practical skills with CASTL and BioZone this winter.");
+  const edits = planTextBlockEdits(nodes.map((node, index) => ({ index, before: reviewTextValue(node) })), "Strengthen practical skills with CASTL and BioZone this winter.");
   const result = new JSDOM(editReviewHtml(source, edits)).window.document;
   assert.equal(result.querySelector("p")?.textContent, "Strengthen practical skills with CASTL and BioZone this winter.");
   assert.deepEqual(Array.from(result.querySelectorAll("a")).map(a => [a.href, a.textContent]), [["https://castl.example/", "CASTL"], ["https://biozone.example/", "BioZone"]]);
@@ -51,14 +51,30 @@ test("one paragraph edit preserves CASTL and BioZone links and surrounding prose
 test("whole list-item edits retain emphasized Master's and PhD funding figures", () => {
   const source = '<ul><li>Master’s trainees receive <strong>$25,000</strong>; PhD trainees receive <strong>$30,000</strong> in support.</li></ul>';
   const nodes = editableTextNodes(new JSDOM(source).window.document);
-  const edits = planTextBlockEdits(nodes.map((node, index) => ({ index, before: node.data })), "Master’s trainees receive $26,000; PhD trainees receive $32,000 in support.");
+  const edits = planTextBlockEdits(nodes.map((node, index) => ({ index, before: reviewTextValue(node) })), "Master’s trainees receive $26,000; PhD trainees receive $32,000 in support.");
   const result = new JSDOM(editReviewHtml(source, edits)).window.document;
   assert.deepEqual(Array.from(result.querySelectorAll("strong")).map(n => n.textContent), ["$26,000", "$32,000"]);
   assert.equal(result.querySelectorAll("li").length, 1);
 });
 
+test("newsletter breaks render in email HTML and remain editable without losing links", () => {
+  const after = "Stay\nwith <us> ";
+  const htmlWithBreak = editReviewHtml(html, [{ index: 1, before: "Hello ", after }]);
+  const doc = new JSDOM(htmlWithBreak).window.document;
+  assert.equal(doc.querySelectorAll("p br").length, 1);
+  assert.equal(doc.querySelector("a")?.textContent, "Register");
+  assert.equal(doc.querySelector("us"), null);
+  assert.deepEqual(editableTextNodes(doc).map(reviewTextValue), ["Title", after, "Register", " today.", "Last line"]);
+  const joined = new JSDOM(editReviewHtml(htmlWithBreak, [{ index: 1, before: after, after: "Stay with us " }])).window.document;
+  assert.equal(joined.querySelector("p")?.textContent, "Stay with us Register today.");
+  assert.equal(joined.querySelector("br"), null);
+  const formatted = new JSDOM(editReviewHtml(html, [{ index: 1, before: "Hello ", after, marks: [{ kind: "bold", start: 0, end: after.length }] }])).window.document;
+  assert.equal(formatted.querySelectorAll("strong br").length, 1);
+});
+
 test("block planning rejects ambiguous boundaries and preserves immutable whitespace", () => {
   const parts = [{ index: 0, before: "Join " }, { index: 1, before: "CASTL" }, { index: 2, before: " today." }];
+  assert.deepEqual(planTextBlockEdits(parts, "Join \nCASTL today."), [{ index: 0, before: "Join ", after: "Join \n" }]);
   assert.throws(() => planTextBlockEdits(parts, "Learn with BioZone today."), /formatting boundary/);
   assert.throws(() => planTextBlockEdits(parts, "Join our CASTL today."), /formatting boundary/);
   const spaced = [{ index: 0, before: "One" }, { index: null, before: "\n  " }, { index: 1, before: "Two" }];

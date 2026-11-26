@@ -11,7 +11,7 @@ export function inlineTextSource(): string {
       if(reviewTextSession)reviewTextSession.close();
       stagedHtmlLists.forEach(function(item){item.list.replaceWith(item.node);});stagedHtmlLists.clear();
       stagedHtmlMarks.forEach(function(item){item.preview.replaceWith(item.node);});stagedHtmlMarks.clear();
-      originalTextNodes.forEach(function(node,index){if(node.isConnected)node.data=originalTextValues[index];});
+      originalTextNodes.forEach(function(node,index){if(node.isConnected&&node.nodeType===3)node.data=originalTextValues[index];});
       resetHtmlImages();inlineEdit.patches.clear();inlineEdit.error='';renderCommentCopy();
     }
   };
@@ -28,8 +28,12 @@ export function inlineTextSource(): string {
   function openHtmlTextEditor(node,quick,event){
     if(!htmlTextEditingAllowed(node))return false;
     if(event&&node.querySelector('img,picture,svg,iframe,object,embed,video,audio,input,textarea,button'))return false;
-    var parts=[],walker=document.createTreeWalker(node,4);
-    while(walker.nextNode()){var text=walker.currentNode,index=originalTextNodes.indexOf(text);parts.push({index:index<0?null:index,before:text.data,node:text});}
+    var parts=[],walker=document.createTreeWalker(node,5);
+    while(walker.nextNode()){
+      var text=walker.currentNode,index=originalTextNodes.indexOf(text);
+      if(index<0&&(text.nodeType!==3||text.parentElement.closest('span[data-bhn-rv-text-lines]')))continue;
+      parts.push({index:index<0?null:index,before:reviewTextValue(text),node:text});
+    }
     var before=parts.map(function(part){return part.before;}).join('');
     var allowList=node.tagName==='P'&&parts.length===1&&parts[0].index!==null&&node.childNodes.length===1;
     var options={title:quick?'Quick edit':node.tagName==='LI'?'Edit list item':'Edit text',
@@ -40,7 +44,7 @@ export function inlineTextSource(): string {
       comment:function(){beginHtmlComment(node);},
       apply:function(value,items,marks){
         if(!htmlTextEditingAllowed(node))throw new Error('This revision is no longer editable.');
-        if(parts.some(function(part){return !part.node.isConnected||part.node.data!==part.before;}))throw new Error('This text changed while the editor was open. Close this editor and open it again.');
+        if(parts.some(function(part){return !part.node.isConnected||reviewTextValue(part.node)!==part.before;}))throw new Error('This text changed while the editor was open. Close this editor and open it again.');
         if(items){
           var index=parts[0].index, list=make('ul');
           Array.from(node.attributes).forEach(function(attr){if(attr.name!=='data-bhn-review-focus'&&attr.name!=='tabindex')list.setAttribute(attr.name,attr.value);});
@@ -57,7 +61,9 @@ export function inlineTextSource(): string {
               return {kind:mark.kind,start:Math.max(mark.start,start)-start,end:Math.min(mark.end,offset)-start};
             });
             if(!edits.has(part.index)&&!local.length)return [];
-            return [{index:part.index,after:after,preview:local.length?renderTextMarks(document,after,local):null,marks:local.length?local:undefined}];
+            var preview=local.length?renderTextMarks(document,after,local,renderReviewText):
+              part.node.nodeType!==3||/[\r\n]/.test(after)?renderReviewText(document,after):null;
+            return [{index:part.index,after:after,preview:preview,marks:local.length?local:undefined}];
           });
           if(marks?.length&&!planned.some(function(edit){return edit.marks;}))throw new Error('Select editable paragraph text to format.');
           planned.forEach(function(edit){

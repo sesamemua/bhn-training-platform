@@ -424,7 +424,7 @@
   flex: none;
   max-inline-size: 600px;
 }
-.textFrame { display: block; }
+.textFrame { display: block; white-space: pre-line; }
 .workshopStory { max-inline-size: none; }
 .workshopStory .paragraph { font: 15px/1.4 var(--serif); padding-bottom: 8px; }
 .workshopPhotos {

@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { JSDOM } from "jsdom";
-import { editableTextNodes } from "./editable-text";
+import { editableTextNodes, reviewTextValue } from "./editable-text";
 import { isWholeDocument, stripScripts } from "./paste-document";
-import { renderTextMarks, type TextMark } from "./text-marks";
+import { renderReviewText, renderTextMarks, type TextMark } from "./text-marks";
 
 export const htmlRevision = (html: string) => createHash("sha256").update(html).digest("hex");
 export interface TextEdit { index: number; before: string; after: string; list?: boolean; marks?: TextMark[] }
@@ -15,14 +15,14 @@ export function editReviewHtml(html: string, edits: TextEdit[]) {
     const nodes = editableTextNodes(dom.window.document);
     const seen = new Set<number>();
     for (const edit of edits) {
-      if (seen.has(edit.index) || !nodes[edit.index] || nodes[edit.index].data !== edit.before) throw new Error("The selected text changed. Reload before saving.");
+      if (seen.has(edit.index) || !nodes[edit.index] || reviewTextValue(nodes[edit.index]) !== edit.before) throw new Error("The selected text changed. Reload before saving.");
       seen.add(edit.index);
       const node = nodes[edit.index];
       if (edit.marks) {
         if (edit.list) throw new Error("The selected text changed or includes incompatible formatting.");
         node.replaceWith(renderTextMarks(dom.window.document, edit.after, edit.marks)); continue;
       }
-      if (!edit.list) { node.data = edit.after; continue; }
+      if (!edit.list) { node.replaceWith(renderReviewText(dom.window.document, edit.after)); continue; }
       const paragraph = node.parentElement;
       const items = edit.after.split("\n").map(item => item.trim()).filter(Boolean);
       if (paragraph?.tagName !== "P" || paragraph.childNodes.length !== 1 || !items.length || items.length > 30)

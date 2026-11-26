@@ -2,6 +2,7 @@
 export function textCheckpointSource(): string {
   return String.raw`
   var checkpointCache=null,checkpointQueue=Promise.resolve(),websiteSuggestionCheckpoint=null;
+  var checkpointIdleMs=8000,checkpointGapMs=30000,lastBackgroundCheckpoint=-Infinity;
   function clearWebsiteSuggestionCheckpoint(){
     if(websiteSuggestionCheckpoint)websiteSuggestionCheckpoint.discard();
     websiteSuggestionCheckpoint=null;
@@ -60,12 +61,17 @@ export function textCheckpointSource(): string {
         previous=null;lastSent=null;
       }catch(_){say('Draft could not be cleared');}
     }
-    async function write(value,version){
-      if(discarded||version!==epoch||isLocked()||value===lastSent)return;
-      if(value===original){await removeCheckpoint();say('No unsaved text');return;}
+    async function write(value,version,background){
+      if(discarded||background&&stopped||version!==epoch||isLocked()||value===lastSent)return;
       var context=await ready;
-      if(discarded||version!==epoch)return;
+      if(discarded||background&&stopped||version!==epoch||isLocked())return;
       if(!context||!path){say('Draft not saved · click out to finish');return;}
+      if(background&&!context.bucket){
+        var wait=lastBackgroundCheckpoint+checkpointGapMs-performance.now();
+        if(wait>0){schedule(value,version,wait,true);return;}
+        if(value!==original||previous)lastBackgroundCheckpoint=performance.now();
+      }
+      if(value===original){await removeCheckpoint();say('No unsaved text');return;}
       say('Saving draft…');
       writing=true;
       try{
@@ -84,19 +90,22 @@ export function textCheckpointSource(): string {
       }catch(_){if(version===epoch)say('Draft not saved · click out to finish');}
       finally{writing=false;}
     }
-    function change(value,delay){
+    function schedule(value,version,delay,background){
+      timer=setTimeout(function(){enqueue(function(){return write(value,version,background);});},delay);
+    }
+    function change(value,background){
       clearTimeout(timer);var version=++epoch;
       if(value.length>30000){say('Draft too long to save');return;}
       if(value===lastSent&&!writing){say(savedMessage);return;}
       if(value===original&&!previous&&!writing){say('No unsaved text');return;}
       say('Unsaved text');
-      timer=setTimeout(function(){enqueue(function(){return write(value,version);});},delay);
+      schedule(value,version,background?checkpointIdleMs:0,background);
     }
     return {
-      change:function(value){if(!stopped){button.hidden=true;change(value,2000);}},
+      change:function(value){if(!stopped){button.hidden=true;change(value,true);}},
       pause:function(){clearTimeout(timer);epoch++;},
       finish:function(value){
-        if(value!==original&&(value!==lastSent||writing)&&value.length<=30000)change(value,0);
+        if(value!==original&&(value!==lastSent||writing)&&value.length<=30000)change(value,false);
       },
       stop:function(){stopped=true;clearTimeout(timer);},
       discard:function(){discarded=true;stopped=true;clearTimeout(timer);enqueue(removeCheckpoint);}

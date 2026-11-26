@@ -7,13 +7,13 @@ import { contextualSource } from "./contextual-source";
 import { createHtmlReviewTargets } from "./html-targets";
 import { commentCopySource } from "./comment-copy-source";
 import { inlineTextSource } from "./inline-text-source";
-import { editableTextNodes, planTextBlockEdits } from "./editable-text";
+import { editableTextNodes, planTextBlockEdits, reviewTextValue } from "./editable-text";
 import { htmlActionsSource } from "./html-actions-source";
 import { htmlImageSource } from "./html-image-source";
 import { textEditorSource } from "./text-editor-source";
 import { inPlaceTextSource } from "./in-place-text-source";
 import { textCheckpointSource } from "./text-checkpoint-source";
-import { renderTextMarks } from "./text-marks";
+import { renderReviewText, renderTextMarks } from "./text-marks";
 import { surfaceAdaptersSource } from "./surface-adapters-source";
 import type { ReviewMediaTools } from "./media-tools";
 
@@ -36,10 +36,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var reviewMediaTools = ${JSON.stringify(mediaTools)};
   var htmlTargets = (function(__name){return (${createHtmlReviewTargets.toString()})(document);})(function(value){return value;});
   var editableTextNodes = ${editableTextNodes.toString()};
+  var reviewTextValue = ${reviewTextValue.toString()}, renderReviewText = ${renderReviewText.toString()};
   var planTextBlockEdits = (function(__name){return (${planTextBlockEdits.toString()});})(function(value){return value;});
   var renderTextMarks = ${renderTextMarks.toString()};
   var originalTextNodes=htmlReview?editableTextNodes(document):[];
-  var originalTextValues=originalTextNodes.map(function(node){return node.data;});
+  var originalTextValues=originalTextNodes.map(reviewTextValue);
   var originalReviewImages=htmlReview?Array.from(document.querySelectorAll('img')).filter(function(node){return !node.closest('[data-bhn-review-ui],#bhn-review-overlay');}):[];
   var reportTargets = "h1,h2,h3,h4,p,li,blockquote,figcaption,img,td,th,dt,dd,svg,figure,header > span,footer > span,aside > strong";
   var credential = script && script.dataset ? (script.dataset.viewer || "") : "";

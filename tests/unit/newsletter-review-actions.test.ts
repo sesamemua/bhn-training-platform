@@ -98,7 +98,7 @@ test("quick edit stages inline and the pop-up previews a limited semantic bullet
     assert.equal(f.doc.activeElement, quick);
     quick.textContent = "A quick change.";
     quick.dispatchEvent(new f.window.Event("input", { bubbles: true }));
-    quick.dispatchEvent(new f.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    quick.dispatchEvent(new f.window.KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true, cancelable: true }));
     assert.equal(paragraph.textContent, "A quick change.");
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.equal(f.requests.length, 1, "the direct editor automatically attempts a revision save");

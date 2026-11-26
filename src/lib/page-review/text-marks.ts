@@ -1,7 +1,19 @@
 export type TextMark = { kind: "bold" | "italic"; start: number; end: number };
 
+/** Real HTML breaks survive email clients; the span keeps the wording one editable slot. */
+export function renderReviewText(doc: Document, text: string): Text | HTMLSpanElement {
+  if (!/[\r\n]/.test(text)) return doc.createTextNode(text);
+  const span = doc.createElement("span");
+  span.setAttribute("data-bhn-rv-text-lines", "");
+  text.split(/\r\n?|\n/).forEach((line, i) => {
+    if (i) span.appendChild(doc.createElement("br"));
+    if (line) span.appendChild(doc.createTextNode(line));
+  });
+  return span;
+}
+
 /** Render only supported semantic marks. Wording is always inserted as text. */
-export function renderTextMarks(doc: Document, text: string, marks: TextMark[]): DocumentFragment {
+export function renderTextMarks(doc: Document, text: string, marks: TextMark[], render = renderReviewText): DocumentFragment {
   if (!marks.length || marks.length > 40 || marks.some(({ kind, start, end }) =>
     (kind !== "bold" && kind !== "italic") || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) ||
     start < 0 || start >= end || end > text.length)) {
@@ -11,7 +23,7 @@ export function renderTextMarks(doc: Document, text: string, marks: TextMark[]):
   const edges = [...new Set([0, text.length, ...marks.flatMap(mark => [mark.start, mark.end])])].sort((a, b) => a - b);
   for (let i = 0; i < edges.length - 1; i++) {
     const start = edges[i], end = edges[i + 1];
-    let piece: Node = doc.createTextNode(text.slice(start, end));
+    let piece: Node = render(doc, text.slice(start, end));
     for (const kind of ["italic", "bold"] as const) {
       if (!marks.some(mark => mark.kind === kind && mark.start <= start && mark.end >= end)) continue;
       const wrapper = doc.createElement(kind === "bold" ? "strong" : "em");
