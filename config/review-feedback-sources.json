@@ -213,7 +213,9 @@
     "WorkshopBooking",
     "XapiStatement"
   ],
-  "excludedModels": {},
+  "excludedModels": {
+    "PageReviewTextCheckpoint": "Private crash-recovery buffer, not submitted wording, feedback, approval, or revision evidence. Final edits and posted comments use the existing registered history paths."
+  },
   "sources": {
     "PageReview": {
       "evidence": "activity"
@@ -387,6 +389,9 @@
     "src/app/api/public/page-review/[token]/document/route.ts": {
       "workflow": "newsletter"
     },
+    "src/app/api/public/page-review/[token]/text-checkpoint/route.ts": {
+      "workflow": "page"
+    },
     "src/app/api/public/page-review/loader.js/route.ts": {
       "workflow": "page"
     },
@@ -424,6 +429,9 @@
       "workflow": "newsletter"
     },
     "src/app/api/workspace/page-review/[id]/launch/route.ts": {
+      "workflow": "page"
+    },
+    "src/app/api/workspace/page-review/[id]/text-checkpoint/route.ts": {
       "workflow": "page"
     },
     "src/app/api/workspace/page-review/[id]/mentions/notifications/route.ts": {

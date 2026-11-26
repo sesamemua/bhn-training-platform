@@ -54,6 +54,26 @@ try:
  for migration_path in registry['captureMigrations']:run(Path(migration_path).read_text())
  installed={row['table_name'] for row in query("SELECT c.relname AS table_name FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE t.tgname='bhn_feedback_history' AND NOT t.tgisinternal")}
  assert installed==expected_sources, 'Capture registry and installed triggers differ: '+str(installed^expected_sources)
+ # Exercise the shipping checkpoint statement on PostgreSQL, without evidence capture or revision changes.
+ if not run('SELECT to_regclass(\'public."PageReviewTextCheckpoint"\');'):
+  run(Path('prisma/migrations/20261126175000_page_review_text_checkpoint/migration.sql').read_text())
+ checkpoint_sql=re.search(r'`\s*(INSERT INTO "PageReviewTextCheckpoint".*?)`',Path('src/lib/page-review/text-checkpoint.ts').read_text(),re.S)[1]
+ def checkpoint(owner,body,etag,round=1):
+  values={'owner':owner,'target':'p#test','baseline':'a'*64,'text':body,'etag':etag,'review.id':'r-page','round':round}
+  run(re.sub(r'\$\{([^}]+)\}',lambda match:q(values[match[1]]),checkpoint_sql))
+ ledger_before=run('SELECT count(*) FROM "ReviewFeedbackMemory";')
+ checkpoint('u-one','private first draft','first')
+ checkpoint('u-one','private second draft','second')
+ checkpoint('u-one','wrong round','wrong',2)
+ assert query('SELECT "owner",body,etag FROM "PageReviewTextCheckpoint"')==[{'owner':'u-one','body':'private second draft','etag':'second'}]
+ assert run('SELECT "round" FROM "PageReview" WHERE id=\'r-page\'')=='1'
+ assert run('SELECT count(*) FROM "PageReviewVersion"')=='0'
+ assert run('SELECT count(*) FROM "ReviewFeedbackMemory"')==ledger_before
+ assert run('SELECT body FROM "PageComment" WHERE id=\'page-note\'')=='Use larger headings'
+ run('DELETE FROM "PageReviewTextCheckpoint" WHERE "owner"=\'u-one\' AND "etag"=\'first\'')
+ assert run('SELECT count(*) FROM "PageReviewTextCheckpoint"')=='1'
+ run('DELETE FROM "PageReviewTextCheckpoint" WHERE "owner"=\'u-one\' AND "etag"=\'second\'')
+ assert run('SELECT count(*) FROM "PageReviewTextCheckpoint"')=='0'
  assert run('SELECT detail FROM "ReviewFeedbackMemory" WHERE id='+q(legacy_id))=='{"existing":"must survive"}'
  for model,id in [('DesignPin','pin'),('CodeReviewNote','code-note'),('NewsletterComment','nl-note'),('ScriptComment','script-note')]:assert len(events(model,id))==1,(model,events(model,id))
  assert events('ScriptComment','script-note')[0]['detail']['source']['context']['scriptTitle']=='Opening script'

@@ -88,6 +88,9 @@ async function main() {
       if (route.request().method() !== "GET") siteWrites.push(route.request().postDataJSON());
       return route.fulfill({ json: { ok: true, review, comments: [], viewer: { name: "Reviewer", canResolve: false } } });
     });
+    await page.route(siteApi + "/text-checkpoint", route => route.fulfill({ json: {
+      ok: true, draft: null, ...(route.request().method() === "PUT" ? { etag: "private-checkpoint" } : {}),
+    } }));
     await page.goto(site);
     await expect(page.getByRole("group", { name: "Review controls" })).toBeVisible();
     await page.getByRole("link", { name: "Workshops" }).click();

@@ -20,6 +20,8 @@ All adapters use the same editor shell, with real differences made explicit. New
 
 Newsletter Review defaults to the most recently updated open, saved, unsent review. An explicit issue selection still wins, and Compose retains its calendar-based default.
 
+In the shared inline editor, two seconds without typing checkpoints only changed text. The editor and caret stay in place. Signed-in reviewers keep one private recovery checkpoint per review, available for seven days on the same paragraph and round. Guest website reviewers keep it in their browser tab. Checkpoints never call the document-save, round, or comment endpoints and are intentionally not evidence for the feedback ledger. An ordinary edit still commits on exit; website suggestions remain unposted until Add comment. An explicit discard clears the matching checkpoint without deleting a newer checkpoint from another editor.
+
 ## Rules for further extraction
 
 | Tool | Common promise | Adapter supplies |

@@ -20,6 +20,15 @@ export function inPlaceTextSource(): string {
       var range=caret?null:document.caretRangeFromPoint?.(event.clientX,event.clientY);
       offset=offsetFrom(caret?.offsetNode||range?.startContainer,caret?.offset??range?.startOffset)??offset;end=offset;
     }
+    var hint=make('span','bhn-rv-inline-text-status',options.exitHint||'Draft saves after a pause');
+    hint.setAttribute('role','status');
+    var recover=addButton('Restore saved draft','bhn-rv-btn',function(){});recover.hidden=true;
+    var checkpoint=openTextCheckpoint(target,options.value,hint,recover,function(body){
+      editor.textContent=body;session.draftDirty=body!==options.value;
+      editor.focus({preventScroll:true});
+      var active=document.createRange();active.selectNodeContents(editor);active.collapse(false);
+      selection?.removeAllRanges();selection?.addRange(active);position();
+    },function(){return reviewTextSession===session;});
     var identifier=target.getAttribute('id');
     if(identifier!==null)target.removeAttribute('id');
     editor.setAttribute('data-bhn-review-ui','');editor.setAttribute('data-bhn-rv-inline-text','');
@@ -34,7 +43,7 @@ export function inPlaceTextSource(): string {
     function value(){return editor.textContent||'';}
     function close(refocus){
       if(reviewTextSession!==session)return;
-      reviewTextSession=null;clearTimeout(leaveTimer);editor.remove();tools.remove();
+      reviewTextSession=null;checkpoint.stop();clearTimeout(leaveTimer);editor.remove();tools.remove();
       target.removeAttribute('data-bhn-rv-original-paragraph');
       if(identifier!==null)target.setAttribute('id',identifier);
       if(refocus!==false&&target.isConnected)focusPageElement(target);
@@ -60,7 +69,10 @@ export function inPlaceTextSource(): string {
         var text=value();if(text.length>(options.max||30000))throw new Error('This paragraph is too long. Shorten it before applying.');
         var changed=text!==options.value,after=changed?options.apply(text,null,[]):null;
         close(refocus);renderCommentCopy();
-        if(typeof after==='function')after();
+        if(typeof after==='function'){
+          if(websiteReview){websiteSuggestionCheckpoint=checkpoint;checkpoint.finish(text);}
+          after();
+        }
         if(changed&&options.afterApply)options.afterApply();
         return true;
       }
@@ -84,14 +96,14 @@ export function inPlaceTextSource(): string {
     var moreTools=addButton('More text tools','bhn-rv-btn',more);
     moreTools.setAttribute('aria-haspopup','dialog');
     moreTools.addEventListener('pointerdown',function(e){e.preventDefault();});
-    var hint=make('span','bhn-rv-inline-text-status',options.exitHint||'Saves when you leave');
-    tools.append(comment,moreTools,addButton('Cancel','bhn-rv-btn',function(){close();renderCommentCopy();}),hint,error);
-    editor.after(tools);position();
+    tools.append(comment,moreTools,addButton('Cancel','bhn-rv-btn',function(){checkpoint.discard();close();renderCommentCopy();}),recover,hint,error);
+    // Keep controls above a scaled report page's stacking context and comments panel.
+    document.body.appendChild(tools);position();
     editor.addEventListener('click',function(e){if(e.target.closest('a'))e.preventDefault();});
     editor.addEventListener('beforeinput',function(e){if(e.inputType==='insertParagraph'||e.inputType==='insertLineBreak')e.preventDefault();});
-    editor.addEventListener('input',function(){session.draftDirty=value()!==options.value;error.hidden=true;position();});
-    editor.addEventListener('compositionstart',function(){composing=true;});
-    editor.addEventListener('compositionend',function(){composing=false;});
+    editor.addEventListener('input',function(){session.draftDirty=value()!==options.value;if(!composing)checkpoint.change(value());error.hidden=true;position();});
+    editor.addEventListener('compositionstart',function(){composing=true;checkpoint.pause();});
+    editor.addEventListener('compositionend',function(){composing=false;checkpoint.change(value());});
     function leave(e){
       if(e.relatedTarget instanceof Node&&(editor.contains(e.relatedTarget)||tools.contains(e.relatedTarget)))return;
       clearTimeout(leaveTimer);
@@ -103,8 +115,14 @@ export function inPlaceTextSource(): string {
     editor.addEventListener('focusout',leave);tools.addEventListener('focusout',leave);
     function keys(e){
       if(e.isComposing)return;
-      if(e.key==='Escape'){e.preventDefault();close();renderCommentCopy();}
+      if(e.key==='Escape'){e.preventDefault();checkpoint.discard();close();renderCommentCopy();}
       if(e.target===editor&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish();}
+      if(e.target===editor&&e.key==='Tab'&&!e.shiftKey&&!tools.hidden){
+        e.preventDefault();comment.focus({preventScroll:true});
+      }
+      if(e.target===comment&&e.key==='Tab'&&e.shiftKey){
+        e.preventDefault();editor.focus({preventScroll:true});
+      }
     }
     editor.addEventListener('keydown',keys);tools.addEventListener('keydown',keys);
     editor.focus({preventScroll:true});
@@ -121,7 +139,7 @@ export function inPlaceTextSource(): string {
     '[data-bhn-rv-original-paragraph]{display:none!important;}[data-bhn-rv-inline-text]{outline:2px solid #176879;outline-offset:3px;cursor:text;overflow-wrap:anywhere;}',
     '.bhn-rv-inline-text-tools{box-sizing:border-box;position:fixed;z-index:2147483647;display:grid;gap:4px;width:168px;max-width:calc(100vw - 8px);padding:6px;background:#fff;color:#173c4d;border:1px solid #b9cbd0;border-radius:5px;box-shadow:0 3px 12px #17304722;font:13px/1.35 system-ui,sans-serif;}.bhn-rv-inline-text-tools[hidden]{display:none;}',
     '.bhn-rv-inline-text-tools .bhn-rv-btn{min-height:34px;margin:0;padding:4px 8px;border:0;border-radius:3px;background:#edf6f7;color:#173c4d;text-align:left;font:inherit;font-weight:650;cursor:pointer;}.bhn-rv-inline-text-tools .bhn-rv-btn-primary{background:#176879;color:#fff;}.bhn-rv-inline-text-tools .bhn-rv-btn:focus-visible{outline:2px solid #176879;outline-offset:1px;}',
-    '.bhn-rv-inline-text-status{font-size:11px;color:#536570;padding:1px 3px;}@media(max-width:540px){.bhn-rv-inline-text-tools{width:max-content;grid-template-columns:auto auto;}.bhn-rv-inline-text-tools [role=alert]{grid-column:1/-1;}}@media print{[data-bhn-rv-original-paragraph]{display:revert!important;}[data-bhn-rv-inline-text],.bhn-rv-inline-text-tools{display:none!important;}}'
+    '.bhn-rv-inline-text-tools [hidden]{display:none!important;}.bhn-rv-inline-text-status{font-size:11px;color:#536570;padding:1px 3px;}@media(max-width:540px){.bhn-rv-inline-text-tools{width:max-content;grid-template-columns:auto auto;}.bhn-rv-inline-text-tools [role=alert]{grid-column:1/-1;}}@media print{[data-bhn-rv-original-paragraph]{display:revert!important;}[data-bhn-rv-inline-text],.bhn-rv-inline-text-tools{display:none!important;}}'
   ].join('');
 `;
 }

@@ -10,6 +10,7 @@ datasource db {
 
 // Roles: user | admin | superadmin | evaluating
 model User {
+  reviewTextCheckpoints PageReviewTextCheckpoint[]
   id                     String    @id @default(cuid())
   name                   String?
   email                  String    @unique
@@ -6557,8 +6558,26 @@ model PageReview {
 
   comments PageComment[]
   versions PageReviewVersion[]
+  textCheckpoints PageReviewTextCheckpoint[]
 
   @@index([status, updatedAt])
+}
+
+/// Private, replaceable recovery checkpoint. Never published or learned from.
+model PageReviewTextCheckpoint {
+  reviewId  String
+  owner     String
+  round     Int
+  target    String
+  baseline  String
+  body      String
+  etag      String
+  updatedAt DateTime @default(now())
+  review    PageReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewer  User       @relation(fields: [owner], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, owner])
+  @@index([owner])
 }
 
 model PageReviewVersion {

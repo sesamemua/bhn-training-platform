@@ -12,6 +12,7 @@ import { htmlActionsSource } from "./html-actions-source";
 import { htmlImageSource } from "./html-image-source";
 import { textEditorSource } from "./text-editor-source";
 import { inPlaceTextSource } from "./in-place-text-source";
+import { textCheckpointSource } from "./text-checkpoint-source";
 import { renderTextMarks } from "./text-marks";
 import { surfaceAdaptersSource } from "./surface-adapters-source";
 import type { ReviewMediaTools } from "./media-tools";
@@ -778,7 +779,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     box.appendChild(textarea);
     attachReviewMentions(textarea, box);
     var actions = make("div", "bhn-rv-actions");
-    actions.appendChild(addButton("Cancel", "bhn-rv-btn", function(){ state.selected = null; state.draft = ""; render(); if(contextualReview&&reportCommentTarget)focusPageElement(reportCommentTarget); }));
+    actions.appendChild(addButton("Cancel", "bhn-rv-btn", function(){ clearWebsiteSuggestionCheckpoint();state.selected = null; state.draft = ""; render(); if(contextualReview&&reportCommentTarget)focusPageElement(reportCommentTarget); }));
     var submit = addButton(state.saving ? "Adding..." : "Add comment", "bhn-rv-btn bhn-rv-btn-primary", function(){ submitComment(textarea.value, null, state.selected); });
     submit.disabled = state.saving;
     actions.appendChild(submit);
@@ -1373,6 +1374,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       var data = await response.json().catch(function(){ return {}; });
       if (!response.ok || !data.ok) throw new Error(data.error || "Could not save the comment.");
       if(data.mentions)state.mentionNotice=data.mentions.warning||(data.mentions.sent?'Notified '+data.mentions.sent+' colleague(s) on this review page.':'');
+      if(!parentId&&anchors)clearWebsiteSuggestionCheckpoint();
       if (parentId) state.expandedThreads[parentId] = true;
       else if (data.comment && data.comment.id) state.expandedThreads[data.comment.id] = true;
       else if (reportCommentEndpoint && data.review && Array.isArray(data.review.comments)) {
@@ -1662,6 +1664,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   ${htmlImageSource()}
   ${surfaceAdaptersSource()}
   ${textEditorSource()}
+  ${textCheckpointSource()}
   ${inPlaceTextSource()}
   ${contextualSource()}
   document.addEventListener("mousemove", onMove, true);
