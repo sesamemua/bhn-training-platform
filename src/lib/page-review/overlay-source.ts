@@ -7,7 +7,9 @@ import { contextualSource } from "./contextual-source";
 import { createHtmlReviewTargets } from "./html-targets";
 import { commentCopySource } from "./comment-copy-source";
 import { inlineTextSource } from "./inline-text-source";
-import { editableTextNodes } from "./editable-text";
+import { editableTextNodes, planTextBlockEdits } from "./editable-text";
+import { htmlActionsSource } from "./html-actions-source";
+import { htmlImageSource } from "./html-image-source";
 import type { ReviewMediaTools } from "./media-tools";
 
 /** JavaScript source for the live-page review overlay. */
@@ -28,6 +30,10 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var reviewMediaTools = ${JSON.stringify(mediaTools)};
   var htmlTargets = (function(__name){return (${createHtmlReviewTargets.toString()})(document);})(function(value){return value;});
   var editableTextNodes = ${editableTextNodes.toString()};
+  var planTextBlockEdits = (function(__name){return (${planTextBlockEdits.toString()});})(function(value){return value;});
+  var originalTextNodes=htmlReview?editableTextNodes(document):[];
+  var originalTextValues=originalTextNodes.map(function(node){return node.data;});
+  var originalReviewImages=htmlReview?Array.from(document.querySelectorAll('img')).filter(function(node){return !node.closest('[data-bhn-review-ui],#bhn-review-overlay');}):[];
   var reportTargets = "h1,h2,h3,h4,p,li,blockquote,figcaption,img,td,th,dt,dd,svg,figure,header > span,footer > span,aside > strong";
   var credential = script && script.dataset ? (script.dataset.viewer || "") : "";
   var endpoint = ${JSON.stringify(endpoint)};
@@ -1329,7 +1335,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   async function submitComment(value, parentId, anchors) {
-    if(htmlReview && inlineDirty()){state.error="Save or discard your text edits before adding feedback.";render();return false;}
+    if(htmlReview && inlineDirty()){state.error="Save or discard your edits before adding feedback.";render();return false;}
     if ((!parentId || htmlReview) && state.pageRound !== state.review.round) {
       state.error = "Reload the current version before adding a new comment.";
       render();
@@ -1548,6 +1554,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     threadHighlight = null;
     var node = reportReview ? reportTarget(event) : htmlReview ? htmlTargets.pick(event.target) : event.target;
     if(htmlReview&&!node){showHighlight(null);return;}
+    if (htmlReview && (htmlActionsMenu||htmlReviewDialog)) return;
     if (contextualReview && !state.pickingElement) { reportInlineComment(node); showHighlight(null); return; }
     if (editableReportPage(event.target) && !state.pickingElement && !node?.matches("figcaption")) { showHighlight(null); return; }
     showHighlight(node);
@@ -1556,7 +1563,14 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function onClick(event) {
     if (reportReview && (reportDrawMode || reportDrawSuppressClick || (state.selected && state.selected.drawing)) && event.target.closest(scopeSelector)) { reportDrawSuppressClick=false; event.preventDefault();event.stopPropagation();return; }
     if (inOverlay(event.target)) return;
-    if (htmlReview && (!state.pickingElement || isLocked() || !state.viewer || state.selected || state.replyTo !== null || state.editingId !== null)) return;
+    if (htmlReview) {
+      if(htmlReviewDialog)return;
+      var target=htmlTargets.pick(event.target);if(!target){closeHtmlActions(false);return;}
+      event.preventDefault();event.stopPropagation();
+      if(!state.pickingElement){openHtmlActions(target,event);return;}
+      if(isLocked()||!state.viewer||inlineDirty()||htmlImageSaving()||state.saving||state.selected||state.replyTo!==null||state.editingId!==null)return;
+      closeHtmlActions(false);
+    }
     if (reportInsertionClick(event)) return;
     if (reportCommentEndpoint && (!state.viewer || isLocked())) return;
     if (reportReview && (state.saving || state.replyTo !== null || state.editingId !== null)) return;
@@ -1594,7 +1608,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function cleanup() {
     window.removeEventListener('beforeunload',beforeInlineUnload);
     if(commentActionDock)commentActionDock.remove();
-    if(htmlReview)inlineEdit.fields.forEach(function(field){if(field.span.isConnected)field.span.replaceWith(document.createTextNode(field.span.textContent));});
+    if(htmlReview){cleanupHtmlImageEditor();cleanupHtmlActions();}
     document.removeEventListener('focusin',reportFocusComment);
     document.removeEventListener('keydown',contextualKey,true);
     if(reportCommentButton)reportCommentButton.remove();
@@ -1620,7 +1634,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   window.__bhnReviewCleanup = cleanup;
+  ${htmlActionsSource()}
   ${inlineTextSource()}
+  ${htmlImageSource()}
   ${contextualSource()}
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);

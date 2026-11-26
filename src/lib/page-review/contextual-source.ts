@@ -17,7 +17,7 @@ export function contextualSource(): string {
   }
   function reportInlineComment(node) {
     if(!contextualReview)return;
-    if(isLocked()||inlineDirty()||!state.viewer||state.saving||state.insertingSection||reportDrawMode||state.replyTo!==null||state.editingId!==null||state.selected){if(reportCommentButton)reportCommentButton.hidden=true;return;}
+    if(isLocked()||inlineDirty()||(htmlReview&&(htmlImageSaving()||htmlActionsMenu||htmlReviewDialog))||!state.viewer||state.saving||state.insertingSection||reportDrawMode||state.replyTo!==null||state.editingId!==null||state.selected){if(reportCommentButton)reportCommentButton.hidden=true;return;}
     reportCommentTarget=node;
     if(!node){if(reportCommentButton)reportCommentButton.hidden=true;return;}
     if(!reportCommentButton){
@@ -27,7 +27,7 @@ export function contextualSource(): string {
       reportCommentButton.addEventListener('pointerdown',function(e){e.preventDefault();});
       reportCommentButton.addEventListener('click',function(e){
         e.preventDefault();e.stopPropagation();
-        if(!reportCommentTarget||!reportCommentTarget.isConnected||isLocked()||state.saving||state.replyTo!==null||state.editingId!==null)return;
+        if(!reportCommentTarget||!reportCommentTarget.isConnected||isLocked()||inlineDirty()||(htmlReview&&htmlImageSaving())||state.saving||state.replyTo!==null||state.editingId!==null)return;
         state.selected=anchorsFor(reportCommentTarget);state.panelCollapsed=false;state.pickingElement=false;threadHighlight=null;
         reportCommentButton.hidden=true;showHighlight(reportCommentTarget);render();
       });document.body.appendChild(reportCommentButton);
@@ -36,13 +36,13 @@ export function contextualSource(): string {
   }
   function reportFocusComment(event){if(!event.target.closest('.bhn-report-inline-comment')&&!inOverlay(event.target))reportInlineComment(reportReview?reportTarget(event):htmlTargets.pick(event.target));}
   function contextualKey(event){
-    if(!htmlReview)return;
+    if(!htmlReview||inOverlay(event.target))return;
     if(event.key==='Escape'){
       if(state.selected){if(state.draft.trim())return;state.selected=null;render();if(reportCommentTarget)focusPageElement(reportCommentTarget);}
       else if(state.pickingElement){state.pickingElement=false;render();}
       return;
     }
-    if(state.pickingElement&&(event.key==='Enter'||event.key===' '))onClick(event);
+    if((event.key==='Enter'||event.key===' ')&&htmlTargets.pick(event.target)){event.preventDefault();onClick(event);}
   }
   if(contextualReview)document.addEventListener('focusin',reportFocusComment);
   if(htmlReview)document.addEventListener('keydown',contextualKey,true);

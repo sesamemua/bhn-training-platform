@@ -8,9 +8,13 @@
 
 ## Implemented boundary
 
-`media-tools.ts` defines the format-independent text-edit contract: state, save and discard. The dock calls this contract and does not know the media's DOM, JSON, endpoint or versioning logic. `inline-text-source.ts` supplies the newsletter HTML implementation. It edits meaningful original text nodes, preserves links/markup, and sends plain-text patches through a scoped staff endpoint. Save archives one prior round and updates the saved HTML/export atomically. AuditLog records the staff editor; PageReviewVersion and existing feedback-history capture retain version context. Original contributions remain untouched.
+`media-tools.ts` defines the format-independent text-edit contract: state, save and discard. The dock calls this contract and does not know the media's DOM, JSON, endpoint or versioning logic. `inline-text-source.ts` supplies the newsletter HTML implementation. The UI edits whole semantic paragraphs/list items, then safely maps the changes to original text-node patches, preserving links and emphasis. Ambiguous edits spanning inline-format boundaries keep the draft and explain the conflict rather than flattening markup. The scoped staff endpoint archives one prior round and updates the saved HTML/export atomically. AuditLog records the staff editor; PageReviewVersion and existing feedback-history capture retain version context. Original contributions remain untouched.
 
 Report editing stays in its existing report editor, including its own autosave and photo handling. It does not get an HTML editor or the newsletter endpoint. The existing report contextual-comment action remains shared. This increment does not claim every older format branch has been removed.
+
+The newsletter image adapter supports commenting on a selected image, replacement uploads, alt text, width, alignment, removal, and baked crop/flip/quarter-turn adjustments. Its scoped document endpoint accepts only active staff review credentials and checks the open, unsent issue's round, HTML hash and issue revision. Uploading creates a public library asset but does not change the document; Save atomically archives the previous round, updates reviewed HTML/export and recognized Compose image references, and records the editor. Original contributions remain untouched. Earlier rounds retain asset usages. Width/alignment are saved-review layout edits, not additions to the AI-owned layout model; a later structured re-layout is not a promise to preserve every manual styling adjustment.
+
+The shared-workspace goal is the same toolbar, panels, action menus, dialogs, history/compare controls and save/conflict language regardless of medium. Only target selection and content-edit mechanics belong to an adapter. This newsletter pilot does not add implementations for other formats or claim that all legacy report/photo controls have already been unified.
 
 ## Rules for further extraction
 

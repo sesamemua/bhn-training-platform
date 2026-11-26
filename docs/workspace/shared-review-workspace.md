@@ -4,6 +4,10 @@ Implemented as an extension of Page Review, not a separate reviewer. This releas
 
 Follow-up correction: Copy/export controls now live in the lower-left action dock, not the comment panel. Newsletter wording can be edited directly on the page and saved with **Save revision**. A batch save archives the previous round and updates the saved newsletter/export; staff identity and the edits are audited. Stale, sent and locked content cannot be overwritten. The raw contributed copy remains unchanged. See [tool contracts](review-tool-contracts.md) for the separation between tool purpose, common UI and media-specific implementation.
 
+November 26 interaction correction: a paragraph or list item is one review/edit target, including its inline links and emphasis. Clicking a newsletter element opens an action menu instead of navigating or exposing separate text-node fields. Text edits use one whole-block field; image targets offer comments, replacement and supported crop/rotate/flip/alt/size/alignment/removal operations. Text and image changes remain staged until **Save revision**, and **Discard edits** restores the original markup. Crop/rotation are baked into new public image assets for email compatibility. The older text-node patch contract remains an internal persistence detail, not a visible editor boundary.
+
+Unified-experience requirement: the concept layer defines the same action meanings; the shared workspace owns the look and feel, toolbar, panels, menus, dialogs, keyboard behavior, revision comparison and save/conflict presentation. Media adapters change content targeting/rendering and operations, not the overall interface. Existing report and social branches retain their functioning editors during incremental alignment; this pilot is not a claim that every format has already reached full UI parity.
+
 ## Boundaries
 
 - `overlay-source.ts` owns the panel, threads, identity, history, comparison, and write destinations.

@@ -10,14 +10,34 @@ function fixture() {
     <p data-nl-piece="second" data-nl-part="Picture 1" data-nl-image="photo"><a href="/photo"><img alt="Workshop" src="/photo.png"></a></p>`).window.document;
   return { doc, targets: createHtmlReviewTargets(doc) };
 }
-test("same-text links keep article identity when the layout moves", () => {
+test("same-text CTAs target their paragraph and keep article identity when the layout moves", () => {
   const { doc, targets } = fixture();
   const node = doc.querySelectorAll("a")[1];
   const anchor = targets.capture(node);
   doc.body.prepend(node.parentElement!);
-  assert.equal(targets.find(anchor), node);
+  assert.equal(targets.find(anchor), node.parentElement);
   node.parentElement!.remove();
   assert.equal(targets.find(anchor), null, "never fall back to the other Register button");
+});
+test("inline links and emphasis share one paragraph or list-item target", () => {
+  const doc: Document = new JSDOM(`<h2>Training opportunities</h2><p>Build practical skills with <a href="/castl"><strong>CASTL</strong></a> and <a href="/biozone">BioZone</a>.</p>
+    <ul><li><p>Master’s and PhD trainees can receive <strong>$25,000</strong> in support.</p></li></ul>`).window.document;
+  const targets = createHtmlReviewTargets(doc), paragraph = doc.querySelector("p")!, item = doc.querySelector("li")!;
+  for (const node of paragraph.querySelectorAll("a,strong")) {
+    assert.equal(targets.pick(node), paragraph);
+    const anchor = targets.capture(node);
+    assert.equal(anchor.anchorQuote, paragraph.textContent);
+    assert.equal(targets.find(anchor), paragraph);
+  }
+  assert.equal(targets.pick(item.querySelector("strong")!), item);
+  assert.equal(targets.capture(item.querySelector("strong")!).anchorQuote, item.textContent);
+});
+test("legacy link anchors resolve to the same semantic paragraph without changing their saved quote", () => {
+  const { doc, targets } = fixture();
+  const anchor = { anchorKey: 'bhn-html:{"tag":"A","piece":"second","part":"CTA"}', anchorQuote: "Register", anchorBlock: "Second workshop" };
+  assert.equal(targets.find(anchor), doc.querySelectorAll("p")[1]);
+  assert.equal(anchor.anchorQuote, "Register");
+  assert.equal(targets.findLegacy({ anchorQuote: "Register", anchorPath: "p[data-nl-piece=second] > a" }, true), doc.querySelectorAll("p")[1]);
 });
 test("linked images target the image and retain stable image identity", () => {
   const { doc, targets } = fixture();
@@ -28,6 +48,15 @@ test("linked images target the image and retain stable image identity", () => {
   assert.equal(targets.find(anchor), image);
   image.parentElement!.parentElement!.setAttribute("data-nl-image", "replacement");
   assert.equal(targets.find(anchor), null);
+});
+test("image identity on the image itself remains locatable under a piece parent", () => {
+  const doc: Document = new JSDOM('<p data-nl-piece="event" data-nl-part="Picture"><a href="/event"><img data-nl-image="photo-1" alt="Event" src="/event.png"></a></p>').window.document;
+  const targets = createHtmlReviewTargets(doc), image = doc.querySelector("img")!;
+  const anchor = targets.capture(image);
+  image.alt = "Updated event picture";
+  assert.equal(targets.find(anchor), image);
+  image.setAttribute("data-nl-image", "photo-2");
+  assert.equal(targets.find(anchor), null, "a replacement image cannot steal the old identity");
 });
 test("ambiguous and unknown targets are not silently reattached", () => {
   const { doc, targets } = fixture();

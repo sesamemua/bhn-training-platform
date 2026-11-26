@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
-import { editableTextNodes } from "../../src/lib/page-review/editable-text";
+import { editableTextNodes, planTextBlockEdits } from "../../src/lib/page-review/editable-text";
 import { editReviewHtml, htmlRevision } from "../../src/lib/page-review/edit-html";
 
 const html = '<style>p{color:teal}</style><h2>Title</h2><p>Hello <a href="https://example.test/register">Register</a> today.</p><p>Last line</p>';
@@ -29,6 +29,41 @@ test("text-node collection ignores review UI and scripts; full documents retain 
   assert.doesNotMatch(result, /<script/);
 });
 
+test("one paragraph edit preserves CASTL and BioZone links and surrounding prose", () => {
+  const source = '<p>Build practical skills with <a href="https://castl.example">CASTL</a> and <a href="https://biozone.example"><strong>BioZone</strong></a> this fall.</p>';
+  const doc = new JSDOM(source).window.document;
+  const nodes = editableTextNodes(doc);
+  const edits = planTextBlockEdits(nodes.map((node, index) => ({ index, before: node.data })), "Strengthen practical skills with CASTL and BioZone this winter.");
+  const result = new JSDOM(editReviewHtml(source, edits)).window.document;
+  assert.equal(result.querySelector("p")?.textContent, "Strengthen practical skills with CASTL and BioZone this winter.");
+  assert.deepEqual(Array.from(result.querySelectorAll("a")).map(a => [a.href, a.textContent]), [["https://castl.example/", "CASTL"], ["https://biozone.example/", "BioZone"]]);
+  assert.equal(result.querySelector("a strong")?.textContent, "BioZone");
+});
+
+test("whole list-item edits retain emphasized Master's and PhD funding figures", () => {
+  const source = '<ul><li>Master’s trainees receive <strong>$25,000</strong>; PhD trainees receive <strong>$30,000</strong> in support.</li></ul>';
+  const nodes = editableTextNodes(new JSDOM(source).window.document);
+  const edits = planTextBlockEdits(nodes.map((node, index) => ({ index, before: node.data })), "Master’s trainees receive $26,000; PhD trainees receive $32,000 in support.");
+  const result = new JSDOM(editReviewHtml(source, edits)).window.document;
+  assert.deepEqual(Array.from(result.querySelectorAll("strong")).map(n => n.textContent), ["$26,000", "$32,000"]);
+  assert.equal(result.querySelectorAll("li").length, 1);
+});
+
+test("block planning rejects ambiguous boundaries and preserves immutable whitespace", () => {
+  const parts = [{ index: 0, before: "Join " }, { index: 1, before: "CASTL" }, { index: 2, before: " today." }];
+  assert.throws(() => planTextBlockEdits(parts, "Learn with BioZone today."), /formatting boundary/);
+  assert.throws(() => planTextBlockEdits(parts, "Join our CASTL today."), /formatting boundary/);
+  const spaced = [{ index: 0, before: "One" }, { index: null, before: "\n  " }, { index: 1, before: "Two" }];
+  assert.deepEqual(planTextBlockEdits(spaced, "First\n  Two"), [{ index: 0, before: "One", after: "First" }]);
+  assert.throws(() => planTextBlockEdits(spaced, "One Two"), /formatting boundary/);
+  assert.deepEqual(planTextBlockEdits([{ index: 5, before: "Old sentence" }], "Completely new sentence."), [{ index: 5, before: "Old sentence", after: "Completely new sentence." }]);
+});
+
+test("block planner remains self-contained when embedded in the isolated reviewer", () => {
+  const plan = new Function("return (function(__name){return (" + planTextBlockEdits.toString() + ");})(function(value){return value;})")() as typeof planTextBlockEdits;
+  assert.deepEqual(plan([{ index: 4, before: "Hello" }], "Hi"), [{ index: 4, before: "Hello", after: "Hi" }]);
+});
+
 const require = createRequire(import.meta.url);
 function fixture(options: { role?: string; active?: boolean; guest?: boolean; sent?: boolean; conflict?: boolean } = {}) {
   let review = { id: "newsletter-issue", shareToken: "token", kind: "paste", status: "open", round: 4, pastedHtml: html };
@@ -44,6 +79,8 @@ function fixture(options: { role?: string; active?: boolean; guest?: boolean; se
   };
   const mocks: any = {
     "@/lib/prisma": { prisma: db }, "@/lib/page-review/edit-html": { editReviewHtml, htmlRevision },
+    "@/lib/newsletter/review-images": { newsletterReviewImages: async () => [], resolveReviewImageEdits: async () => [],
+      saveReviewImageReferences: async () => {}, ReviewImageError: class extends Error {} },
     "@/lib/page-review/viewer": { verifyPageReviewViewerToken: async () => ({ userId: "staff", kind: options.guest ? "anon" : "user" }) },
     "@/lib/symposium-report/store": { reportTransaction: async (run: any) => {
       const previous = structuredClone(review), oldHtml = issueHtml;
