@@ -8,6 +8,7 @@ export function reportUnifiedSource(): string {
   if(reportReview){root.addEventListener('toggle',reportMenuPosition,true);document.addEventListener('keydown',reportMenuEscape);}
 
   if(reportReview)style.textContent += [
+    '#bhn-review-overlay[data-report-tools=true] .bhn-rv-shell:has(.bhn-report-menu[open]){backdrop-filter:none;-webkit-backdrop-filter:none;}',
     '#bhn-review-overlay[data-report-tools=true] .bhn-report-toolbar{display:flex;align-items:center;gap:5px;position:sticky;top:-6px;min-height:46px;padding:6px 0;margin-bottom:7px;border-bottom:1px solid #d5e0e4;}',
     '#bhn-review-overlay[data-report-tools=true] .bhn-report-toolbar>.bhn-rv-btn,#bhn-review-overlay[data-report-tools=true] .bhn-report-menu>summary{width:auto;min-height:34px;padding:6px 8px;font-size:12px;white-space:nowrap;}',
     '#bhn-review-overlay[data-report-tools=true] .bhn-report-unified{font-weight:750;}',

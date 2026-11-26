@@ -100,6 +100,8 @@ async function main() {
     });
     await page.goto(origin);
     const dialog = page.getByRole("dialog");
+    await page.locator(".bhn-rv-compare-open").waitFor({ state: "attached" });
+    await page.getByLabel("More review tools", { exact: true }).click();
     await page.getByRole("button", { name: "Before / after comparison" }).waitFor();
     await expect(dialog).toHaveCount(0); // never opens by itself on the Event Report
     await page.getByRole("button", { name: "Before / after comparison" }).click();
@@ -114,13 +116,14 @@ async function main() {
     await expect(dialog.locator("iframe")).toHaveCount(4);
     await dialog.getByRole("button", { name: /close/i }).click();
     await expect(dialog).not.toBeVisible();
+    if (!(await page.getByRole("button", { name: "Before / after comparison" }).isVisible())) await page.getByLabel("More review tools", { exact: true }).click();
     await page.getByRole("button", { name: "Before / after comparison" }).click();
     await expect(dialog.locator("iframe")).toHaveCount(4);
     await dialog.getByRole("button", { name: /close/i }).click();
     await expect(page.getByPlaceholder("Your name")).toHaveCount(0);
     await page.getByRole("link", { name: "Open report editor" }).click();
     await expect(page).toHaveURL(/#not-review$/);
-    const prior = page.locator("#bhn-review-overlay summary");
+    const prior = page.locator("#bhn-review-overlay .bhn-rv-history > summary");
     await expect(prior).toContainText("Previous rounds");
     await prior.click();
     await page.getByRole("button", { name: "Show comment 1 on page" }).click();
@@ -145,11 +148,11 @@ async function main() {
       let first = true;
       navigator.clipboard.writeText = async (text) => { if (first) { first = false; throw new Error("Clipboard denied"); } await write(text); };
     });
-    await page.getByRole("button", { name: "Copy review comments" }).click();
-    await page.getByRole("button", { name: "Copy comments and lock round", exact: true }).click();
+    await page.locator(".bhn-rv-copy-comments").click();
+    await page.locator(".bhn-rv-copy-confirm").getByRole("button", { name: "Copy comments and lock round", exact: true }).click();
     await expect(page.locator("#bhn-review-overlay")).toContainText("This round is locked, but clipboard access failed");
     assert.equal(status, "exported");
-    await page.getByRole("button", { name: "Copy review comments" }).click();
+    await page.locator(".bhn-rv-copy-comments").click();
     await expect(page.getByRole("button", { name: "Comments copied" })).toBeVisible();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     assert.match(copied, /Verified the wording/);
