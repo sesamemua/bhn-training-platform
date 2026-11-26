@@ -18,7 +18,7 @@ export function inlineTextSource(): string {
   function inlineDirty(){return !!(htmlReview&&(inlineEdit.patches.size||htmlImageDirty()||htmlImageSaving()||reviewTextSession&&reviewTextSession.draftDirty));}
   function syncInlineText(){
     if(!htmlReview||!inlineEdit.loaded||!inlineEdit.allowed)return;
-    document.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,img,div[data-nl-part]').forEach(function(node){
+    document.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,img,div[data-nl-part],div[data-preserved-wording="true"]').forEach(function(node){
       if(!inOverlay(node)&&htmlTargets.pick(node)===node&&!node.hasAttribute('tabindex')){node.setAttribute('tabindex','0');node.setAttribute('data-bhn-review-focus','');}
     });
   }
@@ -98,7 +98,7 @@ export function inlineTextSource(): string {
         body:JSON.stringify({expectedRound:inlineEdit.round,revision:inlineEdit.revision,issueRevision:inlineEdit.issueRevision,edits:Array.from(inlineEdit.patches.values()),images:getHtmlImageEdits()})});
       var data=await response.json();
       if(!response.ok||!data.ok)throw new Error(data.error||'Could not save. Your edits remain on this page.');
-      inlineEdit.patches.clear();htmlImagePatches.clear();window.location.reload();
+      inlineEdit.patches.clear();htmlImagePatches.clear();reloadReviewInPlace();
     }catch(error){inlineEdit.error=error.message||'Could not save. Your edits remain on this page.';inlineEdit.saving=false;syncInlineText();renderCommentCopy();}
   }
   function beforeInlineUnload(event){if(inlineDirty()){event.preventDefault();event.returnValue='';}}

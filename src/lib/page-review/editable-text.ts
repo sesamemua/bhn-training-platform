@@ -9,7 +9,8 @@ export function editableTextNodes(doc: Document | Element): (Text | HTMLSpanElem
     const parent = node.nodeType === 3 ? node.parentElement : node as HTMLSpanElement;
     if (!parent) continue;
     if (node.nodeType === 3) {
-      if (!(node as Text).data.trim() || parent.closest("span[data-bhn-rv-text-lines]") || !parent.closest("h1,h2,h3,h4,h5,h6,p,a,span,td,th,li,blockquote,figcaption")) continue;
+      if (!(node as Text).data.trim() || parent.closest("span[data-bhn-rv-text-lines]") ||
+        !parent.closest('h1,h2,h3,h4,h5,h6,p,a,span,td,th,li,blockquote,figcaption,div[data-preserved-wording="true"],div[data-nl-part="Original wording"]')) continue;
     } else if (!parent.matches("span[data-bhn-rv-text-lines]") ||
       Array.from(parent.childNodes).some(child => child.nodeType !== 3 && (child as Element).tagName !== "BR")) continue;
     if (parent.closest("script,style,noscript,textarea,select,button,svg,[hidden],[aria-hidden=true],#bhn-review-overlay,.bhn-review-marker,.bhn-report-inline-comment,[data-bhn-review-ui]")) continue;

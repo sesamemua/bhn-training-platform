@@ -33,7 +33,8 @@ export function surfaceAdaptersSource(): string {
   }
   function openSurfaceText(target,options,quick,event){
     if(event){
-      if(!target.closest('p')||target.closest('a,form')||target.querySelector('img,picture,svg,iframe,object,embed,video,audio,input,textarea,button'))return false;
+      if((!target.closest('p')&&!(htmlReview&&htmlTargets.isVerbatimBlock(target)))||
+        target.closest('a,form')||target.querySelector('img,picture,svg,iframe,object,embed,video,audio,input,textarea,button'))return false;
       openInPlaceText(target,Object.assign({},options,{autosave:true}),event);
     }else openReviewText(target,options,quick);
     return true;
@@ -110,7 +111,7 @@ export function surfaceAdaptersSource(): string {
       })});
       var data=await response.json();
       if(!response.ok||!data.ok)throw new Error(data.error||'The draft could not be saved.');
-      success=true;socialEdits.clear();window.location.reload();
+      success=true;socialEdits.clear();reloadReviewInPlace();
     }catch(problem){
       socialEditError=problem.message||'The draft could not be saved. Your edits are still on this page.';
     }finally{

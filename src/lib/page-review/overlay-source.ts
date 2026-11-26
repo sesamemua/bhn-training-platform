@@ -13,6 +13,7 @@ import { htmlImageSource } from "./html-image-source";
 import { textEditorSource } from "./text-editor-source";
 import { inPlaceTextSource } from "./in-place-text-source";
 import { textCheckpointSource } from "./text-checkpoint-source";
+import { reviewViewportSource } from "./viewport-source";
 import { renderReviewText, renderTextMarks } from "./text-marks";
 import { surfaceAdaptersSource } from "./surface-adapters-source";
 import type { ReviewMediaTools } from "./media-tools";
@@ -1666,6 +1667,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   ${surfaceAdaptersSource()}
   ${textEditorSource()}
   ${textCheckpointSource()}
+  ${reviewViewportSource()}
   ${inPlaceTextSource()}
   ${contextualSource()}
   document.addEventListener("mousemove", onMove, true);

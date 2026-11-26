@@ -6,8 +6,9 @@ export interface HtmlReviewAnchor {
 
 /** Self-contained so the same adapter can run inside the isolated HTML reviewer. */
 export function createHtmlReviewTargets(doc: Document) {
-  const selector = "h1,h2,h3,h4,h5,h6,p,a,button,li,blockquote,figcaption,img,div[data-nl-part]";
-  const blocks = "h1,h2,h3,h4,h5,h6,p,blockquote,figcaption,div[data-nl-part]";
+  const verbatim = 'div[data-preserved-wording="true"],div[data-nl-part="Original wording"]';
+  const selector = "h1,h2,h3,h4,h5,h6,p,a,button,li,blockquote,figcaption,img,div[data-nl-part]," + verbatim;
+  const blocks = "h1,h2,h3,h4,h5,h6,p,blockquote,figcaption,div[data-nl-part]," + verbatim;
   const clean = (value: string | null | undefined) => (value || "").replace(/\s+/g, " ").trim();
   const text = (node: Element) => clean(node.tagName === "IMG" ? node.getAttribute("alt") : node.textContent).slice(0, 600);
   const content = (node: Element) => !node.closest("#bhn-review-overlay,.bhn-review-marker,.bhn-report-inline-comment,dialog,[data-bhn-review-ui]");
@@ -50,7 +51,7 @@ export function createHtmlReviewTargets(doc: Document) {
       const part = n.closest("[data-nl-piece]");
       const image = n.closest("[data-nl-image]") || part;
       return part?.getAttribute("data-nl-piece") === identity.piece &&
-        part.getAttribute("data-nl-part") === identity.part &&
+        (part.getAttribute("data-nl-part") || "") === identity.part &&
         (!identity.image || image?.getAttribute("data-nl-image") === identity.image);
     });
     else if (identity.id) nodes = nodes.filter(n => n.id === identity.id);
@@ -74,5 +75,5 @@ export function createHtmlReviewTargets(doc: Document) {
     const leaves = matches.filter(n => !matches.some(other => n !== other && n.contains(other)));
     return leaves.length === 1 ? pick(leaves[0]) : null;
   }
-  return { pick, capture, find, findLegacy };
+  return { pick, capture, find, findLegacy, isVerbatimBlock: (node: Element) => node.matches(verbatim) };
 }

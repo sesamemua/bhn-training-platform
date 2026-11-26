@@ -39,6 +39,16 @@ test("legacy link anchors resolve to the same semantic paragraph without changin
   assert.equal(anchor.anchorQuote, "Register");
   assert.equal(targets.findLegacy({ anchorQuote: "Register", anchorPath: "p[data-nl-piece=second] > a" }, true), doc.querySelectorAll("p")[1]);
 });
+test("preserved wording blocks are semantic review targets without swallowing the CTA", () => {
+  for (const attribute of ['data-preserved-wording="true"', 'data-nl-part="Original wording"']) {
+    const doc: Document = new JSDOM(`<div data-nl-piece="ke"><div ${attribute}><strong>Knowledge Exchange</strong> updates</div><a href="/ke">Apply</a></div>`).window.document;
+    const targets = createHtmlReviewTargets(doc), block = doc.querySelector("strong")!.parentElement!, cta = doc.querySelector("a")!;
+    assert.equal(targets.isVerbatimBlock(block), true);
+    assert.equal(targets.pick(block.querySelector("strong")!), block);
+    assert.equal(targets.find(targets.capture(block)), block);
+    assert.equal(targets.pick(cta), cta);
+  }
+});
 test("linked images target the image and retain stable image identity", () => {
   const { doc, targets } = fixture();
   const image = doc.querySelector("img")!;
