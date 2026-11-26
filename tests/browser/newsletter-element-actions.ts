@@ -73,7 +73,7 @@ async function main() {
     const originalListMarkup = await page.locator("#funding").innerHTML();
     const originalImageMarkup = await page.locator("#story-picture").evaluate(image => image.outerHTML);
     await page.locator("#learning a").first().click();
-    await expect(page.getByRole("menu", { name: "Newsletter element actions" })).toBeVisible();
+    await expect(page.getByRole("menu", { name: "Review element actions" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Open link", exact: true })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Comment on element", exact: true })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Edit text", exact: true })).toBeEnabled();
@@ -167,7 +167,7 @@ async function main() {
     await page.getByRole("button", { name: "Collapse comments", exact: true }).click();
     await page.locator("#story-picture").focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("menu", { name: "Newsletter element actions" })).toBeVisible();
+    await expect(page.getByRole("menu", { name: "Review element actions" })).toBeVisible();
     const menuBounds = await page.getByRole("menu").boundingBox();
     assert.ok(menuBounds && menuBounds.x >= 0 && menuBounds.x + menuBounds.width <= 390);
     await page.getByRole("menuitem", { name: "Replace or edit picture", exact: true }).click();

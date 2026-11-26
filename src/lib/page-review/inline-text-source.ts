@@ -2,18 +2,19 @@
 export function inlineTextSource(): string {
   return String.raw`
   var inlineEdit={loaded:false,allowed:false,revision:null,issueRevision:null,round:null,patches:new Map(),images:[],saving:false,error:''};
-  var htmlTextEditor=null;
+  var stagedHtmlLists=new Map();
   if(htmlReview)reviewMediaTools.editText={
     getState:function(){return {enabled:inlineEdit.allowed&&!isLocked(),dirty:inlineDirty(),saving:inlineEdit.saving||htmlImageSaving(),error:inlineEdit.error};},
     save:saveInlineText,
     discard:function(){
       if(inlineEdit.saving||htmlImageSaving())return;
-      if(htmlTextEditor)htmlTextEditor.close();
+      if(reviewTextSession)reviewTextSession.close();
+      stagedHtmlLists.forEach(function(item){item.list.replaceWith(item.node);});stagedHtmlLists.clear();
       originalTextNodes.forEach(function(node,index){if(node.isConnected)node.data=originalTextValues[index];});
       resetHtmlImages();inlineEdit.patches.clear();inlineEdit.error='';renderCommentCopy();
     }
   };
-  function inlineDirty(){return !!(htmlReview&&(inlineEdit.patches.size||htmlImageDirty()||htmlImageSaving()||htmlTextEditor&&htmlTextEditor.draftDirty));}
+  function inlineDirty(){return !!(htmlReview&&(inlineEdit.patches.size||htmlImageDirty()||htmlImageSaving()||reviewTextSession&&reviewTextSession.draftDirty));}
   function syncInlineText(){
     if(!htmlReview||!inlineEdit.loaded||!inlineEdit.allowed)return;
     document.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,img,div[data-nl-part]').forEach(function(node){
@@ -23,29 +24,31 @@ export function inlineTextSource(): string {
   function htmlTextEditingAllowed(node){
     return !!(htmlReview&&node&&node.tagName!=='IMG'&&inlineEdit.allowed&&!inlineEdit.saving&&!htmlImageSaving()&&!state.saving&&!isLocked()&&!state.draft.trim()&&state.replyTo===null&&state.editingId===null&&originalTextNodes.some(function(text){return node.contains(text);}));
   }
-  function openHtmlTextEditor(node){
+  function openHtmlTextEditor(node,quick){
     if(!htmlTextEditingAllowed(node))return;
     var parts=[],walker=document.createTreeWalker(node,4);
     while(walker.nextNode()){var text=walker.currentNode,index=originalTextNodes.indexOf(text);parts.push({index:index<0?null:index,before:text.data,node:text});}
     var before=parts.map(function(part){return part.before;}).join('');
-    var dialog=createHtmlReviewDialog(node.tagName==='LI'?'Edit list item':'Edit text');htmlTextEditor=dialog;
-    dialog.onClose=function(){if(htmlTextEditor===dialog)htmlTextEditor=null;};
-    var help=make('p','bhn-rv-html-review-help','Edit this whole text block. Existing links and emphasis are preserved. Apply changes, then Save revision to keep them.');
-    var input=make('textarea','bhn-rv-html-block-text');input.value=before;input.maxLength=30000;input.rows=8;input.setAttribute('aria-label','Text for this '+(node.tagName==='LI'?'list item':'paragraph'));
-    dialog.draftDirty=false;input.addEventListener('input',function(){dialog.draftDirty=input.value!==before;});
-    var error=make('p','bhn-rv-html-review-error');error.setAttribute('role','alert');error.hidden=true;
-    dialog.body.append(help,input,error);
-    dialog.footer.appendChild(addButton('Cancel','bhn-rv-btn',function(){dialog.close();}));
-    dialog.footer.appendChild(addButton('Apply changes','bhn-rv-btn bhn-rv-btn-primary',function(){
-      if(!htmlTextEditingAllowed(node))return;
-      try{
+    var allowList=node.tagName==='P'&&parts.length===1&&parts[0].index!==null&&node.childNodes.length===1;
+    openReviewText(node,{title:quick?'Quick edit':node.tagName==='LI'?'Edit list item':'Edit text',
+      value:before,label:'Text for this '+(node.tagName==='LI'?'list item':'paragraph'),list:allowList,
+      help:'Existing links and emphasis are preserved. Apply changes, then Save revision to keep them.',
+      apply:function(value,items){
+        if(!htmlTextEditingAllowed(node))throw new Error('This revision is no longer editable.');
         if(parts.some(function(part){return !part.node.isConnected||part.node.data!==part.before;}))throw new Error('This text changed while the editor was open. Close this editor and open it again.');
-        var edits=planTextBlockEdits(parts,input.value);
+        if(items){
+          var index=parts[0].index, list=make('ul');
+          Array.from(node.attributes).forEach(function(attr){if(attr.name!=='data-bhn-review-focus'&&attr.name!=='tabindex')list.setAttribute(attr.name,attr.value);});
+          list.style.listStyleType='disc';list.style.paddingLeft='24px';
+          items.forEach(function(item){list.appendChild(make('li','',item));});
+          node.replaceWith(list);stagedHtmlLists.set(index,{list:list,node:node});
+          inlineEdit.patches.set(index,{index:index,before:originalTextValues[index],after:items.join('\n'),list:true});
+        }else{
+        var edits=planTextBlockEdits(parts,value);
         edits.forEach(function(edit){var text=originalTextNodes[edit.index];text.data=edit.after;if(edit.after===originalTextValues[edit.index])inlineEdit.patches.delete(edit.index);else inlineEdit.patches.set(edit.index,{index:edit.index,before:originalTextValues[edit.index],after:edit.after});});
-        inlineEdit.error='';dialog.close();showHighlight(null);renderCommentCopy();
-      }catch(problem){error.textContent=problem.message||'This change could not be applied safely.';error.hidden=false;input.focus();}
-    }));
-    input.focus();
+        }
+        inlineEdit.error='';showHighlight(null);
+      }},quick);
   }
   async function loadInlineText(){
     if(!htmlReview||!state.viewer||inlineEdit.loaded)return;
@@ -58,7 +61,7 @@ export function inlineTextSource(): string {
     }catch(_){inlineEdit.error='Editing could not load. Reload to retry.';renderCommentCopy();}
   }
   async function saveInlineText(){
-    if(!inlineDirty()||!inlineEdit.allowed||isLocked()||inlineEdit.saving||htmlImageSaving()||state.saving||state.draft.trim()||state.replyTo!==null||state.editingId!==null)return;
+    if(reviewTextSession||!inlineDirty()||!inlineEdit.allowed||isLocked()||inlineEdit.saving||htmlImageSaving()||state.saving||state.draft.trim()||state.replyTo!==null||state.editingId!==null)return;
     inlineEdit.saving=true;inlineEdit.error='';syncInlineText();renderCommentCopy();
     try{
       var response=await fetch(endpoint+'/document',{method:'PATCH',headers:{Authorization:'Bearer '+credential,'Content-Type':'application/json'},

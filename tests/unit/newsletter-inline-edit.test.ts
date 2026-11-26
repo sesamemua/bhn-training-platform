@@ -29,6 +29,14 @@ test("text-node collection ignores review UI and scripts; full documents retain 
   assert.doesNotMatch(result, /<script/);
 });
 
+test("only a plain paragraph can become a styled semantic list; items are literal text", () => {
+  const result = editReviewHtml(html, [{ index: 4, before: "Last line", after: "One\n<img src=x onerror=boom>", list: true }]);
+  const doc = new JSDOM(result).window.document;
+  assert.deepEqual([...doc.querySelectorAll("ul li")].map(node => node.textContent), ["One", "<img src=x onerror=boom>"]);
+  assert.equal(doc.querySelectorAll("img").length, 0);
+  assert.throws(() => editReviewHtml(html, [{ index: 2, before: "Register", after: "One\nTwo", list: true }]), /plain paragraph/);
+});
+
 test("one paragraph edit preserves CASTL and BioZone links and surrounding prose", () => {
   const source = '<p>Build practical skills with <a href="https://castl.example">CASTL</a> and <a href="https://biozone.example"><strong>BioZone</strong></a> this fall.</p>';
   const doc = new JSDOM(source).window.document;

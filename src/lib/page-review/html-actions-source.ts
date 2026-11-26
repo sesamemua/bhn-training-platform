@@ -39,23 +39,31 @@ export function htmlActionsSource(): string {
     var link=node&&node.closest('a[href]');if(!link)return null;
     try{var url=new URL(link.getAttribute('href'),document.baseURI);return /^(https?:|mailto:|tel:)$/.test(url.protocol)?url.href:null;}catch(_){return null;}
   }
-  function beginHtmlComment(node){
-    if(inlineDirty()||htmlImageSaving()||isLocked()||!state.viewer||state.saving||state.draft.trim()||state.replyTo!==null||state.editingId!==null)return;
-    closeHtmlActions(false);state.selected=anchorsFor(node);state.panelCollapsed=false;state.pickingElement=false;threadHighlight=null;showHighlight(node);render();
+  function beginHtmlComment(node,draft){
+    if(inlineDirty()||socialEdits.size||htmlImageSaving()||isLocked()||!state.viewer||state.saving||state.draft.trim()||state.replyTo!==null||state.editingId!==null)return;
+    closeHtmlActions(false);state.selected=anchorsFor(node);if(draft)state.draft=draft;
+    reportCommentTarget=node;state.panelCollapsed=false;state.pickingElement=false;threadHighlight=null;showHighlight(node);render();
     var input=root.querySelector('.bhn-rv-compose textarea');if(input)input.focus();
   }
   function openHtmlActions(node,event){
-    if(!htmlReview||!node||htmlReviewDialog)return;
+    if(!contextualReview||!node||htmlReviewDialog)return;
+    if(reviewTextSession)return;
     closeHtmlActions(false);if(reportCommentButton)reportCommentButton.hidden=true;showHighlight(node);
-    var menu=make('div','bhn-rv-html-actions');menu.setAttribute('role','menu');menu.setAttribute('aria-label','Newsletter element actions');menu.setAttribute('data-bhn-review-ui','');htmlActionsMenu=menu;htmlActionsTarget=node;
+    var menu=make('div','bhn-rv-html-actions');menu.setAttribute('role','menu');menu.setAttribute('aria-label','Review element actions');menu.setAttribute('data-bhn-review-ui','');htmlActionsMenu=menu;htmlActionsTarget=node;
     function option(label,handler,disabled){var button=addButton(label,'bhn-rv-btn',handler);button.setAttribute('role','menuitem');button.tabIndex=-1;button.disabled=!!disabled;menu.appendChild(button);return button;}
     var link=safeHtmlActionLink(event&&event.target||node);
     if(link)option('Open link',function(){closeHtmlActions(false);window.open(link,'_blank','noopener,noreferrer');});
-    var commentBlocked=inlineDirty()||htmlImageSaving()||isLocked()||!state.viewer||state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null;
+    var commentBlocked=reviewChangesPending()||htmlImageSaving()||isLocked()||!state.viewer||state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null;
     var comment=option('Comment on element',function(){beginHtmlComment(node);},commentBlocked);
-    if(inlineDirty())comment.title='Save or discard your edits before commenting.';
-    if(node.tagName==='IMG')option('Replace or edit picture',function(){closeHtmlActions(true);openHtmlImageEditor(node);},!inlineEdit.allowed||inlineEdit.saving||htmlImageSaving()||state.saving||isLocked()||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null);
-    else option('Edit text',function(){closeHtmlActions(true);openHtmlTextEditor(node);},!htmlTextEditingAllowed(node));
+    if(reviewChangesPending())comment.title='Save or discard your edits before commenting.';
+    var adapter=reviewActionAdapter(node,event&&event.target);
+    if(node.tagName==='IMG'){
+      if(adapter.picture||htmlReview)option('Replace or edit picture',function(){closeHtmlActions(true);adapter.picture();},!adapter.picture);
+      if(adapter.pictureLink)option('Open post editor',function(){closeHtmlActions(false);window.open(adapter.pictureLink,'_blank','noopener,noreferrer');});
+    }else if(adapter.text||htmlReview){
+      option(adapter.suggest?'Quick suggestion':'Quick edit',function(){closeHtmlActions(true);adapter.text(true);},!adapter.text);
+      option(adapter.suggest?'Suggest text':'Edit text',function(){closeHtmlActions(true);adapter.text(false);},!adapter.text);
+    }
     menu.addEventListener('keydown',function(key){
       var buttons=Array.from(menu.querySelectorAll('button:not(:disabled)')),at=buttons.indexOf(document.activeElement);
       if(key.key==='Escape'){key.preventDefault();key.stopPropagation();closeHtmlActions(true);}
@@ -67,7 +75,7 @@ export function htmlActionsSource(): string {
     document.addEventListener('pointerdown',outsideHtmlActions,true);var first=menu.querySelector('button:not(:disabled)');if(first)first.focus();else{menu.tabIndex=-1;menu.focus();}
   }
   function cleanupHtmlActions(){closeHtmlActions(false);if(htmlReviewDialog)htmlReviewDialog.close();}
-  if(htmlReview)style.textContent+=[
+  if(contextualReview)style.textContent+=[
     '.bhn-rv-html-actions{position:fixed;z-index:2147483647;display:grid;gap:4px;min-width:220px;max-width:calc(100vw - 16px);padding:7px;border:1px solid #b9cbd0;border-radius:6px;background:#fff;box-shadow:0 8px 26px #17304730;font:13px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;}.bhn-rv-html-actions .bhn-rv-btn{text-align:left;padding:9px 12px;min-height:38px;border:0;border-radius:4px;background:transparent;color:#173c4d;font:inherit;cursor:pointer;}.bhn-rv-html-actions .bhn-rv-btn:hover,.bhn-rv-html-actions .bhn-rv-btn:focus-visible{background:#edf8fa;outline:2px solid #176879;outline-offset:-2px;}.bhn-rv-html-actions .bhn-rv-btn:disabled{opacity:.5;cursor:default;}',
     '.bhn-rv-html-review-backdrop{position:fixed;inset:0;background:#071b2766;z-index:2147483646;}.bhn-rv-html-review-dialog{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;box-sizing:border-box;margin:0;width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:0;border:1px solid #b9cbd0;border-radius:7px;background:#fff;color:#17212b;box-shadow:0 14px 44px #071b2740;font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;}.bhn-rv-html-review-dialog::backdrop{background:#071b2766;}.bhn-rv-html-review-dialog *{box-sizing:border-box;}.bhn-rv-html-review-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-bottom:1px solid #dce6e9;}.bhn-rv-html-review-head h2{margin:0;color:#173c4d;font-size:18px;line-height:1.3;}.bhn-rv-html-review-body{padding:20px;}.bhn-rv-html-review-footer{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #dce6e9;}.bhn-rv-html-review-dialog .bhn-rv-btn{min-height:36px;padding:7px 12px;border:1px solid #b9cbd0;border-radius:4px;background:#fff;color:#173c4d;font:inherit;font-size:13px;font-weight:600;cursor:pointer;}.bhn-rv-html-review-dialog .bhn-rv-btn-primary{background:#176879;border-color:#176879;color:#fff;}.bhn-rv-html-review-dialog .bhn-rv-btn:disabled{opacity:.5;cursor:default;}.bhn-rv-html-review-help{margin:0 0 12px;color:#60707b;font-size:13px;}.bhn-rv-html-block-text{display:block;width:100%;min-height:180px;resize:vertical;border:1px solid #b9cbd0;border-radius:4px;padding:12px;color:#17212b;background:#fff;font:16px/1.55 -apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;}.bhn-rv-html-review-error{color:#8c2020;margin:12px 0 0;}.bhn-rv-html-review-dialog :focus-visible{outline:2px solid #176879;outline-offset:2px;}.bhn-rv-html-review-dialog [hidden]{display:none!important;}'
   ].join('');

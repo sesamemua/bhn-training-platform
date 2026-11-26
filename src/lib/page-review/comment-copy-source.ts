@@ -42,7 +42,7 @@ export function commentCopySource(): string {
         var discard=addButton('Discard edits','bhn-rv-btn',function(){editor.discard();});
         discard.disabled=!editing.dirty||editing.saving;
         row.appendChild(save);row.appendChild(discard);
-        var status=make('span','',editing.error|| (editing.saving?'Preparing or saving changes…':editing.dirty?'Unsaved text or picture changes':'Click a text block or picture to edit'));
+        var status=make('span','',editing.error|| (editing.saving?'Preparing or saving changes…':editing.dirty?'Unsaved changes':editing.hint||'Click a text block or picture to edit'));
         status.setAttribute('role',editing.error?'alert':'status');row.appendChild(status);commentActionDock.appendChild(row);
       }
     }

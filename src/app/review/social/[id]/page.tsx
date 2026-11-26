@@ -21,11 +21,12 @@ export default async function SocialCopyReviewPage({ params }: { params: Promise
   const latest = socialCopySnapshot(post.body, post.assetSpec);
   const saved = review?.pastedHtml ? SocialCopySnapshot.parse(JSON.parse(review.pastedHtml)) : latest;
   const open = canReviewSocialCopy(post.status) && (!review || review.status === "open");
+  const canEdit = open && !!review && review.pastedHtml === JSON.stringify(latest);
   return <main className="mx-auto max-w-4xl px-4 py-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="text-xl font-bold">Social Post Review</h1><p className="text-sm text-muted">{review ? `Round ${review.round} · ${open ? "In review" : "Read-only"}` : "No saved review"}</p></div>
       <div className="flex flex-wrap gap-2">
-        <a href={reviewPath(id)} className="rounded-md border border-line px-3 py-2 text-sm font-semibold">Open post editor</a>
+        <a href={reviewPath(id)} data-bhn-social-editor="" className="rounded-md border border-line px-3 py-2 text-sm font-semibold">Open post editor</a>
         {graphic && <a href={`/review/design/${encodeURIComponent(graphic.id)}`} className="rounded-md border border-line px-3 py-2 text-sm font-semibold">Review graphic</a>}
       </div>
     </header>
@@ -33,9 +34,9 @@ export default async function SocialCopyReviewPage({ params }: { params: Promise
       stale={!!review && review.pastedHtml !== JSON.stringify(latest)} open={canReviewSocialCopy(post.status) && review?.status !== "closed"} />
     <div data-social-review className="mt-5">
       <div id="social-copy-draft">
-        <article data-copy-page aria-label={saved.title} className="space-y-4 rounded-lg border border-line bg-card p-5 [overflow-wrap:anywhere]">
+        <article data-copy-page data-copy-version={post.editVersion} data-copy-editable={canEdit} aria-label={saved.title} className="space-y-4 rounded-lg border border-line bg-card p-5 [overflow-wrap:anywhere]">
           <h2 className="text-lg font-bold">{saved.title}</h2>
-          {saved.body.split(/\n\s*\n/).map((part, index) => <p key={index} className="whitespace-pre-wrap leading-relaxed">{part}</p>)}
+          {saved.body.split(/\n\s*\n/).map((part, index) => <p key={index} data-copy-part={index} className="whitespace-pre-wrap leading-relaxed">{part}</p>)}
           <SocialPostPhotos postId={id} assetSpec={post.assetSpec} />
         </article>
       </div>

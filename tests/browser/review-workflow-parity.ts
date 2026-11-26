@@ -17,7 +17,7 @@ async function main() {
     const snapshots = [{ round: 1, body: "Original workshop copy" }, { round: 2, body: "Updated workshop copy" }]
       .map(({ round, body }) => ({ round, html: socialCopySnapshotHtml(JSON.stringify({ title: review.title, body })) }));
     await page.route(root + "/social", (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: `<!doctype html><body>
-      <a href="#editor">Open post editor</a><div data-social-review><div id="social-copy-draft"><article data-copy-page aria-label="Event post"><p>Updated workshop copy</p></article></div></div>
+      <a href="#editor">Open post editor</a><div data-social-review><div id="social-copy-draft"><article data-copy-page data-copy-editable="true" data-copy-version="6" aria-label="Event post"><p data-copy-part="0">Updated workshop copy</p></article></div></div>
       <script data-round="2">${overlaySource(endpoint, "Social Post Review", true, mutate, "social")}</script></body>` }));
     await page.route(endpoint + "**", (route) => route.fulfill({ json: route.request().url().includes("comparison=1")
       ? { ok: true, review, comparison: { versions: snapshots, beforeHtml: snapshots[0].html, afterHtml: snapshots[1].html, availableRounds: [1, 2] } }
@@ -34,12 +34,14 @@ async function main() {
       return route.fulfill({ json: { ok: true, review: { comments: threads } } });
     });
     await page.goto(root + "/social");
+    await page.getByRole("button", { name: "Before / after comparison" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.frameLocator('iframe[title="Before · Round 1"]').locator("mark").filter({ hasText: "Original" })).toBeVisible();
     await page.getByRole("button", { name: /close/i }).click();
     await page.getByRole("link", { name: "Open post editor" }).click();
     assert.match(page.url(), /#editor$/);
     await page.getByText("Updated workshop copy", { exact: true }).click();
+    await page.getByRole("menuitem", { name: "Comment on element" }).click();
     await page.getByRole("textbox", { name: "New review comment" }).fill("Verify the workshop wording.");
     await page.getByRole("button", { name: "Add comment" }).click();
     await expect(page.locator('[data-thread-id="comment"]')).toContainText("Verify the workshop wording.");
@@ -47,6 +49,37 @@ async function main() {
     await expect(page.locator(".bhn-review-highlight")).toBeVisible();
     await page.getByRole("button", { name: "Resolve", exact: true }).click();
     await expect(page.getByRole("button", { name: "Reopen", exact: true })).toBeVisible();
+    const paragraph = page.locator("[data-copy-part]");
+    await paragraph.click();
+    await page.getByRole("menuitem", { name: "Quick edit", exact: true }).click();
+    const quick = page.getByRole("group", { name: "Quick edit" }).getByRole("textbox");
+    await quick.fill("Polished workshop copy"); await quick.press("Enter");
+    await expect(paragraph).toHaveText("Polished workshop copy");
+    await page.getByRole("button", { name: "Discard edits" }).click();
+    await expect(paragraph).toHaveText("Updated workshop copy");
+
+    const site = root + "/website", siteApi = root + "/website-comments";
+    const siteWrites: unknown[] = [];
+    await page.route(site, route => route.fulfill({ contentType: "text/html", body: `<!doctype html><body><main><p>Learn about <a href="/workshops">Workshops</a>.</p><form><button type="button" onclick="this.textContent='Form still works'">Test form button</button></form></main><script data-viewer="signed">${overlaySource(siteApi, "Website review", false, null, "report", { website: true })}</script></body>` }));
+    await page.route(siteApi + "**", route => {
+      if (route.request().method() !== "GET") siteWrites.push(route.request().postDataJSON());
+      return route.fulfill({ json: { ok: true, review, comments: [], viewer: { name: "Reviewer", canResolve: false } } });
+    });
+    await page.goto(site);
+    await expect(page.getByRole("group", { name: "Review controls" })).toBeVisible();
+    await page.getByRole("link", { name: "Workshops" }).click();
+    await expect(page.getByRole("menuitem", { name: "Open link", exact: true })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Suggest text", exact: true }).click();
+    const suggestion = page.getByRole("dialog", { name: "Suggest text" });
+    await expect(suggestion.getByRole("textbox")).toHaveValue("Learn about Workshops.");
+    await suggestion.getByRole("textbox").fill("Explore our training workshops.");
+    await suggestion.getByRole("button", { name: "Continue to comment" }).click();
+    await expect(page.getByRole("textbox", { name: "New review comment" })).toHaveValue("Suggested replacement:\nExplore our training workshops.");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Workshops" })).toBeVisible();
+    await page.getByRole("button", { name: "Test form button" }).click();
+    await expect(page.getByRole("button", { name: "Form still works" })).toBeVisible();
+    assert.equal(siteWrites.length, 0, "suggestions never edit the site or post without confirmation");
 
     const mockActions = "addDesignPin deleteDesignPin editDesignPin lockDesignRound markDesignSeen replyDesignPin requestDesignReview resolveDesignPin setDesignApproval setDesignOk startDesignRound".split(" ").map((name) => `export async function ${name}(){return {ok:true}}`).join("\n");
     const bundle = await build({
@@ -90,7 +123,7 @@ async function main() {
     await expect(page.getByRole("button", { name: "Move comments panel" })).toBeVisible();
     await page.getByRole("button", { name: "Collapse", exact: true }).click();
     await expect(page.getByRole("button", { name: "Expand", exact: true })).toBeVisible();
-    console.log("PASS: social anchored review, diffs and resolve; design four-round comparison, archived pins and floating panel");
+    console.log("PASS: shared social and website menus, edit/suggestion flows, diffs and resolve; design comparison and history");
   } finally { await browser.close(); }
 }
 

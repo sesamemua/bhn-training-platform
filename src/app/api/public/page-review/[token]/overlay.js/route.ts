@@ -17,7 +17,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const { token } = await ctx.params;
   const review = await prisma.pageReview.findUnique({
     where: { shareToken: token },
-    select: { id: true, title: true, status: true },
+    select: { id: true, title: true, status: true, kind: true },
   });
 
   if (!review || review.status === "closed") {
@@ -31,6 +31,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const newsletter = review.id.startsWith("newsletter-");
   return new NextResponse(overlaySource(endpoint, review.title, newsletter || review.id.startsWith("training-week-emails-"), null, "report", {
     contextualHtml: newsletter && process.env.NEWSLETTER_CONTEXTUAL_REVIEW !== "off",
+    website: review.kind === "url",
   }), { headers: HEADERS });
 }
 

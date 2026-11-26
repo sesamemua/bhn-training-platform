@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useLayoutEffect, useRef, useState, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, type HTMLAttributes, type MouseEvent, type ReactNode, type RefCallback } from "react";
 import type { Registration, Report, ReportPage, ReportPhoto } from "@/lib/symposium-report/document";
 import { paginate, replaceReportBlock, reportBlocks, type Block } from "@/lib/symposium-report/paginate";
 import { hasLeadPhoto, hasPairedPhotos, hasTrainingPhotoGrid, MAX_PHOTO_HEIGHT, MIN_FILL_PHOTO, pagePhoto, photoLabel, photoRemoved, PHOTO_CAPTION_SPACE, PHOTO_GAP, photoPreset, photoRowHeight, portraitHeight, portraitPhotos, REPORT_ASSETS, stripPhotos, trainingPhotoGridSpace, TRAINING_TILE_PREVIEW_HEIGHT, workshopPhotos, workshopTileHeight } from "@/lib/symposium-report/photos";
@@ -15,7 +15,8 @@ const sectorColors = [
   "var(--report-sector-academic)", "var(--report-sector-industry)", "var(--report-sector-other)", "var(--report-sector-public)",
 ];
 
-type Inline = (value: string, label: string, apply: (value: string) => void, multiline?: boolean) => HTMLAttributes<HTMLElement>;
+type Inline = (value: string, label: string, apply: (value: string) => void, multiline?: boolean, list?: boolean) =>
+  HTMLAttributes<HTMLElement> & { ref?: RefCallback<HTMLElement>; "data-bhn-review-text"?: string; "data-bhn-review-list"?: string };
 
 function RegistrationChart({ chart, showSource, inline, change }: {
   chart: Registration; showSource: boolean; inline: Inline; change: (chart: Registration) => void;
@@ -93,16 +94,19 @@ function blockClassName(block: Block, rosterStart: number | undefined) {
 }
 
 function Blocks({ page, blocks, inline, change, tracked, heights = {} }: { page: ReportPage; blocks: Block[]; inline: Inline; change: (block: Block, text: string) => void; tracked?: Map<number, Mark[]>; heights?: Record<string, number> }) {
-  const rosterStart = page.id === "structured-networking" ? reportBlocks(page.text).findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
+  const fullBlocks = reportBlocks(page.text);
+  const rosterStart = page.id === "structured-networking" ? fullBlocks.findLast((block) => block.kind === "heading" && block.text === "Participating industry professionals")?.start : undefined;
   const renderCopy = (block: Block) => {
     const Tag = block.kind === "heading" && !block.continued ? "h3" : block.kind === "quote" ? "blockquote" : block.kind === "bullet" && !block.continued ? "li" : "p";
     const position = quotePosition(page, block);
-    const editProps = inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading");
     // Keep the editable DOM as plain text; styled review spans belong to the reading view.
     // Chromium can mislay columns when a spanning layout block is directly editable.
     const action = editorialAction(page, block);
     const parts = editorialParts(page, block);
     const panelLabels = parts.some(part => part.kind === "panelLabel");
+    const list = block.kind === "paragraph" && !block.continued && !block.photoRow && !action && !panelLabels &&
+      fullBlocks.some(part => part.start === block.start && part.text === block.text);
+    const editProps = inline(block.text, block.kind === "heading" ? "Story subheading" : "Story text", (text) => change(block, text), block.kind !== "heading", list);
     return block.text && <Tag className={`${blockClassName(block, rosterStart)}${publicationPage(page) && action ? ` ${styles.fundingAcknowledgement}` : ""}${block.kind === "bullet" && block.continued ? ` ${styles.continuedBullet}` : ""}`} data-report-field={`page:${page.id}:text`} data-report-text-start={block.start} data-report-text-end={block.start + block.text.length} data-list-continuation={block.kind === "bullet" && block.continued || undefined} data-quote-role={position?.role} style={position ? { gridColumn: position.column, gridRow: position.row } : undefined} onClick={(event: MouseEvent<HTMLElement>) => {
       if (!(event.target as HTMLElement).closest('[contenteditable]')) event.currentTarget.querySelector<HTMLElement>('[contenteditable]')?.focus();
     }}>
@@ -362,7 +366,20 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
     return new Map(blocks.map((block, i) => [block.start, split[i]]));
   };
   const num = 2 + layout.reduce((sum, { frames }) => sum + frames.length, 0);
-  const inline: Inline = (value, label, apply, multiline = false) => onTextChange ? {
+  const inline: Inline = (value, label, apply, multiline = false, list = false) => onTextChange ? {
+    "data-bhn-review-text": "",
+    "data-bhn-review-list": list ? "" : undefined,
+    ref(node) {
+      if (!node) return;
+      const replace = (event: Event) => {
+        const detail = (event as CustomEvent<{ before: string; value: string; accepted: boolean }>).detail;
+        if (!detail || detail.before !== value || typeof detail.value !== "string" || detail.value.length > 30000) return;
+        detail.accepted = true;
+        if (detail.value !== value) apply(multiline ? detail.value : detail.value.replace(/\s*\n\s*/g, " "));
+      };
+      node.addEventListener("bhn-review-replace-text", replace);
+      return () => node.removeEventListener("bhn-review-replace-text", replace);
+    },
     contentEditable: "plaintext-only",
     suppressContentEditableWarning: true,
     tabIndex: 0,
@@ -430,6 +447,15 @@ export function ReportPaper({ report, layout, active, ready, onSelect, edit, onT
 
         </aside>}
         <article className={`${styles.paper} ${extra}`} style={{ zoom: scale }} aria-label={`Page ${pageNumber} of ${num} · ${name}`}
+          ref={node => {
+            if (!node || !onPhoto) return;
+            const editPicture = (event: Event) => {
+              const slot = (event.target as Element).closest<HTMLElement>("[data-photo-slot]")?.dataset.photoSlot;
+              if (slot !== undefined) onPhoto(frame, slot || undefined);
+            };
+            node.addEventListener("bhn-review-edit-picture", editPicture);
+            return () => node.removeEventListener("bhn-review-edit-picture", editPicture);
+          }}
           onFocus={(event) => { if (!isActive && event.target.isContentEditable) onSelect(frame); }}
           onClick={onPhoto && ((event) => {
             // Click a photo to swap, crop, zoom, rotate, flip or recaption it.

@@ -10,6 +10,7 @@ async function fixture(editable = true, contextualHtml = true) {
   const dom = new JSDOM(`<!doctype html><html><head><title>Newsletter</title></head><body>
     <h2>Training highlights</h2><p id="training">Build practical skills with <a href="https://castl.example"><strong>CASTL</strong></a> and <a href="https://biozone.example">BioZone</a> this fall.</p>
     <ul><li id="funding">Master’s and PhD trainees receive <strong>$25,000</strong>.</li></ul>
+    <p id="plain">A plain paragraph.</p>
     <a href="https://event.example"><img id="graphic" alt="Event invitation" src="https://images.example/event.png"></a>
     <p><a id="unsafe" href="javascript:alert(1)">Unsafe URL</a></p></body></html>`, {
     url: "https://review.test/review-paste/token", runScripts: "outside-only", pretendToBeVisual: true, virtualConsole: console,
@@ -42,7 +43,7 @@ test("newsletter link clicks expose explicit actions and one whole-paragraph edi
     const paragraph = f.doc.querySelector("#training")!, link = paragraph.querySelector("a")!;
     assert.equal(f.doc.querySelectorAll("[contenteditable],[data-bhn-inline-text]").length, 0);
     f.click(link.querySelector("strong")!);
-    assert.deepEqual(Array.from(f.doc.querySelectorAll('[role=menu] button')).map(n => n.textContent), ["Open link", "Comment on element", "Edit text"]);
+    assert.deepEqual(Array.from(f.doc.querySelectorAll('[role=menu] button')).map(n => n.textContent), ["Open link", "Comment on element", "Quick edit", "Edit text"]);
     f.click(f.button("Open link")); assert.deepEqual(f.opened, [["https://castl.example/", "_blank", "noopener,noreferrer"]]);
     f.click(link); f.click(f.button("Edit text"));
     const dialog = f.doc.querySelector("dialog")!, input = dialog.querySelector("textarea")!;
@@ -83,6 +84,36 @@ test("keyboard actions, modal focus trap and Escape preserve the semantic item",
     assert.equal(f.doc.querySelector("dialog"), null); assert.equal(f.doc.activeElement, item);
     const space = new f.window.KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
     f.doc.body.dispatchEvent(space); assert.equal(space.defaultPrevented, false, "Space on the page background retains normal scrolling");
+    assert.deepEqual(f.errors, []);
+  } finally { f.close(); }
+});
+
+test("quick edit stages inline and the pop-up previews a limited semantic bullet list", async () => {
+  const f = await fixture();
+  try {
+    const paragraph = f.doc.querySelector("#plain")!;
+    f.click(paragraph); f.click(f.button("Quick edit"));
+    const quick = f.doc.querySelector('[role=group][aria-label="Quick edit"]')!;
+    assert.equal(f.doc.querySelector("dialog"), null);
+    quick.querySelector("textarea")!.value = "A quick change.";
+    f.click(f.button("Apply changes", quick));
+    assert.equal(paragraph.textContent, "A quick change.");
+    f.click(paragraph); f.click(f.button("Edit text"));
+    const dialog = f.doc.querySelector("dialog")!;
+    dialog.querySelector("textarea")!.value = "First bullet\nSecond <b>bullet</b>";
+    f.click(f.button("Bulleted list", dialog));
+    assert.equal(dialog.querySelectorAll("ul li").length, 2);
+    f.click(f.button("Apply changes", dialog));
+    assert.equal(f.doc.querySelector("#plain")!.tagName, "UL");
+    assert.equal(f.doc.querySelector("#plain b"), null);
+    f.click(f.button("Save revision")); await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(JSON.parse(f.requests[0].body).edits.map(({ before, after, list }: { before: string; after: string; list: boolean }) => ({ before, after, list })),
+      [{ before: "A plain paragraph.", after: "First bullet\nSecond <b>bullet</b>", list: true }]);
+    f.click(f.button("Discard edits"));
+    assert.equal(f.doc.querySelector("#plain"), paragraph);
+    assert.equal(paragraph.textContent, "A plain paragraph.");
+    f.click(f.doc.querySelector("#training")!); f.click(f.button("Edit text"));
+    assert.equal(f.doc.querySelector("dialog [aria-label='Text formatting']"), null, "existing linked copy never loses its markup");
     assert.deepEqual(f.errors, []);
   } finally { f.close(); }
 });

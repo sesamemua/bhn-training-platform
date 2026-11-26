@@ -10,10 +10,12 @@ import { inlineTextSource } from "./inline-text-source";
 import { editableTextNodes, planTextBlockEdits } from "./editable-text";
 import { htmlActionsSource } from "./html-actions-source";
 import { htmlImageSource } from "./html-image-source";
+import { textEditorSource } from "./text-editor-source";
+import { surfaceAdaptersSource } from "./surface-adapters-source";
 import type { ReviewMediaTools } from "./media-tools";
 
 /** JavaScript source for the live-page review overlay. */
-export function overlaySource(endpoint: string, title: string, accountRequired = false, reportCommentEndpoint: string | null = null, staffSurface: "report" | "social" = "report", options: { contextualHtml?: boolean } = {}): string {
+export function overlaySource(endpoint: string, title: string, accountRequired = false, reportCommentEndpoint: string | null = null, staffSurface: "report" | "social" = "report", options: { contextualHtml?: boolean; website?: boolean } = {}): string {
   const mediaTools: ReviewMediaTools = {};
   return `(function(){
   var ID = "bhn-review-overlay";
@@ -26,7 +28,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   var scopeSelector = (staffSurface === "social" ? "[data-social-review] " : "[data-report-paper] ") + pageSelector;
   var reportReview = !!reportCommentEndpoint && staffSurface === "report";
   var htmlReview = ${JSON.stringify(!!options.contextualHtml)};
-  var contextualReview = reportReview || htmlReview;
+  var websiteReview = ${JSON.stringify(!!options.website)};
+  var contextualReview = !!reportCommentEndpoint || htmlReview || websiteReview;
   var reviewMediaTools = ${JSON.stringify(mediaTools)};
   var htmlTargets = (function(__name){return (${createHtmlReviewTargets.toString()})(document);})(function(value){return value;});
   var editableTextNodes = ${editableTextNodes.toString()};
@@ -343,7 +346,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   function anchorsFor(node) {
     if (htmlReview) return htmlTargets.capture(node);
-    var quote = cleanText(node.innerText || node.textContent).slice(0, 600);
+    var quote = cleanText(node.innerText || node.textContent || node.getAttribute?.("alt")).slice(0, 600);
     if (reportCommentEndpoint) {
       var page = node.closest(pageSelector);
       var selection = window.getSelection();
@@ -730,7 +733,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   /** A round stops accepting writes the moment it is exported. */
   function isLocked() {
-    return ((reportCommentEndpoint || htmlReview) && state.pageRound !== state.review.round) || (state.review.status && state.review.status !== "open");
+    return ((reportCommentEndpoint || htmlReview || websiteReview) && state.pageRound !== state.review.round) || (state.review.status && state.review.status !== "open");
   }
 
   ${mentionToolsSource()}
@@ -978,11 +981,11 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       // needs the lock check of its own.
       if (!isLocked() && (!htmlReview || comment.round === state.pageRound)) {
         var tools = make("div", "bhn-rv-thread-tools");
-        if (staffSurface === "social" || htmlReview) tools.appendChild(addButton(comment.status === "open" ? "Resolve" : "Reopen", "bhn-rv-link-btn", async function(){
+        if (reportCommentEndpoint || htmlReview || (websiteReview && state.viewer?.canResolve && comment.round === state.pageRound)) tools.appendChild(addButton(comment.status === "open" ? "Resolve" : "Reopen", "bhn-rv-link-btn", async function(){
           if (state.saving) return;
           state.saving = true;
           try {
-            var response = htmlReview ? await fetch(endpoint,{method:"PATCH",headers:{"Authorization":"Bearer "+credential,"Content-Type":"application/json"},body:JSON.stringify({id:comment.id,expectedRound:state.pageRound,status:comment.status==="open"?"resolved":"open"})}) : await writeReportComment(comment.status === "open" ? "setStatus" : "reopenComment", { commentId: comment.id, status: "resolved" });
+            var response = !reportCommentEndpoint ? await fetch(endpoint,{method:"PATCH",headers:{"Authorization":"Bearer "+credential,"Content-Type":"application/json"},body:JSON.stringify({id:comment.id,expectedRound:state.pageRound,status:comment.status==="open"?"resolved":"open"})}) : await writeReportComment(comment.status === "open" ? "setStatus" : "reopenComment", { commentId: comment.id, status: "resolved" });
             var data = await response.json();
             if (!response.ok || !data.ok) throw new Error(data.error || "Could not update this thread.");
             await loadComments(false);
@@ -1114,7 +1117,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         copyFlow.setAttribute("data-stage", state.confirmCopy && !isLocked() ? "confirm" : state.copiedRound === state.review.round ? "copied" : "ready");
         body.appendChild(copyFlow);
       }
-      if (reportCommentEndpoint) {
+      if (reportReview) {
         copyFlow.appendChild(addButton(state.copiedRound === state.review.round ? "Comments copied" : reportReview ? "Copy comments and lock round" : "Copy review comments", "bhn-rv-btn bhn-rv-copy-comments", async function(){
           var confirmed = state.confirmedCopy;
           state.confirmedCopy = false;
@@ -1162,8 +1165,10 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
         copiedNotice.setAttribute("aria-label", "Review comments copied");
         copyFlow.appendChild(copiedNotice);
       }
+      var commonTools=make("div","bhn-rv-common-tools");
       if (contextualReview && !isLocked()) {
         var pick = addButton("Comment on an element", "bhn-rv-btn bhn-rv-element-pick", function(){
+          if(reviewTextSession)return;
           reportDrawMode=null; state.pickingElement = true;
           state.insertingSection = false;
           showHighlight(null);
@@ -1172,22 +1177,23 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
           if(htmlReview)document.querySelectorAll("h1,h2,h3,h4,h5,p,a,li,img").forEach(function(node){if(!inOverlay(node)&&!node.hasAttribute("tabindex")){node.setAttribute("tabindex","0");node.setAttribute("data-bhn-review-focus","");}});
         });
         pick.setAttribute("aria-pressed", String(state.pickingElement));
-        pick.disabled = inlineDirty() || state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null;
+        pick.disabled = reviewChangesPending() || state.saving || !!state.draft.trim() || state.replyTo !== null || state.editingId !== null;
         if (state.replyTo !== null || state.editingId !== null) pick.setAttribute("title", "Finish or cancel your current reply or edit first.");
-        body.appendChild(pick);
-        if(htmlReview){
-          var general=addButton("General comment","bhn-rv-btn",function(){state.selected={general:true};state.pickingElement=false;state.panelCollapsed=false;render();});
-          general.disabled=inlineDirty()||state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null;
-          body.appendChild(general);
+        commonTools.appendChild(pick);
+        if(contextualReview){
+          var general=addButton("General comment","bhn-rv-btn",function(){if(reviewTextSession)return;state.selected={general:true};state.pickingElement=false;state.panelCollapsed=false;render();});
+          general.disabled=reviewChangesPending()||state.saving||!!state.draft.trim()||state.replyTo!==null||state.editingId!==null;
+          commonTools.appendChild(general);
         }
 
       }
       if ((!state.pickingElement || contextualReview) && (state.comparison || state.comparisonError)) {
-        body.appendChild(addButton(state.comparisonError || "Before / after comparison", "bhn-rv-btn bhn-rv-compare-open", function(){
+        (contextualReview?commonTools:body).appendChild(addButton(state.comparisonError || "Before / after comparison", "bhn-rv-btn bhn-rv-compare-open", function(){
           if (state.comparisonError) { state.comparisonRound = null; loadComparison(); }
           else openComparison();
         }));
       }
+      if(commonTools.childNodes.length){commonTools.setAttribute("role","group");commonTools.setAttribute("aria-label","Review controls");body.appendChild(commonTools);}
       if (!state.pickingElement || contextualReview) {
         renderComposer(body);
         var list = make("div", "bhn-rv-list");
@@ -1308,6 +1314,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       if (state.pageRound === null) state.pageRound = data.review.round;
       state.viewer = data.viewer;
       loadInlineText();
+      if(contextualReview)enableReviewTargetFocus();
       state.comments = data.comments || [];
       if (changed) markerAnchorCache.clear();
       loadMentionNotifications();
@@ -1335,7 +1342,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   }
 
   async function submitComment(value, parentId, anchors) {
-    if(htmlReview && inlineDirty()){state.error="Save or discard your edits before adding feedback.";render();return false;}
+    if((htmlReview && inlineDirty()) || (typeof socialEdits!=="undefined" && socialEdits.size)){state.error="Save or discard your edits before adding feedback.";render();return false;}
     if ((!parentId || htmlReview) && state.pageRound !== state.review.round) {
       state.error = "Reload the current version before adding a new comment.";
       render();
@@ -1552,9 +1559,9 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
       return;
     }
     threadHighlight = null;
-    var node = reportReview ? reportTarget(event) : htmlReview ? htmlTargets.pick(event.target) : event.target;
-    if(htmlReview&&!node){showHighlight(null);return;}
-    if (htmlReview && (htmlActionsMenu||htmlReviewDialog)) return;
+    var node = contextualReview ? reviewElement(event) : event.target;
+    if(contextualReview&&!node){reportInlineComment(null);showHighlight(null);return;}
+    if (contextualReview && (htmlActionsMenu||htmlReviewDialog||reviewTextSession)) return;
     if (contextualReview && !state.pickingElement) { reportInlineComment(node); showHighlight(null); return; }
     if (editableReportPage(event.target) && !state.pickingElement && !node?.matches("figcaption")) { showHighlight(null); return; }
     showHighlight(node);
@@ -1563,18 +1570,24 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   function onClick(event) {
     if (reportReview && (reportDrawMode || reportDrawSuppressClick || (state.selected && state.selected.drawing)) && event.target.closest(scopeSelector)) { reportDrawSuppressClick=false; event.preventDefault();event.stopPropagation();return; }
     if (inOverlay(event.target)) return;
-    if (htmlReview) {
+    if (reportInsertionClick(event)) return;
+    if (contextualReview && event.type !== "bhn-report-comment") {
       if(htmlReviewDialog)return;
-      var target=htmlTargets.pick(event.target);if(!target){closeHtmlActions(false);return;}
+      if(!state.viewer&&!htmlReview)return;
+      if(event.target.closest?.('input,textarea,select,[data-bhn-review-ui]')||(websiteReview&&event.target.closest?.('form,button')&&!state.pickingElement))return;
+      if(reviewTextSession){event.preventDefault();event.stopPropagation();return;}
+      var target=reviewElement(event);if(!target){closeHtmlActions(false);return;}
+      if(!state.pickingElement){
+        // Native report fields retain direct keyboard edits; the menu is the pointer entry point.
+        event.preventDefault();event.stopPropagation();openHtmlActions(target,event);return;
+      }
       event.preventDefault();event.stopPropagation();
-      if(!state.pickingElement){openHtmlActions(target,event);return;}
-      if(isLocked()||!state.viewer||inlineDirty()||htmlImageSaving()||state.saving||state.selected||state.replyTo!==null||state.editingId!==null)return;
+      if(isLocked()||!state.viewer||reviewChangesPending()||htmlImageSaving()||state.saving||state.selected||state.replyTo!==null||state.editingId!==null)return;
       closeHtmlActions(false);
     }
-    if (reportInsertionClick(event)) return;
     if (reportCommentEndpoint && (!state.viewer || isLocked())) return;
     if (reportReview && (state.saving || state.replyTo !== null || state.editingId !== null)) return;
-    var node = htmlReview ? htmlTargets.pick(event.target) : reportReview ? reportTarget(event) : reportCommentEndpoint
+    var node = contextualReview && event.type!=="bhn-report-comment" ? reviewElement(event) : reportReview ? reportTarget(event) : reportCommentEndpoint
       ? (event.target.closest("h1,h2,h3,h4,p,li,blockquote,figcaption,img,td") || event.target.closest(pageSelector)) : event.target;
     if (!node) return;
     // Editable pages: text and photos are edited in place (a photo click opens the photo editor); captions still comment.
@@ -1582,7 +1595,7 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
     event.preventDefault();
     event.stopPropagation();
     var pickedElement = state.pickingElement;
-    if (!reportReview) state.pickingElement = false;
+    if (contextualReview || !reportReview) state.pickingElement = false;
     state.selected = anchorsFor(node);
     if (!pickedElement && !reportReview) state.draft = "";
     if (contextualReview) state.panelCollapsed = false;
@@ -1607,8 +1620,10 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
 
   function cleanup() {
     window.removeEventListener('beforeunload',beforeInlineUnload);
+    window.removeEventListener('beforeunload',beforeReviewUnload);
     if(commentActionDock)commentActionDock.remove();
-    if(htmlReview){cleanupHtmlImageEditor();cleanupHtmlActions();}
+    if(contextualReview){if(reviewTextSession)reviewTextSession.close();cleanupHtmlActions();}
+    if(htmlReview)cleanupHtmlImageEditor();
     document.removeEventListener('focusin',reportFocusComment);
     document.removeEventListener('keydown',contextualKey,true);
     if(reportCommentButton)reportCommentButton.remove();
@@ -1637,6 +1652,8 @@ export function overlaySource(endpoint: string, title: string, accountRequired =
   ${htmlActionsSource()}
   ${inlineTextSource()}
   ${htmlImageSource()}
+  ${surfaceAdaptersSource()}
+  ${textEditorSource()}
   ${contextualSource()}
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);

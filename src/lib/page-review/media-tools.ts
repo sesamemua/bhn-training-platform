@@ -4,6 +4,7 @@ export interface ReviewTextToolState {
   dirty: boolean;
   saving: boolean;
   error: string;
+  hint?: string;
 }
 export interface ReviewTextTool {
   getState(): ReviewTextToolState;

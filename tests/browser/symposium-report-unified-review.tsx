@@ -104,19 +104,25 @@ async function main() {
     const toolbar=page.getByRole('toolbar',{name:'Report review toolbar'});assert((await toolbar.boundingBox())!.height<=55,'one compact row');
     await expect(page.locator('.bhn-rv-head').getByText('Panel size',{exact:false})).toBeVisible();
     const slider=page.getByRole('slider',{name:'Comments panel size',exact:true});await slider.fill('743');await expect(slider).toHaveValue('743');
-    const title=page.getByRole('textbox',{name:'Cover title',exact:true});await title.click();await expect(title).toBeFocused();await expect(page.getByRole('textbox',{name:'New review comment'})).toHaveCount(0);
-    await title.fill('Direct edit without a mode switch');await title.press('Enter');await expect.poll(()=>saves.length).toBe(2);
+    const title=page.getByRole('textbox',{name:'Cover title',exact:true});await title.click();
+    await page.getByRole('menuitem',{name:'Quick edit',exact:true}).click();
+    const quick=page.getByRole('group',{name:'Quick edit'}).getByRole('textbox');
+    await quick.fill('Direct edit without a mode switch');await quick.press('Enter');await expect.poll(()=>saves.length).toBe(2);
+    await title.click();await page.getByRole('menuitem',{name:'Edit text',exact:true}).click();
+    await expect(page.getByRole('dialog',{name:'Edit text',exact:true}).getByRole('textbox')).toHaveValue('Direct edit without a mode switch');
+    await page.getByRole('button',{name:'Cancel',exact:true}).click();
     const targets=[page.locator('#report-frame-cover-0 h1'),page.locator('#report-frame-summary-0 header>span'),page.locator('#report-frame-summary-0 footer span').first(),page.locator('#report-frame-summary-0 figure img'),page.locator('#report-frame-summary-0 figcaption'),page.locator('#report-frame-cover-0 img[src$="cover.jpg"]')];
     for(const [i,target] of targets.entries()){
       await target.hover();const button=page.getByRole('button',{name:'Comment on selected report element',exact:true});await expect(button).toBeVisible();await button.click();
       const box=page.getByRole('textbox',{name:'New review comment',exact:true});await expect(box).toBeFocused();await expect(page.getByRole('dialog',{name:'Swap or crop photo'})).toHaveCount(0);
       await box.fill('Review element '+i);await page.getByRole('button',{name:'Add comment',exact:true}).click();assert.equal(await target.evaluate((e,path)=>document.querySelector(path)===e,selections.at(-1)!.anchorPath),true);
     }
-    const picture=page.locator('#report-frame-summary-0 figure img');await picture.click();await expect(page.getByRole('dialog',{name:'Swap or crop photo'})).toBeVisible();await page.getByRole('dialog',{name:'Swap or crop photo'}).getByRole('button',{name:'Cancel',exact:true}).click();
-    const more=page.locator('.bhn-report-menu').filter({hasText:'Comment on an element'});await more.locator(':scope > summary').click();await more.getByText('Panel size presets',{exact:true}).click();await more.getByRole('button',{name:'Comfortable',exact:true}).click();await expect(slider).toHaveValue('640');await page.keyboard.press('Escape');assert.equal(await more.getAttribute('open'),null,'Escape closes compact menu');
+    const picture=page.locator('#report-frame-summary-0 figure img');await picture.click();await page.getByRole('menuitem',{name:'Replace or edit picture'}).click();await expect(page.getByRole('dialog',{name:'Swap or crop photo'})).toBeVisible();await page.getByRole('dialog',{name:'Swap or crop photo'}).getByRole('button',{name:'Cancel',exact:true}).click();
+    await expect(page.getByRole('group',{name:'Review controls'}).getByRole('button',{name:'Comment on an element'})).toBeVisible();
+    const summary=page.getByLabel('More review tools');const more=summary.locator('..');await summary.click();await more.getByText('Panel size presets',{exact:true}).click();await more.getByRole('button',{name:'Comfortable',exact:true}).click();await expect(slider).toHaveValue('640');await page.keyboard.press('Escape');assert.equal(await more.getAttribute('open'),null,'Escape closes compact menu');
     await picture.hover();await page.getByRole('button',{name:'Comment on selected report element',exact:true}).click();await page.getByRole('textbox',{name:'New review comment',exact:true}).fill('Keep this unfinished note');await slider.fill('780');await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toHaveValue('Keep this unfinished note');await page.getByRole('button',{name:'Cancel',exact:true}).click();
     await page.setViewportSize({width:1366,height:800});await page.getByRole('button',{name:'Back cover',exact:true}).click();const last=page.locator('#report-frame-back-0 [data-report-field="back.text"]');await last.hover();const before=await page.evaluate(()=>scrollY);await page.getByRole('button',{name:'Comment on selected report element',exact:true}).click();await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toBeFocused();assert(Math.abs((await page.evaluate(()=>scrollY))-before)<4);await page.getByRole('button',{name:'Cancel',exact:true}).click();
-    await page.setViewportSize({width:390,height:844});await page.reload();await expect(page.getByRole('button',{name:/^Expand .* comments$/})).toBeVisible();await last.click();await last.hover();await page.getByRole('button',{name:'Comment on selected report element',exact:true}).click();await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toBeFocused();
+    await page.setViewportSize({width:390,height:844});await page.reload();await expect(page.getByRole('button',{name:/^Expand .* comments$/})).toBeVisible();await last.click();await page.getByRole('menuitem',{name:'Comment on element'}).click();await expect(page.getByRole('textbox',{name:'New review comment',exact:true})).toBeFocused();
     assert.deepEqual(errors,[]);console.log('PASS: compact toolbar, header slider/presets, direct edits/autosave, precise comments on text/header/footer/photos/captions, native photo tools, unsent draft retention, laptop/mobile access. Mocked writes only.');
   }finally{await browser.close();}
 }

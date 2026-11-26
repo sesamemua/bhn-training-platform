@@ -76,6 +76,38 @@ test('history download rejects non-admin access before reading any evidence',asy
  assert.equal((await exports.GET(new Request('https://test/api?review=report'))).status,403);assert.equal(reads,0);allowed=true;
  const r=await exports.GET(new Request('https://test/api?review=report'));assert.equal(r.status,200);assert.equal(r.headers.get('Cache-Control'),'private, no-store');assert.equal((await r.json()).scope,'report');
 });
+
+test('website thread status requires active staff and the current round', async () => {
+ const compiled = ts.transpileModule(readFileSync('src/app/api/public/page-review/[token]/route.ts', 'utf8'),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+ const site = { id: 'website', kind: 'url', round: 3, status: 'open' };
+ let status = 'open', role = 'instructor', active = true, reviewerKind = 'user', threadRound = 3;
+ const db = {
+  user: { findUnique: async () => ({ role, isActive: active }) },
+  pageReview: { findUnique: async () => site, update: async () => site },
+  pageComment: { findFirst: async () => ({ ...original, round: threadRound, reviewId: site.id, status }),
+   update: async ({ data }: { data: { status: string } }) => ({ ...original, reviewId: site.id, status: status = data.status }) },
+ };
+ const mocks: Record<string, unknown> = {
+  '@/lib/prisma': { prisma: db },
+  '@/lib/symposium-report/store': { reportTransaction: (run: (tx: typeof db) => Promise<Response>) => run(db) },
+  '@/lib/page-review/viewer': { verifyPageReviewViewerToken: async () => ({ userId: 'reviewer', name: 'Reviewer', kind: reviewerKind }) },
+  '@/lib/page-review/feedback-memory': { captureReviewFeedback: async () => {} },
+ };
+ const route = {} as { PATCH: (req: Request, ctx: { params: Promise<{ token: string }> }) => Promise<Response> };
+ new Function('require', 'exports', compiled)((id: string) => mocks[id] ?? require(id), route);
+ const patch = (expectedRound: number) => route.PATCH(new Request('https://test/api', {
+  method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer credential' },
+  body: JSON.stringify({ id: 'c1', status: 'resolved', expectedRound }),
+ }), { params: Promise.resolve({ token: 'fixture' }) });
+ reviewerKind = 'anon'; assert.equal((await patch(3)).status, 403);
+ reviewerKind = 'user'; role = 'trainee'; assert.equal((await patch(3)).status, 403);
+ role = 'instructor'; active = false; assert.equal((await patch(3)).status, 403);
+ active = true; assert.equal((await patch(2)).status, 409);
+ threadRound = 2; assert.equal((await patch(3)).status, 409);
+ assert.equal(status, 'open');
+ threadRound = 3; assert.equal((await patch(3)).status, 200); assert.equal(status, 'resolved');
+});
 test('review actions stay in the timeline without becoming preferences or hiding the source request',async()=>{
  const f=fixture();await captureReviewFeedback(f.db,'report',[original] as any,'created',actor);
  const evidence=[...f.records.values()][0];

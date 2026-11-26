@@ -118,6 +118,12 @@ async function viewerFor(req: NextRequest, reviewId: string) {
   return verifyPageReviewViewerToken(match[1], reviewId);
 }
 
+async function canResolveWebsiteThreads(db: Pick<Prisma.TransactionClient, "user">, viewer: NonNullable<Awaited<ReturnType<typeof viewerFor>>>) {
+  if (viewer.kind !== "user") return false;
+  const user = await db.user.findUnique({ where: { id: viewer.userId }, select: { role: true, isActive: true } });
+  return !!user?.isActive && ["instructor", "admin", "superadmin"].includes(user.role);
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS });
 }
@@ -126,7 +132,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   const { token } = await ctx.params;
   const review = await prisma.pageReview.findUnique({
     where: { shareToken: token },
-    select: { id: true, title: true, round: true, status: true },
+    select: { id: true, title: true, round: true, status: true, kind: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
   if (review.status === "closed") return json({ error: "This review is closed." }, 409);
@@ -177,7 +183,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   return json({
     ok: true,
     review: { title: review.title, round: review.round, status: review.status },
-    viewer: { id: viewer.userId, name: viewer.name },
+    viewer: { id: viewer.userId, name: viewer.name,
+      ...(review.kind === "url" ? { canResolve: await canResolveWebsiteThreads(prisma, viewer) } : {}) },
     comments: comments.map((comment) => commentForViewer(comment, viewer.userId)),
   });
 }
@@ -285,7 +292,7 @@ async function editFeedbackComment(req: NextRequest, ctx: { params: Promise<{ to
   const { token } = await ctx.params;
   const review = await db.pageReview.findUnique({
     where: { shareToken: token },
-    select: { id: true, round: true, status: true },
+    select: { id: true, round: true, status: true, kind: true },
   });
   if (!review) return json({ error: "This review link is no longer active." }, 404);
   const blocked = writeBlock(review);
@@ -305,8 +312,12 @@ async function editFeedbackComment(req: NextRequest, ctx: { params: Promise<{ to
     where: { id: parsed.data.id, reviewId: review.id },
   });
   if (!existing) return json({ error: "That comment is gone." }, 404);
-  if (parsed.data.status && !review.id.startsWith("newsletter-")) return json({ error: "Manage thread status from its workspace." }, 400);
-  if (review.id.startsWith("newsletter-") && (parsed.data.expectedRound !== review.round || existing.round !== review.round)) {
+  const newsletter = review.id.startsWith("newsletter-");
+  if (parsed.data.status && !newsletter) {
+    if (review.kind !== "url") return json({ error: "Manage thread status from its workspace." }, 400);
+    if (!await canResolveWebsiteThreads(db, viewer)) return json({ error: "Authorized staff can update thread status." }, 403);
+  }
+  if ((newsletter || (review.kind === "url" && parsed.data.status)) && (parsed.data.expectedRound !== review.round || existing.round !== review.round)) {
     return json({ error: "Reload the current round before editing. Earlier feedback is read-only." }, 409);
   }
   // No ownership check — any reviewer can edit any comment, matching the

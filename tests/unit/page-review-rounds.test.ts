@@ -49,7 +49,7 @@ function harness(options: { review?: Review | null; content?: Content | null; ve
         if (query.where.shareToken) {
           reads.metadata++;
           assert.deepEqual(query.where, { shareToken: "shared-token" });
-          assert.deepEqual(query.select, { id: true, title: true, round: true, status: true });
+          assert.deepEqual(query.select, { id: true, title: true, round: true, status: true, kind: true });
           return selectedReview;
         }
         reads.content++;

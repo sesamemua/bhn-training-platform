@@ -3,11 +3,58 @@ import { prisma } from "@/lib/prisma";
 import { buildBrief } from "@/lib/page-review/brief";
 import { PAGE_REVIEW_COMMENT_LIMIT } from "@/lib/page-review/limits";
 import { overlaySource } from "@/lib/page-review/overlay-source";
-import { canReviewSocialCopy, socialCopyReviewApi, socialCopyReviewId, socialCopyReviewPath, socialCopySnapshotHtml } from "@/lib/social/copy-review";
+import { canReviewSocialCopy, socialCopyReviewApi, socialCopyReviewId, socialCopyReviewPath, socialCopySnapshot, socialCopySnapshotHtml } from "@/lib/social/copy-review";
+import { editSocialPost } from "@/lib/social/edit";
+import { reportTransaction } from "@/lib/symposium-report/store";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 const json = (value: unknown, status = 200) => Response.json(value, { headers, status });
+const partEdit = z.object({ part: z.number().int().nonnegative(), before: z.string().max(6000), after: z.string().max(6000) }).strict();
+const textEdit = z.object({ round: z.number().int().positive(), version: z.number().int().nonnegative(),
+  edits: z.array(partEdit).min(1).max(50) }).strict();
+
+/** Edit the draft and snapshot in one transaction. Never publish, schedule or send. */
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireRole("admin").catch(() => null);
+  const actor = (session?.user as { id?: string } | undefined)?.id;
+  if (!actor) return json({ error: "Sign in with your Social admin account." }, 403);
+  if (!request.headers.get("content-type")?.startsWith("application/json")) return json({ error: "Use JSON." }, 415);
+  const raw = await request.text();
+  if (raw.length > 80000) return json({ error: "This edit is too long." }, 413);
+  const input = textEdit.safeParse(await Promise.resolve().then(() => JSON.parse(raw)).catch(() => null));
+  if (!input.success) return json({ error: "Provide the original paragraph and displayed revision." }, 400);
+  const { id: postId } = await params;
+  const id = socialCopyReviewId(postId);
+  return reportTransaction(async tx => {
+    const [post, review] = await Promise.all([
+      tx.socialPost.findUnique({ where: { id: postId }, select: { status: true, editVersion: true, body: true, assetSpec: true, trackChanges: true } }),
+      tx.pageReview.findUnique({ where: { id, kind: "social" }, select: { round: true, status: true, pastedHtml: true } }),
+    ]);
+    const change = input.data;
+    if (!post || !review || review.status !== "open" || !canReviewSocialCopy(post.status) || review.round !== change.round ||
+      post.editVersion !== change.version || review.pastedHtml !== JSON.stringify(socialCopySnapshot(post.body, post.assetSpec))) {
+      return json({ error: "The draft or review changed. Your unsaved text is still available; copy it before reloading." }, 409);
+    }
+    const paragraphs = post.body.split(/(\n\s*\n)/);
+    const seen = new Set<number>();
+    for (const edit of change.edits) {
+      if (seen.has(edit.part) || paragraphs[edit.part * 2] !== edit.before) return json({ error: "A selected paragraph changed. Reload before editing." }, 409);
+      seen.add(edit.part);
+      paragraphs[edit.part * 2] = edit.after;
+    }
+    const outcome = await editSocialPost(tx, actor, { id: postId, body: paragraphs.join(""), expectedVersion: change.version, trackChanges: post.trackChanges });
+    if (!outcome.result.ok || !outcome.result.post) return json({ error: outcome.result.error || "The draft could not be saved." }, outcome.status);
+    if (outcome.result.post.body === post.body) return json({ ok: true, unchanged: true });
+    const snapshot = socialCopySnapshot(outcome.result.post.body, post.assetSpec);
+    await tx.pageReviewVersion.create({ data: { reviewId: id, round: review.round, html: review.pastedHtml! } });
+    await tx.pageReview.update({ where: { id }, data: { round: { increment: 1 }, pastedHtml: JSON.stringify(snapshot), title: snapshot.title } });
+    await tx.auditLog.create({ data: { actorId: actor, action: "social.review.text-edit", targetType: "PageReview", targetId: id,
+      detail: JSON.stringify({ round: review.round, nextRound: review.round + 1, edits: change.edits }) } });
+    return json({ ok: true, round: review.round + 1 });
+  });
+}
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole("admin").catch(() => null);
